@@ -19,6 +19,7 @@ config/features=PackedStringArray("4.6", "GL Compatibility")
 Events="*res://scripts/autoload/events.gd"
 GameData="*res://scripts/autoload/game_data.gd"
 SaveManager="*res://scripts/autoload/save_manager.gd"
+Audio="*res://scripts/autoload/audio.gd"
 
 [display]
 

@@ -144,6 +144,8 @@ func _refresh() -> void:
 
 
 func _toggle(id: String) -> void:
-	if not run.toggle_active(id):
+	if run.toggle_active(id):
+		Audio.play("loadout_swap")
+	else:
 		Events.toast.emit("Your active row is full. Remove a spell first.", UiTheme.DANGER)
 	_refresh.call_deferred()

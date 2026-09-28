@@ -8,6 +8,8 @@ extends Control
 ## left to right, and then the enemies act. E Releases early (or passes, before you chant).
 
 signal finished(won: bool)
+## The player abandoned the run from the pause menu.
+signal menu_requested
 ## For the tutorial: what just happened ("chant_changed", "chanted", "cast", "picked", "placed", "turn_start").
 signal tut(kind: String, data)
 signal _aim_done(idx: int)
@@ -61,6 +63,25 @@ var _clear_btn: Button
 var _fx: Control
 var _arrow: Control
 var _player_panel: PanelContainer
+var _pause_overlay: Control
+
+## op -> sfx name, for the generic {"type": "effect", "op": ...} events fired by every spell effect.
+## Ops that already play their own sound elsewhere (strike-via-pluck, move, infuse/duplicate via
+## "chant_changed", summon_spells via "loadout_changed") are left out so they don't double up.
+const EFFECT_SFX := {
+	"strike": "sfx_damage_hit", "burn": "sfx_burn_apply", "poison": "sfx_poison_apply",
+	"stoke": "sfx_burn_apply", "weak": "sfx_weaken_apply", "freeze": "sfx_freeze_apply",
+	"expose": "sfx_expose_apply", "ethereal": "sfx_ethereal_apply", "shield": "sfx_shield_up",
+	"heal": "sfx_heal", "aegis": "sfx_aegis_up", "thorns": "sfx_shield_up", "draw": "sfx_draw_element",
+	"rotate": "sfx_convert", "swap": "sfx_convert", "convert": "sfx_convert", "purge": "sfx_purge",
+	"shatter": "sfx_lock_break", "insert": "sfx_mend", "siphon": "sfx_purge", "execute": "sfx_execute",
+	"transmute": "sfx_convert", "sacrifice": "sfx_player_hit", "amplify": "sfx_amplify",
+	"overload": "sfx_overload", "cleanse": "sfx_cleanse", "redirect": "sfx_redirect", "passive": "spell_glow",
+	"curse": "sfx_weaken_apply",
+}
+## Element letter -> sfx name, comet leaving the chant (a whoosh) and comet landing on an enemy (an impact).
+const LAUNCH_SFX := {"F": "element_fire", "W": "element_water", "A": "element_wind"}
+const IMPACT_SFX := {"F": "fire", "W": "water", "A": "air"}
 
 
 func setup(p_run: RunState, p_fight: Fight) -> void:
@@ -219,6 +240,10 @@ func _ready() -> void:
 	_arrow.z_index = 50
 	_arrow.draw.connect(_draw_arrow)
 	add_child(_arrow)
+	var menu_btn := UiTheme.button("☰ Menu", _open_pause_menu, 18)
+	menu_btn.custom_minimum_size = Vector2(130, 44)
+	menu_btn.position = Vector2(1920 - 150, 1024)
+	add_child(menu_btn)
 	_build_spells()
 	_sync_views()
 	_refresh_all()
@@ -439,10 +464,12 @@ func _toggle_stock(i: int) -> void:
 		if not _allowed("remove"):
 			return
 		chant_idx.erase(i)
+		Audio.play("elem_remove")
 	elif not fight.player.stock[i].frozen and chant_idx.size() < fight.player.chant_slots():
 		if not _allowed("add", fight.player.stock[i].el):
 			return
 		chant_idx.append(i)
+		Audio.play("elem_pickup")
 	_chant_changed()
 
 
@@ -450,6 +477,7 @@ func _remove_from_chant(pos: int) -> void:
 	if busy or phase != "build" or pos >= chant_idx.size() or not _allowed("remove"):
 		return
 	chant_idx.remove_at(pos)
+	Audio.play("elem_remove")
 	_chant_changed()
 
 
@@ -465,6 +493,7 @@ func _add_element(el: String) -> void:
 			pick = i
 	if pick >= 0:
 		chant_idx.append(pick)
+		Audio.play("elem_pickup")
 		_chant_changed()
 
 
@@ -472,10 +501,16 @@ func _clear_chant() -> void:
 	if busy or phase != "build" or not _allowed("clear"):
 		return
 	chant_idx.clear()
+	Audio.play("elem_remove")
 	_chant_changed()
 
 
 func _unhandled_input(ev: InputEvent) -> void:
+	if _pause_overlay != null:
+		if ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE:
+			_close_pause_menu()
+			get_viewport().set_input_as_handled()
+		return
 	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_RIGHT:
 		_cancel()
 		return
@@ -485,6 +520,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 		match ev.keycode:
 			KEY_TAB:
 				aim_i = (aim_i + (-1 if ev.shift_pressed else 1) + aim_cands.size()) % aim_cands.size()
+				Audio.play("ui_tab_target")
 				_refresh_all()
 			KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
 				if _allowed("target", aim_cands[aim_i]):
@@ -503,9 +539,11 @@ func _unhandled_input(ev: InputEvent) -> void:
 		match ev.keycode:
 			KEY_TAB, KEY_RIGHT:
 				chant_i = (chant_i + 1) % count
+				Audio.play("ui_tab_target")
 				_refresh_chant()
 			KEY_LEFT:
 				chant_i = (chant_i - 1 + count) % count
+				Audio.play("ui_tab_target")
 				_refresh_chant()
 			KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
 				_emit_chant_done(chant_i)
@@ -514,6 +552,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 	if pick_view != null:
 		match ev.keycode:
 			KEY_TAB:
+				Audio.play("ui_tab_target")
 				_cycle_pick(-1 if ev.shift_pressed else 1)
 			KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
 				if pick_view.pick_i >= 0 and _allowed("pick", pick_view.pick_i):
@@ -682,6 +721,81 @@ func _finish() -> void:
 	_banner("Victory!" if fight.won else "The last tree falls…", Color(0.6, 1, 0.5) if fight.won else UiTheme.DANGER)
 	await get_tree().create_timer(1.4).timeout
 	finished.emit(fight.won)
+
+
+# ------------------------------------------------------------------ pause menu
+
+func _open_pause_menu() -> void:
+	if _pause_overlay != null:
+		return
+	var overlay := Control.new()
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.z_index = 100
+	var shade := ColorRect.new()
+	shade.color = Color(0, 0, 0, 0.6)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(shade)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(center)
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", UiTheme.panel_box(0.95, 16))
+	panel.custom_minimum_size = Vector2(380, 0)
+	center.add_child(panel)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 12)
+	panel.add_child(v)
+	v.add_child(UiTheme.label("Paused", 28, Color.WHITE))
+	var resume_btn := UiTheme.button("Resume", _close_pause_menu, 20)
+	resume_btn.custom_minimum_size = Vector2(320, 52)
+	v.add_child(resume_btn)
+	var settings_btn := UiTheme.button("Settings", func():
+		var s := SettingsScreen.new()
+		s.closed.connect(s.queue_free)
+		overlay.add_child(s), 20)
+	settings_btn.custom_minimum_size = Vector2(320, 52)
+	v.add_child(settings_btn)
+	var menu_btn := UiTheme.button("Main Menu", func(): _confirm_in(v, panel,
+		"Abandon this run and return to the Main Menu?",
+		func(): menu_requested.emit()), 20)
+	menu_btn.custom_minimum_size = Vector2(320, 52)
+	v.add_child(menu_btn)
+	var quit_btn := UiTheme.button("Quit to Desktop", func(): _confirm_in(v, panel,
+		"Quit The Last Tree?",
+		func(): get_tree().quit()), 20)
+	quit_btn.custom_minimum_size = Vector2(320, 52)
+	v.add_child(quit_btn)
+	add_child(overlay)
+	_pause_overlay = overlay
+
+
+func _close_pause_menu() -> void:
+	if _pause_overlay == null:
+		return
+	_pause_overlay.queue_free()
+	_pause_overlay = null
+
+
+## Swaps a menu's buttons (v) for a Yes/Cancel confirmation, in the same popup (panel).
+func _confirm_in(v: VBoxContainer, panel: PanelContainer, text: String, on_yes: Callable) -> void:
+	v.hide()
+	var cv := VBoxContainer.new()
+	cv.add_theme_constant_override("separation", 12)
+	panel.add_child(cv)
+	var l := UiTheme.label(text, 19, UiTheme.DANGER)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size = Vector2(320, 0)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cv.add_child(l)
+	var yes := UiTheme.button("Yes", on_yes, 20)
+	yes.custom_minimum_size = Vector2(320, 48)
+	cv.add_child(yes)
+	var no := UiTheme.button("Cancel", func(): cv.queue_free(); v.show(), 20)
+	no.custom_minimum_size = Vector2(320, 48)
+	cv.add_child(no)
 
 
 # ------------------------------------------------------------------ aiming (the arrow)
@@ -905,25 +1019,33 @@ func _anim(ev: Dictionary) -> void:
 			if v:
 				v.hit_flash()
 				_float_text("-%d" % ev.n, v.global_position + Vector2(150, 220), Color(1, 0.9, 0.6))
+			Audio.play("sfx_damage_hit")
 			_refresh_all()
 			await _wait(0.3)
 		"chant_step":
 			await _release_step(ev)
 		"chant_changed":
+			Audio.play("elem_pickup")
 			_refresh_all()
 			await _wait(0.25)
 		"loadout_changed":
+			Audio.play("discovery_unlock")
 			_build_spells()
 			_refresh_all()
 			await _wait(0.3)
 		"charged":
+			Audio.play("spell_glow")
 			_refresh_all()
 			_banner("Your spells come alive!", Color(1, 0.9, 0.55), 0.6)
 			await _wait(0.2)
 		"spell":
+			Audio.play("spell_glow")
 			_banner(ev.spell.name, GameData.spell_color(ev.spell.pattern).lightened(0.3), 0.5)
 			await _wait(0.25)
 		"effect":
+			var snd: String = EFFECT_SFX.get(ev.op, "")
+			if snd != "":
+				Audio.play(snd)
 			_sync_views()
 			_refresh_all()
 			await _wait(0.12)
@@ -933,12 +1055,75 @@ func _anim(ev: Dictionary) -> void:
 				var tw := v.creature.create_tween()
 				tw.tween_property(v.creature, "scale", Vector2(1.15, 1.15), 0.08)
 				tw.tween_property(v.creature, "scale", Vector2.ONE, 0.12)
+			Audio.play("sfx_player_hit" if ev.n > 0 else "release_armour_block")
 			_float_text("-%d" % ev.n if ev.n > 0 else "Blocked", _player_panel.global_position + Vector2(200, 20), UiTheme.DANGER if ev.n > 0 else Color(0.7, 0.85, 1))
 			var tw2 := _player_panel.create_tween()
 			tw2.tween_property(_player_panel, "modulate", Color(1.6, 0.6, 0.6), 0.08)
 			tw2.tween_property(_player_panel, "modulate", Color.WHITE, 0.25)
 			_refresh_all()
 			await _wait(0.4)
+		"mend":
+			Audio.play("sfx_mend")
+			_sync_views()
+			_refresh_all()
+			await _wait(0.2)
+		"unlock":
+			Audio.play("sfx_lock_break")
+			_refresh_all()
+			await _wait(0.2)
+		"dot":
+			if ev.get("burn", false):
+				Audio.play("sfx_burn_tick")
+			if ev.get("poison", false):
+				Audio.play("sfx_poison_tick")
+			_sync_views()
+			_refresh_all()
+			await _wait(0.2)
+		"thorns_proc":
+			Audio.play("sfx_thorns_proc")
+		"amplify":
+			Audio.play("sfx_amplify")
+			_sync_views()
+			_refresh_all()
+			await _wait(0.2)
+		"boss_phase":
+			Audio.play("boss_phase_change")
+		"boss_defeat":
+			Audio.play("boss_defeat")
+		"spawn":
+			Audio.play("enemy_spawn")
+			_sync_views()
+			_refresh_all()
+			await _wait(0.25)
+		"intents_shown":
+			Audio.play("enemy_intent_show")
+			_sync_views()
+			_refresh_all()
+			await _wait(0.1)
+		"confuse":
+			Audio.play("sfx_confuse_apply")
+			_refresh_all()
+			await _wait(0.15)
+		"blind":
+			Audio.play("sfx_blind_apply")
+			_refresh_all()
+			await _wait(0.15)
+		"frail":
+			Audio.play("sfx_frail_apply")
+			_refresh_all()
+			await _wait(0.15)
+		"freeze_stock":
+			Audio.play("sfx_freeze_apply")
+			_refresh_all()
+			await _wait(0.15)
+		"silence":
+			Audio.play("sfx_silence_apply")
+			_refresh_all()
+			await _wait(0.15)
+		"bleed_tick":
+			Audio.play("sfx_bleed_tick")
+			_refresh_all()
+			await _wait(0.15)
 		_:
 			_sync_views()
 			_refresh_all()
@@ -960,17 +1145,21 @@ func _release_step(ev: Dictionary) -> void:
 		var tw := c.create_tween()
 		tw.tween_property(c, "modulate", Color(2.2, 2.2, 2.0), 0.08)
 		tw.tween_property(c, "modulate", Color(1, 1, 1, 0.25), 0.2)
+	Audio.play(LAUNCH_SFX.get(el, "elem_pickup"))
 	if ev.hits.is_empty():
 		Comet.launch(_fx, from, from + Vector2(0, -170), col, true)
 		await _wait(0.16)
 		return
+	var impact: String = IMPACT_SFX.get(el, "sfx_damage_hit")
 	for h in ev.hits:
 		var v: EnemyView = _views.get(h[0])
 		if v == null:
 			continue
 		var comet := Comet.launch(_fx, from, v.hp_point(h[1]), col)
 		var j: int = h[1]
-		comet.arrived.connect(func(): if is_instance_valid(v): v.pop(j))
+		comet.arrived.connect(func():
+			if is_instance_valid(v): v.pop(j)
+			Audio.play(impact))
 	await _wait(0.46)
 
 

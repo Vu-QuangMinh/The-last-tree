@@ -13,6 +13,8 @@ func _ready() -> void:
 
 
 func show_toast(text: String, color: Color) -> void:
+	if color == UiTheme.DANGER:
+		Audio.play("ui_error")
 	if get_child_count() >= MAX:
 		get_child(0).queue_free()
 	var p := PanelContainer.new()

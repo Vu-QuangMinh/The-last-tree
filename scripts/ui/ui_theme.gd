@@ -96,6 +96,9 @@ static func button(text: String, cb: Callable, size := 18) -> Button:
 	var b := Button.new()
 	b.text = text
 	b.add_theme_font_size_override("font_size", size)
-	b.pressed.connect(cb)
+	b.pressed.connect(func():
+		Audio.play("ui_click")
+		cb.call())
+	b.mouse_entered.connect(func(): Audio.play("ui_hover", -6.0))
 	b.focus_mode = Control.FOCUS_NONE
 	return b

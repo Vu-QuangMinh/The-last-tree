@@ -29,16 +29,26 @@ func _swap(c: Control) -> void:
 
 
 func show_menu() -> void:
+	Audio.play_music("music_menu")
 	var m := MenuScreen.new()
 	m.play.connect(start_run)
 	m.codex.connect(open_codex)
 	m.unlocks.connect(func():
+		Audio.play("ui_open_panel")
 		var u := UnlockScreen.new()
 		u.closed.connect(func(): u.queue_free(); show_menu())
 		overlay_layer.add_child(u))
 	m.how_to.connect(open_wiki)
 	m.tutorial.connect(start_tutorial)
+	m.settings.connect(open_settings)
 	_swap(m)
+
+
+func open_settings() -> void:
+	Audio.play("ui_open_panel")
+	var s := SettingsScreen.new()
+	s.closed.connect(s.queue_free)
+	overlay_layer.add_child(s)
 
 
 ## Tutorial mode: one scripted fight with a coach.
@@ -50,6 +60,7 @@ func start_tutorial() -> void:
 
 
 func open_wiki() -> void:
+	Audio.play("ui_open_panel")
 	var w := WikiScreen.new()
 	w.closed.connect(w.queue_free)
 	overlay_layer.add_child(w)
@@ -62,6 +73,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 
 
 func open_codex() -> void:
+	Audio.play("ui_open_panel")
 	var c := CodexScreen.new()
 	c.closed.connect(c.queue_free)
 	overlay_layer.add_child(c)
@@ -91,6 +103,7 @@ func start_run() -> void:
 
 
 func show_map() -> void:
+	Audio.play_music("music_map")
 	var m := MapScreen.new()
 	m.setup(run)
 	m.node_chosen.connect(_on_node)
@@ -111,6 +124,7 @@ func _on_node(col: int) -> void:
 func _enter_room(kind: String) -> void:
 	match kind:
 		"event":
+			Audio.play("map_event_trigger")
 			_show_event(MapEvents.get_event(run.current_node().event))
 		"shop":
 			_show_shop(run.shop_stock())
@@ -179,6 +193,8 @@ func _start_fight(ids: Array) -> void:
 	var fs := FightScreen.new()
 	fs.setup(run, f)
 	fs.finished.connect(func(_won): _after_fight(f))
+	fs.menu_requested.connect(func(): run = null; show_menu())
+	Audio.play_music("music_boss" if run.current_kind() == "boss" else "music_fight")
 	_swap(fs)
 
 
@@ -189,11 +205,13 @@ func _show_rest() -> void:
 	s.pressed.connect(func(i):
 		if i == 0:
 			run.rest()
+			Audio.play("rest_heal")
 			show_map()
 			return
 		var ids := run.upgradable()
 		if ids.is_empty():
 			run.rest()
+			Audio.play("rest_heal")
 			show_map()
 			return
 		var ups := ids.map(func(id): return SpellDB.upgrade(run.db.get_spell(id)))
@@ -269,12 +287,18 @@ func _choice(title: String, sub: String, spells: Array, arts: Array, can_skip: b
 	c.artifacts = arts
 	c.can_skip = can_skip
 	c.act = run.act
+	c.chosen.connect(func(i):
+		if i >= 0:
+			Audio.play("artifact_get" if not arts.is_empty() else "discovery_unlock"))
 	_swap(c)
 	return c
 
 
 func _end_run() -> void:
 	var seeds := run.final_seedlings()
+	Audio.play("victory_fanfare" if run.won else "defeat_stinger")
+	Audio.play("seedling_gain")
+	Audio.stop_music()
 	SaveManager.record_run(seeds, run.act, run.kills, run.won)
 	var title := "The last tree stands!" if run.won else "The last tree has fallen"
 	var body := "Act %d reached · %d enemies defeated · %d spells learned\n+%d Seedlings (spend them on Unlocks)." % [run.act, run.kills, run.spellbook.size() - 4, seeds]

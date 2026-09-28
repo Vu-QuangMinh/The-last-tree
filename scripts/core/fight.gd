@@ -202,6 +202,7 @@ func begin_player_turn() -> void:
 		player.take_effect(player.bleed)
 		_log("You bleed for %d." % player.bleed)
 		player.bleed -= 1
+		await anim.call({"type": "bleed_tick"})
 	if has_artifact("mending_moss"):
 		player.heal(1)
 	player.shield = 0.0
@@ -474,6 +475,7 @@ func _split(e: EnemyState) -> void:
 	enemies.insert(enemies.find(e) + 1, twin)
 	_plan(twin)
 	_log("%s splits in two!" % e.name)
+	anim.call({"type": "spawn", "enemy": twin})
 
 
 func _fire(spell: Dictionary, ctx: Dictionary, tctx: Dictionary) -> void:
@@ -757,6 +759,7 @@ func end_player_turn() -> void:
 	turn += 1
 	for e in alive():
 		_plan(e)
+	await anim.call({"type": "intents_shown"})
 	await begin_player_turn()
 
 
@@ -768,7 +771,7 @@ func _enemy_phase() -> void:
 			continue
 		var ticks: Dictionary = e.begin_turn()
 		if not ticks.burn.is_empty() or not ticks.poison.is_empty():
-			await anim.call({"type": "dot", "enemy": e})
+			await anim.call({"type": "dot", "enemy": e, "burn": not ticks.burn.is_empty(), "poison": not ticks.poison.is_empty()})
 		if e.is_dead():
 			_cleanup()
 			continue
@@ -796,6 +799,7 @@ func _plan(e: EnemyState) -> void:
 		e.phase = 2
 		e.move_index = 0
 		_log("%s grows desperate!" % e.name)
+		anim.call({"type": "boss_phase"})
 	if e.phase == 2 and e.def.has("moves2"):
 		moves = e.def.moves2
 	e.intent = moves[e.move_index % moves.size()]
@@ -833,6 +837,7 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				var th := player.thorns_turn + player.passive("thorns")
 				if th > 0 and not player.ethereal:
 					e.remove_right(th)
+					await anim.call({"type": "thorns_proc"})
 				_check_end()
 				if over or e.is_dead():
 					break
@@ -860,6 +865,7 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				var s: Dictionary = cands[rng.randi() % cands.size()]
 				player.silenced[s.id] = m.turns
 				_log("%s silences %s." % [e.name, s.name])
+				await anim.call({"type": "silence"})
 		"lock":
 			var cands := active_spells().filter(func(s): return not player.locks.has(s.id))
 			if not cands.is_empty():
@@ -880,20 +886,24 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 		"confuse":
 			if not has_artifact("calm_stone"):
 				player.confuse_turns = 1
+				await anim.call({"type": "confuse"})
 		"blind":
 			if not has_artifact("keen_eye"):
 				player.blind_turns = m.turns
 				blind_masks.clear()
+				await anim.call({"type": "blind"})
 		"bleed":
 			player.bleed += m.n
 		"frail":
 			player.frail_turns = maxi(player.frail_turns, m.turns)
 			_log("%s makes you Frail: you take 25%% more damage." % e.name)
+			await anim.call({"type": "frail"})
 		"freeze":
 			var free := player.stock.filter(func(s): return not s.frozen)
 			free.shuffle()
 			for s in free.slice(0, m.n):
 				s.frozen = true
+			await anim.call({"type": "freeze_stock"})
 		"ethereal":
 			e.ethereal = true
 		"empower":
@@ -903,6 +913,7 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				if alive().size() < MAX_ENEMIES:
 					var add := _spawn(m.id)
 					_plan(add)
+					await anim.call({"type": "spawn", "enemy": add})
 		"toll":
 			player.toll = 2
 		"invert":
@@ -930,6 +941,8 @@ func _cleanup() -> void:
 	for e in enemies.duplicate():
 		if e.is_dead():
 			enemies.erase(e)
+			if e.is_boss:
+				anim.call({"type": "boss_defeat"})
 			if not (e.id in defeated):
 				defeated.append(e.id)
 			if e.has_passive("last_gasp"):

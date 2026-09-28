@@ -96,14 +96,17 @@ func _buy(i: int) -> void:
 	match it.kind:
 		"spell":
 			run.learn_spell(it.spell.id)
+			Audio.play("discovery_unlock")
 			Events.toast.emit("Learned %s" % it.spell.name, UiTheme.ACCENT)
 			it.sold = true
 		"artifact":
 			run.gain_artifact(it.artifact.id)
+			Audio.play("artifact_get")
 			Events.toast.emit("Got %s" % it.artifact.name, UiTheme.ACCENT)
 			it.sold = true
 		"heal":
 			run.player.heal(run.player.max_hp * RunState.REST_HEAL)
+			Audio.play("rest_heal")
 			it.sold = true
 		"upgrade":
 			it.sold = true
