@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 ELEMS = {"F": "Fire", "W": "Water", "A": "Air"}
 ICON = {"F": "🔥", "W": "💧", "A": "🌪️"}
 RARITIES = ("common", "rare", "legendary")
-TARGETED = {"pluck", "move", "redirect", "strike", "burn", "poison", "siphon", "execute", "insert", "curse", "weak", "freeze", "expose", "ethereal", "rotate", "swap", "convert", "purge", "shatter", "stoke"}
+TARGETED = {"steal", "pluck", "move", "redirect", "strike", "burn", "poison", "siphon", "execute", "insert", "curse", "weak", "freeze", "expose", "ethereal", "rotate", "swap", "convert", "purge", "shatter", "stoke"}
 OPS = {
     "strike": {"from", "n", "target", "min_hp", "bonus_if"},
     "burn": {"n", "target"}, "poison": {"n", "target"}, "stoke": {"target"}, "weak": {"turns", "target"}, "freeze": {"turns", "target"},
@@ -22,12 +22,12 @@ OPS = {
     "amplify": {"n"}, "echo": {"n"}, "retain": {"n"}, "overload": {"n"}, "cleanse": {"what"},
     "siphon": {"n", "target"}, "execute": {"max", "target"}, "insert": {"el", "pos", "target"},
     "transmute": {"n", "to"}, "sacrifice": {"hp"}, "copy_last": set(),
-    "passive": {"key", "n"}, "move": {"n", "target"}, "pluck": {"n", "target"}, "infuse": {"el"}, "duplicate": {"times"}, "summon_spells": {"n"}, "redirect": {"target"}, "curse": {"key", "target"}, "each_turn": {"effects"},
+    "passive": {"key", "n"}, "move": {"n", "target"}, "pluck": {"n", "target"}, "steal": {"n", "el", "target"}, "infuse": {"el"}, "duplicate": {"times"}, "summon_spells": {"n"}, "redirect": {"target"}, "curse": {"key", "target"}, "each_turn": {"effects"},
 }
 
 
 def who(t):
-    return {"target": "the target", "all": "every enemy", "random": "a random enemy", "self": "you"}.get(t, t)
+    return {"target": "the target", "two": "2 different enemies (you pick both)", "all": "every enemy", "random": "a random enemy", "self": "you"}.get(t, t)
 
 
 def turns(n):
@@ -38,10 +38,14 @@ def describe_op(e):
     op = e["op"]
     t = who(e.get("target", "target"))
     if op == "strike":
-        side = "last" if e["from"] == "right" else "first"
-        s = f"deal {e['n']} damage to the {side} HP of {t}"
+        last = e["from"] == "right"
+        side = "last" if last else "first"
+        if e["n"] == 1:
+            s = f"remove the {side} ({'rightmost' if last else 'leftmost'}) Essence of {t}"
+        else:
+            s = f"remove the {side} {e['n']} Essence of {t}, {'right to left' if last else 'left to right'}"
         if "min_hp" in e:
-            s += f" (only if it has {e['min_hp']}+ elements)"
+            s += f" (only if it has {e['min_hp']}+ Essence)"
         if "bonus_if" in e:
             s += " (+1 if it is burning)"
         return s
@@ -75,6 +79,10 @@ def describe_op(e):
         if e.get("dir") == "right":
             return f"move the last element of {t} to the front"
         return f"move the first element of {t} to the end"
+    if op == "steal":
+        if e.get("el", "any") == "any":
+            return f"Steal {e['n']} element{'s' if e['n'] > 1 else ''} of your choice from {t} (they go to your elements)"
+        return f"Steal up to {e['n']} {ELEMS[e['el']]} from {t} (they go to your elements)"
     if op == "infuse":
         return f"put a {ELEMS[e['el']]} anywhere you like in this turn's chant"
     if op == "duplicate":
@@ -82,7 +90,7 @@ def describe_op(e):
     if op == "summon_spells":
         return f"add {e['n']} random spells from your spellbook to your active row for this fight"
     if op == "pluck":
-        return f"deal {e['n']} Targeted damage to {t} (you pick which element)"
+        return f"Targeted: remove {e['n']} Essence of your choice from {t}"
     if op == "move":
         return f"move {e['n']} element{'s' if e['n'] > 1 else ''} of {t} to any position you choose"
     if op == "redirect":
@@ -97,7 +105,7 @@ def describe_op(e):
     if op == "shatter":
         return f"remove all Armour from {t}"
     if op == "amplify":
-        return f"Amplify {e['n']}: when the chant is Released, every enemy it hits takes {e['n']} more damage to its last HP"
+        return f"Amplify {e['n']}: when the chant is Released, every enemy it hits also loses its last {e['n']} Essence, right to left"
     if op == "echo":
         return "Echo: the chant is Released twice this turn"
     if op == "retain":
@@ -139,7 +147,7 @@ def describe_op(e):
     return op
 
 
-DAMAGE_OPS = {"pluck", "strike", "burn", "poison", "purge", "execute", "siphon", "amplify", "echo", "stoke", "expose"}
+DAMAGE_OPS = {"steal", "pluck", "strike", "burn", "poison", "purge", "execute", "siphon", "amplify", "echo", "stoke", "expose"}
 DEFENSE_OPS = {"shield", "heal", "aegis", "thorns", "weak", "freeze", "cleanse", "redirect"}
 DAMAGE_KEYS = {"burn_bonus", "strike_poison", "strike_burn", "strike_bonus", "exposed"}
 DEFENSE_KEYS = {"thorns", "weak25"}
@@ -172,7 +180,7 @@ def _check_effects(s, effects, errors):
         extra = set(e) - {"op"} - OPS[e["op"]]
         if extra:
             errors.append(f"{s['id']}: {e['op']} has unknown keys {extra}")
-        if e["op"] in TARGETED and e.get("target") not in ("target", "all", "random", "self"):
+        if e["op"] in TARGETED and e.get("target") not in ("target", "two", "all", "random", "self"):
             errors.append(f"{s['id']}: {e['op']} needs a target")
         if e["op"] in ("passive", "curse", "each_turn", "summon_spells") and not s.get("power"):
             errors.append(f"{s['id']}: {e['op']} only belongs on a Power")
@@ -200,8 +208,8 @@ def validate(data):
         if sp.get("rarity") not in RARITIES:
             errors.append(f"{sp['id']}: rarity must be one of {RARITIES}")
     starters = [s["id"] for s in spells if s.get("starter")]
-    if sorted(starters) != sorted(["fire_ball", "water_wall", "tailwind", "gust"]):
-        errors.append(f"starters must be Fire Ball, Water Wall, Tailwind, Gust (got {starters})")
+    if sorted(starters) != sorted(["fire_ball", "water_wall", "tailwind"]):
+        errors.append(f"starters must be Fire Ball, Water Wall, Tailwind (got {starters})")
     return errors
 
 
@@ -218,7 +226,7 @@ def render(data):
         "",
         f"**{len(spells)} spells.** Chant, then every spell whose pattern appears in the chant comes alive: one charge per "
         "separate match, but never more than its pattern's length. Cast them in any order; then the chant is Released "
-        "and each enemy loses the longest start of its HP found in it. ★ = starter.",
+        "and each enemy loses the longest start of its Essence found in it. ★ = starter.",
         "",
         "**Keywords**",
         "- **Burn N:** at the start of its turn, the enemy loses its **first** (leftmost) element, then Burn goes down by 1.",
@@ -234,7 +242,7 @@ def render(data):
         "- **Armour** (enemy ability): an armoured element can't be removed this turn, but it still counts for the chant's match.",
         "- **Power:** cast once, then it leaves your active row (its slot stays empty) and its effect lasts the whole fight.",
         "- **Conjured** elements arrive next turn and vanish at the end of that turn if unused.",
-        "- **Siphon:** take elements off an enemy's HP into your stock. **Execute:** destroy an enemy that is small enough.",
+        "- **Siphon:** take elements off an enemy's Essence. **Execute:** destroy an enemy that is small enough.",
         "- **Amplify:** enemies your chant hit lose extra elements. **Echo:** the chant strikes again after your spells. "
         "**Overload:** fewer elements next turn.",
         "",

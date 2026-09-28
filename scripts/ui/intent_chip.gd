@@ -22,11 +22,11 @@ const LOOK := {
 const INFO := {
 	"attack": ["Attack", "Deals this much damage to you (per hit). Shield and Aegis block it."],
 	"armor": ["Armour", "Armours one of its elements: it still counts for matching, but isn't removed this turn."],
-	"mend": ["Mend", "Regrows elements at the end of its HP."],
+	"mend": ["Mend", "Regrows elements at the end of its Essence."],
 	"shuffle": ["Shuffle", "Moves its first element to the end."],
 	"silence": ["Silence", "One of your spells can't fire for a few turns."],
 	"lock": ["Lock", "Locks one of your spells. Chant the lock's symbols, unbroken, to break it."],
-	"steal": ["Steal", "Takes elements from your stock and adds them to its own HP."],
+	"steal": ["Steal", "Takes elements from your bag and adds them to its own Essence."],
 	"confuse": ["Confuse", "Your next chant is read backwards, and there's no preview."],
 	"blind": ["Blind", "Some enemy elements show as ?. They still match normally."],
 	"bleed": ["Bleed", "At the start of your turn you lose that much HP, then Bleed goes down by 1."],
@@ -37,7 +37,7 @@ const INFO := {
 	"toll": ["Toll", "Your next chant has 2 fewer slots."],
 	"invert": ["Invert", "Swaps all your Fire and Water elements."],
 	"hex": ["Hex", "Marks one of your elements: chanting it costs 2 HP."],
-	"mimic": ["Mimic", "Its HP becomes your last chant, backwards."],
+	"mimic": ["Mimic", "Its Essence becomes your last chant, backwards."],
 	"frail": ["Frail", "You take 25% more attack damage for a few turns."],
 }
 
@@ -68,10 +68,10 @@ func build(e: EnemyState) -> void:
 	if e.freeze_turns > 0:
 		row.add_child(_part("❄", "", Color(0.5, 0.8, 1.0)))
 		row.add_child(_word("skips", Color(0.7, 0.9, 1)))
-		tooltip_text = "[b][font_size=18]Frozen[/font_size][/b]\n❄ " + Keywords.colorize("Frozen: it skips its next action.")
+		tooltip_text = "[b][font_size=25]Frozen[/font_size][/b]\n❄ " + Keywords.colorize("Frozen: it skips its next action.")
 		return
 	var m := e.intent
-	var lines := ["[b][font_size=18]%s intends to…[/font_size][/b]" % e.name]
+	var lines := ["[b][font_size=25]%s intends to…[/font_size][/b]" % e.name]
 	while not m.is_empty():
 		_add_move(row, m, e)
 		var look: Array = LOOK.get(m.kind, ["?", GREY])
@@ -94,6 +94,8 @@ static func _single(m: Dictionary) -> Dictionary:
 
 
 func _make_custom_tooltip(for_text: String) -> Object:
+	if for_text.strip_edges() == "":
+		return null  # no text (e.g. its tooltip is pinned): no hover tooltip at all
 	return Keywords.make_tooltip(for_text)
 
 

@@ -130,6 +130,21 @@ func test_kindling_stone_charges_every_third_chant() -> void:
 	assert_eq(f.player.kindling_chants, 1)
 
 
+func test_lens_refunds_about_a_quarter_of_its_element() -> void:
+	var f := _fight(["ashling"], [], "")
+	f.artifacts = ["flame_lens"]
+	var fire := 0
+	var water := 0
+	for i in 200:
+		for el in f._lens_refunds(["F", "F", "W", "F", "A", "F"]):
+			if el == "F":
+				fire += 1
+			else:
+				water += 1
+	assert_eq(water, 0, "only Fire comes back")
+	assert_true(fire > 140 and fire < 260, "about 25%% of 800 Fire: got %d" % fire)
+
+
 func test_emblems_give_three_on_turn_three() -> void:
 	var f := Fight.new(db, PlayerState.new())
 	f.rng.seed = 3
@@ -301,3 +316,79 @@ func test_keywords_colour_words_and_numbers() -> void:
 	var s := Keywords.colorize("Burn 2 on the target; gain 3 Shield.")
 	assert_true(s.contains("[b]Burn[/b]") and s.contains("[b]2[/b]") and s.contains("[b]Shield[/b]"), s)
 	assert_eq(Keywords.glossary("Burn 2 and Burn 1").size(), 1, "each keyword explained once")
+
+
+func test_steal_any_puts_the_chosen_element_in_your_bag() -> void:
+	var f := _fight(["ashling"], ["tide_thief"], "WAW")
+	_set_hp(f.enemies[0], "FFAWF")
+	f.picker = func(_s, _e): return 2  # the A
+	f.cast_chant(_all(3))
+	var before := f.player.stock.size()
+	f.resolve_spell("tide_thief", 0)
+	assert_eq(f.enemies[0].hp_text(), "FFWF")
+	assert_eq(f.player.stock.size(), before + 1)
+	assert_eq(f.player.stock[-1].el, "A", "stolen into the bag, not the chant")
+	assert_eq(f.chant_string(), "WAW")
+
+
+func test_steal_a_specific_element() -> void:
+	var f := _fight(["ashling"], ["sirens_call"], "WWF")
+	_set_hp(f.enemies[0], "FWFAF")
+	f.cast_chant(_all(3))
+	f.resolve_spell("sirens_call", 0)
+	assert_eq(f.enemies[0].hp_text(), "WAF", "up to 2 Fire, from the front")
+	assert_eq(f.player.stock.filter(func(s): return s.el == "F").size(), 2)
+
+
+func test_spell_slots_start_at_5_and_cap_at_8() -> void:
+	var run := RunState.new()
+	run.setup(db, [], [], 3)
+	assert_eq(run.active_slots(), 5)
+	assert_eq(run.loadout.size(), 3, "Fire Ball, Water Wall, Tailwind")
+	assert_true(not ("gust" in run.loadout), "Gust is not a starter")
+	for a in ["spell_pouch", "spell_satchel", "broken_crown"]:
+		run.gain_artifact(a)
+	assert_eq(run.active_slots(), 8, "5 + 1 + 1 + 2 = 9, capped at 8")
+
+
+func test_artifact_tiers() -> void:
+	for a in Artifacts.ALL:
+		assert_true(a.has("tier"), a.id)
+		if a.tier == "legendary":
+			assert_eq(a.pool, "boss", "%s: legendaries only drop from bosses" % a.id)
+		if a.aspect == "Spell slots" or a.id == "broken_crown":
+			assert_true(a.tier in ["rare", "legendary"], "%s adds slots, so it can't be common" % a.id)
+	var rng := RandomNumberGenerator.new()
+	for i in 20:
+		for k in Artifacts.keepsakes(rng, 3):
+			assert_eq(k.tier, "common")
+
+
+func test_fuse_makes_one_spell_of_length_m_plus_n_minus_1() -> void:
+	var run := RunState.new()
+	run.setup(db, [], [], 4)
+	run.learn_spell("inferno")  # FFF
+	var prev := run.fuse_preview("water_wall", "inferno")  # WW + FFF
+	assert_eq(prev.size, 4, "3 + 2 - 1")
+	assert_true(String(prev.pattern).begins_with("FFF"), "the longer spell keeps its whole pattern first: " + prev.pattern)
+	assert_eq(prev.effects.size(), 2, "does both spells' effects")
+	run.fuse_commit(prev, "water_wall", "inferno")
+	assert_true(not ("water_wall" in run.spellbook) and not ("inferno" in run.spellbook), "both used up")
+	assert_true(prev.id in run.spellbook)
+	assert_true(not run.can_fuse(prev.id), "fused spells can't be fused again")
+	assert_eq(run.spell(prev.id).name, "Inferno + Water Wall")
+
+
+func test_thermal_burst_hits_two_different_enemies() -> void:
+	var f := _fight(["ashling", "gale_sprite", "puddle_slime"], ["thermal_burst"], "FFWF")
+	for i in 3:
+		_set_hp(f.enemies[i], "WWWWW")
+	var asked := []
+	f.chooser = func(_s, cands): asked.append(cands.duplicate()); return cands[-1]
+	f.cast_chant(_all(4))
+	f.resolve_spell("thermal_burst", 0)
+	assert_eq(f.enemies[0].size(), 3, "first target: -2 from the front")
+	assert_eq(f.enemies[2].size(), 3, "second target: a different enemy")
+	assert_eq(f.enemies[1].size(), 5)
+	assert_true(not (0 in asked[0]), "the second pick can't be the first target again")
+	assert_eq(SpellText.card_text(db.get_spell("thermal_burst")), "Remove the first 2 Essence of 2 different enemies, left to right.")

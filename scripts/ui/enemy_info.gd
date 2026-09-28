@@ -13,7 +13,7 @@ static func moves_tooltip(id: String, bonus: int) -> String:
 	for m in d.moves:
 		lines.append("• " + EnemyDefs.describe_move(m, bonus))
 	if d.has("moves2"):
-		lines.append("Below half HP it switches to:")
+		lines.append("Below half Essence it switches to:")
 		for m in d.moves2:
 			lines.append("• " + EnemyDefs.describe_move(m, bonus))
 	for p in d.get("passives", []):

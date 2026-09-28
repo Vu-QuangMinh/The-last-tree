@@ -67,7 +67,7 @@ func _refresh() -> void:
 				var p := PanelContainer.new()
 				p.add_theme_stylebox_override("panel", UiTheme.panel_box(0.95, 12))
 				p.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H)
-				var l := UiTheme.label("◆ %s\n%s\n\n%s" % [a.name, a.aspect, a.desc], 18, Color(1, 0.88, 0.6))
+				var l := UiTheme.label("◆ %s\n%s · %s\n\n%s" % [a.name, Artifacts.TIER_NAMES[a.tier].to_upper(), a.aspect, a.desc], 18, Color(0.6, 0.8, 1) if a.tier == "rare" else Color(1, 0.88, 0.6))
 				l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 				l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 				p.add_child(l)

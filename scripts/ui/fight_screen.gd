@@ -21,6 +21,13 @@ var run: RunState
 var gate: Callable = func(_a, _b): return true
 ## When nothing is left to cast, Release by itself (the tutorial turns this off so the player presses Release).
 var auto_release := true
+## When the player clicks around a lot without anything happening, we explain the situation.
+## help_override (tutorial): func() -> String; return "" to use the normal explanation.
+var help_override: Callable = Callable()
+var _clicks: Array = []  # times (s) of recent clicks that didn't move the game on
+var _last_help := -99.0
+var _help_panel: Control
+signal blocked(action: String)
 var fight: Fight
 var chant_idx: Array = []  # stock indices in chant order
 var phase := "build"  # build: making the chant · spells: the chant is spoken, spells are alive
@@ -51,7 +58,7 @@ var _stock_row: HFlowContainer
 var _next_row: HBoxContainer
 var _prompt: Label
 var _info: Label
-var _hp_bar: ProgressBar
+var _hp_bar: HpBar
 var _hp_label: Label
 var _pstatus: RichTextLabel
 var _log: Label
@@ -83,8 +90,11 @@ func _ready() -> void:
 	_backdrop.tree_glow = false
 	add_child(_backdrop)
 	_info = UiTheme.label("", 22, Color.WHITE)
-	_info.position = Vector2(30, 20)
+	_info.position = Vector2(30, 14)
 	add_child(_info)
+	var arts := ArtifactBar.make(fight.artifacts)
+	arts.position = Vector2(28, 52)
+	add_child(arts)
 	# top-right: coming next
 	var np := PanelContainer.new()
 	np.add_theme_stylebox_override("panel", UiTheme.panel_box(0.85, 10))
@@ -163,7 +173,7 @@ func _ready() -> void:
 	sp.custom_minimum_size = Vector2(1100, 110)
 	var sv := VBoxContainer.new()
 	sp.add_child(sv)
-	sv.add_child(UiTheme.label("Your elements  (click, or press F / W / A)", 15, UiTheme.MUTED))
+	sv.add_child(UiTheme.label("Your bag of elements  (click, or press F / W / A)", 15, UiTheme.MUTED))
 	_stock_row = HFlowContainer.new()
 	_stock_row.add_theme_constant_override("h_separation", 6)
 	_stock_row.custom_minimum_size = Vector2(1070, 0)
@@ -177,17 +187,8 @@ func _ready() -> void:
 	var pv := VBoxContainer.new()
 	_player_panel.add_child(pv)
 	pv.add_child(UiTheme.label("The Keeper", 22, Color.WHITE))
-	_hp_bar = ProgressBar.new()
+	_hp_bar = HpBar.new()
 	_hp_bar.custom_minimum_size = Vector2(460, 26)
-	_hp_bar.show_percentage = false
-	var fill := StyleBoxFlat.new()
-	fill.bg_color = Color(0.75, 0.2, 0.2)
-	fill.set_corner_radius_all(6)
-	_hp_bar.add_theme_stylebox_override("fill", fill)
-	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0.15, 0.08, 0.08)
-	bg.set_corner_radius_all(6)
-	_hp_bar.add_theme_stylebox_override("background", bg)
 	pv.add_child(_hp_bar)
 	_hp_label = UiTheme.label("", 18)
 	pv.add_child(_hp_label)
@@ -222,19 +223,50 @@ func _ready() -> void:
 	_build_spells()
 	_sync_views()
 	_refresh_all()
+	tut.connect(func(_k, _d): note_progress())
 
 
 # ------------------------------------------------------------------ building
+
+## The spell row. With many spells the cards shrink to fit the screen; hovering one brings it back to full size.
+const ROW_WIDTH := 1860.0
+
 
 func _build_spells() -> void:
 	for c in _spell_row.get_children():
 		c.queue_free()
 	_cards.clear()
+	var n := fight.loadout.size()
+	var gap := 10.0
+	var fit := minf(1.0, (ROW_WIDTH - gap * maxf(0, n - 1)) / maxf(1.0, n * SpellCard.W))
+	_spell_row.add_theme_constant_override("separation", int(gap))
 	for s in fight.loadout:
 		var card := SpellCard.make(s)
 		card.clicked.connect(_on_card_clicked)
-		_spell_row.add_child(card)
+		# each card sits in a holder of its shrunk size, so the row lays out correctly
+		var holder := Control.new()
+		holder.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H) * fit
+		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.size = Vector2(SpellCard.W, SpellCard.H)
+		card.base_scale = fit
+		card.scale = Vector2(fit, fit)
+		holder.add_child(card)
+		_spell_row.add_child(holder)
 		_cards.append(card)
+
+
+func _card_zoom(card: SpellCard, big: bool) -> void:
+	if not is_instance_valid(card):
+		return
+	card.z_index = 20 if big else 0
+	var fit := card.base_scale
+	var s := 1.0 if big else fit
+	# grow upwards and around its centre so it doesn't cover the chant area
+	var off := Vector2(-(SpellCard.W * (s - fit)) / 2.0, -(SpellCard.H * (s - fit)))
+	var tw := card.create_tween()
+	tw.set_parallel()
+	tw.tween_property(card, "scale", Vector2(s, s), 0.12)
+	tw.tween_property(card, "position", off, 0.12)
 
 
 func _sync_views() -> void:
@@ -267,8 +299,7 @@ func _chant_string() -> String:
 func _refresh_all() -> void:
 	var p := fight.player
 	_info.text = "Act %d · Floor %d · Turn %d" % [run.act, run.floor_no(), fight.turn]
-	_hp_bar.max_value = p.max_hp
-	_hp_bar.value = maxf(0, p.hp)
+	_hp_bar.set_values(p.hp, p.max_hp, p.shield)
 	_hp_label.text = "HP %d / %d%s%s" % [maxf(0, p.hp), p.max_hp, ("   🛡 Shield %d" % p.shield) if p.shield > 0 else "", ("   Aegis %d" % p.aegis) if p.aegis > 0 else ""]
 	var st := p.describe_statuses().filter(func(s): return not s.begins_with("Shield") and not s.begins_with("Aegis"))
 	if "kindling_stone" in fight.artifacts:
@@ -326,7 +357,7 @@ func _refresh_all() -> void:
 	var live_spells := fight.charges.size() > 0 and phase == "spells"
 	if not aiming and not busy and move_view == null and pick_view == null and chant_mode == "":
 		if phase == "build":
-			_prompt.text = "" if chant != "" else "Build a chant: when it is Released, enemies lose the longest start of their HP found in it. Matching spells come alive."
+			_prompt.text = "" if chant != "" else "Build a chant: when it is Released, enemies lose the longest start of their Essence found in it. Matching spells come alive."
 		elif live_spells:
 			_prompt.text = "Your spells are alive: click them to cast, in any order."
 		else:
@@ -424,7 +455,125 @@ func _refresh_stock() -> void:
 # ------------------------------------------------------------------ chant input
 
 func _allowed(action: String, arg = null) -> bool:
-	return gate.call(action, arg)
+	var ok: bool = gate.call(action, arg)
+	if not ok:
+		blocked.emit(action)
+	return ok
+
+
+# ------------------------------------------------------------------ "what's going on?" help
+
+## Anything that moves the game on (a tut event) means the player knows what they're doing.
+func note_progress() -> void:
+	_clicks.clear()
+
+
+func _input(ev: InputEvent) -> void:
+	if not (ev is InputEventMouseButton) or not ev.pressed:
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	_clicks.append(now)
+	_clicks = _clicks.filter(func(t): return now - t < 3.0)
+	# 5 clicks in 3 seconds without the game moving on: the player is probably lost
+	if _clicks.size() >= 5 and now - _last_help > 7.0:
+		_last_help = now
+		_clicks.clear()
+		_show_help()
+
+
+## What is happening right now, and what to do next.
+func situation_help() -> String:
+	if fight.over:
+		return "The fight is over. Hang on a moment."
+	if busy:
+		if phase == "spells":
+			return "Hold on: things are happening! Your chant's elements are flying at the enemies (the Release), or the enemies are taking their turn. Watch the callouts; you'll be able to act again in a moment."
+		return "Hold on: something is still playing out. You'll be able to act again in a moment."
+	if aiming:
+		return "You're aiming %s. Click an enemy to hit it (the arrow follows your mouse), or press Tab to switch targets and Enter to confirm. Right-click puts the spell back." % (aim_card.spell.name if aim_card else "a spell")
+	if pick_view != null:
+		return "Choose which element of %s's Essence to knock off: click one of its orbs (or Tab to switch, Enter to confirm)." % pick_view.enemy.name
+	if move_view != null:
+		return "Moving an element of %s: click one of its orbs to pick it up, then click where it should go. Right-click skips." % move_view.enemy.name
+	if chant_mode == "insert":
+		return "Place the new element: click one of the ＋ marks in your chant (or Tab + Enter)."
+	if chant_mode == "pick":
+		return "Pick an element of your chant to copy: click it (or Tab + Enter)."
+	if phase == "build":
+		if chant_idx.is_empty():
+			return "Build a chant: click your elements at the bottom (or press F, W, A). Every enemy will lose the longest START of its Essence found in your chant, and spells whose pattern appears in it come alive. Then press Chant."
+		return "Your chant so far: %s. The crossed-out orbs on the enemies show what they'll lose. Add more elements, click one in the chant to take it back, or press Chant (Enter) when you're happy." % " ".join(Array(_chant_string().split("")))
+	var alive := _cards.filter(func(c): return c.charges > 0)
+	if not alive.is_empty():
+		var names := alive.map(func(c): return c.spell.name)
+		return "Your chant is spoken. These spells are alive (glowing): %s. Click one to cast it; if it needs a target it pulls out an arrow, then click an enemy. When you're done, press Release (E) to fire the chant." % ", ".join(names)
+	return "Your spells are done. Press Release (E): the chant's elements fly at the enemies and deal the damage."
+
+
+func _show_help() -> void:
+	var text := ""
+	if help_override.is_valid():
+		text = help_override.call()
+	if text == "":
+		text = situation_help()
+	if is_instance_valid(_help_panel):
+		_help_panel.queue_free()
+	var p := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.97, 0.93, 0.8)
+	sb.border_color = Color(1, 0.75, 0.2)
+	sb.set_border_width_all(4)
+	sb.set_corner_radius_all(16)
+	sb.content_margin_left = 20
+	sb.content_margin_right = 20
+	sb.content_margin_top = 12
+	sb.content_margin_bottom = 12
+	sb.shadow_color = Color(0, 0, 0, 0.5)
+	sb.shadow_size = 10
+	p.add_theme_stylebox_override("panel", sb)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.z_index = 99
+	var r := RichTextLabel.new()
+	r.bbcode_enabled = true
+	r.fit_content = true
+	r.scroll_active = false
+	r.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	r.custom_minimum_size = Vector2(640, 0)
+	r.add_theme_font_size_override("normal_font_size", 20)
+	r.add_theme_font_size_override("bold_font_size", 22)
+	r.add_theme_color_override("default_color", Color(0.12, 0.1, 0.07))
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	r.text = "[b]💡 Not sure what's happening?[/b]\n" + Keywords.colorize(text, true)
+	p.add_child(r)
+	add_child(p)
+	_help_panel = p
+	await get_tree().process_frame
+	if not is_instance_valid(p):
+		return
+	p.position = Vector2(960 - p.size.x / 2.0, 250)
+	p.modulate.a = 0.0
+	var tw := p.create_tween()
+	tw.tween_property(p, "modulate:a", 1.0, 0.15)
+	tw.tween_interval(6.0)
+	tw.tween_property(p, "modulate:a", 0.0, 0.4)
+	tw.tween_callback(p.queue_free)
+	_pulse_next_thing()
+
+
+## Make whatever the player should click next pulse.
+func _pulse_next_thing() -> void:
+	var targets: Array = []
+	if busy or fight.over:
+		return
+	if phase == "build":
+		targets = [_cast_btn] if not chant_idx.is_empty() else [_stock_row]
+	elif not aiming and pick_view == null and chant_mode == "":
+		var alive := _cards.filter(func(c): return c.charges > 0)
+		targets = alive if not alive.is_empty() else [_cast_btn]
+	for t in targets:
+		var tw := (t as Control).create_tween().set_loops(3)
+		tw.tween_property(t, "modulate", Color(1.6, 1.5, 1.0), 0.25)
+		tw.tween_property(t, "modulate", Color.WHITE, 0.25)
 
 
 func _chant_changed() -> void:
@@ -575,14 +724,17 @@ func _on_cast() -> void:
 	_refresh_all()
 	await fight.cast_chant(idx)
 	_sync_views()
+	_refresh_all()
+	await _auto_cast()
+	tut.emit("chanted", fight.chant_string())
 	busy = false
 	_refresh_all()
-	tut.emit("chanted", fight.chant_string())
 	if fight.over:
 		await _finish()
 	elif not fight.has_valid_move() and auto_release:
-		_banner("No spell matched", UiTheme.MUTED, 0.6)
-		await _wait(0.4)
+		if fight.used.is_empty():
+			_banner("No spell matched", UiTheme.MUTED, 0.6)
+		await _wait(0.5)
 		await _damage_step()
 
 
@@ -603,9 +755,11 @@ func _on_card_clicked(card: SpellCard) -> void:
 	end_confirm = false
 	await fight.resolve_spell(spell.id, target)
 	_sync_views()
-	busy = false
 	_refresh_all()
 	tut.emit("cast", spell.id)
+	await _auto_cast()
+	busy = false
+	_refresh_all()
 	if fight.over:
 		await _finish()
 	elif not fight.has_valid_move() and auto_release:
@@ -614,10 +768,47 @@ func _on_card_clicked(card: SpellCard) -> void:
 		await _damage_step()
 
 
+## Spells with no choice to make (no target, nothing to place or pick) cast themselves, in chant order.
+## Targeted and interactive ones wait for the player's click.
+const INTERACTIVE_OPS := ["infuse", "duplicate", "move", "pluck", "redirect"]
+
+
+func _is_auto(spell: Dictionary) -> bool:
+	if _needs_pick(spell):
+		return false
+	for e in spell.effects:
+		if e.op in INTERACTIVE_OPS:
+			return false
+	return true
+
+
+func _auto_cast() -> void:
+	var guard := 0
+	while not fight.over and guard < 40:
+		guard += 1
+		var c := fight.chant_string()
+		var next := ""
+		var best := 999
+		for id in fight.charges:
+			var sp := fight._find_spell(id)
+			if not _is_auto(sp):
+				continue
+			var pos := c.find(sp.pattern)
+			if pos >= 0 and pos < best:
+				best = pos
+				next = id
+		if next == "":
+			return
+		await fight.resolve_spell(next, -1)
+		_sync_views()
+		_refresh_all()
+		tut.emit("cast", next)
+
+
 ## Does the player point this spell at an enemy before it resolves? (Effects aimed at "target".)
 func _needs_pick(spell: Dictionary) -> bool:
 	for e in spell.effects:
-		if e.get("target", "") == "target":
+		if e.get("target", "") in ["target", "two"]:
 			return true
 	return false
 
@@ -687,7 +878,7 @@ func _finish() -> void:
 # ------------------------------------------------------------------ aiming (the arrow)
 
 func _card_point(card: SpellCard) -> Vector2:
-	return card.global_position + Vector2(card.size.x / 2.0, 10)
+	return card.global_position + Vector2(card.size.x * card.scale.x / 2.0, 10)
 
 
 ## Pull an arrow from `from` to the mouse until an enemy is chosen. Returns its index, or -1 if cancelled.
@@ -782,7 +973,9 @@ func _choose_target(spell: Dictionary, cands: Array) -> int:
 		if c.spell.id == spell.id:
 			card = c
 	var from := _card_point(card) if card else _player_panel.global_position + Vector2(250, 0)
-	return await _aim(card, from, cands, "%s: choose a target  ·  click, or Tab + Enter" % spell.name, false)
+	var second: bool = spell.effects.any(func(x): return x.get("target", "") == "two")
+	var what := "choose a SECOND, different enemy" if second else "choose a target"
+	return await _aim(card, from, cands, "%s: %s  ·  click, or Tab + Enter" % [spell.name, what], false)
 
 
 ## Move one element of this enemy's HP: click it, then click where it goes. Esc / right-click skips.
@@ -812,7 +1005,8 @@ func _picker(spell: Dictionary, e: EnemyState) -> int:
 	tut.emit("picking", null)
 	v.pick_mode = true
 	v.pick_i = e.armor.find(false)
-	_prompt.text = "%s: choose an element of %s to remove  ·  click it, or Tab + Enter" % [spell.name, e.name]
+	var verb := "steal" if spell.effects.any(func(x): return x.op == "steal") else "knock off"
+	_prompt.text = "%s: choose an element of %s to %s  ·  click it, or Tab + Enter" % [spell.name, e.name, verb]
 	_refresh_all()
 	var idx: int = await _pick_done
 	tut.emit("picked", idx)
@@ -906,43 +1100,302 @@ func _anim(ev: Dictionary) -> void:
 				v.hit_flash()
 				_float_text("-%d" % ev.n, v.global_position + Vector2(150, 220), Color(1, 0.9, 0.6))
 			_refresh_all()
-			await _wait(0.3)
+			await _wait(0.35)
 		"chant_step":
 			await _release_step(ev)
 		"chant_changed":
 			_refresh_all()
-			await _wait(0.25)
+			await _wait(0.35)
 		"loadout_changed":
 			_build_spells()
 			_refresh_all()
-			await _wait(0.3)
+			await _wait(0.4)
 		"charged":
 			_refresh_all()
 			_banner("Your spells come alive!", Color(1, 0.9, 0.55), 0.6)
-			await _wait(0.2)
+			await _wait(0.3)
 		"spell":
-			_banner(ev.spell.name, GameData.spell_color(ev.spell.pattern).lightened(0.3), 0.5)
-			await _wait(0.25)
+			# the card lifts and glows, and says what it does
+			var card := _card_for(ev.spell.id)
+			if card:
+				var tw := card.create_tween()
+				tw.tween_property(card, "modulate", Color(1.5, 1.4, 1.1), 0.12)
+				tw.tween_property(card, "modulate", Color.WHITE, 0.4)
+			var at := (card.global_position + Vector2(card.size.x * card.scale.x / 2.0, -20)) if card else Vector2(960, 480)
+			_callout("[b]%s[/b]\n%s" % [ev.spell.name, Keywords.colorize(SpellText.card_text(ev.spell))], at, GameData.spell_color(ev.spell.pattern), 1.1)
+			await _wait(0.55)
+		"spell_effect":
+			await _spell_fly(ev)
 		"effect":
+			_effect_landed(ev)
 			_sync_views()
 			_refresh_all()
-			await _wait(0.12)
+			await _wait(0.3)
+		"enemy_turn":
+			await _enemy_turn_start(ev)
+		"enemy_done":
+			for v in _views.values():
+				v.modulate = Color.WHITE
+			await _wait(0.2)
 		"attack":
+			await _enemy_attack(ev)
+		"enemy_move":
+			await _enemy_move_fx(ev)
+		"dot":
 			var v: EnemyView = _views.get(ev.enemy)
 			if v:
-				var tw := v.creature.create_tween()
-				tw.tween_property(v.creature, "scale", Vector2(1.15, 1.15), 0.08)
-				tw.tween_property(v.creature, "scale", Vector2.ONE, 0.12)
-			_float_text("-%d" % ev.n if ev.n > 0 else "Blocked", _player_panel.global_position + Vector2(200, 20), UiTheme.DANGER if ev.n > 0 else Color(0.7, 0.85, 1))
-			var tw2 := _player_panel.create_tween()
-			tw2.tween_property(_player_panel, "modulate", Color(1.6, 0.6, 0.6), 0.08)
-			tw2.tween_property(_player_panel, "modulate", Color.WHITE, 0.25)
+				v.hit_flash()
+				_float_text("Burn / Poison", v.global_position + Vector2(90, 200), Color(1, 0.6, 0.3))
 			_refresh_all()
-			await _wait(0.4)
+			await _wait(0.5)
+		"mend":
+			_refresh_all()
+		"stolen":
+			# the stolen orbs fly from the enemy into your elements
+			var v: EnemyView = _views.get(ev.enemy)
+			var from := (v.creature.global_position + v.creature.size / 2.0) if v else Vector2(960, 300)
+			var to := _stock_row.global_position + Vector2(_stock_row.size.x * 0.4, 30)
+			for el in ev.els:
+				Comet.launch(_fx, from, to, Elements.COLORS[el])
+			if not ev.els.is_empty():
+				_float_text("Stolen: " + " ".join(ev.els), from + Vector2(-60, -40), Color(0.5, 0.9, 1))
+			await _wait(0.5)
+			_refresh_all()
 		_:
 			_sync_views()
 			_refresh_all()
-			await _wait(0.2)
+			await _wait(0.25)
+
+
+func _card_for(id: String) -> SpellCard:
+	for c in _cards:
+		if c.spell.id == id and is_instance_valid(c):
+			return c
+	return null
+
+
+## A speech-bubble style callout that says what just happened, near whoever did it.
+func _callout(bbcode: String, at: Vector2, col: Color, life := 1.0) -> void:
+	var p := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.05, 0.06, 0.05, 0.94)
+	sb.border_color = col
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(12)
+	sb.content_margin_left = 14
+	sb.content_margin_right = 14
+	sb.content_margin_top = 8
+	sb.content_margin_bottom = 8
+	p.add_theme_stylebox_override("panel", sb)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.z_index = 60
+	var r := RichTextLabel.new()
+	r.bbcode_enabled = true
+	r.fit_content = true
+	r.scroll_active = false
+	r.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	r.custom_minimum_size = Vector2(340, 0)
+	r.add_theme_font_size_override("normal_font_size", 19)
+	r.add_theme_font_size_override("bold_font_size", 21)
+	r.add_theme_color_override("default_color", Color(0.93, 0.95, 0.9))
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	r.text = "[center]" + bbcode + "[/center]"
+	p.add_child(r)
+	_fx.add_child(p)
+	await get_tree().process_frame
+	if not is_instance_valid(p):
+		return
+	p.position = Vector2(clampf(at.x - p.size.x / 2.0, 10, 1910 - p.size.x), clampf(at.y - p.size.y, 10, 1070 - p.size.y))
+	p.modulate.a = 0.0
+	var tw := p.create_tween()
+	tw.tween_property(p, "modulate:a", 1.0, 0.12)
+	tw.tween_interval(life)
+	tw.tween_property(p, "modulate:a", 0.0, 0.25)
+	tw.tween_callback(p.queue_free)
+
+
+# ------------------------------------------------------------------ spells, visibly
+
+const SELF_OPS := ["shield", "heal", "aegis", "thorns", "cleanse", "sacrifice"]
+
+
+## Before a spell's effect lands, it flies from the card to whatever it affects.
+func _spell_fly(ev: Dictionary) -> void:
+	var card := _card_for(ev.spell.id)
+	var from := (card.global_position + card.size * card.scale / 2.0) if card else Vector2(960, 620)
+	var col := GameData.spell_color(ev.spell.pattern).lightened(0.2)
+	var op: String = ev.op
+	var targets: Array = ev.targets
+	if not targets.is_empty():
+		for e in targets:
+			var v: EnemyView = _views.get(e)
+			if v == null:
+				continue
+			var to := v.creature.global_position + v.creature.size / 2.0
+			if op == "strike" and e.size() > 0:
+				to = v.hp_point(e.size() - 1 if ev.eff.get("from", "right") == "right" else 0)
+			Comet.launch(_fx, from, to, col)
+		await _wait(0.45)
+	elif op in SELF_OPS or (op == "ethereal" and ev.eff.get("target", "") == "self"):
+		Comet.launch(_fx, from, _player_panel.global_position + Vector2(240, 60), col)
+		await _wait(0.4)
+	elif op in ["infuse", "duplicate", "retain", "amplify", "echo"]:
+		Comet.launch(_fx, from, _chant_row.global_position + _chant_row.size / 2.0, col)
+		await _wait(0.35)
+	elif op == "draw":
+		Comet.launch(_fx, from, _next_row.global_position + _next_row.size / 2.0, col)
+		await _wait(0.35)
+
+
+## Once an effect has landed: flash whatever it touched and say what changed.
+func _effect_landed(ev: Dictionary) -> void:
+	var eff: Dictionary = ev.get("eff", {})
+	if eff.is_empty():
+		return
+	var text := _effect_words(eff)
+	if text == "":
+		return
+	var targets: Array = ev.targets
+	if not targets.is_empty():
+		for e in targets:
+			var v: EnemyView = _views.get(e)
+			if v:
+				v.hit_flash()
+				_float_text(text, v.global_position + Vector2(110, 180), Color(1, 0.85, 0.5))
+	else:
+		_float_text(text, _player_panel.global_position + Vector2(200, 10), Color(0.6, 0.9, 1))
+
+
+func _effect_words(e: Dictionary) -> String:
+	var n: int = int(e.get("n", 0))
+	match e.op:
+		"strike", "pluck", "purge", "siphon":
+			return "-%d" % n
+		"steal":
+			return ""
+		"burn":
+			return "Burn %d" % n
+		"poison":
+			return "Poison %d" % n
+		"weak":
+			return "Weakened"
+		"freeze":
+			return "Frozen"
+		"expose":
+			return "Exposed"
+		"shield":
+			return "+%d Shield" % n
+		"heal":
+			return "+%d HP" % n
+		"aegis":
+			return "+Aegis"
+		"thorns":
+			return "+%d Thorns" % n
+		"draw":
+			return "+%d next turn" % n if e.when == "next" else "+%d now" % n
+		"stoke":
+			return "Burn ×2"
+		"execute":
+			return "Executed!"
+		"cleanse":
+			return "Cleansed"
+	return ""
+
+
+# ------------------------------------------------------------------ enemies, visibly
+
+## An enemy steps forward and says what it's about to do.
+func _enemy_turn_start(ev: Dictionary) -> void:
+	var actor: EnemyView = _views.get(ev.enemy)
+	for v in _views.values():
+		v.modulate = Color.WHITE if v == actor else Color(0.55, 0.55, 0.6)
+	if actor == null:
+		return
+	var tw := actor.creature.create_tween()
+	actor.creature.pivot_offset = actor.creature.size / 2.0
+	tw.tween_property(actor.creature, "scale", Vector2(1.12, 1.12), 0.15)
+	tw.tween_property(actor.creature, "scale", Vector2.ONE, 0.2)
+	var m: Dictionary = ev.move
+	var words := "❄ Frozen: it skips its turn." if ev.frozen else _move_words(m, ev.enemy)
+	_callout("[b]%s[/b]\n%s" % [ev.enemy.name, Keywords.colorize(words)], actor.global_position + Vector2(actor.size.x / 2.0, 250), Color(1, 0.55, 0.4), 0.9)
+	await _wait(0.75)
+
+
+func _move_words(m: Dictionary, e: EnemyState) -> String:
+	var parts := []
+	while not m.is_empty():
+		var look: Array = IntentChip.LOOK.get(m.kind, ["", Color.WHITE])
+		if m.kind == "attack":
+			var hits: int = m.get("hits", 1)
+			parts.append("%s Attack %d%s" % [look[0], IntentChip.attack_damage(m, e), (" × %d" % hits) if hits > 1 else ""])
+		else:
+			parts.append("%s %s" % [look[0], EnemyDefs.describe_move(IntentChip._single(m), e.dmg_bonus)])
+		m = m.get("also", {})
+	return " + ".join(parts)
+
+
+## The attacker lunges at you: slash marks, a shake, and the HP bar (or the Shield glass) takes the hit.
+func _enemy_attack(ev: Dictionary) -> void:
+	var v: EnemyView = _views.get(ev.enemy)
+	var target := _hp_bar.global_position + Vector2(_hp_bar.size.x * 0.6, _hp_bar.size.y / 2.0)
+	if v:
+		var c := v.creature
+		var home := c.position
+		var toward := (target - (c.global_position + c.size / 2.0)).normalized() * 70.0
+		c.pivot_offset = c.size / 2.0
+		var tw := c.create_tween()
+		tw.tween_property(c, "position", home - toward * 0.3, 0.12)  # wind up
+		tw.parallel().tween_property(c, "scale", Vector2(0.92, 0.92), 0.12)
+		tw.tween_property(c, "position", home + toward, 0.09)  # lunge
+		tw.parallel().tween_property(c, "scale", Vector2(1.3, 1.3), 0.09)
+		tw.tween_interval(0.12)
+		tw.tween_property(c, "position", home, 0.2)
+		tw.parallel().tween_property(c, "scale", Vector2.ONE, 0.2)
+		await _wait(0.2)
+	var blocked: bool = ev.get("blocked", false)
+	ImpactFx.burst(_fx, target, blocked and ev.n == 0)
+	if blocked:
+		_hp_bar.crack()
+	_shake(10.0 if ev.n > 0 else 5.0)
+	if ev.n > 0:
+		_float_text("-%d" % ev.n, target + Vector2(-20, -70), UiTheme.DANGER)
+		var tw2 := _player_panel.create_tween()
+		tw2.tween_property(_player_panel, "modulate", Color(1.6, 0.6, 0.6), 0.08)
+		tw2.tween_property(_player_panel, "modulate", Color.WHITE, 0.3)
+	else:
+		_float_text("Blocked!", target + Vector2(-40, -70), Color(0.6, 0.85, 1))
+	_refresh_all()
+	await _wait(0.6)
+
+
+## Anything else an enemy does: debuffs fly at you, buffs glow on the enemy.
+func _enemy_move_fx(ev: Dictionary) -> void:
+	var v: EnemyView = _views.get(ev.enemy)
+	var kind: String = ev.kind
+	var look: Array = IntentChip.LOOK.get(kind, ["✦", Color.WHITE])
+	var info: Array = IntentChip.INFO.get(kind, [kind.capitalize(), ""])
+	if kind in Fight.AT_PLAYER and v:
+		var from := v.creature.global_position + v.creature.size / 2.0
+		var to := _player_panel.global_position + Vector2(240, 50)
+		var comet := Comet.launch(_fx, from, to, (look[1] as Color).lightened(0.3))
+		comet.rise = 60.0
+		await _wait(0.45)
+		_float_text("%s %s" % [look[0], info[0]], to + Vector2(-40, -40), (look[1] as Color).lightened(0.4))
+		_shake(4.0)
+	elif v:
+		v.hit_flash()
+		_float_text("%s %s" % [look[0], info[0]], v.global_position + Vector2(90, 190), (look[1] as Color).lightened(0.45))
+	_sync_views()
+	_refresh_all()
+	await _wait(0.5)
+
+
+func _shake(amount: float) -> void:
+	var home := position
+	var tw := create_tween()
+	for i in 5:
+		tw.tween_property(self, "position", home + Vector2(randf_range(-amount, amount), randf_range(-amount, amount)), 0.035)
+	tw.tween_property(self, "position", home, 0.05)
 
 
 ## One chant element lifts off as a comet and flies into every HP element it hits (or fizzles upward).

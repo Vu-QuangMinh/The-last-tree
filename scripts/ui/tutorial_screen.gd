@@ -11,7 +11,7 @@ extends Control
 ##   "aiming:id"        start casting spell id (a targeted spell pulls out its arrow)
 ##   "target:i"         aim at enemy i
 ##   "picking:id"       start casting spell id, which asks for an element (for single-target spells)
-##   "pick"             pick an HP element (any) — waits for the spell to finish
+##   "pick"             pick an Essence element (any) — waits for the spell to finish
 ##   "cast:id"          cast spell id and let it finish
 ##   "placing:id"       start casting an Infuse spell   ·   "place:i" put the element in gap i
 ##   "release"          press Release
@@ -25,37 +25,44 @@ const LESSONS := [
 	{
 		"title": "Tutorial",
 		"enemies": [
-			{"id": "ashling", "hp": "FFW", "moves": [{"kind": "attack", "n": 3}]},
-			{"id": "gale_sprite", "hp": "FWAWA", "moves": [{"kind": "attack", "n": 4}]},
+			{"id": "ashling", "hp": "FFWA", "moves": [{"kind": "attack", "n": 3}]},
+			{"id": "gale_sprite", "hp": "FWAWFA", "moves": [{"kind": "attack", "n": 4}]},
 		],
-		"spells": ["fire_ball", "water_wall"], "stock": "WWFFWAA", "draws": ["WAF", "WWF", "AWW", "WFW"],
+		# turn 1 has no spells: the chant alone does the damage. Spells arrive on turn 2.
+		"spells": [], "stock": "FWFWAF", "draws": ["WWF", "WWA", "FFW"],
 		"steps": [
 			{"say": "Welcome, Keeper! I'm Sprout. The last tree is in danger, and you're the one who'll protect it. One fight, and you'll know the basics.", "focus": "none", "then": "tap"},
 			{"say": "Everything runs on three elements: Fire, Water and Air. To keep things short, we write them F, W and A.", "focus": "stock", "then": "tap"},
-			{"say": "An enemy's HP is a row of elements. This Ashling has F F W: Fire, Fire, Water. Knock them all off and it's gone.", "focus": "hp:0", "then": "tap"},
-			{"say": "The Gale Sprite has F W A W A.", "focus": "hp:1", "then": "tap"},
-			{"say": "These are your elements. You spend them to build a chant. You get 3 more every turn, and the ones you don't use are kept.", "focus": "stock", "then": "tap"},
-			{"say": "These are your spells. The orbs under each name are its pattern: when the pattern appears in your chant, the spell comes alive.", "focus": "spells", "then": "tap"},
+			{"say": "An enemy's life is its Essence: a row of elements. This Ashling's Essence is F F W A. Knock them all off and it's gone.", "focus": "hp:0", "then": "tap"},
+			{"say": "The Gale Sprite has F W A W F A.", "focus": "hp:1", "then": "tap"},
 			{"say": "Above each enemy is its intent: what it will do on its turn. The Gale Sprite will attack you for 4. Hover any intent or portrait to learn more.", "focus": "intent:1", "then": "tap"},
-			{"say": "Here's the big idea: ONE chant hits EVERY enemy at once. Each enemy checks the chant on its own and loses the longest START of its HP that it can find in it. A good chant damages several enemies at the same time.", "focus": "enemies", "then": "tap"},
-			{"say": "Let's build a chant. Start with W W: that's Water Wall's pattern.", "focus": "stock_el:W", "then": "chant:W"},
-			{"say": "…and the second W.", "focus": "stock_el:W", "then": "chant:WW"},
-			{"say": "Now F F: Fire Ball's pattern!", "focus": "stock_el:F", "then": "chant:WWF"},
-			{"say": "…F.", "focus": "stock_el:F", "then": "chant:WWFF"},
-			{"say": "Finish with W and A.", "focus": "stock", "then": "chant:WWFFWA"},
-			{"say": "Look at the preview: the crossed-out elements are what each enemy will lose. The Ashling's whole HP, F F W, is in the chant, so it gets a skull. The Gale Sprite's start F W A is in there too, so it loses F W A and keeps W A. One chant, two enemies hit!", "focus": "enemies", "then": "tap"},
-			{"say": "×1 on both spells: each will come alive once. (A spell triggers at most as many times as its pattern is long.)", "focus": "spells", "then": "tap"},
+			{"say": "Your CHANT is how you deal damage. One chant hits EVERY enemy at once: each enemy loses the longest START of its Essence that it can find in the chant. So the ORDER of your elements matters.", "focus": "enemies", "then": "tap"},
+			{"say": "Let's see. Build F W F: tap a Fire…", "focus": "stock_el:F", "then": "chant:F"},
+			{"say": "…a Water…", "focus": "stock_el:W", "then": "chant:FW"},
+			{"say": "…and a Fire.", "focus": "stock_el:F", "then": "chant:FWF"},
+			{"say": "Look at the preview (the crossed-out elements). The Ashling starts with F F, but F F isn't in F W F, so it only loses one F. The Gale Sprite starts with F W, and F W is there, so it loses F W.", "focus": "enemies", "then": "tap"},
+			{"say": "Same elements, better order. Tap Clear.", "focus": "clear_btn", "then": "clear"},
+			{"say": "Now build F F W.", "focus": "stock", "then": "chant:FFW"},
+			{"say": "Now the Ashling loses F F W (only A is left), and the Gale Sprite still loses F W. Same three elements, much more damage, just from the order!", "focus": "enemies", "then": "tap"},
 			{"say": "Tap Chant to speak it.", "focus": "chant_btn", "then": "chanted"},
-			{"say": "Your spells are alive: they glow and wiggle. Spells always go first. Tap Water Wall: 4 Shield blocks attack damage until your next turn.", "focus": "card:water_wall", "then": "cast:water_wall"},
-			{"say": "Now tap Fire Ball. It pulls out an arrow: aim it at the Gale Sprite.", "focus": "card:fire_ball", "then": "aiming:fire_ball"},
+			{"say": "Your chant is spoken, but nothing has been hit yet: its elements wait in the chant until you Release them.", "focus": "chant", "then": "tap"},
+			{"say": "Tap Release! Each element flies out, one by one from left to right, and knocks off the enemy Essence it lines up with, on every enemy at once.", "focus": "chant_btn", "then": "release"},
+			{"say": "Watch the elements fly! Then it's the enemies' turn: each one does what its intent said.", "focus": "none_clear", "then": "turn"},
+			{"say": "Ouch! Attacks take your HP, and your HP carries over from fight to fight, so every point counts.", "focus": "player", "then": "tap"},
+			{"say": "Every turn you get 3 more elements (this box shows what's coming next turn). Elements you don't use are kept.", "focus": "next", "then": "tap"},
+			{"say": "Now for the bonus: spells! The orbs on a card are its pattern. When your chant contains that pattern, IN THAT ORDER, the spell comes alive: an extra effect on top of the chant's damage.", "focus": "spells", "then": "tap", "action": "spells:fire_ball,water_wall"},
+			{"say": "Build A W F W F W.", "focus": "stock", "then": "chant:AWFWFW"},
+			{"say": "Look at the preview. The Ashling gets a skull (its only Essence left is A), but the Gale Sprite only loses A W F. Its last Essence, A, survives, and it will hit you again. And your spells stay asleep: F F and W W never sit next to each other.", "focus": "enemies", "then": "tap"},
+			{"say": "Tap Clear, and let's rearrange.", "focus": "clear_btn", "then": "clear"},
+			{"say": "Build A W F F W W: the same elements, but now F F and W W are together.", "focus": "stock", "then": "chant:AWFFWW"},
+			{"say": "×1 on both spells! The chant still does its damage, and now Fire Ball can knock off the Gale Sprite's last A before the Release. Then A W F takes the rest, and it's gone. (The preview only counts the chant, so it won't show a skull until Fire Ball has landed.)", "focus": "spells", "then": "tap"},
+			{"say": "That's the whole game: the chant is your main damage, and arranging it in the right order wakes spells that finish the job. Same elements, but only the ideal chant wins this turn. (A spell triggers at most as many times as its pattern is long.)", "focus": "none", "then": "tap"},
+			{"say": "Tap Chant.", "focus": "chant_btn", "then": "chanted"},
+			{"say": "Water Wall has no target, so it casts itself: 4 Shield, the blue glass over your HP bar. Shield blocks attack damage until your next turn.", "focus": "player", "then": "tap"},
+			{"say": "Fire Ball needs a target, so it waits for you. Tap it: it pulls out an arrow.", "focus": "card:fire_ball", "then": "aiming:fire_ball"},
 			{"say": "Tap the Gale Sprite (or press Tab to switch targets and Enter to confirm).", "focus": "enemy:1", "then": "target:1"},
-			{"say": "Fire Ball knocked off the Gale Sprite's last A. Your spells are done, but notice: your chant hasn't hurt anyone yet. Its elements are still waiting in the chant.", "focus": "chant", "then": "tap"},
-			{"say": "Now you Release them. Each element flies out, one by one from left to right, and knocks off the enemy HP it lines up with, on every enemy at once. Tap Release!", "focus": "chant_btn", "then": "release"},
-			{"say": "Watch the elements fly! Then the Gale Sprite attacks, and your Shield blocks it.", "focus": "none_clear", "then": "turn"},
-			{"say": "The Ashling is gone, and the Gale Sprite lost F W A to the Release. Only one W left!", "focus": "hp:0", "then": "tap"},
-			{"say": "A new turn and 3 new elements. This box shows what you'll get NEXT turn, so you can plan ahead.", "focus": "next", "then": "tap"},
-			{"say": "Your HP. It carries over from fight to fight, so every point counts.", "focus": "player", "then": "tap"},
-			{"say": "Finish it yourself: build a chant, tap Chant, cast any spells that come alive, then tap Release!", "focus": "none_clear", "then": "win"},
+			{"say": "Fire Ball knocked off the Gale Sprite's last A, and now the preview shows two skulls. Your spells are done: Release the chant!", "focus": "chant_btn", "then": "release"},
+			{"say": "Here it goes!", "focus": "none_clear", "then": "win"},
 		],
 	},
 ]
@@ -63,8 +70,8 @@ const LESSONS := [
 ## After the fight: the rest of a run, in a few words.
 const END_STEPS := [
 	{"say": "Well done! A run is 3 acts. Each act is a map you climb one room at a time: fights, elites, unknown rooms, a merchant, treasure and campfires, with a boss at the top.", "focus": "none", "then": "tap"},
-	{"say": "After each fight you learn a new spell. Before each fight you choose which 6 spells to bring. Bosses give Legendary spells and relics that add elements every turn.", "focus": "none", "then": "tap"},
-	{"say": "There's more to discover: Burn and Poison, Armour, Targeted damage, spells that change your chant, cursed artifacts… Press F1 any time to open the Wiki: every rule is in there. Good luck, Keeper!", "focus": "none", "then": "tap"},
+	{"say": "After each fight you learn a new spell. Before each fight you choose which 5 spells to bring. Bosses give Legendary spells and relics that add elements every turn.", "focus": "none", "then": "tap"},
+	{"say": "There's more to discover: Burn and Poison, Armour, Targeted spells, spells that change your chant, cursed artifacts… Press F1 any time to open the Wiki: every rule is in there. Good luck, Keeper!", "focus": "none", "then": "tap"},
 ]
 
 var db: SpellDB
@@ -154,10 +161,13 @@ func _lesson(L: Dictionary) -> void:
 	fs.setup(run, f)
 	fs.gate = _gate
 	fs.auto_release = false
+	fs.help_override = _help_text
+	fs.blocked.connect(_on_blocked)
+	coach.tapped.connect(func(): if is_instance_valid(fs): fs.note_progress())
 	_layer.add_child(fs)
 	await get_tree().process_frame
 	var title := UiTheme.label(L.title, 26, Color(0.85, 1, 0.75))
-	title.position = Vector2(30, 60)
+	title.position = Vector2(30, 100)
 	title.z_index = 95
 	_layer.add_child(title)
 	var steps: Array = L.steps
@@ -171,6 +181,13 @@ func _lesson(L: Dictionary) -> void:
 
 func _do_step(step: Dictionary) -> void:
 	_step = step
+	var action: String = step.get("action", "")
+	if action.begins_with("spells:"):
+		for id in action.get_slice(":", 1).split(","):
+			fs.fight.loadout.append(db.get_spell(id))
+		fs._build_spells()
+		fs._refresh_all()
+		await get_tree().process_frame
 	var then: String = step.then
 	var kind := then.get_slice(":", 0)
 	var arg := then.get_slice(":", 1) if then.contains(":") else ""
@@ -253,6 +270,41 @@ func _gate(action: String, arg) -> bool:
 	return false
 
 
+# ------------------------------------------------------------------ helping a lost player
+
+const DO_WHAT := {
+	"tap": "Tap anywhere (or press Space) to continue.",
+	"chant": "Tap the glowing element the hand points at to add it to your chant.",
+	"chanted": "Tap the Chant button (or press Enter).",
+	"aiming": "Tap the glowing spell card.",
+	"picking": "Tap the glowing spell card.",
+	"cast": "Tap the glowing spell card.",
+	"target": "The arrow follows your mouse: tap the glowing enemy (or press Tab to switch and Enter to confirm).",
+	"pick": "Tap one of the enemy's Essence orbs to choose it.",
+	"place": "Tap the first ＋ in your chant.",
+	"placing": "Tap the glowing spell card.",
+	"release": "Tap the Release button (or press E).",
+	"clear": "Tap the Clear button.",
+	"turn": "Nothing to do right now: watch the elements fly and the enemies act.",
+	"win": "",
+}
+
+
+## When the player clicks around lost: repeat what Sprout asked, and exactly how to do it.
+func _help_text() -> String:
+	var then: String = _step.get("then", "")
+	var kind := then.get_slice(":", 0)
+	if kind == "win":
+		return ""  # free play: the normal explanation fits
+	coach.nudge()
+	return "Sprout says: %s\n\n👉 What to do: %s" % [_step.get("say", ""), DO_WHAT.get(kind, "")]
+
+
+## A wrong tap: a gentle nudge right away, without waiting for frantic clicking.
+func _on_blocked(_action: String) -> void:
+	coach.nudge()
+
+
 # ------------------------------------------------------------------ spotlights
 
 func _focus_fn(name: String) -> Callable:
@@ -262,7 +314,7 @@ func _focus_fn(name: String) -> Callable:
 func _rect_of(c: Control) -> Rect2:
 	if c == null or not is_instance_valid(c) or not c.is_inside_tree():
 		return Rect2()
-	return Rect2(c.global_position, c.size)
+	return Rect2(c.global_position, c.size * c.get_global_transform().get_scale())
 
 
 func _focus_rect(name: String) -> Rect2:

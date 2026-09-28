@@ -4,13 +4,19 @@ extends RefCounted
 
 ## keyword -> [colour on dark UI, colour on parchment, explanation]
 const K := {
-	"damage": [Color(1.0, 0.45, 0.4), Color(0.72, 0.12, 0.08), "Damage: against an enemy, each point knocks one element off its HP bar (the first HP is the leftmost element, the last HP the rightmost). Against you, it lowers your HP."],
-	"release": [Color(1.0, 0.85, 0.45), Color(0.6, 0.4, 0.0), "Release: once your spells are cast, the chant flies at the enemies element by element, left to right; each enemy loses the longest start of its HP found in the chant."],
-	"released": [Color(1.0, 0.85, 0.45), Color(0.6, 0.4, 0.0), "Release: once your spells are cast, the chant flies at the enemies element by element, left to right; each enemy loses the longest start of its HP found in the chant."],
-	"targeted": [Color(1.0, 0.75, 0.3), Color(0.7, 0.35, 0.0), "Targeted: you pick which element to hit, anywhere in the enemy's HP bar (click it, or Tab + Enter)."],
+	"remove": [Color(1.0, 0.45, 0.4), Color(0.72, 0.12, 0.08), "Remove: knock elements off an enemy's Essence, one per point. \"Last\" means from the right end, going right to left; \"first\" means from the left end, going left to right. When its Essence is all gone, it's defeated."],
+	"damage": [Color(1.0, 0.45, 0.4), Color(0.72, 0.12, 0.08), "Damage: against an enemy, each point knocks one element off its Essence (the first Essence is the leftmost element, the last the rightmost). Against you, it lowers your HP."],
+	"essence": [Color(0.95, 0.75, 1.0), Color(0.5, 0.2, 0.6), "Essence: an enemy's life, shown as a row of elements. Knock every element off and it's gone. (Your own life is your HP.)"],
+	"release": [Color(1.0, 0.85, 0.45), Color(0.6, 0.4, 0.0), "Release: once your spells are cast, the chant flies at the enemies element by element, left to right; each enemy loses the longest start of its Essence found in the chant."],
+	"released": [Color(1.0, 0.85, 0.45), Color(0.6, 0.4, 0.0), "Release: once your spells are cast, the chant flies at the enemies element by element, left to right; each enemy loses the longest start of its Essence found in the chant."],
+	"steal": [Color(0.45, 0.85, 1.0), Color(0.05, 0.4, 0.65), "Steal: take elements out of an enemy's Essence and put them in your elements (your bag), ready for a later chant. When an enemy Steals, it takes elements from your bag and adds them to its Essence."],
+	"stolen": [Color(0.45, 0.85, 1.0), Color(0.05, 0.4, 0.65), "Steal: take elements out of an enemy's Essence and put them in your elements (your bag), ready for a later chant. When an enemy Steals, it takes elements from your bag and adds them to its Essence."],
+	"fused": [Color(1.0, 0.7, 0.9), Color(0.6, 0.15, 0.45), "Fused: forged from two spells at a campfire. It does everything both did, and can't be fused again."],
+	"fuse": [Color(1.0, 0.7, 0.9), Color(0.6, 0.15, 0.45), "Fuse: at a campfire, melt two spells into one that does everything both did. Its pattern is the longer spell's pattern followed by the shorter one's, minus one random element."],
+	"targeted": [Color(1.0, 0.75, 0.3), Color(0.7, 0.35, 0.0), "Targeted: you pick which element to hit, anywhere in the enemy's Essence (click it, or Tab + Enter)."],
 	"infuse": [Color(0.95, 0.85, 0.5), Color(0.55, 0.4, 0.0), "Infuse: put the element anywhere you like in this turn's chant. It counts at once, so it can wake more spells."],
 	"resonate": [Color(0.95, 0.85, 0.5), Color(0.55, 0.4, 0.0), "Resonate: pick an element of this turn's chant; it is copied in place. It counts at once, so it can wake more spells."],
-	"execute": [Color(1.0, 0.35, 0.35), Color(0.65, 0.05, 0.05), "Execute: destroy the enemy outright if its HP is low enough (not bosses)."],
+	"execute": [Color(1.0, 0.35, 0.35), Color(0.65, 0.05, 0.05), "Execute: destroy the enemy outright if its Essence is low enough (not bosses)."],
 	"burn": [Color(1.0, 0.55, 0.2), Color(0.78, 0.3, 0.0), "Burn: at the start of its turn the enemy loses its FIRST element, then Burn goes down by 1."],
 	"poison": [Color(0.55, 0.9, 0.3), Color(0.25, 0.5, 0.05), "Poison: at the start of its turn the enemy loses its LAST element, then Poison goes down by 1."],
 	"shield": [Color(0.55, 0.8, 1.0), Color(0.1, 0.35, 0.7), "Shield: blocks that much attack damage until your next turn."],
@@ -42,7 +48,7 @@ const K := {
 	"redirect": [Color(0.55, 1.0, 0.8), Color(0.05, 0.5, 0.35), "Redirect: the enemy's attack hits another enemy of your choice (or itself); anything aimed at you fizzles."],
 	"cleanse": [Color(0.6, 1.0, 0.9), Color(0.05, 0.5, 0.45), "Cleanse: remove your debuffs."],
 	"cure": [Color(0.6, 1.0, 0.9), Color(0.05, 0.5, 0.45), "Cure: remove that debuff from you."],
-	"mend": [Color(0.45, 1.0, 0.55), Color(0.1, 0.5, 0.15), "Mend: the enemy regrows elements at the end of its HP."],
+	"mend": [Color(0.45, 1.0, 0.55), Color(0.1, 0.5, 0.15), "Mend: the enemy regrows elements at the end of its Essence."],
 	"purge": [Color(1.0, 0.6, 0.4), Color(0.7, 0.25, 0.05), "Purge: remove up to that many elements of one type from an enemy."],
 	"fire": [Elements.COLORS["F"], Color(0.8, 0.25, 0.0), ""],
 	"water": [Elements.COLORS["W"], Color(0.05, 0.35, 0.8), ""],
@@ -107,7 +113,7 @@ static func glossary(text: String) -> Array:
 
 ## A tooltip body: title, coloured rules text, then what its keywords mean.
 static func tooltip(title: String, body: String, extra := "") -> String:
-	var s := "[b][font_size=18]%s[/font_size][/b]\n%s" % [_escape(title), colorize(body)]
+	var s := "[b][font_size=25]%s[/font_size][/b]\n%s" % [_escape(title), colorize(body)]
 	if extra != "":
 		s += "\n" + extra
 	var gl := glossary(body)
@@ -126,9 +132,9 @@ static func make_tooltip(bbcode: String) -> Control:
 	r.fit_content = true
 	r.scroll_active = false
 	r.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	r.custom_minimum_size = Vector2(420, 0)
-	r.add_theme_font_size_override("normal_font_size", 16)
-	r.add_theme_font_size_override("bold_font_size", 16)
+	r.custom_minimum_size = Vector2(560, 0)
+	r.add_theme_font_size_override("normal_font_size", 21)
+	r.add_theme_font_size_override("bold_font_size", 21)
 	r.add_theme_color_override("default_color", Color(0.9, 0.92, 0.86))
 	r.text = bbcode
 	return r

@@ -16,9 +16,9 @@ Main menu → **Tutorial**: one scripted fight where Sprout walks you through el
 ### The rules
 Everything is in the in-game **wiki** (main menu "How to play · Wiki", or **F1** anywhere): tabs for the basics, the chant, spells, keywords, enemies and intents, artifacts and the run, plus a search box.
 
-In short: build a chant (up to 8 elements) and press Chant. Every active spell whose pattern appears comes alive, one charge per separate match but never more than its pattern's length (WW triggers at most twice). Cast the living spells in any order; spells that change the chant (Spark/Spring/Breath Word, Resonance, Triune Chant) can wake more spells. When nothing is left to cast, the chant is Released by itself: every enemy loses the longest start of its HP found in the chant, as the chant's elements fly at them one by one from left to right. Then the enemies act, using their moves in a fixed order.
+In short: build a chant (up to 8 elements) and press Chant. Every active spell whose pattern appears comes alive, one charge per separate match but never more than its pattern's length (WW triggers at most twice). Spells without a target cast themselves; click the targeted ones; spells that change the chant (Spark/Spring/Breath Word, Resonance, Triune Chant) can wake more spells. When nothing is left to cast, the chant is Released by itself: every enemy loses the longest start of its HP found in the chant, as the chant's elements fly at them one by one from left to right. Then the enemies act, using their moves in a fixed order.
 
-Cards are Common, Rare or Legendary. Normal fights offer 70% Common / 30% Rare cards, elites 3 Rares plus an artifact, bosses 3 Legendaries plus a relic that adds elements every turn. Rest sites heal or upgrade a spell. Treasure always includes one cursed artifact.
+Cards are Common, Rare or Legendary. Normal fights offer 70% Common / 30% Rare cards, elites 3 Rares plus an artifact, bosses 3 Legendaries plus a relic that adds elements every turn. Campfires heal or Fuse two spells into one. Treasure always includes one cursed artifact.
 
 ## Project layout
 | Path | What |

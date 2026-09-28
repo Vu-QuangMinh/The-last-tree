@@ -20,12 +20,12 @@ func _ready() -> void:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 24)
 	add_child(h)
-	_label = UiTheme.label("", 20, Color.WHITE)
-	h.add_child(_label)
 	_arts = HBoxContainer.new()
-	_arts.add_theme_constant_override("separation", 8)
-	_arts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_arts.add_theme_constant_override("separation", 4)
 	h.add_child(_arts)
+	_label = UiTheme.label("", 20, Color.WHITE)
+	_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(_label)
 	h.add_child(UiTheme.button("Codex", func(): codex_pressed.emit()))
 	h.add_child(UiTheme.button("Wiki (F1)", func(): get_tree().root.get_node("Main").open_wiki() if get_tree().root.has_node("Main") else null))
 	refresh()
@@ -37,10 +37,4 @@ func refresh() -> void:
 	for c in _arts.get_children():
 		c.queue_free()
 	for id in run.artifacts:
-		var a := Artifacts.get_def(id)
-		var chip := UiTheme.label("◆ " + a.name, 16, Color(1, 0.85, 0.5))
-		if id == "kindling_stone":
-			chip.text += " (charged)" if p.kindling_charged else " (%d/3)" % p.kindling_chants
-		chip.tooltip_text = a.name + "\n" + a.desc
-		chip.mouse_filter = Control.MOUSE_FILTER_STOP
-		_arts.add_child(chip)
+		_arts.add_child(ArtifactBar.ArtifactChip.make(id))

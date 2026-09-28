@@ -46,6 +46,8 @@ func setup(e: EnemyState) -> void:
 
 
 func _make_custom_tooltip(for_text: String) -> Object:
+	if for_text.strip_edges() == "":
+		return null  # no text (e.g. its tooltip is pinned): no hover tooltip at all
 	return Keywords.make_tooltip(for_text)
 
 

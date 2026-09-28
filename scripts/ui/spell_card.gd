@@ -17,7 +17,8 @@ var spell: Dictionary
 var fires := 0  # preview: how many times the current chant would charge it
 var charges := 0  # charged after the chant: click to cast (it wobbles, it's alive)
 var aiming := false  # its targeting arrow is out
-var base_scale := 1.0  # drawn larger on reward screens
+var base_scale := 1.0  # drawn larger on reward screens, smaller in a crowded spell row
+var _hover := false
 var _t := 0.0
 var state := ""  # "", "silenced", "locked", "used"
 var state_text := ""
@@ -41,7 +42,11 @@ static func make(p_spell: Dictionary, p_compact := false) -> SpellCard:
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(W, 120 if compact else H)
-	mouse_filter = Control.MOUSE_FILTER_STOP
+	# the magnified copy must never catch the mouse, or the real card loses its hover and its clicks
+	mouse_filter = Control.MOUSE_FILTER_IGNORE if is_zoom_copy else Control.MOUSE_FILTER_STOP
+	if not is_zoom_copy:
+		mouse_entered.connect(_on_hover.bind(true))
+		mouse_exited.connect(_on_hover.bind(false))
 	var kc: Color = KIND_COLORS[spell.kind]
 	_box = StyleBoxFlat.new()
 	_box.bg_color = PARCHMENT
@@ -124,6 +129,8 @@ func _ready() -> void:
 	var tags := [spell.rarity_name.to_upper(), SpellDB.KIND_NAMES[spell.kind].to_upper()]
 	if spell.power:
 		tags.append("POWER")
+	if spell.get("fused", false):
+		tags.append("FUSED")
 	var tag_l := UiTheme.label(" · ".join(tags), 13, RARITY_COLORS[spell.rarity])
 	tag_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tag_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -152,10 +159,76 @@ func _ready() -> void:
 	refresh()
 
 
+## Hovering a card shows a magnified copy of it on a layer above everything else, so it's never clipped by a
+## scroll area or hidden behind other cards. The copy ignores the mouse, so the real card keeps its hover.
+static var _layer: CanvasLayer
+var _zoom: SpellCard
+var is_zoom_copy := false
+
+
+func _on_hover(on: bool) -> void:
+	if is_zoom_copy or on == _hover:
+		return
+	# only let go when the mouse has really left the card (not when something flickers on top of it)
+	if not on and is_visible_in_tree() and get_global_rect().has_point(get_global_mouse_position()):
+		return
+	_hover = on
+	if is_instance_valid(_zoom):
+		_zoom.queue_free()
+		_zoom = null
+	if not on or not is_inside_tree():
+		return
+	if _layer == null or not is_instance_valid(_layer):
+		_layer = CanvasLayer.new()
+		_layer.layer = 25
+		get_tree().root.add_child(_layer)
+	var z := SpellCard.make(spell, compact)
+	z.is_zoom_copy = true
+	z.fires = fires
+	z.charges = charges
+	z.state = state
+	z.state_text = state_text
+	z.lock_pattern = lock_pattern
+	z.selected = selected
+	z.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_layer.add_child(z)
+	_ignore_mouse(z)
+	_zoom = z
+	# same spot as the real card, then grow upwards from its bottom edge
+	var real_scale := get_global_transform().get_scale().x
+	var target := real_scale * 1.2 if real_scale >= 1.0 else 1.12
+	var bottom_mid := global_position + Vector2(size.x * real_scale / 2.0, size.y * real_scale)
+	z.size = Vector2(W, H)
+	z.pivot_offset = Vector2(W / 2.0, H)
+	z.position = bottom_mid - Vector2(W / 2.0, H)
+	z.scale = Vector2.ONE * real_scale
+	var tw := z.create_tween()
+	tw.tween_property(z, "scale", Vector2.ONE * target, 0.1)
+	# keep the copy on screen
+	var top := bottom_mid.y - H * target
+	if top < 8.0:
+		z.position.y += 8.0 - top
+
+
+static func _ignore_mouse(n: Node) -> void:
+	if n is Control:
+		n.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for c in n.get_children(true):  # include internal ones, like a text box's hidden scrollbar
+		_ignore_mouse(c)
+
+
+func _exit_tree() -> void:
+	if is_instance_valid(_zoom):
+		_zoom.queue_free()
+
+
 func _process(d: float) -> void:
-	if charges > 0 and state == "":
-		# alive: a little tilt left and right, a slow breathing glow
-		pivot_offset = size / 2.0
+	if _hover and not (is_visible_in_tree() and get_global_rect().has_point(get_global_mouse_position())):
+		_on_hover(false)
+	if charges > 0 and state == "" and z_index == 0:
+		# alive: a little tilt left and right, a slow breathing glow (shrunk cards pivot at their corner so they
+		# stay inside their slot)
+		pivot_offset = size / 2.0 if base_scale >= 0.999 else Vector2.ZERO
 		_t += d
 		rotation = sin(_t * 6.0) * (0.02 if not aiming else 0.0)
 		var s := (1.06 if aiming else 1.0 + 0.02 * sin(_t * 3.0)) * base_scale
@@ -170,7 +243,9 @@ func _process(d: float) -> void:
 
 
 func _make_custom_tooltip(for_text: String) -> Object:
-	return Keywords.make_tooltip(for_text)
+	if for_text.strip_edges() == "":
+		return null  # no text (e.g. its tooltip is pinned): no hover tooltip at all
+	return Keywords.make_tooltip(for_text + Keywords.colorize(get_meta("fuse_tip", "")))
 
 
 func _gui_input(ev: InputEvent) -> void:

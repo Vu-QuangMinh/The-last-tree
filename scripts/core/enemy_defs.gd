@@ -1,6 +1,6 @@
 class_name EnemyDefs
 extends RefCounted
-## Every enemy: HP pattern (elements, left to right), moves (cycled in order), passives.
+## Every enemy: Essence pattern (elements, left to right), moves (cycled in order), passives.
 ## Moves are used in the listed order, looping. Normal enemies mix offence, defence and utility.
 ## Move kinds: attack {n, hits}, armor {pos}, mend {el, n, who: self/ally/all}, shuffle, silence {turns}, frail {turns},
 ## lock {len}, steal {n}, confuse, blind {turns}, bleed {n}, freeze {n}, ethereal, empower {n},
@@ -90,7 +90,7 @@ const E := {
 
 const PASSIVE_TEXT := {
 	"burning_hide": "Burning Hide: you take 1 damage whenever your Release hits it.",
-	"split": "Split: struck but not killed, it splits its remaining HP into two enemies (once).",
+	"split": "Split: struck but not killed, it splits its remaining Essence into two enemies (once).",
 	"overgrowth": "Overgrowth: if not struck during your turn, it grows a random element.",
 	"warded": "Warded: only chants of 4 or more elements can strike it.",
 	"last_gasp": "Last Gasp: gives you Bleed 2 when it dies.",
@@ -187,7 +187,7 @@ static func encounter(kind: String, act: int, floor: int, rng: RandomNumberGener
 	return out
 
 
-## Extra random elements added to the end of an enemy's HP on deeper floors (bosses excluded).
+## Extra random elements added to the end of an enemy's Essence on deeper floors (bosses excluded).
 ## Act 1 starts at 2-3 elements; by the middle of act 2 every enemy has 7 or more.
 static func extra_hp(act: int, floor: int, rng: RandomNumberGenerator, boss := false) -> Array:
 	var n := 0
@@ -196,9 +196,9 @@ static func extra_hp(act: int, floor: int, rng: RandomNumberGenerator, boss := f
 			1:
 				n = 0 if floor <= 2 else (2 if floor <= 4 else 3)
 			2:
-				n = 4 if floor <= 3 else 5
+				n = 3 if floor <= 3 else 4
 			3:
-				n = 6 if floor <= 4 else 7
+				n = 5 if floor <= 4 else 6
 	var out := []
 	for i in n:
 		out.append(Elements.random(rng))
@@ -206,7 +206,7 @@ static func extra_hp(act: int, floor: int, rng: RandomNumberGenerator, boss := f
 
 
 static func attack_bonus(act: int) -> int:
-	return [0, 0, 2, 4][act]
+	return [0, 0, 2, 3][act]
 
 
 static func describe_move(m: Dictionary, bonus := 0) -> String:
@@ -221,7 +221,7 @@ static func describe_move(m: Dictionary, bonus := 0) -> String:
 			var el: String = "random element" if m.el == "random" else Elements.NAMES[m.el]
 			s = "Mend +%d %s%s" % [m.n, el, {"self": "", "ally": " on an ally", "all": " on every enemy"}[m.get("who", "self")]]
 		"shuffle":
-			s = "Shuffle its HP"
+			s = "Shuffle its Essence"
 		"silence":
 			s = "Silence one of your spells (%d turns)" % m.turns
 		"lock":
@@ -249,7 +249,7 @@ static func describe_move(m: Dictionary, bonus := 0) -> String:
 		"hex":
 			s = "Hex one of your elements (chanting it costs 2 HP)"
 		"mimic":
-			s = "Mimic: its HP becomes your last chant, backwards"
+			s = "Mimic: its Essence becomes your last chant, backwards"
 		"frail":
 			s = "Frail you (%d turn%s: you take 25%% more damage)" % [m.turns, "" if m.turns == 1 else "s"]
 	if m.has("also"):

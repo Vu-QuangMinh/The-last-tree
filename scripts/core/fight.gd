@@ -147,18 +147,21 @@ func _log(s: String) -> void:
 
 # ------------------------------------------------------------------ draws
 
-## One random element, weighted by lenses (a lens doubles its element's odds).
+## One random element, each equally likely.
 func _random_element() -> String:
-	var w := {"F": 1.0, "W": 1.0, "A": 1.0}
+	return ["F", "W", "A"][rng.randi() % 3]
+
+
+## Lenses: every chanted element of a lens's colour has a 25% chance to come back after the Release.
+func _lens_refunds(chanted: Array) -> Array:
+	var back := []
 	for lens in LENSES:
-		if has_artifact(lens):
-			w[LENSES[lens]] += 1.0
-	var r: float = rng.randf() * (w.F + w.W + w.A)
-	for el in ["F", "W", "A"]:
-		if r < w[el]:
-			return el
-		r -= w[el]
-	return "A"
+		if not has_artifact(lens):
+			continue
+		for el in chanted:
+			if el == LENSES[lens] and rng.randf() < 0.25:
+				back.append(el)
+	return back
 
 
 ## Rolls the draw you receive at the start of turn `upcoming` (shown in "Coming next").
@@ -388,6 +391,11 @@ func finish_turn() -> void:
 		var keep: int = turn_ctx.get("retain", 0)
 		for el in chant.slice(maxi(0, chant.size() - keep)):
 			player.add_element(el)
+		var back := _lens_refunds(chant)
+		for el in back:
+			player.add_element(el)
+		if not back.is_empty():
+			_log("Your Lens returns %s." % " ".join(back))
 		_cleanup()
 	if not over:
 		await end_player_turn()
@@ -497,6 +505,7 @@ func _fire(spell: Dictionary, ctx: Dictionary, tctx: Dictionary) -> void:
 ## Resolves one effect. tctx caches the chosen target for this spell.
 func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> void:
 	var targets := await _targets(eff, spell, tctx)
+	await anim.call({"type": "spell_effect", "op": eff.op, "eff": eff, "targets": targets, "spell": spell})
 	match eff.op:
 		"strike":
 			for e in targets:
@@ -630,6 +639,25 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 					if mv.size() == 2:
 						e.move_element(mv[0], mv[1])
 						await anim.call({"type": "effect", "op": "move", "targets": [e]})
+		"steal":
+			# take elements out of the enemy's HP and into your elements (not into this chant)
+			for e in targets:
+				var taken := []
+				if eff.get("el", "any") == "any":
+					for i in eff.n:
+						if e.is_dead() or not e.armor.has(false):
+							break
+						var idx: int = await picker.call(spell, e)
+						var el: String = e.pluck(idx)
+						if el != "":
+							taken.append(el)
+				else:
+					taken = e.purge(eff.el, eff.n)
+				for el in taken:
+					player.add_element(el)
+				if not taken.is_empty():
+					_log("%s steals %s from %s." % [spell.name, ", ".join(taken.map(func(x): return Elements.NAMES[x])), e.name])
+				await anim.call({"type": "stolen", "enemy": e, "els": taken})
 		"pluck":
 			for e in targets:
 				for i in eff.n:
@@ -662,7 +690,7 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 						e.weak25 = true
 		"each_turn":
 			player.each_turn.append({"spell": spell, "effects": eff.effects})
-	await anim.call({"type": "effect", "op": eff.op, "targets": targets})
+	await anim.call({"type": "effect", "op": eff.op, "eff": eff, "targets": targets})
 
 
 ## Burn you apply; a charged Kindling Stone doubles it once (one whole effect, even if it hits every enemy).
@@ -686,6 +714,18 @@ func _targets(eff: Dictionary, spell: Dictionary, tctx: Dictionary) -> Array:
 				var idx: int = await chooser.call(spell, cands)
 				tctx.target = enemies[idx]
 			return [tctx.target]
+		"two":
+			# two different enemies: the first as usual, then a second one (if there is another)
+			if not tctx.has("target") or tctx.target.is_dead():
+				var idx: int = await chooser.call(spell, target_candidates())
+				tctx.target = enemies[idx]
+			if not tctx.has("second") or tctx.second.is_dead() or tctx.second == tctx.target:
+				var rest := target_candidates().filter(func(i): return enemies[i] != tctx.target)
+				if rest.is_empty():
+					return [tctx.target]
+				var idx2: int = await chooser.call(spell, rest)
+				tctx.second = enemies[idx2]
+			return [tctx.target, tctx.second]
 		"all":
 			return live
 		"random":
@@ -775,12 +815,14 @@ func _enemy_phase() -> void:
 		if e.has_passive("overgrowth") and not e.struck_this_turn:
 			e.append(_random_element())
 			_log("%s grows." % e.name)
+		await anim.call({"type": "enemy_turn", "enemy": e, "move": e.intent, "frozen": e.freeze_turns > 0})
 		if e.freeze_turns > 0:
 			_log("%s is frozen." % e.name)
 		else:
 			await _do_move(e, e.intent)
 			if e.has_passive("echo") and not over:
 				await _do_move(e, e.intent)
+		await anim.call({"type": "enemy_done", "enemy": e})
 		e.redirect_to = null
 		if e.has_passive("gem_crown") and not e.armor.has(true) and e.size() > 1:
 			e.set_armor(0)
@@ -827,9 +869,12 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 		"attack":
 			for h in m.get("hits", 1):
 				var dmg: float = floorf((m.n + e.dmg_bonus) * e.damage_mult())
+				var shield_before := player.shield
+				var aegis_before := player.aegis
 				var lost := player.take_attack(dmg)
+				var blocked := player.aegis < aegis_before or player.shield < shield_before
 				_log("%s attacks for %d." % [e.name, lost])
-				await anim.call({"type": "attack", "enemy": e, "n": lost})
+				await anim.call({"type": "attack", "enemy": e, "n": lost, "blocked": blocked})
 				var th := player.thorns_turn + player.passive("thorns")
 				if th > 0 and not player.ethereal:
 					e.remove_right(th)
@@ -920,6 +965,8 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 					e.elements.append(ch)
 				e.armor.resize(e.elements.size())
 				e.armor.fill(false)
+	if m.kind != "attack":
+		await anim.call({"type": "enemy_move", "enemy": e, "kind": m.kind, "move": m})
 	if m.has("also") and not over and not e.is_dead():
 		await _do_move(e, m.also)
 
