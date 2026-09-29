@@ -29,7 +29,7 @@ func _swap(c: Control) -> void:
 
 
 func show_menu() -> void:
-	Audio.play_music("music_menu")
+	Audio.play_music("menu")
 	var m := MenuScreen.new()
 	m.play.connect(start_run)
 	m.codex.connect(open_codex)
@@ -103,7 +103,7 @@ func start_run() -> void:
 
 
 func show_map() -> void:
-	Audio.play_music("music_map")
+	Audio.play_music("map")
 	var m := MapScreen.new()
 	m.setup(run)
 	m.node_chosen.connect(_on_node)
@@ -194,7 +194,7 @@ func _start_fight(ids: Array) -> void:
 	fs.setup(run, f)
 	fs.finished.connect(func(_won): _after_fight(f))
 	fs.menu_requested.connect(func(): run = null; show_menu())
-	Audio.play_music("music_boss" if run.current_kind() == "boss" else "music_fight")
+	Audio.play_music("boss" if run.current_kind() == "boss" else "fight")
 	_swap(fs)
 
 
