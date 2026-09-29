@@ -7,6 +7,7 @@ signal codex
 signal unlocks
 signal how_to
 signal tutorial
+signal settings
 
 
 func _ready() -> void:
@@ -31,7 +32,7 @@ func _ready() -> void:
 	v.add_child(gap)
 	var st: Dictionary = SaveManager.data.stats
 	var tut_label := "Tutorial" if SaveManager.setting("tutorial_done", false) else "Tutorial  (recommended)"
-	for pair in [["Play", play], [tut_label, tutorial], ["How to play · Wiki", how_to], ["Codex", codex], ["Unlocks  (✿ %d)" % SaveManager.data.seedlings, unlocks], ["Quit", null]]:
+	for pair in [["Play", play], [tut_label, tutorial], ["How to play · Wiki", how_to], ["Codex", codex], ["Unlocks  (✿ %d)" % SaveManager.data.seedlings, unlocks], ["Settings", settings], ["Quit", null]]:
 		var sig = pair[1]
 		var b := UiTheme.button(pair[0], func(): if sig == null: get_tree().quit() else: sig.emit(), 26)
 		b.custom_minimum_size = Vector2(360, 60)

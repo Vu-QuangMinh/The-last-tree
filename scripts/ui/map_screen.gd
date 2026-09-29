@@ -167,7 +167,9 @@ func _node_button(f: int, n: Dictionary, choices: Array) -> Control:
 		tw.tween_property(b, "scale", Vector2(1.12, 1.12), 0.55)
 		tw.tween_property(b, "scale", Vector2.ONE, 0.55)
 		var col: int = n.col
-		b.pressed.connect(func(): node_chosen.emit(col))
+		b.pressed.connect(func():
+			Audio.play("map_node_select")
+			node_chosen.emit(col))
 	return b
 
 

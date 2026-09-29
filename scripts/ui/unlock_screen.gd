@@ -59,6 +59,7 @@ func _refresh() -> void:
 			var cost := SaveManager.spell_cost(s)
 			var b := UiTheme.button("Unlock  ✿ %d" % cost, func():
 				if SaveManager.buy_spell(s):
+					Audio.play("discovery_unlock")
 					Events.toast.emit("%s unlocked" % s.name, UiTheme.ACCENT)
 				_refresh.call_deferred())
 			b.disabled = SaveManager.data.seedlings < cost
@@ -81,6 +82,7 @@ func _refresh() -> void:
 			else:
 				var b := UiTheme.button("Unlock  ✿ %d" % a.cost, func():
 					if SaveManager.buy_artifact(a.id):
+						Audio.play("artifact_get")
 						Events.toast.emit("%s unlocked" % a.name, UiTheme.ACCENT)
 					_refresh.call_deferred())
 				b.disabled = SaveManager.data.seedlings < a.cost
