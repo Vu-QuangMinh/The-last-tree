@@ -45,37 +45,25 @@ func _ready() -> void:
 	row.add_theme_constant_override("h_separation", 24)
 	row.add_theme_constant_override("v_separation", 18)
 	scroll.add_child(row)
-	# reward cards are shown larger: each sits scaled inside a holder of the scaled size
+	# reward cards are drawn larger (laid out big, not stretched, so they stay sharp)
 	var big := 1.35 if spells.size() <= 5 else 1.0
 	for i in spells.size():
 		var card := SpellCard.make(spells[i])
-		var holder := Control.new()
-		holder.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H) * big
-		card.position = Vector2.ZERO
-		card.size = Vector2(SpellCard.W, SpellCard.H)
-		card.scale = Vector2(big, big)
-		card.base_scale = big
-		holder.add_child(card)
+		card.zoom = big
 		var idx := i
 		card.clicked.connect(func(_c): chosen.emit(idx))
-		row.add_child(holder)
+		row.add_child(card)
 	for i in artifacts.size():
-		var a: Dictionary = artifacts[i]
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(340, 180)
-		var cursed: bool = a.get("pool", "") == "curse"
-		b.text = "%s %s\n%s\n\n%s" % ["☠" if cursed else "◆", a.name, "CURSED" if cursed else a.get("aspect", ""), a.desc]
-		if cursed:
-			b.add_theme_color_override("font_color", Color(1, 0.55, 0.5))
-			b.add_theme_color_override("font_hover_color", Color(1, 0.7, 0.65))
-		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		b.add_theme_font_size_override("font_size", 20)
-		b.focus_mode = Control.FOCUS_NONE
+		var card := ArtifactCard.make(artifacts[i])
 		var idx := i
-		b.pressed.connect(func(): chosen.emit(idx))
-		row.add_child(b)
+		card.clicked.connect(func(): chosen.emit(idx))
+		row.add_child(card)
 	if can_skip:
 		var skip := UiTheme.button("Skip", func(): chosen.emit(-1), 20)
 		skip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		skip.custom_minimum_size = Vector2(200, 48)
 		v.add_child(skip)
+	# the scroll area is as tall as the tallest card needs (cards with more to say are taller), up to a limit
+	await get_tree().process_frame
+	if is_instance_valid(row):
+		scroll.custom_minimum_size.y = minf(row.get_combined_minimum_size().y + 12, 700)

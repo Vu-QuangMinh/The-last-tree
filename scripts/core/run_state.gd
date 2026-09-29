@@ -3,7 +3,8 @@ extends RefCounted
 ## One run: 3 acts of branching maps. Pure logic (no autoloads) so the balance sim can drive it.
 
 const ACTS := 3
-const BASE_ACTIVE := 6
+const BASE_ACTIVE := 5
+const MAX_ACTIVE := 8
 const SEEDLINGS := {"fight": 3, "elite": 8, "boss": 20}
 const WIN_BONUS := 30
 const REST_HEAL := 0.3
@@ -12,7 +13,7 @@ const RARE_CHANCE := 0.3
 ## Amber: the run's money, spent at merchants and in some events.
 const START_AMBER := 30
 const AMBER := {"fight": [14, 22], "elite": [28, 38], "boss": [60, 60]}
-const PRICES := {"common": 45, "rare": 75, "legendary": 140, "artifact": 120, "upgrade": 60, "heal": 40}
+const PRICES := {"common": 45, "rare": 75, "legendary": 140, "artifact": 110, "artifact_rare": 170, "upgrade": 60, "heal": 40}
 ## What a "?" room turns out to be.
 const UNKNOWN_ODDS := {"fight": 0.15, "treasure": 0.08, "shop": 0.07}
 
@@ -35,6 +36,8 @@ var met: Array = []  # enemy ids met this run, oldest first
 var upgraded: Array = []  # spell ids upgraded at rests (their + version is used)
 var amber := START_AMBER
 var seen_events: Array = []
+var fused := {}  # id -> spell dict, for spells forged at campfires ("fused_1", ...)
+var _fuse_count := 0
 var over := false
 var won := false
 
@@ -53,7 +56,7 @@ func setup(p_db: SpellDB, p_unlocked_spells: Array, p_unlocked_artifacts: Array,
 	map = MapGen.generate(rng)
 
 
-## Active spell slots: 6, changed by artifacts (never by the chant length).
+## Active spell slots: 5, changed by artifacts (never by the chant length), at most 8.
 func active_slots() -> int:
 	var n := BASE_ACTIVE
 	for a in ["spell_satchel", "spell_pouch"]:
@@ -63,12 +66,12 @@ func active_slots() -> int:
 		n += 2
 	if "hungry_tome" in artifacts:
 		n -= 1
-	return n
+	return clampi(n, 3, MAX_ACTIVE)
 
 
 ## The spell as you have it this run (its + version once upgraded).
 func spell(id: String) -> Dictionary:
-	var s := db.get_spell(id)
+	var s: Dictionary = fused[id] if fused.has(id) else db.get_spell(id)
 	return SpellDB.upgrade(s) if id in upgraded else s
 
 
@@ -248,7 +251,65 @@ func rest() -> float:
 	return player.heal(player.max_hp * REST_HEAL)
 
 
-## Rest site, option 2: upgrade a spell for the rest of the run.
+# ------------------------------------------------------------------ fusing (campfires)
+
+## A spell can be fused if it isn't a Power and hasn't been fused already.
+func can_fuse(id: String) -> bool:
+	var s := spell(id)
+	return not s.is_empty() and not s.get("power", false) and not s.get("fused", false)
+
+
+func fusable() -> Array:
+	return spellbook.filter(func(id): return can_fuse(id))
+
+
+## Forge the fused spell from two spells (not yet committed):
+##   the longer spell keeps its whole pattern; the shorter spell loses one random element and goes on the end,
+##   so the new pattern is (longer + shorter - 1) elements long. It does everything both spells did.
+func fuse_preview(id_a: String, id_b: String) -> Dictionary:
+	var a := spell(id_a)
+	var b := spell(id_b)
+	if b.size > a.size:
+		var t := a
+		a = b
+		b = t
+	var tail: String = b.pattern
+	var cut := rng.randi() % tail.length()
+	tail = tail.substr(0, cut) + tail.substr(cut + 1)
+	var order := ["common", "rare", "legendary"]
+	var rarity: String = order[maxi(order.find(a.rarity), order.find(b.rarity))]
+	var effects: Array = a.effects.duplicate(true) + b.effects.duplicate(true)
+	var s := {
+		"id": "fused_%d" % (_fuse_count + 1), "name": "%s + %s" % [a.name, b.name],
+		"pattern": a.pattern + tail, "effects": effects, "rarity": rarity,
+		"flavor": "Forged at a campfire from %s and %s." % [a.name, b.name],
+		"fused": true, "fused_from": [a.name, b.name], "dropped": b.pattern[cut],
+	}
+	s.size = s.pattern.length()
+	s.rarity_name = SpellDB.RARITY_NAMES[rarity]
+	s.power = false
+	s.starter = false
+	s.upgraded = false
+	s.kind = SpellDB.kind_of(effects)
+	s.targeted = SpellDB._needs_target(effects)
+	return s
+
+
+## Use up the two spells and add the fused one (into the active row if either of them was there).
+func fuse_commit(new_spell: Dictionary, id_a: String, id_b: String) -> void:
+	_fuse_count += 1
+	var was_active := id_a in loadout or id_b in loadout
+	for id in [id_a, id_b]:
+		spellbook.erase(id)
+		loadout.erase(id)
+		upgraded.erase(id)
+	fused[new_spell.id] = new_spell
+	spellbook.append(new_spell.id)
+	if was_active and loadout.size() < active_slots():
+		loadout.append(new_spell.id)
+
+
+## Rest site, option 2 (the merchant's study session and some events): upgrade a spell for the rest of the run.
 func upgrade_spell(id: String) -> void:
 	if id in spellbook and not (id in upgraded):
 		upgraded.append(id)
@@ -360,7 +421,7 @@ func shop_stock() -> Array:
 		seen[s.id] = true
 		items.append({"kind": "spell", "spell": s, "price": PRICES[s.rarity]})
 	for a in artifact_offer(2):
-		items.append({"kind": "artifact", "artifact": a, "price": PRICES.artifact})
+		items.append({"kind": "artifact", "artifact": a, "price": PRICES.artifact_rare if a.tier == "rare" else PRICES.artifact})
 	items.append({"kind": "upgrade", "price": PRICES.upgrade})
 	items.append({"kind": "heal", "price": PRICES.heal})
 	return items

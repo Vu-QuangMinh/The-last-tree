@@ -281,7 +281,6 @@
    "id": "gust",
    "name": "Gust",
    "pattern": "AF",
-   "starter": true,
    "effects": [
     {
      "op": "pluck",
@@ -479,7 +478,7 @@
   {
    "id": "inferno",
    "name": "Inferno",
-   "pattern": "FFF",
+   "pattern": "F?F",
    "effects": [
     {
      "op": "strike",
@@ -512,14 +511,13 @@
    "effects": [
     {
      "op": "draw",
-     "n": 3,
+     "n": 2,
      "when": "next",
      "el": "random"
     },
     {
-     "op": "move",
-     "n": 2,
-     "target": "target"
+     "op": "rearrange",
+     "n": 1
     }
    ],
    "flavor": "The storm brings more, and moves what it touches.",
@@ -528,22 +526,16 @@
   {
    "id": "thermal_burst",
    "name": "Thermal Burst",
-   "pattern": "FWF",
+   "pattern": "FFWF",
    "effects": [
     {
      "op": "strike",
      "from": "left",
      "n": 2,
-     "target": "target"
-    },
-    {
-     "op": "strike",
-     "from": "right",
-     "n": 2,
-     "target": "target"
+     "target": "two"
     }
    ],
-   "flavor": "Both ends explode.",
+   "flavor": "Steam bursts two ways at once.",
    "rarity": "rare"
   },
   {
@@ -567,7 +559,7 @@
   {
    "id": "firestorm",
    "name": "Firestorm",
-   "pattern": "AFA",
+   "pattern": "AF?FA",
    "effects": [
     {
      "op": "burn",
@@ -798,7 +790,7 @@
      "target": "all"
     }
    ],
-   "flavor": "Knock the front off everything.",
+   "flavor": "Knock the leftmost off everything.",
    "rarity": "legendary"
   },
   {
@@ -1007,7 +999,7 @@
      "target": "target"
     }
    ],
-   "flavor": "Pull its first element into your hand.",
+   "flavor": "Pull its leftmost element into your hand.",
    "rarity": "rare"
   },
   {
@@ -1130,7 +1122,7 @@
      "target": "target"
     }
    ],
-   "flavor": "Plant water at its front, then chant it away.",
+   "flavor": "Plant water at its leftmost end, then chant it away.",
    "rarity": "common"
   },
   {
@@ -1376,7 +1368,7 @@
   },
   {
    "id": "leech",
-   "name": "Leech",
+   "name": "Absorb",
    "pattern": "FAW",
    "effects": [
     {
@@ -1387,10 +1379,11 @@
     },
     {
      "op": "heal",
-     "n": 4
+     "n": 5,
+     "if_kill": true
     }
    ],
-   "flavor": "Take a piece of it, feel better.",
+   "flavor": "Take the last of it, and feel much better.",
    "rarity": "rare"
   },
   {
@@ -1405,7 +1398,7 @@
      "target": "target"
     }
    ],
-   "flavor": "Its first two elements become Fire.",
+   "flavor": "Its two leftmost elements become Fire.",
    "rarity": "rare"
   },
   {
@@ -1419,7 +1412,7 @@
      "target": "target"
     }
    ],
-   "flavor": "Pull its first two elements into your hand.",
+   "flavor": "Pull its two leftmost elements into your hand.",
    "rarity": "rare"
   },
   {
@@ -1651,6 +1644,55 @@
    ],
    "flavor": "Two more pages fall open.",
    "rarity": "legendary"
+  },
+  {
+   "id": "tide_thief",
+   "name": "Tide Thief",
+   "pattern": "WAW",
+   "rarity": "rare",
+   "effects": [
+    {
+     "op": "steal",
+     "n": 1,
+     "el": "any",
+     "target": "target"
+    }
+   ],
+   "flavor": "The current takes what it likes and brings it to you."
+  },
+  {
+   "id": "sirens_call",
+   "name": "Siren's Call",
+   "pattern": "WWF",
+   "rarity": "rare",
+   "effects": [
+    {
+     "op": "steal",
+     "n": 2,
+     "el": "F",
+     "target": "target"
+    }
+   ],
+   "flavor": "A song so sweet the fire walks into the water."
+  },
+  {
+   "id": "maelstrom_grasp",
+   "name": "Maelstrom Grasp",
+   "pattern": "WWAWW",
+   "rarity": "legendary",
+   "effects": [
+    {
+     "op": "steal",
+     "n": 2,
+     "el": "any",
+     "target": "target"
+    },
+    {
+     "op": "shield",
+     "n": 4
+    }
+   ],
+   "flavor": "The whirlpool swallows their strength and spits it out at your feet."
   }
  ]
 }

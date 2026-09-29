@@ -128,6 +128,7 @@ func refresh(preview: Dictionary) -> void:
 		var hidden: bool = mask.size() > i and mask[i]
 		var icon := ElementIcon.make("?" if hidden else e.elements[i], px)
 		icon.armored = e.armor[i]
+		icon.burning = e.is_lit(i)
 		icon.ghost = ghosts.has(i)
 		if move_mode:
 			icon.highlight = i == move_pick
@@ -169,7 +170,7 @@ func _tooltip() -> String:
 	var e := enemy
 	var title := e.name + (" (Boss)" if e.is_boss else (" (Elite)" if e.is_elite else ""))
 	var lines := []
-	lines.append("HP: %d elements" % e.size())
+	lines.append("Essence: %d elements" % e.size())
 	for s in e.describe_statuses():
 		lines.append("• " + s)
 	for p in e.def.get("passives", []):
@@ -180,6 +181,8 @@ func _tooltip() -> String:
 
 
 func _make_custom_tooltip(for_text: String) -> Object:
+	if for_text.strip_edges() == "":
+		return null  # no text (e.g. its tooltip is pinned): no hover tooltip at all
 	return Keywords.make_tooltip(for_text)
 
 

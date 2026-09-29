@@ -58,13 +58,13 @@ static func get_theme() -> Theme:
 	tip.border_color = ACCENT.darkened(0.2)
 	tip.set_border_width_all(2)
 	tip.set_corner_radius_all(8)
-	tip.content_margin_left = 12
-	tip.content_margin_right = 12
-	tip.content_margin_top = 8
-	tip.content_margin_bottom = 8
+	tip.content_margin_left = 18
+	tip.content_margin_right = 18
+	tip.content_margin_top = 14
+	tip.content_margin_bottom = 14
 	t.set_stylebox("panel", "TooltipPanel", tip)
 	t.set_color("font_color", "TooltipLabel", TEXT)
-	t.set_font_size("font_size", "TooltipLabel", 16)
+	t.set_font_size("font_size", "TooltipLabel", 21)
 	t.set_color("font_hover_color", "Button", Color.WHITE)
 	t.set_color("font_disabled_color", "Button", Color(0.45, 0.48, 0.45))
 	_theme = t

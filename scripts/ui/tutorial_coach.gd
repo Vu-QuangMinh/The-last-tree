@@ -9,6 +9,7 @@ signal tapped
 var focus := Callable()  # func() -> Rect2 (global); an empty rect means no spotlight
 var tap_mode := true
 var _t := 0.0
+var _nudge := 0.0  # wiggle time left
 var _bubble: PanelContainer
 var _text: RichTextLabel
 var _hint: Label
@@ -90,6 +91,12 @@ func show_step(text: String, p_focus: Callable, p_tap: bool, progress := "") -> 
 	tw.tween_property(_bubble, "modulate:a", 1.0, 0.2)
 
 
+## Draw attention back to Sprout: the bubble wiggles and the spotlight flares.
+func nudge() -> void:
+	_nudge = 0.45
+	_t = 0.0
+
+
 func _rect() -> Rect2:
 	if focus.is_valid():
 		var r = focus.call()
@@ -132,6 +139,9 @@ func _process(d: float) -> void:
 		else:
 			by = minf(vs.y - bs.y - 20, r.end.y + 90)
 	by = clampf(by, 20.0, vs.y - maxf(bs.y, _bubble.size.y) - 20.0)
+	if _nudge > 0.0:
+		_nudge -= d
+		bx += sin(_nudge * 55.0) * 14.0 * (_nudge / 0.45)
 	_bubble.position = Vector2(bx, by)
 	_bubble.reset_size()
 	_hand.visible = r.size != Vector2.ZERO

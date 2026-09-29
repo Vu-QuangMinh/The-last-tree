@@ -1,6 +1,6 @@
 class_name CodexScreen
 extends Control
-## Every enemy. Ones you've defeated show their HP, passives and full move list; the rest are silhouettes.
+## Every enemy. Ones you've defeated show their Essence, passives and full move list; the rest are silhouettes.
 
 signal closed
 
@@ -85,7 +85,7 @@ func _entry(id: String) -> Control:
 		lines.append(EnemyDefs.PASSIVE_TEXT[ps])
 	lines.append("Moves: " + " → ".join(d.moves.map(func(m): return EnemyDefs.describe_move(m))))
 	if d.has("moves2"):
-		lines.append("Below half HP: " + " → ".join(d.moves2.map(func(m): return EnemyDefs.describe_move(m))))
+		lines.append("Below half Essence: " + " → ".join(d.moves2.map(func(m): return EnemyDefs.describe_move(m))))
 	lines.append("\"%s\"" % d.get("flavor", ""))
 	var t := UiTheme.label("\n".join(lines), 15, UiTheme.MUTED)
 	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

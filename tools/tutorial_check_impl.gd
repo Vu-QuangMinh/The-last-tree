@@ -32,6 +32,24 @@ func run(t: SceneTree, p_out: String) -> void:
 			var img := tree.root.get_texture().get_image()
 			img.save_png("%s/step_%02d.png" % [out, n])
 			print("step %02d: %s -> %s" % [n, step.then, step.say.left(70)])
+			if n == 12:
+				# a lost player: six clicks on empty space in quick succession
+				for k in 6:
+					var ev := InputEventMouseButton.new()
+					ev.button_index = MOUSE_BUTTON_LEFT
+					ev.pressed = true
+					ev.position = Vector2(120, 420)
+					ev.global_position = ev.position
+					tree.root.push_input(ev)
+					await tree.process_frame
+				for k in 20:
+					await tree.process_frame
+				tree.root.get_texture().get_image().save_png("%s/help_frantic.png" % out)
+			if step.then == "turn":
+				for k in 8:
+					for f in 14:
+						await tree.process_frame
+					tree.root.get_texture().get_image().save_png("%s/turnfx_%d.png" % [out, k])
 		stall += 1
 		var fs: FightScreen = tut.fs
 		var then: String = step.then

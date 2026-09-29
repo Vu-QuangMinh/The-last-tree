@@ -1,7 +1,8 @@
 class_name EnemyState
 extends RefCounted
 ## One enemy in a fight. HP is a row of elements (left to right); `armor[i]` marks elements
-## that can't be removed this turn (they still count for matching).
+## that can't be removed this turn (they still count for matching); `lit[i]` marks elements set on fire by
+## Burn, which are removed at the start of the player's next turn.
 
 var def: Dictionary
 var id := ""
@@ -9,7 +10,13 @@ var name := ""
 var elements: Array = []  # element letters
 var armor: Array = []  # bool per element
 var dmg_bonus := 0
-var burn := 0
+var lit: Array = []  # bool per element: on fire (Burn)
+## How many of its elements are burning. Setting it lights more (at random), never puts any out.
+var burn: int:
+	get:
+		return lit.count(true)
+	set(value):
+		ignite(value - lit.count(true))
 var poison := 0
 var weak_turns := 0
 var weak25 := false  # Stillness (permanent)
@@ -40,6 +47,8 @@ func setup(p_def: Dictionary, extra: Array = []) -> void:
 	elements.append_array(extra)
 	armor.resize(elements.size())
 	armor.fill(false)
+	lit.clear()
+	_fix_lit()
 	is_boss = def.get("boss", false)
 	is_elite = def.get("elite", false)
 
@@ -56,6 +65,44 @@ func hp_text() -> String:
 	return "".join(elements)
 
 
+func is_lit(i: int) -> bool:
+	return i >= 0 and i < lit.size() and lit[i] == true
+
+
+## Keeps `lit` the same length as `elements` (anything new starts unlit).
+func _fix_lit() -> void:
+	while lit.size() < elements.size():
+		lit.append(false)
+	if lit.size() > elements.size():
+		lit.resize(elements.size())
+
+
+## Burn: set n random unlit elements on fire. Returns how many caught.
+func ignite(n: int, rng: RandomNumberGenerator = null) -> int:
+	_fix_lit()
+	var free := []
+	for i in elements.size():
+		if not lit[i]:
+			free.append(i)
+	var lighted := 0
+	while lighted < n and not free.is_empty():
+		var k := (rng.randi() if rng else randi()) % free.size()
+		lit[free[k]] = true
+		free.remove_at(k)
+		lighted += 1
+	return lighted
+
+
+## Start of the player's turn: every burning element is removed (armour doesn't stop fire).
+func burn_off() -> Array:
+	_fix_lit()
+	var removed := []
+	for i in range(elements.size() - 1, -1, -1):
+		if lit[i]:
+			removed.push_front(_remove_at(i))
+	return removed
+
+
 func has_passive(p: String) -> bool:
 	return p in def.get("passives", [])
 
@@ -63,9 +110,11 @@ func has_passive(p: String) -> bool:
 # ------------------------------------------------------------------ removal (armour-aware)
 
 func _remove_at(i: int) -> String:
+	_fix_lit()
 	var el: String = elements[i]
 	elements.remove_at(i)
 	armor.remove_at(i)
+	lit.remove_at(i)
 	return el
 
 
@@ -126,14 +175,18 @@ func purge(el: String, n: int) -> Array:
 
 func rotate_left() -> void:
 	if elements.size() > 1:
+		_fix_lit()
 		elements.append(elements.pop_front())
 		armor.append(armor.pop_front())
+		lit.append(lit.pop_front())
 
 
 func rotate_right() -> void:
 	if elements.size() > 1:
+		_fix_lit()
 		elements.push_front(elements.pop_back())
 		armor.push_front(armor.pop_back())
+		lit.push_front(lit.pop_back())
 
 
 func swap_first_two() -> void:
@@ -144,6 +197,10 @@ func swap_first_two() -> void:
 		var a: bool = armor[0]
 		armor[0] = armor[1]
 		armor[1] = a
+		_fix_lit()
+		var l: bool = lit[0]
+		lit[0] = lit[1]
+		lit[1] = l
 
 
 func convert(pos: String, to: String, from := "") -> void:
@@ -167,26 +224,34 @@ func convert(pos: String, to: String, from := "") -> void:
 func move_element(from: int, to: int) -> void:
 	if from < 0 or from >= elements.size():
 		return
+	_fix_lit()
 	var el: String = elements[from]
 	var ar: bool = armor[from]
+	var li: bool = lit[from]
 	elements.remove_at(from)
 	armor.remove_at(from)
+	lit.remove_at(from)
 	to = clampi(to, 0, elements.size())
 	elements.insert(to, el)
 	armor.insert(to, ar)
+	lit.insert(to, li)
 
 
 func insert_front(el: String) -> void:
+	_fix_lit()
 	elements.push_front(el)
 	armor.push_front(false)
+	lit.push_front(false)
 
 
 ## Mend / steal: add an element at the end (blocked by Cauterize for mending).
 func append(el: String, is_mend := true) -> bool:
 	if is_mend and no_mend:
 		return false
+	_fix_lit()
 	elements.append(el)
 	armor.append(false)
+	lit.append(false)
 	return true
 
 
@@ -212,14 +277,12 @@ func damage_mult() -> float:
 	return m
 
 
-## Start of the enemy's turn: armour from last turn fades, then Burn and Poison bite.
+## Start of the enemy's turn: armour from last turn fades, then Poison bites. (Burn bites at the start of
+## the player's turn instead: see burn_off.)
 func begin_turn() -> Dictionary:
 	armor.fill(false)
 	ethereal = false
 	var out := {"burn": [], "poison": []}
-	if burn > 0:
-		out.burn = remove_left(1)
-		burn -= 1
 	if poison > 0 and not is_dead():
 		out.poison = remove_right(1)
 		poison -= 1
@@ -237,9 +300,9 @@ func end_turn() -> void:
 func describe_statuses() -> Array:
 	var out := []
 	if burn > 0:
-		out.append("Burn %d (loses its first element each turn)" % burn)
+		out.append("Burning %d (removed at the start of your turn)" % burn)
 	if poison > 0:
-		out.append("Poison %d (loses its last element each turn)" % poison)
+		out.append("Poison %d (loses its rightmost Essence each turn)" % poison)
 	if weak_turns > 0:
 		out.append("Weakened %d turn%s (deals 50%% less)" % [weak_turns, "" if weak_turns == 1 else "s"])
 	if weak25:

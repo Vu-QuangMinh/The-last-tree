@@ -8,6 +8,7 @@ var ghost := false  # will be removed by the current chant (preview)
 var temp := false  # conjured: fades at end of turn
 var frozen := false
 var hexed := false
+var burning := false  # set on fire by Burn: flickering flames around it
 var highlight := false
 var dim := false
 
@@ -22,6 +23,11 @@ static func make(p_el: String, px := 40.0) -> ElementIcon:
 
 func refresh() -> void:
 	queue_redraw()
+
+
+func _process(_d: float) -> void:
+	if burning:
+		queue_redraw()  # the flames flicker
 
 
 func _draw() -> void:
@@ -67,6 +73,17 @@ func _draw() -> void:
 		for k in 3:
 			var d := Vector2.from_angle(k * PI / 3.0) * r * 0.7
 			draw_line(c - d, c + d, Color(1, 1, 1, 0.95), 2.0)
+	if burning:
+		# a flickering ring of fire, and flame tongues licking up around the top
+		var t := Time.get_ticks_msec() / 1000.0
+		draw_arc(c, r + 1.5, 0, TAU, 32, Color(1.0, 0.45, 0.1, 0.95), 3.0)
+		for k in 5:
+			var ang := -PI / 2.0 + (k - 2) * 0.5
+			var h := r * (0.45 + 0.18 * sin(t * 11.0 + k * 1.9))
+			var base := c + Vector2.from_angle(ang) * (r - 1.0)
+			var tip := c + Vector2.from_angle(ang) * (r + h)
+			var side := Vector2.from_angle(ang + PI / 2.0) * r * 0.18
+			draw_colored_polygon(PackedVector2Array([base - side, tip, base + side]), Color(1.0, 0.55 + 0.25 * sin(t * 9.0 + k), 0.1, 0.95))
 	if hexed:
 		draw_arc(c, r + 1.0, 0, TAU, 32, Color(0.75, 0.3, 0.95), 3.0)
 		draw_circle(c + Vector2(-r * 0.62, -r * 0.62), r * 0.22, Color(0.75, 0.3, 0.95))

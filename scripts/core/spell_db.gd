@@ -4,11 +4,11 @@ extends RefCounted
 ## Rarity (common / rare / legendary) is set per spell in the JSON.
 
 const RARITY_NAMES := {"common": "Common", "rare": "Rare", "legendary": "Legendary"}
-const TARGETED_OPS := ["pluck", "move", "redirect", "strike", "burn", "poison", "weak", "freeze", "expose", "ethereal", "rotate", "swap",
+const TARGETED_OPS := ["steal", "pluck", "move", "redirect", "strike", "burn", "poison", "weak", "freeze", "expose", "ethereal", "rotate", "swap",
 	"convert", "purge", "shatter", "stoke", "siphon", "execute", "insert", "curse"]
 
 ## Every spell is in one of three categories: Offensive, Defensive, Utility (reward offers, card colour and tag).
-const DAMAGE_OPS := ["pluck", "strike", "burn", "poison", "purge", "execute", "siphon", "amplify", "echo", "stoke", "expose"]
+const DAMAGE_OPS := ["steal", "pluck", "strike", "burn", "poison", "purge", "execute", "siphon", "amplify", "echo", "stoke", "expose"]
 const DEFENSE_OPS := ["shield", "heal", "aegis", "thorns", "weak", "freeze", "cleanse", "redirect"]
 const DAMAGE_KEYS := ["burn_bonus", "strike_poison", "strike_burn", "strike_bonus", "exposed"]
 const DEFENSE_KEYS := ["thorns", "weak25"]
@@ -53,7 +53,7 @@ static func kind_of(effects: Array) -> String:
 ## True if any effect asks the player to pick one enemy.
 static func _needs_target(effects: Array) -> bool:
 	for e in effects:
-		if e.op in TARGETED_OPS and e.get("target", "") == "target":
+		if e.op in TARGETED_OPS and e.get("target", "") in ["target", "two"]:
 			return true
 		if e.op == "each_turn" and _needs_target(e.effects):
 			return true
@@ -78,7 +78,7 @@ static func upgrade(spell: Dictionary) -> Dictionary:
 			if x.op in ["shield", "heal"]:
 				x.n += 2
 				improved = true
-			elif x.op in ["strike", "burn", "poison", "purge", "siphon", "move", "pluck", "draw", "thorns", "amplify", "retain", "passive", "summon_spells"] and x.has("n"):
+			elif x.op in ["steal", "strike", "burn", "poison", "purge", "siphon", "move", "pluck", "draw", "thorns", "amplify", "retain", "passive", "summon_spells"] and x.has("n"):
 				x.n += 1
 				improved = true
 			elif x.op in ["weak", "freeze", "expose"]:

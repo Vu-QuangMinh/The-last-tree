@@ -66,6 +66,86 @@ func open_wiki() -> void:
 	overlay_layer.add_child(w)
 
 
+# ------------------------------------------------------------------ pinned tooltips
+
+var _pinned: CanvasLayer
+var _pinned_owner: Control  # its hover tooltip is off while pinned
+var _pinned_text := ""
+
+
+## Right-click pins whatever tooltip is under the mouse; any click closes it again.
+func _input(ev: InputEvent) -> void:
+	if not (ev is InputEventMouseButton) or not ev.pressed:
+		return
+	if is_instance_valid(_pinned):
+		_pinned.queue_free()
+		_pinned = null
+		if is_instance_valid(_pinned_owner):
+			_pinned_owner.remove_meta("tip_pinned")
+			# keyword text sets its own tooltip per hovered keyword, so it starts clean
+			_pinned_owner.tooltip_text = "" if _pinned_owner is KeywordText else _pinned_text
+		_pinned_owner = null
+		if ev.button_index == MOUSE_BUTTON_RIGHT:
+			get_viewport().set_input_as_handled()
+			return
+	if ev.button_index != MOUSE_BUTTON_RIGHT or _right_click_busy():
+		return
+	var c := get_viewport().gui_get_hovered_control()
+	while c != null and c.tooltip_text == "":
+		c = c.get_parent() as Control
+	if c == null:
+		return
+	var content = c.call("_make_custom_tooltip", c.tooltip_text) if c.has_method("_make_custom_tooltip") else null
+	if not (content is Control):
+		content = Keywords.make_tooltip(Keywords.colorize(c.tooltip_text))
+	_pin_tooltip(content)
+	_pinned_owner = c
+	_pinned_text = c.tooltip_text
+	c.tooltip_text = ""
+	c.set_meta("tip_pinned", true)  # keyword text checks this so hovering doesn't reopen its tooltip
+	# close the hover tooltip that may already be showing: nudge the mouse so the viewport re-checks
+	var m := get_viewport().get_mouse_position()
+	get_viewport().warp_mouse(m + Vector2(1, 0))
+	get_viewport().warp_mouse(m)
+	get_viewport().set_input_as_handled()
+
+
+## In a fight, right-click also means "put the spell back" / "skip": don't pin then.
+func _right_click_busy() -> bool:
+	var fs: FightScreen = null
+	if current is FightScreen:
+		fs = current
+	elif current is TutorialScreen:
+		fs = current.fs
+	return fs != null and is_instance_valid(fs) and (fs.aiming or fs.move_view != null or fs.pick_view != null or fs.chant_mode != "")
+
+
+func _pin_tooltip(content: Control) -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 30
+	var p := PanelContainer.new()
+	p.theme = UiTheme.get_theme()  # its layer is outside every screen: use the game's font, not Godot's default
+	p.add_theme_stylebox_override("panel", UiTheme.get_theme().get_stylebox("panel", "TooltipPanel"))
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var v := VBoxContainer.new()
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(v)
+	v.add_child(content)
+	var hint := UiTheme.label("📌 Pinned · click anywhere to close", 15, UiTheme.MUTED)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	v.add_child(hint)
+	layer.add_child(p)
+	add_child(layer)
+	_pinned = layer
+	var at := get_viewport().get_mouse_position()
+	p.position = at + Vector2(18, 18)
+	await get_tree().process_frame
+	if not is_instance_valid(p):
+		return
+	var vs := get_viewport().get_visible_rect().size
+	p.position = Vector2(clampf(at.x + 18, 10, vs.x - p.size.x - 10), clampf(at.y + 18, 10, vs.y - p.size.y - 10))
+
+
 func _unhandled_input(ev: InputEvent) -> void:
 	if ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_F1:
 		open_wiki()
@@ -95,7 +175,7 @@ func _message(title: String, body: String, buttons: Array, col := Color.WHITE) -
 func start_run() -> void:
 	run = RunState.new()
 	run.setup(GameData.db, SaveManager.unlocked_spells(), SaveManager.unlocked_artifacts())
-	var offer := Artifacts.offer(Artifacts.ALL.filter(func(a): return a.starter).map(func(a): return a.id), [], run.rng, 3)
+	var offer := Artifacts.keepsakes(run.rng, 3)
 	var ch := _choice("Choose a keepsake", "It stays with you for the whole run.", [], offer, false)
 	ch.chosen.connect(func(i):
 		run.gain_artifact(offer[i].id)
@@ -171,7 +251,7 @@ func _show_shop(stock: Array) -> void:
 	sh.leave.connect(show_map)
 	sh.upgrade_requested.connect(func():
 		var ids := run.upgradable()
-		var ups := ids.map(func(id): return SpellDB.upgrade(run.db.get_spell(id)))
+		var ups := ids.map(func(id): return SpellDB.upgrade(run.spell(id)))
 		var ch := _choice("Upgrade a spell", "Its + version replaces it for the rest of the run.", ups, [], false)
 		ch.chosen.connect(func(k):
 			if k >= 0:
@@ -198,31 +278,25 @@ func _start_fight(ids: Array) -> void:
 	_swap(fs)
 
 
-## Rest site: heal, or upgrade one spell for the rest of the run.
+## Campfire: rest to heal, or fuse two spells into one.
 func _show_rest() -> void:
 	var heal := int(run.player.max_hp * RunState.REST_HEAL)
-	var s := _message("A quiet clearing", "Rest (heal %d HP, you have %d / %d), or spend the time studying one of your spells." % [heal, run.player.hp, run.player.max_hp], ["Rest  (+%d HP)" % heal, "Upgrade a spell"], Color(0.6, 1, 0.6))
+	var can_fuse := run.fusable().size() >= 2
+	var s := _message("A campfire", "Rest (heal %d HP, you have %d / %d), or Fuse two of your spells into one stronger spell." % [heal, run.player.hp, run.player.max_hp], ["Rest  (+%d HP)" % heal, "Fuse two spells"], Color(1, 0.75, 0.45))
+	s.disabled = [false, not can_fuse]
 	s.pressed.connect(func(i):
 		if i == 0:
 			run.rest()
 			Audio.play("rest_heal")
 			show_map()
 			return
-		var ids := run.upgradable()
-		if ids.is_empty():
-			run.rest()
-			Audio.play("rest_heal")
-			show_map()
-			return
-		var ups := ids.map(func(id): return SpellDB.upgrade(run.db.get_spell(id)))
-		var ch := _choice("Upgrade a spell", "Its + version replaces it for the rest of the run.", ups, [], true)
-		ch.chosen.connect(func(k):
-			if k >= 0:
-				run.upgrade_spell(ids[k])
-				Events.toast.emit("%s upgraded" % ups[k].name, UiTheme.ACCENT)
-			else:
-				run.rest()
-			show_map()))
+		var fs := FuseScreen.new()
+		fs.setup(run)
+		fs.back.connect(_show_rest)
+		fs.fused.connect(func(sp):
+			Events.toast.emit("Forged %s" % sp.name, Color(1, 0.8, 0.5))
+			show_map())
+		_swap(fs))
 
 
 ## Rewards: normal fights 3 cards (70% common, 30% rare); elites 3 rares and an artifact;
@@ -261,7 +335,7 @@ func _after_fight(f: Fight) -> void:
 		var relics := run.boss_relic_offer()
 		if not relics.is_empty():
 			steps.append(func(go):
-				var ch := _choice("Heart of the boss", "A relic that gives you more elements every turn.", [], relics, false)
+				var ch := _choice("Legendary relic", "Only bosses drop these: more elements every turn, or more spell slots.", [], relics, false)
 				ch.chosen.connect(func(i):
 					run.gain_artifact(relics[i].id)
 					go.call()))
