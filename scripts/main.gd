@@ -81,7 +81,9 @@ func _input(ev: InputEvent) -> void:
 		_pinned.queue_free()
 		_pinned = null
 		if is_instance_valid(_pinned_owner):
-			_pinned_owner.tooltip_text = _pinned_text
+			_pinned_owner.remove_meta("tip_pinned")
+			# keyword text sets its own tooltip per hovered keyword, so it starts clean
+			_pinned_owner.tooltip_text = "" if _pinned_owner is KeywordText else _pinned_text
 		_pinned_owner = null
 		if ev.button_index == MOUSE_BUTTON_RIGHT:
 			get_viewport().set_input_as_handled()
@@ -100,6 +102,7 @@ func _input(ev: InputEvent) -> void:
 	_pinned_owner = c
 	_pinned_text = c.tooltip_text
 	c.tooltip_text = ""
+	c.set_meta("tip_pinned", true)  # keyword text checks this so hovering doesn't reopen its tooltip
 	# close the hover tooltip that may already be showing: nudge the mouse so the viewport re-checks
 	var m := get_viewport().get_mouse_position()
 	get_viewport().warp_mouse(m + Vector2(1, 0))

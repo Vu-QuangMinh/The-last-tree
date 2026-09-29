@@ -50,7 +50,7 @@ const ALL := [
 	# ---- cursed: strong, with a price
 	{"id": "blood_pact", "name": "Blood Pact", "aspect": "Cursed", "desc": "+1 element every turn. CURSE: −12 max HP.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "🩸"},
 	{"id": "broken_crown", "name": "Broken Crown", "aspect": "Cursed", "desc": "+2 active spell slots (up to the max of 8). CURSE: start every fight with 2 fewer elements.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "👑"},
-	{"id": "glass_heart", "name": "Glass Heart", "aspect": "Cursed", "desc": "Your Release deals 1 extra damage to every enemy it hits. CURSE: you take 25% more damage.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "💔"},
+	{"id": "glass_heart", "name": "Glass Heart", "aspect": "Cursed", "desc": "Every enemy your Release hits also loses its rightmost Essence. CURSE: you take 25% more damage.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "💔"},
 	{"id": "hungry_tome", "name": "Hungry Tome", "aspect": "Cursed", "desc": "Every spell can trigger 1 more time per turn. CURSE: −1 active spell slot.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "📕"},
 	{"id": "withered_idol", "name": "Withered Idol", "aspect": "Cursed", "desc": "+1 element every turn and heal 6 after every fight. CURSE: enemies hit 1 harder.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "🗿"},
 ]

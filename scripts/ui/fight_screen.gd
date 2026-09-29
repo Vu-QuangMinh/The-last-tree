@@ -795,8 +795,6 @@ func _on_cast() -> void:
 	if fight.over:
 		await _finish()
 	elif not fight.has_valid_move() and auto_release:
-		if fight.used.is_empty():
-			_banner("No spell matched", UiTheme.MUTED, 0.6)
 		await _wait(0.5)
 		await _damage_step()
 
@@ -920,7 +918,6 @@ func _after_turn() -> void:
 	if fight.over:
 		await _finish()
 	else:
-		_banner("Your turn", Color(0.9, 0.95, 0.8), 0.7)
 		tut.emit("turn_start", fight.turn)
 
 
@@ -933,13 +930,16 @@ func _charge_count() -> int:
 
 func _finish() -> void:
 	busy = true
-	_banner("Victory!" if fight.won else "The last tree falls…", Color(0.6, 1, 0.5) if fight.won else UiTheme.DANGER)
-	await get_tree().create_timer(1.0).timeout
-	if fight.won and fight.player.damage_taken <= 0.0:
-		await _slam("Perfect!", Color(0.55, 1.0, 0.75), Color(0.0, 0.3, 0.2), 150)
+	if fight.won:
+		await get_tree().create_timer(0.3).timeout
+		if fight.player.damage_taken <= 0.0:
+			await _slam("Perfect Victory!", Color(0.55, 1.0, 0.75), Color(0.0, 0.3, 0.2), 120)
+		else:
+			await _slam("Victory!", Color(0.75, 1.0, 0.5), Color(0.1, 0.28, 0.05), 140)
 		await get_tree().create_timer(0.5).timeout
 	else:
-		await get_tree().create_timer(0.4).timeout
+		_banner("The last tree falls…", UiTheme.DANGER, 1.6)
+		await get_tree().create_timer(1.6).timeout
 	finished.emit(fight.won)
 
 
@@ -1317,7 +1317,6 @@ func _anim(ev: Dictionary) -> void:
 					card.refresh()
 			await _wake_fx(hits, false)
 			_refresh_all()
-			_banner("Your spells come alive!", Color(1, 0.9, 0.55), 0.6)
 			await _wait(0.3)
 		"extension":
 			# the chant changed and woke more spells: the same flight (all at once), then an "Extension!" slam each.
@@ -1332,15 +1331,13 @@ func _anim(ev: Dictionary) -> void:
 			_refresh_all()
 		"spell":
 			Audio.play("spell_glow")
-			# the card lifts and glows, and says what it does
+			# the card lifts and glows (its text is right there on the card)
 			var card := _card_for(ev.spell.id)
 			if card:
 				var tw := card.create_tween()
 				tw.tween_property(card, "modulate", Color(1.5, 1.4, 1.1), 0.12)
 				tw.tween_property(card, "modulate", Color.WHITE, 0.4)
-			var at := (card.global_position + Vector2(card.size.x * card.scale.x / 2.0, -20)) if card else Vector2(960, 480)
-			_callout("[b]%s[/b]\n%s" % [ev.spell.name, Keywords.colorize(SpellText.card_text(ev.spell))], at, GameData.spell_color(ev.spell.pattern), 1.1)
-			await _wait(0.55)
+			await _wait(0.4)
 		"spell_effect":
 			await _spell_fly(ev)
 		"effect":
@@ -1365,7 +1362,6 @@ func _anim(ev: Dictionary) -> void:
 			var v: EnemyView = _views.get(ev.enemy)
 			if v:
 				v.hit_flash()
-				_float_text("Poison", v.global_position + Vector2(90, 200), Color(0.6, 0.95, 0.4))
 			if ev.get("burn", false):
 				Audio.play("sfx_burn_tick")
 			if ev.get("poison", false):
@@ -1738,7 +1734,7 @@ func _enemy_turn_start(ev: Dictionary) -> void:
 	tw.tween_property(actor.creature, "scale", Vector2.ONE, 0.2)
 	var m: Dictionary = ev.move
 	var words := "❄ Frozen: it skips its turn." if ev.frozen else _move_words(m, ev.enemy)
-	_callout("[b]%s[/b]\n%s" % [ev.enemy.name, Keywords.colorize(words)], actor.global_position + Vector2(actor.size.x / 2.0, 250), Color(1, 0.55, 0.4), 0.9)
+	_callout("[b]%s[/b]\n%s" % [ev.enemy.name, Keywords.colorize(words)], actor.global_position + Vector2(actor.size.x / 2.0, 250), Color(1, 0.55, 0.4), 1.8)
 	await _wait(0.75)
 
 
@@ -1802,11 +1798,9 @@ func _enemy_move_fx(ev: Dictionary) -> void:
 		var comet := Comet.launch(_fx, from, to, (look[1] as Color).lightened(0.3))
 		comet.rise = 60.0
 		await _wait(0.45)
-		_float_text("%s %s" % [look[0], info[0]], to + Vector2(-40, -40), (look[1] as Color).lightened(0.4))
 		_shake(4.0)
 	elif v:
 		v.hit_flash()
-		_float_text("%s %s" % [look[0], info[0]], v.global_position + Vector2(90, 190), (look[1] as Color).lightened(0.45))
 	_sync_views()
 	_refresh_all()
 	await _wait(0.5)

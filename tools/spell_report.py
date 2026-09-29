@@ -50,17 +50,17 @@ def describe_op(e):
             s += " (+1 if it is burning)"
         return s
     if op == "burn":
-        return f"Burn {e['n']}: set {e['n']} random Essence of {t} on fire (removed at the start of your next turn)"
+        return f"Burn {e['n']} on {t}"
     if op == "poison":
         return f"Poison {e['n']} on {t}"
     if op == "stoke":
-        return f"set as many more of {t}'s Essence on fire as are Burning now"
+        return f"double the Burn on {t}"
     if op == "weak":
-        return f"Weaken {t} for {turns(e['turns'])}"
+        return f"Weaken {e['turns']} on {t}"
     if op == "freeze":
-        return f"Freeze {t} for {turns(e['turns'])}"
+        return f"Freeze {e['turns']} on {t}"
     if op == "expose":
-        return f"Expose {t} for {turns(e['turns'])}"
+        return f"Expose {e['turns']} on {t}"
     if op == "ethereal":
         return "you become Ethereal this turn" if e["target"] == "self" else f"make {t} Ethereal (your spells remove double from it this turn)"
     if op == "shield":

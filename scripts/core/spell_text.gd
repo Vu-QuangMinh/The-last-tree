@@ -72,19 +72,17 @@ static func describe_op(e: Dictionary) -> String:
 				return "Steal %d element%s of your choice from %s" % [n, "s" if n > 1 else "", t]
 			return "Steal up to %d %s from %s" % [n, _el(e.el), t]
 		"burn":
-			if n == 1:
-				return "Burn 1: set a random Essence of %s on fire" % t
-			return "Burn %d: set %d random Essence of %s on fire" % [n, n, t]
+			return "Burn %d on %s" % [n, t]
 		"poison":
-			return "apply %d Poison to %s" % [n, t]
+			return "Poison %d on %s" % [n, t]
 		"stoke":
-			return "set as many more of %s Essence on fire as are Burning now" % ts
+			return "double the Burn on %s" % t
 		"weak":
-			return "Weaken %s for %s" % [t, _turns(e.turns)]
+			return "Weaken %d on %s" % [e.turns, t]
 		"freeze":
-			return "Freeze %s for %s" % [t, _turns(e.turns)]
+			return "Freeze %d on %s" % [e.turns, t]
 		"expose":
-			return "Expose %s for %s" % [t, _turns(e.turns)]
+			return "Expose %d on %s" % [e.turns, t]
 		"ethereal":
 			return "you become Ethereal this turn" if tg == "self" else "make %s Phased this turn" % t
 		"shield":

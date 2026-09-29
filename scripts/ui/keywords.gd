@@ -4,6 +4,7 @@ extends RefCounted
 
 ## keyword -> [colour on dark UI, colour on parchment, explanation]
 const K := {
+	"curse": [Color(1.0, 0.45, 0.4), Color(0.7, 0.1, 0.08), "Curse: the price of a cursed artifact. It lasts as long as you keep the artifact."],
 	"remove": [Color(1.0, 0.45, 0.4), Color(0.72, 0.12, 0.08), "Remove: knock elements off an enemy's Essence, one per point. When its Essence is all gone, it's defeated."],
 	"leftmost": [Color(0.45, 0.88, 0.85), Color(0.0, 0.45, 0.45), "Leftmost: the left end of the enemy's Essence row. \"The 3 leftmost Essence\" are the 3 elements at its left end."],
 	"rightmost": [Color(0.45, 0.88, 0.85), Color(0.0, 0.45, 0.45), "Rightmost: the right end of the enemy's Essence row. \"The 3 rightmost Essence\" are the 3 elements at its right end."],
@@ -20,18 +21,18 @@ const K := {
 	"rearrange": [Color(0.95, 0.85, 0.5), Color(0.55, 0.4, 0.0), "Rearrange: grab an element of this turn's chant and drag it to another spot. It counts at once, so it can wake more spells."],
 	"resonate": [Color(0.95, 0.85, 0.5), Color(0.55, 0.4, 0.0), "Resonate: pick an element of this turn's chant; it is copied in place. It counts at once, so it can wake more spells."],
 	"execute": [Color(1.0, 0.35, 0.35), Color(0.65, 0.05, 0.05), "Execute: destroy the enemy outright if its Essence is low enough (not bosses)."],
-	"burn": [Color(1.0, 0.55, 0.2), Color(0.78, 0.3, 0.0), "Burn: sets that many random Essence of the enemy on fire. At the start of your next turn, every burning Essence is removed."],
-	"poison": [Color(0.55, 0.9, 0.3), Color(0.25, 0.5, 0.05), "Poison: at the start of its turn the enemy loses its rightmost Essence, then Poison goes down by 1."],
+	"burn": [Color(1.0, 0.55, 0.2), Color(0.78, 0.3, 0.0), "Burn N: sets N random Essence of the enemy on fire. At the start of your next turn, every burning Essence is removed. (Double the Burn: sets as many more on fire as are burning.)"],
+	"poison": [Color(0.55, 0.9, 0.3), Color(0.25, 0.5, 0.05), "Poison N: at the start of each of its turns the enemy loses its rightmost Essence, then Poison goes down by 1."],
 	"shield": [Color(0.55, 0.8, 1.0), Color(0.1, 0.35, 0.7), "Shield: blocks that much attack damage until your next turn."],
 	"aegis": [Color(1.0, 0.9, 0.5), Color(0.6, 0.45, 0.0), "Aegis: blocks one whole enemy hit, whatever its size."],
 	"thorns": [Color(0.75, 0.85, 0.4), Color(0.35, 0.45, 0.05), "Thorns: when an enemy hits you, it loses that many of its rightmost Essence."],
 	"heal": [Color(0.45, 1.0, 0.55), Color(0.1, 0.5, 0.15), "Heal: restore HP, up to your maximum."],
-	"weaken": [Color(0.75, 0.65, 0.95), Color(0.4, 0.25, 0.6), "Weakened: the enemy deals 50% less damage."],
-	"weakened": [Color(0.75, 0.65, 0.95), Color(0.4, 0.25, 0.6), "Weakened: the enemy deals 50% less damage."],
-	"freeze": [Color(0.6, 0.9, 1.0), Color(0.1, 0.45, 0.6), "Frozen: an enemy skips its next action. On your elements: they can't be used this turn. Bosses can't be frozen."],
-	"frozen": [Color(0.6, 0.9, 1.0), Color(0.1, 0.45, 0.6), "Frozen: an enemy skips its next action. On your elements: they can't be used this turn. Bosses can't be frozen."],
-	"expose": [Color(1.0, 0.45, 0.55), Color(0.7, 0.1, 0.25), "Exposed: whenever your Release hits it, the enemy also loses its rightmost Essence."],
-	"exposed": [Color(1.0, 0.45, 0.55), Color(0.7, 0.1, 0.25), "Exposed: whenever your Release hits it, the enemy also loses its rightmost Essence."],
+	"weaken": [Color(0.75, 0.65, 0.95), Color(0.4, 0.25, 0.6), "Weaken N: for N turns, the enemy deals 50% less damage."],
+	"weakened": [Color(0.75, 0.65, 0.95), Color(0.4, 0.25, 0.6), "Weaken N: for N turns, the enemy deals 50% less damage."],
+	"freeze": [Color(0.6, 0.9, 1.0), Color(0.1, 0.45, 0.6), "Freeze N: the enemy skips its actions for N turns. Frozen elements of yours can't be used this turn. Bosses can't be frozen."],
+	"frozen": [Color(0.6, 0.9, 1.0), Color(0.1, 0.45, 0.6), "Freeze N: the enemy skips its actions for N turns. Frozen elements of yours can't be used this turn. Bosses can't be frozen."],
+	"expose": [Color(1.0, 0.45, 0.55), Color(0.7, 0.1, 0.25), "Expose N: for N turns, whenever your Release hits it, the enemy also loses its rightmost Essence."],
+	"exposed": [Color(1.0, 0.45, 0.55), Color(0.7, 0.1, 0.25), "Expose N: for N turns, whenever your Release hits it, the enemy also loses its rightmost Essence."],
 	"ethereal": [Color(0.8, 0.8, 1.0), Color(0.35, 0.35, 0.65), "Ethereal: takes no damage from attacks, but double damage from effects. An Ethereal enemy can't be touched by your chant."],
 	"phased": [Color(0.8, 0.8, 1.0), Color(0.35, 0.35, 0.65), "Phased: your spells remove double from it this turn."],
 	"armour": [Color(0.8, 0.82, 0.9), Color(0.35, 0.35, 0.42), "Armour: an armoured element still counts for matching, but isn't removed that turn."],
@@ -78,7 +79,8 @@ static func _regex() -> RegEx:
 
 
 ## BBCode with keywords, element letters (F W A) and numbers coloured. on_parchment picks the darker palette.
-static func colorize(text: String, on_parchment := false) -> String:
+## links: keywords become [url] links, so a KeywordText can show each one's explanation on hover.
+static func colorize(text: String, on_parchment := false, links := false) -> String:
 	var out := ""
 	var last := 0
 	for m in _regex().search_all(text):
@@ -93,9 +95,20 @@ static func colorize(text: String, on_parchment := false) -> String:
 			col = K[key][1] if on_parchment else K[key][0]
 		else:
 			col = NUMBER_LIGHT if on_parchment else NUMBER_DARK
-		out += "[color=#%s][b]%s[/b][/color]" % [col.to_html(false), _escape(word)]
+		var piece := "[color=#%s][b]%s[/b][/color]" % [col.to_html(false), _escape(word)]
+		if links and letter == "" and key != "" and K.has(key) and K[key][2] != "":
+			piece = "[url=%s]%s[/url]" % [key, piece]
+		out += piece
 		last = m.get_end()
 	return out + _escape(text.substr(last))
+
+
+## A keyword's own tooltip: its name as the title, then what it means.
+static func keyword_tip(key: String) -> String:
+	if not K.has(key) or K[key][2] == "":
+		return ""
+	var parts: PackedStringArray = String(K[key][2]).split(":", true, 1)
+	return "[b][font_size=25][color=#%s]%s[/color][/font_size][/b]\n%s" % [K[key][0].to_html(false), _escape(parts[0]), colorize(parts[1].strip_edges() if parts.size() > 1 else parts[0])]
 
 
 ## Explanations for the keywords that appear in the text (each once).

@@ -54,25 +54,10 @@ func _ready() -> void:
 		card.clicked.connect(func(_c): chosen.emit(idx))
 		row.add_child(card)
 	for i in artifacts.size():
-		var a: Dictionary = artifacts[i]
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(340, 180)
-		var cursed: bool = a.get("aspect", "") == "Cursed"
-		var tier: String = Artifacts.TIER_NAMES.get(a.get("tier", "common"), "")
-		b.text = "%s %s\n%s · %s\n\n%s" % ["☠" if cursed else "◆", a.name, tier.to_upper(), "CURSED" if cursed else a.get("aspect", ""), a.desc]
-		if a.get("tier", "") == "legendary" and not cursed:
-			b.add_theme_color_override("font_color", Color(1, 0.8, 0.4))
-		elif a.get("tier", "") == "rare" and not cursed:
-			b.add_theme_color_override("font_color", Color(0.6, 0.8, 1))
-		if cursed:
-			b.add_theme_color_override("font_color", Color(1, 0.55, 0.5))
-			b.add_theme_color_override("font_hover_color", Color(1, 0.7, 0.65))
-		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		b.add_theme_font_size_override("font_size", 20)
-		b.focus_mode = Control.FOCUS_NONE
+		var card := ArtifactCard.make(artifacts[i])
 		var idx := i
-		b.pressed.connect(func(): chosen.emit(idx))
-		row.add_child(b)
+		card.clicked.connect(func(): chosen.emit(idx))
+		row.add_child(card)
 	if can_skip:
 		var skip := UiTheme.button("Skip", func(): chosen.emit(-1), 20)
 		skip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
