@@ -121,6 +121,7 @@ func _pin_tooltip(content: Control) -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 30
 	var p := PanelContainer.new()
+	p.theme = UiTheme.get_theme()  # its layer is outside every screen: use the game's font, not Godot's default
 	p.add_theme_stylebox_override("panel", UiTheme.get_theme().get_stylebox("panel", "TooltipPanel"))
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var v := VBoxContainer.new()
@@ -286,21 +287,13 @@ func _show_rest() -> void:
 			Audio.play("rest_heal")
 			show_map()
 			return
-		var ids := run.upgradable()
-		if ids.is_empty():
-			run.rest()
-			Audio.play("rest_heal")
-			show_map()
-			return
-		var ups := ids.map(func(id): return SpellDB.upgrade(run.db.get_spell(id)))
-		var ch := _choice("Upgrade a spell", "Its + version replaces it for the rest of the run.", ups, [], true)
-		ch.chosen.connect(func(k):
-			if k >= 0:
-				run.upgrade_spell(ids[k])
-				Events.toast.emit("%s upgraded" % ups[k].name, UiTheme.ACCENT)
-			else:
-				run.rest()
-			show_map()))
+		var fs := FuseScreen.new()
+		fs.setup(run)
+		fs.back.connect(_show_rest)
+		fs.fused.connect(func(sp):
+			Events.toast.emit("Forged %s" % sp.name, Color(1, 0.8, 0.5))
+			show_map())
+		_swap(fs))
 
 
 ## Rewards: normal fights 3 cards (70% common, 30% rare); elites 3 rares and an artifact;

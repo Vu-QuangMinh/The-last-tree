@@ -155,6 +155,7 @@ func _play_run(seed: int, spells: Array, arts: Array) -> Dictionary:
 				f.picker = func(s, e): return _pick_pluck(f, e)
 				f.placer = func(s, el): return _best_insert(f, el)
 				f.chant_picker = func(s): return _best_duplicate(f, s)
+				f.arranger = func(s): return _best_rearrange(f)
 				var turns := 0
 				while not f.over and turns < TURN_CAP:
 					turns += 1
@@ -267,6 +268,8 @@ func _effect_value(e: Dictionary) -> float:
 			return 1.0
 		"duplicate":
 			return 0.8 * e.times
+		"rearrange":
+			return 0.8 * e.n
 		"summon_spells":
 			return 2.0
 		"redirect":
@@ -321,6 +324,25 @@ func _best_insert(f: Fight, el: String) -> int:
 		if sc > best_s:
 			best_s = sc
 			best = i
+	return best
+
+
+## The single move of one chant element that scores best ([] when nothing beats the chant as it is).
+func _best_rearrange(f: Fight) -> Array:
+	var best: Array = []
+	var best_s := _score_spoken(f, f.chant_string())
+	for i in f.chant.size():
+		for j in f.chant.size():
+			if i == j:
+				continue
+			var c := f.chant.duplicate()
+			var el: String = c[i]
+			c.remove_at(i)
+			c.insert(j, el)
+			var sc := _score_spoken(f, "".join(c))
+			if sc > best_s:
+				best_s = sc
+				best = [i, j]
 	return best
 
 

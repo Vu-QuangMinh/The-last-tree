@@ -11,9 +11,19 @@ var _ghost_hold := 0.0
 var _crack := 0.0  # glass crack flash (0..1)
 var _flash := 0.0  # red flash on a hit
 var _t := 0.0
+var _shown := false  # set once: entering a fight with missing HP isn't damage
+
+
 
 
 func set_values(p_hp: float, p_max: float, p_shield: float) -> void:
+	if not _shown:
+		_shown = true
+		hp = maxf(0.0, p_hp)
+		_ghost = hp
+		max_hp = maxf(1.0, p_max)
+		shield = maxf(0.0, p_shield)
+		return
 	if p_hp < hp:
 		_ghost_hold = 0.35  # keep the lost chunk visible for a moment before it drains
 		_flash = 1.0

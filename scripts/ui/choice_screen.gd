@@ -45,20 +45,14 @@ func _ready() -> void:
 	row.add_theme_constant_override("h_separation", 24)
 	row.add_theme_constant_override("v_separation", 18)
 	scroll.add_child(row)
-	# reward cards are shown larger: each sits scaled inside a holder of the scaled size
+	# reward cards are drawn larger (laid out big, not stretched, so they stay sharp)
 	var big := 1.35 if spells.size() <= 5 else 1.0
 	for i in spells.size():
 		var card := SpellCard.make(spells[i])
-		var holder := Control.new()
-		holder.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H) * big
-		card.position = Vector2.ZERO
-		card.size = Vector2(SpellCard.W, SpellCard.H)
-		card.scale = Vector2(big, big)
-		card.base_scale = big
-		holder.add_child(card)
+		card.zoom = big
 		var idx := i
 		card.clicked.connect(func(_c): chosen.emit(idx))
-		row.add_child(holder)
+		row.add_child(card)
 	for i in artifacts.size():
 		var a: Dictionary = artifacts[i]
 		var b := Button.new()
@@ -84,3 +78,7 @@ func _ready() -> void:
 		skip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		skip.custom_minimum_size = Vector2(200, 48)
 		v.add_child(skip)
+	# the scroll area is as tall as the tallest card needs (cards with more to say are taller), up to a limit
+	await get_tree().process_frame
+	if is_instance_valid(row):
+		scroll.custom_minimum_size.y = minf(row.get_combined_minimum_size().y + 12, 700)

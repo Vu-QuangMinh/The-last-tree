@@ -8,6 +8,7 @@ const BASE_DRAW := 3
 const START_ELEMENTS := 5
 
 var hp := 50.0
+var damage_taken := 0.0  # HP lost this fight (attacks and effects; healing doesn't undo it): 0 = Perfect
 var max_hp := 50.0
 # ---- per fight
 var shield := 0.0
@@ -34,6 +35,7 @@ var kindling_charged := false
 
 
 func reset_fight() -> void:
+	damage_taken = 0.0
 	shield = 0.0
 	aegis = 0
 	thorns_turn = 0
@@ -89,6 +91,7 @@ func take_attack(x: float) -> float:
 	shield -= absorbed
 	x -= absorbed
 	hp -= x
+	damage_taken += maxf(0.0, x)
 	return x
 
 
@@ -97,6 +100,7 @@ func take_effect(x: float) -> float:
 	if ethereal:
 		x *= 2.0
 	hp -= x
+	damage_taken += maxf(0.0, x)
 	return x
 
 

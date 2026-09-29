@@ -478,7 +478,7 @@
   {
    "id": "inferno",
    "name": "Inferno",
-   "pattern": "FFF",
+   "pattern": "F?F",
    "effects": [
     {
      "op": "strike",
@@ -511,14 +511,13 @@
    "effects": [
     {
      "op": "draw",
-     "n": 3,
+     "n": 2,
      "when": "next",
      "el": "random"
     },
     {
-     "op": "move",
-     "n": 2,
-     "target": "target"
+     "op": "rearrange",
+     "n": 1
     }
    ],
    "flavor": "The storm brings more, and moves what it touches.",
@@ -560,7 +559,7 @@
   {
    "id": "firestorm",
    "name": "Firestorm",
-   "pattern": "AFA",
+   "pattern": "AF?FA",
    "effects": [
     {
      "op": "burn",
@@ -791,7 +790,7 @@
      "target": "all"
     }
    ],
-   "flavor": "Knock the front off everything.",
+   "flavor": "Knock the leftmost off everything.",
    "rarity": "legendary"
   },
   {
@@ -1000,7 +999,7 @@
      "target": "target"
     }
    ],
-   "flavor": "Pull its first element into your hand.",
+   "flavor": "Pull its leftmost element into your hand.",
    "rarity": "rare"
   },
   {
@@ -1123,7 +1122,7 @@
      "target": "target"
     }
    ],
-   "flavor": "Plant water at its front, then chant it away.",
+   "flavor": "Plant water at its leftmost end, then chant it away.",
    "rarity": "common"
   },
   {
@@ -1369,7 +1368,7 @@
   },
   {
    "id": "leech",
-   "name": "Leech",
+   "name": "Absorb",
    "pattern": "FAW",
    "effects": [
     {
@@ -1380,10 +1379,11 @@
     },
     {
      "op": "heal",
-     "n": 4
+     "n": 5,
+     "if_kill": true
     }
    ],
-   "flavor": "Take a piece of it, feel better.",
+   "flavor": "Take the last of it, and feel much better.",
    "rarity": "rare"
   },
   {
@@ -1398,7 +1398,7 @@
      "target": "target"
     }
    ],
-   "flavor": "Its first two elements become Fire.",
+   "flavor": "Its two leftmost elements become Fire.",
    "rarity": "rare"
   },
   {
@@ -1412,7 +1412,7 @@
      "target": "target"
     }
    ],
-   "flavor": "Pull its first two elements into your hand.",
+   "flavor": "Pull its two leftmost elements into your hand.",
    "rarity": "rare"
   },
   {

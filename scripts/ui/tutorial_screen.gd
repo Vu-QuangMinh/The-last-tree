@@ -52,7 +52,7 @@ const LESSONS := [
 			{"say": "Every turn you get 3 more elements (this box shows what's coming next turn). Elements you don't use are kept.", "focus": "next", "then": "tap"},
 			{"say": "Now for the bonus: spells! The orbs on a card are its pattern. When your chant contains that pattern, IN THAT ORDER, the spell comes alive: an extra effect on top of the chant's damage.", "focus": "spells", "then": "tap", "action": "spells:fire_ball,water_wall"},
 			{"say": "Build A W F W F W.", "focus": "stock", "then": "chant:AWFWFW"},
-			{"say": "Look at the preview. The Ashling gets a skull (its only Essence left is A), but the Gale Sprite only loses A W F. Its last Essence, A, survives, and it will hit you again. And your spells stay asleep: F F and W W never sit next to each other.", "focus": "enemies", "then": "tap"},
+			{"say": "Look at the preview. The Ashling gets a skull (its only Essence left is A), but the Gale Sprite only loses A W F. Its rightmost Essence, A, survives, and it will hit you again. And your spells stay asleep: F F and W W never sit next to each other.", "focus": "enemies", "then": "tap"},
 			{"say": "Tap Clear, and let's rearrange.", "focus": "clear_btn", "then": "clear"},
 			{"say": "Build A W F F W W: the same elements, but now F F and W W are together.", "focus": "stock", "then": "chant:AWFFWW"},
 			{"say": "×1 on both spells! The chant still does its damage, and now Fire Ball can knock off the Gale Sprite's last A before the Release. Then A W F takes the rest, and it's gone. (The preview only counts the chant, so it won't show a skull until Fire Ball has landed.)", "focus": "spells", "then": "tap"},
@@ -151,6 +151,7 @@ func _lesson(L: Dictionary) -> void:
 			e.elements.append(ch)
 		e.armor.resize(e.elements.size())
 		e.armor.fill(false)
+		e.lit.clear()
 		for a in spec.get("armor", []):
 			e.set_armor(a)
 		e.def.moves = spec.moves
@@ -281,7 +282,7 @@ const DO_WHAT := {
 	"cast": "Tap the glowing spell card.",
 	"target": "The arrow follows your mouse: tap the glowing enemy (or press Tab to switch and Enter to confirm).",
 	"pick": "Tap one of the enemy's Essence orbs to choose it.",
-	"place": "Tap the first ＋ in your chant.",
+	"place": "Drag the glowing element to the front of your chant.",
 	"placing": "Tap the glowing spell card.",
 	"release": "Tap the Release button (or press E).",
 	"clear": "Tap the Clear button.",

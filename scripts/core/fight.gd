@@ -7,6 +7,7 @@ extends RefCounted
 ##   redirector:  (spell, source, candidates) -> int             Misdirection: who the intent hits instead
 ##   placer:      (spell, el) -> int                             Infuse: where in the chant the element goes
 ##   chant_picker:(spell) -> int                                 Resonance: which chant element to copy
+##   arranger:    (spell) -> [from, to]                          Rearrange: move one chant element ([] = keep)
 ##   anim:        (event: Dictionary) -> void                    animation hook
 ##
 ## Your turn:
@@ -55,6 +56,7 @@ var picker: Callable
 var redirector: Callable
 var placer: Callable
 var chant_picker: Callable
+var arranger: Callable
 var anim: Callable
 
 
@@ -67,6 +69,7 @@ func _init(p_db: SpellDB, p_player: PlayerState) -> void:
 	redirector = func(_s, src, _cands): return enemies.find(src)
 	placer = func(_s, _el): return chant.size()
 	chant_picker = func(_s): return 0
+	arranger = func(_s): return []
 	anim = func(_e): pass
 
 
@@ -97,8 +100,17 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 		player.aegis = 1
 	player.dmg_taken_mult = 1.25 if has_artifact("glass_heart") else 1.0
 	var start_n := PlayerState.START_ELEMENTS + (1 if has_artifact("wind_chime") else 0) - (2 if has_artifact("broken_crown") else 0)
-	for i in maxi(1, start_n):
-		player.add_element(_random_element())
+	# you always start with one of each element; the rest are random (in a random order)
+	var hand := ["F", "W", "A"]
+	while hand.size() < start_n:
+		hand.append(_random_element())
+	for i in hand.size():
+		var j := rng.randi_range(i, hand.size() - 1)
+		var tmp: String = hand[i]
+		hand[i] = hand[j]
+		hand[j] = tmp
+	for el in hand:
+		player.add_element(el)
 	if has_artifact("ember_charm"):
 		player.add_element("F")
 	_roll_next_draw(2)
@@ -177,7 +189,7 @@ func _roll_next_draw(upcoming: int) -> void:
 	if has_artifact("heartwood_seed"):
 		n += 1
 	if has_artifact("blood_pact"):
-		n += 2
+		n += 1
 	if has_artifact("withered_idol"):
 		n += 1
 	if has_artifact("lucky_acorn") and rng.randf() < 0.25:
@@ -201,6 +213,16 @@ func _roll_next_draw(upcoming: int) -> void:
 
 ## Start of your turn (not the first): bleed, receive the previewed draw, Powers tick.
 func begin_player_turn() -> void:
+	# Burn: the Essence set on fire last turn burns away now
+	for e in alive():
+		var gone: Array = e.burn_off()
+		if not gone.is_empty():
+			_log("%s's burning Essence (%s) burns away." % [e.name, " ".join(gone)])
+			await anim.call({"type": "burn_off", "enemy": e, "n": gone.size()})
+	_cleanup()
+	_check_end()
+	if over:
+		return
 	if player.bleed > 0:
 		player.take_effect(player.bleed)
 		_log("You bleed for %d." % player.bleed)
@@ -287,24 +309,33 @@ func cast_chant(stock_indices: Array) -> void:
 			player.kindling_charged = true
 			_log("Kindling Stone is charged: your next Burn is doubled.")
 	await anim.call({"type": "chant", "chant": c})
-	await _recount()
+	var woke: Array = await _recount()
 	if not charges.is_empty():
-		await anim.call({"type": "charged"})
+		await anim.call({"type": "charged", "hits": woke})
 
 
 ## Re-read the chant: locks it now contains break, and every spell's charges are counted again.
-func _recount() -> void:
+## Returns the spells that gained charges, each with the chant positions that woke them:
+## [{id, starts: [chant index of each new match], len}].
+func _recount() -> Array:
 	var c := chant_string()
 	for sid in player.locks.keys():
 		if Chant.breaks_lock(player.locks[sid], c):
 			player.locks.erase(sid)
 			_log("A lock shatters!")
 			await anim.call({"type": "unlock", "spell": sid})
+	var before := charges.duplicate()
 	charges.clear()
+	var woke := []
 	for sp in usable_spells():
-		var n: int = mini(Chant.occurrences(sp.pattern, c).size(), trigger_cap(sp)) - used.get(sp.id, 0)
+		var occ: Array = Chant.occurrences(sp.pattern, c).slice(0, trigger_cap(sp))
+		var n: int = occ.size() - used.get(sp.id, 0)
 		if n > 0:
 			charges[sp.id] = n
+			var gained: int = n - before.get(sp.id, 0)
+			if gained > 0:
+				woke.append({"id": sp.id, "starts": occ.slice(occ.size() - gained), "len": sp.pattern.length()})
+	return woke
 
 
 ## Anything left to do this turn? (When not, the chant is Released by itself.)
@@ -345,7 +376,10 @@ func resolve_spell(id: String, target_idx := -1) -> void:
 		if target_idx >= 0 and target_idx < enemies.size() and not enemies[target_idx].is_dead():
 			tctx.target = enemies[target_idx]
 		await _fire(spell, turn_ctx, tctx)
-	await _recount()
+	# the chant may have changed (Infuse, Rearrange, Resonate): spells it wakes now are an Extension
+	var woke: Array = await _recount()
+	if not woke.is_empty():
+		await anim.call({"type": "extension", "hits": woke})
 
 
 ## Cast every charge automatically, earliest match first (the sim and tests; the player casts by hand).
@@ -358,7 +392,7 @@ func resolve_all() -> void:
 		var best_pos := 999
 		for id in charges:
 			var sp := _find_spell(id)
-			var pos := c.find(sp.pattern)
+			var pos := Chant.first_index(sp.pattern, c)
 			if pos >= 0 and pos < best_pos:
 				best_pos = pos
 				best = id
@@ -434,12 +468,16 @@ func _strike(c: String) -> Array:
 		plans.append({"enemy": e, "k": k, "at": at})
 	if plans.is_empty():
 		return []
+	var last_hit := 0
+	for pl in plans:
+		last_hit = maxi(last_hit, pl.at + pl.k - 1)
 	for p in c.length():
 		var hits := []
 		for pl in plans:
 			if p >= pl.at and p < pl.at + pl.k:
 				hits.append([pl.enemy, p - pl.at])
-		await anim.call({"type": "chant_step", "pos": p, "hits": hits, "chant": c})
+		# after the last element that hits anything, the rest of the chant has nothing left to fly at
+		await anim.call({"type": "chant_step", "pos": p, "hits": hits, "chant": c, "leftover": p > last_hit})
 	var hit := []
 	var extra := 1 if has_artifact("glass_heart") else 0
 	for pl in plans:
@@ -455,7 +493,7 @@ func _strike(c: String) -> Array:
 		if player.passive("strike_poison") > 0:
 			e.poison += player.passive("strike_poison") + player.passive("poison_bonus")
 		if player.passive("strike_burn") > 0:
-			e.burn += _burn_amount(player.passive("strike_burn") + player.passive("burn_bonus"))
+			e.ignite(_burn_amount(player.passive("strike_burn") + player.passive("burn_bonus")), rng)
 		if e.has_passive("burning_hide"):
 			player.take_effect(1.0)
 			_log("%s's burning hide scorches you." % e.name)
@@ -479,6 +517,7 @@ func _split(e: EnemyState) -> void:
 	twin.dmg_bonus = e.dmg_bonus
 	e.elements = e.elements.slice(0, half)
 	e.armor = e.armor.slice(0, half)
+	e.lit = e.lit.slice(0, half)
 	e.def.split_done = true
 	enemies.insert(enemies.find(e) + 1, twin)
 	_plan(twin)
@@ -487,6 +526,7 @@ func _split(e: EnemyState) -> void:
 
 
 func _fire(spell: Dictionary, ctx: Dictionary, tctx: Dictionary) -> void:
+	tctx["_alive_before"] = alive()  # for "if this defeats an enemy" effects
 	await anim.call({"type": "spell", "spell": spell})
 	for eff in spell.effects:
 		if eff.op == "copy_last":
@@ -525,13 +565,13 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 		"burn":
 			var amount := _burn_amount(eff.n + player.passive("burn_bonus")) if not targets.is_empty() else 0
 			for e in targets:
-				e.burn += amount
+				e.ignite(amount, rng)
 		"poison":
 			for e in targets:
 				e.poison += eff.n + player.passive("poison_bonus")
 		"stoke":
 			for e in targets:
-				e.burn *= 2
+				e.ignite(e.burn, rng)
 		"weak":
 			for e in targets:
 				e.weak_turns = maxi(e.weak_turns, eff.turns)
@@ -551,7 +591,11 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 		"shield":
 			player.shield += eff.n
 		"heal":
-			player.heal(eff.n)
+			var ok := true
+			if eff.get("if_kill", false):
+				ok = tctx.get("_alive_before", []).any(func(x): return x.is_dead())
+			if ok:
+				player.heal(eff.n)
 		"aegis":
 			player.aegis += eff.n
 		"thorns":
@@ -593,6 +637,7 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 				if e.size() <= eff.max and not e.is_boss:
 					e.elements.clear()
 					e.armor.clear()
+					e.lit.clear()
 		"transmute":
 			var changed := 0
 			for s in player.stock:
@@ -617,6 +662,20 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 				chant.insert(clampi(pos, 0, chant.size()), eff.el)
 				_log("%s adds %s to the chant." % [spell.name, Elements.NAMES[eff.el]])
 				await anim.call({"type": "chant_changed"})
+		"rearrange":
+			if spoken and chant.size() > 1:
+				for k in eff.n:
+					var mv: Array = await arranger.call(spell)
+					if mv.size() < 2:
+						break
+					var from := clampi(int(mv[0]), 0, chant.size() - 1)
+					var el: String = chant[from]
+					chant.remove_at(from)
+					var to := clampi(int(mv[1]), 0, chant.size())
+					chant.insert(to, el)
+					if to != from:
+						_log("%s moves a %s in the chant." % [spell.name, Elements.NAMES[el]])
+					await anim.call({"type": "chant_changed"})
 		"duplicate":
 			if spoken and not chant.is_empty():
 				var i: int = clampi(await chant_picker.call(spell), 0, chant.size() - 1)
@@ -758,7 +817,8 @@ func _favourite_element() -> String:
 	var c := {"F": 0, "W": 0, "A": 0}
 	for s in loadout:
 		for ch in s.pattern:
-			c[ch] += 1
+			if c.has(ch):
+				c[ch] += 1
 	var best := "F"
 	for el in c:
 		if c[el] > c[best]:
@@ -976,6 +1036,7 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 					e.elements.append(ch)
 				e.armor.resize(e.elements.size())
 				e.armor.fill(false)
+				e.lit.clear()
 	if m.kind != "attack":
 		await anim.call({"type": "enemy_move", "enemy": e, "kind": m.kind, "move": m})
 	if m.has("also") and not over and not e.is_dead():

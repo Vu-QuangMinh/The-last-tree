@@ -16,13 +16,13 @@ TARGETED = {"steal", "pluck", "move", "redirect", "strike", "burn", "poison", "s
 OPS = {
     "strike": {"from", "n", "target", "min_hp", "bonus_if"},
     "burn": {"n", "target"}, "poison": {"n", "target"}, "stoke": {"target"}, "weak": {"turns", "target"}, "freeze": {"turns", "target"},
-    "expose": {"turns", "target"}, "ethereal": {"target"}, "shield": {"n"}, "heal": {"n"}, "aegis": {"n"},
+    "expose": {"turns", "target"}, "ethereal": {"target"}, "shield": {"n"}, "heal": {"n", "if_kill"}, "aegis": {"n"},
     "thorns": {"n"}, "draw": {"n", "when", "el", "temp"}, "rotate": {"target", "dir"}, "swap": {"target"},
     "convert": {"pos", "from", "to", "target"}, "purge": {"el", "n", "target"}, "shatter": {"target"},
     "amplify": {"n"}, "echo": {"n"}, "retain": {"n"}, "overload": {"n"}, "cleanse": {"what"},
     "siphon": {"n", "target"}, "execute": {"max", "target"}, "insert": {"el", "pos", "target"},
     "transmute": {"n", "to"}, "sacrifice": {"hp"}, "copy_last": set(),
-    "passive": {"key", "n"}, "move": {"n", "target"}, "pluck": {"n", "target"}, "steal": {"n", "el", "target"}, "infuse": {"el"}, "duplicate": {"times"}, "summon_spells": {"n"}, "redirect": {"target"}, "curse": {"key", "target"}, "each_turn": {"effects"},
+    "passive": {"key", "n"}, "move": {"n", "target"}, "pluck": {"n", "target"}, "steal": {"n", "el", "target"}, "infuse": {"el"}, "rearrange": {"n"}, "duplicate": {"times"}, "summon_spells": {"n"}, "redirect": {"target"}, "curse": {"key", "target"}, "each_turn": {"effects"},
 }
 
 
@@ -39,22 +39,22 @@ def describe_op(e):
     t = who(e.get("target", "target"))
     if op == "strike":
         last = e["from"] == "right"
-        side = "last" if last else "first"
+        side = "rightmost" if last else "leftmost"
         if e["n"] == 1:
-            s = f"remove the {side} ({'rightmost' if last else 'leftmost'}) Essence of {t}"
+            s = f"remove the {side} Essence of {t}"
         else:
-            s = f"remove the {side} {e['n']} Essence of {t}, {'right to left' if last else 'left to right'}"
+            s = f"remove the {e['n']} {side} Essence of {t}"
         if "min_hp" in e:
             s += f" (only if it has {e['min_hp']}+ Essence)"
         if "bonus_if" in e:
             s += " (+1 if it is burning)"
         return s
     if op == "burn":
-        return f"Burn {e['n']} on {t}"
+        return f"Burn {e['n']}: set {e['n']} random Essence of {t} on fire (removed at the start of your next turn)"
     if op == "poison":
         return f"Poison {e['n']} on {t}"
     if op == "stoke":
-        return f"double the Burn on {t}"
+        return f"set as many more of {t}'s Essence on fire as are Burning now"
     if op == "weak":
         return f"Weaken {t} for {turns(e['turns'])}"
     if op == "freeze":
@@ -66,6 +66,8 @@ def describe_op(e):
     if op == "shield":
         return f"gain {e['n']} Shield"
     if op == "heal":
+        if e.get("if_kill"):
+            return f"if this defeats it, heal {e['n']} HP"
         return f"heal {e['n']}"
     if op == "aegis":
         return f"gain Aegis ({e['n']} hit)"
@@ -83,6 +85,8 @@ def describe_op(e):
         if e.get("el", "any") == "any":
             return f"Steal {e['n']} element{'s' if e['n'] > 1 else ''} of your choice from {t} (they go to your elements)"
         return f"Steal up to {e['n']} {ELEMS[e['el']]} from {t} (they go to your elements)"
+    if op == "rearrange":
+        return f"Rearrange {e['n']}: move {'one element' if e['n'] == 1 else str(e['n']) + ' elements'} of your chant to another spot"
     if op == "infuse":
         return f"put a {ELEMS[e['el']]} anywhere you like in this turn's chant"
     if op == "duplicate":
@@ -98,18 +102,18 @@ def describe_op(e):
     if op == "swap":
         return f"swap the first two elements of {t}"
     if op == "convert":
-        where = {"first": "first element", "first2": "first two elements", "last": "last element", "all": f"every {ELEMS[e['from']]}" if "from" in e else "every element"}[e["pos"]]
+        where = {"first": "leftmost Essence", "first2": "2 leftmost Essence", "last": "rightmost Essence", "all": f"every {ELEMS[e['from']]}" if "from" in e else "every element"}[e["pos"]]
         return f"turn {'' if e['pos'] == 'all' else 'the '}{where} of {t} into {ELEMS[e['to']]}"
     if op == "purge":
         return f"remove up to {e['n']} {ELEMS[e['el']]} from {t}"
     if op == "shatter":
         return f"remove all Armour from {t}"
     if op == "amplify":
-        return f"Amplify {e['n']}: when the chant is Released, every enemy it hits also loses its last {e['n']} Essence, right to left"
+        return f"Amplify {e['n']}: when the chant is Released, every enemy it hits also loses its {e['n']} rightmost Essence"
     if op == "echo":
         return "Echo: the chant is Released twice this turn"
     if op == "retain":
-        return f"after casting, {e['n']} of the chant's elements return to your stock"
+        return f"after the Release, the {e['n']} rightmost elements of your chant go back to your elements"
     if op == "overload":
         return f"Overload {e['n']}: {e['n']} fewer element next turn"
     if op == "cleanse":
@@ -118,7 +122,7 @@ def describe_op(e):
                 "silence": "cure Silence on all your spells", "frozen": "thaw your frozen elements",
                 "lock": "break one Lock on your spells"}[e.get("what", "all")]
     if op == "siphon":
-        return f"take the first {e['n']} element{'s' if e['n'] > 1 else ''} of {t}; you get {'them' if e['n'] > 1 else 'it'} next turn as conjured"
+        return f"remove the {e['n']} leftmost Essence of {t}; next turn you gain the removed elements (conjured)"
     if op == "execute":
         return f"if {t} has {e['max']} or fewer elements, destroy it"
     if op == "insert":
@@ -195,7 +199,7 @@ def validate(data):
     errors += [f"duplicate id: {i}" for i, n in ids.items() if n > 1]
     for s in spells:
         p = s["pattern"]
-        if not p or any(c not in ELEMS for c in p):
+        if not p or any(c not in ELEMS and c != "?" for c in p) or p.count("?") > len(p) // 2:
             errors.append(f"{s['id']}: bad pattern {p}")
         if not 1 <= len(p) <= 5:
             errors.append(f"{s['id']}: pattern length {len(p)}")
@@ -214,7 +218,7 @@ def validate(data):
 
 
 def fmt_pattern(p):
-    return " ".join(ICON[c] for c in p)
+    return " ".join(ICON.get(c, "❔") for c in p)
 
 
 def render(data):
@@ -229,16 +233,16 @@ def render(data):
         "and each enemy loses the longest start of its Essence found in it. ★ = starter.",
         "",
         "**Keywords**",
-        "- **Burn N:** at the start of its turn, the enemy loses its **first** (leftmost) element, then Burn goes down by 1.",
-        "- **Poison N:** like Burn, but the enemy loses its **last** (rightmost) element.",
+        "- **Burn N:** sets N random Essence of the enemy on fire; every burning Essence is removed at the start of your next turn.",
+        "- **Poison N:** like Burn, but the enemy loses its **rightmost** Essence.",
         "- **Weaken:** the enemy deals 50% less damage.",
         "- **Freeze:** the enemy skips its next action.",
-        "- **Expose:** whenever your Release hits this enemy, it also loses its last (rightmost) element.",
+        "- **Expose:** whenever your Release hits this enemy, it also loses its rightmost Essence.",
         "- **Ethereal (you):** take no damage from attacks this turn, but double damage from effects. "
         "**Ethereal (enemy):** your spells remove double from it this turn; enemies that go Ethereal as their intent "
         "can't be hit by your next Release.",
         "- **Shield:** blocks damage until your next turn. **Aegis:** blocks one hit completely.",
-        "- **Thorns:** enemies that attack you lose their rightmost element.",
+        "- **Thorns:** enemies that attack you lose their rightmost Essence.",
         "- **Armour** (enemy ability): an armoured element can't be removed this turn, but it still counts for the chant's match.",
         "- **Power:** cast once, then it leaves your active row (its slot stays empty) and its effect lasts the whole fight.",
         "- **Conjured** elements arrive next turn and vanish at the end of that turn if unused.",
@@ -282,7 +286,7 @@ def write_xlsx(data, path):
     rows = sorted(data["spells"], key=lambda s: (len(s["pattern"]), s["pattern"], s["name"]))
     for r, s in enumerate(rows, 2):
         p = s["pattern"]
-        vals = [s["name"], " → ".join(ELEMS[c] for c in p), f"=LEN(L{r})", s["rarity"].capitalize(), kind_of(s["effects"]),
+        vals = [s["name"], " → ".join(ELEMS.get(c, "Any") for c in p), f"=LEN(L{r})", s["rarity"].capitalize(), kind_of(s["effects"]),
                 p.count("F"), p.count("W"), p.count("A"), "yes" if s.get("starter") else "", describe(s), s.get("flavor", "")]
         for c, v in enumerate(vals, 1):
             cell = ws.cell(r, c, v)

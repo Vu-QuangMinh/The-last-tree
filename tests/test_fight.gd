@@ -21,6 +21,7 @@ func _set_hp(e: EnemyState, hp: String) -> void:
 		e.elements.append(ch)
 	e.armor.resize(e.elements.size())
 	e.armor.fill(false)
+	e.lit.clear()
 
 
 func _all(n: int) -> Array:
@@ -92,15 +93,57 @@ func test_warded_ignores_short_chants() -> void:
 	assert_eq(f.enemies[0].size(), 6)
 
 
-func test_burn_ticks_at_enemy_turn_start() -> void:
+func test_burn_lights_random_essence_removed_on_your_next_turn() -> void:
 	var f := _fight(["ashling"], [], "")
 	var e: EnemyState = f.enemies[0]
-	_set_hp(e, "FWA")
-	e.burn = 2
+	_set_hp(e, "FWAWF")
+	assert_eq(e.ignite(2, f.rng), 2)
+	assert_eq(e.burn, 2)
+	e.lit = [false, true, false, true, false]  # make the lit ones known: both W
 	f.player.hp = 99
-	f.pass_turn()
-	assert_eq(e.hp_text(), "WA")
-	assert_eq(e.burn, 1)
+	f.pass_turn()  # the enemy acts (Ashling attacks), then your turn starts and the fire takes the W W
+	assert_eq(e.hp_text(), "FAF")
+	assert_eq(e.burn, 0)
+
+
+func test_damage_taken_counts_hp_lost_not_blocked_or_healed() -> void:
+	var p := PlayerState.new()
+	p.reset_fight()
+	p.shield = 5.0
+	p.take_attack(4.0)  # fully blocked
+	assert_eq(p.damage_taken, 0.0, "blocked hits don't count")
+	p.take_effect(2.0)
+	p.heal(2.0)
+	assert_eq(p.damage_taken, 2.0, "healing doesn't undo it")
+	p.reset_fight()
+	assert_eq(p.damage_taken, 0.0, "a new fight starts clean")
+
+
+func test_lit_essence_moves_with_its_element() -> void:
+	var e := EnemyState.new()
+	e.setup({"id": "x", "name": "X", "hp": "FWA", "moves": []})
+	e.lit = [true, false, false]
+	e.rotate_left()  # F goes to the end, still burning
+	assert_eq(e.hp_text(), "WAF")
+	assert_eq(e.lit, [false, false, true])
+	e.strike_prefix(1)  # the chant takes the W; the fire stays on the F
+	assert_eq(e.burn_off(), ["F"])
+
+
+func test_absorb_heals_only_when_it_defeats() -> void:
+	var f := _fight(["ashling"], ["leech"], "FAW")
+	assert_eq(db.get_spell("leech").name, "Absorb")
+	f.player.hp = 20
+	_set_hp(f.enemies[0], "WWWWWW")
+	f.cast_chant(_all(3))
+	f.resolve_spell("leech")
+	assert_eq(f.player.hp, 20.0, "2 of 6 removed: it lives, no heal")
+	var g := _fight(["ashling"], ["leech"], "FAW")
+	g.player.hp = 20
+	_set_hp(g.enemies[0], "WW")
+	g.cast_chant(_all(3))
+	g.resolve_spell("leech")
+	assert_eq(g.player.hp, 25.0, "it's defeated: heal 5")
 
 
 func test_split_makes_a_twin() -> void:
@@ -119,13 +162,13 @@ func test_kindling_stone_charges_every_third_chant() -> void:
 	var burns := []
 	for i in 4:
 		_set_hp(e, "AAAAAAAAAA")
-		e.burn = 0
 		f.player.stock.clear()
 		f.player.add_element("F")
-		f.cast([0])  # Ember: Burn 1 on the target
-		burns.append(e.burn if e.burn > 0 else -1)
-	# burn is read after the enemy turn ticked it by 1: normal 1 -> 0, doubled 2 -> 1
-	assert_eq(burns, [-1, -1, 1, -1], "3rd chant charges the stone and its Burn is doubled")
+		f.cast_chant([0])
+		f.resolve_all()  # Ember: Burn 1 on the target
+		burns.append(e.burn)
+		f.finish_turn()
+	assert_eq(burns, [1, 1, 2, 1], "3rd chant charges the stone and its Burn is doubled")
 	assert_true(not f.player.kindling_charged)
 	assert_eq(f.player.kindling_chants, 1)
 
@@ -143,6 +186,23 @@ func test_lens_refunds_about_a_quarter_of_its_element() -> void:
 				water += 1
 	assert_eq(water, 0, "only Fire comes back")
 	assert_true(fire > 140 and fire < 260, "about 25%% of 800 Fire: got %d" % fire)
+
+
+func test_every_fight_starts_with_one_of_each_element() -> void:
+	for seed in 40:
+		var f := Fight.new(db, PlayerState.new())
+		f.rng.seed = seed
+		f.loadout = [db.get_spell("fire_ball")]
+		f.start(["ashling"], 1, 1)
+		var els: Array = f.player.stock.map(func(s): return s.el)
+		assert_eq(els.size(), PlayerState.START_ELEMENTS)
+		for el in ["F", "W", "A"]:
+			assert_true(el in els, "seed %d: start hand %s has no %s" % [seed, "".join(els), el])
+
+
+func test_early_enemies_have_three_essence() -> void:
+	for id in ["ashling", "puddle_slime", "gale_sprite", "frost_hex"]:
+		assert_true(EnemyDefs.get_def(id).hp.length() >= 3, "%s has only 2 Essence" % id)
 
 
 func test_emblems_give_three_on_turn_three() -> void:
@@ -236,6 +296,19 @@ func test_infuse_is_retroactive() -> void:
 	f.resolve_spell("spark_word")
 	assert_eq(f.chant_string(), "FFWA")
 	assert_eq(f.charges.get("fire_ball", 0), 1, "the new FF brings Fire Ball to life")
+
+
+func test_rearrange_moves_a_chant_element_and_recounts() -> void:
+	# Tempest (AAA): FWFA has no FF; moving the second F next to the first makes FFWA and wakes Fire Ball (FF)
+	var f := _fight(["ashling"], ["tempest", "fire_ball"], "AAAFWF")
+	_set_hp(f.enemies[0], "WWWWWWWW")
+	f.arranger = func(_s): return [5, 4]  # AAAFWF -> AAAFFW
+	f.cast_chant(_all(6))
+	assert_true(not f.charges.has("fire_ball"), "no FF yet")
+	f.resolve_spell("tempest")
+	assert_eq(f.chant_string(), "AAAFFW")
+	assert_eq(f.charges.get("fire_ball", 0), 1, "the new FF brings Fire Ball to life")
+	assert_eq(SpellText.card_text(db.get_spell("tempest")), "Gain 2 random elements next turn.\nRearrange 1: move one element of your chant to another spot.")
 
 
 func test_duplicate_copies_an_element_in_the_chant() -> void:
@@ -367,10 +440,10 @@ func test_artifact_tiers() -> void:
 func test_fuse_makes_one_spell_of_length_m_plus_n_minus_1() -> void:
 	var run := RunState.new()
 	run.setup(db, [], [], 4)
-	run.learn_spell("inferno")  # FFF
-	var prev := run.fuse_preview("water_wall", "inferno")  # WW + FFF
+	run.learn_spell("inferno")  # F?F
+	var prev := run.fuse_preview("water_wall", "inferno")  # WW + F?F
 	assert_eq(prev.size, 4, "3 + 2 - 1")
-	assert_true(String(prev.pattern).begins_with("FFF"), "the longer spell keeps its whole pattern first: " + prev.pattern)
+	assert_true(String(prev.pattern).begins_with("F?F"), "the longer spell keeps its whole pattern first: " + prev.pattern)
 	assert_eq(prev.effects.size(), 2, "does both spells' effects")
 	run.fuse_commit(prev, "water_wall", "inferno")
 	assert_true(not ("water_wall" in run.spellbook) and not ("inferno" in run.spellbook), "both used up")
@@ -391,4 +464,4 @@ func test_thermal_burst_hits_two_different_enemies() -> void:
 	assert_eq(f.enemies[2].size(), 3, "second target: a different enemy")
 	assert_eq(f.enemies[1].size(), 5)
 	assert_true(not (0 in asked[0]), "the second pick can't be the first target again")
-	assert_eq(SpellText.card_text(db.get_spell("thermal_burst")), "Remove the first 2 Essence of 2 different enemies, left to right.")
+	assert_eq(SpellText.card_text(db.get_spell("thermal_burst")), "Remove the 2 leftmost Essence of 2 different enemies.")

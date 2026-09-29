@@ -146,7 +146,7 @@ static func _content() -> Dictionary:
 		["Rarity", "Cards are Common, Rare or Legendary; rarer cards are stronger for their pattern. After a normal fight each card offered is Common 70% of the time and Rare 30%. Elites always offer 3 Rare cards. Bosses offer 3 Legendary cards."],
 		["Powers", "A Power fires once, then leaves your active row for the rest of the fight (the slot stays empty) and its effect lasts the whole fight. Open Grimoire adds 2 random spells from your spellbook to the row (net +1 spell)."],
 		["Upgrades", "The merchant (and some events) can upgrade a spell: its + version (gold name box) has bigger numbers for the rest of the run."],
-		["Reading a card", "The name box is coloured by category, the orbs under it are the pattern, and the rules are plain sentences. Spells Remove elements from an enemy's Essence. \"The last 3 Essence\" means the 3 rightmost elements, taken off right to left; \"the first 3 Essence\" means the 3 leftmost, left to right. Targeted lets you pick any element in it. Hover a card for the full explanation of every keyword on it."],
+		["Reading a card", "The name box is coloured by category, the orbs under it are the pattern, and the rules are plain sentences. Spells Remove elements from an enemy's Essence. \"The 3 rightmost Essence\" are the 3 elements at the right end of its row; \"the 3 leftmost Essence\" are the 3 at the left end. Targeted lets you pick any element in it. Hover a card for the full explanation of every keyword on it."],
 	]
 	var kw := []
 	for k in Keywords.K:

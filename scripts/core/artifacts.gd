@@ -48,7 +48,7 @@ const ALL := [
 	{"id": "tide_heart", "name": "Tide Heart", "aspect": "Element income", "desc": "+1 Water every turn.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "💙"},
 	{"id": "gale_heart", "name": "Gale Heart", "aspect": "Element income", "desc": "+1 Air every turn.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "💚"},
 	# ---- cursed: strong, with a price
-	{"id": "blood_pact", "name": "Blood Pact", "aspect": "Cursed", "desc": "+2 elements every turn. CURSE: −12 max HP.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "🩸"},
+	{"id": "blood_pact", "name": "Blood Pact", "aspect": "Cursed", "desc": "+1 element every turn. CURSE: −12 max HP.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "🩸"},
 	{"id": "broken_crown", "name": "Broken Crown", "aspect": "Cursed", "desc": "+2 active spell slots (up to the max of 8). CURSE: start every fight with 2 fewer elements.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "👑"},
 	{"id": "glass_heart", "name": "Glass Heart", "aspect": "Cursed", "desc": "Your Release deals 1 extra damage to every enemy it hits. CURSE: you take 25% more damage.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "💔"},
 	{"id": "hungry_tome", "name": "Hungry Tome", "aspect": "Cursed", "desc": "Every spell can trigger 1 more time per turn. CURSE: −1 active spell slot.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "📕"},

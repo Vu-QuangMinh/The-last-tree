@@ -48,14 +48,22 @@ func test_occurrences_are_non_overlapping() -> void:
 	assert_eq(Chant.occurrences("AF", "AFWAF"), [0, 3])
 
 
-func test_burn_takes_front_poison_takes_back() -> void:
+func test_burning_essence_burns_off_poison_takes_rightmost() -> void:
 	var e := _enemy("FWA")
-	e.burn = 1
+	e.lit = [false, true, false]  # the W is on fire
 	e.poison = 1
-	e.begin_turn()
-	assert_eq(e.hp_text(), "W")
-	assert_eq(e.burn, 0)
+	e.begin_turn()  # enemy turn: poison takes the rightmost (A); fire waits for the player's turn
+	assert_eq(e.hp_text(), "FW")
 	assert_eq(e.poison, 0)
+	assert_eq(e.burn_off(), ["W"])
+	assert_eq(e.hp_text(), "F")
+	assert_eq(e.burn, 0)
+
+
+func test_wildcard_matches_any_element() -> void:
+	assert_eq(Chant.occurrences("F?F", "FWFAFFF"), [0, 4])
+	assert_eq(Chant.occurrences("F?F", "FF"), [])
+	assert_eq(Chant.first_index("A?", "FFAW"), 2)
 
 
 func test_purge_removes_up_to_n() -> void:

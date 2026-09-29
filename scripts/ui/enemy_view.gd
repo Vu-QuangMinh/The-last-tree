@@ -128,6 +128,7 @@ func refresh(preview: Dictionary) -> void:
 		var hidden: bool = mask.size() > i and mask[i]
 		var icon := ElementIcon.make("?" if hidden else e.elements[i], px)
 		icon.armored = e.armor[i]
+		icon.burning = e.is_lit(i)
 		icon.ghost = ghosts.has(i)
 		if move_mode:
 			icon.highlight = i == move_pick

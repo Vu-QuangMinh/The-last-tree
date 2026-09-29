@@ -25,12 +25,34 @@ var state_text := ""
 var lock_pattern := ""
 var selected := false
 var compact := false
+## Drawn this many times bigger: fonts, orbs and margins are all laid out at the larger size (not stretched),
+## so the text stays sharp. Used for reward cards and the hover magnifier.
+var zoom := 1.0
 
 var _count: Label
+var _rules: RichTextLabel
+var _name_l: Label
+var _pat: HBoxContainer
+var _tag_l: Label
+## Sizes picked by _fit_text, in unzoomed units. The hover copy reuses them (fit_from) so it is an exact
+## enlargement of the card, wrapping its text the same way.
+var fit_name_fs := 0
+var fit_fs := 0
+var fit_orb := 0.0
+var fit_from := false
 var _state: Label
 var _lock_row: HBoxContainer
 var _box: StyleBoxFlat
 var _shade: ColorRect
+var _orbit: OrbitSpark  # pending: the chant you're building will wake this spell
+
+
+func _z(x: float) -> float:
+	return x * zoom
+
+
+func _zi(x: float) -> int:
+	return int(round(x * zoom))
 
 
 static func make(p_spell: Dictionary, p_compact := false) -> SpellCard:
@@ -41,7 +63,7 @@ static func make(p_spell: Dictionary, p_compact := false) -> SpellCard:
 
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(W, 120 if compact else H)
+	custom_minimum_size = Vector2(W, 120 if compact else H) * zoom
 	# the magnified copy must never catch the mouse, or the real card loses its hover and its clicks
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if is_zoom_copy else Control.MOUSE_FILTER_STOP
 	if not is_zoom_copy:
@@ -50,76 +72,77 @@ func _ready() -> void:
 	var kc: Color = KIND_COLORS[spell.kind]
 	_box = StyleBoxFlat.new()
 	_box.bg_color = PARCHMENT
-	_box.set_corner_radius_all(10)
-	_box.content_margin_left = 8
-	_box.content_margin_right = 8
-	_box.content_margin_top = 7
-	_box.content_margin_bottom = 5
+	_box.set_corner_radius_all(_zi(10))
+	_box.content_margin_left = _z(6)
+	_box.content_margin_right = _z(6)
+	_box.content_margin_top = _z(7)
+	_box.content_margin_bottom = _z(5)
 	_box.shadow_color = Color(0, 0, 0, 0.45)
-	_box.shadow_size = 4
+	_box.shadow_size = _zi(4)
 	add_theme_stylebox_override("panel", _box)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 5)
+	v.add_theme_constant_override("separation", _zi(SEP))
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(v)
 	# name: centred in a thin box coloured by what the spell does
 	var top := HBoxContainer.new()
+	top.alignment = BoxContainer.ALIGNMENT_CENTER
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(top)
-	var left := Control.new()
-	left.custom_minimum_size = Vector2(34, 0)
-	left.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	top.add_child(left)
 	var nb := PanelContainer.new()
 	var nbs := StyleBoxFlat.new()
 	nbs.bg_color = kc
 	nbs.border_color = Color(1, 0.85, 0.3) if spell.get("upgraded", false) else kc.darkened(0.45)
-	nbs.set_border_width_all(2 if spell.get("upgraded", false) else 1)
-	nbs.set_corner_radius_all(4)
-	nbs.content_margin_left = 8
-	nbs.content_margin_right = 8
-	nbs.content_margin_top = 1
-	nbs.content_margin_bottom = 1
+	nbs.set_border_width_all(_zi(2 if spell.get("upgraded", false) else 1))
+	nbs.set_corner_radius_all(_zi(4))
+	nbs.content_margin_left = _z(8)
+	nbs.content_margin_right = _z(8)
+	nbs.content_margin_top = _z(1)
+	nbs.content_margin_bottom = _z(1)
 	nb.add_theme_stylebox_override("panel", nbs)
-	nb.size_flags_horizontal = Control.SIZE_EXPAND | Control.SIZE_SHRINK_CENTER
+	nb.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	nb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var name_l := UiTheme.label(spell.name, 22, Color.WHITE)
+	var name_l := UiTheme.label(spell.name, _zi(22), Color.WHITE)
+	_name_l = name_l
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_l.add_theme_constant_override("outline_size", 4)
+	name_l.add_theme_constant_override("outline_size", _zi(4))
 	name_l.add_theme_color_override("font_outline_color", kc.darkened(0.6))
 	name_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	nb.add_child(name_l)
 	top.add_child(nb)
-	_count = UiTheme.label("", 28, Color(0.75, 0.45, 0.0))
-	_count.custom_minimum_size = Vector2(34, 0)
+	_count = UiTheme.label("", _zi(28), Color(0.75, 0.45, 0.0))
 	_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_count.add_theme_constant_override("outline_size", 5)
+	_count.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	_count.add_theme_constant_override("outline_size", _zi(5))
 	_count.add_theme_color_override("font_outline_color", Color(1, 0.95, 0.75))
 	_count.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	top.add_child(_count)
+	# pinned to the card's top-right corner (a plain Label would be centred in the card)
+	_count.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_count.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	add_child(_count)
 	# pattern
 	var pat := HBoxContainer.new()
 	pat.alignment = BoxContainer.ALIGNMENT_CENTER
-	pat.add_theme_constant_override("separation", 3)
+	pat.add_theme_constant_override("separation", _zi(3))
 	pat.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# long (fused) patterns get smaller orbs so they fit the card's width
+	var orb := minf(40.0, (RULES_W - 3.0 * (spell.pattern.length() - 1)) / spell.pattern.length())
 	for ch in spell.pattern:
-		pat.add_child(ElementIcon.make(ch, 40))
+		pat.add_child(ElementIcon.make(ch, _z(orb)))
 	v.add_child(pat)
+	_pat = pat
 	if not compact:
 		var d := RichTextLabel.new()
 		d.bbcode_enabled = true
 		d.fit_content = true
 		d.scroll_active = false
 		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		d.custom_minimum_size = Vector2(W - 20, 0)
+		d.custom_minimum_size = Vector2(_z(RULES_W), 0)
 		d.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		d.add_theme_color_override("default_color", INK)
-		# plain sentences; the text shrinks a little when there is more to say
-		var rules := SpellText.card_text(spell)
-		var fs := 21 if rules.length() <= 45 else (19 if rules.length() <= 80 else 17)
-		d.add_theme_font_size_override("normal_font_size", fs)
-		d.add_theme_font_size_override("bold_font_size", fs)
-		d.text = "[center]" + Keywords.colorize(rules, true) + "[/center]"
+		# plain sentences; the size is picked once the rest of the card is built (see _fit_text)
+		d.text = "[center]" + Keywords.colorize(SpellText.card_text(spell), true) + "[/center]"
+		_rules = d
 		# the rules sit in the middle of the space left, so the card has no empty gap
 		var mid := CenterContainer.new()
 		mid.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -131,11 +154,13 @@ func _ready() -> void:
 		tags.append("POWER")
 	if spell.get("fused", false):
 		tags.append("FUSED")
-	var tag_l := UiTheme.label(" · ".join(tags), 13, RARITY_COLORS[spell.rarity])
+	var tag_l := UiTheme.label(" · ".join(tags), _zi(13), RARITY_COLORS[spell.rarity])
 	tag_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tag_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(tag_l)
-	var pattern_words := " ".join(Array(spell.pattern.split("")).map(func(c): return Elements.NAMES[c]))
+	_tag_l = tag_l
+	_fit_text()
+	var pattern_words := " ".join(Array(spell.pattern.split("")).map(func(c): return "any element" if c == "?" else Elements.NAMES[c]))
 	var extra := "[color=#9aa89a]%s %s  ·  chant %s  ·  triggers at most %d× per turn[/color]" % [spell.rarity_name, SpellDB.KIND_NAMES[spell.kind], pattern_words, 1 if spell.power else spell.size]
 	if spell.has("flavor"):
 		extra += "\n[i][color=#9aa89a]\"%s\"[/color][/i]" % spell.flavor
@@ -145,11 +170,16 @@ func _ready() -> void:
 	_shade.color = Color(0.02, 0.02, 0.04, 0.78)
 	_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_shade)
-	_state = UiTheme.label("", 20, Color.WHITE)
+	_orbit = OrbitSpark.new()
+	_orbit.zoom = zoom
+	_orbit.margins = [_box.content_margin_left, _box.content_margin_top, _box.content_margin_right, _box.content_margin_bottom]
+	_orbit.visible = false
+	add_child(_orbit)
+	_state = UiTheme.label("", _zi(20), Color.WHITE)
 	_state.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_state.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_state.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_state.add_theme_constant_override("outline_size", 6)
+	_state.add_theme_constant_override("outline_size", _zi(6))
 	_state.add_theme_color_override("font_outline_color", Color.BLACK)
 	add_child(_state)
 	_lock_row = HBoxContainer.new()
@@ -157,6 +187,44 @@ func _ready() -> void:
 	_lock_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_lock_row)
 	refresh()
+
+
+## Every card is the same height. The name shrinks to fit its box, and the rules text takes the biggest size
+## (21 down to 11) that fits the space the name, orbs and tags leave, so a wordy card (a fused one) is never
+## cut off and a short one doesn't sit in a big empty gap.
+const RULES_W := 234.0
+const SEP := 5.0
+
+
+func _fit_text() -> void:
+	# the name: fits the card's width, leaving a little room in the corners for the ×N counter
+	var font := _name_l.get_theme_font("font")
+	var name_fs := 22
+	while name_fs > 15 and font.get_string_size(spell.name, HORIZONTAL_ALIGNMENT_LEFT, -1, _zi(name_fs)).x > _z(W - 12 - 16 - 2 * 20):
+		name_fs -= 1
+	_name_l.add_theme_font_size_override("font_size", _zi(name_fs))
+	if _rules == null:
+		return
+	# the rules: the height left once the card's frame, name, orbs and tag line are counted
+	var used := _z(7 + 5) + _name_l.get_combined_minimum_size().y + _z(2) + _pat.get_combined_minimum_size().y \
+		+ _tag_l.get_combined_minimum_size().y + _z(SEP) * 3
+	var room := _z(H) - used
+	# measured on the real text box (coloured keywords and line spacing included), at the card's text width
+	_rules.size = Vector2(_z(RULES_W), 0)
+	var fs := 21
+	var need := 0.0
+	while true:
+		_rules.add_theme_font_size_override("normal_font_size", _zi(fs))
+		_rules.add_theme_font_size_override("bold_font_size", _zi(fs))
+		need = _rules.get_content_height()
+		if need <= room or fs <= 11:
+			break
+		fs -= 1
+	# still too much (a fusion of two wordy spells): shrink the orbs to make room for the text
+	if need > room:
+		for o in _pat.get_children():
+			var px: float = maxf(_z(22), o.custom_minimum_size.x - (need - room))
+			o.custom_minimum_size = Vector2(px, px)
 
 
 ## Hovering a card shows a magnified copy of it on a layer above everything else, so it's never clipped by a
@@ -176,38 +244,56 @@ func _on_hover(on: bool) -> void:
 	if is_instance_valid(_zoom):
 		_zoom.queue_free()
 		_zoom = null
+		refresh()  # shows the real card again
 	if not on or not is_inside_tree():
 		return
 	if _layer == null or not is_instance_valid(_layer):
 		_layer = CanvasLayer.new()
 		_layer.layer = 25
 		get_tree().root.add_child(_layer)
+	# how big the real card looks now, and how big the copy should be
+	var real_scale := get_global_transform().get_scale().x
+	var shown := real_scale * zoom
+	var target := shown * 1.2 if shown >= 1.0 else 1.12
 	var z := SpellCard.make(spell, compact)
 	z.is_zoom_copy = true
+	z.zoom = target  # laid out at the big size, so it's crisp
+	z.fit_from = true  # same text and orb sizes as this card, so it wraps exactly the same
+	z.fit_name_fs = fit_name_fs
+	z.fit_fs = fit_fs
+	z.fit_orb = fit_orb
+	# its layer is outside every screen, so it must be given the game's theme (font) itself, or it falls back
+	# to Godot's default font: heavier, wider, and the text wraps differently from the real card
+	z.theme = UiTheme.get_theme()
+	z.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# same shape as the real card (it may have been stretched by its row), just bigger
+	var zsize := size / zoom * target
+	z.custom_minimum_size = zsize
+	_layer.add_child(z)
+	_zoom = z
+	_sync_zoom()
+	_ignore_mouse(z)
+	z.size = zsize
+	# sits where the real card is and grows upwards from its bottom edge (a quick pop, then crisp at scale 1)
+	var bottom_mid := global_position + Vector2(size.x * real_scale / 2.0, size.y * real_scale)
+	z.pivot_offset = Vector2(zsize.x / 2.0, zsize.y)
+	z.position = bottom_mid - Vector2(zsize.x / 2.0, zsize.y)
+	if z.position.y < 8.0:
+		z.position.y = 8.0
+	z.scale = Vector2.ONE * (shown / target)
+	z.create_tween().tween_property(z, "scale", Vector2.ONE, 0.1)
+	modulate.a = 0.0
+
+
+func _sync_zoom() -> void:
+	var z := _zoom
 	z.fires = fires
 	z.charges = charges
 	z.state = state
 	z.state_text = state_text
 	z.lock_pattern = lock_pattern
 	z.selected = selected
-	z.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_layer.add_child(z)
-	_ignore_mouse(z)
-	_zoom = z
-	# same spot as the real card, then grow upwards from its bottom edge
-	var real_scale := get_global_transform().get_scale().x
-	var target := real_scale * 1.2 if real_scale >= 1.0 else 1.12
-	var bottom_mid := global_position + Vector2(size.x * real_scale / 2.0, size.y * real_scale)
-	z.size = Vector2(W, H)
-	z.pivot_offset = Vector2(W / 2.0, H)
-	z.position = bottom_mid - Vector2(W / 2.0, H)
-	z.scale = Vector2.ONE * real_scale
-	var tw := z.create_tween()
-	tw.tween_property(z, "scale", Vector2.ONE * target, 0.1)
-	# keep the copy on screen
-	var top := bottom_mid.y - H * target
-	if top < 8.0:
-		z.position.y += 8.0 - top
+	z.refresh()
 
 
 static func _ignore_mouse(n: Node) -> void:
@@ -233,13 +319,18 @@ func _process(d: float) -> void:
 		rotation = sin(_t * 6.0) * (0.02 if not aiming else 0.0)
 		var s := (1.06 if aiming else 1.0 + 0.02 * sin(_t * 3.0)) * base_scale
 		scale = Vector2(s, s)
-		self_modulate = Color(1, 1, 1).lerp(Color(1.12, 1.08, 0.92), 0.5 + 0.5 * sin(_t * 4.0))
+		self_modulate = Color(1, 1, 1).lerp(Color(1.18, 1.12, 0.9), 0.5 + 0.5 * sin(_t * 4.0))
+		var glow := 0.5 + 0.5 * sin(_t * 4.0)
+		_box.shadow_color = Color(1.0, 0.82, 0.2, 0.55 + 0.35 * glow)
+		_box.shadow_size = _zi(10 + 8 * glow)
 	elif _t != 0.0:
 		rotation = 0.0
 		scale = Vector2(base_scale, base_scale)
 		self_modulate = Color.WHITE
 		pivot_offset = Vector2.ZERO
 		_t = 0.0
+		_box.shadow_color = Color(0, 0, 0, 0.45)
+		_box.shadow_size = _zi(4)
 
 
 func _make_custom_tooltip(for_text: String) -> Object:
@@ -269,14 +360,18 @@ func refresh() -> void:
 		bw = 5
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if charges > 0 else Control.CURSOR_ARROW
 	_box.border_color = border
-	_box.set_border_width_all(bw)
+	_box.set_border_width_all(_zi(bw))
 	modulate = Color(1, 1, 1, 0.45) if state == "used" else Color.WHITE
+	if is_instance_valid(_zoom):
+		modulate.a = 0.0  # its magnified copy is showing instead
+		_sync_zoom()
 	_state.text = state_text
 	for ch in _lock_row.get_children():
 		ch.queue_free()
 	if state == "locked":
 		_state.text = "LOCKED\n\n"
 		for ch in lock_pattern:
-			_lock_row.add_child(ElementIcon.make(ch, 28))
+			_lock_row.add_child(ElementIcon.make(ch, _z(28)))
 	_state.visible = state != ""
 	_shade.visible = state in ["silenced", "locked"]
+	_orbit.visible = fires > 0 and charges == 0 and state == ""

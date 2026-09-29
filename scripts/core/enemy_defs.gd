@@ -10,9 +10,9 @@ const E := {
 	# ---------------- act 1
 	"ashling": {"name": "Ashling", "act": 1, "hp": "FFW", "moves": [{"kind": "attack", "n": 5}, {"kind": "mend", "el": "F", "n": 1, "who": "self"}, {"kind": "bleed", "n": 1, "also": {"kind": "attack", "n": 2}}],
 		"flavor": "A spark that learned to bite."},
-	"puddle_slime": {"name": "Puddle Slime", "act": 1, "hp": "WW", "moves": [{"kind": "attack", "n": 3}, {"kind": "mend", "el": "W", "n": 1, "who": "self"}, {"kind": "frail", "turns": 1}],
+	"puddle_slime": {"name": "Puddle Slime", "act": 1, "hp": "WAW", "moves": [{"kind": "attack", "n": 3}, {"kind": "mend", "el": "W", "n": 1, "who": "self"}, {"kind": "frail", "turns": 1}],
 		"flavor": "It keeps refilling itself."},
-	"gale_sprite": {"name": "Gale Sprite", "act": 1, "hp": "AF", "moves": [{"kind": "attack", "n": 3, "hits": 2}, {"kind": "armor", "pos": 0}, {"kind": "freeze", "n": 1}],
+	"gale_sprite": {"name": "Gale Sprite", "act": 1, "hp": "AFA", "moves": [{"kind": "attack", "n": 3, "hits": 2}, {"kind": "armor", "pos": 0}, {"kind": "freeze", "n": 1}],
 		"flavor": "Two quick jabs of wind."},
 	"cinder_hound": {"name": "Cinder Hound", "act": 1, "hp": "FFF", "moves": [{"kind": "attack", "n": 6}, {"kind": "armor", "pos": 0}, {"kind": "empower", "n": 1, "also": {"kind": "attack", "n": 3}}], "passives": ["burning_hide"],
 		"flavor": "Touching it hurts."},
@@ -65,7 +65,7 @@ const E := {
 		"flavor": "Chains your spells shut."},
 	"tide_colossus": {"name": "Tide Colossus", "act": 3, "elite": true, "hp": "WWWWFW", "moves": [{"kind": "mend", "el": "W", "n": 2, "who": "self"}, {"kind": "attack", "n": 8}],
 		"flavor": "A wave that stands up."},
-	"hollow_stag": {"name": "Hollow Stag", "act": 1, "elite": true, "hp": "AWFAWF", "moves": [{"kind": "attack", "n": 7}, {"kind": "empower", "n": 2, "also": {"kind": "attack", "n": 3}}],
+	"hollow_stag": {"name": "Hollow Stag", "act": 1, "elite": true, "hp": "AWFAWFAWFAWF", "moves": [{"kind": "attack", "n": 7}, {"kind": "empower", "n": 2, "also": {"kind": "attack", "n": 3}}],
 		"flavor": "Every charge hits harder than the last."},
 	"bramble_matron": {"name": "Bramble Matron", "act": 1, "elite": true, "hp": "WFWFA", "moves": [{"kind": "summon", "id": "ashling", "n": 1}, {"kind": "attack", "n": 4, "hits": 2}], "passives": ["burning_hide"],
 		"flavor": "Her brood of sparks never stops coming."},
@@ -188,7 +188,7 @@ static func encounter(kind: String, act: int, floor: int, rng: RandomNumberGener
 
 
 ## Extra random elements added to the end of an enemy's Essence on deeper floors (bosses excluded).
-## Act 1 starts at 2-3 elements; by the middle of act 2 every enemy has 7 or more.
+## Act 1 starts at 3 elements; by the middle of act 2 every enemy has 7 or more.
 static func extra_hp(act: int, floor: int, rng: RandomNumberGenerator, boss := false) -> Array:
 	var n := 0
 	if not boss:

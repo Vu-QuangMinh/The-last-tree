@@ -150,7 +150,7 @@ func run(t: SceneTree) -> void:
 	root.add_child(ch)
 	await _wait(6)
 	var rc: Array = ch.find_children("*", "SpellCard", true, false)
-	rc[1]._on_hover(true)
+	_hover(rc[1])
 	await _shot(ch, "07_reward", false)
 	var ch2 := ChoiceScreen.new()
 	ch2.title = "Steal spells"
@@ -172,7 +172,7 @@ func run(t: SceneTree) -> void:
 	var bfs := FightScreen.new()
 	bfs.setup(big, bf)
 	await _shot(bfs, "11_crowded_fight", true, true)
-	bfs._cards[3]._on_hover(true)
+	_hover(bfs._cards[3])
 	var pin_tip := PanelContainer.new()
 	pin_tip.add_theme_stylebox_override("panel", UiTheme.get_theme().get_stylebox("panel", "TooltipPanel"))
 	pin_tip.add_child(Keywords.make_tooltip(bfs._views.values()[0].creature.tooltip_text))
@@ -215,3 +215,9 @@ func _shot(c: Control, name: String, add := true, keep := false) -> void:
 	if not keep:
 		c.queue_free()
 	await tree.process_frame
+
+
+## Hover a card the way a player does: the mouse really sits on it (the card checks that each frame).
+func _hover(card: SpellCard) -> void:
+	card.get_viewport().warp_mouse(card.get_global_rect().get_center())
+	card._on_hover(true)
