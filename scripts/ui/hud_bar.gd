@@ -33,8 +33,8 @@ func _ready() -> void:
 
 func refresh() -> void:
 	var p := run.player
-	_label.text = "♥ %d / %d     Act %d     ◉ %d Amber     ✿ %d Seedlings     %d spells · %d slots" % [p.hp, p.max_hp, run.act, run.amber, run.seedlings, run.spellbook.size(), run.active_slots()]
+	_label.text = "♥ %d / %d     Act %d     ✿ %d Seedlings     %d spells · %d slots" % [p.hp, p.max_hp, run.act, run.seedlings, run.spellbook.size(), run.active_slots()]
 	for c in _arts.get_children():
 		c.queue_free()
 	for id in run.artifacts:
-		_arts.add_child(ArtifactBar.ArtifactChip.make(id))
+		_arts.add_child(ArtifactBar.ArtifactChip.make(id, id in run.artifacts_plus))

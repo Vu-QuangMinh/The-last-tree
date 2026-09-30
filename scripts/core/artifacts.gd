@@ -37,7 +37,7 @@ const ALL := [
 	{"id": "ward_stone", "name": "Ward Stone", "aspect": "Defence", "desc": "Start every fight with Aegis 1.", "cost": 35, "starter": false, "pool": "normal", "tier": "rare", "icon": "🛡"},
 	{"id": "thornbark", "name": "Thornbark", "aspect": "Defence", "desc": "Thorns 1 in every fight.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🌵"},
 	{"id": "iron_bark", "name": "Iron Bark", "aspect": "Defence", "desc": "Start every fight with 2 Shield.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🌲"},
-	{"id": "healing_sap", "name": "Healing Sap", "aspect": "Health", "desc": "Heal 4 after every fight.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🍯"},
+	{"id": "healing_sap", "name": "Healing Sap", "aspect": "Health", "desc": "Heal 2 after every fight.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🍯"},
 	{"id": "mending_moss", "name": "Mending Moss", "aspect": "Health", "desc": "Heal 1 at the start of each of your turns.", "cost": 40, "starter": false, "pool": "normal", "tier": "rare", "icon": "🌿"},
 	# ---- rewards
 	{"id": "scholar_quill", "name": "Scholar's Quill", "aspect": "Rewards", "desc": "Spell rewards show 4 choices instead of 3.", "cost": 40, "starter": false, "pool": "normal", "tier": "rare", "icon": "✒"},
@@ -51,8 +51,8 @@ const ALL := [
 	{"id": "blood_pact", "name": "Blood Pact", "aspect": "Cursed", "desc": "+1 element every turn. CURSE: −12 max HP.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "🩸"},
 	{"id": "broken_crown", "name": "Broken Crown", "aspect": "Cursed", "desc": "+2 active spell slots (up to the max of 8). CURSE: start every fight with 2 fewer elements.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "👑"},
 	{"id": "glass_heart", "name": "Glass Heart", "aspect": "Cursed", "desc": "Every enemy your Release hits also loses its rightmost Essence. CURSE: you take 25% more damage.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "💔"},
-	{"id": "hungry_tome", "name": "Hungry Tome", "aspect": "Cursed", "desc": "Every spell can trigger 1 more time per turn. CURSE: −1 active spell slot.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "📕"},
-	{"id": "withered_idol", "name": "Withered Idol", "aspect": "Cursed", "desc": "+1 element every turn and heal 6 after every fight. CURSE: enemies hit 1 harder.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "🗿"},
+	{"id": "hungry_tome", "name": "Hungry Tome", "aspect": "Cursed", "desc": "Every spell can trigger 1 more time per turn. CURSE: take 2 damage at the start of every fight.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "📕"},
+	{"id": "withered_idol", "name": "Withered Idol", "aspect": "Cursed", "desc": "+2 elements every turn. CURSE: −1 active spell slot.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "🗿"},
 ]
 
 
@@ -61,6 +61,54 @@ static func get_def(id: String) -> Dictionary:
 		if a.id == id:
 			return a
 	return {}
+
+
+## Upgraded (+) artifacts: [its number, its + number, its + text]. Only these can be upgraded, once each
+## (legendary boss relics, cursed artifacts and yes/no effects can't).
+const PLUS := {
+	"ember_charm": [1, 2, "Start every fight with 2 extra Fire."],
+	"wind_chime": [1, 2, "Start every fight with 2 extra random elements."],
+	"fire_emblem": [3, 5, "Gain 5 Fire on turn 3 of every fight."],
+	"water_emblem": [3, 5, "Gain 5 Water on turn 3 of every fight."],
+	"wind_emblem": [3, 5, "Gain 5 Air on turn 3 of every fight."],
+	"lucky_acorn": [0.25, 0.4, "Each turn, a 40% chance to draw 1 extra element."],
+	"second_wind": [1, 2, "Draw 2 extra elements each turn while below half HP."],
+	"flame_lens": [0.25, 0.4, "After each Release, every Fire in your chant has a 40% chance to come back to your elements."],
+	"tide_lens": [0.25, 0.4, "After each Release, every Water in your chant has a 40% chance to come back to your elements."],
+	"gale_lens": [0.25, 0.4, "After each Release, every Air in your chant has a 40% chance to come back to your elements."],
+	"kindling_stone": [3, 2, "Every 2nd chant charges it. While charged, the next Burn you apply is doubled."],
+	"venom_gland": [1, 2, "Your Poison applies 2 extra stacks."],
+	"lock_pick": [1, 2, "Locks on your spells have 2 fewer symbols."],
+	"rain_chalice": [4, 6, "Start every fight with 6 Shield."],
+	"ward_stone": [1, 2, "Start every fight with Aegis 2."],
+	"thornbark": [1, 2, "Thorns 2 in every fight."],
+	"iron_bark": [2, 3, "Start every fight with 3 Shield."],
+	"healing_sap": [2, 3, "Heal 3 after every fight."],
+	"mending_moss": [1, 2, "Heal 2 at the start of each of your turns."],
+	"scholar_quill": [4, 5, "Spell rewards show 5 choices instead of 3."],
+	"seedling_pouch": [0.25, 0.5, "+50% Seedlings from this run."],
+}
+
+
+## The number an artifact works with: its + number when upgraded.
+static func num(id: String, plus := false) -> float:
+	if not PLUS.has(id):
+		return 0.0
+	return float(PLUS[id][1] if plus else PLUS[id][0])
+
+
+static func can_upgrade(id: String) -> bool:
+	return PLUS.has(id)
+
+
+## How an artifact reads: an upgraded one gets a + on its name and its stronger text.
+static func view(id: String, plus := false) -> Dictionary:
+	var d := get_def(id).duplicate()
+	if plus and PLUS.has(id):
+		d.name += "+"
+		d.desc = PLUS[id][2]
+		d["plus"] = true
+	return d
 
 
 static func is_curse(id: String) -> bool:

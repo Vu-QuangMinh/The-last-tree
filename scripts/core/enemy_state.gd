@@ -93,7 +93,7 @@ func ignite(n: int, rng: RandomNumberGenerator = null) -> int:
 	return lighted
 
 
-## Start of the player's turn: every burning element is removed (armour doesn't stop fire).
+## Start of the enemy's turn (before it acts): every burning element is removed (armour doesn't stop fire).
 func burn_off() -> Array:
 	_fix_lit()
 	var removed := []
@@ -158,6 +158,15 @@ func pluck(i: int) -> String:
 	if i < 0 or i >= elements.size() or armor[i]:
 		return ""
 	return _remove_at(i)
+
+
+## Annihilate: every element of this kind is removed, armoured or not.
+func remove_all(el: String) -> Array:
+	var removed := []
+	for i in range(elements.size() - 1, -1, -1):
+		if elements[i] == el:
+			removed.push_front(_remove_at(i))
+	return removed
 
 
 func purge(el: String, n: int) -> Array:
@@ -279,14 +288,28 @@ func damage_mult() -> float:
 
 ## Start of the enemy's turn: armour from last turn fades, then Poison bites. (Burn bites at the start of
 ## the player's turn instead: see burn_off.)
-func begin_turn() -> Dictionary:
+func begin_turn(rng: RandomNumberGenerator = null) -> Dictionary:
 	armor.fill(false)
 	ethereal = false
 	var out := {"burn": [], "poison": []}
 	if poison > 0 and not is_dead():
-		out.poison = remove_right(1)
+		out.poison = poison_bite(rng)
 		poison -= 1
 	return out
+
+
+## Poison: the enemy loses one Essence of its rarest element (if several are equally rare, one of them at
+## random); of that element, the rightmost one goes.
+func poison_bite(rng: RandomNumberGenerator = null) -> Array:
+	var counts := {}
+	for el in elements:
+		counts[el] = counts.get(el, 0) + 1
+	if counts.is_empty():
+		return []
+	var fewest: int = counts.values().min()
+	var rarest := counts.keys().filter(func(el): return counts[el] == fewest)
+	var pick: String = rarest[(rng.randi() if rng else randi()) % rarest.size()]
+	return [_remove_at(elements.rfind(pick))]
 
 
 ## After its action: timed statuses count down.
@@ -300,9 +323,9 @@ func end_turn() -> void:
 func describe_statuses() -> Array:
 	var out := []
 	if burn > 0:
-		out.append("Burning %d (removed at the start of your turn)" % burn)
+		out.append("Burning %d (burns away at the start of its turn)" % burn)
 	if poison > 0:
-		out.append("Poison %d (loses its rightmost Essence each turn)" % poison)
+		out.append("Poison %d (loses one of its rarest element each turn)" % poison)
 	if weak_turns > 0:
 		out.append("Weakened %d turn%s (deals 50%% less)" % [weak_turns, "" if weak_turns == 1 else "s"])
 	if weak25:

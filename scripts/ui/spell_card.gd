@@ -152,6 +152,8 @@ func _ready() -> void:
 	var tags := [spell.rarity_name.to_upper(), SpellDB.KIND_NAMES[spell.kind].to_upper()]
 	if spell.power:
 		tags.append("POWER")
+	if spell.get("fleeting", false):
+		tags.append("FLEETING")
 	if spell.get("fused", false):
 		tags.append("FUSED")
 	var tag_l := UiTheme.label(" · ".join(tags), _zi(13), RARITY_COLORS[spell.rarity])

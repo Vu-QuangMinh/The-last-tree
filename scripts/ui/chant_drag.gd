@@ -3,6 +3,8 @@ extends Control
 ## The chant while you place elements in it (Infuse, Rearrange). The elements you may move come alive: they
 ## shine and wiggle. Grab one and drag it; the others slide softly aside, with a little wobble, to open a gap
 ## where it will land. Keyboard: Tab picks another element, Left / Right move the gap, Enter drops.
+## External mode (building a chant): the element was grabbed elsewhere (from your bag, or from the chant) and
+## follows the mouse anywhere on screen; the fight screen asks external_result() when the button is let go.
 
 ## from = its index in `els`, to = where it lands (its index once the others close up). (-1, -1) = skipped.
 signal dropped(from: int, to: int)
@@ -27,6 +29,36 @@ var _gap := -1
 var _keyboard := false
 var _key_i := 0
 var _t := 0.0
+var external := false
+var _pointer := Vector2.ZERO  # the mouse, in screen coordinates (fed by the fight screen as it moves)
+
+
+func begin_external(held: int, pointer: Vector2) -> void:
+	external = true
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_keyboard = false
+	_held = held
+	_grab_dx = px / 2.0
+	_pointer = pointer
+	_update_external()
+
+
+func set_pointer(p: Vector2) -> void:
+	_pointer = p
+
+
+## inside: dropped over the chant (to = where it lands). Outside: let go away from the chant.
+func external_result() -> Dictionary:
+	return {"inside": _gap >= 0, "to": _gap}
+
+
+func _update_external() -> void:
+	_mouse = _pointer - global_position
+	var zone := Rect2(Vector2(-px * 0.6, -px * 1.3), size + Vector2(px * 1.2, px * 2.6))
+	if zone.has_point(_mouse):
+		_gap = _gap_at(_mouse.x - _grab_dx)
+	else:
+		_gap = -1  # away from the chant: the others close up
 
 
 func _ready() -> void:
@@ -68,6 +100,8 @@ func _targets() -> Array:
 
 func _process(d: float) -> void:
 	_t += d
+	if external and _held >= 0:
+		_update_external()
 	_place_icons(d)
 	queue_redraw()
 
@@ -86,6 +120,9 @@ func _place_icons(d: float) -> void:
 			_x[i] += _v[i] * d
 		var lift := -10.0 if i == _held else 0.0
 		ic.position = Vector2(_x[i], 8.0 + lift)
+		if external and i == _held:
+			ic.position = _mouse - Vector2(px, px) / 2.0  # in your hand, wherever the mouse goes
+			ic.modulate.a = 1.0 if _gap >= 0 else 0.65  # fainter away from the chant: letting go there takes it back
 		var wig := 0.0
 		var sc := 1.0
 		if i == _held:
@@ -99,7 +136,7 @@ func _place_icons(d: float) -> void:
 		wig += clampf(_v[i] * 0.0012, -0.25, 0.25)
 		ic.rotation = wig
 		ic.scale = Vector2(sc, sc)
-		ic.z_index = 1 if i == _held else 0  # the one in your hand passes over the others
+		ic.z_index = (50 if external else 1) if i == _held else 0  # the one in your hand passes over everything
 		ic.highlight = live[i] and (i == _held or (_held < 0 and i == _key_i and _keyboard))
 
 
@@ -111,7 +148,7 @@ func _draw() -> void:
 	for i in els.size():
 		if not live[i]:
 			continue
-		var c := Vector2(_x[i] + px / 2.0, 8.0 + px / 2.0 + (-10.0 if i == _held else 0.0))
+		var c: Vector2 = _icons[i].position + Vector2(px, px) / 2.0
 		var pulse := 0.5 + 0.5 * sin(_t * 4.0 + i)
 		var strength := 1.6 if i == _held else 1.0
 		for k in 4:

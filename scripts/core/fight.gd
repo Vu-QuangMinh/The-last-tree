@@ -7,6 +7,7 @@ extends RefCounted
 ##   redirector:  (spell, source, candidates) -> int             Misdirection: who the intent hits instead
 ##   placer:      (spell, el) -> int                             Infuse: where in the chant the element goes
 ##   chant_picker:(spell) -> int                                 Resonance: which chant element to copy
+##   element_chooser:(spell, counts {el: n}) -> String           Annihilate: which element to wipe out
 ##   arranger:    (spell) -> [from, to]                          Rearrange: move one chant element ([] = keep)
 ##   anim:        (event: Dictionary) -> void                    animation hook
 ##
@@ -56,6 +57,7 @@ var picker: Callable
 var redirector: Callable
 var placer: Callable
 var chant_picker: Callable
+var element_chooser: Callable
 var arranger: Callable
 var anim: Callable
 
@@ -69,12 +71,27 @@ func _init(p_db: SpellDB, p_player: PlayerState) -> void:
 	redirector = func(_s, src, _cands): return enemies.find(src)
 	placer = func(_s, _el): return chant.size()
 	chant_picker = func(_s): return 0
+	element_chooser = func(_s, counts):  # by default: the element that removes the most
+		var best := "F"
+		for el in counts:
+			if counts[el] > counts.get(best, 0):
+				best = el
+		return best
 	arranger = func(_s): return []
 	anim = func(_e): pass
 
 
+var artifact_plus: Array = []  # artifacts upgraded to their + version
+var preset_extra: Array = []  # extra Essence already rolled for the starting enemies (shown before the fight)
+
+
 func has_artifact(id: String) -> bool:
 	return id in artifacts
+
+
+## An artifact's number (its + number if upgraded).
+func _an(id: String) -> float:
+	return Artifacts.num(id, id in artifact_plus)
 
 
 # ------------------------------------------------------------------ setup
@@ -84,22 +101,26 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 	depth = p_depth
 	player.reset_fight()
 	enemies.clear()
-	for id in enemy_ids:
-		_spawn(id)
+	for i in enemy_ids.size():
+		_spawn(enemy_ids[i], preset_extra[i] if i < preset_extra.size() else null)
 	if has_artifact("thornbark"):
-		player.passives["thorns"] = 1
+		player.passives["thorns"] = int(_an("thornbark"))
 	if has_artifact("venom_gland"):
-		player.passives["poison_bonus"] = 1
+		player.passives["poison_bonus"] = int(_an("venom_gland"))
 	if has_artifact("chant_bell"):
 		player.passives["echo_first"] = 1
 	if has_artifact("rain_chalice"):
-		player.shield += 4.0
+		player.shield += _an("rain_chalice")
 	if has_artifact("iron_bark"):
-		player.shield += 2.0
+		player.shield += _an("iron_bark")
 	if has_artifact("ward_stone"):
-		player.aegis = 1
+		player.aegis = int(_an("ward_stone"))
 	player.dmg_taken_mult = 1.25 if has_artifact("glass_heart") else 1.0
-	var start_n := PlayerState.START_ELEMENTS + (1 if has_artifact("wind_chime") else 0) - (2 if has_artifact("broken_crown") else 0)
+	if has_artifact("hungry_tome"):
+		# its curse: the tome feeds before the fight begins (this doesn't spoil a Perfect Victory)
+		player.hp -= 2.0
+		_log("The Hungry Tome feeds: you lose 2 HP.")
+	var start_n := PlayerState.START_ELEMENTS + (int(_an("wind_chime")) if has_artifact("wind_chime") else 0) - (2 if has_artifact("broken_crown") else 0)
 	# you always start with one of each element; the rest are random (in a random order)
 	var hand := ["F", "W", "A"]
 	while hand.size() < start_n:
@@ -112,7 +133,8 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 	for el in hand:
 		player.add_element(el)
 	if has_artifact("ember_charm"):
-		player.add_element("F")
+		for i in int(_an("ember_charm")):
+			player.add_element("F")
 	_roll_next_draw(2)
 	turn = 1
 	for e in enemies:
@@ -120,11 +142,11 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 	_log("The fight begins.")
 
 
-func _spawn(id: String) -> EnemyState:
+func _spawn(id: String, extra = null) -> EnemyState:
 	var d := EnemyDefs.get_def(id)
 	var e := EnemyState.new()
-	e.setup(d, EnemyDefs.extra_hp(act, depth, rng, d.get("boss", false)))
-	e.dmg_bonus = EnemyDefs.attack_bonus(act) + (1 if has_artifact("withered_idol") else 0)
+	e.setup(d, extra if extra is Array else EnemyDefs.extra_hp(act, depth, rng, d.get("boss", false)))
+	e.dmg_bonus = EnemyDefs.attack_bonus(act)
 	enemies.append(e)
 	return e
 
@@ -171,7 +193,7 @@ func _lens_refunds(chanted: Array) -> Array:
 		if not has_artifact(lens):
 			continue
 		for el in chanted:
-			if el == LENSES[lens] and rng.randf() < 0.25:
+			if el == LENSES[lens] and rng.randf() < _an(lens):
 				back.append(el)
 	return back
 
@@ -185,14 +207,14 @@ func _roll_next_draw(upcoming: int) -> void:
 		return
 	var n := PlayerState.BASE_DRAW - player.overload
 	if has_artifact("second_wind") and player.hp < player.max_hp / 2.0:
-		n += 1
+		n += int(_an("second_wind"))
 	if has_artifact("heartwood_seed"):
 		n += 1
 	if has_artifact("blood_pact"):
 		n += 1
 	if has_artifact("withered_idol"):
-		n += 1
-	if has_artifact("lucky_acorn") and rng.randf() < 0.25:
+		n += 2
+	if has_artifact("lucky_acorn") and rng.randf() < _an("lucky_acorn"):
 		n += 1
 	player.overload = 0
 	var attune := player.passive("attune")
@@ -207,29 +229,19 @@ func _roll_next_draw(upcoming: int) -> void:
 	if upcoming == 3:
 		for em in EMBLEMS:
 			if has_artifact(em):
-				for i in 3:
+				for i in int(_an(em)):
 					player.next_draw.append({"el": EMBLEMS[em], "temp": false})
 
 
 ## Start of your turn (not the first): bleed, receive the previewed draw, Powers tick.
 func begin_player_turn() -> void:
-	# Burn: the Essence set on fire last turn burns away now
-	for e in alive():
-		var gone: Array = e.burn_off()
-		if not gone.is_empty():
-			_log("%s's burning Essence (%s) burns away." % [e.name, " ".join(gone)])
-			await anim.call({"type": "burn_off", "enemy": e, "n": gone.size()})
-	_cleanup()
-	_check_end()
-	if over:
-		return
 	if player.bleed > 0:
 		player.take_effect(player.bleed)
 		_log("You bleed for %d." % player.bleed)
 		player.bleed -= 1
 		await anim.call({"type": "bleed_tick"})
 	if has_artifact("mending_moss"):
-		player.heal(1)
+		player.heal(_an("mending_moss"))
 	player.shield = 0.0
 	player.thorns_turn = 0
 	for d in player.next_draw:
@@ -304,14 +316,14 @@ func cast_chant(stock_indices: Array) -> void:
 	turn_ctx = {"entries": entries, "amplify": 0, "echo": 0, "retain": 0, "last": {}, "cast_any": false}
 	if has_artifact("kindling_stone") and not player.kindling_charged:
 		player.kindling_chants += 1
-		if player.kindling_chants >= 3:
+		if player.kindling_chants >= int(_an("kindling_stone")):
 			player.kindling_chants = 0
 			player.kindling_charged = true
 			_log("Kindling Stone is charged: your next Burn is doubled.")
 	await anim.call({"type": "chant", "chant": c})
 	var woke: Array = await _recount()
-	if not charges.is_empty():
-		await anim.call({"type": "charged", "hits": woke})
+	# always: the chant is read out note by note, even when it wakes no spell
+	await anim.call({"type": "charged", "hits": woke})
 
 
 ## Re-read the chant: locks it now contains break, and every spell's charges are counted again.
@@ -376,7 +388,7 @@ func resolve_spell(id: String, target_idx := -1) -> void:
 		if target_idx >= 0 and target_idx < enemies.size() and not enemies[target_idx].is_dead():
 			tctx.target = enemies[target_idx]
 		await _fire(spell, turn_ctx, tctx)
-	# the chant may have changed (Infuse, Rearrange, Resonate): spells it wakes now are an Extension
+	# the chant may have changed (Infuse, Rearrange, Duplicate): spells it wakes now are an Extension
 	var woke: Array = await _recount()
 	if not woke.is_empty():
 		await anim.call({"type": "extension", "hits": woke})
@@ -540,12 +552,18 @@ func _fire(spell: Dictionary, ctx: Dictionary, tctx: Dictionary) -> void:
 	if spell.power:
 		player.used_powers[spell.id] = true
 		_log("%s takes hold for the rest of the fight." % spell.name)
+	elif spell.get("fleeting", false):
+		player.used_powers[spell.id] = true  # Fleeting: gone for the rest of the fight
+		_log("%s fades away for the rest of this fight." % spell.name)
 	ctx.last = spell
 	_cleanup()
 
 
 ## Resolves one effect. tctx caches the chosen target for this spell.
 func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> void:
+	# "if this defeats it" effects (Absorb) do nothing at all, not even their animation, when nothing was defeated
+	if eff.get("if_kill", false) and not tctx.get("_alive_before", []).any(func(x): return x.is_dead()):
+		return
 	var targets := await _targets(eff, spell, tctx)
 	await anim.call({"type": "spell_effect", "op": eff.op, "eff": eff, "targets": targets, "spell": spell})
 	match eff.op:
@@ -751,6 +769,19 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 						e.weak25 = true
 		"each_turn":
 			player.each_turn.append({"spell": spell, "effects": eff.effects})
+		"annihilate":
+			# choose Fire, Water or Air; every Essence of it is wiped from all enemies
+			var counts := {"F": 0, "W": 0, "A": 0}
+			for e in targets:
+				for x in e.elements:
+					if counts.has(x):
+						counts[x] += 1
+			var el: String = await element_chooser.call(spell, counts)
+			await anim.call({"type": "annihilate", "el": el, "targets": targets})
+			var gone := 0
+			for e in targets:
+				gone += e.remove_all(el).size()
+			_log("%s annihilates every %s: %d Essence gone." % [spell.name, Elements.NAMES[el], gone])
 	await anim.call({"type": "effect", "op": eff.op, "eff": eff, "targets": targets})
 
 
@@ -869,7 +900,16 @@ func _enemy_phase() -> void:
 			return
 		if e.is_dead():
 			continue
-		var ticks: Dictionary = e.begin_turn()
+		# Burn: at the start of its turn, its burning Essence burns away (burned to nothing, it never acts)
+		var gone: Array = e.burn_off()
+		if not gone.is_empty():
+			_log("%s's burning Essence (%s) burns away." % [e.name, " ".join(gone)])
+			await anim.call({"type": "burn_off", "enemy": e, "n": gone.size()})
+			if e.is_dead():
+				_cleanup()
+				_check_end()
+				continue
+		var ticks: Dictionary = e.begin_turn(rng)
 		if not ticks.burn.is_empty() or not ticks.poison.is_empty():
 			await anim.call({"type": "dot", "enemy": e, "burn": not ticks.burn.is_empty(), "poison": not ticks.poison.is_empty()})
 		if e.is_dead():
@@ -975,7 +1015,7 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 			var cands := active_spells().filter(func(s): return not player.locks.has(s.id))
 			if not cands.is_empty():
 				var s: Dictionary = cands[rng.randi() % cands.size()]
-				var n: int = m.len - (1 if has_artifact("lock_pick") else 0)
+				var n: int = m.len - (int(_an("lock_pick")) if has_artifact("lock_pick") else 0)
 				var pat := ""
 				for i in maxi(1, n):
 					pat += Elements.random(rng)

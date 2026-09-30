@@ -23,6 +23,7 @@ var player := PlayerState.new()
 var spellbook: Array = []  # spell ids owned this run
 var loadout: Array = []  # active spell ids (up to active_slots())
 var artifacts: Array = []
+var artifacts_plus: Array = []  # artifacts upgraded to their + version (the Tinker)
 var unlocked_spells: Array = []
 var unlocked_artifacts: Array = []
 var act := 1
@@ -36,6 +37,8 @@ var met: Array = []  # enemy ids met this run, oldest first
 var upgraded: Array = []  # spell ids upgraded at rests (their + version is used)
 var amber := START_AMBER
 var seen_events: Array = []
+var encounter: Array = []  # the ids of the encounter being prepared
+var encounter_extra: Array = []  # the extra Essence each of those enemies will have (rolled once)
 var fused := {}  # id -> spell dict, for spells forged at campfires ("fused_1", ...)
 var _fuse_count := 0
 var over := false
@@ -64,7 +67,7 @@ func active_slots() -> int:
 			n += 1
 	if "broken_crown" in artifacts:
 		n += 2
-	if "hungry_tome" in artifacts:
+	if "withered_idol" in artifacts:
 		n -= 1
 	return clampi(n, 3, MAX_ACTIVE)
 
@@ -115,7 +118,15 @@ func encounter_ids() -> Array:
 		kind = "fight"
 	var ids := EnemyDefs.encounter(kind, act, depth(), rng, met)
 	met.append_array(ids)
+	encounter = ids.duplicate()
+	encounter_extra = ids.map(func(id): return EnemyDefs.extra_hp(act, depth(), rng, EnemyDefs.get_def(id).get("boss", false)))
 	return ids
+
+
+## Exactly the Essence an enemy of this encounter will start the fight with.
+func encounter_hp(i: int) -> Array:
+	var hp: Array = Array(EnemyDefs.get_def(encounter[i]).hp.split(""))
+	return hp + (encounter_extra[i] if i < encounter_extra.size() else [])
 
 
 # ------------------------------------------------------------------ fights
@@ -124,8 +135,11 @@ func make_fight(enemy_ids: Array) -> Fight:
 	var f := Fight.new(db, player)
 	f.rng.seed = rng.randi()
 	f.artifacts = artifacts
+	f.artifact_plus = artifacts_plus
 	f.loadout = loadout.map(func(id): return spell(id))
 	f.spellbook = spellbook.map(func(id): return spell(id))
+	if enemy_ids == encounter:
+		f.preset_extra = encounter_extra  # the Essence the player was shown before the fight
 	f.start(enemy_ids, act, depth())
 	return f
 
@@ -146,9 +160,7 @@ func finish_fight(f: Fight) -> void:
 	var am: Array = AMBER.get(kind, AMBER.fight)
 	amber += rng.randi_range(am[0], am[1])
 	if "healing_sap" in artifacts:
-		player.heal(4)
-	if "withered_idol" in artifacts:
-		player.heal(6)
+		player.heal(Artifacts.num("healing_sap", "healing_sap" in artifacts_plus))
 	if kind == "boss":
 		player.heal(player.max_hp * 0.5)
 		if act >= ACTS:
@@ -172,7 +184,7 @@ func is_boss_node() -> bool:
 ## The Scholar's Quill adds a 4th card. Offers always mix at least two categories.
 func spell_offer(n := 3, kind := "fight") -> Array:
 	if "scholar_quill" in artifacts:
-		n += 1
+		n += int(Artifacts.num("scholar_quill", "scholar_quill" in artifacts_plus)) - 3
 	var by_rarity := {"common": [], "rare": [], "legendary": []}
 	for id in unlocked_spells:
 		if id in spellbook:
@@ -244,6 +256,54 @@ func gain_artifact(id: String) -> void:
 		player.hp = minf(player.hp, player.max_hp)
 	while loadout.size() > active_slots():
 		loadout.pop_back()
+
+
+## Lose an artifact (traded away): what it gave or took goes with it.
+func remove_artifact(id: String) -> void:
+	artifacts.erase(id)
+	artifacts_plus.erase(id)
+	if id == "blood_pact":
+		player.max_hp += 12
+	while loadout.size() > active_slots():
+		loadout.pop_back()
+
+
+## The Tinker: artifacts you own that have a + version you don't have yet.
+func upgradable_artifacts() -> Array:
+	return artifacts.filter(func(id): return Artifacts.can_upgrade(id) and not (id in artifacts_plus))
+
+
+func upgrade_artifact(id: String) -> void:
+	if id in artifacts and not (id in artifacts_plus):
+		artifacts_plus.append(id)
+
+
+## The Barterer: artifacts you could trade (another one of the same tier is needed, and a tier above).
+const NEXT_TIER := {"common": "rare", "rare": "legendary"}
+
+
+func tradeable_artifacts(tier := "") -> Array:
+	return artifacts.filter(func(id):
+		var t: String = Artifacts.get_def(id).get("tier", "common")
+		return NEXT_TIER.has(t) and (tier == "" or t == tier) and artifacts.filter(func(o): return Artifacts.get_def(o).get("tier", "") == t).size() >= 2)
+
+
+## Up to 3 artifacts of the tier above, not owned and not cursed.
+func trade_offer(tier: String) -> Array:
+	var want: String = NEXT_TIER.get(tier, "")
+	var pool := Artifacts.ALL.filter(func(a): return a.tier == want and a.pool != "curse" and a.get("aspect", "") != "Cursed" and not (a.id in artifacts))
+	var out := []
+	while not pool.is_empty() and out.size() < 3:
+		var pick: Dictionary = pool[rng.randi() % pool.size()]
+		out.append(pick)
+		pool.erase(pick)
+	return out
+
+
+func trade_artifacts(give_a: String, give_b: String, take: String) -> void:
+	remove_artifact(give_a)
+	remove_artifact(give_b)
+	gain_artifact(take)
 
 
 ## Rest site, option 1: heal 30% of max HP.
@@ -344,6 +404,10 @@ func resolve_unknown() -> String:
 
 ## Can you take this event option (enough Amber / HP)?
 func can_choose(opt: Dictionary) -> bool:
+	if opt.get("do", "") == "upgrade_artifact" and upgradable_artifacts().is_empty():
+		return false
+	if opt.get("do", "") == "trade_artifacts" and tradeable_artifacts().is_empty():
+		return false
 	return amber >= opt.get("amber", 0) and player.hp > opt.get("hp", 0) and player.max_hp > opt.get("max_hp", 0) + 5
 
 
@@ -439,7 +503,7 @@ func pay(price: int) -> bool:
 func final_seedlings() -> int:
 	var s := seedlings
 	if "seedling_pouch" in artifacts:
-		s = int(s * 1.25)
+		s = int(s * (1.0 + Artifacts.num("seedling_pouch", "seedling_pouch" in artifacts_plus)))
 	return s
 
 

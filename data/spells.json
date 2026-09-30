@@ -524,6 +524,20 @@
    "rarity": "rare"
   },
   {
+   "id": "annihilate",
+   "name": "Annihilate",
+   "pattern": "FWA?WF",
+   "effects": [
+    {
+     "op": "annihilate",
+     "target": "all"
+    }
+   ],
+   "fleeting": true,
+   "flavor": "Pick one. It stops existing.",
+   "rarity": "legendary"
+  },
+  {
    "id": "thermal_burst",
    "name": "Thermal Burst",
    "pattern": "FFWF",
@@ -976,12 +990,17 @@
   {
    "id": "kindle",
    "name": "Kindle",
-   "pattern": "F",
+   "pattern": "FFF",
    "effects": [
     {
      "op": "passive",
      "key": "burn_bonus",
      "n": 1
+    },
+    {
+     "op": "burn",
+     "n": 1,
+     "target": "all"
     }
    ],
    "flavor": "Every fire you light burns a little longer.",

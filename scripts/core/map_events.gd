@@ -4,6 +4,7 @@ extends RefCounted
 ## to be a fight, a merchant or treasure. Each option: label, optional costs (amber / hp / max_hp), and what it does:
 ##   heal n · lose_hp n · max_hp n · amber n · upgrade n (random spells) · spell rarity · artifact pool
 ##   gamble (50%: heal to full, else an ambush fight) · fight · none
+##   upgrade_artifact (pick one: it becomes its + version) · trade_artifacts (give 2 of a tier, pick 1 of the next)
 
 const ALL := [
 	{"id": "well", "title": "The Whispering Well", "text": "A mossy well whispers your name. It sounds hungry, and a little bit greedy.",
@@ -34,6 +35,12 @@ const ALL := [
 	{"id": "squirrel", "title": "A Squirrel Merchant", "text": "A squirrel in a tiny waistcoat offers you a very special acorn.",
 		"options": [{"label": "Buy it for 25 Amber (+6 max HP)", "amber": 25, "do": "max_hp", "n": 6},
 			{"label": "Politely decline", "do": "none"}]},
+	{"id": "tinker", "title": "The Tinker's Cart", "text": "A gnome with a hundred tiny tools squints at your pack. \"I can make any of those better. For a price, naturally.\"",
+		"options": [{"label": "Pay 40 Amber: upgrade an artifact (it becomes its + version)", "amber": 40, "do": "upgrade_artifact"},
+			{"label": "No thank you", "do": "none"}]},
+	{"id": "barterer", "title": "The Barterer", "text": "An old tortoise wears a shell piled high with trinkets. \"Two of yours for one of mine. Mine are better. Mostly.\"",
+		"options": [{"label": "Trade 2 artifacts of the same tier for 1 of the next tier", "do": "trade_artifacts"},
+			{"label": "Keep what you have", "do": "none"}]},
 	{"id": "lost_camp", "title": "An Abandoned Camp", "text": "Someone left in a hurry. The fire is still warm, and there is a pouch by the bedroll.",
 		"options": [{"label": "Rest by the fire (heal 10)", "do": "heal", "n": 10},
 			{"label": "Search the pouch (+30 Amber)", "do": "amber", "n": 30}]},

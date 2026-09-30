@@ -101,9 +101,20 @@ func test_burn_lights_random_essence_removed_on_your_next_turn() -> void:
 	assert_eq(e.burn, 2)
 	e.lit = [false, true, false, true, false]  # make the lit ones known: both W
 	f.player.hp = 99
-	f.pass_turn()  # the enemy acts (Ashling attacks), then your turn starts and the fire takes the W W
+	f.pass_turn()  # the enemy's turn: the fire takes the W W first, then it acts
 	assert_eq(e.hp_text(), "FAF")
 	assert_eq(e.burn, 0)
+
+
+func test_burned_out_enemy_never_attacks() -> void:
+	var f := _fight(["ashling"], [], "")
+	var e: EnemyState = f.enemies[0]
+	_set_hp(e, "FW")
+	e.lit = [true, true]  # all of it is burning
+	f.player.hp = 30.0
+	f.pass_turn()
+	assert_true(f.won, "burned away at the start of its turn")
+	assert_eq(f.player.hp, 30.0, "so it never got to attack")
 
 
 func test_damage_taken_counts_hp_lost_not_blocked_or_healed() -> void:
@@ -117,6 +128,82 @@ func test_damage_taken_counts_hp_lost_not_blocked_or_healed() -> void:
 	assert_eq(p.damage_taken, 2.0, "healing doesn't undo it")
 	p.reset_fight()
 	assert_eq(p.damage_taken, 0.0, "a new fight starts clean")
+
+
+func test_upgraded_artifact_uses_its_plus_number() -> void:
+	var run := RunState.new()
+	run.setup(db, [], [], 4)
+	run.gain_artifact("rain_chalice")
+	assert_true("rain_chalice" in run.upgradable_artifacts())
+	assert_eq(run.make_fight(["ashling"]).player.shield, 4.0)
+	run.upgrade_artifact("rain_chalice")
+	assert_eq(run.make_fight(["ashling"]).player.shield, 6.0, "Rain Chalice+ gives 6 Shield")
+	assert_true(not ("rain_chalice" in run.upgradable_artifacts()), "only once")
+	assert_eq(Artifacts.view("rain_chalice", true).name, "Rain Chalice+")
+
+
+func test_trade_two_of_a_tier_for_one_above() -> void:
+	var run := RunState.new()
+	run.setup(db, [], [], 4)
+	run.gain_artifact("iron_bark")
+	assert_true(run.tradeable_artifacts().is_empty(), "one common isn't a pair")
+	run.gain_artifact("healing_sap")
+	assert_eq(run.tradeable_artifacts().size(), 2)
+	var offer := run.trade_offer("common")
+	assert_true(not offer.is_empty() and offer.all(func(a): return a.tier == "rare" and a.get("aspect", "") != "Cursed"))
+	run.trade_artifacts("iron_bark", "healing_sap", offer[0].id)
+	assert_eq(run.artifacts, [offer[0].id])
+
+
+func test_prefight_essence_matches_the_fight() -> void:
+	for seed in [3, 11, 29]:
+		var run := RunState.new()
+		run.setup(db, [], [], seed)
+		run.act = 2  # deeper: enemies get extra random Essence
+		var ids := run.encounter_ids()
+		var shown := []
+		for i in ids.size():
+			shown.append("".join(run.encounter_hp(i)))
+		var f := run.make_fight(ids)
+		var real := f.enemies.map(func(e): return e.hp_text())
+		assert_eq(real, shown, "seed %d: what the preview shows is what you fight" % seed)
+
+
+func test_withered_idol_gives_2_elements_costs_a_slot() -> void:
+	var run := RunState.new()
+	run.setup(db, [], [], 4)
+	var slots := run.active_slots()
+	run.gain_artifact("withered_idol")
+	assert_eq(run.active_slots(), slots - 1)
+	var f := run.make_fight(["ashling"])
+	assert_eq(f.player.next_draw.size(), PlayerState.BASE_DRAW + 2)
+
+
+func test_annihilate_wipes_one_element_and_is_fleeting() -> void:
+	var f := _fight(["ashling", "gale_sprite"], ["annihilate"], "FWAAWF")
+	_set_hp(f.enemies[0], "FWFAWF")
+	_set_hp(f.enemies[1], "AFAW")
+	f.element_chooser = func(_s, counts):
+		assert_eq(counts, {"F": 4, "W": 3, "A": 3})
+		return "F"
+	f.cast_chant(_all(6))
+	assert_eq(f.charges.get("annihilate", 0), 1, "F W A (any) W F")
+	f.resolve_spell("annihilate")
+	assert_eq(f.enemies[0].hp_text() + "|" + f.enemies[1].hp_text(), "WAW|AAW", "every Fire is gone")
+	assert_true(not f.active_spells().any(func(s): return s.id == "annihilate"), "Fleeting: gone for the fight")
+	assert_true(SpellText.card_text(db.get_spell("annihilate")).begins_with("Annihilate 1 element on all enemies"))
+
+
+func test_hungry_tome_costs_2_hp_per_fight_not_a_slot() -> void:
+	var run := RunState.new()
+	run.setup(db, [], [], 4)
+	var slots := run.active_slots()
+	run.gain_artifact("hungry_tome")
+	assert_eq(run.active_slots(), slots, "no slot lost any more")
+	run.player.hp = 30.0
+	var f := run.make_fight(["ashling"])
+	assert_eq(f.player.hp, 28.0, "2 damage when the fight starts")
+	assert_eq(f.player.damage_taken, 0.0, "doesn't spoil a Perfect Victory")
 
 
 func test_lit_essence_moves_with_its_element() -> void:
@@ -144,6 +231,17 @@ func test_absorb_heals_only_when_it_defeats() -> void:
 	g.cast_chant(_all(3))
 	g.resolve_spell("leech")
 	assert_eq(g.player.hp, 25.0, "it's defeated: heal 5")
+	# the upgraded one too, and no heal animation is even played when nothing is defeated
+	var h := _fight(["ashling"], [], "FAW")
+	h.loadout = [SpellDB.upgrade(db.get_spell("leech"))]
+	var events := []
+	h.anim = func(ev): events.append(ev.get("op", ev.type))
+	h.player.hp = 20
+	_set_hp(h.enemies[0], "WWWWWW")
+	h.cast_chant(_all(3))
+	h.resolve_spell("leech")
+	assert_eq(h.player.hp, 20.0, "Absorb+: it lives, no heal")
+	assert_true(not ("heal" in events), "no heal animation either: %s" % [events])
 
 
 func test_split_makes_a_twin() -> void:
@@ -308,7 +406,7 @@ func test_rearrange_moves_a_chant_element_and_recounts() -> void:
 	f.resolve_spell("tempest")
 	assert_eq(f.chant_string(), "AAAFFW")
 	assert_eq(f.charges.get("fire_ball", 0), 1, "the new FF brings Fire Ball to life")
-	assert_eq(SpellText.card_text(db.get_spell("tempest")), "Gain 2 random elements next turn.\nRearrange 1: move one element of your chant to another spot.")
+	assert_eq(SpellText.card_text(db.get_spell("tempest")), "Gain 2 random elements next turn.\nRearrange 1.")
 
 
 func test_duplicate_copies_an_element_in_the_chant() -> void:

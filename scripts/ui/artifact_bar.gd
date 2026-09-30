@@ -3,11 +3,13 @@ extends HFlowContainer
 ## Your artifacts as a row of icons (top-left). Hover one for its details; right-click pins them.
 
 var artifacts: Array = []
+var plus: Array = []  # upgraded ones
 
 
-static func make(p_artifacts: Array) -> ArtifactBar:
+static func make(p_artifacts: Array, p_plus: Array = []) -> ArtifactBar:
 	var b := ArtifactBar.new()
 	b.artifacts = p_artifacts
+	b.plus = p_plus
 	return b
 
 
@@ -22,15 +24,15 @@ func refresh() -> void:
 	for c in get_children():
 		c.queue_free()
 	for id in artifacts:
-		add_child(ArtifactChip.make(id))
+		add_child(ArtifactChip.make(id, id in plus))
 
 
 class ArtifactChip extends PanelContainer:
 	const TIER_COL := {"common": Color(0.6, 0.62, 0.55), "rare": Color(0.4, 0.65, 1.0), "legendary": Color(1.0, 0.75, 0.3)}
 
-	static func make(id: String) -> ArtifactChip:
+	static func make(id: String, plus := false) -> ArtifactChip:
 		var c := ArtifactChip.new()
-		var a := Artifacts.get_def(id)
+		var a := Artifacts.view(id, plus)
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = Color(0.06, 0.07, 0.06, 0.9)
 		sb.border_color = Color(1, 0.4, 0.4) if a.get("aspect", "") == "Cursed" else TIER_COL.get(a.get("tier", "common"), Color.WHITE)

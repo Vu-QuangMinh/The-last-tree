@@ -41,14 +41,8 @@ func _ready() -> void:
 	var er := HBoxContainer.new()
 	er.add_theme_constant_override("separation", 16)
 	root.add_child(er)
-	var seen := {}
-	for id in enemy_ids:
-		if seen.has(id):
-			seen[id] += 1
-			continue
-		seen[id] = 1
-	for id in seen:
-		er.add_child(_enemy_panel(id, seen[id]))
+	for i in enemy_ids.size():
+		er.add_child(_enemy_panel(enemy_ids[i], i))
 	# active row
 	var ah := HBoxContainer.new()
 	root.add_child(ah)
@@ -90,15 +84,17 @@ func _ready() -> void:
 	_refresh()
 
 
-func _enemy_panel(id: String, n: int) -> Control:
+func _enemy_panel(id: String, index: int) -> Control:
 	var d := EnemyDefs.get_def(id)
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", UiTheme.panel_box(0.9, 10))
 	p.custom_minimum_size = Vector2(440, 250)
 	var h := HBoxContainer.new()
 	p.add_child(h)
+	# exactly the Essence it will start the fight with (extra Essence on deeper floors included)
+	var hp_now: Array = run.encounter_hp(index) if index < run.encounter.size() and run.encounter[index] == id else Array(d.hp.split(""))
 	var e := EnemyState.new()
-	e.setup(d)
+	e.setup(d, hp_now.slice(d.hp.length()))
 	e.dmg_bonus = EnemyDefs.attack_bonus(run.act)
 	var cr := Creature.new()
 	cr.setup(e)
@@ -107,11 +103,11 @@ func _enemy_panel(id: String, n: int) -> Control:
 	var v := VBoxContainer.new()
 	v.custom_minimum_size = Vector2(270, 0)
 	h.add_child(v)
-	v.add_child(UiTheme.label(d.name + (" ×%d" % n if n > 1 else ""), 22, Color.WHITE))
+	v.add_child(UiTheme.label(d.name, 22, Color.WHITE))
 	# HP stays hidden (?) until you have defeated this enemy once
 	var hp := HFlowContainer.new()
 	var known := SaveManager.in_codex(id)
-	for c in d.hp:
+	for c in hp_now:
 		hp.add_child(ElementIcon.make(c if known else "?", 26))
 	v.add_child(hp)
 	# a light-hearted description; the moves are in the portrait's hover tooltip

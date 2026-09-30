@@ -5,8 +5,8 @@ extends RefCounted
 ## enemy's Essence (its row of elements). Positions are always "leftmost" / "rightmost" (never first / last):
 ## "remove the 3 rightmost Essence of an enemy" takes the 3 elements at its right end.
 
-const WHO := {"target": "an enemy", "two": "2 different enemies", "all": "every enemy", "random": "a random enemy", "self": "you"}
-const WHOSE := {"target": "an enemy's", "two": "2 different enemies'", "all": "every enemy's", "random": "a random enemy's"}
+const WHO := {"target": "an enemy", "two": "2 different enemies", "all": "all enemies", "random": "a random enemy", "self": "you"}
+const WHOSE := {"target": "an enemy's", "two": "2 different enemies'", "all": "all enemies'", "random": "a random enemy's"}
 
 
 ## One sentence per effect, each on its own line.
@@ -22,6 +22,8 @@ static func describe(s: Dictionary) -> String:
 	var text := " ".join(s.effects.map(func(e): return sentence(e)))
 	if s.get("power", false):
 		text = "Power: " + text + " (Once cast, it leaves your active row and lasts the whole fight.)"
+	elif s.get("fleeting", false):
+		text += " Fleeting."
 	return text
 
 
@@ -131,16 +133,15 @@ static func describe_op(e: Dictionary) -> String:
 		"sacrifice":
 			return "lose %d of your HP" % e.hp
 		"amplify":
-			var more := "its rightmost Essence" if n == 1 else "its %d rightmost Essence" % n
-			return "Amplify %d: when the chant is Released this turn, every enemy it hits also loses %s" % [n, more]
+			return "Amplify %d" % n
 		"echo":
-			return "Echo: the chant is Released twice this turn"
+			return "Echo"
 		"retain":
 			if n == 1:
 				return "after the Release, the rightmost element of your chant goes back to your elements, to use again"
 			return "after the Release, the %d rightmost elements of your chant go back to your elements, to use again" % n
 		"overload":
-			return "Overload %d: gain %d fewer element%s next turn" % [n, n, "s" if n > 1 else ""]
+			return "Overload %d" % n
 		"cleanse":
 			return {"all": "Cleanse all your debuffs", "blind": "Cure Blind", "bleed": "Cure Bleed", "confuse": "Cure Confuse",
 				"silence": "Cure Silence on all your spells", "frozen": "thaw your Frozen elements",
@@ -151,29 +152,28 @@ static func describe_op(e: Dictionary) -> String:
 			return "Redirect the intent of %s" % t
 		"infuse":
 			return "Infuse %s into the chant" % _a(_el(e.el))
+		"annihilate":
+			return "Annihilate 1 element on %s" % t
 		"rearrange":
-			if n == 1:
-				return "Rearrange 1: move one element of your chant to another spot"
-			return "Rearrange %d: move %d elements of your chant, one at a time, to other spots" % [n, n]
+			return "Rearrange %d" % n
 		"duplicate":
-			if e.times == 2:
-				return "Resonate: pick an element of your chant and copy it in place (it becomes 2 in a row)"
-			return "Resonate: pick an element of your chant and copy it %d times in place (it becomes %d in a row)" % [e.times - 1, e.times]
+			return "Duplicate %d" % (e.times - 1)
 		"summon_spells":
 			return "add %d random spells from your spellbook to your active row for this fight" % n
 		"passive":
 			return {"burn_bonus": "whenever you apply Burn, apply %d more" % n,
 				"thorns": "gain %d Thorns for the rest of the fight" % n,
-				"strike_poison": "every enemy your Release hits gets %d Poison" % n,
-				"strike_burn": "every enemy your Release hits gets %d Burn" % n,
+				"strike_poison": "all enemies your Release hits get Poison %d" % n,
+				"strike_burn": "all enemies your Release hits get Burn %d" % n,
 				"echo_first": "the first spell you cast each turn triggers twice",
 				"attune": "one of your draws each turn is always your most-used element",
 				"chant_slots": "your chant can be %d elements longer" % n,
 				"strike_bonus": "your spells remove %d more Essence" % n}.get(e.key, e.key)
 		"curse":
+			var many := tg == "all"
 			return {"no_mend": "%s can never Mend" % t,
-				"exposed": "%s is Exposed for the rest of the fight" % t,
-				"weak25": "%s deals 25%% less damage for the rest of the fight" % t}.get(e.key, e.key)
+				"exposed": "%s %s Exposed for the rest of the fight" % [t, "are" if many else "is"],
+				"weak25": "%s %s 25%% less damage for the rest of the fight" % [t, "deal" if many else "deals"]}.get(e.key, e.key)
 		"each_turn":
 			return "at the start of each of your turns: " + "; ".join(e.effects.map(func(x): return describe_op(x)))
 	return e.op

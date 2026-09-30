@@ -48,16 +48,27 @@ func test_occurrences_are_non_overlapping() -> void:
 	assert_eq(Chant.occurrences("AF", "AFWAF"), [0, 3])
 
 
-func test_burning_essence_burns_off_poison_takes_rightmost() -> void:
-	var e := _enemy("FWA")
-	e.lit = [false, true, false]  # the W is on fire
+func test_burning_essence_burns_off_poison_takes_the_rarest_element() -> void:
+	var e := _enemy("FFWWAWF")
+	e.lit = [false, true, false, false, false, false, false]  # the 2nd F is on fire
 	e.poison = 1
-	e.begin_turn()  # enemy turn: poison takes the rightmost (A); fire waits for the player's turn
-	assert_eq(e.hp_text(), "FW")
+	e.begin_turn()  # enemy turn: A is the rarest element, so Poison takes it; fire waits for the player's turn
+	assert_eq(e.hp_text(), "FFWWWF")
 	assert_eq(e.poison, 0)
-	assert_eq(e.burn_off(), ["W"])
-	assert_eq(e.hp_text(), "F")
+	assert_eq(e.burn_off(), ["F"])
+	assert_eq(e.hp_text(), "FWWWF")
 	assert_eq(e.burn, 0)
+
+
+func test_poison_tie_picks_one_of_the_rarest() -> void:
+	var rng := RandomNumberGenerator.new()
+	var took := {}
+	for seed in 30:
+		rng.seed = seed
+		var e := _enemy("FFFWA")  # W and A are tied for rarest
+		var gone: Array = e.poison_bite(rng)
+		took[gone[0]] = true
+	assert_true(took.has("W") and took.has("A") and not took.has("F"), "only W or A, and both happen: %s" % [took.keys()])
 
 
 func test_wildcard_matches_any_element() -> void:

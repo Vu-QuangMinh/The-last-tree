@@ -84,6 +84,42 @@ func play_music(name: String) -> void:
 	_music.play()
 
 
+## The note each element sings when the chant is read (C, E, G: they always sound good together).
+const NOTE_HZ := {"W": 523.25, "F": 659.25, "A": 783.99, "?": 1046.5}
+var _notes := {}  # el -> generated AudioStreamWAV
+
+
+## A soft plucked tone for an element (made in code, once), played like any other sound effect.
+func play_note(el: String, volume_db := -4.0) -> void:
+	if not _notes.has(el):
+		_notes[el] = _pluck(NOTE_HZ.get(el, 440.0))
+	var p: AudioStreamPlayer = _pool[_pool_i]
+	_pool_i = (_pool_i + 1) % _pool.size()
+	p.stream = _notes[el]
+	p.volume_db = _db(sfx_level) + volume_db
+	p.pitch_scale = 1.0
+	p.play()
+
+
+## A bell-like pluck: a sine with a couple of quickly fading overtones and a soft decay.
+static func _pluck(freq: float) -> AudioStreamWAV:
+	var rate := 44100
+	var n := int(rate * 0.55)
+	var data := PackedByteArray()
+	data.resize(n * 2)
+	for i in n:
+		var t := float(i) / rate
+		var env := exp(-t * 6.0) * minf(1.0, t * 300.0)
+		var v := sin(TAU * freq * t) * 0.6 + sin(TAU * freq * 2.0 * t) * 0.25 * exp(-t * 9.0) + sin(TAU * freq * 3.0 * t) * 0.12 * exp(-t * 14.0)
+		data.encode_s16(i * 2, int(clampf(v * env * 0.55, -1.0, 1.0) * 32767.0))
+	var w := AudioStreamWAV.new()
+	w.format = AudioStreamWAV.FORMAT_16_BITS
+	w.mix_rate = rate
+	w.stereo = false
+	w.data = data
+	return w
+
+
 func stop_music() -> void:
 	_music_name = ""
 	_music.stop()

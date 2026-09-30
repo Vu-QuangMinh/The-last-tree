@@ -8,7 +8,7 @@ const TARGETED_OPS := ["steal", "pluck", "move", "redirect", "strike", "burn", "
 	"convert", "purge", "shatter", "stoke", "siphon", "execute", "insert", "curse"]
 
 ## Every spell is in one of three categories: Offensive, Defensive, Utility (reward offers, card colour and tag).
-const DAMAGE_OPS := ["steal", "pluck", "strike", "burn", "poison", "purge", "execute", "siphon", "amplify", "echo", "stoke", "expose"]
+const DAMAGE_OPS := ["steal", "pluck", "strike", "burn", "poison", "purge", "execute", "siphon", "amplify", "echo", "stoke", "expose", "annihilate"]
 const DEFENSE_OPS := ["shield", "heal", "aegis", "thorns", "weak", "freeze", "cleanse", "redirect"]
 const DAMAGE_KEYS := ["burn_bonus", "strike_poison", "strike_burn", "strike_bonus", "exposed"]
 const DEFENSE_KEYS := ["thorns", "weak25"]

@@ -63,7 +63,13 @@ func _ready() -> void:
 		skip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		skip.custom_minimum_size = Vector2(200, 48)
 		v.add_child(skip)
-	# the scroll area is as tall as the tallest card needs (cards with more to say are taller), up to a limit
+	# the scroll area is as tall as its cards need, up to a limit. It follows the cards' size whenever it changes
+	# (they can finish laying out a few frames late), and is never shorter than one full card.
+	var floor_h := SpellCard.H * big + 12.0 if not spells.is_empty() else 200.0
+	var fit := func():
+		if is_instance_valid(row) and is_instance_valid(scroll):
+			scroll.custom_minimum_size.y = clampf(row.get_combined_minimum_size().y + 12.0, floor_h, 700.0)
+	row.minimum_size_changed.connect(fit)
+	fit.call()
 	await get_tree().process_frame
-	if is_instance_valid(row):
-		scroll.custom_minimum_size.y = minf(row.get_combined_minimum_size().y + 12, 700)
+	fit.call()

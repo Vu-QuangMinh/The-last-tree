@@ -13,6 +13,14 @@ func _ready() -> void:
 	overlay_layer.layer = 5
 	add_child(screen_layer)
 	add_child(overlay_layer)
+	# your Amber, top-right on every screen while a run is going on
+	var al := CanvasLayer.new()
+	al.layer = 8
+	var amber := AmberCounter.new()
+	amber.get_run = func(): return run
+	amber.position = Vector2(1920 - 24 - 140, 112)
+	al.add_child(amber)
+	add_child(al)
 	var tl := CanvasLayer.new()
 	tl.layer = 10
 	var toasts: VBoxContainer = load("res://scripts/ui/toasts.gd").new()
@@ -231,6 +239,13 @@ func _show_event(ev: Dictionary) -> void:
 	var s := _message(ev.title, ev.text, labels, Color(0.8, 0.7, 1))
 	s.disabled = ev.options.map(func(o): return not run.can_choose(o))
 	s.pressed.connect(func(i):
+		match ev.options[i].get("do", ""):
+			"upgrade_artifact":
+				_tinker(ev.options[i])
+				return
+			"trade_artifacts":
+				_barter()
+				return
 		var res: Dictionary = run.choose_event_option(ev.options[i])
 		if run.player.is_dead():
 			run.over = true
@@ -243,6 +258,47 @@ func _show_event(ev: Dictionary) -> void:
 				_show_loadout(run.encounter_ids())
 			else:
 				show_map()))
+
+
+## The Tinker: pick an artifact (shown as it will be); pay and it becomes its + version. Skip: pay nothing.
+func _tinker(opt: Dictionary) -> void:
+	var ids := run.upgradable_artifacts()
+	var ch := _choice("Upgrade an artifact", "Pay %d Amber: it becomes its + version." % opt.get("amber", 0), [], ids.map(func(id): return Artifacts.view(id, true)), true)
+	ch.chosen.connect(func(k):
+		if k < 0:
+			show_map()
+			return
+		run.amber -= opt.get("amber", 0)
+		run.upgrade_artifact(ids[k])
+		var a := Artifacts.view(ids[k], true)
+		var done := _message("The Tinker's Cart", "%s %s: %s" % [a.get("icon", ""), a.name, a.desc], ["Continue"], Color(0.8, 0.7, 1))
+		done.pressed.connect(func(_i): show_map()))
+
+
+## The Barterer: pick two artifacts of the same tier, then one of 3 from the tier above. Skipping at any step
+## cancels the trade.
+func _barter() -> void:
+	var first := run.tradeable_artifacts()
+	var ch := _choice("Trade: first artifact", "Pick an artifact to give away. The second must be the same tier.", [], first.map(func(id): return Artifacts.view(id, id in run.artifacts_plus)), true)
+	ch.chosen.connect(func(k):
+		if k < 0:
+			show_map()
+			return
+		var a: String = first[k]
+		var tier: String = Artifacts.get_def(a).tier
+		var second := run.tradeable_artifacts(tier).filter(func(id): return id != a)
+		var ch2 := _choice("Trade: second artifact", "Pick a second %s artifact to give away." % Artifacts.TIER_NAMES[tier], [], second.map(func(id): return Artifacts.view(id, id in run.artifacts_plus)), true)
+		ch2.chosen.connect(func(k2):
+			if k2 < 0:
+				show_map()
+				return
+			var b: String = second[k2]
+			var offer := run.trade_offer(tier)
+			var ch3 := _choice("Trade: your new artifact", "Take one. %s and %s go to the Barterer." % [Artifacts.get_def(a).name, Artifacts.get_def(b).name], [], offer, true)
+			ch3.chosen.connect(func(k3):
+				if k3 >= 0:
+					run.trade_artifacts(a, b, offer[k3].id)
+				show_map())))
 
 
 func _show_shop(stock: Array) -> void:

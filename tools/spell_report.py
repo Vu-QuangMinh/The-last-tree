@@ -22,12 +22,12 @@ OPS = {
     "amplify": {"n"}, "echo": {"n"}, "retain": {"n"}, "overload": {"n"}, "cleanse": {"what"},
     "siphon": {"n", "target"}, "execute": {"max", "target"}, "insert": {"el", "pos", "target"},
     "transmute": {"n", "to"}, "sacrifice": {"hp"}, "copy_last": set(),
-    "passive": {"key", "n"}, "move": {"n", "target"}, "pluck": {"n", "target"}, "steal": {"n", "el", "target"}, "infuse": {"el"}, "rearrange": {"n"}, "duplicate": {"times"}, "summon_spells": {"n"}, "redirect": {"target"}, "curse": {"key", "target"}, "each_turn": {"effects"},
+    "passive": {"key", "n"}, "move": {"n", "target"}, "pluck": {"n", "target"}, "steal": {"n", "el", "target"}, "infuse": {"el"}, "annihilate": {"target"}, "rearrange": {"n"}, "duplicate": {"times"}, "summon_spells": {"n"}, "redirect": {"target"}, "curse": {"key", "target"}, "each_turn": {"effects"},
 }
 
 
 def who(t):
-    return {"target": "the target", "two": "2 different enemies (you pick both)", "all": "every enemy", "random": "a random enemy", "self": "you"}.get(t, t)
+    return {"target": "the target", "two": "2 different enemies (you pick both)", "all": "all enemies", "random": "a random enemy", "self": "you"}.get(t, t)
 
 
 def turns(n):
@@ -85,12 +85,14 @@ def describe_op(e):
         if e.get("el", "any") == "any":
             return f"Steal {e['n']} element{'s' if e['n'] > 1 else ''} of your choice from {t} (they go to your elements)"
         return f"Steal up to {e['n']} {ELEMS[e['el']]} from {t} (they go to your elements)"
+    if op == "annihilate":
+        return f"Annihilate 1 element on {t} (you choose Fire, Water or Air: every Essence of it is removed)"
     if op == "rearrange":
-        return f"Rearrange {e['n']}: move {'one element' if e['n'] == 1 else str(e['n']) + ' elements'} of your chant to another spot"
+        return f"Rearrange {e['n']}"
     if op == "infuse":
         return f"put a {ELEMS[e['el']]} anywhere you like in this turn's chant"
     if op == "duplicate":
-        return f"pick an element in this turn's chant: it becomes {e['times']} in a row"
+        return f"Duplicate {e['times'] - 1}"
     if op == "summon_spells":
         return f"add {e['n']} random spells from your spellbook to your active row for this fight"
     if op == "pluck":
@@ -109,13 +111,13 @@ def describe_op(e):
     if op == "shatter":
         return f"remove all Armour from {t}"
     if op == "amplify":
-        return f"Amplify {e['n']}: when the chant is Released, every enemy it hits also loses its {e['n']} rightmost Essence"
+        return f"Amplify {e['n']}"
     if op == "echo":
-        return "Echo: the chant is Released twice this turn"
+        return "Echo"
     if op == "retain":
         return f"after the Release, the {e['n']} rightmost elements of your chant go back to your elements"
     if op == "overload":
-        return f"Overload {e['n']}: {e['n']} fewer element next turn"
+        return f"Overload {e['n']}"
     if op == "cleanse":
         return {"all": "remove all your debuffs (frozen elements, Blind, Confuse, Bleed, Silence)",
                 "blind": "cure Blind", "bleed": "cure Bleed", "confuse": "cure Confuse",
@@ -134,10 +136,10 @@ def describe_op(e):
     if op == "copy_last":
         return "repeat the previous spell that fired this cast"
     if op == "passive":
-        return {"burn_bonus": f"your Burn applies +{e['n']} stack",
+        return {"burn_bonus": f"whenever you apply Burn, apply {e['n']} more",
                 "thorns": f"Thorns {e['n']} for the rest of the fight",
-                "strike_poison": f"every enemy your Release hits gets Poison {e['n']}",
-                "strike_burn": f"every enemy your Release hits gets Burn {e['n']}",
+                "strike_poison": f"all enemies your Release hits get Poison {e['n']}",
+                "strike_burn": f"all enemies your Release hits get Burn {e['n']}",
                 "echo_first": "the first spell you trigger each turn fires twice",
                 "attune": "choose an element: one of your draws each turn is always that element",
                 "chant_slots": f"your chant line gets +{e['n']} slots",
@@ -145,13 +147,13 @@ def describe_op(e):
     if op == "curse":
         return {"no_mend": f"{t} can never heal or regrow elements",
                 "exposed": f"{t} is permanently Exposed",
-                "weak25": "every enemy permanently deals 25% less damage"}[e["key"]]
+                "weak25": "all enemies deal 25% less damage for the rest of the fight"}[e["key"]]
     if op == "each_turn":
         return "at the start of each of your turns: " + "; ".join(describe_op(x) for x in e["effects"])
     return op
 
 
-DAMAGE_OPS = {"steal", "pluck", "strike", "burn", "poison", "purge", "execute", "siphon", "amplify", "echo", "stoke", "expose"}
+DAMAGE_OPS = {"steal", "pluck", "strike", "burn", "poison", "purge", "execute", "siphon", "amplify", "echo", "stoke", "expose", "annihilate"}
 DEFENSE_OPS = {"shield", "heal", "aegis", "thorns", "weak", "freeze", "cleanse", "redirect"}
 DAMAGE_KEYS = {"burn_bonus", "strike_poison", "strike_burn", "strike_bonus", "exposed"}
 DEFENSE_KEYS = {"thorns", "weak25"}
@@ -201,12 +203,12 @@ def validate(data):
         p = s["pattern"]
         if not p or any(c not in ELEMS and c != "?" for c in p) or p.count("?") > len(p) // 2:
             errors.append(f"{s['id']}: bad pattern {p}")
-        if not 1 <= len(p) <= 5:
+        if not 1 <= len(p) <= 6:
             errors.append(f"{s['id']}: pattern length {len(p)}")
         _check_effects(s, s["effects"], errors)
     lengths = Counter(len(s["pattern"]) for s in spells)
     # bell curve: 2 most common, then 3 and 1, 4 rare, 5 rarest
-    if not (lengths[2] >= lengths[3] >= lengths[4] >= lengths[5] and lengths[2] >= lengths[1] >= lengths[5]):
+    if not (lengths[2] >= lengths[3] >= lengths[4] >= lengths[5] and lengths[2] >= lengths[1] >= lengths[5] >= lengths[6]):
         errors.append(f"pattern lengths should be bell-shaped around 2: {dict(sorted(lengths.items()))}")
     for sp in spells:
         if sp.get("rarity") not in RARITIES:
@@ -233,8 +235,8 @@ def render(data):
         "and each enemy loses the longest start of its Essence found in it. ★ = starter.",
         "",
         "**Keywords**",
-        "- **Burn N:** sets N random Essence of the enemy on fire; every burning Essence is removed at the start of your next turn.",
-        "- **Poison N:** like Burn, but the enemy loses its **rightmost** Essence.",
+        "- **Burn N:** sets N random Essence of the enemy on fire; every burning Essence is removed at the start of the enemy's turn, before it acts.",
+        "- **Poison N:** at the start of each of its turns, the enemy loses one Essence of the element it has the **fewest** of (a random one if tied), then Poison goes down by 1.",
         "- **Weaken:** the enemy deals 50% less damage.",
         "- **Freeze:** the enemy skips its next action.",
         "- **Expose:** whenever your Release hits this enemy, it also loses its rightmost Essence.",

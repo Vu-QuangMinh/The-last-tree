@@ -9,7 +9,7 @@ const DEFAULT_SPELLS := ["ember", "spark", "droplet", "mist", "whisper", "updraf
 	"tide_pool", "cyclone", "fan_the_flames", "steam", "scald", "mist_veil", "rain", "inferno", "glacier",
 	"tempest", "thermal_burst", "whirlpool", "alchemy", "clear_sight", "bandage", "kindle",
 	"spark_word", "spring_word", "breath_word", "firestorm", "storm_front", "leech", "searing_mist", "blight_wind",
-	"resonance", "steam_cloud", "tide_thief", "sirens_call", "maelstrom_grasp",
+	"resonance", "steam_cloud", "tide_thief", "sirens_call", "maelstrom_grasp", "annihilate",
 	"meteor", "tidal_wave", "hurricane", "supernova", "deluge", "grimoire", "triune_chant"]
 
 var path := "user://save.json"  # tests point this elsewhere
