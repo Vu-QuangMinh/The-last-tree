@@ -63,8 +63,13 @@ func chant_slots() -> int:
 	return maxi(3, BASE_SLOTS + passive("chant_slots") - toll)
 
 
+## Every element in the stock has its own uid, so the screen can follow one element as the stock changes.
+var _next_uid := 0
+
+
 func add_element(el: String, temp := false) -> void:
-	stock.append({"el": el, "temp": temp, "frozen": false, "hexed": false})
+	_next_uid += 1
+	stock.append({"el": el, "temp": temp, "frozen": false, "hexed": false, "uid": _next_uid})
 
 
 func count_usable(el: String) -> int:

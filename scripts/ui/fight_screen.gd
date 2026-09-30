@@ -71,7 +71,16 @@ var _infuse_orb: ElementIcon
 var _infuse_el := ""
 var _infuse_dragging := false
 var _chant_note: Label
-var _stock_row: HFlowContainer
+var _stock_row: Control  # the bag: its icons are placed by hand so they can glide into their spots
+var _bag_icons := {}  # element uid -> its icon in the bag
+var _bag_target := {}  # element uid -> where its icon belongs (local to _stock_row)
+var _bag_delay := 0.0  # seconds the bag waits before closing a gap (an element is still on its way out)
+var _flying := {}  # element uid -> true while that element is in the air between the bag and the chant
+const BAG_PX := 52.0
+const BAG_GAP := 6.0
+const BAG_W := 1070.0
+const FLY_TIME := 0.26  # an element jumping between the bag and the chant
+const BAG_MOVE := 0.22  # the bag's icons closing up or making room
 var _next_row: HBoxContainer
 var _prompt: Label
 var _info: Label
@@ -213,9 +222,8 @@ func _ready() -> void:
 	var sv := VBoxContainer.new()
 	sp.add_child(sv)
 	sv.add_child(UiTheme.label("Your bag of elements  (click or drag, or press F / W / A)", 15, UiTheme.MUTED))
-	_stock_row = HFlowContainer.new()
-	_stock_row.add_theme_constant_override("h_separation", 6)
-	_stock_row.custom_minimum_size = Vector2(1070, 0)
+	_stock_row = Control.new()
+	_stock_row.custom_minimum_size = Vector2(BAG_W, BAG_PX)
 	sv.add_child(_stock_row)
 	add_child(sp)
 	# player
@@ -440,6 +448,8 @@ func _refresh_chant() -> void:
 			if phase == "build":
 				ic.temp = p.stock[chant_idx[i]].temp
 				ic.hexed = p.stock[chant_idx[i]].hexed
+				if _flying.has(p.stock[chant_idx[i]].uid):
+					ic.modulate.a = 0.0  # it lands here in a moment
 				var idx := i
 				slot.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _press_element("chant", idx))
 				slot.mouse_default_cursor_shape = Control.CURSOR_DRAG
@@ -463,20 +473,55 @@ func _refresh_chant() -> void:
 	_chant_note.text = note
 
 
+## The bag holds the elements that are not in the chant. Each element keeps its own icon (found by its uid), so
+## when the bag changes the icons glide to their new places instead of being rebuilt.
 func _refresh_stock() -> void:
 	var p := fight.player
-	for c in _stock_row.get_children():
-		c.queue_free()
 	var order := range(p.stock.size())
 	order.sort_custom(func(a, b): return "FWA".find(p.stock[a].el) < "FWA".find(p.stock[b].el) or ("FWA".find(p.stock[a].el) == "FWA".find(p.stock[b].el) and a < b))
+	var held_uid := -1  # an element being dragged out of the bag is in your hand, not in the bag
+	if is_instance_valid(_bdrag) and _bdrag_src.get("kind", "") == "stock":
+		held_uid = p.stock[_bdrag_src.i].uid
+	var shown: Array = []
+	var live := {}
 	for i in order:
-		var s: Dictionary = p.stock[i]
-		var ic := ElementIcon.make(s.el, 52)
+		if i in chant_idx or p.stock[i].uid == held_uid:
+			continue
+		shown.append(i)
+		live[p.stock[i].uid] = true
+	for uid in _bag_icons.keys():
+		if not live.has(uid):
+			_bag_icons[uid].queue_free()
+			_bag_icons.erase(uid)
+			_bag_target.erase(uid)
+	var per_row := maxi(1, int((BAG_W + BAG_GAP) / (BAG_PX + BAG_GAP)))
+	var rows := maxi(1, ceili(float(shown.size()) / per_row))
+	_stock_row.custom_minimum_size.y = rows * (BAG_PX + BAG_GAP) - BAG_GAP
+	var delay := _bag_delay
+	_bag_delay = 0.0
+	for k in shown.size():
+		var s: Dictionary = p.stock[shown[k]]
+		var uid: int = s.uid
+		var target := Vector2((k % per_row) * (BAG_PX + BAG_GAP), (k / per_row) * (BAG_PX + BAG_GAP))
+		_bag_target[uid] = target
+		var ic: ElementIcon = _bag_icons.get(uid)
+		var fresh := ic == null
+		if fresh:
+			ic = ElementIcon.make(s.el, BAG_PX)
+			ic.size = Vector2(BAG_PX, BAG_PX)
+			ic.pivot_offset = Vector2(BAG_PX, BAG_PX) / 2.0
+			ic.mouse_filter = Control.MOUSE_FILTER_STOP
+			ic.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+			ic.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _press_element("stock", _stock_index(uid)))
+			ic.position = target
+			_stock_row.add_child(ic)
+			_bag_icons[uid] = ic
+		ic.el = s.el
 		ic.temp = s.temp
 		ic.frozen = s.frozen
 		ic.hexed = s.hexed
-		ic.dim = i in chant_idx or phase != "build"
-		ic.mouse_filter = Control.MOUSE_FILTER_STOP
+		ic.dim = phase != "build"
+		ic.modulate.a = 0.0 if _flying.has(uid) else 1.0
 		var tip: String = Elements.NAMES[s.el]
 		if s.temp:
 			tip += " (conjured: fades at the end of this turn)"
@@ -485,10 +530,100 @@ func _refresh_stock() -> void:
 		if s.hexed:
 			tip += " (hexed: chanting it costs 2 HP)"
 		ic.tooltip_text = tip
-		var idx: int = i
-		ic.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _press_element("stock", idx))
-		ic.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		_stock_row.add_child(ic)
+		ic.queue_redraw()
+		if fresh:
+			if not _flying.has(uid):
+				ic.scale = Vector2(0.3, 0.3)
+				ic.create_tween().tween_property(ic, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			ic.set_meta("goal", target)
+		elif ic.get_meta("goal", Vector2(-1, -1)) != target:
+			ic.set_meta("goal", target)
+			if ic.has_meta("slide"):
+				var old: Tween = ic.get_meta("slide")
+				if old != null and old.is_valid():
+					old.kill()
+			var tw := ic.create_tween()
+			if delay > 0.0:
+				tw.tween_interval(delay)
+			tw.tween_property(ic, "position", target, BAG_MOVE).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			ic.set_meta("slide", tw)
+
+
+func _stock_index(uid: int) -> int:
+	var st: Array = fight.player.stock
+	for i in st.size():
+		if st[i].uid == uid:
+			return i
+	return -1
+
+
+func _bag_center(uid: int) -> Vector2:
+	var ic: Control = _bag_icons.get(uid)
+	if ic != null and is_instance_valid(ic):
+		return ic.global_position + Vector2(BAG_PX, BAG_PX) / 2.0
+	return _stock_row.global_position + Vector2(BAG_PX, BAG_PX) / 2.0
+
+
+## Where an element's icon will rest in the bag once it has settled.
+func _bag_target_center(uid: int) -> Vector2:
+	return _stock_row.global_position + _bag_target.get(uid, Vector2.ZERO) + Vector2(BAG_PX, BAG_PX) / 2.0
+
+
+func _chant_px() -> float:
+	return 58.0 if maxi(fight.player.chant_slots(), chant_idx.size()) <= 10 else 46.0
+
+
+func _chant_slot_center(k: int) -> Vector2:
+	var px := _chant_px()
+	return _chant_row.global_position + Vector2(k * (px + 6.0) + px / 2.0, px / 2.0)
+
+
+## An element in the air, jumping between the bag and the chant on a little arc, growing or shrinking to the size
+## of its new home. Its real icon waits (invisible) at the other end and pops in when this one lands.
+func _fly(s: Dictionary, from: Vector2, to: Vector2, from_px: float, to_px: float) -> void:
+	var uid: int = s.uid
+	var ic := ElementIcon.make(s.el, from_px)
+	ic.size = Vector2(from_px, from_px)
+	ic.pivot_offset = ic.size / 2.0
+	ic.temp = s.temp
+	ic.hexed = s.hexed
+	ic.z_index = 60
+	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fx.add_child(ic)
+	var mid := (from + to) / 2.0 + Vector2(0, -46.0)
+	var grow := to_px / from_px
+	var tw := create_tween()
+	tw.tween_method(func(t: float):
+		if not is_instance_valid(ic):
+			return
+		var pt := from.lerp(mid, t).lerp(mid.lerp(to, t), t)
+		ic.position = pt - _fx.global_position - ic.size / 2.0
+		ic.scale = Vector2.ONE * lerpf(1.0, grow, t), 0.0, 1.0, FLY_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_callback(func():
+		if is_instance_valid(ic):
+			ic.queue_free()
+		_flying.erase(uid)
+		_refresh_stock()
+		if phase == "build":  # once the chant is spoken, its row belongs to the Release
+			_refresh_chant()
+		_land(uid))
+
+
+## The element that just arrived gives a small bounce.
+func _land(uid: int) -> void:
+	var node: Control = _bag_icons.get(uid)
+	if node == null:
+		var pos := -1
+		for k in chant_idx.size():
+			if fight.player.stock[chant_idx[k]].uid == uid:
+				pos = k
+		var slots := _chant_row.get_children().filter(func(c): return c is Panel)
+		if pos >= 0 and pos < slots.size() and slots[pos].get_child_count() > 0:
+			node = slots[pos].get_child(0)
+	if node != null and is_instance_valid(node):
+		node.pivot_offset = node.custom_minimum_size / 2.0
+		node.scale = Vector2(1.18, 1.18)
+		node.create_tween().tween_property(node, "scale", Vector2.ONE, 0.12)
 
 
 # ------------------------------------------------------------------ chant input
@@ -678,7 +813,7 @@ func _chant_changed() -> void:
 # ------------------------------------------------------------------ building the chant by drag and drop
 
 func _press_element(kind: String, i: int) -> void:
-	if busy or phase != "build":
+	if busy or phase != "build" or i < 0:
 		return
 	_press = {"kind": kind, "i": i, "at": get_global_mouse_position()}
 
@@ -721,9 +856,12 @@ func _begin_build_drag(pointer: Vector2) -> void:
 func _end_build_drag() -> void:
 	var res: Dictionary = _bdrag.external_result()
 	var src := _bdrag_src
+	var held_at: Vector2 = _bdrag.held_center()
+	var held_px: float = _bdrag.px
 	_bdrag.queue_free()
 	_bdrag = null
 	var p := fight.player
+	var back := {}  # a chant element let go away from the chant: it flies home to the bag
 	if src.kind == "stock":
 		if res.inside and chant_idx.size() < p.chant_slots() and _allowed("add", p.stock[src.i].el):
 			# (the tutorial's scripted chant is built left to right, so there it always goes on the end)
@@ -737,33 +875,49 @@ func _end_build_drag() -> void:
 			chant_idx.insert(clampi(res.to, 0, chant_idx.size()), k)
 			Audio.play("elem_pickup")
 	elif _allowed("remove"):
+		back = p.stock[chant_idx[src.i]]
 		chant_idx.remove_at(src.i)
 		Audio.play("elem_remove")
+		_flying[back.uid] = true
 	_chant_changed()
+	if not back.is_empty():
+		_fly(back, held_at, _bag_target_center(back.uid), held_px, BAG_PX)
 
 
 func _toggle_stock(i: int) -> void:
-	if busy or phase != "build":
+	if busy or phase != "build" or i < 0:
 		return
 	if i in chant_idx:
-		if not _allowed("remove"):
-			return
-		chant_idx.erase(i)
-		Audio.play("elem_remove")
+		_remove_from_chant(chant_idx.find(i))
 	elif not fight.player.stock[i].frozen and chant_idx.size() < fight.player.chant_slots():
 		if not _allowed("add", fight.player.stock[i].el):
 			return
-		chant_idx.append(i)
-		Audio.play("elem_pickup")
+		_add_stock_index(i)
+
+
+## Take an element from the bag into the end of the chant: it jumps up, then the bag closes the gap.
+func _add_stock_index(i: int) -> void:
+	var s: Dictionary = fight.player.stock[i]
+	var from := _bag_center(s.uid)
+	chant_idx.append(i)
+	Audio.play("elem_pickup")
+	_flying[s.uid] = true
+	_bag_delay = FLY_TIME * 0.4
 	_chant_changed()
+	_fly(s, from, _chant_slot_center(chant_idx.size() - 1), BAG_PX, _chant_px())
 
 
 func _remove_from_chant(pos: int) -> void:
-	if busy or phase != "build" or pos >= chant_idx.size() or not _allowed("remove"):
+	if busy or phase != "build" or pos < 0 or pos >= chant_idx.size() or not _allowed("remove"):
 		return
+	var s: Dictionary = fight.player.stock[chant_idx[pos]]
+	var from := _chant_slot_center(pos)
+	var px := _chant_px()
 	chant_idx.remove_at(pos)
 	Audio.play("elem_remove")
-	_chant_changed()
+	_flying[s.uid] = true
+	_chant_changed()  # the bag makes room for it; its icon waits there, unseen, until this one lands
+	_fly(s, from, _bag_target_center(s.uid), px, BAG_PX)
 
 
 func _add_element(el: String) -> void:
@@ -777,17 +931,23 @@ func _add_element(el: String) -> void:
 		if pick == -1 or (s.temp and not fight.player.stock[pick].temp) or (fight.player.stock[pick].hexed and not s.hexed):
 			pick = i
 	if pick >= 0:
-		chant_idx.append(pick)
-		Audio.play("elem_pickup")
-		_chant_changed()
+		_add_stock_index(pick)
 
 
 func _clear_chant() -> void:
 	if busy or phase != "build" or not _allowed("clear"):
 		return
+	var going: Array = []
+	var px := _chant_px()
+	for k in chant_idx.size():
+		going.append([fight.player.stock[chant_idx[k]], _chant_slot_center(k)])
 	chant_idx.clear()
 	Audio.play("elem_remove")
+	for g in going:
+		_flying[g[0].uid] = true
 	_chant_changed()
+	for g in going:
+		_fly(g[0], g[1], _bag_target_center(g[0].uid), px, BAG_PX)
 
 
 func _unhandled_input(ev: InputEvent) -> void:
@@ -884,9 +1044,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 			elif phase == "build" and n < 3:
 				_add_element(["F", "W", "A"][n])
 		KEY_BACKSPACE:
-			if not busy and phase == "build" and not chant_idx.is_empty() and _allowed("remove"):
-				chant_idx.pop_back()
-				_chant_changed()
+			if not busy and phase == "build" and not chant_idx.is_empty():
+				_remove_from_chant(chant_idx.size() - 1)
 		KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
 			_on_cast()
 		KEY_E:
@@ -1744,6 +1903,8 @@ func _anim(ev: Dictionary) -> void:
 func _sing(indices: Array, hits: Array) -> void:
 	var slots := _chant_row.get_children().filter(func(c): return c is Panel)
 	for i in indices:
+		if not is_inside_tree():
+			return  # the fight ended and its screen went away while the chant was being read
 		if i >= slots.size():
 			continue
 		for ic in slots[i].get_children():
