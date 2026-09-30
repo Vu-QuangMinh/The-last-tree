@@ -1,8 +1,10 @@
 class_name EnemyState
 extends RefCounted
-## One enemy in a fight. HP is a row of elements (left to right); `armor[i]` marks elements
-## that can't be removed this turn (they still count for matching); `lit[i]` marks elements set on fire by
-## Burn, which are removed at the start of the player's next turn.
+## One enemy in a fight. HP is a row of Essence (left to right); `armor[i]` marks Essence that can't be
+## removed this turn (it still counts for matching).
+## Burn N: at the start of its turn it loses its N leftmost Essence, then Burn drops by 1.
+## Poison N: at the start of its turn it loses its N rightmost Essence, then Poison drops by 1.
+## Both stay until they run down (the Release doesn't clear them). Fire and venom ignore armour.
 
 var def: Dictionary
 var id := ""
@@ -10,13 +12,8 @@ var name := ""
 var elements: Array = []  # element letters
 var armor: Array = []  # bool per element
 var dmg_bonus := 0
-var lit: Array = []  # bool per element: on fire (Burn)
-## How many of its elements are burning. Setting it lights more (at random), never puts any out.
-var burn: int:
-	get:
-		return lit.count(true)
-	set(value):
-		ignite(value - lit.count(true))
+var lit: Array = []  # (legacy, kept in step with elements; unused)
+var burn := 0
 var poison := 0
 var weak_turns := 0
 var weak25 := false  # Stillness (permanent)
@@ -65,8 +62,14 @@ func hp_text() -> String:
 	return "".join(elements)
 
 
+## Will this Essence burn away at the start of its next turn? (The leftmost `burn` of them.)
 func is_lit(i: int) -> bool:
-	return i >= 0 and i < lit.size() and lit[i] == true
+	return i >= 0 and i < mini(burn, elements.size())
+
+
+## Will this Essence be eaten by Poison at the start of its next turn? (The rightmost `poison` of them.)
+func is_poisoned(i: int) -> bool:
+	return i < elements.size() and i >= elements.size() - poison and i >= 0
 
 
 ## Keeps `lit` the same length as `elements` (anything new starts unlit).
@@ -77,29 +80,20 @@ func _fix_lit() -> void:
 		lit.resize(elements.size())
 
 
-## Burn: set n random unlit elements on fire. Returns how many caught.
-func ignite(n: int, rng: RandomNumberGenerator = null) -> int:
-	_fix_lit()
-	var free := []
-	for i in elements.size():
-		if not lit[i]:
-			free.append(i)
-	var lighted := 0
-	while lighted < n and not free.is_empty():
-		var k := (rng.randi() if rng else randi()) % free.size()
-		lit[free[k]] = true
-		free.remove_at(k)
-		lighted += 1
-	return lighted
+## Burn: add n to its Burn. Returns n.
+func ignite(n: int, _rng: RandomNumberGenerator = null) -> int:
+	n = maxi(0, n)
+	burn += n
+	return n
 
 
-## Start of the enemy's turn (before it acts): every burning element is removed (armour doesn't stop fire).
+## Start of the enemy's turn (before it acts): Burn takes its `burn` leftmost Essence (armour doesn't stop
+## fire), then Burn drops by 1.
 func burn_off() -> Array:
-	_fix_lit()
 	var removed := []
-	for i in range(elements.size() - 1, -1, -1):
-		if lit[i]:
-			removed.push_front(_remove_at(i))
+	for i in mini(burn, elements.size()):
+		removed.append(_remove_at(0))
+	burn = maxi(0, burn - 1)
 	return removed
 
 
@@ -286,30 +280,23 @@ func damage_mult() -> float:
 	return m
 
 
-## Start of the enemy's turn: armour from last turn fades, then Poison bites. (Burn bites at the start of
-## the player's turn instead: see burn_off.)
-func begin_turn(rng: RandomNumberGenerator = null) -> Dictionary:
+## Start of the enemy's turn (after Burn): armour from last turn fades, then Poison bites.
+func begin_turn(_rng: RandomNumberGenerator = null) -> Dictionary:
 	armor.fill(false)
 	ethereal = false
 	var out := {"burn": [], "poison": []}
 	if poison > 0 and not is_dead():
-		out.poison = poison_bite(rng)
-		poison -= 1
+		out.poison = poison_bite()
 	return out
 
 
-## Poison: the enemy loses one Essence of its rarest element (if several are equally rare, one of them at
-## random); of that element, the rightmost one goes.
-func poison_bite(rng: RandomNumberGenerator = null) -> Array:
-	var counts := {}
-	for el in elements:
-		counts[el] = counts.get(el, 0) + 1
-	if counts.is_empty():
-		return []
-	var fewest: int = counts.values().min()
-	var rarest := counts.keys().filter(func(el): return counts[el] == fewest)
-	var pick: String = rarest[(rng.randi() if rng else randi()) % rarest.size()]
-	return [_remove_at(elements.rfind(pick))]
+## Poison: it loses its `poison` rightmost Essence (armour doesn't stop it), then Poison drops by 1.
+func poison_bite(_rng: RandomNumberGenerator = null) -> Array:
+	var removed := []
+	for i in mini(poison, elements.size()):
+		removed.push_front(_remove_at(elements.size() - 1))
+	poison = maxi(0, poison - 1)
+	return removed
 
 
 ## After its action: timed statuses count down.
@@ -323,9 +310,9 @@ func end_turn() -> void:
 func describe_statuses() -> Array:
 	var out := []
 	if burn > 0:
-		out.append("Burning %d (burns away at the start of its turn)" % burn)
+		out.append("Burn %d (loses its %d leftmost Essence at the start of its turn, then Burn drops by 1)" % [burn, burn])
 	if poison > 0:
-		out.append("Poison %d (loses one of its rarest element each turn)" % poison)
+		out.append("Poison %d (loses its %d rightmost Essence at the start of its turn, then Poison drops by 1)" % [poison, poison])
 	if weak_turns > 0:
 		out.append("Weakened %d turn%s (deals 50%% less)" % [weak_turns, "" if weak_turns == 1 else "s"])
 	if weak25:

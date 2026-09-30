@@ -128,7 +128,7 @@
      "target": "target"
     }
    ],
-   "flavor": "Lift one element and set it down where you like.",
+   "flavor": "Lift one Essence and set it down where you like.",
    "rarity": "common"
   },
   {
@@ -159,6 +159,19 @@
     }
    ],
    "flavor": "The classic.",
+   "rarity": "common"
+  },
+  {
+   "id": "arcane_barrage",
+   "name": "Arcane Barrage",
+   "pattern": "WFA",
+   "effects": [
+    {
+     "op": "barrage",
+     "n": 3
+    }
+   ],
+   "flavor": "Three bolts, three guesses. Something will get hit.",
    "rarity": "common"
   },
   {
@@ -594,7 +607,7 @@
      "n": 1
     }
    ],
-   "flavor": "Whatever your chant hit burns one element deeper.",
+   "flavor": "Whatever your chant hit burns one Essence deeper.",
    "rarity": "rare"
   },
   {
@@ -736,7 +749,7 @@
      "n": 2
     }
    ],
-   "flavor": "Two of the chant's elements come back.",
+   "flavor": "Two of the chant's Essence come back.",
    "rarity": "rare"
   },
   {
@@ -942,7 +955,7 @@
      "n": 1
     }
    ],
-   "flavor": "All three elements sing as one.",
+   "flavor": "All three Essence sing as one.",
    "rarity": "legendary"
   },
   {
@@ -1018,7 +1031,7 @@
      "target": "target"
     }
    ],
-   "flavor": "Pull its leftmost element into your hand.",
+   "flavor": "Pull its leftmost Essence into your hand.",
    "rarity": "rare"
   },
   {
@@ -1155,7 +1168,7 @@
      "to": "F"
     }
    ],
-   "flavor": "Two of your stored elements become Fire.",
+   "flavor": "Two of your stored Essence become Fire.",
    "rarity": "common"
   },
   {
@@ -1353,7 +1366,7 @@
      "n": 1
     }
    ],
-   "flavor": "Choose an element; one draw each turn is always it.",
+   "flavor": "Choose an Essence; one draw each turn is always it.",
    "power": true,
    "rarity": "rare"
   },
@@ -1417,7 +1430,7 @@
      "target": "target"
     }
    ],
-   "flavor": "Its two leftmost elements become Fire.",
+   "flavor": "Its two leftmost Essence become Fire.",
    "rarity": "rare"
   },
   {
@@ -1431,7 +1444,7 @@
      "target": "target"
     }
    ],
-   "flavor": "Pull its two leftmost elements into your hand.",
+   "flavor": "Pull its two leftmost Essence into your hand.",
    "rarity": "rare"
   },
   {
@@ -1489,7 +1502,7 @@
      "n": 1
     }
    ],
-   "flavor": "Your spells tear out one element more.",
+   "flavor": "Your spells tear out one Essence more.",
    "power": true,
    "rarity": "rare"
   },

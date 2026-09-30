@@ -38,3 +38,10 @@ func refresh() -> void:
 		c.queue_free()
 	for id in run.artifacts:
 		_arts.add_child(ArtifactBar.ArtifactChip.make(id, id in run.artifacts_plus))
+	# your bottles (and empty bottle slots), after the artifacts
+	if run.bottle_slots() > 0:
+		var gap := Control.new()
+		gap.custom_minimum_size = Vector2(12, 0)
+		_arts.add_child(gap)
+	for i in run.bottle_slots():
+		_arts.add_child(BottleChip.make(run.player.bottles[i] if i < run.player.bottles.size() else "", i, false))

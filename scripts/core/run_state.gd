@@ -34,7 +34,8 @@ var seedlings := 0
 var kills := 0
 var defeated_ids: Array = []
 var met: Array = []  # enemy ids met this run, oldest first
-var upgraded: Array = []  # spell ids upgraded at rests (their + version is used)
+var upgraded: Array = []  # (legacy: upgrades are wax seals now, see `seals`)
+var seals := {}  # spell id -> [indices of its pattern sealed by upgrades]: those Essence are no longer needed
 var amber := START_AMBER
 var seen_events: Array = []
 var encounter: Array = []  # the ids of the encounter being prepared
@@ -43,6 +44,9 @@ var fused := {}  # id -> spell dict, for spells forged at campfires ("fused_1", 
 var _fuse_count := 0
 var over := false
 var won := false
+var reward_bottle := ""  # a bottle found after the last fight ("" if none)
+## Chance to find a bottle after winning a fight (if you have a free slot).
+const BOTTLE_DROP := {"fight": 0.25, "elite": 0.5, "boss": 1.0}
 
 
 func setup(p_db: SpellDB, p_unlocked_spells: Array, p_unlocked_artifacts: Array, seed := 0) -> void:
@@ -72,10 +76,37 @@ func active_slots() -> int:
 	return clampi(n, 3, MAX_ACTIVE)
 
 
-## The spell as you have it this run (its + version once upgraded).
+## The spell as you have it this run: sealed Essence (upgrades) are taken out of its pattern. The card still
+## shows them, under a wax seal (full_pattern + seals).
 func spell(id: String) -> Dictionary:
 	var s: Dictionary = fused[id] if fused.has(id) else db.get_spell(id)
-	return SpellDB.upgrade(s) if id in upgraded else s
+	var sl: Array = seals.get(id, [])
+	if sl.is_empty() or s.is_empty():
+		return s
+	s = s.duplicate(true)
+	s.full_pattern = s.pattern
+	s.seals = sl.duplicate()
+	var p := ""
+	for i in String(s.full_pattern).length():
+		if not (i in sl):
+			p += s.full_pattern[i]
+	s.pattern = p
+	s.size = p.length()
+	return s
+
+
+# ------------------------------------------------------------------ bottles
+
+func bottle_slots() -> int:
+	return Bottles.BASE_SLOTS + (2 if "bandolier" in artifacts else 0)
+
+
+## Take a bottle if there's a free slot. Returns false when you're full.
+func gain_bottle(id: String) -> bool:
+	if player.bottles.size() >= bottle_slots() or Bottles.get_def(id).is_empty():
+		return false
+	player.bottles.append(id)
+	return true
 
 
 ## Enemy strength within the act, 1-8, spread over the act's floors.
@@ -157,6 +188,11 @@ func finish_fight(f: Fight) -> void:
 		if not (id in defeated_ids):
 			defeated_ids.append(id)
 	seedlings += SEEDLINGS.get(kind, 3)
+	reward_bottle = ""
+	if rng.randf() < BOTTLE_DROP.get(kind, 0.25):
+		var b: String = Bottles.random(rng, 1)[0]
+		if gain_bottle(b):
+			reward_bottle = b
 	var am: Array = AMBER.get(kind, AMBER.fight)
 	amber += rng.randi_range(am[0], am[1])
 	if "healing_sap" in artifacts:
@@ -254,6 +290,9 @@ func gain_artifact(id: String) -> void:
 	if id == "blood_pact":
 		player.max_hp -= 12
 		player.hp = minf(player.hp, player.max_hp)
+	if id == "bandolier":
+		for b in Bottles.random(rng, 2):
+			gain_bottle(b)
 	while loadout.size() > active_slots():
 		loadout.pop_back()
 
@@ -264,6 +303,8 @@ func remove_artifact(id: String) -> void:
 	artifacts_plus.erase(id)
 	if id == "blood_pact":
 		player.max_hp += 12
+	while player.bottles.size() > bottle_slots():
+		player.bottles.pop_back()
 	while loadout.size() > active_slots():
 		loadout.pop_back()
 
@@ -323,27 +364,33 @@ func fusable() -> Array:
 	return spellbook.filter(func(id): return can_fuse(id))
 
 
-## Forge the fused spell from two spells (not yet committed):
-##   the longer spell keeps its whole pattern; the shorter spell loses one random element and goes on the end,
-##   so the new pattern is (longer + shorter - 1) elements long. It does everything both spells did.
+static var _fusion_names := {}
+
+
+## The fused spell's name: made up in advance for every pair of spells (data/fusion_names.json), and the same
+## whichever order they are fused in.
+static func fusion_name(id_a: String, id_b: String, name_a := "", name_b := "") -> String:
+	if _fusion_names.is_empty():
+		var data = JSON.parse_string(FileAccess.get_file_as_string("res://data/fusion_names.json"))
+		_fusion_names = data if data is Dictionary else {"_": ""}
+	var ids := [id_a, id_b]
+	ids.sort()
+	return _fusion_names.get("|".join(ids), "%s %s" % [name_a, name_b])
+
+
+## Forge the fused spell from two spells (not yet committed): the first spell's pattern comes first and the
+## second's follows it, whole (nothing is lost: its length is the sum of both). It does everything both did.
 func fuse_preview(id_a: String, id_b: String) -> Dictionary:
 	var a := spell(id_a)
 	var b := spell(id_b)
-	if b.size > a.size:
-		var t := a
-		a = b
-		b = t
-	var tail: String = b.pattern
-	var cut := rng.randi() % tail.length()
-	tail = tail.substr(0, cut) + tail.substr(cut + 1)
 	var order := ["common", "rare", "legendary"]
 	var rarity: String = order[maxi(order.find(a.rarity), order.find(b.rarity))]
 	var effects: Array = a.effects.duplicate(true) + b.effects.duplicate(true)
 	var s := {
-		"id": "fused_%d" % (_fuse_count + 1), "name": "%s + %s" % [a.name, b.name],
-		"pattern": a.pattern + tail, "effects": effects, "rarity": rarity,
+		"id": "fused_%d" % (_fuse_count + 1), "name": fusion_name(id_a, id_b, a.name, b.name),
+		"pattern": a.pattern + b.pattern, "effects": effects, "rarity": rarity,
 		"flavor": "Forged at a campfire from %s and %s." % [a.name, b.name],
-		"fused": true, "fused_from": [a.name, b.name], "dropped": b.pattern[cut],
+		"fused": true, "fused_from": [a.name, b.name],
 	}
 	s.size = s.pattern.length()
 	s.rarity_name = SpellDB.RARITY_NAMES[rarity]
@@ -363,20 +410,42 @@ func fuse_commit(new_spell: Dictionary, id_a: String, id_b: String) -> void:
 		spellbook.erase(id)
 		loadout.erase(id)
 		upgraded.erase(id)
+		seals.erase(id)
 	fused[new_spell.id] = new_spell
 	spellbook.append(new_spell.id)
 	if was_active and loadout.size() < active_slots():
 		loadout.append(new_spell.id)
 
 
-## Rest site, option 2 (the merchant's study session and some events): upgrade a spell for the rest of the run.
-func upgrade_spell(id: String) -> void:
-	if id in spellbook and not (id in upgraded):
-		upgraded.append(id)
+## Upgrading (the merchant's study session and some events): a wax seal covers one Essence of a spell's
+## pattern (index into its full pattern), which then isn't needed any more. A spell sealed down to nothing
+## wakes on every chant.
+func seal_spell(id: String, idx: int) -> void:
+	if not (id in spellbook):
+		return
+	var full: String = spell(id).get("full_pattern", spell(id).pattern)
+	var sl: Array = seals.get(id, [])
+	if idx < 0 or idx >= full.length() or idx in sl:
+		return
+	sl.append(idx)
+	sl.sort()
+	seals[id] = sl
 
 
+## Spells that still have an Essence left to seal.
 func upgradable() -> Array:
-	return spellbook.filter(func(id): return not (id in upgraded))
+	return spellbook.filter(func(id): return String(spell(id).pattern).length() > 0)
+
+
+## Indices (into the full pattern) of a spell that can still be sealed.
+func sealable(id: String) -> Array:
+	var s := spell(id)
+	var full: String = s.get("full_pattern", s.pattern)
+	var out := []
+	for i in full.length():
+		if not (i in s.get("seals", [])):
+			out.append(i)
+	return out
 
 
 # ------------------------------------------------------------------ ? rooms and events
@@ -436,9 +505,19 @@ func choose_event_option(opt: Dictionary) -> Dictionary:
 				if ids.is_empty():
 					break
 				var id: String = ids[rng.randi() % ids.size()]
-				upgrade_spell(id)
+				var free := sealable(id)
+				seal_spell(id, free[rng.randi() % free.size()])
 				names.append(spell(id).name)
-			return {"text": "Upgraded: %s." % (", ".join(names) if not names.is_empty() else "nothing left to upgrade")}
+			return {"text": "A wax seal: %s needs one Essence less." % (", ".join(names) if not names.is_empty() else "nothing left to upgrade")}
+		"bottle":
+			var got := []
+			for b in Bottles.random(rng, maxi(1, n)):
+				if gain_bottle(b):
+					got.append(Bottles.get_def(b).name)
+			if got.is_empty():
+				amber += opt.get("amber", 0)
+				return {"text": "Your bottle slots are full. You keep your Amber."}
+			return {"text": "You take: %s." % ", ".join(got)}
 		"spell":
 			var pool := unlocked_spells.filter(func(id): return not (id in spellbook) and db.get_spell(id).get("rarity", "") == opt.rarity)
 			if pool.is_empty():
@@ -486,6 +565,8 @@ func shop_stock() -> Array:
 		items.append({"kind": "spell", "spell": s, "price": PRICES[s.rarity]})
 	for a in artifact_offer(2):
 		items.append({"kind": "artifact", "artifact": a, "price": PRICES.artifact_rare if a.tier == "rare" else PRICES.artifact})
+	for b in Bottles.random(rng, 2):
+		items.append({"kind": "bottle", "bottle": b, "price": Bottles.get_def(b).price})
 	items.append({"kind": "upgrade", "price": PRICES.upgrade})
 	items.append({"kind": "heal", "price": PRICES.heal})
 	return items
@@ -505,6 +586,15 @@ func final_seedlings() -> int:
 	if "seedling_pouch" in artifacts:
 		s = int(s * (1.0 + Artifacts.num("seedling_pouch", "seedling_pouch" in artifacts_plus)))
 	return s
+
+
+## Loadout order (press and hold a spell before the fight to move it): the spell at `from` goes to `to`.
+func move_active(from: int, to: int) -> void:
+	if from < 0 or from >= loadout.size():
+		return
+	var id: String = loadout[from]
+	loadout.remove_at(from)
+	loadout.insert(clampi(to, 0, loadout.size()), id)
 
 
 ## Loadout editing (before each encounter).

@@ -129,6 +129,7 @@ func refresh(preview: Dictionary) -> void:
 		var icon := ElementIcon.make("?" if hidden else e.elements[i], px)
 		icon.armored = e.armor[i]
 		icon.burning = e.is_lit(i)
+		icon.poisoned = e.is_poisoned(i)
 		icon.ghost = ghosts.has(i)
 		if move_mode:
 			icon.highlight = i == move_pick
@@ -170,7 +171,7 @@ func _tooltip() -> String:
 	var e := enemy
 	var title := e.name + (" (Boss)" if e.is_boss else (" (Elite)" if e.is_elite else ""))
 	var lines := []
-	lines.append("Essence: %d elements" % e.size())
+	lines.append("Essence: %d" % e.size())
 	for s in e.describe_statuses():
 		lines.append("• " + s)
 	for p in e.def.get("passives", []):

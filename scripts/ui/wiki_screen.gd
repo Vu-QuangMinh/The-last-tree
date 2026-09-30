@@ -121,32 +121,33 @@ static func _content() -> Dictionary:
 	var c := {}
 	c["How to play"] = [
 		["The goal", "Walk three acts of the forest and beat the boss at the end of each one. You have 50 HP for the whole run; it does not refill between fights."],
-		["A turn, step by step", "1. You get new elements (the top right shows what's coming next turn).\n2. Build a chant of up to 8 elements from your stock and press Chant (Enter).\n3. Every active spell whose pattern appears in the chant comes alive. Cast the living spells, one charge at a time, in any order.\n4. When nothing is left to cast, the chant is Released by itself: its elements fly at the enemies as comets, one by one from left to right.\n5. The enemies act, as their intents showed."],
-		["Elements", "There are three: Fire {F}, Water {W} and Air {A}, written F, W and A for short. {?} on a card means any element. You start every fight with 5 random elements and get 3 more each turn. Unused elements are kept for later turns in the same fight."],
-		["Enemy Essence", "An enemy's life is its Essence: a row of elements, left to right. It dies when the row is empty. (Your own life is your HP.)"],
-		["Controls", "F / W / A add an element to the chant · Backspace removes the last one · Enter: Chant · click a living spell (or 1–6) to cast it · Tab cycles targets and choices, Enter confirms · right-click or Esc puts a spell back · E: Release early (or Pass before you chant) · F1 opens this wiki."],
+		["A turn, step by step", "1. You get new Essence (the top right shows what's coming next turn).\n2. Build a chant of up to 8 Essence from your stock and press Chant (Enter).\n3. Every active spell whose pattern appears in the chant comes alive. Cast the living spells, one charge at a time, in any order.\n4. When nothing is left to cast, the chant is Released by itself: its Essence fly at the enemies as comets, one by one from left to right.\n5. The enemies act, as their intents showed."],
+		["Elements", "There are three: Fire {F}, Water {W} and Air {A}, written F, W and A for short. {?} on a card means any Essence. You start every fight with 5 random Essence and get 3 more each turn. Unused Essence are kept for later turns in the same fight."],
+		["Enemy Essence", "An enemy's life is its Essence: a row of Essence, left to right. It dies when the row is empty. (Your own life is your HP.)"],
+		["Controls", "F / W / A add an Essence to the chant · Backspace removes the last one · Enter: Chant · click a living spell (or 1–6) to cast it · Tab cycles targets and choices, Enter confirms · right-click or Esc puts a spell back · E: Release early (or Pass before you chant) · F1 opens this wiki."],
 	]
 	c["The chant"] = [
 		["The Release", "When the chant is Released, every enemy loses the longest START of its Essence that appears unbroken anywhere in the chant.\nExample: enemies FFW and FWA both die to the chant FFWA. The chant FW leaves the first with FW (only its first F matched) and the second with A."],
-		["Element by element", "The Release reads the chant from left to right. Each chant element lifts off as a comet and flies into the enemy Essence it lines up with, knocking it off, so you can watch the Essence break in order."],
-		["Spells come first", "All your spells are cast BEFORE the Release. Anything a spell does to an enemy (removing, moving or converting elements, Expose, Armour breaks) changes what the Release will hit."],
-		["Changing the chant", "Some spells change this turn's chant: Spark Word, Spring Word and Breath Word add an element anywhere you like; Resonance copies an element (×2), Triune Chant triples it (×3). Changes count straight away: new matches wake more spells (up to their limit)."],
-		["One chant per turn", "You Chant once per turn. If you don't want to, press Pass (E) and keep your elements."],
-		["Armour", "Armoured elements (grey ring) count for matching but are not removed that turn. F (F) W hit by FFW leaves F."],
-		["Exposed", "An Exposed enemy loses 1 extra element from the back whenever your Release hits it. Expose lasts until the end of your turn for each turn it has."],
-		["Confused and Blind", "Confused: your next chant is read backwards and the preview is off. Blind: some enemy elements show as {?}; they still match normally."],
-		["Warded and Ethereal enemies", "Warded enemies can only be struck by chants of 4 or more elements. An Ethereal enemy can't be touched by the chant that turn."],
+		["Essence by Essence", "The Release reads the chant from left to right. Each chant Essence lifts off as a comet and flies into the enemy Essence it lines up with, knocking it off, so you can watch the Essence break in order."],
+		["Spells come first", "All your spells are cast BEFORE the Release. Anything a spell does to an enemy (removing, moving or converting Essence, Expose, Armour breaks) changes what the Release will hit."],
+		["Changing the chant", "Some spells change this turn's chant: Spark Word, Spring Word and Breath Word add an Essence anywhere you like; Resonance copies an Essence (×2), Triune Chant triples it (×3). Changes count straight away: new matches wake more spells (up to their limit)."],
+		["One chant per turn", "You Chant once per turn. If you don't want to, press Pass (E) and keep your Essence."],
+		["Armour", "Armoured Essence (grey ring) count for matching but are not removed that turn. F (F) W hit by FFW leaves F."],
+		["Exposed", "An Exposed enemy loses 1 extra Essence from the back whenever your Release hits it. Expose lasts until the end of your turn for each turn it has."],
+		["Confused and Blind", "Confused: your next chant is read backwards and the preview is off. Blind: some enemy Essence show as {?}; they still match normally."],
+		["Warded and Ethereal enemies", "Warded enemies can only be struck by chants of 4 or more Essence. An Ethereal enemy can't be touched by the chant that turn."],
 	]
 	c["Spells"] = [
-		["Patterns and charges", "A spell's pattern (1–5 elements) triggers once for each separate match in the chant, but never more times than its pattern is long: WW triggers at most twice, even if you chant six Water. One-element spells trigger once."],
-		["Casting", "Spells with no target (Shield, Heal, drawing elements…) cast themselves as soon as they come alive, in chant order. Spells that need a choice wait for you: click the glowing card, then click an enemy (the arrow follows your mouse; Tab switches, Enter confirms), or pick an element or a place in the chant. When nothing is left, press Release."],
+		["Patterns and charges", "A spell whose pattern (1–5 Essence) appears in the chant comes alive and triggers once that turn, however many times its pattern appears. A spell whose whole pattern is sealed (upgrades) wakes on every chant."],
+		["Casting", "Spells with no target (Shield, Heal, drawing Essence…) cast themselves as soon as they come alive, in chant order. Spells that need a choice wait for you: click the glowing card, then click an enemy (the arrow follows your mouse; Tab switches, Enter confirms), or pick an Essence or a place in the chant. When nothing is left, press Release."],
 		["Lost?", "If you click around and nothing happens, a hint pops up explaining what's going on right now and what to click next."],
 		["Your active row", "5 spells are active in a fight (never more than 8); the rest wait in your spellbook. Choose them before every encounter. Artifacts can add spell slots (the chant length never changes from artifacts)."],
 		["Categories", "Every card is Offensive (red), Defensive (blue) or Utility (gold). Spell rewards always mix at least two categories."],
 		["Rarity", "Cards are Common, Rare or Legendary; rarer cards are stronger for their pattern. After a normal fight each card offered is Common 70% of the time and Rare 30%. Elites always offer 3 Rare cards. Bosses offer 3 Legendary cards."],
 		["Powers", "A Power fires once, then leaves your active row for the rest of the fight (the slot stays empty) and its effect lasts the whole fight. Open Grimoire adds 2 random spells from your spellbook to the row (net +1 spell)."],
-		["Upgrades", "The merchant (and some events) can upgrade a spell: its + version (gold name box) has bigger numbers for the rest of the run."],
-		["Reading a card", "The name box is coloured by category, the orbs under it are the pattern, and the rules are plain sentences. Spells Remove elements from an enemy's Essence. \"The 3 rightmost Essence\" are the 3 elements at the right end of its row; \"the 3 leftmost Essence\" are the 3 at the left end. Targeted lets you pick any element in it. Hover a card for the full explanation of every keyword on it."],
+		["Upgrades", "The merchant (and some events) can upgrade a spell: you choose one Essence of its pattern and a purple wax seal covers it. That Essence isn't needed any more, so the spell is easier to wake. The name stays the same. Seal every Essence of a spell and it wakes on every chant."],
+		["Bottles", "One-use items for the fight you're in: Essence right now, healing, Shield, Burn, Poison, Freeze, stealing, even a spell from your spellbook. You carry up to 3 (the Bandolier gives 2 more slots). They sit under your HP bar in a fight: hover one to read it, click it on your turn to drink it. The merchant sells 2 at a time; fights and some events hand them out too."],
+		["Reading a card", "The name box is coloured by category, the orbs under it are the pattern, and the rules are plain sentences. Spells Remove Essence from an enemy's Essence. \"The 3 rightmost Essence\" are the 3 Essence at the right end of its row; \"the 3 leftmost Essence\" are the 3 at the left end. Targeted lets you pick any Essence in it. Hover a card for the full explanation of every keyword on it."],
 	]
 	var kw := []
 	for k in Keywords.K:
@@ -177,17 +178,17 @@ static func _content() -> Dictionary:
 	arts.sort_custom(func(a, b): return a[0] < b[0])
 	c["Artifacts"] = [
 		["Artifact tiers", "Artifacts are Common, Rare or Legendary. Keepsakes are always Common; elites, treasure and the merchant offer Common ones 75% of the time and Rare ones 25%; Legendary artifacts only drop from bosses. Anything that adds spell slots is Rare or Legendary, and you can never have more than 8 active spells."],
-		["Artifacts", "Relics that last the whole run. You choose a keepsake at the start; elites and treasure rooms give more. Every boss gives a relic that adds elements to every turn. Cursed artifacts (red) are stronger but come with a price: fewer starting elements, fewer spell slots, less max HP, more damage taken…"],
+		["Artifacts", "Relics that last the whole run. You choose a keepsake at the start; elites and treasure rooms give more. Every boss gives a relic that adds Essence to every turn. Cursed artifacts (red) are stronger but come with a price: fewer starting Essence, fewer spell slots, less max HP, more damage taken…"],
 	] + arts
 	c["The run"] = [
 		["The map", "Each act is a map of 12 floors and a boss, drawn like Slay the Spire: paths branch and merge, and you pick your way up one room at a time. Floor 1 is always fights, floor 6 is always treasure, and the floor before the boss is always a campfire. Elites and campfires never appear before floor 5, and the same special room never comes twice in a row on a path. ⚔ Fight · 👹 Elite · ❓ Unknown · 🛒 Merchant · 🎁 Treasure · 🔥 Campfire · 👑 Boss."],
 		["Unknown rooms", "A ? room is usually an event: a little story with a choice (a gamble, a trade of HP or Amber for spells, artifacts or upgrades). Sometimes it turns out to be a fight, a merchant or treasure instead."],
-		["Amber and the merchant", "Fights give Amber (elites and bosses more). The merchant sells spells (Common 45, Rare 75, Legendary 140), artifacts (120), a spell upgrade (60) and a hot meal (heal 30%, 40)."],
-		["Rewards", "Normal fight: pick 1 of 3 spells (70% Common, 30% Rare each). Elite: 1 of 3 Rare spells and an artifact. Boss: 1 of 3 Legendary spells and a relic that raises your element income; you also heal half your HP."],
+		["Amber and the merchant", "Fights give Amber (elites and bosses more). The merchant sells spells (Common 45, Rare 75, Legendary 140), artifacts (110, rare 170), 2 bottles (20–80, by strength), a wax seal for one of your spells (60) and a hot meal (heal 30%, 40)."],
+		["Rewards", "Normal fight: pick 1 of 3 spells (70% Common, 30% Rare each). Elite: 1 of 3 Rare spells and an artifact. Boss: 1 of 3 Legendary spells and a relic that raises your Essence income; you also heal half your HP."],
 		["Campfires", "Either rest (heal 30% of max HP) or Fuse two spells into one."],
-		["Fusing", "Fuse melts two spells into ONE spell that does everything both did. The longer spell keeps its whole pattern; the shorter spell drops one random element and goes on the end, so a 2-element and a 3-element spell make a 4-element spell. You see the result before you confirm. Both spells are used up; fused spells can't be fused again, and Powers can't be fused."],
+		["Fusing", "Fuse melts two spells into ONE spell that does everything both did. Its pattern is the first spell you picked followed by the whole of the second (nothing is lost). It gets a name of its own. You see the result before you confirm. Both spells are used up; fused spells can't be fused again, and Powers can't be fused."],
 		["Treasure", "Choose 1 of 3 artifacts. One of them is always cursed."],
-		["Enemies grow", "Deeper floors add extra random elements to the end of enemies' Essence, and later acts hit harder and send bigger groups."],
+		["Enemies grow", "Deeper floors add extra random Essence to the end of enemies' Essence, and later acts hit harder and send bigger groups."],
 		["Seedlings and unlocks", "Every fight earns Seedlings (more for elites and bosses, a bonus for winning). Spend them in Unlocks to add spells and artifacts to future runs."],
 	]
 	return c

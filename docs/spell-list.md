@@ -2,31 +2,31 @@
 
 Generated from `data/spells.json` by `tools/spell_report.py`. Edit the JSON, then re-run the script.
 
-**110 spells.** Chant, then every spell whose pattern appears in the chant comes alive: one charge per separate match, but never more than its pattern's length. Cast them in any order; then the chant is Released and each enemy loses the longest start of its Essence found in it. ★ = starter.
+**111 spells.** Chant, then every spell whose pattern appears in the chant comes alive (once per turn). Cast them in any order; then the chant is Released and each enemy loses the longest start of its Essence found in it. ★ = starter.
 
 **Keywords**
-- **Burn N:** sets N random Essence of the enemy on fire; every burning Essence is removed at the start of the enemy's turn, before it acts.
-- **Poison N:** at the start of each of its turns, the enemy loses one Essence of the element it has the **fewest** of (a random one if tied), then Poison goes down by 1.
+- **Burn N:** at the start of the enemy's turn, before it acts, it loses its N **leftmost** Essence (armour doesn't help), then Burn drops by 1. It lasts until it runs out.
+- **Poison N:** at the start of the enemy's turn, it loses its N **rightmost** Essence (armour doesn't help), then Poison drops by 1. It lasts until it runs out.
 - **Weaken:** the enemy deals 50% less damage.
 - **Freeze:** the enemy skips its next action.
 - **Expose:** whenever your Release hits this enemy, it also loses its rightmost Essence.
 - **Ethereal (you):** take no damage from attacks this turn, but double damage from effects. **Ethereal (enemy):** your spells remove double from it this turn; enemies that go Ethereal as their intent can't be hit by your next Release.
 - **Shield:** blocks damage until your next turn. **Aegis:** blocks one hit completely.
 - **Thorns:** enemies that attack you lose their rightmost Essence.
-- **Armour** (enemy ability): an armoured element can't be removed this turn, but it still counts for the chant's match.
+- **Armour** (enemy ability): an armoured Essence can't be removed this turn, but it still counts for the chant's match.
 - **Power:** cast once, then it leaves your active row (its slot stays empty) and its effect lasts the whole fight.
-- **Conjured** elements arrive next turn and vanish at the end of that turn if unused.
-- **Siphon:** take elements off an enemy's Essence. **Execute:** destroy an enemy that is small enough.
-- **Amplify:** enemies your chant hit lose extra elements. **Echo:** the chant strikes again after your spells. **Overload:** fewer elements next turn.
+- **Conjured** Essence arrive next turn and vanish at the end of that turn if unused.
+- **Siphon:** take Essence off an enemy's Essence. **Execute:** destroy an enemy that is small enough.
+- **Amplify:** enemies your chant hit lose extra Essence. **Echo:** the chant strikes again after your spells. **Overload:** fewer Essence next turn.
 
-## 1-element patterns (14)
+## 1-Essence patterns (14)
 
 | Name | Pattern | Rarity | Category | Effect | Flavor |
 |---|---|---|---|---|---|
 | **Borrowed Breath** | 🌪️ | Common | Utility | +1 conjured Air next turn. | *A breath that isn't yours to keep.* |
-| **Siphon** | 🌪️ | Rare | Offensive | Remove the 2 leftmost Essence of the target; next turn you gain the removed elements (conjured). | *Pull its leftmost element into your hand.* |
+| **Siphon** | 🌪️ | Rare | Offensive | Remove the 2 leftmost Essence of the target; next turn you gain the removed Essence (conjured). | *Pull its leftmost Essence into your hand.* |
 | **Taint** | 🌪️ | Common | Offensive | Poison 1 on the target. | *Something foul rides the breeze.* |
-| **Updraft** | 🌪️ | Common | Utility | Move 1 element of the target to any position you choose. | *Lift one element and set it down where you like.* |
+| **Updraft** | 🌪️ | Common | Utility | Move 1 Essence of the target to any position you choose. | *Lift one Essence and set it down where you like.* |
 | **Whisper** | 🌪️ | Common | Defensive | Weaken 1 on the target. | *A word in the ear, and its arm goes slack.* |
 | **Cinder** | 🔥 | Common | Offensive | Expose 1 on the target. | *Glowing ash marks the weak spot.* |
 | **Clear Sight** | 🔥 | Common | Defensive | Cure Blind. | *A flash of light burns the fog away.* |
@@ -38,7 +38,7 @@ Generated from `data/spells.json` by `tools/spell_report.py`. Edit the JSON, the
 | **Mist** | 💧 | Common | Defensive | Heal 1. | *Cool on the skin.* |
 | **Ripple** | 💧 | Common | Utility | Turn the rightmost Essence of the target into Water. | *The end of it turns to water.* |
 
-## 2-element patterns (40)
+## 2-Essence patterns (40)
 
 | Name | Pattern | Rarity | Category | Effect | Flavor |
 |---|---|---|---|---|---|
@@ -46,33 +46,33 @@ Generated from `data/spells.json` by `tools/spell_report.py`. Edit the JSON, the
 | **Gale Barrier** | 🌪️ 🌪️ | Common | Defensive | Gain 3 Shield; Thorns 1 this turn. | *A wall of wind that bites back.* |
 | **Miasma** | 🌪️ 🌪️ | Common | Offensive | Poison 2 on the target. | *A choking cloud settles on it.* |
 | **Steady Mind** | 🌪️ 🌪️ | Common | Defensive | Cure Confuse; +1 Air next turn. | *Breathe in, breathe out.* |
-| **Tailwind** ★ | 🌪️ 🌪️ | Common | Utility | +1 random element next turn. | *The wind brings more.* |
-| **Alchemist's Breath** | 🌪️ 🔥 | Common | Utility | Turn 2 of your stored elements into Fire. | *Two of your stored elements become Fire.* |
+| **Tailwind** ★ | 🌪️ 🌪️ | Common | Utility | +1 random Essence next turn. | *The wind brings more.* |
+| **Alchemist's Breath** | 🌪️ 🔥 | Common | Utility | Turn 2 of your stored Essence into Fire. | *Two of your stored Essence become Fire.* |
 | **Fan the Flames** | 🌪️ 🔥 | Common | Offensive | Double the Burn on the target. | *Double the fire already there.* |
 | **Gust** | 🌪️ 🔥 | Common | Offensive | Targeted: remove 1 Essence of your choice from the target. | *A precise gust plucks one piece away.* |
 | **Spring Word** | 🌪️ 🔥 | Common | Utility | Put a Water anywhere you like in this turn's chant. | *A word that wells up.* |
 | **Rain** | 🌪️ 💧 | Common | Defensive | Heal 2. | *Soft and steady.* |
-| **Refresh** | 🌪️ 💧 | Common | Defensive | Remove all your debuffs (frozen elements, Blind, Confuse, Bleed, Silence); +1 Water next turn. | *Wash the frost off.* |
+| **Refresh** | 🌪️ 💧 | Common | Defensive | Remove all your debuffs (frozen Essence, Blind, Confuse, Bleed, Silence); +1 Water next turn. | *Wash the frost off.* |
 | **Unbind** | 🌪️ 💧 | Common | Defensive | Cure Silence on all your spells. | *Your voice returns.* |
 | **Blowtorch** | 🔥 🌪️ | Common | Offensive | Remove the rightmost Essence of the target (+1 if it is burning). | *Hotter where it's already burning.* |
 | **Conjure Flame** | 🔥 🌪️ | Common | Utility | +2 conjured Fire next turn. | *Two flames, borrowed for a turn.* |
 | **Phase Shift** | 🔥 🌪️ | Rare | Utility | Make the target Ethereal (your spells remove double from it this turn). | *Untouchable by chants, fragile to magic.* |
 | **Thorn Mantle** | 🔥 🌪️ | Rare | Defensive | **Power** (leaves your active row for the rest of the fight): Thorns 1 for the rest of the fight. | *Anything that strikes you gets burned.* |
 | **Wildfire** | 🔥 🌪️ | Common | Offensive | Burn 1 on all enemies. | *The wind spreads it everywhere.* |
-| **Blood Price** | 🔥 🔥 | Rare | Utility | Lose 3 HP; +4 random elements now. | *Pay in blood, gain in power.* |
+| **Blood Price** | 🔥 🔥 | Rare | Utility | Lose 3 HP; +4 random Essence now. | *Pay in blood, gain in power.* |
 | **Fire Ball** ★ | 🔥 🔥 | Common | Offensive | Remove the rightmost Essence of the target. | *The classic.* |
 | **Flare** | 🔥 🔥 | Common | Offensive | Remove the leftmost Essence of the target. | *Burn away the front line.* |
-| **Snuff Out** | 🔥 🔥 | Rare | Offensive | If the target has 3 or fewer elements, destroy it. | *Small flames are easy to pinch.* |
+| **Snuff Out** | 🔥 🔥 | Rare | Offensive | If the target has 3 or fewer Essence, destroy it. | *Small flames are easy to pinch.* |
 | **Twin Flames** | 🔥 🔥 | Common | Offensive | Burn 2 on the target. | *Two fires, one foe.* |
 | **Boil** | 🔥 💧 | Common | Utility | Turn the rightmost Essence of the target into Fire. | *Water at the end turns to fire.* |
 | **Breath Word** | 🔥 💧 | Common | Utility | Put a Air anywhere you like in this turn's chant. | *Exhale, and the wind answers.* |
-| **Cauterize** | 🔥 💧 | Rare | Utility | **Power** (leaves your active row for the rest of the fight): The target can never heal or regrow elements. | *Seal the wound so it never grows back.* |
+| **Cauterize** | 🔥 💧 | Rare | Utility | **Power** (leaves your active row for the rest of the fight): The target can never heal or regrow Essence. | *Seal the wound so it never grows back.* |
 | **Mimic** | 🔥 💧 | Rare | Utility | Repeat the previous spell that fired this cast. | *Do that again.* |
 | **Scald** | 🔥 💧 | Common | Offensive | Remove the rightmost Essence of the target; Weaken 1 on the target. | *Boiling water, badly thrown.* |
 | **Mist Veil** | 💧 🌪️ | Common | Defensive | You become Ethereal this turn. | *Blades pass through you. Curses don't.* |
-| **Riptide** | 💧 🌪️ | Common | Defensive | Move 1 element of the target to any position you choose; Weaken 1 on the target. | *Drags one piece out of place and knocks it off balance.* |
+| **Riptide** | 💧 🌪️ | Common | Defensive | Move 1 Essence of the target to any position you choose; Weaken 1 on the target. | *Drags one piece out of place and knocks it off balance.* |
 | **Spark Word** | 💧 🌪️ | Common | Utility | Put a Fire anywhere you like in this turn's chant. | *Say fire, and there is fire.* |
-| **Undertow** | 💧 🌪️ | Common | Utility | Move 2 elements of the target to any position you choose. | *The current rearranges everything.* |
+| **Undertow** | 💧 🌪️ | Common | Utility | Move 2 Essence of the target to any position you choose. | *The current rearranges everything.* |
 | **Ward** | 💧 🌪️ | Common | Defensive | Gain Aegis (1 hit). | *The next blow simply stops.* |
 | **Graft** | 💧 🔥 | Common | Utility | Put a Water at the front of the target. | *Plant water at its leftmost end, then chant it away.* |
 | **Hot Spring** | 💧 🔥 | Common | Defensive | Heal 2; gain 1 Shield. | *Warm water, warm heart.* |
@@ -83,15 +83,15 @@ Generated from `data/spells.json` by `tools/spell_report.py`. Edit the JSON, the
 | **Tide Pool** | 💧 💧 | Common | Defensive | Heal 3. | *Rest in the shallows.* |
 | **Water Wall** ★ | 💧 💧 | Common | Defensive | Gain 4 Shield. | *Stand behind the water.* |
 
-## 3-element patterns (32)
+## 3-Essence patterns (33)
 
 | Name | Pattern | Rarity | Category | Effect | Flavor |
 |---|---|---|---|---|---|
-| **Tempest** | 🌪️ 🌪️ 🌪️ | Rare | Utility | +2 random elements next turn; Rearrange 1. | *The storm brings more, and moves what it touches.* |
-| **Trade Winds** | 🌪️ 🌪️ 🌪️ | Rare | Utility | **Power** (leaves your active row for the rest of the fight): At the start of each of your turns: +2 random elements now. | *The wind brings a little more, every turn.* |
+| **Tempest** | 🌪️ 🌪️ 🌪️ | Rare | Utility | +2 random Essence next turn; Rearrange 1. | *The storm brings more, and moves what it touches.* |
+| **Trade Winds** | 🌪️ 🌪️ 🌪️ | Rare | Utility | **Power** (leaves your active row for the rest of the fight): At the start of each of your turns: +2 random Essence now. | *The wind brings a little more, every turn.* |
 | **Gale Force** | 🌪️ 🌪️ 🔥 | Rare | Offensive | Remove up to 3 Air from the target. | *Two breaths torn out of it.* |
 | **Venom Coat** | 🌪️ 🌪️ 🔥 | Rare | Offensive | **Power** (leaves your active row for the rest of the fight): All enemies your Release hits get Poison 1. | *Every enemy your chant touches is poisoned.* |
-| **Soul Siphon** | 🌪️ 🔥 🌪️ | Rare | Offensive | Remove the 3 leftmost Essence of the target; next turn you gain the removed elements (conjured). | *Pull its two leftmost elements into your hand.* |
+| **Soul Siphon** | 🌪️ 🔥 🌪️ | Rare | Offensive | Remove the 3 leftmost Essence of the target; next turn you gain the removed Essence (conjured). | *Pull its two leftmost Essence into your hand.* |
 | **Backdraft** | 🌪️ 🔥 🔥 | Rare | Offensive | Remove the 3 rightmost Essence of the target; Overload 1. | *Big blast, slow recovery.* |
 | **Resonance** | 🌪️ 🔥 💧 | Rare | Utility | Duplicate 1. | *One note, sung twice.* |
 | **Echo Chamber** | 🌪️ 💧 🌪️ | Rare | Utility | **Power** (leaves your active row for the rest of the fight): The first spell you trigger each turn fires twice. | *The first spell each turn rings twice.* |
@@ -99,28 +99,29 @@ Generated from `data/spells.json` by `tools/spell_report.py`. Edit the JSON, the
 | **Storm Front** | 🌪️ 💧 🔥 | Rare | Defensive | Gain 5 Shield; Thorns 2 this turn. | *Touch it and get burned.* |
 | **Frailty** | 🌪️ 💧 💧 | Rare | Offensive | **Power** (leaves your active row for the rest of the fight): The target is permanently Exposed. | *It never recovers its guard.* |
 | **Inferno** | 🔥 ❔ 🔥 | Rare | Offensive | Remove the rightmost Essence of all enemies. | *Everything burns a little.* |
-| **Kindling Wind** | 🔥 🌪️ 🔥 | Rare | Offensive | Amplify 1. | *Whatever your chant hit burns one element deeper.* |
+| **Kindling Wind** | 🔥 🌪️ 🔥 | Rare | Offensive | Amplify 1. | *Whatever your chant hit burns one Essence deeper.* |
 | **Absorb** | 🔥 🌪️ 💧 | Rare | Offensive | Remove the 2 rightmost Essence of the target; if this defeats it, heal 5 HP. | *Take the last of it, and feel much better.* |
-| **Recall** | 🔥 🌪️ 💧 | Rare | Utility | After the Release, the 2 rightmost elements of your chant go back to your elements. | *Two of the chant's elements come back.* |
-| **Last Rites** | 🔥 🔥 🌪️ | Rare | Offensive | If the target has 4 or fewer elements, destroy it. | *If it's already weak, end it.* |
+| **Recall** | 🔥 🌪️ 💧 | Rare | Utility | After the Release, the 2 rightmost Essence of your chant go back to your bag. | *Two of the chant's Essence come back.* |
+| **Last Rites** | 🔥 🔥 🌪️ | Rare | Offensive | If the target has 4 or fewer Essence, destroy it. | *If it's already weak, end it.* |
 | **Kindle** | 🔥 🔥 🔥 | Rare | Offensive | **Power** (leaves your active row for the rest of the fight): Whenever you apply Burn, apply 1 more; Burn 1 on all enemies. | *Every fire you light burns a little longer.* |
 | **Ember Crown** | 🔥 🔥 💧 | Rare | Offensive | **Power** (leaves your active row for the rest of the fight): At the start of each of your turns: Burn 2 on a random enemy. | *A crown that sets something alight each turn.* |
 | **Searing Mist** | 🔥 🔥 💧 | Rare | Offensive | Remove up to 3 Fire from the target. | *Two of its fires go out.* |
 | **Alchemy** | 🔥 💧 🌪️ | Rare | Utility | Turn every Water of the target into Fire. | *All its water becomes fire.* |
-| **Attunement** | 🔥 💧 🌪️ | Rare | Utility | **Power** (leaves your active row for the rest of the fight): Choose an element: one of your draws each turn is always that element. | *Choose an element; one draw each turn is always it.* |
+| **Attunement** | 🔥 💧 🌪️ | Rare | Utility | **Power** (leaves your active row for the rest of the fight): Choose an Essence: one of your draws each turn is always that Essence. | *Choose an Essence; one draw each turn is always it.* |
 | **Blight Wind** | 💧 🌪️ 🌪️ | Rare | Offensive | Poison 2 on all enemies. | *Sickness on the wind, for everyone.* |
 | **Mistwalk** | 💧 🌪️ 💧 | Rare | Defensive | You become Ethereal this turn; heal 4. | *Step between the drops.* |
-| **Tide Thief** | 💧 🌪️ 💧 | Rare | Offensive | Steal 1 element of your choice from the target (they go to your elements). | *The current takes what it likes and brings it to you.* |
+| **Tide Thief** | 💧 🌪️ 💧 | Rare | Offensive | Steal 1 Essence of your choice from the target (they go to your bag). | *The current takes what it likes and brings it to you.* |
+| **Arcane Barrage** | 💧 🔥 🌪️ | Common | Offensive | Remove 3 random Essence from random enemies (the same enemy can be hit more than once). | *Three bolts, three guesses. Something will get hit.* |
 | **Geyser** | 💧 🔥 🌪️ | Rare | Offensive | Expose 1 on all enemies. | *Blown wide open.* |
-| **Reforge** | 💧 🔥 🔥 | Rare | Utility | Turn the 2 leftmost Essence of the target into Fire. | *Its two leftmost elements become Fire.* |
+| **Reforge** | 💧 🔥 🔥 | Rare | Utility | Turn the 2 leftmost Essence of the target into Fire. | *Its two leftmost Essence become Fire.* |
 | **Steam Cloud** | 💧 🔥 💧 | Rare | Defensive | Weaken 1 on all enemies; gain 4 Shield. | *Nobody can see to aim.* |
-| **Purify** | 💧 💧 🌪️ | Rare | Defensive | Remove all your debuffs (frozen elements, Blind, Confuse, Bleed, Silence). | *Every curse washed away.* |
+| **Purify** | 💧 💧 🌪️ | Rare | Defensive | Remove all your debuffs (frozen Essence, Blind, Confuse, Bleed, Silence). | *Every curse washed away.* |
 | **Boiling Tide** | 💧 💧 🔥 | Rare | Offensive | Remove up to 3 Water from the target. | *Two of its waters boil away.* |
-| **Siren's Call** | 💧 💧 🔥 | Rare | Offensive | Steal up to 2 Fire from the target (they go to your elements). | *A song so sweet the fire walks into the water.* |
+| **Siren's Call** | 💧 💧 🔥 | Rare | Offensive | Steal up to 2 Fire from the target (they go to your bag). | *A song so sweet the fire walks into the water.* |
 | **Glacier** | 💧 💧 💧 | Rare | Defensive | Freeze 1 on the target. | *Frozen mid-swing.* |
 | **Rising Tide** | 💧 💧 💧 | Rare | Defensive | **Power** (leaves your active row for the rest of the fight): At the start of each of your turns: gain 4 Shield. | *The water rises around you every turn.* |
 
-## 4-element patterns (15)
+## 4-Essence patterns (15)
 
 | Name | Pattern | Rarity | Category | Effect | Flavor |
 |---|---|---|---|---|---|
@@ -130,25 +131,25 @@ Generated from `data/spells.json` by `tools/spell_report.py`. Edit the JSON, the
 | **Misdirection** | 🌪️ 💧 🌪️ 💧 | Legendary | Defensive | Redirect the intent of the target: its attacks hit the enemy you choose (it can be itself), and anything aimed at you fizzles; gain Aegis (1 hit). | *Point its anger somewhere else. Anywhere else.* |
 | **Eye of the Storm** | 🌪️ 💧 🔥 🌪️ | Legendary | Defensive | Freeze 2 on all enemies. | *For one moment, everything stops.* |
 | **Phoenix Rite** | 🔥 🌪️ 🔥 🌪️ | Rare | Defensive | Gain Aegis (1 hit); heal 5. | *Rise from the next blow untouched.* |
-| **Pyromancy** | 🔥 🔥 🔥 🌪️ | Rare | Offensive | **Power** (leaves your active row for the rest of the fight): Your spells that remove elements remove +1. | *Your spells tear out one element more.* |
+| **Pyromancy** | 🔥 🔥 🔥 🌪️ | Rare | Offensive | **Power** (leaves your active row for the rest of the fight): Your spells that remove Essence remove +1. | *Your spells tear out one Essence more.* |
 | **Meteor** | 🔥 🔥 🔥 🔥 | Legendary | Offensive | Remove the 5 rightmost Essence of the target. | *Very big, very hot.* |
 | **Thermal Burst** | 🔥 🔥 💧 🔥 | Rare | Offensive | Remove the 2 leftmost Essence of 2 different enemies (you pick both). | *Steam bursts two ways at once.* |
 | **Steam Engine** | 🔥 💧 🔥 💧 | Legendary | Offensive | Echo. | *The chant strikes again after your spells.* |
 | **Unshackle** | 💧 🌪️ 🔥 💧 | Rare | Defensive | Break one Lock on your spells. | *Break one lock on your spells.* |
-| **Aurora** | 💧 🌪️ 💧 🌪️ | Rare | Defensive | Heal 7; remove all your debuffs (frozen elements, Blind, Confuse, Bleed, Silence); gain 5 Shield. | *Light over still water.* |
+| **Aurora** | 💧 🌪️ 💧 🌪️ | Rare | Defensive | Heal 7; remove all your debuffs (frozen Essence, Blind, Confuse, Bleed, Silence); gain 5 Shield. | *Light over still water.* |
 | **Open Grimoire** | 💧 🔥 💧 🌪️ | Legendary | Utility | **Power** (leaves your active row for the rest of the fight): Add 2 random spells from your spellbook to your active row for this fight. | *Two more pages fall open.* |
 | **Stillness** | 💧 💧 💧 💧 | Rare | Defensive | **Power** (leaves your active row for the rest of the fight): All enemies deal 25% less damage for the rest of the fight. | *Every enemy deals 25% less damage, for good.* |
 | **Tidal Wave** | 💧 💧 💧 💧 | Legendary | Offensive | Remove the 2 leftmost Essence of all enemies; Weaken 3 on all enemies. | *Knock the leftmost off everything.* |
 
-## 5-element patterns (8)
+## 5-Essence patterns (8)
 
 | Name | Pattern | Rarity | Category | Effect | Flavor |
 |---|---|---|---|---|---|
 | **Firestorm** | 🌪️ 🔥 ❔ 🔥 🌪️ | Rare | Offensive | Burn 3 on all enemies. | *Burning rain on all of them.* |
-| **Convergence** | 🌪️ 🔥 💧 🔥 🌪️ | Legendary | Offensive | Echo; Amplify 1. | *All three elements sing as one.* |
+| **Convergence** | 🌪️ 🔥 💧 🔥 🌪️ | Legendary | Offensive | Echo; Amplify 1. | *All three Essence sing as one.* |
 | **Triune Chant** | 🔥 🌪️ 💧 🌪️ 🔥 | Legendary | Utility | Duplicate 2. | *Three voices, one word.* |
 | **Avatar of Flame** | 🔥 🔥 🔥 🔥 🌪️ | Legendary | Offensive | **Power** (leaves your active row for the rest of the fight): All enemies your Release hits get Burn 1. | *Every enemy your chant touches catches fire.* |
 | **Supernova** | 🔥 🔥 🔥 🔥 🔥 | Legendary | Offensive | Remove the 3 rightmost Essence of all enemies; Burn 4 on all enemies. | *A star dies on the battlefield.* |
-| **World Tree's Blessing** | 💧 🌪️ 💧 🌪️ 💧 | Legendary | Defensive | **Power** (leaves your active row for the rest of the fight): At the start of each of your turns: heal 7; +3 random elements now. | *The Last Tree gives back, every turn.* |
-| **Maelstrom Grasp** | 💧 💧 🌪️ 💧 💧 | Legendary | Offensive | Steal 2 elements of your choice from the target (they go to your elements); gain 4 Shield. | *The whirlpool swallows their strength and spits it out at your feet.* |
+| **World Tree's Blessing** | 💧 🌪️ 💧 🌪️ 💧 | Legendary | Defensive | **Power** (leaves your active row for the rest of the fight): At the start of each of your turns: heal 7; +3 random Essence now. | *The Last Tree gives back, every turn.* |
+| **Maelstrom Grasp** | 💧 💧 🌪️ 💧 💧 | Legendary | Offensive | Steal 2 Essence of your choice from the target (they go to your bag); gain 4 Shield. | *The whirlpool swallows their strength and spits it out at your feet.* |
 | **Deluge** | 💧 💧 💧 💧 💧 | Legendary | Defensive | Gain 14 Shield; heal 10; Freeze 2 on all enemies. | *The flood answers.* |

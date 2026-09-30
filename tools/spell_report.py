@@ -22,7 +22,7 @@ OPS = {
     "amplify": {"n"}, "echo": {"n"}, "retain": {"n"}, "overload": {"n"}, "cleanse": {"what"},
     "siphon": {"n", "target"}, "execute": {"max", "target"}, "insert": {"el", "pos", "target"},
     "transmute": {"n", "to"}, "sacrifice": {"hp"}, "copy_last": set(),
-    "passive": {"key", "n"}, "move": {"n", "target"}, "pluck": {"n", "target"}, "steal": {"n", "el", "target"}, "infuse": {"el"}, "annihilate": {"target"}, "rearrange": {"n"}, "duplicate": {"times"}, "summon_spells": {"n"}, "redirect": {"target"}, "curse": {"key", "target"}, "each_turn": {"effects"},
+    "barrage": {"n"}, "passive": {"key", "n"}, "move": {"n", "target"}, "pluck": {"n", "target"}, "steal": {"n", "el", "target"}, "infuse": {"el"}, "annihilate": {"target"}, "rearrange": {"n"}, "duplicate": {"times"}, "summon_spells": {"n"}, "redirect": {"target"}, "curse": {"key", "target"}, "each_turn": {"effects"},
 }
 
 
@@ -74,19 +74,19 @@ def describe_op(e):
     if op == "thorns":
         return f"Thorns {e['n']} this turn"
     if op == "draw":
-        el = "random element" if e["el"] == "random" else ELEMS[e["el"]]
+        el = "random Essence" if e["el"] == "random" else ELEMS[e["el"]]
         el = ("conjured " if e.get("temp") else "") + el
-        return f"+{e['n']} {el}{'s' if e['n'] > 1 and e['el'] == 'random' else ''} {'next turn' if e['when'] == 'next' else 'now'}"
+        return f"+{e['n']} {el} {'next turn' if e['when'] == 'next' else 'now'}"
     if op == "rotate":
         if e.get("dir") == "right":
-            return f"move the last element of {t} to the front"
-        return f"move the first element of {t} to the end"
+            return f"move the last Essence of {t} to the front"
+        return f"move the first Essence of {t} to the end"
     if op == "steal":
         if e.get("el", "any") == "any":
-            return f"Steal {e['n']} element{'s' if e['n'] > 1 else ''} of your choice from {t} (they go to your elements)"
-        return f"Steal up to {e['n']} {ELEMS[e['el']]} from {t} (they go to your elements)"
+            return f"Steal {e['n']} Essence of your choice from {t} (they go to your bag)"
+        return f"Steal up to {e['n']} {ELEMS[e['el']]} from {t} (they go to your bag)"
     if op == "annihilate":
-        return f"Annihilate 1 element on {t} (you choose Fire, Water or Air: every Essence of it is removed)"
+        return f"Annihilate 1 kind of Essence on {t} (you choose Fire, Water or Air: every Essence of it is removed)"
     if op == "rearrange":
         return f"Rearrange {e['n']}"
     if op == "infuse":
@@ -98,13 +98,13 @@ def describe_op(e):
     if op == "pluck":
         return f"Targeted: remove {e['n']} Essence of your choice from {t}"
     if op == "move":
-        return f"move {e['n']} element{'s' if e['n'] > 1 else ''} of {t} to any position you choose"
+        return f"move {e['n']} Essence of {t} to any position you choose"
     if op == "redirect":
         return f"redirect the intent of {t}: its attacks hit the enemy you choose (it can be itself), and anything aimed at you fizzles"
     if op == "swap":
-        return f"swap the first two elements of {t}"
+        return f"swap the first two Essence of {t}"
     if op == "convert":
-        where = {"first": "leftmost Essence", "first2": "2 leftmost Essence", "last": "rightmost Essence", "all": f"every {ELEMS[e['from']]}" if "from" in e else "every element"}[e["pos"]]
+        where = {"first": "leftmost Essence", "first2": "2 leftmost Essence", "last": "rightmost Essence", "all": f"every {ELEMS[e['from']]}" if "from" in e else "every Essence"}[e["pos"]]
         return f"turn {'' if e['pos'] == 'all' else 'the '}{where} of {t} into {ELEMS[e['to']]}"
     if op == "purge":
         return f"remove up to {e['n']} {ELEMS[e['el']]} from {t}"
@@ -115,22 +115,24 @@ def describe_op(e):
     if op == "echo":
         return "Echo"
     if op == "retain":
-        return f"after the Release, the {e['n']} rightmost elements of your chant go back to your elements"
+        return f"after the Release, the {e['n']} rightmost Essence of your chant go back to your bag"
     if op == "overload":
         return f"Overload {e['n']}"
     if op == "cleanse":
-        return {"all": "remove all your debuffs (frozen elements, Blind, Confuse, Bleed, Silence)",
+        return {"all": "remove all your debuffs (frozen Essence, Blind, Confuse, Bleed, Silence)",
                 "blind": "cure Blind", "bleed": "cure Bleed", "confuse": "cure Confuse",
-                "silence": "cure Silence on all your spells", "frozen": "thaw your frozen elements",
+                "silence": "cure Silence on all your spells", "frozen": "thaw your frozen Essence",
                 "lock": "break one Lock on your spells"}[e.get("what", "all")]
     if op == "siphon":
-        return f"remove the {e['n']} leftmost Essence of {t}; next turn you gain the removed elements (conjured)"
+        return f"remove the {e['n']} leftmost Essence of {t}; next turn you gain the removed Essence (conjured)"
     if op == "execute":
-        return f"if {t} has {e['max']} or fewer elements, destroy it"
+        return f"if {t} has {e['max']} or fewer Essence, destroy it"
     if op == "insert":
         return f"put a {ELEMS[e['el']]} at the front of {t}"
     if op == "transmute":
-        return f"turn {e['n']} of your stored elements into {ELEMS[e['to']]}"
+        return f"turn {e['n']} of your stored Essence into {ELEMS[e['to']]}"
+    if op == "barrage":
+        return f"remove {e['n']} random Essence from random enemies (the same enemy can be hit more than once)"
     if op == "sacrifice":
         return f"lose {e['hp']} HP"
     if op == "copy_last":
@@ -141,11 +143,11 @@ def describe_op(e):
                 "strike_poison": f"all enemies your Release hits get Poison {e['n']}",
                 "strike_burn": f"all enemies your Release hits get Burn {e['n']}",
                 "echo_first": "the first spell you trigger each turn fires twice",
-                "attune": "choose an element: one of your draws each turn is always that element",
+                "attune": "choose an Essence: one of your draws each turn is always that Essence",
                 "chant_slots": f"your chant line gets +{e['n']} slots",
-                "strike_bonus": f"your spells that remove elements remove +{e['n']}"}[e["key"]]
+                "strike_bonus": f"your spells that remove Essence remove +{e['n']}"}[e["key"]]
     if op == "curse":
-        return {"no_mend": f"{t} can never heal or regrow elements",
+        return {"no_mend": f"{t} can never heal or regrow Essence",
                 "exposed": f"{t} is permanently Exposed",
                 "weak25": "all enemies deal 25% less damage for the rest of the fight"}[e["key"]]
     if op == "each_turn":
@@ -153,7 +155,7 @@ def describe_op(e):
     return op
 
 
-DAMAGE_OPS = {"steal", "pluck", "strike", "burn", "poison", "purge", "execute", "siphon", "amplify", "echo", "stoke", "expose", "annihilate"}
+DAMAGE_OPS = {"steal", "pluck", "strike", "burn", "poison", "purge", "execute", "siphon", "amplify", "echo", "stoke", "expose", "annihilate", "barrage"}
 DEFENSE_OPS = {"shield", "heal", "aegis", "thorns", "weak", "freeze", "cleanse", "redirect"}
 DAMAGE_KEYS = {"burn_bonus", "strike_poison", "strike_burn", "strike_bonus", "exposed"}
 DEFENSE_KEYS = {"thorns", "weak25"}
@@ -230,13 +232,13 @@ def render(data):
         "",
         "Generated from `data/spells.json` by `tools/spell_report.py`. Edit the JSON, then re-run the script.",
         "",
-        f"**{len(spells)} spells.** Chant, then every spell whose pattern appears in the chant comes alive: one charge per "
-        "separate match, but never more than its pattern's length. Cast them in any order; then the chant is Released "
-        "and each enemy loses the longest start of its Essence found in it. ★ = starter.",
+        f"**{len(spells)} spells.** Chant, then every spell whose pattern appears in the chant comes alive (once per turn). "
+        "Cast them in any order; then the chant is Released and each enemy loses the longest start of its Essence found "
+        "in it. ★ = starter.",
         "",
         "**Keywords**",
-        "- **Burn N:** sets N random Essence of the enemy on fire; every burning Essence is removed at the start of the enemy's turn, before it acts.",
-        "- **Poison N:** at the start of each of its turns, the enemy loses one Essence of the element it has the **fewest** of (a random one if tied), then Poison goes down by 1.",
+        "- **Burn N:** at the start of the enemy's turn, before it acts, it loses its N **leftmost** Essence (armour doesn't help), then Burn drops by 1. It lasts until it runs out.",
+        "- **Poison N:** at the start of the enemy's turn, it loses its N **rightmost** Essence (armour doesn't help), then Poison drops by 1. It lasts until it runs out.",
         "- **Weaken:** the enemy deals 50% less damage.",
         "- **Freeze:** the enemy skips its next action.",
         "- **Expose:** whenever your Release hits this enemy, it also loses its rightmost Essence.",
@@ -245,17 +247,17 @@ def render(data):
         "can't be hit by your next Release.",
         "- **Shield:** blocks damage until your next turn. **Aegis:** blocks one hit completely.",
         "- **Thorns:** enemies that attack you lose their rightmost Essence.",
-        "- **Armour** (enemy ability): an armoured element can't be removed this turn, but it still counts for the chant's match.",
+        "- **Armour** (enemy ability): an armoured Essence can't be removed this turn, but it still counts for the chant's match.",
         "- **Power:** cast once, then it leaves your active row (its slot stays empty) and its effect lasts the whole fight.",
-        "- **Conjured** elements arrive next turn and vanish at the end of that turn if unused.",
-        "- **Siphon:** take elements off an enemy's Essence. **Execute:** destroy an enemy that is small enough.",
-        "- **Amplify:** enemies your chant hit lose extra elements. **Echo:** the chant strikes again after your spells. "
-        "**Overload:** fewer elements next turn.",
+        "- **Conjured** Essence arrive next turn and vanish at the end of that turn if unused.",
+        "- **Siphon:** take Essence off an enemy's Essence. **Execute:** destroy an enemy that is small enough.",
+        "- **Amplify:** enemies your chant hit lose extra Essence. **Echo:** the chant strikes again after your spells. "
+        "**Overload:** fewer Essence next turn.",
         "",
     ]
     for n in range(1, 6):
         group = [s for s in spells if len(s["pattern"]) == n]
-        lines += [f"## {n}-element patterns ({len(group)})", "",
+        lines += [f"## {n}-Essence patterns ({len(group)})", "",
                   "| Name | Pattern | Rarity | Category | Effect | Flavor |", "|---|---|---|---|---|---|"]
         for s in sorted(group, key=lambda s: (s["pattern"], s["name"])):
             star = " ★" if s.get("starter") else ""
@@ -277,8 +279,8 @@ def write_xlsx(data, path):
     wb = Workbook()
     ws = wb.active
     ws.title = "Spells"
-    headers = ["Name", "Pattern", "Length", "Rarity", "Category", "Fire", "Water", "Air", "Starter", "Effect", "Flavor"]
-    widths = [20, 22, 8, 11, 12, 6, 7, 6, 8, 90, 44]
+    headers = ["Name", "Pattern", "Length", "Rarity", "Category", "Fire", "Water", "Air", "Starter", "Effect", "Flavor", "Id"]
+    widths = [20, 22, 8, 11, 12, 6, 7, 6, 8, 90, 44, 18]
     for c, h in enumerate(headers, 1):
         cell = ws.cell(1, c, h)
         cell.font = head
@@ -288,22 +290,22 @@ def write_xlsx(data, path):
     rows = sorted(data["spells"], key=lambda s: (len(s["pattern"]), s["pattern"], s["name"]))
     for r, s in enumerate(rows, 2):
         p = s["pattern"]
-        vals = [s["name"], " → ".join(ELEMS.get(c, "Any") for c in p), f"=LEN(L{r})", s["rarity"].capitalize(), kind_of(s["effects"]),
-                p.count("F"), p.count("W"), p.count("A"), "yes" if s.get("starter") else "", describe(s), s.get("flavor", "")]
+        vals = [s["name"], " → ".join(ELEMS.get(c, "Any") for c in p), f"=LEN(M{r})", s["rarity"].capitalize(), kind_of(s["effects"]),
+                p.count("F"), p.count("W"), p.count("A"), "yes" if s.get("starter") else "", describe(s), s.get("flavor", ""), s["id"]]
         for c, v in enumerate(vals, 1):
             cell = ws.cell(r, c, v)
             cell.font = font
             cell.border = border
-            cell.alignment = Alignment(wrap_text=c in (2, 10, 11), vertical="top", horizontal="left" if c in (1, 2, 10, 11) else "center")
-        ws.cell(r, 12, p).font = Font(name="Arial", size=8, color="999999")  # raw pattern, used by the Length formula
+            cell.alignment = Alignment(wrap_text=c in (2, 10, 11), vertical="top", horizontal="left" if c in (1, 2, 10, 11, 12) else "center")
+        ws.cell(r, 13, p).font = Font(name="Arial", size=8, color="999999")  # raw pattern, used by the Length formula
         for j, el in enumerate("FWA"):
             if p.count(el):
                 ws.cell(r, 6 + j).fill = PatternFill("solid", fgColor=fills[el])
     for c, w in enumerate(widths + [8], 1):
         ws.column_dimensions[get_column_letter(c)].width = w
-    ws.cell(1, 12, "code").font = Font(name="Arial", size=8, color="999999")
+    ws.cell(1, 13, "code").font = Font(name="Arial", size=8, color="999999")
     ws.freeze_panes = "B2"
-    ws.auto_filter.ref = f"A1:K{len(rows) + 1}"
+    ws.auto_filter.ref = f"A1:L{len(rows) + 1}"
     wb.calculation.fullCalcOnLoad = True
     wb.save(path)
 
@@ -317,7 +319,7 @@ def main():
     out = ROOT / "docs" / "spell-list.md"
     out.write_text(render(data), encoding="utf-8")
     counts = Counter(c for s in data["spells"] for c in s["pattern"])
-    print("Element slots:", {ELEMS[k]: counts[k] for k in ELEMS})
+    print("Essence slots:", {ELEMS[k]: counts[k] for k in ELEMS})
     print("Categories:", dict(Counter(kind_of(s["effects"]) for s in data["spells"])))
     xlsx = ROOT / "docs" / "spells.xlsx"
     try:

@@ -265,7 +265,7 @@ func _tinker(opt: Dictionary) -> void:
 	var ids := run.upgradable_artifacts()
 	var ch := _choice("Upgrade an artifact", "Pay %d Amber: it becomes its + version." % opt.get("amber", 0), [], ids.map(func(id): return Artifacts.view(id, true)), true)
 	ch.chosen.connect(func(k):
-		if k < 0:
+		if k < 0 or k >= ids.size():
 			show_map()
 			return
 		run.amber -= opt.get("amber", 0)
@@ -281,7 +281,7 @@ func _barter() -> void:
 	var first := run.tradeable_artifacts()
 	var ch := _choice("Trade: first artifact", "Pick an artifact to give away. The second must be the same tier.", [], first.map(func(id): return Artifacts.view(id, id in run.artifacts_plus)), true)
 	ch.chosen.connect(func(k):
-		if k < 0:
+		if k < 0 or k >= first.size():
 			show_map()
 			return
 		var a: String = first[k]
@@ -289,7 +289,7 @@ func _barter() -> void:
 		var second := run.tradeable_artifacts(tier).filter(func(id): return id != a)
 		var ch2 := _choice("Trade: second artifact", "Pick a second %s artifact to give away." % Artifacts.TIER_NAMES[tier], [], second.map(func(id): return Artifacts.view(id, id in run.artifacts_plus)), true)
 		ch2.chosen.connect(func(k2):
-			if k2 < 0:
+			if k2 < 0 or k2 >= second.size():
 				show_map()
 				return
 			var b: String = second[k2]
@@ -307,12 +307,16 @@ func _show_shop(stock: Array) -> void:
 	sh.leave.connect(show_map)
 	sh.upgrade_requested.connect(func():
 		var ids := run.upgradable()
-		var ups := ids.map(func(id): return SpellDB.upgrade(run.spell(id)))
-		var ch := _choice("Upgrade a spell", "Its + version replaces it for the rest of the run.", ups, [], false)
+		var cards := ids.map(func(id): return run.spell(id))
+		var ch := _choice("A wax seal", "Choose a spell. Then choose which Essence of its pattern to seal: it won't be needed any more.", cards, [], false)
 		ch.chosen.connect(func(k):
-			if k >= 0:
-				run.upgrade_spell(ids[k])
-			_show_shop(stock)))
+			if k < 0:
+				_show_shop(stock)
+				return
+			var seal := SealScreen.new()
+			seal.setup(run, ids[k])
+			seal.done.connect(func(): _show_shop(stock))
+			_swap(seal)))
 	_swap(sh)
 
 
@@ -368,6 +372,9 @@ func _after_fight(f: Fight) -> void:
 	if run.over:
 		_end_run()
 		return
+	if run.reward_bottle != "":
+		var bd := Bottles.get_def(run.reward_bottle)
+		Events.toast.emit("Found a bottle: %s %s" % [bd.icon, bd.name], Color(0.7, 0.95, 1))
 	var steps: Array = []  # callables, each shows one screen and then calls the next
 	var offer := run.spell_offer(3, kind)
 	var title: String = {"fight": "Victory", "elite": "The elite falls: rare spells", "boss": "The boss falls: legendary spells"}.get(kind, "Victory")
@@ -391,7 +398,7 @@ func _after_fight(f: Fight) -> void:
 		var relics := run.boss_relic_offer()
 		if not relics.is_empty():
 			steps.append(func(go):
-				var ch := _choice("Legendary relic", "Only bosses drop these: more elements every turn, or more spell slots.", [], relics, false)
+				var ch := _choice("Legendary relic", "Only bosses drop these: more Essence every turn, or more spell slots.", [], relics, false)
 				ch.chosen.connect(func(i):
 					run.gain_artifact(relics[i].id)
 					go.call()))

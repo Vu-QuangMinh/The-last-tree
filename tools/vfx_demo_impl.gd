@@ -1,9 +1,9 @@
-﻿extends RefCounted
+extends RefCounted
 
 const OPS := ["strike", "burn", "stoke", "poison", "freeze", "weak", "expose", "curse", "ethereal", "execute",
 	"shatter", "purge", "steal", "redirect", "convert", "shield", "aegis", "thorns", "heal", "cleanse",
 	"sacrifice", "draw", "amplify", "echo", "overload", "duplicate", "retain", "passive"]
-const MULTI := ["burn", "strike"]  # also shown hitting all enemies
+const MULTI := ["burn", "strike", "barrage"]  # also shown hitting all enemies
 
 var out := "user://vfx"
 var root: Window

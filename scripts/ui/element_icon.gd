@@ -8,7 +8,9 @@ var ghost := false  # will be removed by the current chant (preview)
 var temp := false  # conjured: fades at end of turn
 var frozen := false
 var hexed := false
-var burning := false  # set on fire by Burn: flickering flames around it
+var burning := false  # will burn away (Burn takes the leftmost): flickering flames around it
+var poisoned := false  # will be eaten by Poison (it takes the rightmost): green venom bubbling on it
+var sealed := false  # upgraded away: a purple wax seal covers it (this Essence isn't needed any more)
 var cracked := 0.0  # 0..1: fractures spreading across it, white light blazing out (Annihilate)
 var _cracks: Array = []  # fracture lines, in orb units (centre 0,0, radius 1): each a PackedVector2Array
 var _sparks: Array = []  # light spewing out of the cracks: [pos, vel, life] in pixels from the centre
@@ -29,8 +31,8 @@ func refresh() -> void:
 
 
 func _process(d: float) -> void:
-	if burning:
-		queue_redraw()  # the flames flicker
+	if burning or poisoned:
+		queue_redraw()  # the flames flicker, the venom bubbles
 	if cracked > 0.0 or not _sparks.is_empty():
 		_spew(d)
 		queue_redraw()
@@ -95,9 +97,42 @@ func _spew(d: float) -> void:
 	_sparks = _sparks.filter(func(s): return s[2] > 0.0)
 
 
+## A blob of purple sealing wax pressed over the orb: a wobbly rim where the wax spread, a pressed ring and a
+## tree sigil stamped in the middle, with a glossy highlight. It hides the element underneath.
+func _draw_seal(c: Vector2, r: float) -> void:
+	var g := RandomNumberGenerator.new()
+	g.seed = hash(el) + 7
+	var rim := PackedVector2Array()
+	var n := 22
+	for k in n:
+		var a := k * TAU / n
+		rim.append(c + Vector2.from_angle(a) * r * (1.08 + g.randf_range(-0.06, 0.1)))
+	draw_colored_polygon(rim, Color(0.3, 0.08, 0.36))
+	var body := PackedVector2Array()
+	for p in rim:
+		body.append(c + (p - c) * 0.9)
+	draw_colored_polygon(body, Color(0.55, 0.2, 0.62))
+	draw_circle(c, r * 0.7, Color(0.46, 0.14, 0.52))
+	draw_arc(c, r * 0.7, 0, TAU, 28, Color(0.72, 0.42, 0.8), maxf(1.0, r * 0.07))
+	# the stamped sigil: a little tree (the last tree)
+	var ink := Color(0.3, 0.06, 0.34)
+	var w := maxf(1.2, r * 0.09)
+	draw_line(c + Vector2(0, r * 0.42), c + Vector2(0, -r * 0.3), ink, w)
+	for k in 3:
+		var y := -r * 0.3 + k * r * 0.22
+		var span := r * (0.18 + k * 0.1)
+		draw_line(c + Vector2(0, y - r * 0.08), c + Vector2(-span, y + r * 0.1), ink, w)
+		draw_line(c + Vector2(0, y - r * 0.08), c + Vector2(span, y + r * 0.1), ink, w)
+	# gloss
+	draw_circle(c + Vector2(-r * 0.38, -r * 0.42), r * 0.16, Color(1, 0.85, 1, 0.35))
+
+
 func _draw() -> void:
 	var r := minf(size.x, size.y) / 2.0 - 2.0
 	var c := size / 2.0
+	if sealed:
+		_draw_seal(c, r)
+		return
 	var col: Color = Elements.COLORS.get(el, Color.GRAY)
 	var a := 1.0
 	if ghost:
@@ -149,6 +184,18 @@ func _draw() -> void:
 			var tip := c + Vector2.from_angle(ang) * (r + h)
 			var side := Vector2.from_angle(ang + PI / 2.0) * r * 0.18
 			draw_colored_polygon(PackedVector2Array([base - side, tip, base + side]), Color(1.0, 0.55 + 0.25 * sin(t * 9.0 + k), 0.1, 0.95))
+	if poisoned:
+		# a sickly green ring, venom dripping down and bubbles popping
+		var t := Time.get_ticks_msec() / 1000.0
+		draw_arc(c, r + 1.5, 0, TAU, 32, Color(0.45, 0.95, 0.2, 0.95), 3.0)
+		draw_circle(c, r, Color(0.35, 0.9, 0.15, 0.22 + 0.08 * sin(t * 5.0)))
+		for k in 3:
+			var ph := fmod(t * 0.9 + k * 0.33, 1.0)
+			var x := (k - 1) * r * 0.55
+			draw_circle(c + Vector2(x, r * (0.6 + ph * 0.9)), r * 0.13 * (1.0 - ph * 0.5), Color(0.5, 1.0, 0.25, 1.0 - ph))
+		for k in 2:
+			var ph := fmod(t * 1.3 + k * 0.5, 1.0)
+			draw_arc(c + Vector2((k - 0.5) * r * 0.8, -r * (0.2 + ph * 0.6)), r * 0.14 * (0.5 + ph), 0, TAU, 12, Color(0.7, 1.0, 0.45, 1.0 - ph), 1.5)
 	if cracked > 0.0:
 		if _cracks.is_empty():
 			_make_cracks()

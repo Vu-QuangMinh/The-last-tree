@@ -2,13 +2,14 @@ class_name MapEvents
 extends RefCounted
 ## "?" rooms. Stepping into one usually brings an event (a little story with choices), but it can also turn out
 ## to be a fight, a merchant or treasure. Each option: label, optional costs (amber / hp / max_hp), and what it does:
-##   heal n · lose_hp n · max_hp n · amber n · upgrade n (random spells) · spell rarity · artifact pool
+##   heal n · lose_hp n · max_hp n · amber n · upgrade n (a wax seal on n random spells) · spell rarity · artifact pool
+##   bottle n (n random bottles, if you have room)
 ##   gamble (50%: heal to full, else an ambush fight) · fight · none
 ##   upgrade_artifact (pick one: it becomes its + version) · trade_artifacts (give 2 of a tier, pick 1 of the next)
 
 const ALL := [
 	{"id": "well", "title": "The Whispering Well", "text": "A mossy well whispers your name. It sounds hungry, and a little bit greedy.",
-		"options": [{"label": "Drop in 20 Amber (upgrade a random spell)", "amber": 20, "do": "upgrade", "n": 1},
+		"options": [{"label": "Drop in 20 Amber (a random spell needs 1 Essence less)", "amber": 20, "do": "upgrade", "n": 1},
 			{"label": "Drink deeply (heal 12)", "do": "heal", "n": 12},
 			{"label": "Walk on", "do": "none"}]},
 	{"id": "lost_sprite", "title": "A Lost Sprite", "text": "A tiny wind sprite is crying under a leaf. It swears it knows a great spell, if you can get it home.",
@@ -30,7 +31,7 @@ const ALL := [
 		"options": [{"label": "Dig it out (lose 5 HP): +45 Amber", "hp": 5, "do": "amber", "n": 45},
 			{"label": "Admire it and move on", "do": "none"}]},
 	{"id": "old_tome", "title": "An Old Spellbook", "text": "A book lies open on a stone, its pages turning by themselves. Reading it would cost you something.",
-		"options": [{"label": "Read it (lose 4 max HP): upgrade 2 random spells", "max_hp": 4, "do": "upgrade", "n": 2},
+		"options": [{"label": "Read it (lose 4 max HP): 2 random spells need 1 Essence less", "max_hp": 4, "do": "upgrade", "n": 2},
 			{"label": "Close it gently", "do": "none"}]},
 	{"id": "squirrel", "title": "A Squirrel Merchant", "text": "A squirrel in a tiny waistcoat offers you a very special acorn.",
 		"options": [{"label": "Buy it for 25 Amber (+6 max HP)", "amber": 25, "do": "max_hp", "n": 6},
@@ -43,7 +44,12 @@ const ALL := [
 			{"label": "Keep what you have", "do": "none"}]},
 	{"id": "lost_camp", "title": "An Abandoned Camp", "text": "Someone left in a hurry. The fire is still warm, and there is a pouch by the bedroll.",
 		"options": [{"label": "Rest by the fire (heal 10)", "do": "heal", "n": 10},
-			{"label": "Search the pouch (+30 Amber)", "do": "amber", "n": 30}]},
+			{"label": "Search the pouch (+30 Amber)", "do": "amber", "n": 30},
+			{"label": "Check the saddlebag (a random bottle)", "do": "bottle", "n": 1}]},
+	{"id": "apothecary", "title": "A Wandering Apothecary", "text": "A mole in thick spectacles rattles a cart full of little glass bottles. \"Panic, bottled! Very reasonably priced.\"",
+		"options": [{"label": "Pay 25 Amber: 2 random bottles", "amber": 25, "do": "bottle", "n": 2},
+			{"label": "Ask for a free sample (lose 3 HP): a random bottle", "hp": 3, "do": "bottle", "n": 1},
+			{"label": "Walk on", "do": "none"}]},
 ]
 
 

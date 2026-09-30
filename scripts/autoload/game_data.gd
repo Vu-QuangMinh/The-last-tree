@@ -9,9 +9,11 @@ func _init() -> void:
 
 
 func spell_color(pattern: String) -> Color:
+	if pattern.is_empty():
+		return Color(1.0, 0.85, 0.4)
 	var c := Color(0, 0, 0, 0)
 	for ch in pattern:
-		c += Elements.COLORS[ch]
+		c += Elements.COLORS.get(ch, Color(0.6, 0.6, 0.6))
 	c /= pattern.length()
 	c.a = 1.0
 	return c

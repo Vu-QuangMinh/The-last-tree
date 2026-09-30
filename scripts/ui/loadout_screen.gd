@@ -11,6 +11,10 @@ var _active_row: HFlowContainer
 var _book: HFlowContainer
 var _count: Label
 var _go: Button
+## Press and hold an active spell to drag it to another place in the row (a quick click takes it out).
+const DRAG_START := 10.0
+var _press := {}  # {i, id, at}
+var _drag: CardDrag
 
 
 func setup(p_run: RunState, ids: Array) -> void:
@@ -55,7 +59,7 @@ func _ready() -> void:
 	_active_row.add_theme_constant_override("v_separation", 10)
 	_active_row.custom_minimum_size = Vector2(1840, 170)
 	root.add_child(_active_row)
-	root.add_child(UiTheme.label("Spellbook: click a spell to add it to or remove it from your active row. Powers fire once and then leave the row for the rest of the fight.", 16, UiTheme.MUTED))
+	root.add_child(UiTheme.label("Spellbook: click a spell to add it to or remove it from your active row. Press and hold an active spell to move it along the row. Powers fire once and then leave the row for the rest of the fight.", 16, UiTheme.MUTED))
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(1840, 150)
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -125,10 +129,15 @@ func _refresh() -> void:
 		c.queue_free()
 	for c in _book.get_children():
 		c.queue_free()
-	for id in run.loadout:
+	for i in run.loadout.size():
+		var id: String = run.loadout[i]
 		var card := SpellCard.make(run.spell(id))
 		card.selected = true
-		card.clicked.connect(func(_c): _toggle(id))
+		# a press starts a possible drag; let go without moving and it's a click (takes it out of the row)
+		card.gui_input.connect(func(ev):
+			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT and _drag == null:
+				_press = {"i": i, "id": id, "at": ev.global_position})
+		card.mouse_default_cursor_shape = Control.CURSOR_DRAG
 		_active_row.add_child(card)
 	for i in run.active_slots() - run.loadout.size():
 		var empty := Panel.new()
@@ -143,6 +152,47 @@ func _refresh() -> void:
 		_book.add_child(card)
 	_count.text = "   %d / %d" % [run.loadout.size(), run.active_slots()]
 	_go.disabled = run.loadout.is_empty()
+
+
+func _input(ev: InputEvent) -> void:
+	if _press.is_empty():
+		return
+	if ev is InputEventMouseMotion:
+		if is_instance_valid(_drag):
+			_drag.set_pointer(ev.global_position)
+		elif ev.global_position.distance_to(_press.at) > DRAG_START and run.loadout.size() > 1:
+			_begin_drag(ev.global_position)
+	elif ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT and not ev.pressed:
+		var p := _press
+		_press = {}
+		if is_instance_valid(_drag):
+			var res: Array = _drag.finish()
+			_drag.queue_free()
+			_drag = null
+			_active_row.modulate.a = 1.0
+			if res[0] != res[1]:
+				run.move_active(res[0], res[1])
+				Audio.play("loadout_swap")
+			_refresh()
+		else:
+			_toggle(p.id)
+		get_viewport().set_input_as_handled()
+
+
+func _begin_drag(pointer: Vector2) -> void:
+	var cards := _active_row.get_children().filter(func(c): return c is SpellCard)
+	var slot_pos := []
+	for c in cards:
+		slot_pos.append(c.global_position)
+		# no magnified hover copy while dragging, and the hidden row mustn't catch the mouse
+		if is_instance_valid(c._zoom):
+			c._zoom.queue_free()
+			c._zoom = null
+		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_active_row.modulate.a = 0.0
+	_drag = CardDrag.new()
+	add_child(_drag)
+	_drag.begin(run.loadout.map(func(id): return run.spell(id)), slot_pos, _press.i, pointer)
 
 
 func _toggle(id: String) -> void:

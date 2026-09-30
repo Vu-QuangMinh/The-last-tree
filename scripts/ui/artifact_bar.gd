@@ -27,11 +27,41 @@ func refresh() -> void:
 		add_child(ArtifactChip.make(id, id in plus))
 
 
+## Artifacts that charge up (Kindling Stone, Echo Shell) shine and pulse while charged; their tooltip shows
+## how far along they are.
+func update_charges(p: PlayerState) -> void:
+	for c in get_children():
+		if c is ArtifactChip and not c.is_queued_for_deletion():
+			var st := Artifacts.charge_state(c.id, p, c.id in plus)
+			if not st.is_empty():
+				c.set_charge(st[0], st[1])
+
+
+## A quick bright flash on an artifact that just did something.
+func flash(id: String) -> void:
+	for c in get_children():
+		if c is ArtifactChip and c.id == id:
+			c.pivot_offset = c.size / 2.0
+			var tw := c.create_tween()
+			tw.tween_property(c, "scale", Vector2(1.5, 1.5), 0.1)
+			tw.parallel().tween_property(c, "modulate", Color(2.2, 2.0, 1.4), 0.1)
+			tw.tween_property(c, "scale", Vector2.ONE, 0.25)
+			tw.parallel().tween_property(c, "modulate", Color.WHITE, 0.3)
+
+
 class ArtifactChip extends PanelContainer:
 	const TIER_COL := {"common": Color(0.6, 0.62, 0.55), "rare": Color(0.4, 0.65, 1.0), "legendary": Color(1.0, 0.75, 0.3)}
 
+	var id := ""
+	var charged := false
+	var _sb: StyleBoxFlat
+	var _base_border: Color
+	var _base_tip := ""
+	var _t := 0.0
+
 	static func make(id: String, plus := false) -> ArtifactChip:
 		var c := ArtifactChip.new()
+		c.id = id
 		var a := Artifacts.view(id, plus)
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = Color(0.06, 0.07, 0.06, 0.9)
@@ -49,7 +79,36 @@ class ArtifactChip extends PanelContainer:
 		c.add_child(l)
 		var tier: String = Artifacts.TIER_NAMES.get(a.get("tier", "common"), "")
 		c.tooltip_text = Keywords.tooltip("%s %s" % [a.get("icon", ""), a.name], a.desc, "[color=#9aa89a]%s artifact · %s[/color]" % [tier, a.get("aspect", "")])
+		c._sb = sb
+		c._base_border = sb.border_color
+		c._base_tip = c.tooltip_text
 		return c
+
+	## Charged: a golden glow that breathes and a gentle pulse, so you can see it's ready.
+	func set_charge(on: bool, progress: String) -> void:
+		if not has_meta("tip_pinned"):
+			tooltip_text = _base_tip + "\n[color=#ffd970]%s[/color]" % progress
+		if on == charged:
+			return
+		charged = on
+		_t = 0.0
+		if not on:
+			_sb.border_color = _base_border
+			_sb.shadow_size = 0
+			scale = Vector2.ONE
+			modulate = Color.WHITE
+
+	func _process(d: float) -> void:
+		if not charged:
+			return
+		_t += d
+		var g := 0.5 + 0.5 * sin(_t * 5.0)
+		pivot_offset = size / 2.0
+		scale = Vector2.ONE * (1.0 + 0.1 * g)
+		modulate = Color(1, 1, 1).lerp(Color(1.5, 1.35, 0.9), g)
+		_sb.border_color = Color(1.0, 0.85, 0.3).lerp(Color(1, 1, 0.85), g)
+		_sb.shadow_color = Color(1.0, 0.8, 0.25, 0.5 + 0.4 * g)
+		_sb.shadow_size = int(6 + 8 * g)
 
 	func _make_custom_tooltip(for_text: String) -> Object:
 		if for_text.strip_edges() == "":

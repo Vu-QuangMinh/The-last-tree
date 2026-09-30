@@ -11,22 +11,24 @@ extends RefCounted
 
 const ALL := [
 	# ---- elements you start a fight with
-	{"id": "ember_charm", "name": "Ember Charm", "aspect": "Starting elements", "desc": "Start every fight with 1 extra Fire.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🕯"},
-	{"id": "wind_chime", "name": "Wind Chime", "aspect": "Starting elements", "desc": "Start every fight with 1 extra random element.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🎐"},
+	{"id": "ember_charm", "name": "Ember Charm", "aspect": "Starting Essence", "desc": "Start every fight with 1 extra Fire.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🕯"},
+	{"id": "wind_chime", "name": "Wind Chime", "aspect": "Starting Essence", "desc": "Start every fight with 1 extra random Essence.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🎐"},
 	# ---- element income and refunds
-	{"id": "fire_emblem", "name": "Fire Emblem", "aspect": "Element income", "desc": "Gain 3 Fire on turn 3 of every fight.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🔥"},
-	{"id": "water_emblem", "name": "Water Emblem", "aspect": "Element income", "desc": "Gain 3 Water on turn 3 of every fight.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "💧"},
-	{"id": "wind_emblem", "name": "Air Emblem", "aspect": "Element income", "desc": "Gain 3 Air on turn 3 of every fight.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🌪"},
-	{"id": "lucky_acorn", "name": "Lucky Acorn", "aspect": "Element income", "desc": "Each turn, a 25% chance to draw 1 extra element.", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "🌰"},
-	{"id": "second_wind", "name": "Second Wind", "aspect": "Element income", "desc": "Draw 1 extra element each turn while below half HP.", "cost": 45, "starter": false, "pool": "normal", "tier": "rare", "icon": "🌬"},
-	{"id": "flame_lens", "name": "Flame Lens", "aspect": "Element refund", "desc": "After each Release, every Fire in your chant has a 25% chance to come back to your elements.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🔴"},
-	{"id": "tide_lens", "name": "Tide Lens", "aspect": "Element refund", "desc": "After each Release, every Water in your chant has a 25% chance to come back to your elements.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🔵"},
-	{"id": "gale_lens", "name": "Gale Lens", "aspect": "Element refund", "desc": "After each Release, every Air in your chant has a 25% chance to come back to your elements.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🟢"},
-	{"id": "prism_shard", "name": "Prism Shard", "aspect": "Element income", "desc": "Conjured elements no longer fade at the end of the turn.", "cost": 35, "starter": false, "pool": "normal", "tier": "rare", "icon": "🔮"},
+	{"id": "fire_emblem", "name": "Fire Emblem", "aspect": "Essence income", "desc": "Gain 3 Fire on turn 3 of every fight.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🔥"},
+	{"id": "water_emblem", "name": "Water Emblem", "aspect": "Essence income", "desc": "Gain 3 Water on turn 3 of every fight.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "💧"},
+	{"id": "wind_emblem", "name": "Air Emblem", "aspect": "Essence income", "desc": "Gain 3 Air on turn 3 of every fight.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🌪"},
+	{"id": "lucky_acorn", "name": "Lucky Acorn", "aspect": "Essence income", "desc": "Each turn, a 25% chance to draw 1 extra Essence.", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "🌰"},
+	{"id": "second_wind", "name": "Second Wind", "aspect": "Essence income", "desc": "Draw 1 extra Essence each turn while below half HP.", "cost": 45, "starter": false, "pool": "normal", "tier": "rare", "icon": "🌬"},
+	{"id": "flame_lens", "name": "Flame Lens", "aspect": "Essence refund", "desc": "After each Release, every Fire in your chant has a 25% chance to come back to your bag.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🔴"},
+	{"id": "tide_lens", "name": "Tide Lens", "aspect": "Essence refund", "desc": "After each Release, every Water in your chant has a 25% chance to come back to your bag.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🔵"},
+	{"id": "gale_lens", "name": "Gale Lens", "aspect": "Essence refund", "desc": "After each Release, every Air in your chant has a 25% chance to come back to your bag.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🟢"},
+	{"id": "prism_shard", "name": "Prism Shard", "aspect": "Essence income", "desc": "Conjured Essence no longer fades at the end of the turn.", "cost": 35, "starter": false, "pool": "normal", "tier": "rare", "icon": "🔮"},
 	# ---- spells
 	{"id": "spell_pouch", "name": "Spell Pouch", "aspect": "Spell slots", "desc": "+1 active spell slot.", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "👝"},
 	{"id": "spell_satchel", "name": "Spell Satchel", "aspect": "Spell slots", "desc": "+1 active spell slot.", "cost": 60, "starter": false, "pool": "boss", "tier": "legendary", "icon": "🎒"},
-	{"id": "chant_bell", "name": "Chant Bell", "aspect": "Spells", "desc": "The first spell you cast each turn triggers twice.", "cost": 50, "starter": false, "pool": "normal", "tier": "rare", "icon": "🔔"},
+	{"id": "chant_bell", "name": "Chant Bell", "aspect": "Spells", "desc": "The first spell you cast each turn is cast twice.", "cost": 50, "starter": false, "pool": "normal", "tier": "rare", "icon": "🔔"},
+	{"id": "echo_shell", "name": "Echo Shell", "aspect": "Spells", "desc": "Every 10th spell you cast charges it. While charged, the next spell you cast is cast twice.", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "🐚"},
+	{"id": "bandolier", "name": "Bandolier", "aspect": "Bottles", "desc": "+2 bottle slots. When you take it, gain 2 random bottles.", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "🎽"},
 	{"id": "kindling_stone", "name": "Kindling Stone", "aspect": "Burn & Poison", "desc": "Every 3rd chant charges it. While charged, the next Burn you apply is doubled.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "💥"},
 	{"id": "venom_gland", "name": "Venom Gland", "aspect": "Burn & Poison", "desc": "Your Poison applies 1 extra stack.", "cost": 25, "starter": false, "pool": "normal", "tier": "common", "icon": "🧪"},
 	{"id": "lock_pick", "name": "Lock Pick", "aspect": "Debuffs", "desc": "Locks on your spells have 1 fewer symbol.", "cost": 30, "starter": false, "pool": "normal", "tier": "common", "icon": "🗝"},
@@ -43,16 +45,15 @@ const ALL := [
 	{"id": "scholar_quill", "name": "Scholar's Quill", "aspect": "Rewards", "desc": "Spell rewards show 4 choices instead of 3.", "cost": 40, "starter": false, "pool": "normal", "tier": "rare", "icon": "✒"},
 	{"id": "seedling_pouch", "name": "Seedling Pouch", "aspect": "Rewards", "desc": "+25% Seedlings from this run.", "cost": 40, "starter": false, "pool": "normal", "tier": "common", "icon": "🌱"},
 	# ---- boss relics: more elements every turn
-	{"id": "heartwood_seed", "name": "Heartwood Seed", "aspect": "Element income", "desc": "+1 random element every turn.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "🌳"},
-	{"id": "ember_heart", "name": "Ember Heart", "aspect": "Element income", "desc": "+1 Fire every turn.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "🧡"},
-	{"id": "tide_heart", "name": "Tide Heart", "aspect": "Element income", "desc": "+1 Water every turn.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "💙"},
-	{"id": "gale_heart", "name": "Gale Heart", "aspect": "Element income", "desc": "+1 Air every turn.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "💚"},
+	{"id": "heartwood_seed", "name": "Heartwood Seed", "aspect": "Essence income", "desc": "+1 random Essence every turn.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "🌳"},
+	{"id": "ember_heart", "name": "Ember Heart", "aspect": "Essence income", "desc": "+1 Fire every turn.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "🧡"},
+	{"id": "tide_heart", "name": "Tide Heart", "aspect": "Essence income", "desc": "+1 Water every turn.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "💙"},
+	{"id": "gale_heart", "name": "Gale Heart", "aspect": "Essence income", "desc": "+1 Air every turn.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "💚"},
 	# ---- cursed: strong, with a price
-	{"id": "blood_pact", "name": "Blood Pact", "aspect": "Cursed", "desc": "+1 element every turn. CURSE: −12 max HP.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "🩸"},
-	{"id": "broken_crown", "name": "Broken Crown", "aspect": "Cursed", "desc": "+2 active spell slots (up to the max of 8). CURSE: start every fight with 2 fewer elements.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "👑"},
+	{"id": "blood_pact", "name": "Blood Pact", "aspect": "Cursed", "desc": "+1 Essence every turn. CURSE: −12 max HP.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "🩸"},
+	{"id": "broken_crown", "name": "Broken Crown", "aspect": "Cursed", "desc": "+2 active spell slots (up to the max of 8). CURSE: start every fight with 2 fewer Essence.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "👑"},
 	{"id": "glass_heart", "name": "Glass Heart", "aspect": "Cursed", "desc": "Every enemy your Release hits also loses its rightmost Essence. CURSE: you take 25% more damage.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "💔"},
-	{"id": "hungry_tome", "name": "Hungry Tome", "aspect": "Cursed", "desc": "Every spell can trigger 1 more time per turn. CURSE: take 2 damage at the start of every fight.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "📕"},
-	{"id": "withered_idol", "name": "Withered Idol", "aspect": "Cursed", "desc": "+2 elements every turn. CURSE: −1 active spell slot.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "🗿"},
+	{"id": "withered_idol", "name": "Withered Idol", "aspect": "Cursed", "desc": "+2 Essence every turn. CURSE: −1 active spell slot.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "🗿"},
 ]
 
 
@@ -67,16 +68,17 @@ static func get_def(id: String) -> Dictionary:
 ## (legendary boss relics, cursed artifacts and yes/no effects can't).
 const PLUS := {
 	"ember_charm": [1, 2, "Start every fight with 2 extra Fire."],
-	"wind_chime": [1, 2, "Start every fight with 2 extra random elements."],
+	"wind_chime": [1, 2, "Start every fight with 2 extra random Essence."],
 	"fire_emblem": [3, 5, "Gain 5 Fire on turn 3 of every fight."],
 	"water_emblem": [3, 5, "Gain 5 Water on turn 3 of every fight."],
 	"wind_emblem": [3, 5, "Gain 5 Air on turn 3 of every fight."],
-	"lucky_acorn": [0.25, 0.4, "Each turn, a 40% chance to draw 1 extra element."],
-	"second_wind": [1, 2, "Draw 2 extra elements each turn while below half HP."],
-	"flame_lens": [0.25, 0.4, "After each Release, every Fire in your chant has a 40% chance to come back to your elements."],
-	"tide_lens": [0.25, 0.4, "After each Release, every Water in your chant has a 40% chance to come back to your elements."],
-	"gale_lens": [0.25, 0.4, "After each Release, every Air in your chant has a 40% chance to come back to your elements."],
+	"lucky_acorn": [0.25, 0.4, "Each turn, a 40% chance to draw 1 extra Essence."],
+	"second_wind": [1, 2, "Draw 2 extra Essence each turn while below half HP."],
+	"flame_lens": [0.25, 0.4, "After each Release, every Fire in your chant has a 40% chance to come back to your bag."],
+	"tide_lens": [0.25, 0.4, "After each Release, every Water in your chant has a 40% chance to come back to your bag."],
+	"gale_lens": [0.25, 0.4, "After each Release, every Air in your chant has a 40% chance to come back to your bag."],
 	"kindling_stone": [3, 2, "Every 2nd chant charges it. While charged, the next Burn you apply is doubled."],
+	"echo_shell": [10, 7, "Every 7th spell you cast charges it. While charged, the next spell you cast is cast twice."],
 	"venom_gland": [1, 2, "Your Poison applies 2 extra stacks."],
 	"lock_pick": [1, 2, "Locks on your spells have 2 fewer symbols."],
 	"rain_chalice": [4, 6, "Start every fight with 6 Shield."],
@@ -109,6 +111,16 @@ static func view(id: String, plus := false) -> Dictionary:
 		d.desc = PLUS[id][2]
 		d["plus"] = true
 	return d
+
+
+## Artifacts that charge up: {id: [is it charged now, its progress text]} for the given player.
+static func charge_state(id: String, p: PlayerState, plus := false) -> Array:
+	match id:
+		"kindling_stone":
+			return [p.kindling_charged, "CHARGED: your next Burn is doubled." if p.kindling_charged else "%d / %d chants" % [p.kindling_chants, int(num(id, plus))]]
+		"echo_shell":
+			return [p.echo_charged, "CHARGED: your next spell is cast twice." if p.echo_charged else "%d / %d spells" % [p.echo_casts, int(num(id, plus))]]
+	return []
 
 
 static func is_curse(id: String) -> bool:

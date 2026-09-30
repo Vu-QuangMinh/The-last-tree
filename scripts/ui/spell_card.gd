@@ -125,10 +125,15 @@ func _ready() -> void:
 	pat.alignment = BoxContainer.ALIGNMENT_CENTER
 	pat.add_theme_constant_override("separation", _zi(3))
 	pat.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# long (fused) patterns get smaller orbs so they fit the card's width
-	var orb := minf(40.0, (RULES_W - 3.0 * (spell.pattern.length() - 1)) / spell.pattern.length())
-	for ch in spell.pattern:
-		pat.add_child(ElementIcon.make(ch, _z(orb)))
+	# long (fused) patterns get smaller orbs so they fit the card's width. Sealed Essence (upgrades) are still
+	# shown, under a purple wax seal.
+	var full: String = spell.get("full_pattern", spell.pattern)
+	var seals: Array = spell.get("seals", [])
+	var orb := minf(40.0, (RULES_W - 3.0 * (full.length() - 1)) / maxf(1.0, full.length()))
+	for i in full.length():
+		var ic := ElementIcon.make(full[i], _z(orb))
+		ic.sealed = i in seals
+		pat.add_child(ic)
 	v.add_child(pat)
 	_pat = pat
 	if not compact:
@@ -162,8 +167,12 @@ func _ready() -> void:
 	v.add_child(tag_l)
 	_tag_l = tag_l
 	_fit_text()
-	var pattern_words := " ".join(Array(spell.pattern.split("")).map(func(c): return "any element" if c == "?" else Elements.NAMES[c]))
-	var extra := "[color=#9aa89a]%s %s  ·  chant %s  ·  triggers at most %d× per turn[/color]" % [spell.rarity_name, SpellDB.KIND_NAMES[spell.kind], pattern_words, 1 if spell.power else spell.size]
+	var pattern_words := "anything (every Essence is sealed: it wakes on every chant)"
+	if spell.pattern != "":
+		pattern_words = " ".join(Array(spell.pattern.split("")).map(func(c): return "any Essence" if c == "?" else Elements.NAMES.get(c, c)))
+	var extra := "[color=#9aa89a]%s %s  ·  chant %s[/color]" % [spell.rarity_name, SpellDB.KIND_NAMES[spell.kind], pattern_words]
+	if not seals.is_empty():
+		extra += "\n[color=#c79be0]Sealed: %d Essence of its pattern %s no longer needed.[/color]" % [seals.size(), "is" if seals.size() == 1 else "are"]
 	if spell.has("flavor"):
 		extra += "\n[i][color=#9aa89a]\"%s\"[/color][/i]" % spell.flavor
 	tooltip_text = Keywords.tooltip(spell.name, SpellText.describe(spell), extra)
@@ -333,6 +342,13 @@ func _process(d: float) -> void:
 		_t = 0.0
 		_box.shadow_color = Color(0, 0, 0, 0.45)
 		_box.shadow_size = _zi(4)
+
+
+## The pattern orbs still needed (not sealed), left to right: the ones a matching chant lights up.
+func live_orbs() -> Array:
+	if _pat == null:
+		return []
+	return _pat.get_children().filter(func(o): return o is ElementIcon and not o.sealed)
 
 
 func _make_custom_tooltip(for_text: String) -> Object:

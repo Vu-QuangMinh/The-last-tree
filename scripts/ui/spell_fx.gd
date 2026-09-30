@@ -87,6 +87,16 @@ static func play(fx: Control, op: String, eff: Dictionary, from: Vector2, dests:
 			return _draw_fx(v, from, dests, Elements.COLORS.get(eff.get("el", ""), GOLD), n)
 		"annihilate":
 			return 0.0  # it has its own ceremony
+		"barrage":
+			return _barrage(v, from, dests)
+		"random_hit":
+			return _strike(v, from, dests, Color(0.6, 1.0, 0.4) if dests.size() == 1 else FIRE, n)
+		"echo_next":
+			return _power(v, from, SHADOW, player)
+		"grimoire_pick":
+			v.glow(from, 160, Color(GOLD, 0.7), 0.5)
+			v.ring(from, 10, 160, GOLD, 0.45, 8.0)
+			return 0.2
 	if op in CHANT_OPS:
 		return _chant_magic(v, op, from, dests, col)
 	if op in SWIRL_OPS:
@@ -472,6 +482,23 @@ static func _execute(v: Vfx, from: Vector2, dests: Array) -> float:
 			vv.shake(14.0))
 	v.shake(4.0, 0.12)
 	return 0.55
+
+
+## Arcane Barrage: a volley of arcane bolts, one after another, each on its own wild arc to a random enemy.
+static func _barrage(v: Vfx, from: Vector2, dests: Array) -> float:
+	var arcane := Color(0.62, 0.5, 1.0)
+	var t0 := _charge(v, from, arcane)
+	var k := 0
+	for d in dests:
+		var to: Vector2 = d.row + _jit(22)
+		var side := 1.0 if k % 2 == 0 else -1.0
+		var it := v.move(from, to, 0.34, randf_range(60, 260), arcane.lerp(Color(0.5, 0.8, 1.0), randf() * 0.5), 12.0, t0 + k * 0.13,
+			func(vv: Vfx, m: Vfx.Item, _d: float) -> void: _spark_trail(vv, m, arcane, 3),
+			func(vv: Vfx, at: Vector2) -> void: _detonate(vv, at, arcane, 0.75))
+		it.bend += Vector2(side * randf_range(80, 200), 0)
+		it.accel = true
+		k += 1
+	return t0 + 0.13 * maxi(0, k - 1) + 0.36
 
 
 ## A heavy steel bolt that breaks the target's guard: glass-like shards everywhere.

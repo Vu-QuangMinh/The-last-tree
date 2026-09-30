@@ -34,7 +34,7 @@ const E := {
 	"toll_keeper": {"name": "Toll Keeper", "act": 2, "hp": "WWAW", "moves": [{"kind": "toll"}, {"kind": "attack", "n": 5}, {"kind": "armor", "pos": 1}],
 		"flavor": "Every word costs extra."},
 	"hexer": {"name": "Hexer", "act": 2, "hp": "FWA", "moves": [{"kind": "hex"}, {"kind": "attack", "n": 4}, {"kind": "mend", "el": "random", "n": 1, "who": "ally"}],
-		"flavor": "Marks your elements with pain."},
+		"flavor": "Marks your Essence with pain."},
 	"shrine_maiden": {"name": "Shrine Maiden", "act": 2, "hp": "WAW", "moves": [{"kind": "mend", "el": "random", "n": 1, "who": "all"}, {"kind": "attack", "n": 3}, {"kind": "frail", "turns": 1}],
 		"flavor": "She mends everyone but you."},
 	"hush_moth": {"name": "Hush Moth", "act": 2, "hp": "AAW", "moves": [{"kind": "silence", "turns": 2}, {"kind": "attack", "n": 4}, {"kind": "armor", "pos": 0}],
@@ -91,10 +91,10 @@ const E := {
 const PASSIVE_TEXT := {
 	"burning_hide": "Burning Hide: you take 1 damage whenever your Release hits it.",
 	"split": "Split: struck but not killed, it splits its remaining Essence into two enemies (once).",
-	"overgrowth": "Overgrowth: if not struck during your turn, it grows a random element.",
-	"warded": "Warded: only chants of 4 or more elements can strike it.",
+	"overgrowth": "Overgrowth: if not struck during your turn, it grows a random Essence.",
+	"warded": "Warded: only chants of 4 or more Essence can strike it.",
 	"last_gasp": "Last Gasp: gives you Bleed 2 when it dies.",
-	"gem_crown": "Gem Crown: at the end of its turn, armours its first element if nothing is armoured (not when it has 1 left).",
+	"gem_crown": "Gem Crown: at the end of its turn, armours its first Essence if nothing is armoured (not when it has 1 left).",
 	"echo": "Echo: repeats each action twice.",
 }
 
@@ -107,18 +107,18 @@ const BIOS := {
 	"stone_knight": "Spends a whole turn bracing, then swings like it gets paid by the bruise. Politely makes you fragile first.",
 	"tidecaller": "Refills itself like a tide that refuses to go out. Also freezes things, because the ocean is petty.",
 	"mirror_wisp": "Never in the same order twice. Blinds you, reshuffles itself, and giggles about it.",
-	"frost_hex": "Freezes your elements, then waits for you to complain. Mends itself with the same cold patience.",
-	"pickpocket_imp": "Steals your elements and wears them like jewellery. Surprisingly good fashion sense for a thief.",
+	"frost_hex": "Freezes your Essence, then waits for you to complain. Mends itself with the same cold patience.",
+	"pickpocket_imp": "Steals your Essence and wears them like jewellery. Surprisingly good fashion sense for a thief.",
 	"splitter_ooze": "Hit it wrong and there are two of them. Hit it right and there are still two, just smaller and angrier.",
 	"overgrowth_vine": "Ignore it for one turn and it grows. Basically a houseplant with a violence problem.",
 	"toll_keeper": "Every word costs extra. Shortens your chant and charges admission in bruises.",
-	"hexer": "Curses one of your elements so chanting it hurts. Heals its friends, which is honestly the most annoying part.",
+	"hexer": "Curses one of your Essence so chanting it hurts. Heals its friends, which is honestly the most annoying part.",
 	"shrine_maiden": "Heals everyone except you. Very devout. Very inconvenient.",
 	"hush_moth": "Its wings whisper \"shhh\" at one of your spells until it forgets how to work.",
 	"blinding_beetle": "One shiny flash and suddenly everything is question marks. Gets stronger the longer you squint.",
 	"leech_bat": "Tiny bites, lots of bleeding, zero shame. Patches itself up with your blood money.",
 	"inverter": "Fire becomes water, water becomes fire, and your plans become confetti.",
-	"warded_golem": "Short chants bounce right off. Say something meaningful: at least four elements' worth.",
+	"warded_golem": "Short chants bounce right off. Say something meaningful: at least four Essence long.",
 	"echo_wraith": "Everything it does, it does twice. Everything it does, it does twice.",
 	"mimic_chest": "Turns into your last words, backwards. Not the treasure you were hoping for.",
 	"last_gasp_spore": "Mostly harmless until it dies. Then it sneezes on you, and you bleed about it.",
@@ -216,9 +216,9 @@ static func describe_move(m: Dictionary, bonus := 0) -> String:
 			var n: int = m.n + bonus
 			s = "Attack %d" % n if m.get("hits", 1) == 1 else "Attack %d×%d" % [n, m.hits]
 		"armor":
-			s = "Armour its %s element" % ["1st", "2nd", "3rd", "4th"][mini(m.pos, 3)]
+			s = "Armour its %s Essence" % ["1st", "2nd", "3rd", "4th"][mini(m.pos, 3)]
 		"mend":
-			var el: String = "random element" if m.el == "random" else Elements.NAMES[m.el]
+			var el: String = "random Essence" if m.el == "random" else Elements.NAMES[m.el]
 			s = "Mend +%d %s%s" % [m.n, el, {"self": "", "ally": " on an ally", "all": " on every enemy"}[m.get("who", "self")]]
 		"shuffle":
 			s = "Shuffle its Essence"
@@ -227,7 +227,7 @@ static func describe_move(m: Dictionary, bonus := 0) -> String:
 		"lock":
 			s = "Lock one of your spells (%d symbols)" % m.len
 		"steal":
-			s = "Steal %d of your elements" % m.n
+			s = "Steal %d of your Essence" % m.n
 		"confuse":
 			s = "Confuse you (your next chant is read backwards)"
 		"blind":
@@ -235,7 +235,7 @@ static func describe_move(m: Dictionary, bonus := 0) -> String:
 		"bleed":
 			s = "Bleed %d" % m.n
 		"freeze":
-			s = "Freeze %d of your elements" % m.n
+			s = "Freeze %d of your Essence" % m.n
 		"ethereal":
 			s = "Go Ethereal (your next chant can't touch it)"
 		"empower":
@@ -247,7 +247,7 @@ static func describe_move(m: Dictionary, bonus := 0) -> String:
 		"invert":
 			s = "Invert: swap your Fire and Water"
 		"hex":
-			s = "Hex one of your elements (chanting it costs 2 HP)"
+			s = "Hex one of your Essence (chanting it costs 2 HP)"
 		"mimic":
 			s = "Mimic: its Essence becomes your last chant, backwards"
 		"frail":

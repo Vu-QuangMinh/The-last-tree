@@ -1,6 +1,6 @@
 class_name ShopScreen
 extends Control
-## The merchant: spend Amber on spells, artifacts, an upgrade or a hot meal.
+## The merchant: spend Amber on spells, artifacts, bottles, an upgrade (a wax seal) or a hot meal.
 
 signal leave
 signal upgrade_requested
@@ -72,26 +72,57 @@ func _refresh() -> void:
 				l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 				p.add_child(l)
 				box.add_child(p)
+			"bottle":
+				var b := Bottles.get_def(it.bottle)
+				var p := PanelContainer.new()
+				p.add_theme_stylebox_override("panel", UiTheme.panel_box(0.95, 12))
+				p.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H)
+				var bv := VBoxContainer.new()
+				bv.alignment = BoxContainer.ALIGNMENT_CENTER
+				p.add_child(bv)
+				var ic := UiTheme.label(b.icon, 52, Color.WHITE)
+				ic.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				bv.add_child(ic)
+				var nm := UiTheme.label(b.name, 22, Color(0.6, 0.95, 1.0))
+				nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				bv.add_child(nm)
+				var ds := RichTextLabel.new()
+				ds.bbcode_enabled = true
+				ds.fit_content = true
+				ds.scroll_active = false
+				ds.custom_minimum_size = Vector2(SpellCard.W - 24, 0)
+				ds.add_theme_font_size_override("normal_font_size", 17)
+				ds.add_theme_font_size_override("bold_font_size", 17)
+				ds.text = "[center]" + Keywords.colorize(b.desc) + "\n[color=#9aa89a]Bottle · for one fight[/color][/center]"
+				bv.add_child(ds)
+				box.add_child(p)
 			"upgrade", "heal":
 				var p := PanelContainer.new()
 				p.add_theme_stylebox_override("panel", UiTheme.panel_box(0.95, 12))
 				p.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H)
-				var txt := "⬆ Study session\n\nUpgrade one of your spells." if it.kind == "upgrade" else "🍲 A hot meal\n\nHeal %d HP." % int(run.player.max_hp * RunState.REST_HEAL)
+				var txt := "🟣 Wax seal\n\nSeal one Essence of a spell's pattern: that Essence isn't needed any more." if it.kind == "upgrade" else "🍲 A hot meal\n\nHeal %d HP." % int(run.player.max_hp * RunState.REST_HEAL)
 				var l := UiTheme.label(txt, 19, Color(0.85, 1, 0.8))
 				l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 				l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 				p.add_child(l)
 				box.add_child(p)
 		var sold: bool = it.get("sold", false)
-		var btn := UiTheme.button("Sold" if sold else "Buy · %d Amber" % it.price, func(): _buy(i), 18)
-		btn.disabled = sold or run.amber < it.price
+		var full: bool = it.kind == "bottle" and run.player.bottles.size() >= run.bottle_slots()
+		var none: bool = it.kind == "upgrade" and run.upgradable().is_empty()
+		var label := "Sold" if sold else ("Bottle slots full" if full else ("Nothing to seal" if none else "Buy · %d Amber" % it.price))
+		var btn := UiTheme.button(label, func(): _buy(i), 18)
+		btn.disabled = sold or full or none or run.amber < it.price
 		box.add_child(btn)
 		_grid.add_child(box)
 
 
 func _buy(i: int) -> void:
 	var it: Dictionary = stock[i]
-	if it.get("sold", false) or not run.pay(it.price):
+	if it.get("sold", false):
+		return
+	if it.kind == "bottle" and run.player.bottles.size() >= run.bottle_slots():
+		return
+	if not run.pay(it.price):
 		return
 	match it.kind:
 		"spell":
@@ -103,6 +134,11 @@ func _buy(i: int) -> void:
 			run.gain_artifact(it.artifact.id)
 			Audio.play("artifact_get")
 			Events.toast.emit("Got %s" % it.artifact.name, UiTheme.ACCENT)
+			it.sold = true
+		"bottle":
+			run.gain_bottle(it.bottle)
+			Audio.play("artifact_get")
+			Events.toast.emit("Got %s %s" % [Bottles.get_def(it.bottle).icon, Bottles.get_def(it.bottle).name], UiTheme.ACCENT)
 			it.sold = true
 		"heal":
 			run.player.heal(run.player.max_hp * RunState.REST_HEAL)

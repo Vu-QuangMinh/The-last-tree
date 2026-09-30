@@ -9,11 +9,12 @@ extends RefCounted
 ##   chant_picker:(spell) -> int                                 Resonance: which chant element to copy
 ##   element_chooser:(spell, counts {el: n}) -> String           Annihilate: which element to wipe out
 ##   arranger:    (spell) -> [from, to]                          Rearrange: move one chant element ([] = keep)
+##   spell_chooser:(spells: Array) -> int                         Grimoire Ink: which spellbook spell joins (-1: none)
 ##   anim:        (event: Dictionary) -> void                    animation hook
 ##
 ## Your turn:
-##   1. cast_chant(): the chant is spoken. Every spell whose pattern appears gains charges: one per separate
-##      match, but never more than the length of its pattern (WW can trigger at most twice).
+##   1. cast_chant(): the chant is spoken. Every spell whose pattern appears gains one charge (a spell triggers at
+##      most once per turn). A spell whose whole pattern is sealed (upgrades) triggers on every chant.
 ##   2. resolve_spell(): you cast charges one at a time, in any order. Spells that change the chant re-count
 ##      the charges straight away, so they can bring other spells to life.
 ##   3. finish_turn(): the Release. The chant flies at the enemies element by element, left to right; then they act.
@@ -59,6 +60,7 @@ var placer: Callable
 var chant_picker: Callable
 var element_chooser: Callable
 var arranger: Callable
+var spell_chooser: Callable
 var anim: Callable
 
 
@@ -78,6 +80,7 @@ func _init(p_db: SpellDB, p_player: PlayerState) -> void:
 				best = el
 		return best
 	arranger = func(_s): return []
+	spell_chooser = func(spells): return 0 if not spells.is_empty() else -1
 	anim = func(_e): pass
 
 
@@ -116,10 +119,6 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 	if has_artifact("ward_stone"):
 		player.aegis = int(_an("ward_stone"))
 	player.dmg_taken_mult = 1.25 if has_artifact("glass_heart") else 1.0
-	if has_artifact("hungry_tome"):
-		# its curse: the tome feeds before the fight begins (this doesn't spoil a Perfect Victory)
-		player.hp -= 2.0
-		_log("The Hungry Tome feeds: you lose 2 HP.")
 	var start_n := PlayerState.START_ELEMENTS + (int(_an("wind_chime")) if has_artifact("wind_chime") else 0) - (2 if has_artifact("broken_crown") else 0)
 	# you always start with one of each element; the rest are random (in a random order)
 	var hand := ["F", "W", "A"]
@@ -164,11 +163,16 @@ func usable_spells() -> Array:
 	return active_spells().filter(func(s): return not player.silenced.has(s.id) and not player.locks.has(s.id))
 
 
-## The most times a spell can trigger in one turn: the length of its pattern (Powers: once).
-func trigger_cap(spell: Dictionary) -> int:
-	if spell.power:
-		return 1
-	return spell.size + (1 if has_artifact("hungry_tome") else 0)
+## The most times a spell can trigger in one turn: once.
+func trigger_cap(_spell: Dictionary) -> int:
+	return 1
+
+
+## Where a spell's pattern appears in the chant. A fully sealed spell (empty pattern) is woken by any chant.
+func _occ(sp: Dictionary, c: String) -> Array:
+	if String(sp.pattern) == "":
+		return [0] if c != "" else []
+	return Chant.occurrences(sp.pattern, c)
 
 
 func chant_string() -> String:
@@ -279,7 +283,7 @@ func preview(c: String, raw := true) -> Dictionary:
 			dies.append(e)
 	var spells := {}
 	for s in usable_spells():
-		var cnt: int = mini(Chant.occurrences(s.pattern, c).size(), trigger_cap(s)) - (used.get(s.id, 0) if not raw else 0)
+		var cnt: int = mini(_occ(s, c).size(), trigger_cap(s)) - (used.get(s.id, 0) if not raw else 0)
 		if cnt > 0:
 			spells[s.id] = cnt
 	return {"removed": removed, "dies": dies, "spells": spells}
@@ -340,7 +344,7 @@ func _recount() -> Array:
 	charges.clear()
 	var woke := []
 	for sp in usable_spells():
-		var occ: Array = Chant.occurrences(sp.pattern, c).slice(0, trigger_cap(sp))
+		var occ: Array = _occ(sp, c).slice(0, trigger_cap(sp))
 		var n: int = occ.size() - used.get(sp.id, 0)
 		if n > 0:
 			charges[sp.id] = n
@@ -379,8 +383,24 @@ func resolve_spell(id: String, target_idx := -1) -> void:
 	used[id] = used.get(id, 0) + 1
 	var times := 1
 	if not turn_ctx.get("cast_any", false) and player.passive("echo_first") > 0 and not spell.power:
-		times = 2
+		times += 1
 	turn_ctx.cast_any = true
+	if player.echo_next:
+		player.echo_next = false
+		times += 1
+		_log("Echo Draught: %s is cast twice." % spell.name)
+	if has_artifact("echo_shell"):
+		if player.echo_charged:
+			player.echo_charged = false
+			times += 1
+			_log("Echo Shell: %s is cast twice." % spell.name)
+			await anim.call({"type": "artifact_used", "id": "echo_shell"})
+		else:
+			player.echo_casts += 1
+			if player.echo_casts >= int(_an("echo_shell")):
+				player.echo_casts = 0
+				player.echo_charged = true
+				_log("Echo Shell is charged: your next spell is cast twice.")
 	for t in times:
 		if over:
 			break
@@ -404,7 +424,8 @@ func resolve_all() -> void:
 		var best_pos := 999
 		for id in charges:
 			var sp := _find_spell(id)
-			var pos := Chant.first_index(sp.pattern, c)
+			var occ := _occ(sp, c)
+			var pos: int = occ[0] if not occ.is_empty() else -1
 			if pos >= 0 and pos < best_pos:
 				best_pos = pos
 				best = id
@@ -664,6 +685,34 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 					changed += 1
 		"sacrifice":
 			player.take_effect(eff.hp)
+		"barrage", "random_hit":
+			# Arcane Barrage: each hit picks an enemy at random (from _targets). Bottles: n random Essence of each target.
+			var hits := targets if eff.op == "barrage" else []
+			if eff.op == "random_hit":
+				for e in targets:
+					for k in eff.n:
+						hits.append(e)
+			for e in hits:
+				var free := []
+				for i in e.size():
+					if not e.armor[i]:
+						free.append(i)
+				if not free.is_empty():
+					e.pluck(free[rng.randi() % free.size()])
+		"echo_next":
+			player.echo_next = true
+		"grimoire_pick":
+			var ids := loadout.map(func(s): return s.id)
+			var pool := spellbook.filter(func(s): return not (s.id in ids))
+			var k: int = await spell_chooser.call(pool)
+			if k >= 0 and k < pool.size():
+				loadout.append(pool[k])
+				_log("%s joins your active spells for this fight." % pool[k].name)
+				await anim.call({"type": "loadout_changed"})
+				if spoken:
+					var woke: Array = await _recount()
+					if not woke.is_empty():
+						await anim.call({"type": "extension", "hits": woke})
 		"amplify":
 			ctx.amplify = ctx.get("amplify", 0) + eff.n
 		"echo":
@@ -822,6 +871,20 @@ func _targets(eff: Dictionary, spell: Dictionary, tctx: Dictionary) -> Array:
 			return live
 		"random":
 			return [live[rng.randi() % live.size()]]
+	if eff.op == "barrage":
+		# Arcane Barrage: n hits, each on a random enemy that still has Essence it can lose (the same one can be hit again)
+		var out := []
+		var left := {}
+		for e in live:
+			left[e] = e.armor.count(false)
+		for k in eff.n:
+			var cands := live.filter(func(e): return left[e] > 0)
+			if cands.is_empty():
+				break
+			var e: EnemyState = cands[rng.randi() % cands.size()]
+			left[e] -= 1
+			out.append(e)
+		return out
 	return []
 
 
@@ -855,6 +918,27 @@ func _favourite_element() -> String:
 		if c[el] > c[best]:
 			best = el
 	return best
+
+
+# ------------------------------------------------------------------ bottles
+
+## Drink the bottle in slot i (target_idx: the enemy, for bottles that need one). It's gone afterwards.
+func use_bottle(i: int, target_idx := -1) -> void:
+	if over or i < 0 or i >= player.bottles.size():
+		return
+	var b := Bottles.as_spell(player.bottles[i])
+	player.bottles.remove_at(i)
+	_log("You drink the %s." % b.name)
+	var tctx := {"_alive_before": alive()}
+	if target_idx >= 0 and target_idx < enemies.size() and not enemies[target_idx].is_dead():
+		tctx.target = enemies[target_idx]
+	await anim.call({"type": "bottle", "bottle": b})
+	var ctx: Dictionary = turn_ctx if spoken else {}
+	for eff in b.effects:
+		if over:
+			break
+		await _apply(eff, b, tctx, ctx)
+	_cleanup()
 
 
 # ------------------------------------------------------------------ enemy phase
@@ -1027,7 +1111,7 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				var s: Dictionary = owned[i]
 				player.stock.erase(s)
 				e.append(s.el, false)
-			_log("%s steals your elements onto its hide." % e.name)
+			_log("%s steals your Essence onto its hide." % e.name)
 		"confuse":
 			if not has_artifact("calm_stone"):
 				player.confuse_turns = 1

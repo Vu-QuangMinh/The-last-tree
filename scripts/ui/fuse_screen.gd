@@ -5,7 +5,7 @@ extends Control
 signal fused(new_spell: Dictionary)
 signal back
 
-const RULES := "Fuse melts two of your spells into ONE spell that does everything both of them did.\n• Its pattern: the longer spell's pattern, then the shorter spell's pattern with one random element dropped. So a 2-element spell and a 3-element spell make a 4-element spell.\n• Both spells are used up, and the new one takes a single slot in your active row.\n• Fused spells can't be fused again, and Powers can't be fused."
+const RULES := "Fuse melts two of your spells into ONE spell that does everything both of them did.\n• Its pattern: the first spell you pick, then the whole of the second. Nothing is lost.\n• Both spells are used up, and the new one takes a single slot in your active row.\n• Fused spells can't be fused again, and Powers can't be fused."
 
 var run: RunState
 var _picked: Array = []  # ids, in the order chosen
@@ -113,10 +113,10 @@ func _refresh() -> void:
 	_fuse_btn.disabled = _picked.size() < 2
 	match _picked.size():
 		0:
-			_status.text = Keywords.colorize("Pick the first spell to fuse.")
+			_status.text = Keywords.colorize("Pick the first spell: its pattern goes first.")
 		1:
 			var a := run.spell(_picked[0])
-			_status.text = Keywords.colorize("%s picked. Now pick a second spell." % a.name)
+			_status.text = Keywords.colorize("%s picked. Now pick the second spell: its pattern goes after." % a.name)
 			_result_box.add_child(SpellCard.make(a))
 		2:
 			var a := run.spell(_picked[0])
@@ -127,10 +127,7 @@ func _refresh() -> void:
 			_result_box.add_child(UiTheme.label("→", 48, Color(1, 0.8, 0.4)))
 			var out := SpellCard.make(_preview)
 			_result_box.add_child(out)
-			var longer: String = _preview.fused_from[0]
-			var shorter: String = _preview.fused_from[1]
-			_status.text = Keywords.colorize("%s keeps its whole pattern. %s drops one %s and goes on the end: the new pattern is %s (%d elements). It triggers at most %d times per turn." % [
-				longer, shorter, Elements.NAMES[_preview.dropped], " ".join(Array(String(_preview.pattern).split(""))), _preview.size, _preview.size])
+			_status.text = ""
 
 
 func _toggle(id: String) -> void:
@@ -142,7 +139,6 @@ func _toggle(id: String) -> void:
 		_picked.append(id)
 	else:
 		_picked[1] = id
-	# the dropped element is rolled once per pair you look at
 	_preview = run.fuse_preview(_picked[0], _picked[1]) if _picked.size() == 2 else {}
 	_refresh.call_deferred()
 

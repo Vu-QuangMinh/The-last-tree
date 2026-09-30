@@ -18,6 +18,7 @@ signal _pick_done(idx: int)
 signal _chant_done(idx: int)
 signal _arrange_done(move: Array)
 signal _element_chosen(el: String)
+signal _spell_chosen(idx: int)
 
 var run: RunState
 ## The tutorial's gate: func(action: String, arg) -> bool. Actions: add (el), remove, clear, chant, cast (spell id),
@@ -41,6 +42,7 @@ var phase := "build"  # build: making the chant · spells: the chant is spoken, 
 var chant_mode := ""  # "insert": placing an infused element · "arrange": Rearrange · "pick": choosing an element to copy
 var chant_i := 0  # the gap / element highlighted in chant_mode
 var _step_pos := -1  # during the Release: the chant element flying right now
+var _released := false  # the chant has been Released this turn: no more damage preview until the next turn
 var busy := false
 var end_confirm := false
 # aiming (the arrow)
@@ -78,6 +80,10 @@ var _info: Label
 var _hp_bar: HpBar
 var _hp_label: Label
 var _pstatus: RichTextLabel
+var _status_row: HFlowContainer  # your statuses, as bright badges above the HP bar
+var _bottle_row: HBoxContainer  # your bottles, under the HP bar
+var _arts: ArtifactBar
+var _bottle_from := Vector2.ZERO  # where the bottle being drunk sits (its effects fly from there)
 var _log: Label
 var _cast_btn: Button
 var _end_btn: Button
@@ -117,6 +123,7 @@ func setup(p_run: RunState, p_fight: Fight) -> void:
 	fight.element_chooser = _element_chooser
 	fight.arranger = _arranger
 	fight.redirector = _redirector
+	fight.spell_chooser = _spell_chooser
 	fight.anim = _anim
 
 
@@ -130,9 +137,9 @@ func _ready() -> void:
 	_info = UiTheme.label("", 22, Color.WHITE)
 	_info.position = Vector2(30, 14)
 	add_child(_info)
-	var arts := ArtifactBar.make(fight.artifacts, fight.artifact_plus)
-	arts.position = Vector2(28, 52)
-	add_child(arts)
+	_arts = ArtifactBar.make(fight.artifacts, fight.artifact_plus)
+	_arts.position = Vector2(28, 52)
+	add_child(_arts)
 	# top-right: coming next
 	var np := PanelContainer.new()
 	np.add_theme_stylebox_override("panel", UiTheme.panel_box(0.85, 10))
@@ -202,7 +209,7 @@ func _ready() -> void:
 	small.add_child(_clear_btn)
 	_end_btn = UiTheme.button("Pass  (E)", _on_end_turn, 15)
 	_end_btn.custom_minimum_size = Vector2(122, 34)
-	_end_btn.tooltip_text = "End your turn without chanting (you keep your elements)."
+	_end_btn.tooltip_text = "End your turn without chanting (you keep your Essence)."
 	small.add_child(_end_btn)
 	add_child(cp)
 	# stock
@@ -212,25 +219,39 @@ func _ready() -> void:
 	sp.custom_minimum_size = Vector2(1100, 110)
 	var sv := VBoxContainer.new()
 	sp.add_child(sv)
-	sv.add_child(UiTheme.label("Your bag of elements  (click or drag, or press F / W / A)", 15, UiTheme.MUTED))
+	sv.add_child(UiTheme.label("Your bag of Essence  (click or drag, or press F / W / A)", 15, UiTheme.MUTED))
 	_stock_row = HFlowContainer.new()
 	_stock_row.add_theme_constant_override("h_separation", 6)
 	_stock_row.custom_minimum_size = Vector2(1070, 0)
 	sv.add_child(_stock_row)
 	add_child(sp)
-	# player
+	# player: name, your statuses (bright badges) on top of the HP bar, your bottles under it
 	_player_panel = PanelContainer.new()
 	_player_panel.add_theme_stylebox_override("panel", UiTheme.panel_box(0.9, 12))
-	_player_panel.position = Vector2(24, 760)
+	_player_panel.position = Vector2(24, 742)
 	_player_panel.custom_minimum_size = Vector2(500, 0)
 	var pv := VBoxContainer.new()
+	pv.add_theme_constant_override("separation", 6)
 	_player_panel.add_child(pv)
 	pv.add_child(UiTheme.label("The Keeper", 22, Color.WHITE))
+	_status_row = HFlowContainer.new()
+	_status_row.add_theme_constant_override("h_separation", 6)
+	_status_row.add_theme_constant_override("v_separation", 4)
+	_status_row.custom_minimum_size = Vector2(460, 0)
+	pv.add_child(_status_row)
 	_hp_bar = HpBar.new()
 	_hp_bar.custom_minimum_size = Vector2(460, 26)
 	pv.add_child(_hp_bar)
+	var under := HBoxContainer.new()
+	under.add_theme_constant_override("separation", 8)
+	pv.add_child(under)
 	_hp_label = UiTheme.label("", 18)
-	pv.add_child(_hp_label)
+	_hp_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_hp_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	under.add_child(_hp_label)
+	_bottle_row = HBoxContainer.new()
+	_bottle_row.add_theme_constant_override("separation", 6)
+	under.add_child(_bottle_row)
 	_pstatus = RichTextLabel.new()
 	_pstatus.bbcode_enabled = true
 	_pstatus.fit_content = true
@@ -240,6 +261,7 @@ func _ready() -> void:
 	_pstatus.add_theme_font_size_override("normal_font_size", 15)
 	_pstatus.add_theme_font_size_override("bold_font_size", 15)
 	_pstatus.add_theme_color_override("default_color", Color(0.85, 0.8, 1))
+	_pstatus.visible = false  # (statuses are badges now)
 	pv.add_child(_pstatus)
 	add_child(_player_panel)
 	# the fight log, bottom right
@@ -343,11 +365,10 @@ func _refresh_all() -> void:
 	var p := fight.player
 	_info.text = "Act %d · Floor %d · Turn %d" % [run.act, run.floor_no(), fight.turn]
 	_hp_bar.set_values(p.hp, p.max_hp, p.shield)
-	_hp_label.text = "HP %d / %d%s%s" % [maxf(0, p.hp), p.max_hp, ("   🛡 Shield %d" % p.shield) if p.shield > 0 else "", ("   Aegis %d" % p.aegis) if p.aegis > 0 else ""]
-	var st := p.describe_statuses().filter(func(s): return not s.begins_with("Shield") and not s.begins_with("Aegis"))
-	if "kindling_stone" in fight.artifacts:
-		st.append("Kindling Stone: CHARGED (next Burn doubled)" if p.kindling_charged else "Kindling Stone: %d / 3 chants" % p.kindling_chants)
-	_pstatus.text = Keywords.colorize("\n".join(st))
+	_hp_label.text = "HP %d / %d" % [maxf(0, p.hp), p.max_hp]
+	_refresh_statuses()
+	_refresh_bottles()
+	_arts.update_charges(p)
 	for c in _next_row.get_children():
 		c.queue_free()
 	for d in p.next_draw:
@@ -361,7 +382,7 @@ func _refresh_all() -> void:
 	if p.confuse_turns <= 0:
 		if phase == "build" and chant != "":
 			pv = fight.preview(chant)
-		elif phase == "spells" and _step_pos < 0:
+		elif phase == "spells" and _step_pos < 0 and not _released:
 			pv = fight.preview(fight.chant_string(), false)
 	for e in _views:
 		var v: EnemyView = _views[e]
@@ -551,29 +572,29 @@ func situation_help() -> String:
 		return "The fight is over. Hang on a moment."
 	if busy:
 		if phase == "spells":
-			return "Hold on: things are happening! Your chant's elements are flying at the enemies (the Release), or the enemies are taking their turn. Watch the callouts; you'll be able to act again in a moment."
+			return "Hold on: things are happening! Your chant's Essence are flying at the enemies (the Release), or the enemies are taking their turn. Watch the callouts; you'll be able to act again in a moment."
 		return "Hold on: something is still playing out. You'll be able to act again in a moment."
 	if aiming:
 		return "You're aiming %s. Click an enemy to hit it (the arrow follows your mouse), or press Tab to switch targets and Enter to confirm. Right-click puts the spell back." % (aim_card.spell.name if aim_card else "a spell")
 	if pick_view != null:
-		return "Choose which element of %s's Essence to knock off: click one of its orbs (or Tab to switch, Enter to confirm)." % pick_view.enemy.name
+		return "Choose which of %s's Essence to knock off: click one of its orbs (or Tab to switch, Enter to confirm)." % pick_view.enemy.name
 	if move_view != null:
-		return "Moving an element of %s: click one of its orbs to pick it up, then click where it should go. Right-click skips." % move_view.enemy.name
+		return "Moving an Essence of %s: click one of its orbs to pick it up, then click where it should go. Right-click skips." % move_view.enemy.name
 	if chant_mode == "insert":
-		return "Place the new element: it's the glowing one in your chant. Drag it to where it should go (or Left / Right, then Enter)."
+		return "Place the new Essence: it's the glowing one in your chant. Drag it to where it should go (or Left / Right, then Enter)."
 	if chant_mode == "arrange":
-		return "Rearrange: every element of your chant is glowing. Drag one to another spot to make new patterns; right-click keeps the chant as it is."
+		return "Rearrange: every Essence of your chant is glowing. Drag one to another spot to make new patterns; right-click keeps the chant as it is."
 	if chant_mode == "pick":
-		return "Pick an element of your chant to copy: click it (or Tab + Enter)."
+		return "Pick an Essence of your chant to copy: click it (or Tab + Enter)."
 	if phase == "build":
 		if chant_idx.is_empty():
-			return "Build a chant: click your elements at the bottom (or press F, W, A). Every enemy will lose the longest START of its Essence found in your chant, and spells whose pattern appears in it come alive. Then press Chant."
-		return "Your chant so far: %s. The crossed-out orbs on the enemies show what they'll lose. Add more elements, click one in the chant to take it back, or press Chant (Enter) when you're happy." % " ".join(Array(_chant_string().split("")))
+			return "Build a chant: click your Essence at the bottom (or press F, W, A). Every enemy will lose the longest START of its Essence found in your chant, and spells whose pattern appears in it come alive. Then press Chant."
+		return "Your chant so far: %s. The crossed-out orbs on the enemies show what they'll lose. Add more Essence, click one in the chant to take it back, or press Chant (Enter) when you're happy." % " ".join(Array(_chant_string().split("")))
 	var alive := _cards.filter(func(c): return c.charges > 0)
 	if not alive.is_empty():
 		var names := alive.map(func(c): return c.spell.name)
 		return "Your chant is spoken. These spells are alive (glowing): %s. Click one to cast it; if it needs a target it pulls out an arrow, then click an enemy. When you're done, press Release (E) to fire the chant." % ", ".join(names)
-	return "Your spells are done. Press Release (E): the chant's elements fly at the enemies and deal the damage."
+	return "Your spells are done. Press Release (E): the chant's Essence fly at the enemies and deal the damage."
 
 
 func _show_help() -> void:
@@ -1050,6 +1071,7 @@ func _damage_step() -> void:
 func _after_turn() -> void:
 	phase = "build"
 	_step_pos = -1
+	_released = false
 	_sync_views()
 	busy = false
 	_refresh_all()
@@ -1079,6 +1101,156 @@ func _finish() -> void:
 		_banner("The last tree falls…", UiTheme.DANGER, 1.6)
 		await get_tree().create_timer(1.6).timeout
 	finished.emit(fight.won)
+
+
+# ------------------------------------------------------------------ your statuses and bottles
+
+## [text, colour, keyword] for each status you have: shown as bright badges above your HP bar.
+func _status_badges() -> Array:
+	var p := fight.player
+	var out := []
+	if p.shield > 0.0:
+		out.append(["🛡 Shield %d" % p.shield, Color(0.3, 0.65, 1.0), "shield"])
+	if p.aegis > 0:
+		out.append(["✨ Aegis %d" % p.aegis, Color(1.0, 0.8, 0.25), "aegis"])
+	var th := p.thorns_turn + p.passive("thorns")
+	if th > 0:
+		out.append(["🌵 Thorns %d" % th, Color(0.5, 0.85, 0.25), "thorns"])
+	if p.ethereal:
+		out.append(["👻 Ethereal", Color(0.75, 0.7, 1.0), "ethereal"])
+	if p.echo_next:
+		out.append(["🔔 Echo ready", Color(0.85, 0.6, 1.0), "echo"])
+	if p.bleed > 0:
+		out.append(["🩸 Bleed %d" % p.bleed, Color(1.0, 0.25, 0.3), "bleed"])
+	if p.confuse_turns > 0:
+		out.append(["🌀 Confused %d" % p.confuse_turns, Color(0.8, 0.4, 1.0), "confuse"])
+	if p.blind_turns > 0:
+		out.append(["🙈 Blind %d" % p.blind_turns, Color(0.7, 0.72, 0.78), "blind"])
+	if p.frail_turns > 0:
+		out.append(["💔 Frail %d" % p.frail_turns, Color(1.0, 0.4, 0.55), "frail"])
+	if p.toll > 0:
+		out.append(["🔔 Toll %d" % p.toll, Color(1.0, 0.6, 0.2), "lock"])
+	if p.overload > 0:
+		out.append(["⚡ Overload %d" % p.overload, Color(1.0, 0.45, 0.3), "overload"])
+	if not p.silenced.is_empty():
+		out.append(["🤐 Silenced", Color(0.8, 0.45, 1.0), "silence"])
+	return out
+
+
+func _refresh_statuses() -> void:
+	for c in _status_row.get_children():
+		c.queue_free()
+	for b in _status_badges():
+		var chip := PanelContainer.new()
+		var sb := StyleBoxFlat.new()
+		var col: Color = b[1]
+		sb.bg_color = col.darkened(0.35)
+		sb.border_color = col.lightened(0.45)
+		sb.set_border_width_all(2)
+		sb.set_corner_radius_all(14)
+		sb.shadow_color = Color(col, 0.55)
+		sb.shadow_size = 7
+		sb.content_margin_left = 10
+		sb.content_margin_right = 10
+		sb.content_margin_top = 2
+		sb.content_margin_bottom = 2
+		chip.add_theme_stylebox_override("panel", sb)
+		var l := UiTheme.label(b[0], 19, Color.WHITE)
+		l.add_theme_constant_override("outline_size", 5)
+		l.add_theme_color_override("font_outline_color", col.darkened(0.7))
+		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		chip.add_child(l)
+		var tip: String = Keywords.K.get(b[2], [0, 0, ""])[2]
+		chip.tooltip_text = Keywords.tooltip(b[0], tip) if tip != "" else ""
+		chip.mouse_filter = Control.MOUSE_FILTER_STOP
+		_status_row.add_child(chip)
+
+
+func _refresh_bottles() -> void:
+	for c in _bottle_row.get_children():
+		c.queue_free()
+	var bs: Array = fight.player.bottles
+	for i in maxi(run.bottle_slots() if run else Bottles.BASE_SLOTS, bs.size()):
+		var chip := BottleChip.make(bs[i] if i < bs.size() else "", i, true)
+		chip.used.connect(_on_bottle)
+		_bottle_row.add_child(chip)
+
+
+## Drink a bottle: on your turn, when nothing else is going on. Bottles that need an enemy ask for one first.
+func _on_bottle(chip: BottleChip) -> void:
+	if busy or aiming or fight.over or chant_mode != "" or pick_view != null or move_view != null:
+		return
+	if not (phase in ["build", "spells"]) or _released:
+		return
+	var i := chip.index
+	var id: String = fight.player.bottles[i] if i < fight.player.bottles.size() else ""
+	if id == "":
+		return
+	_bottle_from = chip.get_global_rect().get_center()
+	var target := -1
+	if Bottles.needs_target(id):
+		var cands := fight.target_candidates()
+		if cands.size() == 1:
+			target = cands[0]
+		else:
+			target = await _aim(null, _bottle_from, cands, "%s: choose a target  ·  click, or Tab + Enter  ·  right-click to put it back" % Bottles.get_def(id).name, true)
+			if target < 0:
+				return
+	busy = true
+	await fight.use_bottle(i, target)
+	_sync_views()
+	busy = false
+	_refresh_all()
+	if fight.over:
+		await _finish()
+
+
+## Grimoire Ink: choose a spell from your spellbook (not already active). Returns its index, or -1.
+func _spell_chooser(spells: Array) -> int:
+	if spells.is_empty():
+		return -1
+	var overlay := Control.new()
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.z_index = 90
+	var shade := ColorRect.new()
+	shade.color = Color(0, 0, 0, 0.72)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(shade)
+	var v := VBoxContainer.new()
+	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_theme_constant_override("separation", 18)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(v)
+	var t := UiTheme.label("Grimoire Ink: choose a spell to join your active spells for this fight", 28, Color(1, 0.9, 0.55))
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(t)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(1800, 470)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var flow := HFlowContainer.new()
+	flow.alignment = FlowContainer.ALIGNMENT_CENTER
+	flow.custom_minimum_size = Vector2(1780, 0)
+	flow.add_theme_constant_override("h_separation", 12)
+	flow.add_theme_constant_override("v_separation", 12)
+	scroll.add_child(flow)
+	var center := CenterContainer.new()
+	center.add_child(scroll)
+	v.add_child(center)
+	for i in spells.size():
+		var card := SpellCard.make(spells[i])
+		var k := i
+		card.clicked.connect(func(_c): _spell_chosen.emit(k))
+		flow.add_child(card)
+	var skip := UiTheme.button("Keep the ink (choose nothing)", func(): _spell_chosen.emit(-1), 20)
+	skip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	v.add_child(skip)
+	add_child(overlay)
+	var idx: int = await _spell_chosen
+	overlay.queue_free()
+	return idx
 
 
 # ------------------------------------------------------------------ pause menu
@@ -1276,7 +1448,7 @@ func _mover(spell: Dictionary, e: EnemyState) -> Array:
 	move_view = v
 	v.move_mode = true
 	v.move_pick = -1
-	_prompt.text = "%s: click an element of %s to pick it up  ·  right-click to skip" % [spell.name, e.name]
+	_prompt.text = "%s: click an Essence of %s to pick it up  ·  right-click to skip" % [spell.name, e.name]
 	_refresh_all()
 	var pair: Array = await _move_done
 	v.move_mode = false
@@ -1291,12 +1463,23 @@ func _picker(spell: Dictionary, e: EnemyState) -> int:
 	var v: EnemyView = _views.get(e)
 	if v == null:
 		return e.armor.find(false)
+	var verb := "steal" if spell.effects.any(func(x): return x.op == "steal") else "knock off"
+	var free := []
+	for i in e.size():
+		if not e.armor[i]:
+			free.append(i)
+	if free.size() <= 1:
+		# no real choice (e.g. its very last element): take it without asking
+		tut.emit("picking", null)
+		var only: int = free[0] if free.size() == 1 else -1
+		tut.emit("picked", only)
+		return only
 	pick_view = v
 	tut.emit("picking", null)
 	v.pick_mode = true
 	v.pick_i = e.armor.find(false)
-	var verb := "steal" if spell.effects.any(func(x): return x.op == "steal") else "knock off"
-	_prompt.text = "%s: choose an element of %s to %s  ·  click it, or Tab + Enter" % [spell.name, e.name, verb]
+	_prompt.text = "%s: choose an Essence of %s to %s  ·  click it, or Tab + Enter" % [spell.name, e.name, verb]
+	_callout("Choose an Essence of [b]%s[/b] to %s" % [e.name, verb], v.global_position + Vector2(v.size.x / 2.0, 120), Color(1, 0.85, 0.4), 2.5)
 	_refresh_all()
 	var idx: int = await _pick_done
 	tut.emit("picked", idx)
@@ -1333,7 +1516,7 @@ func _on_hp_clicked(v: EnemyView, index: int) -> void:
 		return
 	if index == v.move_pick:
 		v.move_pick = -1
-		_prompt.text = "Click an element to pick it up  ·  right-click to skip"
+		_prompt.text = "Click an Essence to pick it up  ·  right-click to skip"
 		v.refresh({})
 		return
 	_move_done.emit([v.move_pick, index])
@@ -1408,7 +1591,7 @@ func _spawn_infuse_orb(spell: Dictionary, el: String) -> void:
 func _fuse_on_card(card: SpellCard, el: String) -> Vector2:
 	var icons := []
 	var starts := []
-	for o in card._pat.get_children():
+	for o in card.live_orbs():
 		if not (o is ElementIcon):
 			continue
 		var r: Rect2 = o.get_global_rect()
@@ -1499,7 +1682,7 @@ func _arranger(spell: Dictionary) -> Array:
 	for c in fight.chant:
 		live.append(true)
 	_show_drag(fight.chant.duplicate(), live, true)
-	_prompt.text = "%s: grab any element of your chant and drag it to another spot  ·  Tab + Left / Right + Enter  ·  right-click: keep it" % spell.name
+	_prompt.text = "%s: grab any Essence of your chant and drag it to another spot  ·  Tab + Left / Right + Enter  ·  right-click: keep it" % spell.name
 	_refresh_all()
 	_drag.dropped.connect(func(from, to): _arrange_done.emit([from, to]))
 	var mv: Array = await _arrange_done
@@ -1534,7 +1717,7 @@ func _hide_drag() -> void:
 func _chant_picker(spell: Dictionary) -> int:
 	chant_mode = "pick"
 	chant_i = 0
-	_prompt.text = "%s: which element of the chant should be duplicated?  ·  click it, or Tab + Enter" % spell.name
+	_prompt.text = "%s: which Essence of the chant should be duplicated?  ·  click it, or Tab + Enter" % spell.name
 	_refresh_all()
 	var i: int = await _chant_done
 	chant_mode = ""
@@ -1552,6 +1735,19 @@ func _redirector(spell: Dictionary, src: EnemyState, cands: Array) -> int:
 ## Animation hook from the fight.
 func _anim(ev: Dictionary) -> void:
 	match ev.type:
+		"bottle":
+			# the cork pops: a burst of light from the bottle
+			Audio.play("elem_pickup")
+			var v := Vfx.make(_fx)
+			v.shaker = _shake
+			v.glow(_bottle_from, 120, Color(0.6, 0.95, 1.0, 0.9), 0.35)
+			v.ring(_bottle_from, 10, 90, Color(0.6, 0.95, 1.0), 0.4, 6.0)
+			v.burst(_bottle_from, 18, Color(0.75, 1.0, 1.0), Vector2(120, 380), Vector2(0.3, 0.6), Vector2(4, 8), Vfx.STAR)
+			_refresh_all()
+			await _wait(0.3)
+		"artifact_used":
+			_arts.flash(ev.id)
+			Audio.play("spell_glow")
 		"chant":
 			_prompt.text = "Chanting " + " ".join(Array(ev.chant.split("")).map(func(c): return Elements.NAMES[c]))
 			await _wait(0.25)
@@ -1742,25 +1938,27 @@ func _anim(ev: Dictionary) -> void:
 ## The chant is read out: left to right, each element hops, shines and sings its note, and the orb it fills
 ## on every spell it helps wake shines at the same moment.
 func _sing(indices: Array, hits: Array) -> void:
-	var slots := _chant_row.get_children().filter(func(c): return c is Panel)
 	for i in indices:
-		if i >= slots.size():
-			continue
-		for ic in slots[i].get_children():
-			if ic is ElementIcon:
-				_hop(ic, 16.0)
-				Audio.play_note(ic.el)
+		if not is_inside_tree():
+			return
+		# looked up afresh for every note: the chant row or a card may have been rebuilt while we waited
+		var slots := _chant_row.get_children().filter(func(c): return c is Panel and not c.is_queued_for_deletion())
+		if i < slots.size():
+			for ic in slots[i].get_children():
+				if ic is ElementIcon:
+					_hop(ic, 18.0)
+					Audio.play_note(ic.el)
 		for h in hits:
 			var card := _card_for(h.id)
-			if card == null:
+			if card == null or not is_instance_valid(card._pat):
 				continue
 			for st in h.starts:
 				if i >= st and i < st + h.len:
-					var orbs := card._pat.get_children()
+					var orbs := card.live_orbs()
 					if i - st < orbs.size():
-						_hop(orbs[i - st], 8.0)
-		await _wait(0.16)
-	await _wait(0.1)
+						_hop(orbs[i - st], 10.0)
+		await _wait(0.3)
+	await _wait(0.2)
 
 
 ## One quick hop with a shine, then back to rest.
@@ -1772,12 +1970,12 @@ func _hop(ic: Control, height: float) -> void:
 		ic.highlight = true
 		ic.queue_redraw()
 	var tw := ic.create_tween()
-	tw.tween_property(ic, "position:y", ic.position.y - height, 0.07).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(ic, "modulate", Color(1.9, 1.85, 1.6), 0.07)
-	tw.parallel().tween_property(ic, "scale", Vector2(1.2, 1.2), 0.07)
-	tw.tween_property(ic, "position:y", ic.position.y, 0.13).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(ic, "modulate", Color.WHITE, 0.25)
-	tw.parallel().tween_property(ic, "scale", Vector2.ONE, 0.13)
+	tw.tween_property(ic, "position:y", ic.position.y - height, 0.11).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(ic, "modulate", Color(1.9, 1.85, 1.6), 0.11)
+	tw.parallel().tween_property(ic, "scale", Vector2(1.22, 1.22), 0.11)
+	tw.tween_property(ic, "position:y", ic.position.y, 0.22).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(ic, "modulate", Color.WHITE, 0.35)
+	tw.parallel().tween_property(ic, "scale", Vector2.ONE, 0.22)
 	tw.tween_callback(func():
 		if is_instance_valid(ic) and ic is ElementIcon:
 			ic.highlight = false
@@ -1797,6 +1995,8 @@ func _wake_fx(hits: Array, extension: bool) -> void:
 				var i: int = st + k
 				if i >= slots.size():
 					continue
+				if not is_instance_valid(slots[i]):
+					continue
 				for ch in slots[i].get_children():
 					if ch is ElementIcon:
 						flights.append([ch, card])
@@ -1813,10 +2013,10 @@ func _wake_fx(hits: Array, extension: bool) -> void:
 				tw.tween_property(ic, "rotation", 0.35, 0.05)
 				tw.tween_property(ic, "rotation", -0.35, 0.05)
 			tw.tween_property(ic, "rotation", 0.0, 0.05)
-		tw.tween_property(ic, "scale", Vector2(1.3, 1.3), 0.1)
-		tw.tween_property(ic, "scale", Vector2.ONE, 0.15)
+		tw.tween_property(ic, "scale", Vector2(1.3, 1.3), 0.14)
+		tw.tween_property(ic, "scale", Vector2.ONE, 0.22)
 	Audio.play("spell_glow")
-	await _wait(0.4 if extension else 0.2)
+	await _wait(0.5 if extension else 0.35)
 	# everything lifts off at once
 	var sounds := {}
 	for fl in flights:
@@ -1826,12 +2026,12 @@ func _wake_fx(hits: Array, extension: bool) -> void:
 		var card: SpellCard = fl[1]
 		var to := card.global_position + card.size * card.scale / 2.0
 		var cm := Comet.launch(_fx, ic.global_position + ic.size / 2.0, to, Elements.COLORS.get(ic.el, Color(1, 0.9, 0.4)))
-		cm.dur = 0.38
-		cm.rise = 90.0
+		cm.dur = 0.55
+		cm.rise = 110.0
 		if not sounds.has(ic.el):
 			sounds[ic.el] = true
 			Audio.play(LAUNCH_SFX.get(ic.el, "elem_pickup"), -4.0)
-	await _wait(0.4)
+	await _wait(0.58)
 	for ic in lit:
 		if is_instance_valid(ic):
 			ic.highlight = false
@@ -1933,7 +2133,7 @@ func _element_chooser(spell: Dictionary, counts: Dictionary) -> String:
 	dim.z_index = 70
 	add_child(dim)
 	dim.create_tween().tween_property(dim, "color:a", 0.7, 0.35)
-	var title := UiTheme.label("%s: choose an element to wipe out" % spell.name, 34, Color(1.0, 0.8, 0.85))
+	var title := UiTheme.label("%s: choose an Essence to wipe out" % spell.name, 34, Color(1.0, 0.8, 0.85))
 	title.add_theme_constant_override("outline_size", 8)
 	title.add_theme_color_override("font_outline_color", Color.BLACK)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -2127,7 +2327,11 @@ const SELF_OPS := ["shield", "heal", "aegis", "thorns", "cleanse", "sacrifice"]
 func _spell_fly(ev: Dictionary) -> void:
 	var card := _card_for(ev.spell.id)
 	var from := (card.global_position + card.size * card.scale / 2.0) if card else Vector2(960, 620)
-	var col := GameData.spell_color(ev.spell.pattern).lightened(0.2)
+	var col := GameData.spell_color(ev.spell.get("full_pattern", ev.spell.pattern)).lightened(0.2)
+	if ev.spell.has("bottle"):
+		col = Color(0.6, 0.95, 1.0)
+	if ev.spell.has("bottle"):
+		from = _bottle_from
 	var op: String = ev.op
 	var targets: Array = ev.targets
 	var dests := []
@@ -2327,6 +2531,7 @@ func _shake(amount: float) -> void:
 ## One chant element lifts off as a comet and flies into every HP element it hits (or fizzles upward).
 func _release_step(ev: Dictionary) -> void:
 	_step_pos = ev.pos
+	_released = true
 	var slots := _chant_row.get_children().filter(func(c): return c is Panel)
 	if ev.pos >= slots.size():
 		return

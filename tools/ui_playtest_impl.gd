@@ -102,8 +102,17 @@ func _play_fight(fs: FightScreen) -> void:
 	var hp0: float = f.player.hp
 	var label: String = ", ".join(f.enemies.map(func(e): return e.name))
 	var snaps := 0
+	var frames := 0
 	while is_instance_valid(fs) and not f.over:
 		await tree.process_frame
+		frames += 1
+		if frames % 3000 == 0:
+			print("STALL? fight %d turn %d busy=%s phase=%s aiming=%s mode=%s pick=%s move=%s charges=%s released=%s step=%d" % [fights, f.turn, fs.busy, fs.phase, fs.aiming, fs.chant_mode, fs.pick_view != null, fs.move_view != null, f.charges, fs._released, fs._step_pos])
+			print("   log: ", f.lines.slice(-6))
+		if frames > 30000:
+			print("GIVING UP on fight %d" % fights)
+			tree.quit()
+			return
 		if fs.aiming:
 			if snaps < 2 and fights <= 3:
 				snaps += 1

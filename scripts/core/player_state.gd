@@ -32,6 +32,10 @@ var used_powers := {}  # spell id -> true
 # ---- per run (artifact counters that carry between fights)
 var kindling_chants := 0  # Kindling Stone: chants since it last charged
 var kindling_charged := false
+var echo_casts := 0  # Echo Shell: spells cast since it last charged
+var echo_charged := false
+var bottles: Array = []  # bottle ids you carry (see Bottles)
+var echo_next := false  # Echo Draught: your next spell is cast twice (this fight)
 
 
 func reset_fight() -> void:
@@ -53,6 +57,7 @@ func reset_fight() -> void:
 	silenced.clear()
 	locks.clear()
 	used_powers.clear()
+	echo_next = false
 
 
 func passive(key: String) -> int:
@@ -123,11 +128,11 @@ func describe_statuses() -> Array:
 	if confuse_turns > 0:
 		out.append("Confused: your chant is read backwards")
 	if blind_turns > 0:
-		out.append("Blind: some enemy elements are hidden")
+		out.append("Blind: some enemy Essence are hidden")
 	if toll > 0:
 		out.append("Toll: %d fewer chant slots" % toll)
 	if frail_turns > 0:
 		out.append("Frail %d (you take 25%% more damage)" % frail_turns)
 	if overload > 0:
-		out.append("Overload: %d fewer element next turn" % overload)
+		out.append("Overload: %d fewer Essence next turn" % overload)
 	return out
