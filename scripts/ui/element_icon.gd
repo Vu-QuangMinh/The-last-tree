@@ -1,6 +1,6 @@
 class_name ElementIcon
 extends Control
-## One element drawn as a coloured orb with a glyph: flame (Fire), drop (Water), swirl (Air), ? (hidden).
+## One element: a white disc with a coloured rim and the element's picture (flame, drop, swirl), or a tri-colour orb for "?" (any / hidden).
 
 var el := "F"
 var armored := false
@@ -130,10 +130,6 @@ func _draw_seal(c: Vector2, r: float) -> void:
 func _draw() -> void:
 	var r := minf(size.x, size.y) / 2.0 - 2.0
 	var c := size / 2.0
-	if sealed:
-		_draw_seal(c, r)
-		return
-	var col: Color = Elements.COLORS.get(el, Color.GRAY)
 	var a := 1.0
 	if ghost:
 		a = 0.28
@@ -141,26 +137,17 @@ func _draw() -> void:
 		a = 0.45
 	if highlight:
 		draw_circle(c, r + 3.0, Color(1, 1, 1, 0.9))
-	draw_circle(c, r, Color(col.darkened(0.55), a))
-	if el == "?":
-		# any element: a swirl of all three colours
-		_tri_blend(c, r, a)
+	if CardPip.ICON.has(el):
+		CardPip.draw_pip(self, c, r, el, a)
 	else:
-		draw_circle(c, r * 0.86, Color(col.darkened(0.15), a))
-	draw_circle(c + Vector2(-r * 0.25, -r * 0.3), r * 0.35, Color(1, 1, 1, 0.12 * a))
-	var g := Color(1, 1, 1, 0.92 * a)
-	match el:
-		"F":
-			_flame(c, r * 0.62, g)
-		"W":
-			_drop(c, r * 0.6, g)
-		"A":
-			_swirl(c, r * 0.6, g)
-		_:
-			var f := get_theme_default_font()
-			var fs := int(r * 1.35)
-			draw_string_outline(f, c + Vector2(-fs * 0.28, fs * 0.36), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, fs, maxi(2, int(r * 0.18)), Color(0, 0, 0, 0.55 * a))
-			draw_string(f, c + Vector2(-fs * 0.28, fs * 0.36), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, fs, g)
+		# any element / hidden: a white disc with the three colours blended inside
+		draw_circle(c, r, Color(1, 1, 1, a), true, -1.0, true)
+		_tri_blend(c, r * 0.9, a)
+		draw_arc(c, r - 1.0, 0.0, TAU, 40, Color(0.3, 0.32, 0.4, a), maxf(1.5, r * 0.1), true)
+		var f := get_theme_default_font()
+		var fs := int(r * 1.35)
+		draw_string_outline(f, c + Vector2(-fs * 0.28, fs * 0.36), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, fs, maxi(2, int(r * 0.18)), Color(0, 0, 0, 0.55 * a))
+		draw_string(f, c + Vector2(-fs * 0.28, fs * 0.36), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.95 * a))
 	if armored:
 		draw_arc(c, r + 1.0, 0, TAU, 32, Color(0.85, 0.85, 0.9, a), 4.0)
 		_mini_shield(c + Vector2(r * 0.62, -r * 0.62), r * 0.38, a)
@@ -250,38 +237,6 @@ func _tri_blend(c: Vector2, r: float, a: float) -> void:
 		var pts := PackedVector2Array([c, c + Vector2.from_angle(a0) * rr, c + Vector2.from_angle(a1) * rr])
 		draw_colored_polygon(pts, Color(col.darkened(0.05), a))
 	draw_circle(c, rr * 0.45, Color(1, 1, 1, 0.12 * a))
-
-
-func _flame(c: Vector2, s: float, col: Color) -> void:
-	var pts := PackedVector2Array()
-	for i in 25:
-		var t := i / 24.0 * TAU
-		# teardrop pointing up with a flicker
-		var rad := s * (0.62 + 0.38 * sin(t / 2.0))
-		var p := Vector2(sin(t) * rad * 0.8, -cos(t) * rad)
-		if i % 6 == 3:
-			p *= 0.85
-		pts.append(c + p + Vector2(0, s * 0.18))
-	pts[0] = c + Vector2(0, -s * 1.05)
-	pts[24] = pts[0]
-	draw_colored_polygon(pts, col)
-	draw_circle(c + Vector2(0, s * 0.35), s * 0.3, Color(1, 0.85, 0.4, col.a))
-
-
-func _drop(c: Vector2, s: float, col: Color) -> void:
-	var bc := c + Vector2(0, s * 0.3)
-	var r := s * 0.62
-	draw_circle(bc, r, col)
-	var tri := PackedVector2Array([c + Vector2(0, -s * 1.1), bc + Vector2(r * 0.93, -r * 0.37), bc + Vector2(-r * 0.93, -r * 0.37)])
-	draw_colored_polygon(tri, col)
-
-
-func _swirl(c: Vector2, s: float, col: Color) -> void:
-	for k in 3:
-		var y := (k - 1) * s * 0.55
-		var w := s * (1.0 - absf(k - 1) * 0.2)
-		draw_line(c + Vector2(-w, y), c + Vector2(w * 0.5, y), col, 3.0)
-		draw_arc(c + Vector2(w * 0.5, y - s * 0.18), s * 0.18, PI * 0.5, PI * 2.0, 10, col, 3.0)
 
 
 func _mini_shield(p: Vector2, s: float, a: float) -> void:

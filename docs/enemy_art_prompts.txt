@@ -1,0 +1,249 @@
+THE LAST TREE — NORMAL ENEMY ART PROMPTS
+==========================================
+Prompts written in English (best results with most AI image tools).
+Vietnamese enemy name is given only as a label for your own reference.
+
+HOW TO USE
+----------
+Each entry below is a full, ready-to-paste prompt. Append the SHARED STYLE
+block to the end of any prompt you use, so all 23 characters stay visually
+consistent as one cast. A shared NEGATIVE PROMPT is also provided for tools
+that support one (Stable Diffusion, etc.) — skip it for tools that don't
+(Midjourney, DALL-E).
+
+SHARED STYLE (append to every prompt)
+--------------------------------------
+, dark fantasy creature concept art, painterly digital illustration, thick
+clean outlines with soft painterly shading, rich atmospheric rim lighting,
+semi-stylized proportions (not photorealistic), full-body centered portrait,
+plain dark charcoal-green background, isolated single character, game asset
+concept art, highly detailed, trending on artstation --ar 1:1
+
+SHARED NEGATIVE PROMPT
+------------------------
+photorealistic, photograph, blurry, extra limbs, text, watermark, signature,
+cropped, multiple characters, busy background, low detail, deformed anatomy
+
+
+==========================================
+ACT 1
+==========================================
+
+1. Ashling (Việt: Đóm Lửa)
+Elements: Fire-dominant, water accent (FFW)
+A small humanoid campfire spirit the size of a child, made of living ember
+and dancing flame, dark charcoal skin cracked with glowing orange-red fire
+seeping out through the cracks like magma, a faint wisp of blue steam curling
+off one shoulder where water clings to it, no visible eyes, just two bright
+white ember pinpricks, a mischievous crouched posture like it's about to
+lunge and bite, small clawed hands, tiny flickering flame tongues around its
+mouth, floating embers drifting around its body.
+
+2. Puddle Slime (Việt: Vũng Nhớt)
+Elements: Water-dominant, air accent (WAW)
+A translucent teal-blue gelatinous blob creature, roughly knee-height, semi
+see-through body sloshing and rippling like a living puddle, tiny bubbles of
+trapped air drifting inside it, a simple wide lazy smiling face pressed
+against the front of its jelly body, thin trickles of water constantly
+dripping and reforming at its base, glossy wet highlight along its rounded
+top, sitting in a small shallow puddle of its own leaked fluid on the ground.
+
+3. Gale Sprite (Việt: Yêu Tinh Gió)
+Elements: Air-dominant, fire accent (AFA)
+A small winged sprite made of swirling pale cyan-white wind, two large
+translucent wing-like air vortices instead of arms, a slender wispy body
+that fades into mist at the edges, faint ember-orange sparks crackling where
+static electricity builds along its wingtips, sharp narrow eyes, caught in a
+mid-air lunging pose with a blur of speed lines showing a quick double
+strike, tiny dust and leaves swirling around it.
+
+4. Cinder Hound (Việt: Chó Lửa)
+Elements: Pure fire (FFF)
+A muscular hound the size of a large wolf, entirely made of black obsidian-
+like charred hide with deep glowing orange-red fissures running along its
+back and legs like cooling lava, a mane of small living flames instead of
+fur along its neck, glowing amber eyes, bared teeth wreathed in flame,
+heat-shimmer distortion rising off its whole body, low aggressive stance
+like it's about to charge, faint smoke trailing from its nostrils.
+
+5. Stone Knight (Việt: Hiệp Sĩ Đá)
+Elements: Fire-dominant, water accent (FFW)
+A squat armored knight built like a walking boulder, thick cracked grey
+stone plate armor fused to its body, molten orange-red fire glowing through
+deep cracks in the stone chestplate, a faint sheen of condensation and damp
+moss on the lower legs, no visible face inside a heavy blank stone helmet
+except two glowing ember slits, standing in a wide braced defensive stance
+with one huge stone fist raised, small chips of rock floating around it.
+
+6. Tidecaller (Việt: Gọi Triều)
+Elements: Water/air balanced (WAWA)
+A slender aquatic humanoid figure made of flowing translucent seawater held
+together by swirling currents of pale mist-white air, a flowing cape-like
+trail of water that never touches the ground, glowing teal eyes with no
+pupils, long thin water-tendril hair that moves like it's underwater even in
+open air, hands raised in a summoning gesture with small whirlpools forming
+at its fingertips, calm serene expression despite the churning water around
+it.
+
+7. Mirror Wisp (Việt: Ma Gương)
+Elements: Balanced tri-elemental (AWF)
+A small floating humanoid-shaped wisp split into three shifting facets, one
+third of its body wreathed in pale wind-mist, one third rippling like liquid
+water, one third flickering with tiny embers, its form constantly reshuffles
+and never looks quite symmetrical, a fractured mirror-shard mask for a face
+reflecting fragmented light in three different colors, a playful unsettling
+tilted pose, faint trailing afterimages showing it mid-shuffle.
+
+8. Frost Hex (Việt: Bùa Băng)
+Elements: Water-dominant, air accent (WWA)
+A small hooded witch-like spirit made of pale blue ice and frost, cracked
+translucent ice-skin with frozen mist leaking from the sleeves of a tattered
+frayed cloak, thin skeletal ice-blue fingers pointed forward casting a curse,
+a hood pulled low hiding all but two glowing cold white eyes, sharp icicles
+hanging from its elbows and hood, frozen breath visible in the cold air
+around it, faint snowflakes drifting from its cloak.
+
+9. Pickpocket Imp (Việt: Yêu Móc Túi)
+Elements: Air-dominant, fire accent (AFA)
+A small grinning goblin-like imp with thin windswept grey-lavender skin and
+faint ember-orange markings along its arms, oversized mischievous yellow
+eyes, wrapped in a patchwork of stolen glowing elemental trinkets and
+glowing charms hanging off a ragged belt, crouched in a sneaky thieving
+pose with one clawed hand extended mid-grab, small bat-like wind-vane ears,
+a satisfied smirk, faint dust devil swirling at its feet.
+
+
+==========================================
+ACT 2
+==========================================
+
+10. Splitter Ooze (Việt: Nhớt Phân Tách)
+Elements: Water/fire balanced (WWFF)
+A larger unstable gelatinous blob creature, half of its body a churning
+teal-blue water jelly and the other half a simmering orange-red ember jelly,
+a visible seam running down its middle where the two halves strain against
+each other as if it might tear apart, two lazy mismatched eyes on each half,
+faint steam hissing where the fire and water sides meet, dripping and
+bubbling texture all over its unstable surface.
+
+11. Overgrowth Vine (Việt: Dây Leo Bùng Phát)
+Elements: Air-dominant, fire+water accents (FAWA)
+A humanoid figure completely woven from living thorned vines and dry leaves
+that rustle in a constant swirl of wind, faint fire-orange buds and small
+water droplets clinging to different parts of the vine-body, glowing amber
+eyes peering out from a tangle of leaves where a face would be, roots
+trailing from its feet still half-planted in the ground, arms ending in
+clusters of thorny bramble instead of hands, an air of patient menace.
+
+12. Toll Keeper (Việt: Người Giữ Lộ Phí)
+Elements: Water-dominant (WWAW)
+A tall gaunt robed figure like a tollbooth ghost, deep blue-grey water-
+soaked robes that hang heavy and dripping, a faint swirl of pale air mist
+around its shoulders, an old rusted brass scale or ledger chained to its
+belt, a featureless hood with only a faint watery glow where a face should
+be, one long bony hand extended palm-up as if demanding payment, standing
+unnervingly still.
+
+13. Hexer (Việt: Người Nguyền)
+Elements: Balanced tri-elemental (FWA)
+A hunched cloaked witch doctor figure wrapped in a ragged patchwork robe
+stitched from fire-scorched cloth, water-stained leather, and windswept
+feathers, one elemental symbol tattoo of each type (flame, droplet, wind
+spiral) glowing faintly on its exposed forearms, a necklace of small cursed
+charms, narrow glowing eyes under a ragged hood, one hand raised mid-hex
+with glowing threads of curse-energy trailing from its fingers toward an
+unseen target.
+
+14. Shrine Maiden (Việt: Nữ Tế Đền)
+Elements: Water-dominant, air accent (WAW)
+A serene robed priestess figure in flowing pale teal-white ceremonial robes
+that ripple like calm water, faint wisps of air spiraling around a small
+offering bowl she holds in both hands, a gentle closed-eyed devout
+expression, long water-slicked hair, soft glowing halo-like ring of water
+droplets suspended around her head, standing in a peaceful blessing pose
+that feels oddly indifferent to anyone outside her circle.
+
+15. Hush Moth (Việt: Bướm Lặng Câm)
+Elements: Air-dominant, water accent (AAW)
+A large pale moth-like creature with huge soft wings made of semi-
+translucent windswept mist patterned with faint water-drop markings like
+eyespots, a small delicate insectoid body, fine feathery antennae, wings
+mid-flutter kicking up faint dust motes and silencing ripples, an eerie
+quiet stillness to its pose despite the motion of its wings, muted
+moon-pale coloring.
+
+16. Blinding Beetle (Việt: Bọ Cánh Chói)
+Elements: Fire-dominant, air accent (FAF)
+A large armored beetle creature with a glossy carapace of deep ember-red
+chitin plating, faint wind-swept dust patterns along its shell, oversized
+bulbous glowing white-hot eyes on its head like twin miniature suns about to
+flash, short powerful digging legs, small jets of hot air puffing from vents
+on its back, a defensive hunched posture with its head lowered and eyes
+flaring bright.
+
+17. Leech Bat (Việt: Dơi Hút Máu)
+Elements: Balanced tri-elemental (WFA)
+A small gaunt bat creature with leathery wind-torn wings, damp water-slicked
+fur, and faint ember-orange veins glowing visibly under its thin skin, sharp
+needle-like fangs stained dark, hanging in an upside-down perch pose or
+mid-swoop with wings spread wide, beady red eyes, a hungry twitchy
+expression, small droplets of blood-tinted water dripping from its jaw.
+
+
+==========================================
+ACT 3
+==========================================
+
+18. Inverter (Việt: Kẻ Đảo Nghịch)
+Elements: Fire/water balanced (FWFW)
+A tall slender humanoid split perfectly down the middle: one half made of
+churning orange-red flame, the other half made of flowing teal-blue water,
+each half hissing faintly where they meet at the seam down the center of its
+face and body, mismatched glowing eyes (one ember-orange, one water-teal),
+arms raised in a mirrored inverting gesture, faint distortion in the air
+around it as if reality is swapping at its touch.
+
+19. Warded Golem (Việt: Golem Được Trấn)
+Elements: Fully balanced tri-elemental (FFWWAA)
+A massive hulking golem constructed from three fused elemental cores
+embedded in a heavy stone-grey armored body: a glowing ember core in its
+chest, a glowing water core in one shoulder, a glowing air-mist core in the
+other, faint magical warding runes etched across its armored plating that
+glow softly, no face, just a smooth blank helm with a single warding sigil,
+standing immovable in a wide defensive stance, small protective glyphs
+orbiting slowly around it.
+
+20. Echo Wraith (Việt: Vong Hồn Vọng Âm)
+Elements: Air-dominant (AWAF)
+A ghostly translucent wraith figure that appears slightly doubled or
+smeared, as if two faint afterimages of itself are always trailing a half-
+second behind its real position, pale windswept grey-blue tattered robes
+that fray into mist at the edges, faint ember and water motes drifting
+through its ethereal body, hollow glowing white eyes duplicated faintly in
+the afterimage, an unsettling repeating stutter to its silhouette.
+
+21. Mimic Chest (Việt: Rương Giả Dạng)
+Elements: Fire-dominant (FWAF)
+An ornate old wooden treasure chest with a face-like carved pattern on its
+lid resembling twisted, mismatched features, its lid slightly ajar like a
+mouth, rows of small jagged teeth-like metal studs lining the opening,
+faint ember-orange glow leaking from inside along with wisps of water vapor
+and air, brass corners scorched and dented, sitting deceptively still among
+normal-looking treasure, one small clawed foot peeking out from underneath.
+
+22. Last Gasp Spore (Việt: Bào Tử Hơi Tàn)
+Elements: Water-dominant, air accent (AWW)
+A small bulbous mushroom-like creature with a damp, water-slicked cap
+covered in faintly glowing spore pores, thin wispy tendrils of air-borne
+spore dust constantly drifting off its cap, short stubby legs, a droopy
+sickly-looking but faintly smug expression, its cap slightly swollen and
+straining as if about to burst, a sense of fragile menace.
+
+23. Storm Imp (Việt: Yêu Bão)
+Elements: Air-dominant, fire accent (AAF)
+A small crackling imp made of compressed storm-wind with faint ember sparks
+arcing across its translucent windy body like static discharge, a lithe
+blurred silhouette that seems to flicker in and out of visibility, jagged
+lightning-bolt shaped limbs, glowing yellow-white eyes, caught mid-flicker
+with a triple afterimage showing three rapid strikes, small crackling arcs
+of electricity dancing between its fingertips.

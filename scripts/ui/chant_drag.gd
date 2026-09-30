@@ -47,6 +47,13 @@ func set_pointer(p: Vector2) -> void:
 	_pointer = p
 
 
+## Where the element in the hand is on screen (its centre), for flying it somewhere on release.
+func held_center() -> Vector2:
+	if _held < 0 or _held >= _icons.size():
+		return _pointer
+	return global_position + Vector2(_x[_held] + px / 2.0, px / 2.0)
+
+
 ## inside: dropped over the chant (to = where it lands). Outside: let go away from the chant.
 func external_result() -> Dictionary:
 	return {"inside": _gap >= 0, "to": _gap}
