@@ -151,6 +151,7 @@ func _ready() -> void:
 	_place(_count, Rect2(W - 46.0, 3.0, 40.0, 30.0))
 	_root.add_child(_count)
 	_fit_text()
+	var seals: Array = spell.get("seals", [])
 	var pattern_words := "anything (every Essence is sealed: it wakes on every chant)"
 	if spell.pattern != "":
 		pattern_words = " ".join(Array(spell.pattern.split("")).map(func(c): return "any Essence" if c == "?" else Elements.NAMES.get(c, c)))
@@ -278,7 +279,7 @@ func _build_art() -> void:
 	bg.add_theme_stylebox_override("panel", sb)
 	_place(bg, win)
 	_root.add_child(bg)
-	for ch in spell.pattern:
+	for ch in String(spell.get("full_pattern", spell.pattern)):
 		if CardPip.ICON.has(ch):
 			var ic := TextureRect.new()
 			ic.texture = CardPip.tex("res://assets/card/icons/%s.png" % CardPip.ICON[ch])
@@ -395,7 +396,10 @@ func _build_pips() -> void:
 	_pat = Control.new()
 	_place(_pat, PIPS)
 	_root.add_child(_pat)
-	var n: int = spell.pattern.length()
+	# Sealed Essence (wax-seal upgrades) are still shown, under a purple seal, so the row keeps the full pattern
+	var full: String = spell.get("full_pattern", spell.pattern)
+	var seals: Array = spell.get("seals", [])
+	var n: int = full.length()
 	var d := PIP_D
 	if n > PIP_SLOTS:
 		d = PIPS.size.x / (n + (PIP_GAP / PIP_D) * (n - 1))
@@ -403,7 +407,8 @@ func _build_pips() -> void:
 	fit_orb = d
 	for i in n:
 		# real ElementIcons, so the fight's effects (the chant being sung, fusing) can play on a card's pattern
-		var p := ElementIcon.make(spell.pattern[i], _z(d))
+		var p := ElementIcon.make(full[i], _z(d))
+		p.sealed = i in seals
 		p.size = Vector2(_z(d), _z(d))
 		p.position = Vector2(i * (d + gap), (PIP_D - d) / 2.0) * zoom
 		_pat.add_child(p)

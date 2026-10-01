@@ -130,6 +130,9 @@ func _draw_seal(c: Vector2, r: float) -> void:
 func _draw() -> void:
 	var r := minf(size.x, size.y) / 2.0 - 2.0
 	var c := size / 2.0
+	if sealed:
+		_draw_seal(c, r)
+		return
 	var a := 1.0
 	if ghost:
 		a = 0.28
