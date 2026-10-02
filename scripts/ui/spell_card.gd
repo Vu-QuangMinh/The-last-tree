@@ -1,42 +1,35 @@
 class_name SpellCard
 extends PanelContainer
-## A spell: art, name, category / rarity / special icons, pattern pips, rules text. Shows ×N when the current
+## A spell: name, pattern, rules text, and its category / rarity / special symbols. Shows ×N when the current
 ## chant would fire it, and Silenced / Locked / Used states during a fight.
-## The layout follows docs/Card Template.pdf (coordinates below are in that template's pixels, 250 × 196).
+## A parchment card: the name in a box of the spell's category colour, the pattern orbs under it, the rules in
+## the middle and the symbols along the bottom (coordinates below are in card pixels, 250 × 196).
 
 signal clicked(card: SpellCard)
 
 const W := 250.0
 const H := 196.0
-## The card's background is a radial gradient from CENTER (in the middle) to EDGE (at the border), tinted by what
-## the spell does. The three categories share the same lightness and chroma, so no colour shouts over the others.
+## Category colours (the name box and the frame): Offensive red, Defensive blue, Utility gold.
 const EDGE := {"damage": Color("BB3B30"), "defense": Color("0A6DC8"), "utility": Color("BB8F21")}
-const CENTER := {"damage": Color("E26958"), "defense": Color("3195EC"), "utility": Color("E5B858")}
-const BEIGE := Color(0.885, 0.772, 0.659)
+const PARCHMENT := Color(0.93, 0.87, 0.72)
 const INK := Color(0.1, 0.08, 0.06)
-const CORNER := 8.0
+const RARITY_COLORS := {"common": Color(0.35, 0.3, 0.25), "rare": Color(0.1, 0.35, 0.75), "legendary": Color(0.75, 0.45, 0.0)}
+const CORNER := 10.0
 
-const MAT := Rect2(9.7, 5.0, 87.6, 87.5)  # the art window's frame
-const STRIP := Rect2(89.4, 42.6, 137.4, 35.2)  # the icon strip (its left end tucks under the art window)
-const ICON_ZONE := Rect2(99.0, 42.6, 127.8, 35.2)  # the part of the strip that shows
-const ICON_BOX := Vector2(31.0, 32.7)  # the biggest an icon gets
-const TITLE := Rect2(104.6, 6.0, 110.0, 37.0)
-const PIPS := Rect2(10.2, 97.8, 230.0, 30.0)  # the pattern row
-const PIP_D := 30.0
-const PIP_GAP := 3.1
-const PIP_SLOTS := 7  # more elements than this and the whole row shrinks to fit the width
-const RULES := Rect2(10.2, 133.2, 230.0, 56.5)
-const RULES_PAD := Vector2(6.0, 1.5)
+const TITLE := Rect2(10.0, 6.0, 230.0, 32.0)  # the name box's row (the box hugs the name, centred)
+const PIPS := Rect2(10.0, 44.0, 230.0, 36.0)  # the pattern row, centred
+const PIP_D := 36.0
+const PIP_GAP := 4.0
+const PIP_SLOTS := 6  # more elements than this and the whole row shrinks to fit the width
+const RULES := Rect2(8.0, 86.0, 234.0, 82.0)
+const RULES_PAD := Vector2(4.0, 1.5)
+const ICONS := Rect2(10.0, 170.0, 230.0, 20.0)  # rarity · category along the bottom
 
 const TITLE_FONT := "res://assets/fonts/HamburgerHeaven"  # .ttf / .otf; the theme font is used until it's added
 const RULES_FONT := "res://assets/fonts/SVN-Acherus-Italic"
 
 static var _fonts := {}
-static var _glow_tex := {}
 static var _bold: FontVariation
-static var _art_material: ShaderMaterial
-static var _art_shader_res: Shader
-static var _art_focus_cache := {}
 static var _layer: CanvasLayer
 
 var spell: Dictionary
@@ -58,6 +51,7 @@ var _root: Control
 var _count: Label
 var _rules: RichTextLabel
 var _name_l: Label
+var _name_box: Panel
 var _pat: Control
 ## Sizes picked by _fit_text, in unzoomed units. The hover copy reuses them (fit_from) so it is an exact
 ## enlargement of the card, wrapping its text the same way.
@@ -103,17 +97,6 @@ func _place(c: Control, r: Rect2) -> void:
 	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
-func _beige(r: Rect2, radius: float) -> Panel:
-	var p := Panel.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = BEIGE
-	sb.set_corner_radius_all(_zi(radius))
-	p.add_theme_stylebox_override("panel", sb)
-	_place(p, r)
-	_root.add_child(p)
-	return p
-
-
 func _ready() -> void:
 	custom_minimum_size = Vector2(W, H) * zoom
 	# the magnified copy must never catch the mouse, or the real card loses its hover and its clicks
@@ -123,7 +106,7 @@ func _ready() -> void:
 		mouse_exited.connect(_on_hover.bind(false))
 	var kind: String = spell.kind
 	_box = StyleBoxFlat.new()
-	_box.bg_color = EDGE[kind]
+	_box.bg_color = PARCHMENT
 	_box.set_corner_radius_all(_zi(CORNER))
 	_box.content_margin_left = 0
 	_box.content_margin_right = 0
@@ -136,13 +119,10 @@ func _ready() -> void:
 	_root = Control.new()
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
-	_build_glow(kind)
-	_beige(STRIP, 4.0)
-	_build_icons()
-	_build_art()
 	_build_title()
 	_build_pips()
 	_build_rules()
+	_build_icons()
 	_count = UiTheme.label("", _zi(24), Color(0.75, 0.45, 0.0))
 	_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_count.vertical_alignment = VERTICAL_ALIGNMENT_TOP
@@ -155,6 +135,7 @@ func _ready() -> void:
 	if spell.pattern != "":
 		pattern_words = " ".join(Array(spell.pattern.split("")).map(func(c): return "any Essence" if c == "?" else Elements.NAMES.get(c, c)))
 	var extra := "[color=#9aa89a]%s %s  ·  chant %s[/color]" % [spell.rarity_name, SpellDB.KIND_NAMES[spell.kind], pattern_words]
+	var seals: Array = spell.get("seals", [])
 	if not seals.is_empty():
 		extra += "\n[color=#c79be0]Sealed: %d Essence of its pattern %s no longer needed.[/color]" % [seals.size(), "is" if seals.size() == 1 else "are"]
 	if spell.has("flavor"):
@@ -189,228 +170,70 @@ func _ready() -> void:
 
 # ------------------------------------------------------------------ building
 
-## The background's lighter middle: a radial fade of the CENTER colour to nothing, over the EDGE-coloured card.
-## Stretched over the card it is an ellipse a little taller than wide, reaching the border on every side.
-func _build_glow(kind: String) -> void:
-	if not _glow_tex.has(kind):
-		var g := Gradient.new()
-		var c: Color = CENTER[kind]
-		g.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
-		g.colors = PackedColorArray([c, Color(c, 0.62), Color(c, 0.0)])
-		var t := GradientTexture2D.new()
-		t.gradient = g
-		t.fill = GradientTexture2D.FILL_RADIAL
-		t.fill_from = Vector2(0.5, 0.5)
-		t.fill_to = Vector2(1.03, 0.5)
-		t.width = 128
-		t.height = 144
-		_glow_tex[kind] = t
-	var glow := TextureRect.new()
-	glow.texture = _glow_tex[kind]
-	glow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	glow.stretch_mode = TextureRect.STRETCH_SCALE
-	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	glow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_root.add_child(glow)
-
-
-## Category, rarity and special (Power / Fleeting / Fused) icons, side by side in the strip.
+## Rarity and category in small capitals along the bottom (plus POWER / FLEETING / FUSED), in the rarity's colour.
 func _build_icons() -> void:
-	var icons: Array = []  # [Texture2D or KindGlyph, size in template pixels]
-	var kind: String = spell.kind
-	var paths := ["kind_%s" % kind, "rarity_%s" % spell.rarity]
+	var tags := [spell.rarity_name.to_upper(), SpellDB.KIND_NAMES[spell.kind].to_upper()]
 	if spell.power:
-		paths.append("special_power")
+		tags.append("POWER")
 	if spell.get("fleeting", false):
-		paths.append("special_fleeting")
+		tags.append("FLEETING")
 	if spell.get("fused", false):
-		paths.append("special_fused")
-	for p in paths:
-		var t := CardPip.tex("res://assets/card/icons/%s.png" % p)
-		if t != null:
-			var s := minf(ICON_BOX.x / t.get_width(), ICON_BOX.y / t.get_height())
-			icons.append([t, Vector2(t.get_width(), t.get_height()) * s])
-		elif p.begins_with("kind_"):
-			icons.append([KindGlyph.make(kind, Vector2.ONE), Vector2(28.0, 30.0)])
-	var gap := 6.0
-	var total := gap * (icons.size() - 1)
-	for i in icons:
-		total += i[1].x
-	var shrink := minf(1.0, (ICON_ZONE.size.x - 8.0) / maxf(total, 1.0))
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", _zi(gap * shrink))
-	_place(row, ICON_ZONE)
-	_root.add_child(row)
-	for i in icons:
-		var px: Vector2 = i[1] * shrink * zoom
-		var c: Control
-		if i[0] is Texture2D:
-			var tr := TextureRect.new()
-			tr.texture = i[0]
-			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-			c = tr
-		else:
-			c = i[0]
-		c.custom_minimum_size = px
-		c.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(c)
+		tags.append("FUSED")
+	var l := UiTheme.label(" · ".join(tags), _zi(13), RARITY_COLORS.get(spell.rarity, INK))
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_place(l, ICONS)
+	_root.add_child(l)
 
 
-## The art: assets/card/art/<spell name>.png (256 px, square), filling the window. A fused spell shows the art of
-## its two parents together, split down the middle (see art_window.gdshader); only the drawing is combined, no
-## picture is ever made. Until a spell has its art, its first element stands in.
-func _build_art() -> void:
-	_beige(MAT, 7.0)
-	var win := MAT.grow(-2.0)
-	var art := _art_rect()
-	if art != null:
-		_place(art, win)
-		_root.add_child(art)
-		return
-	var bg := Panel.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.2, 0.17, 0.16)
-	sb.set_corner_radius_all(_zi(6))
-	bg.add_theme_stylebox_override("panel", sb)
-	_place(bg, win)
-	_root.add_child(bg)
-	for ch in spell.pattern:
-		if CardPip.ICON.has(ch):
-			var ic := TextureRect.new()
-			ic.texture = CardPip.tex("res://assets/card/icons/%s.png" % CardPip.ICON[ch])
-			ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			ic.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-			ic.self_modulate = Color(1, 1, 1, 0.85)
-			_place(ic, win.grow(-20.0))
-			_root.add_child(ic)
-			break
-
-
-## The picture for the art window, or null when the spell (or, for a fusion, a parent) has no art yet.
-func _art_rect() -> TextureRect:
-	var names: Array = [spell.name]
-	if spell.get("fused", false) and spell.has("fused_from"):
-		names = spell.fused_from
-	var texes: Array = []
-	for n in names:
-		var t := CardPip.tex(_art_path(n))
-		if t != null:
-			texes.append([n, t])
-	if texes.is_empty():
-		return null
-	var art := TextureRect.new()
-	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	art.stretch_mode = TextureRect.STRETCH_SCALE
-	art.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	art.texture = texes[0][1]
-	if texes.size() == 2:
-		var mat := ShaderMaterial.new()
-		mat.shader = _art_shader()
-		mat.set_shader_parameter("fused", true)
-		mat.set_shader_parameter("tex_b", texes[1][1])
-		mat.set_shader_parameter("focus_a", _art_focus(texes[0][0], texes[0][1]))
-		mat.set_shader_parameter("focus_b", _art_focus(texes[1][0], texes[1][1]))
-		art.material = mat
-	else:
-		if _art_material == null:
-			_art_material = ShaderMaterial.new()
-			_art_material.shader = _art_shader()
-		art.material = _art_material
-	return art
-
-
-## "Ripple+" (upgraded) has the art of "Ripple".
-static func _art_path(spell_name: String) -> String:
-	return "res://assets/card/art/%s.png" % spell_name.trim_suffix("+")
-
-
-static func _art_shader() -> Shader:
-	if _art_shader_res == null:
-		_art_shader_res = load("res://assets/card/art_window.gdshader")
-	return _art_shader_res
-
-
-## Where across a picture (0..1) its subject sits, for centring a fused card's half-width band on it. The
-## pictures are a bright subject on a dark muted background, so each column is weighted by how bright and
-## saturated it is; the answer is the weighted middle, kept 0.25..0.75 so the band always stays inside the
-## picture. Worked out once per picture (a coarse sample, a few thousand pixels) and remembered.
-static func _art_focus(spell_name: String, tex: Texture2D) -> float:
-	var key := spell_name.trim_suffix("+")
-	if _art_focus_cache.has(key):
-		return _art_focus_cache[key]
-	var focus := 0.5
-	var img := tex.get_image()
-	if img != null:
-		if img.is_compressed():
-			img.decompress()
-		var w := img.get_width()
-		var h := img.get_height()
-		var sum := 0.0
-		var wx := 0.0
-		for y in range(0, h, 4):
-			for x in range(0, w, 4):
-				var c := img.get_pixel(x, y)
-				var weight := maxf(c.v - 0.3, 0.0) * (0.35 + c.s)
-				sum += weight
-				wx += weight * float(x) / w
-		if sum > 0.0:
-			focus = clampf(wx / sum, 0.25, 0.75)
-	_art_focus_cache[key] = focus
-	return focus
-
-
+## The name, centred in a small box of the spell's category colour (sized in _fit_text).
 func _build_title() -> void:
-	var col := Color(1, 0.9, 0.5) if spell.get("upgraded", false) else Color.WHITE
-	_name_l = UiTheme.label(spell.name.to_upper(), _zi(22), col)
-	var f := _font(TITLE_FONT)
-	if f == null:
-		# until the title font is added: the theme's font, made a little bolder
-		var fv := FontVariation.new()
-		fv.base_font = _name_l.get_theme_default_font()
-		fv.variation_embolden = 0.5
-		f = fv
-	_name_l.add_theme_font_override("font", f)
-	_name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_name_l.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-	_name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	# at most two lines; a fused spell's long name ends in "…" (its tooltip has the whole name)
-	_name_l.max_lines_visible = 2
+	_name_box = Panel.new()
+	var nbs := StyleBoxFlat.new()
+	nbs.bg_color = EDGE[spell.kind]
+	nbs.border_color = EDGE[spell.kind].darkened(0.45)
+	nbs.set_border_width_all(_zi(1))
+	nbs.set_corner_radius_all(_zi(5))
+	_name_box.add_theme_stylebox_override("panel", nbs)
+	_name_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_name_box)
+	# the name uses the game's own font (easy to read); only the rules text uses the card font
+	_name_l = UiTheme.label(spell.name, _zi(22), Color.WHITE)
+	_name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_name_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_name_l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	# a thin dark edge: the title font has fine strokes that a heavy outline would clog
-	_name_l.add_theme_constant_override("outline_size", _zi(2))
-	_name_l.add_theme_color_override("font_outline_color", Color(EDGE[spell.kind].darkened(0.6), 0.85))
-	_name_l.add_theme_constant_override("line_spacing", 0)
+	_name_l.add_theme_constant_override("outline_size", _zi(4))
+	_name_l.add_theme_color_override("font_outline_color", Color(EDGE[spell.kind].darkened(0.6), 0.9))
 	_place(_name_l, TITLE)
 	_root.add_child(_name_l)
 
 
-## One pip per element of the pattern, left to right. Up to PIP_SLOTS at full size; more than that (a fused
-## spell) and the whole row shrinks to fit its width, the gaps with it.
+## One pip per Essence of the pattern, left to right. Up to PIP_SLOTS at full size; more than that (a fused
+## spell) and the whole row shrinks to fit its width, the gaps with it. Sealed Essence (upgrades) keep their
+## pip, under a purple wax seal.
 func _build_pips() -> void:
 	_pat = Control.new()
 	_place(_pat, PIPS)
 	_root.add_child(_pat)
-	var n: int = spell.pattern.length()
+	var full: String = spell.get("full_pattern", spell.pattern)
+	var seals: Array = spell.get("seals", [])
+	var n: int = full.length()
 	var d := PIP_D
 	if n > PIP_SLOTS:
 		d = PIPS.size.x / (n + (PIP_GAP / PIP_D) * (n - 1))
 	var gap := d * PIP_GAP / PIP_D
 	fit_orb = d
+	var x0 := (PIPS.size.x - (n * d + (n - 1) * gap)) / 2.0
 	for i in n:
 		# real ElementIcons, so the fight's effects (the chant being sung, fusing) can play on a card's pattern
-		var p := ElementIcon.make(spell.pattern[i], _z(d))
+		var p := ElementIcon.make(full[i], _z(d))
+		p.sealed = i in seals
 		p.size = Vector2(_z(d), _z(d))
-		p.position = Vector2(i * (d + gap), (PIP_D - d) / 2.0) * zoom
+		p.position = Vector2(x0 + i * (d + gap), (PIP_D - d) / 2.0) * zoom
 		_pat.add_child(p)
 
 
 func _build_rules() -> void:
-	_beige(RULES, 5.0)
 	var d := RichTextLabel.new()
 	d.bbcode_enabled = true
 	d.fit_content = true
@@ -439,27 +262,23 @@ func _build_rules() -> void:
 	_root.add_child(mid)
 
 
-## The name fits when its longest word is not wider than the space and the wrapped lines are not taller than it.
-func _name_fits(font: Font, fs: int) -> bool:
-	var text: String = _name_l.text
-	for word in text.split(" "):
-		if font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, _zi(fs)).x > _z(TITLE.size.x):
-			return false
-	return font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, _z(TITLE.size.x), _zi(fs)).y <= _z(TITLE.size.y - 2.0)
-
-
-## The name shrinks (and wraps to a second line) to fit its space; the rules text takes the biggest size
-## (21 down to 10) that fits its box, so a wordy card (a fused one) is never cut off and a short one is not tiny.
+## The name shrinks to fit its row on one line; its coloured box then hugs it. The rules text takes the biggest
+## size (21 down to 10) that fits its space, so a wordy card (a fused one) is never cut off and a short one is
+## not tiny.
 func _fit_text() -> void:
 	var font := _name_l.get_theme_font("font")
 	var name_fs := 22
+	var max_w := TITLE.size.x - 24.0
 	if fit_from:
 		name_fs = fit_name_fs
 	else:
-		while name_fs > 11 and not _name_fits(font, name_fs):
+		while name_fs > 11 and font.get_string_size(_name_l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, _zi(name_fs)).x > _z(max_w):
 			name_fs -= 1
 	fit_name_fs = name_fs
 	_name_l.add_theme_font_size_override("font_size", _zi(name_fs))
+	var tw := minf(font.get_string_size(_name_l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, _zi(name_fs)).x / zoom, max_w)
+	var bw := tw + 18.0
+	_place(_name_box, Rect2(TITLE.position.x + (TITLE.size.x - bw) / 2.0, TITLE.position.y + 2.0, bw, TITLE.size.y - 4.0))
 	var room := _z(RULES.size.y - 2.0 * RULES_PAD.y)
 	# measured on the real text box (coloured keywords and line spacing included), at the box's text width
 	_rules.size = Vector2(_z(RULES.size.x - 2.0 * RULES_PAD.x), 0)
@@ -607,9 +426,9 @@ func refresh() -> void:
 		return
 	var n := charges if charges > 0 else fires
 	_count.text = ("×%d" % n) if n > 0 and state == "" else ""
-	# the frame is a darker shade of the spell's function colour; gold when the chant matches it or it's alive
-	var border: Color = EDGE[spell.kind].darkened(0.3)
-	var bw := 2
+	# the frame is the spell's category colour; gold when the chant matches it or it's alive
+	var border: Color = EDGE[spell.kind].darkened(0.15)
+	var bw := 3
 	if fires > 0 and state == "":
 		border = Color(1, 0.78, 0.2)
 		bw = 4

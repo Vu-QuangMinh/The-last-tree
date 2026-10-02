@@ -229,9 +229,10 @@ func _ready() -> void:
 	var sv := VBoxContainer.new()
 	sp.add_child(sv)
 	sv.add_child(UiTheme.label("Your bag of Essence  (click or drag, or press F / W / A)", 15, UiTheme.MUTED))
-	_stock_row = HFlowContainer.new()
-	_stock_row.add_theme_constant_override("h_separation", 6)
-	_stock_row.custom_minimum_size = Vector2(1070, 0)
+	# a plain area, not a layout box: each icon is placed (and slides) by _refresh_stock itself, sorted by element.
+	# A flow container would put them back in the order they were added, leaving holes where icons are leaving.
+	_stock_row = Control.new()
+	_stock_row.custom_minimum_size = Vector2(BAG_W, BAG_PX)
 	sv.add_child(_stock_row)
 	add_child(sp)
 	# player: name, your statuses (bright badges) on top of the HP bar, your bottles under it
@@ -631,6 +632,30 @@ func _fly(s: Dictionary, from: Vector2, to: Vector2, from_px: float, to_px: floa
 		_land(uid))
 
 
+## The bag never keeps a hole: a flight that should have landed long ago stops hiding its element, and an icon
+## left away from its spot with no slide running (an interrupted animation) goes home.
+func _heal_bag() -> void:
+	var now := Time.get_ticks_msec()
+	var stale := false
+	for uid in _flying.keys():
+		if now - int(_flying[uid]) > int(FLY_TIME * 1000.0) + 400:
+			_flying.erase(uid)
+			stale = true
+	if stale:
+		_refresh_stock()
+	for uid in _bag_icons:
+		var ic: Control = _bag_icons[uid]
+		if not is_instance_valid(ic) or not _bag_target.has(uid):
+			continue
+		var goal: Vector2 = _bag_target[uid]
+		var sliding: bool = ic.has_meta("slide") and ic.get_meta("slide") != null and (ic.get_meta("slide") as Tween).is_valid() and (ic.get_meta("slide") as Tween).is_running()
+		if not sliding and ic.position.distance_squared_to(goal) > 1.0:
+			ic.position = goal
+			ic.set_meta("goal", goal)
+		if not _flying.has(uid) and ic.modulate.a < 0.99:
+			ic.modulate.a = 1.0
+
+
 ## The element that just arrived gives a small bounce.
 func _land(uid: int) -> void:
 	var node: Control = _bag_icons.get(uid)
@@ -900,7 +925,7 @@ func _end_build_drag() -> void:
 		back = p.stock[chant_idx[src.i]]
 		chant_idx.remove_at(src.i)
 		Audio.play("elem_remove")
-		_flying[back.uid] = true
+		_flying[back.uid] = Time.get_ticks_msec()
 	_chant_changed()
 	if not back.is_empty():
 		_fly(back, held_at, _bag_target_center(back.uid), held_px, BAG_PX)
@@ -923,7 +948,7 @@ func _add_stock_index(i: int) -> void:
 	var from := _bag_center(s.uid)
 	chant_idx.append(i)
 	Audio.play("elem_pickup")
-	_flying[s.uid] = true
+	_flying[s.uid] = Time.get_ticks_msec()
 	_bag_delay = FLY_TIME * 0.4
 	_chant_changed()
 	_fly(s, from, _chant_slot_center(chant_idx.size() - 1), BAG_PX, _chant_px())
@@ -937,7 +962,7 @@ func _remove_from_chant(pos: int) -> void:
 	var px := _chant_px()
 	chant_idx.remove_at(pos)
 	Audio.play("elem_remove")
-	_flying[s.uid] = true
+	_flying[s.uid] = Time.get_ticks_msec()
 	_chant_changed()  # the bag makes room for it; its icon waits there, unseen, until this one lands
 	_fly(s, from, _bag_target_center(s.uid), px, BAG_PX)
 
@@ -966,7 +991,7 @@ func _clear_chant() -> void:
 	chant_idx.clear()
 	Audio.play("elem_remove")
 	for g in going:
-		_flying[g[0].uid] = true
+		_flying[g[0].uid] = Time.get_ticks_msec()
 	_chant_changed()
 	for g in going:
 		_fly(g[0], g[1], _bag_target_center(g[0].uid), px, BAG_PX)
@@ -1526,6 +1551,7 @@ func _on_enemy_clicked(v: EnemyView) -> void:
 
 
 func _process(_d: float) -> void:
+	_heal_bag()
 	# idle while it's your move: the Seedling pops up once to help (not in the tutorial, which has its coach)
 	if not busy and not fight.over and not help_override.is_valid() and _pause_overlay == null:
 		_idle += _d
