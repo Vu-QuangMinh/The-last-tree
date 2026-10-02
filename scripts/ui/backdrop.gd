@@ -10,9 +10,44 @@ var _t := 0.0
 const SKY := {1: [Color(0.1, 0.16, 0.14), Color(0.28, 0.36, 0.26)], 2: [Color(0.12, 0.08, 0.14), Color(0.34, 0.22, 0.3)], 3: [Color(0.08, 0.1, 0.16), Color(0.4, 0.48, 0.58)]}
 
 
+var _art_node: TextureRect  # New theme: the painted picture (with its wind shader)
+
+## New theme: a gentle wind. Trees and bushes lean and flutter a little; the ground at the bottom (the log) stays put.
+const WIND_SHADER := """
+shader_type canvas_item;
+uniform float amp = 0.0022;
+uniform float ground = 0.80;
+void fragment() {
+	float w = 1.0 - smoothstep(0.42, ground, UV.y);
+	float gust = sin(TIME * 1.05 + UV.x * 5.0 + UV.y * 2.0);
+	float flutter = sin(TIME * 2.2 + UV.x * 17.0 + UV.y * 9.0) * 0.35;
+	float sway = (gust + flutter) * amp * w;
+	float lift = sin(TIME * 0.9 + UV.x * 7.0) * amp * 0.25 * w;
+	COLOR = texture(TEXTURE, UV + vec2(sway, lift));
+}
+"""
+
+
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var art := UiSkin.tex(ART.get(act, ""))
+	if art != null:
+		_art_node = TextureRect.new()
+		_art_node.texture = art
+		_art_node.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_art_node.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		_art_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_art_node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var sh := Shader.new()
+		sh.code = WIND_SHADER
+		var mat := ShaderMaterial.new()
+		mat.shader = sh
+		_art_node.material = mat
+		add_child(_art_node)
+		var fx := BackdropFx.new()
+		fx.act = act
+		add_child(fx)
 
 
 func _process(d: float) -> void:
@@ -20,9 +55,15 @@ func _process(d: float) -> void:
 	queue_redraw()
 
 
+## New theme: a painted picture for each act
+const ART := {1: "bg_act1_dusk_forest", 2: "bg_act2_rot_swamp", 3: "bg_act3_winter_night"}
+
+
 func _draw() -> void:
 	var w := size.x
 	var h := size.y
+	if _art_node != null:
+		return  # the painted picture is its own node
 	var sky: Array = SKY.get(act, SKY[1])
 	for i in 24:
 		var y0 := h * i / 24.0

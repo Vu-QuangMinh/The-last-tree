@@ -55,6 +55,9 @@ class ArtifactChip extends PanelContainer:
 	var id := ""
 	var charged := false
 	var _sb: StyleBoxFlat
+	var art_normal: StyleBoxTexture  # New theme: the slot art (null in Default)
+	var art_hover: StyleBoxTexture
+	var art_charged: StyleBoxTexture
 	var _base_border: Color
 	var _base_tip := ""
 	var _t := 0.0
@@ -73,8 +76,19 @@ class ArtifactChip extends PanelContainer:
 		sb.content_margin_top = 2
 		sb.content_margin_bottom = 2
 		c.add_theme_stylebox_override("panel", sb)
+		var slot := UiSkin.box("artifact_slot_upgraded" if plus else "artifact_slot_normal", [0, 0, 0, 0], [8, 8, 8, 8])
+		if slot != null:
+			c.art_normal = slot
+			c.art_hover = UiSkin.box("artifact_slot_hover", [0, 0, 0, 0], [8, 8, 8, 8])
+			c.art_charged = UiSkin.box("artifact_slot_charged", [0, 0, 0, 0], [8, 8, 8, 8])
+			c.add_theme_stylebox_override("panel", slot)
+			c.custom_minimum_size = Vector2(56, 56)
+			c.mouse_entered.connect(func(): if not c.charged: c.add_theme_stylebox_override("panel", c.art_hover))
+			c.mouse_exited.connect(func(): if not c.charged: c.add_theme_stylebox_override("panel", c.art_normal))
 		c.mouse_filter = Control.MOUSE_FILTER_STOP
 		var l := UiTheme.label(a.get("icon", "◆"), 28, Color.WHITE)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		c.add_child(l)
 		var tier: String = Artifacts.TIER_NAMES.get(a.get("tier", "common"), "")
@@ -92,6 +106,8 @@ class ArtifactChip extends PanelContainer:
 			return
 		charged = on
 		_t = 0.0
+		if art_charged != null:
+			add_theme_stylebox_override("panel", art_charged if on else art_normal)
 		if not on:
 			_sb.border_color = _base_border
 			_sb.shadow_size = 0

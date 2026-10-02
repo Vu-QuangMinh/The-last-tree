@@ -20,6 +20,8 @@ func run(t: SceneTree) -> void:
 	save.use_test_file("user://shots_save.json")
 	save.data.codex = ["ashling", "gale_sprite", "stone_knight", "woodcutter", "puddle_slime"]
 	save.data.seedlings = 85
+	if OS.get_environment("SHOT_THEME") != "":
+		save.data.settings["theme"] = OS.get_environment("SHOT_THEME")  # "new" renders the New theme
 	var gd = root.get_node("GameData")
 	var run := RunState.new()
 	run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
@@ -39,6 +41,11 @@ func run(t: SceneTree) -> void:
 	await _shot(ms, "02b_event")
 	var menu := MenuScreen.new()
 	await _shot(menu, "01_menu")
+	for act in [2, 3]:
+		var bd := Backdrop.new()
+		bd.act = act
+		await _wait(40)
+		await _shot(bd, "01b_bg_act%d" % act)
 	run.move_to(run.choices()[0])
 	var m := MapScreen.new()
 	m.setup(run)
@@ -69,6 +76,33 @@ func run(t: SceneTree) -> void:
 		fs.chant_idx.append(i)
 	fs._refresh_all()
 	await _shot(fs, "04_fight_preview", false, true)
+	await _check_bag(fs)
+	await _shot(fs, "04b_bag_after_moves", false, true)
+	f.player.shield = 20.0
+	f.player.hp = 40.0
+	fs._refresh_all()
+	await _wait(30)
+	await _shot(fs, "04c_shield", false, true)
+	fs._float_text("-12", Vector2(900, 300), Color.WHITE)
+	fs._float_text("+5", Vector2(1200, 300), Color.WHITE)
+	await _wait(6)
+	await _shot(fs, "04d_float_numbers", false, true)
+	fs._open_pause_menu()
+	await _wait(8)
+	await _shot(fs, "04e_pause", false, true)
+	fs._close_pause_menu()
+	for kind in ["perfect", "defeat"]:
+		fs._result_banner(kind)
+		await tree.create_timer(0.62).timeout
+		await _shot(fs, "04f_%s_1_banner" % kind, false, true)
+		await tree.create_timer(0.42).timeout
+		await _shot(fs, "04f_%s_2_text" % kind, false, true)
+		await tree.create_timer(1.0).timeout
+		await _shot(fs, "04f_%s_3_end" % kind, false, true)
+		await tree.create_timer(1.6).timeout
+	f.player.shield = 0.0
+	f.player.hp = 50.0
+	fs._refresh_all()
 	# after the chant: spells alive, arrow out from Fire Ball toward the middle enemy
 	fs.phase = "spells"
 	f.chant = ["F", "F", "W", "A"]
@@ -203,6 +237,32 @@ func run(t: SceneTree) -> void:
 func _wait(n: int) -> void:
 	for i in n:
 		await tree.process_frame
+
+
+## Moves elements bag <-> chant (click style, mid-flight included) and checks that the bag's icons always end up
+## packed on its grid with no gaps and no invisible leftovers.
+func _check_bag(fs: FightScreen) -> void:
+	var seq := [4, 5, 6, 4, 7, 5]  # stock indices: the first toggle of an index adds it to the chant, the second removes it
+	var bad := 0
+	for round in 2:
+		for i in seq:
+			fs._toggle_stock(i)
+			await _wait(round * 12 + 3)  # round 0: quick successive clicks, round 1: let each flight finish
+		await _wait(40)
+		var spots := []
+		for uid in fs._bag_icons:
+			var ic: Control = fs._bag_icons[uid]
+			if not is_instance_valid(ic) or ic.is_queued_for_deletion():
+				continue
+			if ic.modulate.a < 0.99 or ic.position.distance_to(fs._bag_target[uid]) > 0.5:
+				bad += 1
+				print("BAG BAD: icon uid=%d alpha=%.2f at %s want %s" % [uid, ic.modulate.a, ic.position, fs._bag_target[uid]])
+			spots.append(ic.position)
+		var want := fs.fight.player.stock.size() - fs.chant_idx.size()
+		if spots.size() != want:
+			bad += 1
+			print("BAG BAD: %d icons for %d bag elements" % [spots.size(), want])
+	print("BAG CHECK: %s" % ("OK" if bad == 0 else "%d problems" % bad))
 
 
 func _shot(c: Control, name: String, add := true, keep := false) -> void:

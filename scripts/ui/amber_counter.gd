@@ -20,7 +20,8 @@ func _ready() -> void:
 	sb.content_margin_right = 16
 	sb.content_margin_top = 4
 	sb.content_margin_bottom = 4
-	add_theme_stylebox_override("panel", sb)
+	var pill := UiSkin.box("amber_counter_pill", [22, 20, 22, 20], [18, 4, 24, 6])
+	add_theme_stylebox_override("panel", pill if pill != null else sb)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	tooltip_text = Keywords.tooltip("Amber", "Your money for this run. Spend it at the merchant and in events; fights give more.")
 	var h := HBoxContainer.new()
@@ -28,7 +29,7 @@ func _ready() -> void:
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(h)
 	_gem = Control.new()
-	_gem.custom_minimum_size = Vector2(34, 36)
+	_gem.custom_minimum_size = Vector2(27, 29) if UiSkin.tex("icon_amber") != null else Vector2(34, 36)
 	_gem.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_gem.draw.connect(_draw_gem)
 	h.add_child(_gem)
@@ -41,6 +42,8 @@ func _ready() -> void:
 
 ## An amber drop: warm orange with a darker rim, a bright highlight and a tiny trapped leaf.
 func _draw_gem() -> void:
+	if UiSkin.draw_fit(_gem, "icon_amber", _gem.size / 2.0, 27.0):  # New theme: 80% of the old 34 px
+		return
 	var c := _gem.size / 2.0 + Vector2(0, 1)
 	var r := 14.0
 	var pts := PackedVector2Array()

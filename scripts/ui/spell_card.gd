@@ -10,6 +10,7 @@ const W := 250.0
 const H := 196.0
 ## The card's background is a radial gradient from CENTER (in the middle) to EDGE (at the border), tinted by what
 ## the spell does. The three categories share the same lightness and chroma, so no colour shouts over the others.
+const ORBIT_COLOR := {"damage": Color(1.0, 0.36, 0.3), "defense": Color(0.4, 0.72, 1.0), "utility": Color(1.0, 0.9, 0.3)}
 const EDGE := {"damage": Color("BB3B30"), "defense": Color("0A6DC8"), "utility": Color("BB8F21")}
 const CENTER := {"damage": Color("E26958"), "defense": Color("3195EC"), "utility": Color("E5B858")}
 const BEIGE := Color(0.885, 0.772, 0.659)
@@ -22,6 +23,7 @@ const ICON_ZONE := Rect2(99.0, 42.6, 127.8, 35.2)  # the part of the strip that 
 const ICON_BOX := Vector2(31.0, 32.7)  # the biggest an icon gets
 const TITLE := Rect2(104.6, 6.0, 110.0, 37.0)
 const PIPS := Rect2(10.2, 97.8, 230.0, 30.0)  # the pattern row
+const VEIL_PX_PER_PT := 4.0  # the status icons (card_overlay_*) are exported at 4 px per card pixel
 const PIP_D := 30.0
 const PIP_GAP := 3.1
 const PIP_SLOTS := 7  # more elements than this and the whole row shrinks to fit the width
@@ -69,6 +71,8 @@ var _state: Label
 var _lock_row: HBoxContainer
 var _box: StyleBoxFlat
 var _shade: Panel
+var _veil: TextureRect  # New theme: the painted overlay for Silenced / Locked / Used / Charged
+var _count_art: HBoxContainer  # New theme: the ×N badge in painted digits
 var _orbit: OrbitSpark  # pending: the chant you're building will wake this spell
 
 
@@ -150,6 +154,12 @@ func _ready() -> void:
 	_count.add_theme_color_override("font_outline_color", Color(1, 0.95, 0.75))
 	_place(_count, Rect2(W - 46.0, 3.0, 40.0, 30.0))
 	_root.add_child(_count)
+	if UiSkin.tex("num_times") != null:
+		_count_art = HBoxContainer.new()
+		_count_art.alignment = BoxContainer.ALIGNMENT_END
+		_count_art.add_theme_constant_override("separation", _zi(1))
+		_place(_count_art, Rect2(W - 90.0, 3.0, 80.0, 28.0))
+		_root.add_child(_count_art)
 	_fit_text()
 	var seals: Array = spell.get("seals", [])
 	var pattern_words := "anything (every Essence is sealed: it wakes on every chant)"
@@ -169,7 +179,18 @@ func _ready() -> void:
 	_shade.add_theme_stylebox_override("panel", shade_box)
 	_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_shade)
+	# New theme: a status icon (Silenced / Locked / Used / Charged) sits on the art window, at the size it was drawn
+	var veil_layer := Control.new()
+	veil_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(veil_layer)
+	_veil = TextureRect.new()
+	_veil.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_veil.stretch_mode = TextureRect.STRETCH_SCALE
+	_veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_veil.visible = false
+	veil_layer.add_child(_veil)
 	_orbit = OrbitSpark.new()
+	_orbit.color = ORBIT_COLOR.get(spell.kind, Color(1.0, 0.9, 0.3))  # the spark takes the card's colour
 	_orbit.zoom = zoom
 	_orbit.margins = [0.0, 0.0, 0.0, 0.0]
 	_orbit.visible = false
@@ -425,8 +446,16 @@ func _build_rules() -> void:
 	d.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# the game's own text colours: dark ink, keywords in their parchment shades
 	d.add_theme_color_override("default_color", INK)
-	var rf := _font(RULES_FONT)
-	if rf != null:
+	var rf := UiTheme.cut("oblique")  # the rules are italic: the oblique cut of the chosen font, bold oblique for bold
+	var rb := UiTheme.cut("boldoblique")
+	if rf != null and rb != null:
+		d.add_theme_font_override("normal_font", rf)
+		d.add_theme_font_override("italics_font", rf)
+		d.add_theme_font_override("bold_font", rb)
+		d.add_theme_font_override("bold_italics_font", rb)
+	else:
+		rf = _font(RULES_FONT)
+	if rf != null and rb == null:
 		if _bold == null:
 			_bold = FontVariation.new()
 			_bold.base_font = rf
@@ -497,6 +526,8 @@ func _on_hover(on: bool) -> void:
 	if not on and is_visible_in_tree() and get_global_rect().has_point(get_global_mouse_position()):
 		return
 	_hover = on
+	if on:
+		Audio.play("ui_hover", -8.0)
 	if is_instance_valid(_zoom):
 		_zoom.queue_free()
 		_zoom = null
@@ -612,18 +643,37 @@ func refresh() -> void:
 		return
 	var n := charges if charges > 0 else fires
 	_count.text = ("×%d" % n) if n > 0 and state == "" else ""
+	if _count_art != null:
+		_count.text = ""
+		if n > 0 and state == "":
+			UiSkin.fill_number(_count_art, "×%d" % n, _z(26), false, 0.62, true)  # small ×, bigger number, bottoms level
+		else:
+			for c in _count_art.get_children():
+				c.queue_free()
 	# the frame is a darker shade of the spell's function colour; gold when the chant matches it or it's alive
 	var border: Color = EDGE[spell.kind].darkened(0.3)
 	var bw := 2
+	var glow: Color = ORBIT_COLOR.get(spell.kind, Color(1.0, 0.9, 0.3))  # the spark's colour, so frame and spark match
 	if fires > 0 and state == "":
-		border = Color(1, 0.78, 0.2)
+		border = glow
 		bw = 4
 	if charges > 0:
-		border = Color(1, 0.85, 0.25)
+		border = glow.lightened(0.1)
 		bw = 5
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if charges > 0 else Control.CURSOR_ARROW
 	_box.border_color = border
 	_box.set_border_width_all(_zi(bw))
+	var veil_name := ""
+	if state != "":
+		veil_name = "card_overlay_" + state
+	elif charges > 0:
+		veil_name = "card_overlay_charged"
+	var veil_tex := UiSkin.tex(veil_name) if veil_name != "" else null
+	_veil.texture = veil_tex
+	_veil.visible = veil_tex != null
+	if veil_tex != null:  # the icons are cut at 4 px per card pixel; centred on the art window
+		_veil.size = veil_tex.get_size() / VEIL_PX_PER_PT * zoom
+		_veil.position = (MAT.get_center() * zoom) - _veil.size / 2.0
 	modulate = Color(1, 1, 1, 0.45) if state == "used" else Color.WHITE
 	if is_instance_valid(_zoom):
 		modulate.a = 0.0  # its magnified copy is showing instead

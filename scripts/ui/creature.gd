@@ -63,10 +63,11 @@ func _draw() -> void:
 	var body := tint.lerp(Color.WHITE, flash)
 	if dead:
 		body = Color(0.2, 0.2, 0.2, 0.4)
-	# shadow
-	draw_set_transform(Vector2(c.x, size.y * 0.93), 0, Vector2(1, 0.25))
-	draw_circle(Vector2.ZERO, s * 0.9, Color(0, 0, 0, 0.35))
-	draw_set_transform(Vector2.ZERO)
+	# shadow (the New theme stands it on a painted stump instead)
+	if UiSkin.tex("enemy_stand") == null:
+		draw_set_transform(Vector2(c.x, size.y * 0.93), 0, Vector2(1, 0.25))
+		draw_circle(Vector2.ZERO, s * 0.9, Color(0, 0, 0, 0.35))
+		draw_set_transform(Vector2.ZERO)
 	var eye_y := -s * 0.15
 	match shape:
 		0:  # blob

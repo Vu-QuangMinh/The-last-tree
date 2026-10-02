@@ -9,8 +9,13 @@ var _preview_rows: Array = []  # [{category, tracks, opt, btn}]
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	theme = UiTheme.get_theme()
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	_build()
+
+
+func _build() -> void:
+	theme = UiTheme.get_theme()
+	_preview_rows.clear()
 	var bg := ColorRect.new()
 	bg.color = Color(0.03, 0.05, 0.04, 0.97)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -28,20 +33,132 @@ func _ready() -> void:
 	panel.add_child(v)
 	var top := HBoxContainer.new()
 	v.add_child(top)
-	var t := UiTheme.label("Settings", 34, Color.WHITE)
+	var t := UiTheme.heading("Settings", 34, Color.WHITE)
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(t)
-	top.add_child(UiTheme.button("Close  (Esc)", func(): closed.emit(), 18))
-	v.add_child(UiTheme.label("Volume", 22, UiTheme.ACCENT))
+	top.add_child(UiTheme.button(UiTheme.hk("Close", "Esc"), func(): closed.emit(), 18))
+	v.add_child(UiTheme.heading("Look", 22, UiTheme.ACCENT))
+	v.add_child(_theme_row())
+	v.add_child(_font_row())
+	v.add_child(_hotkey_row())
+	v.add_child(UiTheme.heading("Volume", 22, UiTheme.ACCENT))
 	v.add_child(_volume_row("Overall", Audio.overall_level, func(x): Audio.set_overall_level(x); Audio.play("ui_click")))
 	v.add_child(_volume_row("Sound", Audio.sfx_level, func(x): Audio.set_sfx_level(x); Audio.play("ui_click")))
 	v.add_child(_volume_row("Music", Audio.music_level, func(x): Audio.set_music_level(x)))
-	v.add_child(UiTheme.label("Music tracks", 22, UiTheme.ACCENT))
+	v.add_child(UiTheme.heading("Music tracks", 22, UiTheme.ACCENT))
 	v.add_child(_track_row("Map music", "map"))
 	v.add_child(_track_row("Main Menu music", "menu"))
 	v.add_child(_track_row("Fight music", "fight"))
 	v.add_child(_track_row("Boss music", "boss"))
-	Audio.preview_changed.connect(_on_preview_changed)
+	if not Audio.preview_changed.is_connected(_on_preview_changed):
+		Audio.preview_changed.connect(_on_preview_changed)
+
+
+## Theme: Default (everything drawn in code) or New (the hand-drawn art). Picking one rebuilds this screen in it;
+## screens opened afterwards use it too.
+func _theme_row() -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	var l := UiTheme.label("Theme", 18)
+	l.custom_minimum_size = Vector2(160, 0)
+	row.add_child(l)
+	var opt := OptionButton.new()
+	opt.custom_minimum_size = Vector2(280, 0)
+	var current: String = SaveManager.setting("theme", "default")
+	for i in UiSkin.OPTIONS.size():
+		opt.add_item(UiSkin.LABELS[i])
+		if UiSkin.OPTIONS[i] == current:
+			opt.select(i)
+	opt.item_selected.connect(func(i):
+		Audio.play("ui_click")
+		UiSkin.set_theme(UiSkin.OPTIONS[i])
+		_rebuild.call_deferred())
+	row.add_child(opt)
+	return row
+
+
+## Font: Futura or Acherus for the whole game. Picking one rebuilds this screen in it; screens opened afterwards use it too.
+func _font_row() -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	var l := UiTheme.label("Font", 18)
+	l.custom_minimum_size = Vector2(160, 0)
+	row.add_child(l)
+	var opt := OptionButton.new()
+	opt.custom_minimum_size = Vector2(280, 0)
+	var current := UiTheme.font_choice()
+	for i in UiTheme.FONT_OPTIONS.size():
+		opt.add_item(UiTheme.FONT_LABELS[i])
+		if UiTheme.FONT_OPTIONS[i] == current:
+			opt.select(i)
+	opt.item_selected.connect(func(i):
+		Audio.play("ui_click")
+		SaveManager.set_setting("font", UiTheme.FONT_OPTIONS[i])
+		UiTheme.reset()
+		_rebuild.call_deferred())
+	row.add_child(opt)
+	return row
+
+
+## Show Hotkey: a tick box (Artifact Slot Hover as the frame, Card Overlay Used as the tick in the New theme).
+## Off = button texts lose their key: "Chant  (Enter)" becomes "Chant". Screens opened afterwards follow it.
+func _hotkey_row() -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	var on: bool = SaveManager.setting("show_hotkeys", true)
+	var frame := UiSkin.tex("artifact_slot_hover")
+	var tick := UiSkin.tex("card_overlay_used")
+	if frame == null or tick == null:
+		var cb := CheckBox.new()
+		cb.text = "Show Hotkey"
+		cb.button_pressed = on
+		cb.toggled.connect(func(v): SaveManager.set_setting("show_hotkeys", v))
+		row.add_child(cb)
+		return row
+	var box := Control.new()
+	box.custom_minimum_size = Vector2(44, 44)
+	box.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var fr := TextureRect.new()
+	fr.texture = frame
+	fr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	fr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	fr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(fr)
+	var ck := TextureRect.new()
+	ck.texture = tick
+	ck.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ck.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	ck.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	ck.offset_left = 9
+	ck.offset_top = 9
+	ck.offset_right = -9
+	ck.offset_bottom = -9
+	ck.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ck.visible = on
+	box.add_child(ck)
+	var label := UiTheme.label("Show Hotkey", 18)
+	label.mouse_filter = Control.MOUSE_FILTER_STOP
+	label.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var toggle := func(ev: InputEvent):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			var now: bool = not SaveManager.setting("show_hotkeys", true)  # (read it each time: a lambda keeps its own copy of `on`)
+			ck.visible = now
+			SaveManager.set_setting("show_hotkeys", now)
+			Audio.play("ui_click")
+	box.gui_input.connect(toggle)
+	label.gui_input.connect(toggle)
+	row.add_child(box)
+	row.add_child(label)
+	return row
+
+
+func _rebuild() -> void:
+	for c in get_children():
+		c.queue_free()
+		remove_child(c)
+	_build()
 
 
 func _volume_row(label_text: String, start: float, on_change: Callable) -> Control:

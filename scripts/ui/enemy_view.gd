@@ -15,6 +15,7 @@ var _hp_row: HFlowContainer
 var _status: RichTextLabel
 var _skull: Label
 var _ring: Panel
+var _marker: TextureRect  # New theme: the target reticle that replaces the ring
 var targetable := false
 var targeted := false
 var move_mode := false
@@ -54,6 +55,29 @@ func setup(e: EnemyState, f: Fight) -> void:
 	_ring.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(_ring)
+	var stand := UiSkin.tex("enemy_stand")
+	if stand != null:  # New theme: it stands on a painted stump (behind the creature)
+		var sr := TextureRect.new()
+		sr.texture = stand
+		sr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		sr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		sr.position = Vector2(25, 105)
+		sr.size = Vector2(250, 250.0 * stand.get_height() / stand.get_width())
+		sr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(sr)
+	var reticle := UiSkin.tex("target_marker")
+	if reticle != null:
+		_ring.hide()
+		_marker = TextureRect.new()
+		_marker.texture = reticle
+		_marker.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_marker.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		_marker.size = Vector2(160, 160)
+		_marker.position = Vector2(70, 62)
+		_marker.pivot_offset = Vector2(80, 80)
+		_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_marker.visible = false
+		holder.add_child(_marker)  # behind the creature: it stands in front of its reticle
 	creature = Creature.new()
 	creature.setup(e)
 	creature.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -84,6 +108,14 @@ func setup(e: EnemyState, f: Fight) -> void:
 	_status.add_theme_color_override("default_color", Color(0.85, 0.8, 1))
 	add_child(_status)
 	refresh({})
+
+
+## "Burn 2" / "Poison 3" / "Frozen": in the New theme the painted icon goes in front of the word.
+func _status_bbcode(text: String) -> String:
+	var art: String = {"Burn": "intent_burn", "Poison": "intent_poison", "Frozen": "intent_freeze"}.get(text.get_slice(" ", 0), "")
+	if art != "" and UiSkin.tex(art) != null:
+		return "[img=22]%s%s.png[/img] %s" % [UiSkin.DIR, art, Keywords.colorize(text)]
+	return Keywords.colorize(text)
 
 
 func _gui_input(ev: InputEvent) -> void:
@@ -151,10 +183,15 @@ func refresh(preview: Dictionary) -> void:
 	var st := e.describe_statuses()
 	for p in e.def.get("passives", []):
 		st.append(EnemyDefs.PASSIVE_TEXT[p].get_slice(":", 0))
-	_status.text = "[center]" + Keywords.colorize(" · ".join(st.map(func(s): return s.get_slice(" (", 0)))) + "[/center]"
+	_status.text = "[center]" + " · ".join(st.map(func(s): return _status_bbcode(s.get_slice(" (", 0)))) + "[/center]"
 	tooltip_text = _tooltip()
-	_ring.visible = targetable or move_mode or pick_mode
+	_ring.visible = (targetable or move_mode or pick_mode) and _marker == null
 	_ring.modulate = Color(1, 1, 1, 1.0 if targeted or move_mode or pick_mode else 0.35)
+	if _marker != null:
+		var lit := targeted or move_mode or pick_mode
+		_marker.visible = targetable or move_mode or pick_mode
+		_marker.modulate.a = 1.0 if lit else 0.4
+		_marker.scale = Vector2.ONE if lit else Vector2(0.85, 0.85)
 	_name.add_theme_color_override("font_color", Color(1, 0.9, 0.4) if targeted else Color.WHITE)
 
 

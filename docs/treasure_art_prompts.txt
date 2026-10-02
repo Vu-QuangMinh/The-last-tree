@@ -1,0 +1,28 @@
+Treasure Card Frame: An empty rounded rectangle frame for a treasure card, dark wood-brown fill with a thin warm gold inner rim and a thick dark-brown outline, small rounded corners, a faint wood-grain hint only, nothing inside, identical corners and plain straight edges so it can be stretched, portrait shape about 11 to 10.
+Treasure Card Frame Hover: The same empty dark wood treasure card frame but the gold inner rim glows brightly and a soft warm glow surrounds the outer edge, nothing inside, identical corners and plain straight edges so it can be stretched, portrait shape about 11 to 10.
+Treasure Card Frame Cursed: The same empty treasure card frame but the wood is darker and reddish-purple with a thin crimson inner rim and a faint sickly red glow along the edge, small cracks near the corners, nothing inside, identical corners and plain straight edges so it can be stretched, portrait shape about 11 to 10.
+Medal Ring Common: An empty round medallion ring in soft cream-white metal with a thick dark-brown outline and a dark brown disc in the middle, a small shine on the upper left, nothing inside, square image.
+Medal Ring Rare: An empty round medallion ring in bright sky blue metal with a thick dark-brown outline and a dark brown disc in the middle, a small shine on the upper left, nothing inside, square image.
+Medal Ring Legendary: An empty round medallion ring in warm gold with a thick dark-brown outline and a dark brown disc in the middle, tiny sparkles around the ring, a small shine on the upper left, nothing inside, square image.
+Medal Ring Cursed: An empty round medallion ring in dull crimson-red metal with a thick dark-brown outline and a very dark disc in the middle, a few hairline cracks and a faint red glow, nothing inside, square image.
+Map Node Treasure: A small round map marker with a cream paper background and a thick brown outline, a tiny closed wooden treasure chest with a gold lock in the middle, simple and readable at a small size, square image.
+Treasure Chest Closed: A cheerful small wooden treasure chest with gold corner bands and a round gold lock, lid closed, seen from the front and slightly above, a soft warm glow leaking from the seam, square image.
+Treasure Chest Open: The same small wooden treasure chest with the lid open, golden light and a few tiny sparkles rising out of it, seen from the front and slightly above, square image.
+Artifact Chant Bell: A small brass handbell with a short wooden handle and a leaf-shaped clapper, a tiny sound arc on each side, square image.
+Artifact Echo Shell: A spiral seashell in pale pink and cream with two faint mint-green echo rings fading outward from its opening, square image.
+Artifact Bandolier: A leather bandolier strap crossing the frame diagonally with two small empty potion bottle loops and a brass buckle, square image.
+Artifact Lock Pick: Two thin metal lock picks crossed over a small round padlock with a keyhole, square image.
+Artifact Keen Eye: A single wide-open cartoon eye with a bright green iris and a small white shine, one tiny leaf growing from the eyebrow, square image.
+Artifact Calm Stone: A smooth round blue-grey pebble with a few soft ripple rings around it as if resting on still water, calm and peaceful, square image.
+Artifact Rain Chalice: A small wooden cup with a gold rim catching one large blue raindrop falling into it, tiny splash droplets, square image.
+Artifact Ward Stone: A short carved standing stone with a glowing pale gold rune circle on its face and a thin protective ring around it, square image.
+Artifact Thornbark: A curved piece of rough bark with several sharp green thorns sprouting along its edge, square image.
+Artifact Iron Bark: A thick piece of tree bark wrapped with two dark iron bands, a small shield-like shine on the metal, square image.
+Artifact Healing Sap: A single golden-amber drop of tree sap hanging from the tip of a green leaf, a tiny pink heart glowing inside the drop, square image.
+Artifact Mending Moss: A soft clump of bright green moss with two small sparkly plus signs rising from it, square image.
+Artifact Scholar Quill: A long white feather quill resting in a small round ink pot, one drop of dark blue ink at the tip, square image.
+Artifact Seedling Pouch: A small cloth drawstring pouch in warm tan with a tiny green sprout of two leaves poking out of the top, square image.
+Artifact Blood Pact: A rolled parchment scroll tied with a red ribbon and sealed with a crimson wax drop, a faint red-purple glow around it, slightly ominous but cute, square image.
+Artifact Broken Crown: A small golden crown with a cracked band and one missing point, a few tiny gold fragments floating beside it, a faint red-purple glow, square image.
+Artifact Glass Heart: A heart made of pale translucent glass with a bright crack running through it and a soft red glow inside, a few tiny glass shards, square image.
+Artifact Withered Idol: A small carved wooden idol figure with a blank round face, grey and withered, a couple of dry brown leaves clinging to it, a faint red-purple glow, square image.

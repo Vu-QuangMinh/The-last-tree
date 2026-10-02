@@ -29,7 +29,7 @@ func _ready() -> void:
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 16)
 	v.add_child(top)
-	var t := UiTheme.label("The Last Tree · Wiki", 32, Color(0.85, 1, 0.75))
+	var t := UiTheme.heading("The Last Tree · Wiki", 32, Color(0.85, 1, 0.75))
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(t)
 	_search = LineEdit.new()
@@ -38,7 +38,7 @@ func _ready() -> void:
 	_search.add_theme_font_size_override("font_size", 18)
 	_search.text_changed.connect(_on_search)
 	top.add_child(_search)
-	top.add_child(UiTheme.button("Close  (Esc)", func(): closed.emit(), 20))
+	top.add_child(UiTheme.button(UiTheme.hk("Close", "Esc"), func(): closed.emit(), 20))
 	_tabs = TabContainer.new()
 	_tabs.custom_minimum_size = Vector2(1840, 960)
 	_tabs.add_theme_font_size_override("font_size", 19)

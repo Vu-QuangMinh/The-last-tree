@@ -32,7 +32,7 @@ func _ready() -> void:
 	v.size = Vector2(1800, 980)
 	v.add_theme_constant_override("separation", 16)
 	add_child(v)
-	v.add_child(UiTheme.label("🛒 The Merchant", 40, Color.WHITE))
+	v.add_child(UiTheme.heading("🛒 The Merchant", 40, Color.WHITE))
 	v.add_child(UiTheme.label("A badger with a very large backpack. \"Everything's for sale, friend. Even the backpack. Not the badger.\"", 20, UiTheme.MUTED))
 	_amber = UiTheme.label("", 26, Color(1, 0.8, 0.35))
 	v.add_child(_amber)

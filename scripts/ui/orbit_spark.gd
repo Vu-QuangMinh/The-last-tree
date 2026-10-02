@@ -6,6 +6,7 @@ extends Control
 var margins := [6.0, 7.0, 6.0, 5.0]  # the card's content margins (left, top, right, bottom): where the frame is
 var zoom := 1.0
 var loop_time := 2.2  # seconds for one full lap
+var color := Color(1.0, 0.9, 0.3)  # the spark's colour (the card passes its own)
 var _t := 0.0
 
 
@@ -43,8 +44,8 @@ func _draw() -> void:
 	for k in range(trail, 0, -1):
 		var p := _on_frame(u - k * 0.006, frame)
 		var a := 1.0 - float(k) / trail
-		draw_circle(p, (2.0 + 4.0 * a) * zoom, Color(1.0, 0.9, 0.3, 0.75 * a))
+		draw_circle(p, (2.0 + 4.0 * a) * zoom, Color(color, 0.75 * a))
 	var head := _on_frame(u, frame)
-	draw_circle(head, 16.0 * zoom, Color(1.0, 0.88, 0.25, 0.22))
-	draw_circle(head, 9.0 * zoom, Color(1.0, 0.92, 0.35, 0.8))
-	draw_circle(head, 4.5 * zoom, Color(1, 1, 0.9, 1.0))
+	draw_circle(head, 16.0 * zoom, Color(color, 0.22))
+	draw_circle(head, 9.0 * zoom, Color(color.lightened(0.15), 0.8))
+	draw_circle(head, 4.5 * zoom, color.lerp(Color.WHITE, 0.85))

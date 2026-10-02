@@ -18,9 +18,10 @@ func show_toast(text: String, color: Color) -> void:
 	if get_child_count() >= MAX:
 		get_child(0).queue_free()
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", UiTheme.panel_box(0.85, 10))
+	var strip := UiSkin.box("toast_strip", [20, 14, 20, 14], [34, 6, 22, 9])
+	p.add_theme_stylebox_override("panel", strip if strip != null else UiTheme.panel_box(0.85, 10))
 	p.mouse_filter = MOUSE_FILTER_IGNORE
-	var l := UiTheme.label(text, 18, color)
+	var l := UiTheme.label(text, 18, color.darkened(0.55) if strip != null else color)  # dark text on the cream strip
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	p.add_child(l)
 	add_child(p)

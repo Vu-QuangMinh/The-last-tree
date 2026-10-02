@@ -36,7 +36,7 @@ func _ready() -> void:
 	v.size = Vector2(1820, 1000)
 	v.add_theme_constant_override("separation", 12)
 	add_child(v)
-	v.add_child(UiTheme.label("🔥 Fuse two spells", 38, Color(1, 0.8, 0.6)))
+	v.add_child(UiTheme.heading("🔥 Fuse two spells", 38, Color(1, 0.8, 0.6)))
 	var rules := RichTextLabel.new()
 	rules.bbcode_enabled = true
 	rules.fit_content = true

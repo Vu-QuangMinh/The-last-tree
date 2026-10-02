@@ -50,7 +50,7 @@ func _ready() -> void:
 	# active row
 	var ah := HBoxContainer.new()
 	root.add_child(ah)
-	ah.add_child(UiTheme.label("Active spells", 24, UiTheme.ACCENT))
+	ah.add_child(UiTheme.heading("Active spells", 24, UiTheme.ACCENT))
 	_count = UiTheme.label("", 20, UiTheme.MUTED)
 	ah.add_child(_count)
 	# many slots wrap onto a second row instead of running off the screen

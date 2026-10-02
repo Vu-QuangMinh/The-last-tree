@@ -52,7 +52,61 @@ func _process(d: float) -> void:
 	queue_redraw()
 
 
+## New theme: the bar is built from painted pieces, left to right: [left cap][body: HP | Shield | Blank][right cap].
+## HP is red, the Shield (blue) covers the end of the HP it protects, and what's left of the bar is Blank (grey).
+## The caps change with the state: left = HP, Shield (the shield reaches the left end) or Blank (no HP left);
+## right = HP (full, no shield), Shield (full, with shield) or Blank (not full). The just-lost chunk shows pale.
+func _draw_art() -> bool:
+	var parts := {}
+	for n in ["hp_body_hp", "hp_body_shield", "hp_body_blank", "hp_head_left_hp", "hp_head_left_shield", "hp_head_left_blank",
+			"hp_head_right_hp", "hp_head_right_shield", "hp_head_right_blank"]:
+		parts[n] = UiSkin.tex(n)
+		if parts[n] == null:
+			return false
+	var w := size.x
+	var h := size.y
+	var ref: Texture2D = parts["hp_head_left_hp"]
+	var cap: float = ref.get_width() * h / ref.get_height()
+	var hw := w * clampf(hp / max_hp, 0, 1)
+	var sw := minf(hw, w * shield / max_hp)
+	var tint := Color(1, 1, 1).lerp(Color(1.7, 1.5, 1.5), _flash * 0.6)
+	# body: only the stretch between the two caps (a segment is clipped to it, so nothing pokes out past a cap)
+	var gw := w * clampf(_ghost / max_hp, 0, 1)
+	_body(parts["hp_body_blank"], 0.0, w, cap, w, h, Color.WHITE)
+	if gw > hw:
+		_body(null, hw, gw, cap, w, h, Color(1.0, 0.85, 0.6))
+	if hw - sw > 0.0:
+		_body(parts["hp_body_hp"], 0.0, hw - sw, cap, w, h, tint)
+	if sw > 0.0:
+		_body(parts["hp_body_shield"], hw - sw, hw, cap, w, h, tint)
+	# caps
+	var left := "blank" if hp <= 0.0 else ("shield" if sw > 0.0 and hw - sw < cap * 0.5 else "hp")
+	var right := "hp" if hw >= w - 0.5 and sw <= 0.0 else ("shield" if hw >= w - 0.5 else "blank")
+	draw_texture_rect(parts["hp_head_left_" + left], Rect2(0, 0, cap, h), false, tint if left != "blank" else Color.WHITE)
+	draw_texture_rect(parts["hp_head_right_" + right], Rect2(w - cap, 0, cap, h), false, tint if right != "blank" else Color.WHITE)
+	if sw > 0.0 and _crack > 0.0:
+		var c := Vector2(hw - sw / 2.0, h / 2.0)
+		for k in 5:
+			var a := k * TAU / 5.0 + 0.4
+			draw_line(c, c + Vector2.from_angle(a) * h * 1.2, Color(1, 1, 1, _crack), 1.5)
+	return true
+
+
+## One stretch of the body from x0 to x1, kept between the caps (cap .. w - cap). tex null = a pale plain block.
+func _body(tex: Texture2D, x0: float, x1: float, cap: float, w: float, h: float, tint: Color) -> void:
+	x0 = maxf(x0, cap)
+	x1 = minf(x1, w - cap)
+	if x1 <= x0:
+		return
+	if tex == null:
+		draw_rect(Rect2(x0, h * 0.22, x1 - x0, h * 0.56), tint)
+	else:
+		draw_texture_rect(tex, Rect2(x0, 0, x1 - x0, h), false, tint)
+
+
 func _draw() -> void:
+	if _draw_art():
+		return
 	var r := Rect2(Vector2.ZERO, size)
 	var w := size.x
 	draw_rect(r, Color(0.15, 0.07, 0.07))
@@ -64,10 +118,15 @@ func _draw() -> void:
 	var red := Color(0.78, 0.18, 0.18).lerp(Color(1, 0.9, 0.9), _flash * 0.6)
 	draw_rect(Rect2(0, 0, hw, size.y), red)
 	draw_rect(Rect2(0, 0, hw, size.y * 0.35), Color(1, 1, 1, 0.12))
-	# shield: blue glass over the end of the HP it covers
+	_draw_shield(w, size.y, hw)
+	draw_rect(r, Color(0, 0, 0, 0.6), false, 2.0)
+
+
+## shield: blue glass over the end of the HP it covers
+func _draw_shield(w: float, h: float, hw: float) -> void:
 	if shield > 0.0 and hw > 0.0:
 		var sw := minf(hw, w * shield / max_hp)
-		var g := Rect2(hw - sw, -3, sw, size.y + 6)
+		var g := Rect2(hw - sw, -3, sw, h + 6)
 		var shimmer := 0.08 * sin(_t * 3.0)
 		draw_rect(g, Color(0.55, 0.82, 1.0, 0.55 + shimmer + _crack * 0.3))
 		draw_rect(g, Color(0.85, 0.95, 1.0, 0.95), false, 2.0)
@@ -81,4 +140,3 @@ func _draw() -> void:
 			for k in 5:
 				var a := k * TAU / 5.0 + 0.4
 				draw_line(c, c + Vector2.from_angle(a) * g.size.y * 1.2, Color(1, 1, 1, _crack), 1.5)
-	draw_rect(r, Color(0, 0, 0, 0.6), false, 2.0)

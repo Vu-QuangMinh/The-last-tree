@@ -73,6 +73,8 @@ var _infuse_orb: ElementIcon
 var _infuse_el := ""
 var _infuse_dragging := false
 var _chant_note: Label
+var _chant_panel: PanelContainer
+var _bag_panel: PanelContainer
 var _stock_row: Control  # the bag: its icons are placed by hand so they can glide into their spots
 var _bag_icons := {}  # element uid -> its icon in the bag
 var _bag_target := {}  # element uid -> where its icon belongs (local to _stock_row)
@@ -80,7 +82,7 @@ var _bag_delay := 0.0  # seconds the bag waits before closing a gap (an element 
 var _flying := {}  # element uid -> true while that element is in the air between the bag and the chant
 const BAG_PX := 52.0
 const BAG_GAP := 6.0
-const BAG_W := 1070.0
+const BAG_W := 1060.0  # (the bag panel is as wide as the chant panel: 1100, minus its margins)
 const FLY_TIME := 0.26  # an element jumping between the bag and the chant
 const BAG_MOVE := 0.22  # the bag's icons closing up or making room
 var _next_row: HBoxContainer
@@ -156,7 +158,7 @@ func _ready() -> void:
 	np.custom_minimum_size = Vector2(330, 0)
 	var nv := VBoxContainer.new()
 	np.add_child(nv)
-	nv.add_child(UiTheme.label("Coming next turn", 16, UiTheme.MUTED))
+	nv.add_child(UiTheme.heading("Coming next turn", 16, UiTheme.MUTED))
 	_next_row = HBoxContainer.new()
 	_next_row.add_theme_constant_override("separation", 4)
 	nv.add_child(_next_row)
@@ -165,7 +167,7 @@ func _ready() -> void:
 	_enemy_row = HBoxContainer.new()
 	_enemy_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_enemy_row.add_theme_constant_override("separation", 20)
-	_enemy_row.position = Vector2(0, 40)
+	_enemy_row.position = Vector2(0, 90)
 	_enemy_row.size = Vector2(1920, 480)
 	add_child(_enemy_row)
 	_prompt = UiTheme.label("", 22, Color(1, 0.9, 0.5))
@@ -186,6 +188,7 @@ func _ready() -> void:
 	# chant area: the slots, and the Chant / Release button right beside them
 	var cp := PanelContainer.new()
 	cp.add_theme_stylebox_override("panel", UiTheme.panel_box(0.9, 14))
+	_chant_panel = cp
 	cp.position = Vector2(540, 742)
 	cp.custom_minimum_size = Vector2(1100, 118)
 	var chh := HBoxContainer.new()
@@ -196,7 +199,7 @@ func _ready() -> void:
 	chh.add_child(cv)
 	var ch := HBoxContainer.new()
 	cv.add_child(ch)
-	var cl := UiTheme.label("Chant", 18, UiTheme.ACCENT)
+	var cl := UiTheme.heading("Chant", 18, UiTheme.ACCENT)
 	cl.custom_minimum_size = Vector2(70, 0)
 	ch.add_child(cl)
 	_chant_row = HBoxContainer.new()
@@ -207,31 +210,40 @@ func _ready() -> void:
 	var bv := VBoxContainer.new()
 	bv.add_theme_constant_override("separation", 6)
 	chh.add_child(bv)
-	_cast_btn = UiTheme.button("Chant  (Enter)", _on_primary, 22)
+	_cast_btn = UiTheme.button(UiTheme.hk("Chant", "Enter"), _on_primary, 22)
+	UiTheme.use_heading_font(_cast_btn)
 	_cast_btn.custom_minimum_size = Vector2(250, 60)
+	var chant_art := UiTheme.chant_button_styles()
+	for st in chant_art:
+		_cast_btn.add_theme_stylebox_override(st, chant_art[st])
 	bv.add_child(_cast_btn)
 	var small := HBoxContainer.new()
 	small.add_theme_constant_override("separation", 6)
 	bv.add_child(small)
-	_clear_btn = UiTheme.button("Clear  (⌫)", _clear_chant, 15)
+	_clear_btn = UiTheme.button(UiTheme.hk("Clear", "⌫"), _clear_chant, 15)
+	UiTheme.use_heading_font(_clear_btn)
 	_clear_btn.custom_minimum_size = Vector2(122, 34)
 	small.add_child(_clear_btn)
-	_end_btn = UiTheme.button("Pass  (E)", _on_end_turn, 15)
+	_end_btn = UiTheme.button(UiTheme.hk("Pass", "E"), _on_end_turn, 15)
+	UiTheme.use_heading_font(_end_btn)
 	_end_btn.custom_minimum_size = Vector2(122, 34)
 	_end_btn.tooltip_text = "End your turn without chanting (you keep your Essence)."
 	small.add_child(_end_btn)
 	add_child(cp)
 	# stock
 	var sp := PanelContainer.new()
+	_bag_panel = sp
 	sp.add_theme_stylebox_override("panel", UiTheme.panel_box(0.8, 12))
 	sp.position = Vector2(540, 872)
 	sp.custom_minimum_size = Vector2(1100, 110)
 	var sv := VBoxContainer.new()
 	sp.add_child(sv)
-	sv.add_child(UiTheme.label("Your bag of Essence  (click or drag, or press F / W / A)", 15, UiTheme.MUTED))
-	_stock_row = HFlowContainer.new()
-	_stock_row.add_theme_constant_override("h_separation", 6)
-	_stock_row.custom_minimum_size = Vector2(1070, 0)
+	sv.add_child(UiTheme.label("Your bag of Essence  (click or drag, or press F / W / A)" if UiTheme.show_hotkeys() else "Your bag of Essence  (click or drag)", 15, UiTheme.MUTED))
+	# a plain Control, not a flow container: the icons are placed (and tweened) by hand in _refresh_stock, and a
+	# container would keep re-flowing them in creation order (gaps, icons jumping or vanishing mid-glide)
+	_stock_row = Control.new()
+	_stock_row.mouse_filter = Control.MOUSE_FILTER_PASS
+	_stock_row.custom_minimum_size = Vector2(BAG_W, BAG_PX)
 	sv.add_child(_stock_row)
 	add_child(sp)
 	# player: name, your statuses (bright badges) on top of the HP bar, your bottles under it
@@ -242,7 +254,17 @@ func _ready() -> void:
 	var pv := VBoxContainer.new()
 	pv.add_theme_constant_override("separation", 6)
 	_player_panel.add_child(pv)
-	pv.add_child(UiTheme.label("The Keeper", 22, Color.WHITE))
+	var keeper := UiTheme.heading("The Keeper", 22, Color.WHITE)
+	var portrait := UiSkin.icon("portrait_keeper", 56)
+	if portrait != null:  # New theme: the Keeper's face beside the name
+		var who := HBoxContainer.new()
+		who.add_theme_constant_override("separation", 10)
+		keeper.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		who.add_child(portrait)
+		who.add_child(keeper)
+		pv.add_child(who)
+	else:
+		pv.add_child(keeper)
 	_status_row = HFlowContainer.new()
 	_status_row.add_theme_constant_override("h_separation", 6)
 	_status_row.add_theme_constant_override("v_separation", 4)
@@ -255,8 +277,15 @@ func _ready() -> void:
 	under.add_theme_constant_override("separation", 8)
 	pv.add_child(under)
 	_hp_label = UiTheme.label("", 18)
+	var hp_font := UiTheme.cut("bold")  # "HP 50 / 50" in the bold cut of the chosen font
+	if hp_font != null:
+		_hp_label.add_theme_font_override("font", hp_font)
 	_hp_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_hp_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var heart := UiSkin.icon("icon_heart", 28)
+	if heart != null:
+		heart.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		under.add_child(heart)
 	under.add_child(_hp_label)
 	_bottle_row = HBoxContainer.new()
 	_bottle_row.add_theme_constant_override("separation", 6)
@@ -279,6 +308,9 @@ func _ready() -> void:
 	_log.size = Vector2(245, 240)
 	_log.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_log.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	var log_art := UiSkin.box("panel_log_translucent", [24, 24, 24, 24], [18, 12, 18, 12])
+	if log_art != null:  # New theme: a wooden plaque behind the log
+		_log.add_theme_stylebox_override("normal", log_art)
 	add_child(_log)
 	_fx = Control.new()
 	_fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -293,16 +325,36 @@ func _ready() -> void:
 	var menu_btn := UiTheme.button("☰ Menu", _open_pause_menu, 18)
 	menu_btn.custom_minimum_size = Vector2(130, 44)
 	menu_btn.position = Vector2(1920 - 150, 1024)
+	UiTheme.use_menu_style(menu_btn)
+	UiTheme.use_heading_font(menu_btn)
 	add_child(menu_btn)
 	_build_spells()
 	_sync_views()
 	_refresh_all()
+	_fit_bottom.call_deferred()
 	tut.connect(func(_k, _d): note_progress())
 
 
 # ------------------------------------------------------------------ building
 
 ## The spell row. With many spells the cards shrink to fit the screen; hovering one brings it back to full size.
+## The lower block (spell row, chant, bag, Keeper, log) is laid out from the top; once the panels have their real sizes,
+## slide the whole block down together (keeping the gaps between its parts) until the bag sits BOTTOM_MARGIN above the
+## screen's bottom edge.
+const BOTTOM_MARGIN := 20.0
+
+
+func _fit_bottom() -> void:
+	await get_tree().process_frame
+	if not is_instance_valid(_bag_panel):
+		return
+	var dy := (size.y if size.y > 0.0 else 1080.0) - BOTTOM_MARGIN - (_bag_panel.position.y + _bag_panel.size.y)
+	for n in [_spell_row, _chant_panel, _bag_panel, _player_panel, _log]:
+		if n != null:
+			n.position.y += dy
+	_log.size.y = maxf(60.0, 1016.0 - _log.position.y)  # stop above the Menu button
+
+
 const ROW_WIDTH := 1860.0
 
 
@@ -421,11 +473,13 @@ func _refresh_all() -> void:
 	_clear_btn.visible = phase == "build"
 	_end_btn.visible = phase == "build"
 	_end_btn.disabled = busy
+	_clear_btn.text = UiTheme.hk("Clear", "⌫")
+	_end_btn.text = UiTheme.hk("Pass", "E")
 	if phase == "build":
-		_cast_btn.text = "Chant  (Enter)"
+		_cast_btn.text = UiTheme.hk("Chant", "Enter")
 		_cast_btn.disabled = busy or chant_idx.is_empty()
 	else:
-		_cast_btn.text = "Release  (E)" if not end_confirm else "Fizzle & Release  (E)"
+		_cast_btn.text = UiTheme.hk("Release" if not end_confirm else "Fizzle & Release", "E")
 		_cast_btn.disabled = busy or aiming or move_view != null or pick_view != null or chant_mode != ""
 	var live_spells := fight.charges.size() > 0 and phase == "spells"
 	if not aiming and not busy and move_view == null and pick_view == null and chant_mode == "":
@@ -459,12 +513,18 @@ func _refresh_chant() -> void:
 		var slot := Panel.new()
 		var px := 58 if n <= 10 else 46
 		slot.custom_minimum_size = Vector2(px, px)
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0, 0, 0, 0.35)
-		sb.border_color = Color(1, 0.9, 0.4) if (i == _step_pos or (chant_mode == "pick" and i == chant_i)) else Color(0.4, 0.5, 0.4, 0.8)
-		sb.set_border_width_all(4 if i == _step_pos else 2)
-		sb.set_corner_radius_all(px / 2)
-		slot.add_theme_stylebox_override("panel", sb)
+		var lit: bool = i == _step_pos or (chant_mode == "pick" and i == chant_i)
+		var slot_art := UiSkin.box("chant_slot_empty")
+		if slot_art != null:
+			slot.add_theme_stylebox_override("panel", slot_art)
+			slot.self_modulate = Color(1.7, 1.45, 0.7) if lit else Color.WHITE
+		else:
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = Color(0, 0, 0, 0.35)
+			sb.border_color = Color(1, 0.9, 0.4) if lit else Color(0.4, 0.5, 0.4, 0.8)
+			sb.set_border_width_all(4 if i == _step_pos else 2)
+			sb.set_corner_radius_all(px / 2)
+			slot.add_theme_stylebox_override("panel", sb)
 		if i < shown.size():
 			var ic := ElementIcon.make(shown[i], px)
 			if phase == "build":
@@ -475,6 +535,10 @@ func _refresh_chant() -> void:
 				var idx := i
 				slot.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _press_element("chant", idx))
 				slot.mouse_default_cursor_shape = Control.CURSOR_DRAG
+				slot.mouse_entered.connect(func():
+					ic.set_hover(true)
+					Audio.play("ui_hover", -8.0))
+				slot.mouse_exited.connect(func(): ic.set_hover(false))
 			else:
 				ic.highlight = i == _step_pos or (chant_mode == "pick" and i == chant_i)
 				ic.dim = _step_pos >= 0 and i > _step_pos
@@ -535,6 +599,10 @@ func _refresh_stock() -> void:
 			ic.mouse_filter = Control.MOUSE_FILTER_STOP
 			ic.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 			ic.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _press_element("stock", _stock_index(uid)))
+			ic.mouse_entered.connect(func():
+				ic.set_hover(true)
+				Audio.play("ui_hover", -8.0))
+			ic.mouse_exited.connect(func(): ic.set_hover(false))
 			ic.position = target
 			_stock_row.add_child(ic)
 			_bag_icons[uid] = ic
@@ -755,7 +823,8 @@ func _show_help() -> void:
 	sb.shadow_color = Color(0, 0, 0, 0.35)
 	sb.shadow_size = 6
 	sb.shadow_offset = Vector2(4, 5)
-	p.add_theme_stylebox_override("panel", sb)
+	var paper := UiSkin.box("panel_paper_frame", [24, 24, 24, 24], [24, 14, 22, 22])
+	p.add_theme_stylebox_override("panel", paper if paper != null else sb)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.z_index = 99
 	p.position = Vector2(24, 112)
@@ -780,6 +849,16 @@ func _show_help() -> void:
 	close.focus_mode = Control.FOCUS_NONE
 	close.tooltip_text = "Close"
 	close.add_theme_font_size_override("font_size", 22)
+	var close_art := UiSkin.box("button_close_x_normal")
+	if close_art != null:  # New theme: the round painted button (its x is part of the picture), always a square 40 px
+		close.flat = false
+		close.text = ""
+		close.custom_minimum_size = Vector2(40, 40)
+		close.size_flags_horizontal = Control.SIZE_SHRINK_END
+		close.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		close.add_theme_stylebox_override("normal", close_art)
+		close.add_theme_stylebox_override("hover", UiSkin.box("button_close_x_hover"))
+		close.add_theme_stylebox_override("pressed", UiSkin.box("button_close_x_pressed"))
 	close.add_theme_color_override("font_color", Color(0.35, 0.28, 0.2))
 	close.add_theme_color_override("font_hover_color", Color(0.8, 0.2, 0.15))
 	close.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -1252,14 +1331,17 @@ func _finish() -> void:
 	busy = true
 	if fight.won:
 		await get_tree().create_timer(0.3).timeout
-		if fight.player.damage_taken <= 0.0:
-			await _slam("Perfect Victory!", Color(0.55, 1.0, 0.75), Color(0.0, 0.3, 0.2), 120)
-		else:
-			await _slam("Victory!", Color(0.75, 1.0, 0.5), Color(0.1, 0.28, 0.05), 140)
+		var perfect: bool = fight.player.damage_taken <= 0.0
+		if not await _result_banner("perfect" if perfect else "victory"):
+			if perfect:
+				await _slam("Perfect Victory!", Color(0.55, 1.0, 0.75), Color(0.0, 0.3, 0.2), 120)
+			else:
+				await _slam("Victory!", Color(0.75, 1.0, 0.5), Color(0.1, 0.28, 0.05), 140)
 		await get_tree().create_timer(0.5).timeout
 	else:
-		_banner("The last tree falls…", UiTheme.DANGER, 1.6)
-		await get_tree().create_timer(1.6).timeout
+		if not await _result_banner("defeat"):
+			_banner("The last tree falls…", UiTheme.DANGER, 1.6)
+			await get_tree().create_timer(1.6).timeout
 	finished.emit(fight.won)
 
 
@@ -1297,29 +1379,50 @@ func _status_badges() -> Array:
 	return out
 
 
+## status keyword -> art in assets/ui/new/ (New theme only)
+const STATUS_ART := {"shield": "icon_armor_shield", "thorns": "status_thorns", "silence": "status_silenced"}
+
+
 func _refresh_statuses() -> void:
 	for c in _status_row.get_children():
 		c.queue_free()
 	for b in _status_badges():
 		var chip := PanelContainer.new()
-		var sb := StyleBoxFlat.new()
 		var col: Color = b[1]
-		sb.bg_color = col.darkened(0.35)
-		sb.border_color = col.lightened(0.45)
-		sb.set_border_width_all(2)
-		sb.set_corner_radius_all(14)
-		sb.shadow_color = Color(col, 0.55)
-		sb.shadow_size = 7
-		sb.content_margin_left = 10
-		sb.content_margin_right = 10
-		sb.content_margin_top = 2
-		sb.content_margin_bottom = 2
-		chip.add_theme_stylebox_override("panel", sb)
-		var l := UiTheme.label(b[0], 19, Color.WHITE)
+		var pill := UiSkin.box("status_badge_pill", [17, 16, 17, 16], [14, 3, 14, 5])
+		var icon: TextureRect = UiSkin.icon(STATUS_ART.get(b[2], ""), 24) if pill != null else null
+		var text: String = b[0]
+		if icon != null:
+			text = text.substr(text.find(" ") + 1)  # the art replaces the leading emoji
+		if pill != null:
+			pill.modulate_color = col.lightened(0.15)
+			chip.add_theme_stylebox_override("panel", pill)
+		else:
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = col.darkened(0.35)
+			sb.border_color = col.lightened(0.45)
+			sb.set_border_width_all(2)
+			sb.set_corner_radius_all(14)
+			sb.shadow_color = Color(col, 0.55)
+			sb.shadow_size = 7
+			sb.content_margin_left = 10
+			sb.content_margin_right = 10
+			sb.content_margin_top = 2
+			sb.content_margin_bottom = 2
+			chip.add_theme_stylebox_override("panel", sb)
+		var l := UiTheme.label(text, 19, Color.WHITE)
 		l.add_theme_constant_override("outline_size", 5)
 		l.add_theme_color_override("font_outline_color", col.darkened(0.7))
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		chip.add_child(l)
+		if icon != null:
+			var hb := HBoxContainer.new()
+			hb.add_theme_constant_override("separation", 4)
+			hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			hb.add_child(icon)
+			hb.add_child(l)
+			chip.add_child(hb)
+		else:
+			chip.add_child(l)
 		var tip: String = Keywords.K.get(b[2], [0, 0, ""])[2]
 		chip.tooltip_text = Keywords.tooltip(b[0], tip) if tip != "" else ""
 		chip.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -1384,9 +1487,18 @@ func _spell_chooser(spells: Array) -> int:
 	v.add_theme_constant_override("separation", 18)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.add_child(v)
-	var t := UiTheme.label("Grimoire Ink: choose a spell to join your active spells for this fight", 28, Color(1, 0.9, 0.55))
+	var t := UiTheme.heading("Grimoire Ink: choose a spell to join your active spells for this fight", 28, Color(1, 0.9, 0.55))
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(t)
+	var ribbon := UiSkin.box("banner_grimoire_ink", [0, 0, 0, 0], [90, 14, 90, 24])
+	if ribbon != null:  # New theme: the title on a paper ribbon (dark ink, not gold)
+		t.add_theme_color_override("font_color", Color(0.28, 0.16, 0.1))
+		var rb := PanelContainer.new()
+		rb.add_theme_stylebox_override("panel", ribbon)
+		rb.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		rb.add_child(t)
+		v.add_child(rb)
+	else:
+		v.add_child(t)
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(1800, 470)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -1432,34 +1544,57 @@ func _open_pause_menu() -> void:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.add_child(center)
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UiTheme.panel_box(0.95, 16))
-	panel.custom_minimum_size = Vector2(380, 0)
+	var board := UiSkin.box("board_pause_menu", [64, 64, 64, 64], [52, 48, 52, 48])
+	panel.add_theme_stylebox_override("panel", board if board != null else UiTheme.panel_box(0.95, 16))
+	panel.custom_minimum_size = Vector2(420 if board != null else 380, 0)
 	center.add_child(panel)
+	_add_pause_leaf.call_deferred(panel, overlay)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 12)
 	panel.add_child(v)
-	v.add_child(UiTheme.label("Paused", 28, Color.WHITE))
+	var paused := UiTheme.heading("Paused", 28, Color.WHITE)
+	paused.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER  # centred on the board
+	v.add_child(paused)
 	var resume_btn := UiTheme.button("Resume", _close_pause_menu, 20)
 	resume_btn.custom_minimum_size = Vector2(320, 52)
+	UiTheme.use_menu_style(resume_btn)
 	v.add_child(resume_btn)
 	var settings_btn := UiTheme.button("Settings", func():
 		var s := SettingsScreen.new()
-		s.closed.connect(s.queue_free)
+		s.closed.connect(func():
+			s.queue_free()
+			_refresh_all())  # (the Show Hotkey setting may have changed)
 		overlay.add_child(s), 20)
 	settings_btn.custom_minimum_size = Vector2(320, 52)
+	UiTheme.use_menu_style(settings_btn)
 	v.add_child(settings_btn)
 	var menu_btn := UiTheme.button("Main Menu", func(): _confirm_in(v, panel,
 		"Abandon this run and return to the Main Menu?",
 		func(): menu_requested.emit()), 20)
 	menu_btn.custom_minimum_size = Vector2(320, 52)
+	UiTheme.use_menu_style(menu_btn)
 	v.add_child(menu_btn)
 	var quit_btn := UiTheme.button("Quit to Desktop", func(): _confirm_in(v, panel,
 		"Quit The Last Tree?",
 		func(): get_tree().quit()), 20)
 	quit_btn.custom_minimum_size = Vector2(320, 52)
+	UiTheme.use_menu_style(quit_btn)
 	v.add_child(quit_btn)
 	add_child(overlay)
 	_pause_overlay = overlay
+
+
+## New theme: the leaf that sits on the top edge of the pause board (once the board has its real size).
+func _add_pause_leaf(panel: Control, overlay: Control) -> void:
+	var leaf := UiSkin.icon("menu_leaf", 92)
+	if leaf == null:
+		return
+	await get_tree().process_frame
+	if not is_instance_valid(panel) or not is_instance_valid(overlay):
+		leaf.free()
+		return
+	leaf.position = panel.global_position - overlay.global_position + Vector2(panel.size.x * 0.58, -58.0)
+	overlay.add_child(leaf)
 
 
 func _close_pause_menu() -> void:
@@ -2276,6 +2411,80 @@ func _slam(text: String, col: Color, outline: Color, font_px: int) -> void:
 	await _wait(0.15)
 
 
+## New theme: the end-of-fight banner ("victory" / "perfect" / "defeat"), built from separate painted layers that all share
+## one size, so they line up when laid on top of each other. The ribbon falls first and lands with a thud, then the
+## lettering falls onto it. For "perfect" the word PERFECT, behind the ribbon, then flickers on. Returns false (and
+## shows nothing) when the Theme is Default or the art is missing, so the caller falls back to the old slam text.
+func _result_banner(kind: String) -> bool:
+	var ribbon := UiSkin.tex(kind + "_banner")
+	var lettering := UiSkin.tex(kind + "_text")
+	if ribbon == null or lettering == null:
+		return false
+	var word := UiSkin.tex("perfect_word") if kind == "perfect" else null
+	var stage := Control.new()
+	stage.size = ribbon.get_size()
+	stage.position = Vector2(960.0 - stage.size.x / 2.0, 560.0 - stage.size.y)  # the ribbon's lower edge rests at y=560
+	stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stage.z_index = 60
+	_fx.add_child(stage)
+	var layers := {}
+	for part in ["word", "banner", "text"]:
+		var tex: Texture2D = {"word": word, "banner": ribbon, "text": lettering}[part]
+		if tex == null:
+			continue
+		var r := TextureRect.new()
+		r.texture = tex
+		r.size = stage.size
+		r.pivot_offset = stage.size / 2.0
+		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		r.modulate.a = 0.0
+		stage.add_child(r)
+		layers[part] = r
+	var drop := stage.size.y + 520.0
+	var down := func(r: TextureRect, from_scale: float, fall: float) -> void:
+		r.position.y = -drop
+		r.scale = Vector2.ONE * from_scale
+		r.modulate.a = 0.0
+		var tw := r.create_tween().set_parallel(true)
+		tw.tween_property(r, "position:y", 0.0, fall).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_property(r, "scale", Vector2.ONE, fall).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_property(r, "modulate:a", 1.0, fall * 0.4)
+		await tw.finished
+	var thud := func(r: TextureRect, shake_px: float, vol: float) -> void:
+		_shake(shake_px)
+		Audio.play("boss_phase_change", vol)
+		for k in 3:
+			ImpactFx.burst(_fx, stage.global_position + stage.size * Vector2(randf_range(0.15, 0.85), randf_range(0.35, 0.85)), false)
+		var sq := r.create_tween()
+		sq.tween_property(r, "scale", Vector2(1.05, 0.93), 0.06)
+		sq.tween_property(r, "scale", Vector2(0.99, 1.03), 0.08)
+		sq.tween_property(r, "scale", Vector2.ONE, 0.1)
+	await down.call(layers["banner"], 1.12, 0.3)
+	thud.call(layers["banner"], 18.0 if kind != "defeat" else 10.0, 0.0)
+	await _wait(0.34)
+	await down.call(layers["text"], 1.5, 0.22)
+	thud.call(layers["text"], 12.0 if kind != "defeat" else 7.0, -5.0)
+	await _wait(0.3)
+	if word != null:  # PERFECT blinks on behind the ribbon
+		var w: TextureRect = layers["word"]
+		var fl := w.create_tween()
+		for a in [1.0, 0.15, 1.0, 0.25, 1.0, 0.4, 1.0]:
+			fl.tween_property(w, "modulate:a", a, 0.09)
+		await fl.finished
+		var glow := w.create_tween().set_loops(3)
+		glow.tween_property(w, "modulate", Color(1.5, 1.3, 1.3), 0.25)
+		glow.tween_property(w, "modulate", Color.WHITE, 0.25)
+		await _wait(1.0)
+	else:
+		await _wait(0.9)
+	var out := stage.create_tween().set_parallel(true)
+	out.tween_property(stage, "modulate:a", 0.0, 0.3)
+	out.tween_property(stage, "position:y", stage.position.y - 40.0, 0.3)
+	out.chain().tween_callback(stage.queue_free)
+	await _wait(0.15)
+	return true
+
+
 # ------------------------------------------------------------------ Annihilate
 
 var _choosing_el := false
@@ -2734,6 +2943,34 @@ func _wait(t: float) -> void:
 
 
 func _float_text(text: String, pos: Vector2, col: Color) -> void:
+	# New theme: a plain "-5" / "+3" rides on a painted splat (red = damage, green = heal), in white digits
+	if text.length() > 1 and (text[0] == "-" or text[0] == "+") and text.substr(1).is_valid_int():
+		var splat := UiSkin.tex("float_damage" if text[0] == "-" else "float_heal")
+		var digits := UiSkin.number(text, 34, true) if splat != null else null
+		if digits != null:
+			var st := Control.new()
+			st.size = splat.get_size() * 1.15
+			st.position = pos - Vector2(st.size.x / 2.0 - 40.0, 10.0)
+			st.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var bg := TextureRect.new()
+			bg.texture = splat
+			bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			bg.stretch_mode = TextureRect.STRETCH_SCALE
+			bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			st.add_child(bg)
+			var cc := CenterContainer.new()
+			cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			cc.add_child(digits)
+			st.add_child(cc)
+			_fx.add_child(st)
+			var stw := st.create_tween()
+			stw.set_parallel()
+			stw.tween_property(st, "position:y", st.position.y - 60, 0.8)
+			stw.tween_property(st, "modulate:a", 0.0, 0.8).set_delay(0.3)
+			stw.chain().tween_callback(st.queue_free)
+			return
 	var l := UiTheme.label(text, 34, col)
 	l.add_theme_constant_override("outline_size", 8)
 	l.add_theme_color_override("font_outline_color", Color.BLACK)

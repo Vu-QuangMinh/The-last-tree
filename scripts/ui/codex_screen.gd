@@ -21,10 +21,10 @@ func _ready() -> void:
 	var top := HBoxContainer.new()
 	v.add_child(top)
 	var known := EnemyDefs.E.keys().filter(func(id): return SaveManager.in_codex(id)).size()
-	var t := UiTheme.label("Codex  ·  %d / %d enemies recorded" % [known, EnemyDefs.E.size()], 34, Color.WHITE)
+	var t := UiTheme.heading("Codex  ·  %d / %d enemies recorded" % [known, EnemyDefs.E.size()], 34, Color.WHITE)
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(t)
-	top.add_child(UiTheme.button("Close  (Esc)", func(): closed.emit(), 20))
+	top.add_child(UiTheme.button(UiTheme.hk("Close", "Esc"), func(): closed.emit(), 20))
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(1840, 960)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
