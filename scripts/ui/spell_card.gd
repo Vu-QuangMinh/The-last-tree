@@ -129,21 +129,26 @@ func _ready() -> void:
 	# shown, under a purple wax seal.
 	var full: String = spell.get("full_pattern", spell.pattern)
 	var seals: Array = spell.get("seals", [])
-	var alts: Array = spell.get("patterns", [])  # a fused anti-spell: "XXXX or YYYY" (either breaks it)
-	var count := full.length() + (2 if alts.size() > 1 else 0)
-	var orb := minf(40.0, (RULES_W - 3.0 * (count - 1)) / maxf(1.0, count))
+	var alts: Array = spell.get("patterns", [])  # a fused anti-spell: one row per pattern (either one breaks it)
+	var count := full.length()
 	if alts.size() > 1:
-		for k in alts.size():
-			if k > 0:
-				# white with a dark edge: it's drawn above the anti-spell's dark negative look
-				var orl := UiTheme.label("or", _zi(maxf(13.0, orb * 0.55)), Color.WHITE)
-				orl.add_theme_constant_override("outline_size", _zi(4))
-				orl.add_theme_color_override("font_outline_color", Color(0.1, 0.05, 0.15))
-				orl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-				orl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				pat.add_child(orl)
-			for ch in String(alts[k]):
-				pat.add_child(ElementIcon.make(ch, _z(orb)))
+		count = 0
+		for a in alts:
+			count = maxi(count, String(a).length())
+	var orb := minf(40.0 if alts.size() <= 1 else 32.0, (RULES_W - 3.0 * (count - 1)) / maxf(1.0, count))
+	if alts.size() > 1:
+		var rows := VBoxContainer.new()
+		rows.add_theme_constant_override("separation", _zi(3))
+		rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		for a in alts:
+			var row := HBoxContainer.new()
+			row.alignment = BoxContainer.ALIGNMENT_CENTER
+			row.add_theme_constant_override("separation", _zi(3))
+			row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			for ch in String(a):
+				row.add_child(ElementIcon.make(ch, _z(orb)))
+			rows.add_child(row)
+		pat.add_child(rows)
 	else:
 		for i in full.length():
 			var ic := ElementIcon.make(full[i], _z(orb))
@@ -194,7 +199,7 @@ func _ready() -> void:
 		extra += "\n[color=#c79be0]Sealed: %d Essence of its pattern %s no longer needed.[/color]" % [seals.size(), "is" if seals.size() == 1 else "are"]
 	if spell.has("flavor"):
 		extra += "\n[i][color=#9aa89a]\"%s\"[/color][/i]" % spell.flavor
-	tooltip_text = Keywords.tooltip(spell.name, SpellText.describe(spell), extra, [Keywords.ANY_ESSENCE] if "?" in full else [])
+	tooltip_text = Keywords.tooltip(spell.name, SpellText.describe(spell), extra, "", [Keywords.ANY_ESSENCE] if "?" in full else [])
 	# overlays
 	if spell.get("anti", false):
 		_add_holo()
@@ -257,7 +262,7 @@ func _fit_text() -> void:
 		fs -= 1
 	# still too much (a fusion of two wordy spells): shrink the orbs to make room for the text
 	if need > room:
-		for o in _pat.get_children():
+		for o in _orb_nodes():
 			var px: float = maxf(_z(22), o.custom_minimum_size.x - (need - room))
 			o.custom_minimum_size = Vector2(px, px)
 
@@ -500,7 +505,21 @@ func _process(d: float) -> void:
 func live_orbs() -> Array:
 	if _pat == null:
 		return []
-	return _pat.get_children().filter(func(o): return o is ElementIcon and not o.sealed)
+	return _orb_nodes().filter(func(o): return not o.sealed)
+
+
+## Every orb of the pattern, left to right (a fused anti-spell's two rows: the first row, then the second).
+func _orb_nodes() -> Array:
+	if _pat == null:
+		return []
+	var out := []
+	for o in _pat.get_children():
+		if o is ElementIcon:
+			out.append(o)
+		elif o is VBoxContainer:
+			for row in o.get_children():
+				out.append_array(row.get_children().filter(func(c): return c is ElementIcon))
+	return out
 
 
 func _make_custom_tooltip(for_text: String) -> Object:

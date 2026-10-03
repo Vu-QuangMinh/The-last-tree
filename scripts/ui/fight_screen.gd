@@ -26,6 +26,7 @@ var run: RunState
 ## target (enemy index), cancel, pick (HP index), place (chant gap), release, pass. By default everything is allowed.
 var gate: Callable = func(_a, _b): return true
 ## When nothing is left to cast, Release by itself (the tutorial turns this off so the player presses Release).
+var run_saved := false  # a real run (saved at the start of this fight): leaving keeps it for Continue
 var auto_release := false  # the Release always waits for the player now (it's the one thing that can't be undone)
 ## Undo: a snapshot of the fight is taken before each spell is cast; Undo (the button under the chant, Ctrl+Z or
 ## Backspace) puts the last one back. The Release (and drinking a bottle) clears it: those are for good.
@@ -1594,7 +1595,7 @@ func _refresh_statuses() -> void:
 	for c in _status_row.get_children():
 		c.queue_free()
 	for b in _status_badges():
-		var chip := PanelContainer.new()
+		var chip := TipPanel.new()  # its tooltip is rich text
 		var col: Color = b[1]
 		var pill := UiSkin.box("status_badge_pill", [17, 16, 17, 16], [14, 3, 14, 5])
 		var icon: TextureRect = UiSkin.icon(STATUS_ART.get(b[2], ""), 24) if pill != null else null
@@ -1784,13 +1785,13 @@ func _open_pause_menu() -> void:
 	UiTheme.use_menu_style(settings_btn)
 	v.add_child(settings_btn)
 	var menu_btn := UiTheme.button("Main Menu", func(): _confirm_in(v, panel,
-		"Abandon this run and return to the Main Menu?",
+		"Return to the Main Menu? Your run is saved: Continue on the main menu starts this fight over." if run_saved else "Abandon this run and return to the Main Menu?",
 		func(): menu_requested.emit()), 20)
 	menu_btn.custom_minimum_size = Vector2(320, 52)
 	UiTheme.use_menu_style(menu_btn)
 	v.add_child(menu_btn)
 	var quit_btn := UiTheme.button("Quit to Desktop", func(): _confirm_in(v, panel,
-		"Quit The Last Tree?",
+		"Quit The Last Tree? Your run is saved: Continue on the main menu starts this fight over." if run_saved else "Quit The Last Tree?",
 		func(): get_tree().quit()), 20)
 	quit_btn.custom_minimum_size = Vector2(320, 52)
 	UiTheme.use_menu_style(quit_btn)

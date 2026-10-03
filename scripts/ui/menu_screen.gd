@@ -3,6 +3,7 @@ extends Control
 ## Title screen.
 
 signal play
+signal continue_run  # pick up the saved run
 signal codex
 signal unlocks
 signal how_to
@@ -42,12 +43,16 @@ func _ready() -> void:
 	v.add_child(gap)
 	var st: Dictionary = SaveManager.data.stats
 	var tut_label := "Tutorial" if SaveManager.setting("tutorial_done", false) else "Tutorial  (recommended)"
-	for pair in [["Play", play], [tut_label, tutorial], ["How to play · Wiki", how_to], ["Codex", codex], ["Unlocks  (✿ %d)" % SaveManager.data.seedlings, unlocks], ["Settings", settings], ["Quit", null]]:
+	var items := [["Play", play], [tut_label, tutorial], ["How to play · Wiki", how_to], ["Codex", codex], ["Unlocks  (✿ %d)" % SaveManager.data.seedlings, unlocks], ["Settings", settings], ["Quit", null]]
+	if SaveManager.has_run():
+		items.insert(0, ["Continue", continue_run])  # the saved run, where you left it
+		items[1][0] = "New run"
+	for pair in items:
 		var sig = pair[1]
 		var b := UiTheme.button(pair[0], func(): if sig == null: get_tree().quit() else: sig.emit(), 26)
 		b.custom_minimum_size = Vector2(360, 60)
 		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		if pair[0] == "Play":
+		if pair[0] == "Play" or pair[0] == "Continue":
 			UiTheme.use_play_style(b)
 		v.add_child(b)
 	var info := UiTheme.label("Runs %d  ·  Wins %d  ·  Best act %d" % [st.runs, st.wins, st.get("best_act", 0)], 18, UiTheme.MUTED)

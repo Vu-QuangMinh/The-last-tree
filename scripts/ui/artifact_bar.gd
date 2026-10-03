@@ -52,45 +52,43 @@ func flash(id: String) -> void:
 class ArtifactChip extends PanelContainer:
 	const TIER_COL := {"common": Color(0.6, 0.62, 0.55), "rare": Color(0.4, 0.65, 1.0), "legendary": Color(1.0, 0.75, 0.3)}
 
+	const SIZE := 72.0  # the square each artifact sits in
+	const ICON := 52.0
+	const FAINT := Color(1, 1, 1, 0.14)
+	const FAINT_HOVER := Color(1, 1, 1, 0.32)
+
 	var id := ""
 	var charged := false
 	var _sb: StyleBoxFlat
-	var art_normal: StyleBoxTexture  # New theme: the slot art (null in Default)
-	var art_hover: StyleBoxTexture
-	var art_charged: StyleBoxTexture
 	var _base_border: Color
 	var _base_tip := ""
 	var _t := 0.0
 
-	static func make(id: String, plus := false) -> ArtifactChip:
+	## px: the square it sits in (the run bar on the map uses a smaller one).
+	static func make(id: String, plus := false, px := SIZE) -> ArtifactChip:
 		var c := ArtifactChip.new()
 		c.id = id
 		var a := Artifacts.view(id, plus)
+		# no box: just a soft, faint outline of the square it sits in (a touch brighter under the mouse)
 		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0.06, 0.07, 0.06, 0.9)
-		sb.border_color = Color(1, 0.4, 0.4) if a.get("aspect", "") == "Cursed" else TIER_COL.get(a.get("tier", "common"), Color.WHITE)
-		sb.set_border_width_all(2)
+		sb.bg_color = Color(0, 0, 0, 0)
+		sb.border_color = FAINT
+		sb.set_border_width_all(1)
 		sb.set_corner_radius_all(10)
-		sb.content_margin_left = 6
-		sb.content_margin_right = 6
-		sb.content_margin_top = 2
-		sb.content_margin_bottom = 2
+		sb.anti_aliasing = true
+		sb.set_content_margin_all(5)
 		c.add_theme_stylebox_override("panel", sb)
-		var slot := UiSkin.box("artifact_slot_upgraded" if plus else "artifact_slot_normal", [0, 0, 0, 0], [8, 8, 8, 8])
-		if slot != null:
-			c.art_normal = slot
-			c.art_hover = UiSkin.box("artifact_slot_hover", [0, 0, 0, 0], [8, 8, 8, 8])
-			c.art_charged = UiSkin.box("artifact_slot_charged", [0, 0, 0, 0], [8, 8, 8, 8])
-			c.add_theme_stylebox_override("panel", slot)
-			c.custom_minimum_size = Vector2(56, 56)
-			c.mouse_entered.connect(func(): if not c.charged: c.add_theme_stylebox_override("panel", c.art_hover))
-			c.mouse_exited.connect(func(): if not c.charged: c.add_theme_stylebox_override("panel", c.art_normal))
+		c.custom_minimum_size = Vector2(px, px)
+		c.mouse_entered.connect(func(): if not c.charged: sb.border_color = FAINT_HOVER)
+		c.mouse_exited.connect(func(): if not c.charged: sb.border_color = FAINT)
 		c.mouse_filter = Control.MOUSE_FILTER_STOP
-		var art := UiSkin.artifact_icon(id, 40)  # New theme: the painted artifact; otherwise its symbol
+		var art := UiSkin.artifact_icon(id, px * ICON / SIZE)  # New theme: the painted artifact; otherwise its symbol
 		if art != null:
+			art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			c.add_child(art)
 		else:
-			var l := UiTheme.label(a.get("icon", "◆"), 28, Color.WHITE)
+			var l := UiTheme.label(a.get("icon", "◆"), 36, Color.WHITE)
 			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			l.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -110,8 +108,6 @@ class ArtifactChip extends PanelContainer:
 			return
 		charged = on
 		_t = 0.0
-		if art_charged != null:
-			add_theme_stylebox_override("panel", art_charged if on else art_normal)
 		if not on:
 			_sb.border_color = _base_border
 			_sb.shadow_size = 0

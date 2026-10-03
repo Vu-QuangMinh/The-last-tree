@@ -46,7 +46,7 @@ func refresh() -> void:
 	for c in _arts.get_children():
 		c.queue_free()
 	for id in run.artifacts:
-		_arts.add_child(ArtifactBar.ArtifactChip.make(id, id in run.artifacts_plus))
+		_arts.add_child(ArtifactBar.ArtifactChip.make(id, id in run.artifacts_plus, 56.0))
 	# your bottles (and empty bottle slots), after the artifacts
 	if run.bottle_slots() > 0:
 		var gap := Control.new()

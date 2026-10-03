@@ -716,15 +716,46 @@ func test_fusing_keeps_wax_seals_in_place() -> void:
 	assert_eq(s.seals, [0])
 
 
-func test_anti_spells_cannot_be_fused() -> void:
+func test_saved_run_comes_back_the_same() -> void:
+	var run := RunState.new()
+	run.setup(db, [], [], 9)
+	run.learn_spell("inferno")
+	run.seal_spell("water_wall", 1)
+	run.gain_artifact("echo_shell")
+	run.player.hp = 33.0
+	run.player.bottles = ["fire_flask"]
+	run.amber = 77
+	run.move_to(run.map[0].find_custom(func(n): return n != null))
+	var text := var_to_str(run.to_save())  # what goes in the file
+	var back := RunState.from_save(str_to_var(text), db)
+	assert_eq(back.spellbook, run.spellbook)
+	assert_eq(back.seals, run.seals)
+	assert_eq(back.artifacts, run.artifacts)
+	assert_eq(back.player.hp, 33.0)
+	assert_eq(back.player.bottles, ["fire_flask"])
+	assert_eq(back.amber, 77)
+	assert_eq(back.row, run.row)
+	assert_eq(back.col, run.col)
+	assert_true(back.map == run.map, "the same map")
+	assert_eq(back.rng.randi(), run.rng.randi(), "the dice pick up where they left off")
+
+
+func test_fused_anti_spell_breaks_on_either_pattern() -> void:
 	var run := RunState.new()
 	run.setup(db, ["fog_of_war", "heat_haze"], [], 4)
-	run.learn_spell("fog_of_war")
-	run.learn_spell("heat_haze")
-	assert_true(not run.can_fuse("fog_of_war"), "anti-spells can't be fused")
-	assert_true(not run.can_fuse_pair("fog_of_war", "heat_haze"))
-	assert_true(not run.can_fuse_pair("fog_of_war", "fire_ball"))
-	assert_true(not ("fog_of_war" in run.fusable()))
+	run.learn_spell("fog_of_war")  # FW
+	run.learn_spell("heat_haze")  # FA
+	assert_true(not run.can_fuse_pair("fog_of_war", "fire_ball"), "an anti-spell can't fuse with a spell")
+	assert_true(run.can_fuse_pair("fog_of_war", "heat_haze"))
+	var fz := run.fuse_preview("fog_of_war", "heat_haze", 0)
+	assert_true(fz.get("anti", false))
+	assert_eq(fz.patterns, ["FW", "FA"], "both patterns kept whole (nothing shot out)")
+	assert_eq(fz.effects.size(), 2, "both spells' effects")
+	var f := _fight(["ashling"], [], "")
+	f.loadout = [fz]
+	assert_eq(f._occ(fz, "AFA"), [0], "the second pattern alone breaks it")
+	assert_eq(f._occ(fz, "WFW"), [0], "the first pattern alone breaks it")
+	assert_eq(f._occ(fz, "AAWW"), [], "neither: it stays whole")
 
 
 func test_undo_restores_the_fight_before_a_spell() -> void:

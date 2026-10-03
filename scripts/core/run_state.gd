@@ -66,6 +66,39 @@ func setup(p_db: SpellDB, p_unlocked_spells: Array, p_unlocked_artifacts: Array,
 	map = MapGen.generate(rng)
 
 
+## Everything about the run, for the save file (see SaveManager.save_run): every variable of the run and of you,
+## and where the random numbers had got to (so the next room comes out the same).
+func to_save() -> Dictionary:
+	var d := _vars_of(self, ["db", "rng", "player"])
+	d.rng_seed = rng.seed
+	d.rng_state = rng.state
+	d.player = _vars_of(player, [])
+	return d
+
+
+static func from_save(d: Dictionary, p_db: SpellDB) -> RunState:
+	var r := RunState.new()
+	r.db = p_db
+	for k in d:
+		if not (k in ["rng_seed", "rng_state", "player"]) and k in r:
+			r.set(k, d[k])
+	r.rng.seed = d.rng_seed
+	r.rng.state = d.rng_state
+	for k in d.player:
+		if k in r.player:
+			r.player.set(k, d.player[k])
+	return r
+
+
+static func _vars_of(o: Object, skip: Array) -> Dictionary:
+	var out := {}
+	for p in o.get_property_list():
+		if p.usage & PROPERTY_USAGE_SCRIPT_VARIABLE and not (p.name in skip):
+			var v = o.get(p.name)
+			out[p.name] = v.duplicate(true) if (v is Array or v is Dictionary) else v
+	return out
+
+
 ## Active spell slots: 5, changed by artifacts (never by the chant length), at most 8.
 func active_slots() -> int:
 	var n := BASE_ACTIVE
@@ -389,14 +422,16 @@ func rest() -> float:
 
 # ------------------------------------------------------------------ fusing (campfires)
 
-## A spell can be fused if it isn't a Power, an anti-spell, or fused already.
+## A spell can be fused if it isn't a Power and hasn't been fused already. (Anti-spells fuse only with
+## anti-spells: see can_fuse_pair.)
 func can_fuse(id: String) -> bool:
 	var s := spell(id)
-	return not s.is_empty() and not s.get("power", false) and not s.get("fused", false) and not s.get("anti", false)
+	return not s.is_empty() and not s.get("power", false) and not s.get("fused", false)
 
 
+## Two spells can be fused together if both are anti-spells or neither is.
 func can_fuse_pair(id_a: String, id_b: String) -> bool:
-	return can_fuse(id_a) and can_fuse(id_b) and id_a != id_b
+	return can_fuse(id_a) and can_fuse(id_b) and id_a != id_b and spell(id_a).get("anti", false) == spell(id_b).get("anti", false)
 
 
 func fusable() -> Array:
@@ -433,30 +468,37 @@ func fuse_preview(id_a: String, id_b: String, drop := -1) -> Dictionary:
 		"flavor": "Forged at a campfire from %s and %s." % [a.name, b.name],
 		"fused": true, "fused_from": [a.name, b.name],
 	}
-	var full_a: String = a.get("full_pattern", a.pattern)
-	var full: String = full_a + String(b.get("full_pattern", b.pattern))
-	var sl: Array = a.get("seals", []).duplicate()
-	for i in b.get("seals", []):
-		sl.append(i + full_a.length())
-	if drop >= 0:
-		# the drop-th Essence that isn't sealed: take it out, and the seals after it move one to the left
-		var live := -1
+	if a.get("anti", false) and b.get("anti", false):
+		# the mirror of a spell fusion: a spell needs one pattern AND then the other; a fused anti-spell keeps both
+		# patterns, one row each, and EITHER one in your chant breaks it. It does both effects. (Nothing to shoot.)
+		s.anti = true
+		s.patterns = [String(a.pattern), String(b.pattern)]
+		s.pattern = a.pattern + b.pattern
+	else:
+		var full_a: String = a.get("full_pattern", a.pattern)
+		var full: String = full_a + String(b.get("full_pattern", b.pattern))
+		var sl: Array = a.get("seals", []).duplicate()
+		for i in b.get("seals", []):
+			sl.append(i + full_a.length())
+		if drop >= 0:
+			# the drop-th Essence that isn't sealed: take it out, and the seals after it move one to the left
+			var live := -1
+			for i in full.length():
+				if i in sl:
+					continue
+				live += 1
+				if live == drop:
+					full = full.substr(0, i) + full.substr(i + 1)
+					sl = sl.map(func(k): return k - 1 if k > i else k)
+					break
+		var p := ""
 		for i in full.length():
-			if i in sl:
-				continue
-			live += 1
-			if live == drop:
-				full = full.substr(0, i) + full.substr(i + 1)
-				sl = sl.map(func(k): return k - 1 if k > i else k)
-				break
-	var p := ""
-	for i in full.length():
-		if not (i in sl):
-			p += full[i]
-	s.pattern = p
-	if not sl.is_empty():
-		s.full_pattern = full
-		s.seals = sl
+			if not (i in sl):
+				p += full[i]
+		s.pattern = p
+		if not sl.is_empty():
+			s.full_pattern = full
+			s.seals = sl
 	s.size = s.pattern.length()
 	s.rarity_name = SpellDB.RARITY_NAMES[rarity]
 	s.power = false

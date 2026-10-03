@@ -10,6 +10,7 @@ var buttons: Array = ["Continue"]
 var disabled: Array = []  # per button: true = greyed out
 var act := 1
 var title_color := Color.WHITE
+var extra: Control = null  # shown between the text and the buttons (the campfire's HP bar)
 
 
 func _ready() -> void:
@@ -37,6 +38,9 @@ func _ready() -> void:
 	b.custom_minimum_size = Vector2(900, 0)
 	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(b)
+	if extra != null:
+		extra.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		v.add_child(extra)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 20)

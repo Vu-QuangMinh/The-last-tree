@@ -69,6 +69,36 @@ func save_game() -> void:
 		f.store_string(JSON.stringify(data, "\t"))
 
 
+# ------------------------------------------------------------------ the saved run (only one)
+
+## The run in progress, saved at every stop (the map, and the start of each fight) so that quitting or closing the
+## game never loses it: Continue on the main menu picks it up. There is only ever one saved run.
+func _run_path() -> String:
+	return path.get_basename() + "_run.txt"
+
+
+func save_run(d: Dictionary) -> void:
+	var f := FileAccess.open(_run_path(), FileAccess.WRITE)
+	if f:
+		f.store_string(var_to_str(d))  # Godot's own format: keeps whole numbers whole (JSON would not)
+
+
+func has_run() -> bool:
+	return not load_run().is_empty()
+
+
+func load_run() -> Dictionary:
+	if not FileAccess.file_exists(_run_path()):
+		return {}
+	var d = str_to_var(FileAccess.get_file_as_string(_run_path()))
+	return d if d is Dictionary and d.has("run") else {}
+
+
+func clear_run() -> void:
+	if FileAccess.file_exists(_run_path()):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(_run_path()))
+
+
 # ------------------------------------------------------------------ spells
 
 func unlocked_spells() -> Array:
