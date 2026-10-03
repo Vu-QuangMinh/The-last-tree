@@ -109,18 +109,13 @@ func play(name: String, volume_db := 0.0, pitch := 1.0) -> void:
 # ------------------------------------------------------------------ music
 
 ## Every track file (with extension) sitting in assets/music/<category>/, sorted by name.
+## An exported game (e.g. the web build) only keeps "<track>.mp3.import" stubs, so those count as the track too.
 func list_tracks(category: String) -> Array:
 	var out := []
-	var dir := DirAccess.open(MUSIC_DIR + category)
-	if dir == null:
-		return out
-	dir.list_dir_begin()
-	var f := dir.get_next()
-	while f != "":
-		if not dir.current_is_dir() and not f.ends_with(".import") and (f.ends_with(".wav") or f.ends_with(".ogg") or f.ends_with(".mp3")):
+	for f in DirAccess.get_files_at(MUSIC_DIR + category):
+		f = f.trim_suffix(".import")
+		if (f.ends_with(".wav") or f.ends_with(".ogg") or f.ends_with(".mp3")) and not f in out:
 			out.append(f)
-		f = dir.get_next()
-	dir.list_dir_end()
 	out.sort()
 	return out
 

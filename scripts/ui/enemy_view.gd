@@ -185,7 +185,7 @@ func refresh(preview: Dictionary) -> void:
 		_hp_row.add_child(end)
 		# the chant would finish it: a skull, the size of an Essence, at the end of its row of Essence
 	if e in preview.get("dies", []):
-		var sk := UiTheme.label("☠", int(px * 0.9), Color(1, 0.35, 0.3))
+		var sk := UiTheme.label("💀", int(px * 0.9), Color.WHITE)  # white: the emoji keeps its own bright colors
 		sk.custom_minimum_size = Vector2(px, px)
 		sk.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		sk.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
