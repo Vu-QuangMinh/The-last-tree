@@ -48,8 +48,8 @@ const ALL := [
 	# ---- spells
 	{"id": "echo_draught", "color": Color(0.8, 0.55, 1.0), "name": "Echo Draught", "icon": "🔔", "price": 55, "desc": "The next spell you cast this fight is cast twice.",
 		"effects": [{"op": "echo_next"}]},
-	{"id": "hourglass_sand", "color": Color(0.95, 0.8, 0.45), "name": "Hourglass Sand", "icon": "⏳", "price": 48, "desc": "+1 chant slot for the rest of this fight.",
-		"effects": [{"op": "passive", "key": "chant_slots", "n": 1}]},
+	{"id": "hourglass_sand", "color": Color(0.95, 0.8, 0.45), "name": "Hourglass Sand", "icon": "⏳", "price": 48, "desc": "+1 Essence every turn for the rest of this fight.",
+		"effects": [{"op": "passive", "key": "draw_bonus", "n": 1}]},
 	{"id": "grimoire_ink", "color": Color(0.25, 0.25, 0.6), "name": "Grimoire Ink", "icon": "📜", "price": 80, "desc": "Choose a spell from your spellbook: it joins your active spells for this fight.",
 		"effects": [{"op": "grimoire_pick"}]},
 ]

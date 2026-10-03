@@ -3,3 +3,4 @@
 
 # full-size spell art masters (game uses the 256px copies in assets/card/art)
 art_source/
+build/

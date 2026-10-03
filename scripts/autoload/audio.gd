@@ -179,6 +179,46 @@ func play_note(el: String, volume_db := -4.0) -> void:
 
 
 ## A bell-like pluck: a sine with a couple of quickly fading overtones and a soft decay.
+var _gunshot: AudioStreamWAV
+
+
+## A gunshot (made in code, once): a sharp crack of noise, a deep thump under it, and a short rattling tail.
+func play_gunshot(volume_db := -2.0) -> void:
+	if _gunshot == null:
+		_gunshot = _make_gunshot()
+	var p: AudioStreamPlayer = _pool[_pool_i]
+	_pool_i = (_pool_i + 1) % _pool.size()
+	p.stream = _gunshot
+	p.volume_db = _db(sfx_level) + volume_db
+	p.pitch_scale = randf_range(0.95, 1.05)
+	p.play()
+
+
+static func _make_gunshot() -> AudioStreamWAV:
+	var rate := 44100
+	var n := int(rate * 0.45)
+	var data := PackedByteArray()
+	data.resize(n * 2)
+	var g := RandomNumberGenerator.new()
+	g.seed = 7
+	var lp := 0.0  # a simple low-pass on the noise, for the tail
+	for i in n:
+		var t := float(i) / rate
+		var noise := g.randf_range(-1.0, 1.0)
+		lp += (noise - lp) * 0.18
+		var crack := noise * exp(-t * 60.0)  # the sharp crack
+		var tail := lp * exp(-t * 9.0) * 0.6  # the rattle as it dies away
+		var thump := sin(TAU * (90.0 - 50.0 * t) * t) * exp(-t * 14.0) * 0.9  # the deep body of the shot
+		var v := (crack * 0.9 + tail + thump) * minf(1.0, t * 2000.0)
+		data.encode_s16(i * 2, int(clampf(v * 0.75, -1.0, 1.0) * 32767.0))
+	var w := AudioStreamWAV.new()
+	w.format = AudioStreamWAV.FORMAT_16_BITS
+	w.mix_rate = rate
+	w.stereo = false
+	w.data = data
+	return w
+
+
 static func _pluck(freq: float) -> AudioStreamWAV:
 	var rate := 44100
 	var n := int(rate * 0.55)

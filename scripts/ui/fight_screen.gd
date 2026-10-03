@@ -19,13 +19,18 @@ signal _chant_done(idx: int)
 signal _arrange_done(move: Array)
 signal _element_chosen(el: String)
 signal _spell_chosen(idx: int)
+signal _any_picked(choice: Array)  # [enemy index, Essence index], or [] when put back
 
 var run: RunState
 ## The tutorial's gate: func(action: String, arg) -> bool. Actions: add (el), remove, clear, chant, cast (spell id),
 ## target (enemy index), cancel, pick (HP index), place (chant gap), release, pass. By default everything is allowed.
 var gate: Callable = func(_a, _b): return true
 ## When nothing is left to cast, Release by itself (the tutorial turns this off so the player presses Release).
-var auto_release := true
+var auto_release := false  # the Release always waits for the player now (it's the one thing that can't be undone)
+## Undo: a snapshot of the fight is taken before each spell is cast; Undo (the button under the chant, Ctrl+Z or
+## Backspace) puts the last one back. The Release (and drinking a bottle) clears it: those are for good.
+var _undo: Array = []
+var _undo_btn: Button
 ## When the player clicks around a lot without anything happening, we explain the situation.
 ## help_override (tutorial): func() -> String; return "" to use the normal explanation.
 var help_override: Callable = Callable()
@@ -43,6 +48,7 @@ var chant_mode := ""  # "insert": placing an infused element · "arrange": Rearr
 var chant_i := 0  # the gap / element highlighted in chant_mode
 var _step_pos := -1  # during the Release: the chant element flying right now
 var _released := false  # the chant has been Released this turn: no more damage preview until the next turn
+var _release_glow := false  # nothing left to cast: the Release button pulses
 var busy := false
 var end_confirm := false
 # aiming (the arrow)
@@ -94,7 +100,17 @@ var _pstatus: RichTextLabel
 var _status_row: HFlowContainer  # your statuses, as bright badges above the HP bar
 var _bottle_row: HBoxContainer  # your bottles, under the HP bar
 var _arts: ArtifactBar
-var _bottle_from := Vector2.ZERO  # where the bottle being drunk sits (its effects fly from there)
+var _bottle_from := Vector2.ZERO
+var _picking_any := false  # every enemy's Essence is pickable (a spell that takes any Essence, anywhere)
+var _picking_any_cancellable := true
+var _prepicked := {}  # EnemyState -> the Essence already chosen for it (the picker hands it straight back)
+var _pick_style := "shoot"  # "shoot": remove spells (a crosshair, you shoot the Essence off) · "hand": steal (drag it to your bag)
+var _pick_only: EnemyState = null  # picking again on the same enemy (a spell that takes several)
+var _steal_drag := {}  # while dragging a stolen Essence: {enemy, index, el, from, icon}
+var _aim_cursor: AimCursor
+var _shot_fired := false  # the shot already showed the hit, so the spell's own fly-in is skipped
+## Let go of a stolen Essence this close to the bag and it lands in it.
+const BAG_DROP_MARGIN := 90.0  # where the bottle being drunk sits (its effects fly from there)
 var _log: Label
 var _cast_btn: Button
 var _end_btn: Button
@@ -207,6 +223,12 @@ func _ready() -> void:
 	ch.add_child(_chant_row)
 	_chant_note = UiTheme.label("", 14, UiTheme.MUTED)
 	cv.add_child(_chant_note)
+	_undo_btn = UiTheme.button("↶ Undo last spell  (Ctrl+Z)", _undo_last, 15)
+	_undo_btn.custom_minimum_size = Vector2(230, 32)
+	_undo_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_undo_btn.tooltip_text = "Take back the last spell you cast this turn. (Pressing Release can't be undone.)"
+	_undo_btn.visible = false
+	cv.add_child(_undo_btn)
 	var bv := VBoxContainer.new()
 	bv.add_theme_constant_override("separation", 6)
 	chh.add_child(bv)
@@ -362,11 +384,11 @@ func _build_spells() -> void:
 	for c in _spell_row.get_children():
 		c.queue_free()
 	_cards.clear()
-	var n := fight.loadout.size()
+	var n := fight.shown_spells().size()
 	var gap := 10.0
 	var fit := minf(1.0, (ROW_WIDTH - gap * maxf(0, n - 1)) / maxf(1.0, n * SpellCard.W))
 	_spell_row.add_theme_constant_override("separation", int(gap))
-	for s in fight.loadout:
+	for s in fight.shown_spells():
 		var card := SpellCard.make(s)
 		card.clicked.connect(_on_card_clicked)
 		# each card sits in a holder of its shrunk size, so the row lays out correctly
@@ -466,9 +488,20 @@ func _refresh_all() -> void:
 			card.lock_pattern = p.locks[s.id]
 		card.fires = pv.get("spells", {}).get(s.id, 0) if phase == "build" else 0
 		card.charges = fight.charges.get(s.id, 0) if phase == "spells" else 0
+		if s.get("anti", false):
+			# an anti-spell comes alive with the chant, unless the chant contains its pattern (that breaks it)
+			var broken: bool = card.fires > 0 if phase == "build" else fight.anti_broken.has(s.id)
+			card.fires = 0
+			if broken and card.state == "":
+				card.state = "broken"
+				card.state_text = "BROKEN\nthis turn"
 		card.aiming = aiming and card == aim_card
 		card.refresh()
 	_log.text = "\n".join(fight.lines.slice(maxi(0, fight.lines.size() - 5)))
+	_light_patterns()
+	if _undo_btn != null:
+		_undo_btn.visible = phase == "spells" and not _released and not fight.over
+		_undo_btn.disabled = _undo.is_empty() or busy or aiming or _picking_any
 	# one main button: Chant while you build, then Release once the chant is spoken
 	_clear_btn.visible = phase == "build"
 	_end_btn.visible = phase == "build"
@@ -489,6 +522,8 @@ func _refresh_all() -> void:
 			_prompt.text = "Your spells are alive: click them to cast, in any order."
 		else:
 			_prompt.text = "Nothing left to cast." if auto_release else "Nothing left to cast: press Release!"
+	# every spell is cast: the Release button pulses so you know what to press next
+	_release_glow = phase == "spells" and not live_spells and not _cast_btn.disabled and not _released and not fight.over
 
 
 func _refresh_chant() -> void:
@@ -506,12 +541,14 @@ func _refresh_chant() -> void:
 			shown.append(p.stock[i].el)
 	else:
 		shown = fight.chant.duplicate()
-	var n := maxi(slots, shown.size())
+	var n := maxi(_chant_rings(), shown.size())
+	var lay := _chant_layout(shown.size())
+	_chant_row.add_theme_constant_override("separation", int(lay.y))
 	for i in n + 1:
 		if i == n:
 			break
 		var slot := Panel.new()
-		var px := 58 if n <= 10 else 46
+		var px := int(lay.x)
 		slot.custom_minimum_size = Vector2(px, px)
 		var lit: bool = i == _step_pos or (chant_mode == "pick" and i == chant_i)
 		var slot_art := UiSkin.box("chant_slot_empty")
@@ -549,11 +586,11 @@ func _refresh_chant() -> void:
 			ic.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 			slot.add_child(ic)
 		_chant_row.add_child(slot)
-	var note := "%d / %d slots" % [chant_idx.size(), slots]
+	var note := "%d Essence" % chant_idx.size()
+	if p.toll > 0:
+		note = "%d / %d Essence (Toll)" % [chant_idx.size(), slots]
 	if phase == "spells":
 		note = "Chanted (%d). It is Released when your spells are done." % shown.size()
-	if p.toll > 0:
-		note += " (Toll: -%d)" % p.toll
 	if p.confuse_turns > 0 and phase == "build":
 		note += "   ·   CONFUSED: this chant will be read backwards, and there is no preview"
 	_chant_note.text = note
@@ -659,13 +696,33 @@ func _bag_target_center(uid: int) -> Vector2:
 	return _stock_row.global_position + _bag_target.get(uid, Vector2.ZERO) + Vector2(BAG_PX, BAG_PX) / 2.0
 
 
+const CHANT_RINGS := 8  # empty rings shown while the chant is short (the chant itself has no length limit)
+const CHANT_W := 700.0  # room for the chant: a longer chant squeezes its Essence together, even overlapping
+
+
+## How many empty rings to show: 8, or fewer under a Toll (its cap).
+func _chant_rings() -> int:
+	return mini(CHANT_RINGS, fight.player.chant_slots())
+
+
+## [orb size, gap between orbs] for a chant of `count` Essence. The gap goes negative (orbs overlap) when the
+## chant is too long to fit.
+func _chant_layout(count := -1) -> Vector2:
+	if count < 0:
+		count = chant_idx.size() if phase == "build" else fight.chant.size()
+	var n := maxi(_chant_rings(), count)
+	var px := 58.0 if n <= 10 else 50.0
+	var step := minf(px + 6.0, (CHANT_W - px) / maxf(1.0, n - 1))
+	return Vector2(px, step - px)
+
+
 func _chant_px() -> float:
-	return 58.0 if maxi(fight.player.chant_slots(), chant_idx.size()) <= 10 else 46.0
+	return _chant_layout().x
 
 
 func _chant_slot_center(k: int) -> Vector2:
-	var px := _chant_px()
-	return _chant_row.global_position + Vector2(k * (px + 6.0) + px / 2.0, px / 2.0)
+	var l := _chant_layout()
+	return _chant_row.global_position + Vector2(k * (l.x + l.y) + l.x / 2.0, l.x / 2.0)
 
 
 ## An element in the air, jumping between the bag and the chant on a little arc, growing or shrinking to the size
@@ -694,9 +751,69 @@ func _fly(s: Dictionary, from: Vector2, to: Vector2, from_px: float, to_px: floa
 			ic.queue_free()
 		_flying.erase(uid)
 		_refresh_stock()
+		_light_patterns()  # the Essence has landed: the spells it builds towards light up now
 		if phase == "build":  # once the chant is spoken, its row belongs to the Release
 			_refresh_chant()
 		_land(uid))
+
+
+## While you build the chant, every spell lights the orbs of its pattern that the chant is building towards, in
+## order, as each Essence lands: FF lights its first orb on the first F, its second on the next. A full match lights
+## them all; taking Essence back dims them again. (Essence still in the air don't count yet.)
+var _lit := {}  # spell id -> how many of its orbs are lit
+
+
+func _light_patterns() -> void:
+	var c := ""
+	if phase == "build":
+		for i in chant_idx:
+			var st: Dictionary = fight.player.stock[i]
+			if _flying.has(st.uid):
+				break
+			c += st.el
+	for card in _cards:
+		if not is_instance_valid(card):
+			continue
+		var orbs: Array = card.live_orbs()
+		var sp: Dictionary = card.spell
+		var k := 0
+		if phase == "build" and c != "" and not sp.has("patterns"):
+			k = _pattern_progress(String(sp.pattern), c)
+		k = mini(k, orbs.size())
+		var before: int = _lit.get(sp.id, 0)
+		for j in orbs.size():
+			var on := j < k
+			if orbs[j].highlight != on:
+				orbs[j].highlight = on
+				orbs[j].queue_redraw()
+		for j in range(before, k):
+			_pop_orb(orbs[j])
+		_lit[sp.id] = k
+
+
+## How far the chant has got towards this pattern: all of it if it appears anywhere, otherwise the longest start of
+## the pattern that the chant ends with ("?" matches anything).
+func _pattern_progress(pattern: String, c: String) -> int:
+	if pattern == "":
+		return 0
+	if not Chant.occurrences(pattern, c).is_empty():
+		return pattern.length()
+	for k in range(mini(pattern.length() - 1, c.length()), 0, -1):
+		if Chant.matches_at(pattern.substr(0, k), c, c.length() - k):
+			return k
+	return 0
+
+
+## A small pop as an orb lights up.
+func _pop_orb(ic: Control) -> void:
+	if not is_instance_valid(ic):
+		return
+	ic.pivot_offset = ic.size / 2.0
+	var tw := ic.create_tween()
+	tw.tween_property(ic, "scale", Vector2(1.3, 1.3), 0.07).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(ic, "modulate", Color(1.8, 1.75, 1.5), 0.07)
+	tw.tween_property(ic, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(ic, "modulate", Color.WHITE, 0.2)
 
 
 ## The element that just arrived gives a small bounce.
@@ -732,7 +849,15 @@ func note_progress() -> void:
 	_clicks.clear()
 
 
+func _exit_tree() -> void:
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE  # never leave the pointer hidden
+
+
 func _input(ev: InputEvent) -> void:
+	# steal: letting go of the Essence you're dragging
+	if not _steal_drag.is_empty() and ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT and not ev.pressed:
+		_end_steal_drag(ev.global_position)
+		return
 	if (ev is InputEventMouseButton or ev is InputEventKey) and ev.pressed:
 		_idle = 0.0
 		_idle_helped = false
@@ -943,8 +1068,10 @@ func _begin_build_drag(pointer: Vector2) -> void:
 	for k in els.size():
 		live.append(k == held)
 	d.live = live
-	d.slots = p.chant_slots()
-	d.px = 58.0 if maxi(d.slots, els.size()) <= 10 else 46.0
+	d.slots = _chant_rings()
+	var lay := _chant_layout(els.size())
+	d.px = lay.x
+	d.sep = lay.y
 	_chant_row.add_child(d)
 	d.begin_external(held, pointer)
 	_bdrag = d
@@ -1147,6 +1274,13 @@ func _unhandled_input(ev: InputEvent) -> void:
 		KEY_BACKSPACE:
 			if not busy and phase == "build" and not chant_idx.is_empty():
 				_remove_from_chant(chant_idx.size() - 1)
+			elif phase == "spells":
+				_undo_last()
+		KEY_Z:
+			if ev.ctrl_pressed:
+				_undo_last()
+			else:
+				return
 		KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
 			_on_cast()
 		KEY_E:
@@ -1159,7 +1293,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 func _cancel() -> void:
 	if not _allowed("cancel"):
 		return
-	if aiming and aim_cancellable:
+	if _picking_any and _picking_any_cancellable:
+		_any_picked.emit([])  # put the spell back
+	elif aiming and aim_cancellable:
 		_finish_aim(-1)
 	elif move_view != null:
 		_move_done.emit([])
@@ -1186,7 +1322,6 @@ func _on_cast() -> void:
 	await fight.cast_chant(idx)
 	_sync_views()
 	_refresh_all()
-	await _auto_cast()
 	tut.emit("chanted", fight.chant_string())
 	busy = false
 	_refresh_all()
@@ -1202,21 +1337,30 @@ func _on_card_clicked(card: SpellCard) -> void:
 		return
 	var spell: Dictionary = card.spell
 	var target := -1
-	if _needs_pick(spell):
-		var cands := fight.target_candidates()
-		if cands.size() == 1:
-			target = cands[0]
-		else:
-			target = await _aim(card, _card_point(card), cands, "%s: choose a target  ·  click, or Tab + Enter  ·  right-click to put it back" % spell.name, true)
-			if target < 0:
+	var first: Dictionary = spell.effects[0] if not spell.effects.is_empty() else {}
+	if first.get("target", "") in ["target", "two"]:
+		if _picks_any_essence(first):
+			# no enemy to aim at: every enemy's Essence lights up under the cursor; one click picks enemy and Essence
+			var got := await _pick_any_essence(spell, true)
+			if got.is_empty():
 				return
+			target = got[0]
+			_prepicked = {fight.enemies[got[0]]: got[1]}
+		else:
+			var cands := fight.target_candidates()
+			if cands.size() == 1:
+				target = cands[0]
+			else:
+				target = await _aim(card, _card_point(card), cands, "%s: choose a target  ·  click, or Tab + Enter  ·  right-click to put it back" % spell.name, true)
+				if target < 0:
+					return
 	busy = true
 	end_confirm = false
+	_undo.append(fight.snapshot())  # so this spell can be taken back until the Release
 	await fight.resolve_spell(spell.id, target)
 	_sync_views()
 	_refresh_all()
 	tut.emit("cast", spell.id)
-	await _auto_cast()
 	busy = false
 	_refresh_all()
 	if fight.over:
@@ -1227,41 +1371,8 @@ func _on_card_clicked(card: SpellCard) -> void:
 		await _damage_step()
 
 
-## Spells with no choice to make (no target, nothing to place or pick) cast themselves, in chant order.
-## Targeted and interactive ones wait for the player's click.
+## Every awake spell waits for your click (none cast themselves). These ones also ask you for something more.
 const INTERACTIVE_OPS := ["infuse", "rearrange", "duplicate", "move", "pluck", "redirect", "annihilate"]
-
-
-func _is_auto(spell: Dictionary) -> bool:
-	if _needs_pick(spell):
-		return false
-	for e in spell.effects:
-		if e.op in INTERACTIVE_OPS:
-			return false
-	return true
-
-
-func _auto_cast() -> void:
-	var guard := 0
-	while not fight.over and guard < 40:
-		guard += 1
-		var c := fight.chant_string()
-		var next := ""
-		var best := 999
-		for id in fight.charges:
-			var sp := fight._find_spell(id)
-			if not _is_auto(sp):
-				continue
-			var pos := Chant.first_index(sp.pattern, c)
-			if pos >= 0 and pos < best:
-				best = pos
-				next = id
-		if next == "":
-			return
-		await fight.resolve_spell(next, -1)
-		_sync_views()
-		_refresh_all()
-		tut.emit("cast", next)
 
 
 ## Does the player point this spell at an enemy before it resolves? (Effects aimed at "target".)
@@ -1299,6 +1410,7 @@ func _damage_step() -> void:
 	if busy or fight.over:
 		return
 	busy = true
+	_undo.clear()  # the Release is for good
 	end_confirm = false
 	tut.emit("releasing", null)
 	_prompt.text = "Release!"
@@ -1308,6 +1420,7 @@ func _damage_step() -> void:
 
 
 func _after_turn() -> void:
+	_undo.clear()
 	phase = "build"
 	_step_pos = -1
 	_released = false
@@ -1338,11 +1451,64 @@ func _finish() -> void:
 			else:
 				await _slam("Victory!", Color(0.75, 1.0, 0.5), Color(0.1, 0.28, 0.05), 140)
 		await get_tree().create_timer(0.5).timeout
+	elif run != null and run.can_revive():
+		await _seed_revival()
 	else:
 		if not await _result_banner("defeat"):
 			_banner("The last tree falls…", UiTheme.DANGER, 1.6)
 			await get_tree().create_timer(1.6).timeout
 	finished.emit(fight.won)
+
+
+## Losing with the Seed of Life: it shines on your artifact bar, flies to the middle of the screen growing as it goes,
+## and bursts into a white flash; then the words, and the fight starts over (main.gd sends you back to the
+## preparation of this same fight).
+func _seed_revival() -> void:
+	var from := Vector2(60, 70)
+	for c in _arts.get_children():
+		if c is ArtifactBar.ArtifactChip and c.id == "seed_of_life":
+			from = c.get_global_rect().get_center()
+	var seed := ArtifactBar.ArtifactChip.make("seed_of_life")
+	seed.z_index = 90
+	seed.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fx.add_child(seed)
+	await get_tree().process_frame
+	seed.pivot_offset = seed.size / 2.0
+	seed.position = from - seed.size / 2.0 - _fx.global_position
+	Audio.play("spell_glow")
+	# it shines where it is
+	var shine := seed.create_tween()
+	for k in 3:
+		shine.tween_property(seed, "modulate", Color(2.4, 2.4, 1.8), 0.12)
+		shine.parallel().tween_property(seed, "scale", Vector2(1.35, 1.35), 0.12)
+		shine.tween_property(seed, "modulate", Color(1.3, 1.3, 1.1), 0.12)
+		shine.parallel().tween_property(seed, "scale", Vector2.ONE, 0.12)
+	await shine.finished
+	# then flies to the middle, growing
+	var mid := Vector2(960, 470) - seed.size / 2.0 - _fx.global_position
+	var fly := seed.create_tween().set_parallel(true)
+	fly.tween_property(seed, "position", mid, 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	fly.tween_property(seed, "scale", Vector2(5, 5), 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	fly.tween_property(seed, "modulate", Color(2.0, 2.0, 1.6), 0.8)
+	var v := Vfx.make(_fx, 85)
+	v.shaker = _shake
+	v.emit(Vector2(960, 470), 0.8, 0.0, func(vv: Vfx, it: Vfx.Item, _d: float) -> void:
+		var p := seed.global_position + seed.size * seed.scale / 2.0 - _fx.global_position
+		var g := vv.part(p + Vector2(randf_range(-20, 20), randf_range(-20, 20)), Vector2(randf_range(-60, 60), randf_range(-60, 60)), Color(0.8, 1.0, 0.7, 0.8), 0.5, 10.0, Vfx.STAR)
+		g.spin = 4.0)
+	await fly.finished
+	# the white flash
+	Audio.play("boss_phase_change")
+	var at := Vector2(960, 470)
+	v.flash(Color(1, 1, 1, 1.0), 1.4)
+	v.glow(at, 500, Color(0.85, 1.0, 0.8, 0.9), 0.9)
+	v.ring(at, 30, 700, Color(0.8, 1.0, 0.7), 0.9, 18.0)
+	v.burst(at, 60, Color(0.85, 1.0, 0.75), Vector2(300, 1100), Vector2(0.5, 1.0), Vector2(6, 12), Vfx.STAR)
+	v.shake(10.0)
+	seed.queue_free()
+	await _wait(0.5)
+	_banner("The Seed of Life gives you a second chance", Color(0.75, 1.0, 0.6), 2.0)
+	await _wait(2.2)
 
 
 # ------------------------------------------------------------------ your statuses and bottles
@@ -1451,7 +1617,14 @@ func _on_bottle(chip: BottleChip) -> void:
 		return
 	_bottle_from = chip.get_global_rect().get_center()
 	var target := -1
-	if Bottles.needs_target(id):
+	var bfirst: Dictionary = Bottles.get_def(id).effects[0]
+	if _picks_any_essence(bfirst):
+		var got := await _pick_any_essence(Bottles.as_spell(id), true)
+		if got.is_empty():
+			return
+		target = got[0]
+		_prepicked = {fight.enemies[got[0]]: got[1]}
+	elif Bottles.needs_target(id):
 		var cands := fight.target_candidates()
 		if cands.size() == 1:
 			target = cands[0]
@@ -1460,6 +1633,7 @@ func _on_bottle(chip: BottleChip) -> void:
 			if target < 0:
 				return
 	busy = true
+	_undo.clear()  # a bottle is drunk for good: nothing before it can be undone
 	await fight.use_bottle(i, target)
 	_sync_views()
 	busy = false
@@ -1660,7 +1834,84 @@ func _on_enemy_clicked(v: EnemyView) -> void:
 		_finish_aim(idx)
 
 
+## Hovering an enemy's intent bubble explains what it's about to do; hovering the enemy itself (its body or its row
+## of Essence) explains everything about it. Our own panel, shown after a short moment and kept beside the enemy;
+## hidden while you're aiming or picking, so it never covers what you're clicking.
+const HOVER_DELAY := 0.3
+var _hover_panel: PanelContainer
+var _hover_key := ""
+var _hover_t := 0.0
+
+
+func _update_hover_info(d: float, m := Vector2(-1, -1)) -> void:
+	if m.x < 0.0:
+		m = get_global_mouse_position()
+	var key := ""
+	var text := ""
+	var anchor := Rect2()
+	if not (aiming or _picking_any or pick_view != null or move_view != null or chant_mode != "" or _pause_overlay != null):
+		for e in _views:
+			var v: EnemyView = _views[e]
+			if not is_instance_valid(v):
+				continue
+			var chip := v.intent_chip()
+			if chip != null and chip.get_global_rect().has_point(m):
+				key = "intent:%d" % v.get_instance_id()
+				text = chip.get_meta("info", "")
+				anchor = chip.get_global_rect()
+				break
+			if v.get_global_rect().has_point(m):
+				key = "enemy:%d" % v.get_instance_id()
+				text = v.info_text()
+				anchor = v.get_global_rect()
+				break
+	if key != _hover_key:
+		_hover_key = key
+		_hover_t = 0.0
+		if is_instance_valid(_hover_panel):
+			_hover_panel.queue_free()
+		_hover_panel = null
+	if key == "" or text == "":
+		return
+	_hover_t += d
+	if _hover_t < HOVER_DELAY or is_instance_valid(_hover_panel):
+		return
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", UiTheme.get_theme().get_stylebox("panel", "TooltipPanel"))
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.z_index = 120
+	var body := Keywords.make_tooltip(text)
+	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(body)
+	add_child(p)
+	_hover_panel = p
+	await get_tree().process_frame
+	if not is_instance_valid(p):
+		return
+	# beside the enemy (right if there's room, else left), kept on screen
+	var x := anchor.end.x + 12.0
+	if x + p.size.x > 1910.0:
+		x = anchor.position.x - p.size.x - 12.0
+	p.position = Vector2(clampf(x, 10.0, 1910.0 - p.size.x), clampf(anchor.position.y, 10.0, 1070.0 - p.size.y))
+
+
+## The Release button shines in a slow pulse (brighter and a touch bigger) while it's the thing to press.
+func _pulse_release() -> void:
+	if _cast_btn == null:
+		return
+	if _release_glow and not busy and not _cast_btn.disabled:
+		var s := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * TAU / 1.1)
+		_cast_btn.modulate = Color(1.0 + 0.45 * s, 1.0 + 0.38 * s, 1.0 + 0.15 * s)
+		_cast_btn.pivot_offset = _cast_btn.size / 2.0
+		_cast_btn.scale = Vector2.ONE * (1.0 + 0.06 * s)
+	elif _cast_btn.scale != Vector2.ONE or _cast_btn.modulate != Color.WHITE:
+		_cast_btn.modulate = Color.WHITE
+		_cast_btn.scale = Vector2.ONE
+
+
 func _process(_d: float) -> void:
+	_update_hover_info(_d)
+	_pulse_release()
 	# idle while it's your move: the Seedling pops up once to help (not in the tutorial, which has its coach)
 	if not busy and not fight.over and not help_override.is_valid() and _pause_overlay == null:
 		_idle += _d
@@ -1723,6 +1974,12 @@ func _draw_arrow() -> void:
 
 ## The fight needs a target it wasn't given (a Power at the start of your turn, or the target died mid-spell).
 func _choose_target(spell: Dictionary, cands: Array) -> int:
+	if _picks_any_essence(fight.current_eff):
+		# a later line of the spell takes any Essence, anywhere: pick it straight from the enemies
+		var got := await _pick_any_essence(spell, false)
+		if not got.is_empty():
+			_prepicked = {fight.enemies[got[0]]: got[1]}
+			return got[0]
 	if cands.size() == 1:
 		return cands[0]
 	var card: SpellCard = null
@@ -1755,6 +2012,12 @@ func _mover(spell: Dictionary, e: EnemyState) -> Array:
 
 ## Pluck: choose which element of this enemy's HP to remove. Click it, or Tab through and Enter.
 func _picker(spell: Dictionary, e: EnemyState) -> int:
+	if _prepicked.has(e):
+		# chosen already, straight from the enemies' Essence
+		var idx: int = _prepicked[e]
+		_prepicked.erase(e)
+		tut.emit("picked", idx)
+		return idx
 	var v: EnemyView = _views.get(e)
 	if v == null:
 		return e.armor.find(false)
@@ -1769,6 +2032,11 @@ func _picker(spell: Dictionary, e: EnemyState) -> int:
 		var only: int = free[0] if free.size() == 1 else -1
 		tut.emit("picked", only)
 		return only
+	# another pick on this enemy: the crosshair / hand again, on it only
+	var again := await _pick_any_essence(spell, false, e)
+	if not again.is_empty():
+		tut.emit("picked", again[1])
+		return again[1]
 	pick_view = v
 	tut.emit("picking", null)
 	v.pick_mode = true
@@ -1796,7 +2064,148 @@ func _cycle_pick(step: int) -> void:
 	pick_view.refresh({})
 
 
+## Take back the last spell cast this turn: the fight goes back to exactly how it was before it.
+func _undo_last() -> void:
+	if busy or aiming or _picking_any or phase != "spells" or _released or fight.over or _undo.is_empty() or not _allowed("undo"):
+		return
+	fight.restore(_undo.pop_back())
+	_prepicked.clear()
+	end_confirm = false
+	Audio.play("elem_remove")
+	# a quick cool flash over the board: time rewound
+	var v := Vfx.make(_fx, 70)
+	v.flash(Color(0.6, 0.75, 1.0, 0.18), 0.3)
+	_sync_views()
+	_build_spells()
+	_refresh_all()
+	tut.emit("undone", null)
+
+
+## Spells that take "an Essence of your choice" (Pluck, Steal any): the choice is the Essence itself, anywhere.
+func _picks_any_essence(eff: Dictionary) -> bool:
+	return eff.get("op", "") == "pluck" or (eff.get("op", "") == "steal" and eff.get("el", "any") == "any")
+
+
+## Every enemy's Essence becomes pickable at once; the one under the cursor lights up. Returns
+## [enemy index, Essence index], or [] if it was put back (right-click, when cancellable).
+func _pick_any_essence(spell: Dictionary, cancellable: bool, only: EnemyState = null) -> Array:
+	var eff: Dictionary = fight.current_eff if _picks_any_essence(fight.current_eff) else {}
+	if eff.is_empty():
+		for e2 in spell.effects:
+			if _picks_any_essence(e2):
+				eff = e2
+				break
+	_pick_style = "hand" if eff.get("op", "") == "steal" else "shoot"
+	_pick_only = only
+	_picking_any = true
+	_picking_any_cancellable = cancellable
+	tut.emit("picking", null)
+	for v in _views.values():
+		v.pick_mode = only == null or v.enemy == only
+		v.pick_i = -1
+	# the pointer becomes a crosshair (remove) or an open hand (steal)
+	_aim_cursor = AimCursor.new()
+	_aim_cursor.mode = _pick_style
+	add_child(_aim_cursor)
+	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
+	var how := "drag an enemy's Essence down into your bag" if _pick_style == "hand" else "shoot an enemy's Essence off"
+	_prompt.text = "%s: %s%s" % [spell.name, how, "  ·  right-click to put it back" if cancellable else ""]
+	_callout("[b]%s[/b]: %s" % [spell.name, how], Vector2(960, 150), Color(1, 0.85, 0.4), 2.0)
+	_refresh_all()
+	var got: Array = await _any_picked
+	_picking_any = false
+	_pick_only = null
+	_steal_drag = {}
+	if is_instance_valid(_aim_cursor):
+		_aim_cursor.queue_free()
+	_aim_cursor = null
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	for v in _views.values():
+		if is_instance_valid(v):
+			v.pick_mode = false
+			v.pick_i = -1
+	_refresh_all()
+	return got
+
+
+## Remove spells: BANG. A gunshot, a muzzle flash where you aimed, the crosshair kicks, and the Essence takes a bullet
+## hole before it's knocked off.
+func _fire_shot(v: EnemyView, index: int) -> void:
+	var at := v.hp_point(index)
+	Audio.play_gunshot()
+	if is_instance_valid(_aim_cursor):
+		_aim_cursor.kick()
+	var col: Color = Elements.COLORS.get(v.enemy.elements[index], Color.WHITE)
+	var fx := Vfx.make(_fx, 80)
+	fx.shaker = _shake
+	fx.glow(at, 90, Color(1, 0.95, 0.75, 1.0), 0.12)
+	fx.flare(at, 180, Color(1, 0.85, 0.4, 0.95), 0.14)
+	fx.burst(at, 16, Color(1, 0.8, 0.35), Vector2(250, 650), Vector2(0.1, 0.25), Vector2(3, 6))
+	fx.ring(at, 6, 40, Color(1, 0.9, 0.6), 0.18, 4.0)
+	var hole := fx.part(at, Vector2.ZERO, Color(0.05, 0.03, 0.03, 0.95), 0.7, 9.0, Vfx.SMOKE)
+	hole.size1 = 9.0
+	hole.hold = 0.6
+	for s in fx.burst(at, 10, col.darkened(0.2), Vector2(120, 320), Vector2(0.4, 0.7), Vector2(4, 8), Vfx.SHARD):
+		s.grav = Vector2(0, 900)
+		s.spin = randf_range(-12, 12)
+		s.size1 = s.size0
+	fx.shake(6.0)
+	_shot_fired = true
+
+
+## Steal: you grip an Essence; it follows your hand on a tether until you let go.
+func _begin_steal_drag(v: EnemyView, index: int) -> void:
+	var icon: Control = v._hp_icons[index] if index < v._hp_icons.size() else null
+	if icon != null:
+		icon.modulate.a = 0.3
+	_steal_drag = {"enemy": v.enemy, "index": index, "el": v.enemy.elements[index], "from": v.hp_point(index), "icon": icon}
+	if is_instance_valid(_aim_cursor):
+		_aim_cursor.holding = _steal_drag.el
+		_aim_cursor.tether_from = _steal_drag.from
+	Audio.play("elem_pickup")
+
+
+## Let go near your bag: it lands at the end of the bag and the spell goes through. Anywhere else: it snaps back to
+## the enemy as if nothing happened, and you can try again.
+func _end_steal_drag(at: Vector2) -> void:
+	var d := _steal_drag
+	_steal_drag = {}
+	if is_instance_valid(_aim_cursor):
+		_aim_cursor.holding = ""
+	var bag := _stock_row.get_global_rect().grow(BAG_DROP_MARGIN)
+	var ghost := ElementIcon.make(d.el, 52)
+	ghost.size = Vector2(52, 52)
+	ghost.z_index = 150
+	ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ghost.position = at - ghost.size / 2.0 - _fx.global_position
+	_fx.add_child(ghost)
+	if bag.has_point(at):
+		var to := _stock_row.global_position + Vector2(minf(_stock_row.size.x - 52.0, _bag_icons.size() * (BAG_PX + BAG_GAP)), 0) - _fx.global_position
+		var tw := ghost.create_tween()
+		tw.tween_property(ghost, "position", to, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_callback(ghost.queue_free)
+		Audio.play("elem_remove")
+		_any_picked.emit([fight.enemies.find(d.enemy), d.index])
+	else:
+		var tw := ghost.create_tween()
+		tw.tween_property(ghost, "position", d.from - ghost.size / 2.0 - _fx.global_position, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_callback(func():
+			ghost.queue_free()
+			if is_instance_valid(d.icon):
+				d.icon.modulate.a = 1.0)
+
+
 func _on_hp_clicked(v: EnemyView, index: int) -> void:
+	if _picking_any:
+		if _pick_only != null and v.enemy != _pick_only:
+			return
+		if index < v.enemy.size() and not v.enemy.armor[index] and _allowed("pick", index) and _steal_drag.is_empty():
+			if _pick_style == "hand":
+				_begin_steal_drag(v, index)  # the pick happens when it's dropped on the bag
+			else:
+				_fire_shot(v, index)
+				_any_picked.emit([fight.enemies.find(v.enemy), index])
+		return
 	if v == pick_view:
 		if index < v.enemy.size() and _allowed("pick", index):
 			_pick_done.emit(index)
@@ -1945,8 +2354,10 @@ func _infuse_grab(pointer: Vector2) -> void:
 	var d := ChantDrag.new()
 	d.els = els
 	d.live = live
-	d.slots = fight.player.chant_slots()
-	d.px = 58.0 if maxi(d.slots, els.size()) <= 10 else 46.0
+	d.slots = _chant_rings()
+	var lay := _chant_layout(els.size())
+	d.px = lay.x
+	d.sep = lay.y
 	_chant_row.add_child(d)
 	d.begin_external(els.size() - 1, pointer)
 	_drag = d
@@ -1993,8 +2404,10 @@ func _show_drag(els: Array, live: Array, same_spot_is_no_move: bool) -> void:
 	var d := ChantDrag.new()
 	d.els = els
 	d.live = live
-	d.slots = fight.player.chant_slots()
-	d.px = 58.0 if maxi(d.slots, els.size()) <= 10 else 46.0
+	d.slots = _chant_rings()
+	var lay := _chant_layout(els.size())
+	d.px = lay.x
+	d.sep = lay.y
 	d.same_spot_is_no_move = same_spot_is_no_move
 	_chant_row.add_child(d)
 	_drag = d
@@ -2030,6 +2443,60 @@ func _redirector(spell: Dictionary, src: EnemyState, cands: Array) -> int:
 ## Animation hook from the fight.
 func _anim(ev: Dictionary) -> void:
 	match ev.type:
+		"conjure_split":
+			# the conjuring spell glitches into static, then splits into its conjured spells, which slide into place
+			var src := _card_for(ev.source)
+			var from := src.global_position if src else Vector2(960, 560)
+			Audio.play("spell_glow")
+			if src:
+				await src.static_up(0.3)
+			_build_spells()
+			await get_tree().process_frame
+			for id in ev.ids:
+				var c := _card_for(id)
+				if c:
+					c.static_in(from)
+			Audio.play("elem_pickup")
+			await _wait(0.5)
+			_refresh_all()
+		"conjure_merge":
+			# the conjured spells still in the row (or the last one, just cast) glitch into static, slide together, and
+			# settle back into the spell that conjured them
+			var cards := []
+			for id in ev.ids:
+				var c := _card_for(id)
+				if c:
+					cards.append(c)
+			var meet := Vector2(960, 560)
+			if not cards.is_empty():
+				meet = Vector2.ZERO
+				for c in cards:
+					meet += c.global_position
+				meet /= cards.size()
+				for c in cards:
+					c.static_out_to(meet)
+				Audio.play("elem_remove", -2.0)
+				await _wait(0.4)
+			_build_spells()
+			await get_tree().process_frame
+			var back := _card_for(ev.source)
+			if back:
+				Audio.play("spell_glow")
+				await back.static_in(meet)
+			_refresh_all()
+		"ephemeral_gone":
+			# like an old TV switching off: static, a bright line, a dot, gone
+			var any := false
+			for id in ev.ids:
+				var card := _card_for(id)
+				if card:
+					card.fizzle_out()
+					any = true
+			if any:
+				Audio.play("elem_remove", -2.0)
+				await _wait(0.75)
+			_build_spells()
+			_refresh_all()
 		"bottle":
 			# the cork pops: a burst of light from the bottle
 			Audio.play("elem_pickup")
@@ -2050,8 +2517,7 @@ func _anim(ev: Dictionary) -> void:
 			_step_pos = -1
 			var v: EnemyView = _views.get(ev.enemy)
 			if v:
-				v.hit_flash()
-				_float_text("-%d" % ev.n, v.global_position + Vector2(150, 220), Color(1, 0.9, 0.6))
+				v.hit_flash()  # it jolts, blinks and winces; the burst orbs show how much it lost
 			Audio.play("sfx_damage_hit")
 			_refresh_all()
 			await _wait(0.35)
@@ -2129,7 +2595,7 @@ func _anim(ev: Dictionary) -> void:
 		"enemy_done":
 			for v in _views.values():
 				v.modulate = Color.WHITE
-			await _wait(0.2)
+			await _file_turn_box()
 		"attack":
 			await _enemy_attack(ev)
 		"enemy_move":
@@ -2297,6 +2763,17 @@ func _wake_fx(hits: Array, extension: bool) -> void:
 						flights.append([ch, card])
 						lit[ch] = true
 	if flights.is_empty():
+		for h in hits:
+			var card := _card_for(h.id)
+			if card:
+				card.charges = fight.charges.get(h.id, 0)
+				card.refresh()
+				var fl := card.create_tween()
+				fl.tween_property(card, "modulate", Color(2.0, 1.6, 2.0), 0.08)
+				fl.tween_property(card, "modulate", Color.WHITE, 0.3)
+		if not hits.is_empty():
+			Audio.play("spell_glow")
+			await _wait(0.3)
 		return
 	for ic in lit:
 		ic.highlight = true
@@ -2413,8 +2890,12 @@ func _slam(text: String, col: Color, outline: Color, font_px: int) -> void:
 
 ## New theme: the end-of-fight banner ("victory" / "perfect" / "defeat"), built from separate painted layers that all share
 ## one size, so they line up when laid on top of each other. The ribbon falls first and lands with a thud, then the
-## lettering falls onto it. For "perfect" the word PERFECT, behind the ribbon, then flickers on. Returns false (and
+## lettering falls onto it. For "perfect" the word PERFECT then flickers on above it, in front. Returns false (and
 ## shows nothing) when the Theme is Default or the art is missing, so the caller falls back to the old slam text.
+## How far PERFECT is lifted above its place in the art (it overlapped VICTORY by ~80 px there).
+const PERFECT_RAISE := 90.0
+
+
 func _result_banner(kind: String) -> bool:
 	var ribbon := UiSkin.tex(kind + "_banner")
 	var lettering := UiSkin.tex(kind + "_text")
@@ -2423,12 +2904,12 @@ func _result_banner(kind: String) -> bool:
 	var word := UiSkin.tex("perfect_word") if kind == "perfect" else null
 	var stage := Control.new()
 	stage.size = ribbon.get_size()
-	stage.position = Vector2(960.0 - stage.size.x / 2.0, 560.0 - stage.size.y)  # the ribbon's lower edge rests at y=560
+	stage.position = Vector2(960.0 - stage.size.x / 2.0, 600.0 - stage.size.y)  # the ribbon's lower edge rests at y=600
 	stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stage.z_index = 60
 	_fx.add_child(stage)
 	var layers := {}
-	for part in ["word", "banner", "text"]:
+	for part in ["banner", "text", "word"]:  # PERFECT last, so it sits in front of the ribbon and VICTORY
 		var tex: Texture2D = {"word": word, "banner": ribbon, "text": lettering}[part]
 		if tex == null:
 			continue
@@ -2438,6 +2919,8 @@ func _result_banner(kind: String) -> bool:
 		r.pivot_offset = stage.size / 2.0
 		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		r.modulate.a = 0.0
+		if part == "word":
+			r.position.y = -PERFECT_RAISE  # above VICTORY instead of tucked behind it
 		stage.add_child(r)
 		layers[part] = r
 	var drop := stage.size.y + 520.0
@@ -2465,7 +2948,7 @@ func _result_banner(kind: String) -> bool:
 	await down.call(layers["text"], 1.5, 0.22)
 	thud.call(layers["text"], 12.0 if kind != "defeat" else 7.0, -5.0)
 	await _wait(0.3)
-	if word != null:  # PERFECT blinks on behind the ribbon
+	if word != null:  # PERFECT blinks on, above VICTORY
 		var w: TextureRect = layers["word"]
 		var fl := w.create_tween()
 		for a in [1.0, 0.15, 1.0, 0.25, 1.0, 0.4, 1.0]:
@@ -2649,6 +3132,21 @@ func _card_for(id: String) -> SpellCard:
 
 ## A speech-bubble style callout that says what just happened, near whoever did it.
 func _callout(bbcode: String, at: Vector2, col: Color, life := 1.0) -> void:
+	var p := _callout_panel(bbcode, col)
+	await get_tree().process_frame
+	if not is_instance_valid(p):
+		return
+	p.position = Vector2(clampf(at.x - p.size.x / 2.0, 10, 1910 - p.size.x), clampf(at.y - p.size.y, 10, 1070 - p.size.y))
+	p.modulate.a = 0.0
+	var tw := p.create_tween()
+	tw.tween_property(p, "modulate:a", 1.0, 0.12)
+	tw.tween_interval(life)
+	tw.tween_property(p, "modulate:a", 0.0, 0.25)
+	tw.tween_callback(p.queue_free)
+
+
+## The callout box itself (dark, with a coloured border), added to the effects layer but not placed yet.
+func _callout_panel(bbcode: String, col: Color) -> PanelContainer:
 	var p := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.05, 0.06, 0.05, 0.94)
@@ -2675,16 +3173,7 @@ func _callout(bbcode: String, at: Vector2, col: Color, life := 1.0) -> void:
 	r.text = "[center]" + bbcode + "[/center]"
 	p.add_child(r)
 	_fx.add_child(p)
-	await get_tree().process_frame
-	if not is_instance_valid(p):
-		return
-	p.position = Vector2(clampf(at.x - p.size.x / 2.0, 10, 1910 - p.size.x), clampf(at.y - p.size.y, 10, 1070 - p.size.y))
-	p.modulate.a = 0.0
-	var tw := p.create_tween()
-	tw.tween_property(p, "modulate:a", 1.0, 0.12)
-	tw.tween_interval(life)
-	tw.tween_property(p, "modulate:a", 0.0, 0.25)
-	tw.tween_callback(p.queue_free)
+	return p
 
 
 # ------------------------------------------------------------------ spells, visibly
@@ -2694,6 +3183,9 @@ const SELF_OPS := ["shield", "heal", "aegis", "thorns", "cleanse", "sacrifice"]
 
 ## Before a spell's effect lands, its own show plays out (see SpellFx): from the card to whatever it affects.
 func _spell_fly(ev: Dictionary) -> void:
+	if ev.op == "pluck" and _shot_fired:
+		_shot_fired = false  # the gunshot was the hit
+		return
 	var card := _card_for(ev.spell.id)
 	var from := (card.global_position + card.size * card.scale / 2.0) if card else Vector2(960, 620)
 	var col := GameData.spell_color(ev.spell.get("full_pattern", ev.spell.pattern)).lightened(0.2)
@@ -2745,7 +3237,8 @@ func _effect_landed(ev: Dictionary) -> void:
 			var v: EnemyView = _views.get(e)
 			if v:
 				v.hit_flash()
-				_float_text(text, v.global_position + Vector2(110, 180), Color(1, 0.85, 0.5))
+				if not (text.begins_with("-") and text.substr(1).is_valid_int()):  # no "-N" on enemies: they react instead
+					_float_text(text, v.global_position + Vector2(110, 180), Color(1, 0.85, 0.5))
 	else:
 		_float_text(text, _player_panel.global_position + Vector2(200, 10), Color(0.6, 0.9, 1))
 
@@ -2801,8 +3294,40 @@ func _enemy_turn_start(ev: Dictionary) -> void:
 	tw.tween_property(actor.creature, "scale", Vector2.ONE, 0.2)
 	var m: Dictionary = ev.move
 	var words := "❄ Frozen: it skips its turn." if ev.frozen else _move_words(m, ev.enemy)
-	_callout("[b]%s[/b]\n%s" % [ev.enemy.name, Keywords.colorize(words)], actor.global_position + Vector2(actor.size.x / 2.0, 250), Color(1, 0.55, 0.4), 1.8)
-	await _wait(0.75)
+	await _file_turn_box()  # (in case the last one is still up)
+	# what it's about to do, in a box at the top of the screen; it stays up while the enemy acts
+	var box := _callout_panel("[b]%s[/b]\n%s" % [ev.enemy.name, Keywords.colorize(words)], Color(1, 0.55, 0.4))
+	box.custom_minimum_size.x = 420
+	_turn_box = box
+	await get_tree().process_frame
+	if not is_instance_valid(box):
+		return
+	box.position = Vector2(960.0 - box.size.x / 2.0, TURN_BOX_Y)
+	box.pivot_offset = box.size / 2.0
+	box.modulate.a = 0.0
+	box.scale = Vector2(0.85, 0.85)
+	var pop := box.create_tween().set_parallel(true)
+	pop.tween_property(box, "modulate:a", 1.0, 0.15)
+	pop.tween_property(box, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await _wait(TURN_READ_TIME)  # a moment to read it before it happens
+
+
+## The enemy's action box sits here (top of the screen) while it acts, then fades away.
+const TURN_BOX_Y := 14.0
+const TURN_READ_TIME := 1.0
+var _turn_box: PanelContainer
+
+
+## Once the enemy has acted, its box quietly fades away (its line is already in the log).
+func _file_turn_box() -> void:
+	var box := _turn_box
+	_turn_box = null
+	if box == null or not is_instance_valid(box):
+		return
+	var tw := box.create_tween()
+	tw.tween_property(box, "modulate:a", 0.0, 0.3)
+	tw.tween_callback(box.queue_free)
+	await _wait(0.15)
 
 
 func _move_words(m: Dictionary, e: EnemyState) -> String:
@@ -2943,9 +3468,9 @@ func _wait(t: float) -> void:
 
 
 func _float_text(text: String, pos: Vector2, col: Color) -> void:
-	# New theme: a plain "-5" / "+3" rides on a painted splat (red = damage, green = heal), in white digits
-	if text.length() > 1 and (text[0] == "-" or text[0] == "+") and text.substr(1).is_valid_int():
-		var splat := UiSkin.tex("float_damage" if text[0] == "-" else "float_heal")
+	# New theme: a plain "+3" heal rides on a painted green splat, in white digits (damage gets no splat: no blood)
+	if text.length() > 1 and text[0] == "+" and text.substr(1).is_valid_int():
+		var splat := UiSkin.tex("float_heal")
 		var digits := UiSkin.number(text, 34, true) if splat != null else null
 		if digits != null:
 			var st := Control.new()

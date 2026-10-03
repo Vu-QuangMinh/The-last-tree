@@ -1,7 +1,8 @@
 class_name UiSkin
 extends RefCounted
 ## The "New" look: hand-drawn art from assets/ui/new/ (cut from assets/ui/Fight UI.pdf by tools/export_fight_ui.py).
-## Settings → Theme picks it ("default" = everything drawn in code, "new" = the art wherever there is some).
+## Settings → Theme picks it ("new" = the art wherever there is some, and it's the default; "default" = everything
+## drawn in code).
 ## A piece of art that's missing just returns null, and the caller keeps drawing in code.
 
 const DIR := "res://assets/ui/new/"
@@ -12,7 +13,7 @@ static var _tex := {}
 
 
 static func is_new() -> bool:
-	return SaveManager.setting("theme", "default") == "new"
+	return SaveManager.setting("theme", "new") == "new"
 
 
 static func set_theme(id: String) -> void:

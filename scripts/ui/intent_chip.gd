@@ -30,7 +30,7 @@ func _draw() -> void:
 
 ## kind -> [glyph, colour]
 const LOOK := {
-	"attack": ["⚔", RED], "armor": ["🛡", GREY], "mend": ["✚", GREEN], "shuffle": ["🔀", BLUE],
+	"attack": ["⚔", RED], "armor": ["🛡", GREY], "mend": ["❤", GREEN], "shuffle": ["🔀", BLUE],
 	"silence": ["🔇", PURPLE], "lock": ["🔒", PURPLE], "steal": ["✋", PURPLE], "confuse": ["🌀", PURPLE],
 	"blind": ["🙈", PURPLE], "bleed": ["🩸", PURPLE], "freeze": ["❄", PURPLE], "ethereal": ["👻", BLUE],
 	"empower": ["💪", BLUE], "summon": ["👤+", BLUE], "toll": ["⛓", PURPLE], "invert": ["🔄", PURPLE],
@@ -54,7 +54,7 @@ const INFO := {
 	"ethereal": ["Ethereal", "Your next chant can't touch it."],
 	"empower": ["Empower", "Its attacks deal more damage from now on."],
 	"summon": ["Summon", "Calls more enemies into the fight."],
-	"toll": ["Toll", "Your next chant has 2 fewer slots."],
+	"toll": ["Toll", "Your next chant holds at most 5 Essence."],
 	"invert": ["Invert", "Swaps all your Fire and Water Essence."],
 	"hex": ["Hex", "Marks one of your Essence: chanting it costs 2 HP."],
 	"mimic": ["Mimic", "Its Essence becomes your last chant, backwards."],
@@ -170,7 +170,14 @@ func _add_move(row: HBoxContainer, m: Dictionary, e: EnemyState) -> void:
 			var hits: int = m.get("hits", 1)
 			num = str(attack_damage(m, e)) + (("×%d" % hits) if hits > 1 else "")
 		"mend":
-			num = "+%d" % m.n
+			# a red heart with a green up-arrow, then how many (only when more than one), then which Essence
+			# (a random one shows the wildcard bead). No "+".
+			row.add_child(MendIcon.make(34))
+			if m.n > 1:
+				var digits := UiSkin.number(str(m.n), 34, false, 0.7)
+				row.add_child(digits if digits != null else _word(str(m.n), Color.WHITE))
+			row.add_child(ElementIcon.make("?" if m.el == "random" else m.el, 26))
+			return
 		"bleed", "freeze", "steal", "summon":
 			num = str(m.n)
 		"empower":
@@ -180,21 +187,19 @@ func _add_move(row: HBoxContainer, m: Dictionary, e: EnemyState) -> void:
 		"blind", "silence", "frail":
 			num = str(m.turns)
 		"toll":
-			num = "-2"
+			num = str(PlayerState.TOLL_CAP)
 	row.add_child(_part(look[0], num, look[1], m.kind))
-	if m.kind == "mend":  # which Essence it regrows; a random one shows the wildcard bead (Essence Any)
-		row.add_child(ElementIcon.make("?" if m.el == "random" else m.el, 26))
 
 
 func _part(glyph: String, num: String, col: Color, kind := "") -> Control:
-	if kind == "attack" or kind == "mend":
-		# New theme: an attack is the crossed swords then the number in painted digits: "+5" (or "+3×2" for several hits); a mend is just "+1"
-		var digits := UiSkin.number(num if kind == "mend" else "+" + num, 34, false, 0.7)
+	if kind == "attack":
+		# New theme: an attack is the crossed swords then the number in painted digits: "5" (or "3×2" for 3 damage, twice)
+		var digits := UiSkin.number(num, 34, false, 0.7)
 		if digits != null:
 			var sword := UiSkin.icon("intent_attack", 38) if kind == "attack" else null
 			if sword == null:
 				return digits
-			var row := HBoxContainer.new()  # crossed swords, then the + sign, then the damage
+			var row := HBoxContainer.new()  # crossed swords, then the damage
 			row.add_theme_constant_override("separation", 3)
 			row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			sword.size_flags_vertical = Control.SIZE_SHRINK_CENTER

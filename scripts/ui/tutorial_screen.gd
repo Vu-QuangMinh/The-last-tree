@@ -17,6 +17,7 @@ extends Control
 ##   "release"          press Release
 ##   "turn"             watch the Release and the enemy turn play out
 ##   "clear"            clear the chant
+##   "undo"             take back the last spell (Undo button, Ctrl+Z or Backspace)
 ##   "win"              free play until the fight is won
 
 signal done
@@ -56,11 +57,16 @@ const LESSONS := [
 			{"say": "Tap Clear, and let's rearrange.", "focus": "clear_btn", "then": "clear"},
 			{"say": "Build A W F F W W: the same Essence, but now F F and W W are together.", "focus": "stock", "then": "chant:AWFFWW"},
 			{"say": "×1 on both spells! The chant still does its damage, and now Fire Ball can knock off the Gale Sprite's last A before the Release. Then A W F takes the rest, and it's gone. (The preview only counts the chant, so it won't show a skull until Fire Ball has landed.)", "focus": "spells", "then": "tap"},
-			{"say": "That's the whole game: the chant is your main damage, and arranging it in the right order wakes spells that finish the job. Same Essence, but only the ideal chant wins this turn. (Each spell triggers once per turn.)", "focus": "none", "then": "tap"},
+			{"say": "That's the whole game: the chant is your main damage, and arranging it in the right order wakes spells that finish the job. The best keeper will know which order to chant to maximize their chances of success! (Each spell triggers once per turn.)", "focus": "none", "then": "tap"},
 			{"say": "Tap Chant.", "focus": "chant_btn", "then": "chanted"},
-			{"say": "Water Wall has no target, so it casts itself: 4 Shield, the blue glass over your HP bar. Shield blocks attack damage until your next turn.", "focus": "player", "then": "tap"},
-			{"say": "Fire Ball needs a target, so it waits for you. Tap it: it pulls out an arrow.", "focus": "card:fire_ball", "then": "aiming:fire_ball"},
-			{"say": "Tap the Gale Sprite (or press Tab to switch targets and Enter to confirm).", "focus": "enemy:1", "then": "target:1"},
+			{"say": "Both spells are awake. Tap Water Wall to cast it.", "focus": "card:water_wall", "then": "cast:water_wall"},
+			{"say": "4 Shield: the blue glass over your HP bar. Shield blocks attack damage until your next turn.", "focus": "player", "then": "tap"},
+			{"say": "Fire Ball needs a target. Tap it: it pulls out an arrow.", "focus": "card:fire_ball", "then": "aiming:fire_ball"},
+			{"say": "Let's make a mistake on purpose, so you can see how to fix one. Tap the Ashling (or press Tab to switch targets and Enter to confirm).", "focus": "enemy:0", "then": "target:0"},
+			{"say": "Fire Ball knocked off the Ashling's last A… but the Ashling was going to die anyway: your chant starts with A, so the Release would have finished it. Now look at the Gale Sprite: A W F still leaves its last A, so it survives and hits you next turn. Fire Ball was wasted!", "focus": "enemies", "then": "tap"},
+			{"say": "Good news: until you press Release, you can take back any spell you cast. Tap Undo (or press Ctrl+Z or Backspace).", "focus": "undo_btn", "then": "undo"},
+			{"say": "Time rewound: the Ashling is back, and so is Fire Ball. Only Release is permanent. Tap Fire Ball again.", "focus": "card:fire_ball", "then": "aiming:fire_ball"},
+			{"say": "This time, tap the Gale Sprite.", "focus": "enemy:1", "then": "target:1"},
 			{"say": "Fire Ball knocked off the Gale Sprite's last A, and now the preview shows two skulls. Your spells are done: Release the chant!", "focus": "chant_btn", "then": "release"},
 			{"say": "Here it goes!", "focus": "none_clear", "then": "win"},
 		],
@@ -225,6 +231,8 @@ func _do_step(step: Dictionary) -> void:
 			await _wait_tut(func(k, _d): return k == "turn_start")
 		"clear":
 			await _wait_tut(func(k, d): return k == "chant_changed" and d == "")
+		"undo":
+			await _wait_tut(func(k, _d): return k == "undone")
 		"win":
 			await fs.finished
 
@@ -268,6 +276,8 @@ func _gate(action: String, arg) -> bool:
 			return action == "place" and str(arg) == want
 		"release":
 			return action == "release"
+		"undo":
+			return action == "undo"
 	return false
 
 
@@ -286,6 +296,7 @@ const DO_WHAT := {
 	"placing": "Tap the glowing spell card.",
 	"release": "Tap the Release button (or press E).",
 	"clear": "Tap the Clear button.",
+	"undo": "Tap the Undo button under your chant (or press Ctrl+Z or Backspace).",
 	"turn": "Nothing to do right now: watch the Essence fly and the enemies act.",
 	"win": "",
 }
@@ -354,6 +365,8 @@ func _focus_rect(name: String) -> Rect2:
 			return _rect_of(fs._cast_btn)
 		"clear_btn":
 			return _rect_of(fs._clear_btn)
+		"undo_btn":
+			return _rect_of(fs._undo_btn)
 		"spells":
 			return _rect_of(fs._spell_row).grow_individual(0, 0, 0, 0) if fs._cards.is_empty() else _cards_rect()
 		"card":

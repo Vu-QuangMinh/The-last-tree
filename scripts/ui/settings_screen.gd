@@ -64,7 +64,7 @@ func _theme_row() -> Control:
 	row.add_child(l)
 	var opt := OptionButton.new()
 	opt.custom_minimum_size = Vector2(280, 0)
-	var current: String = SaveManager.setting("theme", "default")
+	var current: String = SaveManager.setting("theme", "new")
 	for i in UiSkin.OPTIONS.size():
 		opt.add_item(UiSkin.LABELS[i])
 		if UiSkin.OPTIONS[i] == current:

@@ -238,7 +238,12 @@ static func chant_button_styles() -> Dictionary:
 		return {}
 	var out := {}
 	for state in ["normal", "hover", "pressed", "disabled"]:
-		out[state] = UiSkin.box("button_chant_" + state, [20, 16, 20, 18], [20, 6, 20, 12])
+		var b := UiSkin.box("button_chant_" + state, [20, 16, 20, 12], [20, 6, 20, 6])
+		if b != null:
+			# only the amber face: the art's dark 3D base strip under it (rows 48-57) is left out (the pressed face sits
+			# 2 px lower in its image, so its window is moved down with it)
+			b.region_rect = Rect2(0, 2 if state == "pressed" else 0, b.texture.get_width(), 48)
+		out[state] = b
 	return out
 
 

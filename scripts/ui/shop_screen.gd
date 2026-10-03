@@ -52,7 +52,7 @@ func _ready() -> void:
 
 
 func _refresh() -> void:
-	_amber.text = "You have %d Amber" % run.amber
+	_amber.text = "You have %d Leaves" % run.amber
 	for c in _grid.get_children():
 		c.queue_free()
 	for i in stock.size():
@@ -96,6 +96,15 @@ func _refresh() -> void:
 				ds.text = "[center]" + Keywords.colorize(b.desc) + "\n[color=#9aa89a]Bottle · for one fight[/color][/center]"
 				bv.add_child(ds)
 				box.add_child(p)
+			"mend_seed":
+				var p := PanelContainer.new()
+				p.add_theme_stylebox_override("panel", UiTheme.panel_box(0.95, 12))
+				p.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H)
+				var l := UiTheme.label("🌼 Mend the Seed of Life\n\nThe badger seals its cracks: your second chance is back.", 19, Color(0.75, 1.0, 0.6))
+				l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				p.add_child(l)
+				box.add_child(p)
 			"upgrade", "heal":
 				var p := PanelContainer.new()
 				p.add_theme_stylebox_override("panel", UiTheme.panel_box(0.95, 12))
@@ -109,7 +118,7 @@ func _refresh() -> void:
 		var sold: bool = it.get("sold", false)
 		var full: bool = it.kind == "bottle" and run.player.bottles.size() >= run.bottle_slots()
 		var none: bool = it.kind == "upgrade" and run.upgradable().is_empty()
-		var label := "Sold" if sold else ("Bottle slots full" if full else ("Nothing to seal" if none else "Buy · %d Amber" % it.price))
+		var label := "Sold" if sold else ("Bottle slots full" if full else ("Nothing to seal" if none else "Buy · %d Leaves" % it.price))
 		var btn := UiTheme.button(label, func(): _buy(i), 18)
 		btn.disabled = sold or full or none or run.amber < it.price
 		box.add_child(btn)
@@ -139,6 +148,11 @@ func _buy(i: int) -> void:
 			run.gain_bottle(it.bottle)
 			Audio.play("artifact_get")
 			Events.toast.emit("Got %s %s" % [Bottles.get_def(it.bottle).icon, Bottles.get_def(it.bottle).name], UiTheme.ACCENT)
+			it.sold = true
+		"mend_seed":
+			run.mend_seed()
+			Audio.play("artifact_get")
+			Events.toast.emit("The Seed of Life is whole again", Color(0.75, 1.0, 0.6))
 			it.sold = true
 		"heal":
 			run.player.heal(run.player.max_hp * RunState.REST_HEAL)

@@ -46,8 +46,8 @@ func set_hover(on: bool) -> void:
 
 
 func _process(d: float) -> void:
-	if burning or poisoned:
-		queue_redraw()  # the flames flicker, the venom bubbles
+	if burning or poisoned or ghost:
+		queue_redraw()  # the flames flicker, the venom bubbles, a doomed Essence blinks
 	if cracked > 0.0 or not _sparks.is_empty():
 		_spew(d)
 		queue_redraw()
@@ -151,7 +151,8 @@ func _draw() -> void:
 		return
 	var a := 1.0
 	if ghost:
-		a = 0.28
+		# it fades in and out (all of them together) instead of being crossed out, so you still see what it is
+		a = 0.2 + 0.65 * (0.5 + 0.5 * cos(Time.get_ticks_msec() / 1000.0 * TAU / 1.2))
 	elif dim:
 		a = 0.45
 	if highlight:
@@ -235,11 +236,6 @@ func _draw() -> void:
 	if hexed:
 		draw_arc(c, r + 1.0, 0, TAU, 32, Color(0.75, 0.3, 0.95), 3.0)
 		draw_circle(c + Vector2(-r * 0.62, -r * 0.62), r * 0.22, Color(0.75, 0.3, 0.95))
-	if ghost:
-		if not UiSkin.draw_fit(self, "x_essence_overlay", c, r * 1.5):  # New theme: the painted X
-			var d := r * 0.55
-			draw_line(c + Vector2(-d, -d), c + Vector2(d, d), Color(1, 0.35, 0.3, 0.9), 3.0)
-			draw_line(c + Vector2(d, -d), c + Vector2(-d, d), Color(1, 0.35, 0.3, 0.9), 3.0)
 
 
 ## Three curved wedges, Fire / Water / Air, blending into each other around the orb.

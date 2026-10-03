@@ -5,7 +5,7 @@ extends Control
 signal fused(new_spell: Dictionary)
 signal back
 
-const RULES := "Fuse melts two of your spells into ONE spell that does everything both of them did.\n• Its pattern: the first spell you pick, then the whole of the second. Nothing is lost.\n• Both spells are used up, and the new one takes a single slot in your active row.\n• Fused spells can't be fused again, and Powers can't be fused."
+const RULES := "Fuse melts two of your spells into ONE spell that does everything both of them did.\n• Its pattern: the first spell you pick, then the whole of the second.\n• Then you may shoot ONE Essence out of the new pattern. The rest close up.\n• Both spells are used up, and the new one takes a single slot in your active row.\n• Only spells that can be fused are shown: anti-spells, Powers and fused spells can't be."
 
 var run: RunState
 var _picked: Array = []  # ids, in the order chosen
@@ -14,6 +14,9 @@ var _grid: HFlowContainer
 var _result_box: HBoxContainer
 var _status: RichTextLabel
 var _fuse_btn: Button
+var _drop := -1  # the Essence shot out of the fused pattern (-1 = none yet)
+var _out: SpellCard  # the fused spell's card, once two are picked: you shoot an Essence out of it
+var _aim: AimCursor
 
 
 func setup(p_run: RunState) -> void:
@@ -88,28 +91,28 @@ func _ready() -> void:
 	var back_btn := UiTheme.button("Back to the campfire", func(): back.emit(), 20)
 	back_btn.custom_minimum_size = Vector2(300, 52)
 	bh.add_child(back_btn)
+	_aim = AimCursor.new()
+	_aim.mode = "shoot"
+	_aim.visible = false
+	add_child(_aim)
 	_refresh()
 
 
 func _refresh() -> void:
 	for c in _grid.get_children():
 		c.queue_free()
-	for id in run.spellbook:
-		var s := run.spell(id)
-		var card := SpellCard.make(s)
-		var ok := run.can_fuse(id)
+	# only the spells that can be fused are shown at all
+	for id in run.fusable():
+		var card := SpellCard.make(run.spell(id))
 		card.selected = id in _picked
-		if not ok:
-			card.state = "used"
-			card.state_text = "Can't fuse" if not s.get("fused", false) else "Already fused"
-		# the rules again, right where the player is deciding
-		card.set_meta("fuse_tip", "\n\n" + ("Fuse: pick this and one more spell to melt them into one." if ok else ("Powers can't be fused." if s.get("power", false) else "Fused spells can't be fused again.")))
+		card.set_meta("fuse_tip", "\n\nFuse: pick this and one more spell to melt them into one.")
 		card.clicked.connect(func(_c): _toggle(id))
 		_grid.add_child(card)
-		if ok and id in _picked:
+		if id in _picked:
 			card.modulate = Color(1.3, 1.2, 0.9)
 	for c in _result_box.get_children():
 		c.queue_free()
+	_out = null
 	_fuse_btn.disabled = _picked.size() < 2
 	match _picked.size():
 		0:
@@ -125,9 +128,9 @@ func _refresh() -> void:
 			_result_box.add_child(UiTheme.label("+", 48, Color.WHITE))
 			_result_box.add_child(SpellCard.make(b))
 			_result_box.add_child(UiTheme.label("→", 48, Color(1, 0.8, 0.4)))
-			var out := SpellCard.make(_preview)
-			_result_box.add_child(out)
-			_status.text = ""
+			_out = SpellCard.make(_preview)
+			_result_box.add_child(_out)
+			_status.text = _shot_status()
 
 
 func _toggle(id: String) -> void:
@@ -139,6 +142,7 @@ func _toggle(id: String) -> void:
 		_picked.append(id)
 	else:
 		_picked[1] = id
+	_drop = -1
 	_preview = run.fuse_preview(_picked[0], _picked[1]) if _picked.size() == 2 else {}
 	_refresh.call_deferred()
 
@@ -148,3 +152,75 @@ func _commit() -> void:
 		return
 	run.fuse_commit(_preview, _picked[0], _picked[1])
 	fused.emit(_preview)
+
+
+func _shot_status() -> String:
+	if _drop >= 0:
+		return Keywords.colorize("Shot! The new pattern is %d Essence long. Fuse them when you're ready, or pick again to start over." % String(_preview.pattern).length())
+	if _can_shoot():
+		return Keywords.colorize("Aim at the new pattern and shoot ONE Essence out of it. Or fuse them as they are.")
+	return ""
+
+
+func _can_shoot() -> bool:
+	return _drop < 0 and is_instance_valid(_out) and String(_preview.get("pattern", "")).length() >= 2
+
+
+## The crosshair replaces the pointer while it's over the fused card (until an Essence has been shot).
+func _process(_d: float) -> void:
+	var aiming := _can_shoot() and _out.get_global_rect().has_point(get_global_mouse_position())
+	if aiming != _aim.visible:
+		_aim.visible = aiming
+		Input.mouse_mode = Input.MOUSE_MODE_HIDDEN if aiming else Input.MOUSE_MODE_VISIBLE
+
+
+func _input(ev: InputEvent) -> void:
+	if not (_aim.visible and ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT):
+		return
+	accept_event()
+	var orbs := _out.live_orbs()
+	var best := -1
+	var best_d := INF
+	for i in orbs.size():
+		var o: Control = orbs[i]
+		var d: float = (o.get_global_rect().get_center() - ev.position).length()
+		if d < best_d and d <= o.size.x * 0.75:
+			best = i
+			best_d = d
+	if best >= 0:
+		_shoot(orbs, best)
+
+
+## BANG: a gunshot, a muzzle flash and a bullet hole where you aimed; the Essence shatters and the rest snap together.
+func _shoot(orbs: Array, index: int) -> void:
+	var orb: Control = orbs[index]
+	var at := orb.get_global_rect().get_center()
+	var col: Color = Elements.COLORS.get(String(_preview.pattern[index]), Color.WHITE)
+	Audio.play_gunshot()
+	_aim.kick()
+	var fx := Vfx.make(self, 80)
+	fx.glow(at, 90, Color(1, 0.95, 0.75, 1.0), 0.12)
+	fx.flare(at, 180, Color(1, 0.85, 0.4, 0.95), 0.14)
+	fx.burst(at, 16, Color(1, 0.8, 0.35), Vector2(250, 650), Vector2(0.1, 0.25), Vector2(3, 6))
+	fx.ring(at, 6, 40, Color(1, 0.9, 0.6), 0.18, 4.0)
+	var hole := fx.part(at, Vector2.ZERO, Color(0.05, 0.03, 0.03, 0.95), 0.7, 9.0, Vfx.SMOKE)
+	hole.size1 = 9.0
+	hole.hold = 0.6
+	for sh in fx.burst(at, 10, col.darkened(0.2), Vector2(120, 320), Vector2(0.4, 0.7), Vector2(4, 8), Vfx.SHARD):
+		sh.grav = Vector2(0, 900)
+		sh.spin = randf_range(-12, 12)
+		sh.size1 = sh.size0
+	_drop = index
+	_preview = run.fuse_preview(_picked[0], _picked[1], _drop)
+	_out.spell = _preview
+	_status.text = _shot_status()
+	# the shot Essence vanishes, then its gap closes and the others snap into place
+	var tw := orb.create_tween()
+	tw.tween_property(orb, "modulate:a", 0.0, 0.06)
+	tw.tween_interval(0.15)
+	tw.tween_property(orb, "custom_minimum_size:x", 0.0, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	tw.tween_callback(orb.queue_free)
+
+
+func _exit_tree() -> void:
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

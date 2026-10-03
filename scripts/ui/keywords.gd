@@ -5,6 +5,9 @@ extends RefCounted
 ## keyword -> [colour on dark UI, colour on parchment, explanation]
 const K := {
 	"annihilate": [Color(1.0, 0.35, 0.5), Color(0.7, 0.05, 0.25), "Annihilate: choose Fire, Water or Air. Every Essence of that kind is removed from the enemies, armoured or not."],
+	"conjure": [Color(0.75, 0.9, 1.0), Color(0.15, 0.4, 0.65), "Conjure N: the spell splits into N random spells, right away, in its place. They're Ephemeral. When they're all gone, it comes back."],
+	"ephemeral": [Color(0.85, 0.95, 1.0), Color(0.3, 0.45, 0.65), "Ephemeral: a conjured spell. It vanishes once cast, or at the end of your next turn if you don't cast it."],
+	"anti-spell": [Color(0.95, 0.5, 0.85), Color(0.55, 0.1, 0.45), "Anti-spell: the opposite of a spell. Every time you chant, it comes alive and is cast like any other spell, UNLESS the chant contains its pattern: that breaks it for the turn. (Pass without chanting and it still goes off at the end of your turn.)"],
 	"fleeting": [Color(0.8, 0.85, 1.0), Color(0.3, 0.35, 0.6), "Fleeting: once you cast it, the spell is gone for the rest of the fight."],
 	"curse": [Color(1.0, 0.45, 0.4), Color(0.7, 0.1, 0.08), "Curse: the price of a cursed artifact. It lasts as long as you keep the artifact."],
 	"remove": [Color(1.0, 0.45, 0.4), Color(0.72, 0.12, 0.08), "Remove: knock Essence off an enemy, one per point. When its Essence is all gone, it's defeated."],
@@ -63,6 +66,8 @@ const K := {
 	"wind": [Elements.COLORS["A"], Color(0.05, 0.5, 0.35), ""],
 	"air": [Elements.COLORS["A"], Color(0.05, 0.5, 0.35), ""],
 }
+## The tri-colour "?" orb in a pattern. (Not a keyword: "any Essence" in rules text means something else.)
+const ANY_ESSENCE := "Any Essence: the tri-colour ? orb in a pattern. Fire, Water or Air, any one of them fits that spot."
 const NUMBER_DARK := Color(1.0, 0.88, 0.4)
 const NUMBER_LIGHT := Color(0.55, 0.3, 0.0)
 
@@ -132,11 +137,11 @@ static func glossary(text: String) -> Array:
 
 
 ## A tooltip body: title, coloured rules text, then what its keywords mean.
-static func tooltip(title: String, body: String, extra := "") -> String:
+static func tooltip(title: String, body: String, extra := "", more_gloss := []) -> String:
 	var s := "[b][font_size=25]%s[/font_size][/b]\n%s" % [_escape(title), colorize(body)]
 	if extra != "":
 		s += "\n" + extra
-	var gl := glossary(body)
+	var gl := glossary(body) + more_gloss
 	if not gl.is_empty():
 		s += "\n[color=#8c9a8c]────────────[/color]"
 		for g in gl:

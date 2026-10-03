@@ -30,13 +30,13 @@ window/size/window_height_override=900
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
+[gui]
+
+theme/custom_font="res://assets/fonts/SFUFuturaRegular.TTF"
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 anti_aliasing/quality/msaa_2d=2
 environment/defaults/default_clear_color=Color(0.05, 0.07, 0.06, 1)
-
-[gui]
-
-theme/custom_font="res://assets/fonts/SFUFuturaRegular.TTF"

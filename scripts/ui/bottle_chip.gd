@@ -51,7 +51,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if clickable else Control.CURSOR_ARROW
 	var how := "Click it on your turn to drink it. It's gone once used." if clickable else "Drink it during a fight (click it on your turn)."
-	tooltip_text = Keywords.tooltip("%s %s" % [b.get("icon", ""), b.get("name", id)], b.get("desc", ""), "[color=#9aa89a]Bottle · %d Amber · %s[/color]" % [b.get("price", 0), how])
+	tooltip_text = Keywords.tooltip("%s %s" % [b.get("icon", ""), b.get("name", id)], b.get("desc", ""), "[color=#9aa89a]Bottle · %d Leaves · %s[/color]" % [b.get("price", 0), how])
 	_apply_art()
 	if clickable:
 		mouse_entered.connect(func():

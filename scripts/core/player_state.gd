@@ -3,7 +3,8 @@ extends RefCounted
 ## You: HP persists through the run; everything else resets each fight.
 ## Stock entries are {el, temp (conjured: vanishes at end of turn), frozen, hexed}.
 
-const BASE_SLOTS := 8
+const UNLIMITED := 1 << 20
+const TOLL_CAP := 5  # under a Toll, your next chant holds at most this many Essence
 const BASE_DRAW := 3
 const START_ELEMENTS := 5
 
@@ -18,7 +19,7 @@ var ethereal := false  # this enemy turn: no attack damage, double effect damage
 var bleed := 0
 var confuse_turns := 0
 var blind_turns := 0
-var toll := 0  # fewer chant slots on your next turn
+var toll := 0  # Toll: your next chant holds at most this many Essence (0 = no limit)
 var frail_turns := 0  # Frail: you take 25% more attack damage
 var dmg_taken_mult := 1.0  # from artifacts (Glass Heart)
 var overload := 0
@@ -64,8 +65,10 @@ func passive(key: String) -> int:
 	return int(passives.get(key, 0))
 
 
+## The chant has no length limit (only your bag limits it), except under a Toll: then the next chant holds at
+## most TOLL_CAP Essence.
 func chant_slots() -> int:
-	return maxi(3, BASE_SLOTS + passive("chant_slots") - toll)
+	return toll if toll > 0 else UNLIMITED
 
 
 ## Every element in the stock has its own uid, so the screen can follow one element as the stock changes.
@@ -135,7 +138,7 @@ func describe_statuses() -> Array:
 	if blind_turns > 0:
 		out.append("Blind: some enemy Essence are hidden")
 	if toll > 0:
-		out.append("Toll: %d fewer chant slots" % toll)
+		out.append("Toll: your next chant holds at most %d Essence" % toll)
 	if frail_turns > 0:
 		out.append("Frail %d (you take 25%% more damage)" % frail_turns)
 	if overload > 0:

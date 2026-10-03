@@ -165,19 +165,15 @@ static func encounter(kind: String, act: int, floor: int, rng: RandomNumberGener
 				pool = fresh
 			var out := [pool[rng.randi() % pool.size()]]
 			if act >= 2:
+				# an elite brings 1 escort (sometimes 2 in act 3)
 				var n := normals(act)
-				out.append(n[rng.randi() % n.size()])
+				for i in (2 if act >= 3 and rng.randf() < 0.4 else 1):
+					out.append(n[rng.randi() % n.size()])
 			return out
 	var pool := normals(act)
 	if act == 1 and floor <= 2:
 		pool = ["ashling", "puddle_slime", "gale_sprite", "frost_hex"]
-	var count := 2
-	if act == 1 and floor <= 2:
-		count = 1
-	elif act == 2 and floor >= 5:
-		count = 3 if rng.randf() < 0.4 else 2
-	elif act == 3:
-		count = 3 if floor >= 4 else 2
+	var count := group_size(act, floor, rng)
 	var out := []
 	for i in count:
 		# prefer enemies not already in this fight or met recently
@@ -187,9 +183,31 @@ static func encounter(kind: String, act: int, floor: int, rng: RandomNumberGener
 	return out
 
 
+## How many enemies a normal fight has: 1 to 5, more likely to be big deeper in the run.
+## [count, weight] per act (the first two floors of act 1 are always a single enemy).
+const GROUP_ODDS := {
+	1: [[1, 0.2], [2, 0.45], [3, 0.27], [4, 0.08]],
+	2: [[2, 0.3], [3, 0.38], [4, 0.22], [5, 0.1]],
+	3: [[2, 0.18], [3, 0.35], [4, 0.3], [5, 0.17]],
+}
+
+
+static func group_size(act: int, floor: int, rng: RandomNumberGenerator) -> int:
+	if act == 1 and floor <= 2:
+		return 1
+	var odds: Array = GROUP_ODDS.get(act, GROUP_ODDS[3])
+	var r := rng.randf()
+	for o in odds:
+		r -= o[1]
+		if r < 0.0:
+			return o[0]
+	return odds[-1][0]
+
+
 ## Extra random elements added to the end of an enemy's Essence on deeper floors (bosses excluded).
-## Act 1 starts at 3 elements; by the middle of act 2 every enemy has 7 or more.
-static func extra_hp(act: int, floor: int, rng: RandomNumberGenerator, boss := false) -> Array:
+## Act 1 starts at 3 elements; by the middle of act 2 every enemy has 7 or more. The size of the group scales it:
+## a lone enemy gets 2 more, and each enemy beyond the second takes 1 fewer from every enemy in the fight.
+static func extra_hp(act: int, floor: int, rng: RandomNumberGenerator, boss := false, group := 2) -> Array:
 	var n := 0
 	if not boss:
 		match act:
@@ -199,6 +217,10 @@ static func extra_hp(act: int, floor: int, rng: RandomNumberGenerator, boss := f
 				n = 3 if floor <= 3 else 4
 			3:
 				n = 5 if floor <= 4 else 6
+		if group == 1 and not (act == 1 and floor <= 2):
+			n += 2
+		elif group > 2:
+			n = maxi(0, n - (group - 2))
 	var out := []
 	for i in n:
 		out.append(Elements.random(rng))
@@ -243,7 +265,7 @@ static func describe_move(m: Dictionary, bonus := 0) -> String:
 		"summon":
 			s = "Call %d %s" % [m.n, E[m.id].name]
 		"toll":
-			s = "Toll: your next chant has 2 fewer slots"
+			s = "Toll: your next chant holds at most %d Essence" % PlayerState.TOLL_CAP
 		"invert":
 			s = "Invert: swap your Fire and Water"
 		"hex":

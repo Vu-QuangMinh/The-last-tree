@@ -263,7 +263,7 @@ func _show_event(ev: Dictionary) -> void:
 ## The Tinker: pick an artifact (shown as it will be); pay and it becomes its + version. Skip: pay nothing.
 func _tinker(opt: Dictionary) -> void:
 	var ids := run.upgradable_artifacts()
-	var ch := _choice("Upgrade an artifact", "Pay %d Amber: it becomes its + version." % opt.get("amber", 0), [], ids.map(func(id): return Artifacts.view(id, true)), true)
+	var ch := _choice("Upgrade an artifact", "Pay %d Leaves: it becomes its + version." % opt.get("amber", 0), [], ids.map(func(id): return Artifacts.view(id, true)), true)
 	ch.chosen.connect(func(k):
 		if k < 0 or k >= ids.size():
 			show_map()
@@ -328,7 +328,11 @@ func _show_loadout(ids: Array) -> void:
 	_swap(l)
 
 
+var _last_ids: Array = []  # the current fight's enemies (the Seed of Life starts it over)
+
+
 func _start_fight(ids: Array) -> void:
+	_last_ids = ids.duplicate()
 	var f := run.make_fight(ids)
 	var fs := FightScreen.new()
 	fs.setup(run, f)
@@ -368,6 +372,12 @@ func _after_fight(f: Fight) -> void:
 	for id in SaveManager.add_to_codex(f.defeated):
 		Events.toast.emit("New Codex entry: %s" % EnemyDefs.get_def(id).name, Color(1, 0.9, 0.5))
 	var act_before := run.act
+	if not f.won and run.can_revive():
+		# the Seed of Life: back to the start of this fight's preparation, as you were going in
+		run.revive()
+		Events.toast.emit("The Seed of Life gives you a second chance", Color(0.75, 1.0, 0.6))
+		_show_loadout(_last_ids)
+		return
 	run.finish_fight(f)
 	if run.over:
 		_end_run()

@@ -49,6 +49,12 @@ var script_draws: Array = []  # tutorial: fixed draws, one String per turn ("FFW
 var chant: Array = []  # element letters of the spoken chant; spells can change it
 var spoken := false
 var used := {}  # spell id -> triggers used this turn
+var current_eff := {}  # the effect being resolved right now (the screen's chooser looks at it)
+var anti_broken := {}  # anti-spell id -> true: its pattern was chanted this turn, so it doesn't fire
+var _conjured := 0  # for unique ids of Ephemeral (conjured) spells
+## A Conjure spell turns into its conjured spells: conjuring[source id] = [their ids]. While any are out the source
+## is gone from the row; when the last is cast or they expire, they merge back into it.
+var conjuring := {}
 var charges := {}  # spell id -> triggers left right now
 var turn_ctx := {}  # {entries, amplify, echo, retain, last, cast_any}
 
@@ -155,7 +161,12 @@ func alive() -> Array:
 
 
 func active_spells() -> Array:
-	return loadout.filter(func(s): return not player.used_powers.has(s.id))
+	return shown_spells().filter(func(s): return not player.used_powers.has(s.id))
+
+
+## The active row as you see it: a Conjure spell whose conjured spells are out isn't in it (they stand in its place).
+func shown_spells() -> Array:
+	return loadout.filter(func(s): return not conjuring.has(s.id))
 
 
 ## Spells that can fire this turn (not silenced, not locked, not a spent Power).
@@ -170,6 +181,11 @@ func trigger_cap(_spell: Dictionary) -> int:
 
 ## Where a spell's pattern appears in the chant. A fully sealed spell (empty pattern) is woken by any chant.
 func _occ(sp: Dictionary, c: String) -> Array:
+	if sp.has("patterns"):  # a fused anti-spell: any one of its patterns counts
+		for p in sp.patterns:
+			if not Chant.occurrences(p, c).is_empty():
+				return [0]
+		return []
 	if String(sp.pattern) == "":
 		return [0] if c != "" else []
 	return Chant.occurrences(sp.pattern, c)
@@ -209,7 +225,7 @@ func _roll_next_draw(upcoming: int) -> void:
 		for ch in String(script_draws.pop_front()):
 			player.next_draw.append({"el": ch, "temp": false})
 		return
-	var n := PlayerState.BASE_DRAW - player.overload
+	var n := PlayerState.BASE_DRAW - player.overload + player.passive("draw_bonus")
 	if has_artifact("second_wind") and player.hp < player.max_hp / 2.0:
 		n += int(_an("second_wind"))
 	if has_artifact("heartwood_seed"):
@@ -317,6 +333,8 @@ func cast_chant(stock_indices: Array) -> void:
 		chant.append(ch)
 	spoken = true
 	used.clear()
+	charges.clear()
+	anti_broken.clear()
 	turn_ctx = {"entries": entries, "amplify": 0, "echo": 0, "retain": 0, "last": {}, "cast_any": false}
 	if has_artifact("kindling_stone") and not player.kindling_charged:
 		player.kindling_chants += 1
@@ -344,8 +362,20 @@ func _recount() -> Array:
 	charges.clear()
 	var woke := []
 	for sp in usable_spells():
+		if sp.get("anti", false):
+			# an anti-spell comes alive with every chant, unless the chant contains its pattern (then it's broken for
+			# the turn, and loses a charge it hadn't used yet)
+			if not _occ(sp, c).is_empty():
+				anti_broken[sp.id] = true
+			elif c != "" and used.get(sp.id, 0) == 0:
+				charges[sp.id] = 1
+				if not before.has(sp.id):
+					woke.append({"id": sp.id, "starts": [], "len": 0})
+			continue
 		var occ: Array = _occ(sp, c).slice(0, trigger_cap(sp))
-		var n: int = occ.size() - used.get(sp.id, 0)
+		# once a spell is alive it stays alive: changing the chant afterwards (Infuse, Rearrange, Duplicate…) can
+		# wake more spells, never put one back to sleep
+		var n: int = maxi(occ.size() - used.get(sp.id, 0), before.get(sp.id, 0))
 		if n > 0:
 			charges[sp.id] = n
 			var gained: int = n - before.get(sp.id, 0)
@@ -381,6 +411,9 @@ func resolve_spell(id: String, target_idx := -1) -> void:
 		return
 	var spell := _find_spell(id)
 	used[id] = used.get(id, 0) + 1
+	charges[id] -= 1  # (the recount after the cast keeps the charges that are left)
+	if charges[id] <= 0:
+		charges.erase(id)
 	var times := 1
 	if not turn_ctx.get("cast_any", false) and player.passive("echo_first") > 0 and not spell.power:
 		times += 1
@@ -465,8 +498,20 @@ func finish_turn() -> void:
 		if not back.is_empty():
 			_log("Your Lens returns %s." % " ".join(back))
 		_cleanup()
+	if not spoken:
+		await _fire_anti_spells()  # no chant at all this turn: nothing broke them, and they still go off
 	if not over:
 		await end_player_turn()
+
+
+## A turn passed without chanting: every anti-spell takes effect at its end (with a chant they come alive instead).
+func _fire_anti_spells() -> void:
+	for sp in usable_spells():
+		if over:
+			return
+		if sp.get("anti", false) and not anti_broken.has(sp.id):
+			_log("%s takes effect: you didn't chant it." % sp.name)
+			await _fire(sp, {}, {})
 
 
 ## The whole turn at once: chant, every charge in chant order, the Release, the enemies.
@@ -570,7 +615,20 @@ func _fire(spell: Dictionary, ctx: Dictionary, tctx: Dictionary) -> void:
 					await _apply(e2, prev, tctx, ctx)
 			continue
 		await _apply(eff, spell, tctx, ctx)
-	if spell.power:
+	if spell.get("ephemeral", false):
+		# a conjured spell vanishes once cast; the last one of its group merges back into the spell that conjured it
+		loadout = loadout.filter(func(s): return s.id != spell.id)
+		var src: String = spell.get("conjured_by", "")
+		var group: Array = conjuring.get(src, [])
+		group.erase(spell.id)
+		if conjuring.has(src) and group.is_empty():
+			conjuring.erase(src)
+			_log("%s fizzles back into %s." % [spell.name, _find_spell(src).get("name", "its spell")])
+			await anim.call({"type": "conjure_merge", "source": src, "ids": [spell.id]})
+		else:
+			_log("%s fizzles away." % spell.name)
+			await anim.call({"type": "ephemeral_gone", "ids": [spell.id]})
+	elif spell.power:
 		player.used_powers[spell.id] = true
 		_log("%s takes hold for the rest of the fight." % spell.name)
 	elif spell.get("fleeting", false):
@@ -585,6 +643,7 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 	# "if this defeats it" effects (Absorb) do nothing at all, not even their animation, when nothing was defeated
 	if eff.get("if_kill", false) and not tctx.get("_alive_before", []).any(func(x): return x.is_dead()):
 		return
+	current_eff = eff
 	var targets := await _targets(eff, spell, tctx)
 	await anim.call({"type": "spell_effect", "op": eff.op, "eff": eff, "targets": targets, "spell": spell})
 	match eff.op:
@@ -701,6 +760,8 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 					e.pluck(free[rng.randi() % free.size()])
 		"echo_next":
 			player.echo_next = true
+		"conjure":
+			await _conjure(eff.n, spell)
 		"grimoire_pick":
 			var ids := loadout.map(func(s): return s.id)
 			var pool := spellbook.filter(func(s): return not (s.id in ids))
@@ -807,6 +868,10 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 			player.passives[eff.key] = player.passive(eff.key) + eff.n
 			if eff.key == "attune":
 				player.passives["attune_el"] = _favourite_element()
+			if eff.key == "draw_bonus":
+				# next turn's draw is already rolled: the extra Essence joins it right away
+				for k in eff.n:
+					player.next_draw.append({"el": _random_element(), "temp": false})
 		"curse":
 			for e in targets:
 				match eff.key:
@@ -920,6 +985,81 @@ func _favourite_element() -> String:
 	return best
 
 
+## Conjure N: the conjuring spell splits into N random spells (not Powers, anti-spells or other Conjure spells, not
+## ones already in your row), right where it was. They're Ephemeral: each vanishes once cast, and any left expire at
+## the end of your next turn. When they're all gone, the conjuring spell comes back. (They're checked against this
+## turn's chant at once, so some may wake straight away: see resolve_spell's re-count.)
+func _conjure(n: int, source: Dictionary) -> void:
+	if source.get("ephemeral", false) or conjuring.has(source.id):
+		return
+	var have := loadout.map(func(s): return String(s.get("base_id", s.id)))
+	var pool: Array = db.all_spells.filter(func(s): return not s.power and not s.get("anti", false) and not (s.id in have) and not s.get("starter", false) \
+		and not s.effects.any(func(e): return e.op == "conjure"))
+	var made := []
+	var at := loadout.find(source) + 1
+	for i in n:
+		if pool.is_empty():
+			break
+		var pick: Dictionary = pool[rng.randi() % pool.size()]
+		pool.erase(pick)
+		var s := pick.duplicate(true)
+		_conjured += 1
+		s.base_id = pick.id
+		s.id = "%s~conjured%d" % [pick.id, _conjured]
+		s.ephemeral = true
+		s.conjured_by = source.id
+		s.expires_turn = turn + 1
+		loadout.insert(clampi(at + i, 0, loadout.size()), s)
+		made.append(s)
+	if made.is_empty():
+		return
+	conjuring[source.id] = made.map(func(s): return s.id)
+	_log("%s splits into %s." % [source.name, ", ".join(made.map(func(s): return s.name))])
+	await anim.call({"type": "conjure_split", "source": source.id, "ids": conjuring[source.id].duplicate()})
+
+
+# ------------------------------------------------------------------ undo
+
+## Everything a spell can change, so it can be undone before the Release: this fight's own state, every enemy's,
+## yours, and the random generator (redoing a spell rolls the same).
+func snapshot() -> Dictionary:
+	return {
+		"fight": _vars_of(self, ["db", "player", "enemies"]),
+		"enemies": enemies.duplicate(),
+		"enemy_states": enemies.map(func(e): return _vars_of(e, [])),
+		"player": _vars_of(player, []),
+		"rng": rng.state,
+	}
+
+
+func restore(snap: Dictionary) -> void:
+	_set_vars(self, snap.fight)
+	enemies = snap.enemies.duplicate()
+	for i in enemies.size():
+		_set_vars(enemies[i], snap.enemy_states[i])
+	_set_vars(player, snap.player)
+	rng.state = snap.rng
+
+
+## An object's script variables, deep-copied (callables and the objects named in `skip` are left out).
+static func _vars_of(o: Object, skip: Array) -> Dictionary:
+	var out := {}
+	for p in o.get_property_list():
+		if not (p.usage & PROPERTY_USAGE_SCRIPT_VARIABLE) or p.name in skip:
+			continue
+		var v = o.get(p.name)
+		if v is Callable or v is RandomNumberGenerator:
+			continue
+		out[p.name] = v.duplicate(true) if (v is Array or v is Dictionary) else v
+	return out
+
+
+static func _set_vars(o: Object, vars: Dictionary) -> void:
+	for k in vars:
+		var v = vars[k]
+		o.set(k, v.duplicate(true) if (v is Array or v is Dictionary) else v)
+
+
 # ------------------------------------------------------------------ bottles
 
 ## Drink the bottle in slot i (target_idx: the enemy, for bottles that need one). It's gone afterwards.
@@ -946,6 +1086,19 @@ func use_bottle(i: int, target_idx := -1) -> void:
 func end_player_turn() -> void:
 	charges.clear()
 	used.clear()
+	anti_broken.clear()
+	# conjured (Ephemeral) spells last until the end of the turn after they appear: those still here then expire, and
+	# merge back into the spell that conjured them
+	var expired := loadout.filter(func(s): return s.get("ephemeral", false) and int(s.get("expires_turn", 0)) <= turn)
+	if not expired.is_empty():
+		loadout = loadout.filter(func(s): return not (s in expired))
+		var by_src := {}
+		for s in expired:
+			by_src[s.conjured_by] = by_src.get(s.conjured_by, []) + [s.id]
+		for src in by_src:
+			conjuring.erase(src)
+			_log("The conjured spells merge back into %s." % _find_spell(src).get("name", "its spell"))
+			await anim.call({"type": "conjure_merge", "source": src, "ids": by_src[src]})
 	turn_ctx = {}
 	chant.clear()
 	spoken = false
@@ -1144,7 +1297,7 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 					_plan(add)
 					await anim.call({"type": "spawn", "enemy": add})
 		"toll":
-			player.toll = 2
+			player.toll = PlayerState.TOLL_CAP
 		"invert":
 			for s in player.stock:
 				s.el = {"F": "W", "W": "F"}.get(s.el, s.el)

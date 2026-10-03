@@ -13,7 +13,8 @@ var _intent_slot: Control
 var _name: Label
 var _hp_row: HFlowContainer
 var _status: RichTextLabel
-var _skull: Label
+## How far down the model's box the intent bubble's top sits (it used to float in a row of its own, high above).
+const INTENT_Y := 6.0
 var _ring: Panel
 var _marker: TextureRect  # New theme: the target reticle that replaces the ring
 var targetable := false
@@ -33,13 +34,8 @@ func setup(e: EnemyState, f: Fight) -> void:
 	add_theme_constant_override("separation", 4)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_intent_slot = CenterContainer.new()
-	_intent_slot.custom_minimum_size = Vector2(300, 46)
 	_intent_slot.z_index = 10  # never hidden behind a model
 	_intent_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_intent_slot)
-	var gap := Control.new()
-	gap.custom_minimum_size = Vector2(0, 8)
-	add_child(gap)
 	var holder := Control.new()
 	holder.custom_minimum_size = Vector2(300, 230)
 	holder.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -81,13 +77,12 @@ func setup(e: EnemyState, f: Fight) -> void:
 	creature = Creature.new()
 	creature.setup(e)
 	creature.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	creature.offset_top = 22  # models stay below the intent row
+	creature.offset_top = 22  # models stay below the intent bubble
 	holder.add_child(creature)
-	_skull = UiTheme.label("☠", 64, Color(1, 0.35, 0.3))
-	_skull.position = Vector2(112, 20)
-	_skull.add_theme_constant_override("outline_size", 8)
-	_skull.add_theme_color_override("font_outline_color", Color.BLACK)
-	holder.add_child(_skull)
+	# the intent bubble sits low, just above the model's head (added after the model, so it's drawn over it)
+	_intent_slot.position = Vector2(0, INTENT_Y)
+	_intent_slot.size = Vector2(300, 46)
+	holder.add_child(_intent_slot)
 	_name = UiTheme.label(e.name, 20, Color.WHITE)
 	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(_name)
@@ -134,7 +129,11 @@ func refresh(preview: Dictionary) -> void:
 	for c in _intent_slot.get_children():
 		c.queue_free()
 	if not e.intent.is_empty():
-		_intent_slot.add_child(IntentChip.make(e))
+		var chip := IntentChip.make(e)
+		# the fight screen shows our own hover panel instead of the built-in tooltip (see FightScreen._update_hover_info)
+		chip.set_meta("info", chip.tooltip_text)
+		chip.tooltip_text = ""
+		_intent_slot.add_child(chip)
 	for ch in _hp_row.get_children():
 		ch.queue_free()
 	_hp_icons.clear()
@@ -172,6 +171,11 @@ func refresh(preview: Dictionary) -> void:
 			icon.dim = e.armor[i]
 			if not e.armor[i]:
 				_make_clickable(icon, i)
+				# the Essence under the cursor lights up
+				icon.mouse_entered.connect(func(): icon.highlight = true; icon.queue_redraw())
+				icon.mouse_exited.connect(func():
+					icon.highlight = pick_i == i
+					icon.queue_redraw())
 		_hp_row.add_child(icon)
 		_hp_icons.append(icon)
 	if move_mode and move_pick >= 0:
@@ -179,12 +183,22 @@ func refresh(preview: Dictionary) -> void:
 		end.tooltip_text = "Put it at the end"
 		_make_clickable(end, e.size() - 1)
 		_hp_row.add_child(end)
-	_skull.visible = e in preview.get("dies", [])
+		# the chant would finish it: a skull, the size of an Essence, at the end of its row of Essence
+	if e in preview.get("dies", []):
+		var sk := UiTheme.label("☠", int(px * 0.9), Color(1, 0.35, 0.3))
+		sk.custom_minimum_size = Vector2(px, px)
+		sk.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		sk.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		sk.add_theme_constant_override("outline_size", maxi(3, int(px * 0.12)))
+		sk.add_theme_color_override("font_outline_color", Color.BLACK)
+		sk.tooltip_text = "Your chant would defeat it."
+		_hp_row.add_child(sk)
 	var st := e.describe_statuses()
 	for p in e.def.get("passives", []):
 		st.append(EnemyDefs.PASSIVE_TEXT[p].get_slice(":", 0))
 	_status.text = "[center]" + " · ".join(st.map(func(s): return _status_bbcode(s.get_slice(" (", 0)))) + "[/center]"
-	tooltip_text = _tooltip()
+	tooltip_text = ""  # the fight screen's hover panel explains it (info_text)
+	creature.tooltip_text = ""
 	_ring.visible = (targetable or move_mode or pick_mode) and _marker == null
 	_ring.modulate = Color(1, 1, 1, 1.0 if targeted or move_mode or pick_mode else 0.35)
 	if _marker != null:
@@ -202,6 +216,55 @@ func _make_clickable(c: Control, index: int) -> void:
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 			hp_clicked.emit(self, index)
 			c.accept_event())
+
+
+## The intent bubble (null if it has none this turn).
+func intent_chip() -> Control:
+	for c in _intent_slot.get_children():
+		if c is IntentChip and not c.is_queued_for_deletion():
+			return c
+	return null
+
+
+## Everything about this enemy, for the hover panel: its Essence, every status (Burn and Poison say exactly which
+## Essence they'll take), armour, its passives and its moves.
+func info_text() -> String:
+	var e := enemy
+	var title := e.name + (" (Boss)" if e.is_boss else (" (Elite)" if e.is_elite else ""))
+	var lines := []
+	var names := e.elements.map(func(x): return Elements.NAMES.get(x, x))
+	lines.append("Essence (%d), left to right: %s" % [e.size(), ", ".join(names)])
+	var armoured := []
+	for i in e.size():
+		if e.armor[i]:
+			armoured.append(str(i + 1))
+	if not armoured.is_empty():
+		lines.append("• Armour on Essence %s: it still counts for matching, but your chant can't remove it this turn." % ", ".join(armoured))
+	if e.burn > 0:
+		var gone := names.slice(0, mini(e.burn, e.size()))
+		lines.append("• Burn %d: at the start of its turn it loses its %d leftmost Essence (%s), then Burn drops to %d." % [e.burn, gone.size(), ", ".join(gone), e.burn - 1])
+	if e.poison > 0:
+		var n := mini(e.poison, e.size())
+		var gone := names.slice(e.size() - n)
+		lines.append("• Poison %d: at the start of its turn it loses its %d rightmost Essence (%s), then Poison drops to %d." % [e.poison, n, ", ".join(gone), e.poison - 1])
+	for s in e.describe_statuses():
+		if s.begins_with("Burn") or s.begins_with("Poison"):
+			continue
+		lines.append("• " + s)
+	for p in e.def.get("passives", []):
+		lines.append("• " + EnemyDefs.PASSIVE_TEXT[p])
+	if lines.size() == 1:
+		lines.append("No effects on it right now.")
+	# its moves, briefly (once it's in your Codex)
+	lines.append("")
+	if SaveManager.in_codex(e.id):
+		var moves: Array = e.def.moves2 if (e.phase == 2 and e.def.has("moves2")) else e.def.moves
+		lines.append("Moves, in order: " + "  →  ".join(moves.map(func(m): return EnemyDefs.describe_move(m, e.dmg_bonus))))
+	else:
+		lines.append("Moves unknown: defeat it once to record them in the Codex.")
+	# its own lines already explain every effect, so no keyword glossary underneath (it stays compact)
+	var flavor := "\n[i][color=#9aa89a]\"%s\"[/color][/i]" % e.def.get("flavor", "")
+	return "[b][font_size=25]%s[/font_size][/b]\n%s%s" % [title, Keywords.colorize("\n".join(lines)), flavor]
 
 
 func _tooltip() -> String:
@@ -247,8 +310,9 @@ func pop(j: int) -> void:
 	tw.parallel().tween_property(icon, "modulate", Color(2.2, 2.0, 1.6), 0.07)
 	tw.tween_property(icon, "scale", Vector2(0.1, 0.1), 0.12)
 	tw.parallel().tween_property(icon, "modulate:a", 0.0, 0.12)
-	creature.flash = 0.6
+	creature.hit(0.6)
 
 
+## Hurt: it jolts, blinks white and pulls a pained face (no blood).
 func hit_flash() -> void:
-	creature.flash = 1.0
+	creature.hit(1.0)

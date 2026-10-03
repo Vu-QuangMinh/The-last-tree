@@ -45,8 +45,10 @@ func _ready() -> void:
 	var er := HBoxContainer.new()
 	er.add_theme_constant_override("separation", 16)
 	root.add_child(er)
+	# up to 5 enemies: the panels share the width (440 each when there's room)
+	var pw := minf(440.0, (1840.0 - 16.0 * (enemy_ids.size() - 1)) / maxf(1.0, enemy_ids.size()))
 	for i in enemy_ids.size():
-		er.add_child(_enemy_panel(enemy_ids[i], i))
+		er.add_child(_enemy_panel(enemy_ids[i], i, pw))
 	# active row
 	var ah := HBoxContainer.new()
 	root.add_child(ah)
@@ -88,11 +90,11 @@ func _ready() -> void:
 	_refresh()
 
 
-func _enemy_panel(id: String, index: int) -> Control:
+func _enemy_panel(id: String, index: int, width := 440.0) -> Control:
 	var d := EnemyDefs.get_def(id)
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", UiTheme.panel_box(0.9, 10))
-	p.custom_minimum_size = Vector2(440, 250)
+	p.custom_minimum_size = Vector2(width, 250)
 	var h := HBoxContainer.new()
 	p.add_child(h)
 	# exactly the Essence it will start the fight with (extra Essence on deeper floors included)
@@ -105,7 +107,8 @@ func _enemy_panel(id: String, index: int) -> Control:
 	cr.custom_minimum_size = Vector2(150, 170)
 	h.add_child(cr)
 	var v := VBoxContainer.new()
-	v.custom_minimum_size = Vector2(270, 0)
+	var text_w := width - 170.0
+	v.custom_minimum_size = Vector2(text_w, 0)
 	h.add_child(v)
 	v.add_child(UiTheme.label(d.name, 22, Color.WHITE))
 	# HP stays hidden (?) until you have defeated this enemy once
@@ -117,7 +120,7 @@ func _enemy_panel(id: String, index: int) -> Control:
 	# a light-hearted description; the moves are in the portrait's hover tooltip
 	var bio := UiTheme.label(EnemyDefs.BIOS.get(id, d.get("flavor", "")), 17, Color(0.88, 0.9, 0.82))
 	bio.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	bio.custom_minimum_size = Vector2(270, 0)
+	bio.custom_minimum_size = Vector2(text_w, 0)
 	v.add_child(bio)
 	var hint := UiTheme.label("Hover the portrait to see its moves.", 14, UiTheme.MUTED)
 	v.add_child(hint)
