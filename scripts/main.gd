@@ -384,7 +384,7 @@ func _after_fight(f: Fight) -> void:
 		return
 	if run.reward_bottle != "":
 		var bd := Bottles.get_def(run.reward_bottle)
-		Events.toast.emit("Found a bottle: %s %s" % [bd.icon, bd.name], Color(0.7, 0.95, 1))
+		Events.toast.emit("Found a bottle: %s %s" % [UiSkin.icon_token(run.reward_bottle, bd.icon), bd.name], Color(0.7, 0.95, 1))
 	var steps: Array = []  # callables, each shows one screen and then calls the next
 	var offer := run.spell_offer(3, kind)
 	var title: String = {"fight": "Victory", "elite": "The elite falls: rare spells", "boss": "The boss falls: legendary spells"}.get(kind, "Victory")

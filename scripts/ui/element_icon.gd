@@ -147,7 +147,8 @@ func _draw() -> void:
 	var r := minf(size.x, size.y) / 2.0 - 2.0
 	var c := size / 2.0
 	if sealed:
-		_draw_seal(c, r)
+		if not (UiSkin.draw_fit(self, "wax_seal_on_card", c, r * 2.25) or UiSkin.draw_fit(self, "wax_seal", c, r * 2.3)):  # New theme: the painted wax seal
+			_draw_seal(c, r)
 		return
 	var a := 1.0
 	if ghost:

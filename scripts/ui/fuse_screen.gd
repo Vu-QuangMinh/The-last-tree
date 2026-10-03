@@ -1,6 +1,8 @@
 class_name FuseScreen
 extends Control
-## Campfire: fuse two spells into one. Pick two cards; the forged spell is shown before you commit.
+## Campfire: fuse two spells into one. Drag two cards onto the fuse slots (or click them); the forged spell is shown
+## before you commit. A card dropped on a full slot pushes the old card back down to the list; a card dragged out of a
+## slot (or clicked there) runs back down too.
 
 signal fused(new_spell: Dictionary)
 signal back
@@ -8,10 +10,13 @@ signal back
 const RULES := "Fuse melts two of your spells into ONE spell that does everything both of them did.\n• Its pattern: the first spell you pick, then the whole of the second.\n• Then you may shoot ONE Essence out of the new pattern. The rest close up.\n• Both spells are used up, and the new one takes a single slot in your active row.\n• Only spells that can be fused are shown: anti-spells, Powers and fused spells can't be."
 
 var run: RunState
-var _picked: Array = []  # ids, in the order chosen
+var _slots: Array = ["", ""]  # ids in the two fuse slots: the first one's pattern goes first
 var _preview: Dictionary = {}
 var _grid: HFlowContainer
+var _slot_box: Array = []  # the two drop targets
 var _result_box: HBoxContainer
+var _drag := {}  # the card being dragged: {id, from} (from = slot index, or -1 for the list)
+var _fly: Array = []  # [{id, from: Vector2}] cards that run from a slot back down to the list
 var _status: RichTextLabel
 var _fuse_btn: Button
 var _drop := -1  # the Essence shot out of the fused pattern (-1 = none yet)
@@ -50,14 +55,19 @@ func _ready() -> void:
 	rules.add_theme_color_override("default_color", Color(0.9, 0.92, 0.86))
 	rules.text = Keywords.colorize(RULES)
 	v.add_child(rules)
-	# the result, once two spells are picked
+	# the two fuse slots, then the result
 	var mid := HBoxContainer.new()
 	mid.add_theme_constant_override("separation", 24)
 	v.add_child(mid)
+	for k in 2:
+		var slot := _make_slot(k)
+		_slot_box.append(slot)
+		mid.add_child(slot)
+		if k == 0:
+			mid.add_child(UiTheme.label("+", 48, Color.WHITE))
+	mid.add_child(UiTheme.label("→", 48, Color(1, 0.8, 0.4)))
 	_result_box = HBoxContainer.new()
-	_result_box.add_theme_constant_override("separation", 16)
-	_result_box.alignment = BoxContainer.ALIGNMENT_BEGIN
-	_result_box.custom_minimum_size = Vector2(0, SpellCard.H)
+	_result_box.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H)
 	mid.add_child(_result_box)
 	var side := VBoxContainer.new()
 	side.add_theme_constant_override("separation", 10)
@@ -66,7 +76,7 @@ func _ready() -> void:
 	_status.bbcode_enabled = true
 	_status.fit_content = true
 	_status.scroll_active = false
-	_status.custom_minimum_size = Vector2(560, 0)
+	_status.custom_minimum_size = Vector2(420, 0)
 	_status.add_theme_font_size_override("normal_font_size", 19)
 	_status.add_theme_font_size_override("bold_font_size", 19)
 	_status.add_theme_color_override("default_color", Color(1, 0.9, 0.75))
@@ -74,11 +84,12 @@ func _ready() -> void:
 	_fuse_btn = UiTheme.button("Fuse them!", _commit, 24)
 	_fuse_btn.custom_minimum_size = Vector2(260, 56)
 	side.add_child(_fuse_btn)
-	v.add_child(UiTheme.label("Your spells (click two):", 18, UiTheme.MUTED))
+	v.add_child(UiTheme.label("Your spells (drag two onto the slots, or click them):", 18, UiTheme.MUTED))
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.custom_minimum_size = Vector2(1820, 300)
+	scroll.set_drag_forwarding(Callable(), _can_drop_list, _drop_list)  # drop a slot's card here: it goes back down
 	v.add_child(scroll)
 	_grid = HFlowContainer.new()
 	_grid.custom_minimum_size = Vector2(1800, 0)
@@ -96,6 +107,19 @@ func _ready() -> void:
 	_aim.visible = false
 	add_child(_aim)
 	_refresh()
+
+
+func _make_slot(k: int) -> PanelContainer:
+	var p := PanelContainer.new()
+	p.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0, 0, 0, 0.35)
+	sb.border_color = Color(1, 0.8, 0.5, 0.6)
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(12)
+	p.add_theme_stylebox_override("panel", sb)
+	p.set_drag_forwarding(Callable(), func(_at, d): return _can_drop_slot(d), func(_at, d): _drop_slot(k, d))
+	return p
 
 
 func _refresh() -> void:
@@ -147,10 +171,18 @@ func _toggle(id: String) -> void:
 	_refresh.call_deferred()
 
 
+## A card dragged out of a slot and let go anywhere that isn't a slot leaves it too.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_DRAG_END:
+		if not _drag.is_empty() and _drag.from >= 0 and not get_viewport().gui_is_drag_successful():
+			_unslot(_drag.from)
+		_drag = {}
+
+
 func _commit() -> void:
-	if _picked.size() < 2 or _preview.is_empty():
+	if _slots[0] == "" or _slots[1] == "" or _preview.is_empty():
 		return
-	run.fuse_commit(_preview, _picked[0], _picked[1])
+	run.fuse_commit(_preview, _slots[0], _slots[1])
 	fused.emit(_preview)
 
 

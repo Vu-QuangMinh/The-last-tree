@@ -51,6 +51,25 @@ func _ready() -> void:
 	_refresh()
 
 
+var _panels: Array = []  # the stretchable frames (everything but the spell cards)
+var _boxes: Array = []  # each item: its picture or card, then its Buy button
+
+
+## Once the text has laid out, every item gets the height of the tallest frame (cards keep their size and the Buy
+## buttons sit level at the bottom).
+func _equalize() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var tallest := SpellCard.H
+	for p in _panels:
+		if is_instance_valid(p):
+			tallest = maxf(tallest, p.get_combined_minimum_size().y)
+	for b in _boxes:
+		if is_instance_valid(b):
+			var btn: Control = b.get_child(b.get_child_count() - 1)
+			b.custom_minimum_size.y = tallest + b.get_theme_constant("separation") + btn.get_combined_minimum_size().y
+
+
 func _refresh() -> void:
 	_amber.text = "You have %d Leaves" % run.amber
 	for c in _grid.get_children():
@@ -62,15 +81,36 @@ func _refresh() -> void:
 		match it.kind:
 			"spell":
 				box.add_child(SpellCard.make(it.spell))
+				var gap := Control.new()  # a card can't stretch: this soaks up the extra height so the Buy button stays level
+				gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
+				box.add_child(gap)
 			"artifact":
 				var a: Dictionary = it.artifact
 				var p := PanelContainer.new()
 				p.add_theme_stylebox_override("panel", UiTheme.panel_box(0.95, 12))
 				p.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H)
-				var l := UiTheme.label("◆ %s\n%s · %s\n\n%s" % [a.name, Artifacts.TIER_NAMES[a.tier].to_upper(), a.aspect, a.desc], 18, Color(0.6, 0.8, 1) if a.tier == "rare" else Color(1, 0.88, 0.6))
-				l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-				l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-				p.add_child(l)
+				var col := Color(0.6, 0.8, 1) if a.tier == "rare" else Color(1, 0.88, 0.6)
+				var art := UiSkin.artifact_icon(a.id, 64)  # New theme: the painted artifact above its name
+				if art != null:
+					var av := VBoxContainer.new()
+					av.alignment = BoxContainer.ALIGNMENT_CENTER
+					av.add_theme_constant_override("separation", 2)
+					art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+					av.add_child(art)
+					av.add_child(_centered(UiTheme.heading(a.name, 22, col)))
+					av.add_child(_centered(UiTheme.label("%s · %s" % [Artifacts.TIER_NAMES[a.tier].to_upper(), a.aspect], 14, UiTheme.MUTED)))
+					var ad := _centered(UiTheme.label(a.desc, 16, Color(0.9, 0.92, 0.86)))
+					ad.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+					ad.custom_minimum_size = Vector2(SpellCard.W - 28, 0)
+					av.add_child(ad)
+					p.add_child(av)
+				else:
+					var l := UiTheme.label("◆ %s\n%s · %s\n\n%s" % [a.name, Artifacts.TIER_NAMES[a.tier].to_upper(), a.aspect, a.desc], 18, col)
+					l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+					l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+					p.add_child(l)
+				p.size_flags_vertical = Control.SIZE_EXPAND_FILL  # the frames stretch to the tallest one
+				_panels.append(p)
 				box.add_child(p)
 			"bottle":
 				var b := Bottles.get_def(it.bottle)
@@ -80,8 +120,12 @@ func _refresh() -> void:
 				var bv := VBoxContainer.new()
 				bv.alignment = BoxContainer.ALIGNMENT_CENTER
 				p.add_child(bv)
-				var ic := UiTheme.label(b.icon, 52, Color.WHITE)
-				ic.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				var ic: Control = UiSkin.icon(b.id, 72)  # New theme: painted art named after the item id, once it exists
+				if ic != null:
+					ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+				else:
+					ic = UiTheme.label(b.icon, 52, Color.WHITE)
+					ic.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 				bv.add_child(ic)
 				var nm := UiTheme.label(b.name, 22, Color(0.6, 0.95, 1.0))
 				nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -95,6 +139,8 @@ func _refresh() -> void:
 				ds.add_theme_font_size_override("bold_font_size", 17)
 				ds.text = "[center]" + Keywords.colorize(b.desc) + "\n[color=#9aa89a]Bottle · for one fight[/color][/center]"
 				bv.add_child(ds)
+				p.size_flags_vertical = Control.SIZE_EXPAND_FILL  # the frames stretch to the tallest one
+				_panels.append(p)
 				box.add_child(p)
 			"mend_seed":
 				var p := PanelContainer.new()
@@ -109,11 +155,28 @@ func _refresh() -> void:
 				var p := PanelContainer.new()
 				p.add_theme_stylebox_override("panel", UiTheme.panel_box(0.95, 12))
 				p.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H)
-				var txt := "🟣 Wax seal\n\nSeal one Essence of a spell's pattern: that Essence isn't needed any more." if it.kind == "upgrade" else "🍲 A hot meal\n\nHeal %d HP." % int(run.player.max_hp * RunState.REST_HEAL)
-				var l := UiTheme.label(txt, 19, Color(0.85, 1, 0.8))
-				l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-				l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-				p.add_child(l)
+				var art := UiSkin.icon("wax_seal" if it.kind == "upgrade" else "hot_meal", 72)  # New theme: painted art, once it exists
+				if art != null:
+					var uv := VBoxContainer.new()
+					uv.alignment = BoxContainer.ALIGNMENT_CENTER
+					art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+					uv.add_child(art)
+					var title := "Wax seal" if it.kind == "upgrade" else "A hot meal"
+					var body := "Seal one Essence of a spell's pattern: that Essence isn't needed any more." if it.kind == "upgrade" else "Heal %d HP." % int(run.player.max_hp * RunState.REST_HEAL)
+					uv.add_child(_centered(UiTheme.heading(title, 22, Color(0.85, 1, 0.8))))
+					var bd := _centered(UiTheme.label(body, 17, Color(0.85, 1, 0.8)))
+					bd.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+					bd.custom_minimum_size = Vector2(SpellCard.W - 28, 0)
+					uv.add_child(bd)
+					p.add_child(uv)
+				else:
+					var txt := "🟣 Wax seal\n\nSeal one Essence of a spell's pattern: that Essence isn't needed any more." if it.kind == "upgrade" else "🍲 A hot meal\n\nHeal %d HP." % int(run.player.max_hp * RunState.REST_HEAL)
+					var l := UiTheme.label(txt, 19, Color(0.85, 1, 0.8))
+					l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+					l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+					p.add_child(l)
+				p.size_flags_vertical = Control.SIZE_EXPAND_FILL  # the frames stretch to the tallest one
+				_panels.append(p)
 				box.add_child(p)
 		var sold: bool = it.get("sold", false)
 		var full: bool = it.kind == "bottle" and run.player.bottles.size() >= run.bottle_slots()
@@ -122,7 +185,14 @@ func _refresh() -> void:
 		var btn := UiTheme.button(label, func(): _buy(i), 18)
 		btn.disabled = sold or full or none or run.amber < it.price
 		box.add_child(btn)
+		_boxes.append(box)
 		_grid.add_child(box)
+	_equalize.call_deferred()
+
+
+func _centered(l: Label) -> Label:
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	return l
 
 
 func _buy(i: int) -> void:
@@ -147,7 +217,7 @@ func _buy(i: int) -> void:
 		"bottle":
 			run.gain_bottle(it.bottle)
 			Audio.play("artifact_get")
-			Events.toast.emit("Got %s %s" % [Bottles.get_def(it.bottle).icon, Bottles.get_def(it.bottle).name], UiTheme.ACCENT)
+			Events.toast.emit("Got %s %s" % [UiSkin.icon_token(it.bottle, Bottles.get_def(it.bottle).icon), Bottles.get_def(it.bottle).name], UiTheme.ACCENT)
 			it.sold = true
 		"mend_seed":
 			run.mend_seed()
