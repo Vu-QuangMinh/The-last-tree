@@ -8,6 +8,11 @@ var accent := Color(1, 1, 1)
 var big := 1.0
 var flash := 0.0
 var bob := 0.0
+## Getting hit: it jolts (shake, decaying), blinks white a few times, and pulls a pained face for a moment.
+var hurt := 0.0  # seconds of the pained face left
+var _shake := 0.0  # pixels of jolt, decaying
+var _blink := 0.0  # seconds of white blinking left
+const HURT_TIME := 1.75  # long enough for the player to see the reaction
 var shape := 0
 var crown := false
 var spikes := false
@@ -51,22 +56,37 @@ func _make_custom_tooltip(for_text: String) -> Object:
 	return Keywords.make_tooltip(for_text)
 
 
+## Hit for `strength` (1 = a full hit, less for a single Essence knocked off).
+func hit(strength := 1.0) -> void:
+	hurt = HURT_TIME
+	_shake = maxf(_shake, 7.0 * strength + 3.0)
+	_blink = maxf(_blink, 0.18 + 0.22 * strength)
+
+
 func _process(d: float) -> void:
 	bob += d * 2.0
 	flash = maxf(0.0, flash - d * 3.0)
+	hurt = maxf(0.0, hurt - d)
+	_shake = maxf(0.0, _shake - d * 30.0)
+	_blink = maxf(0.0, _blink - d)
 	queue_redraw()
 
 
 func _draw() -> void:
 	var c := Vector2(size.x / 2.0, size.y * 0.58 + sin(bob) * 4.0)
+	if _shake > 0.0:  # the jolt of a hit
+		c += Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake) * 0.5)
 	var s := minf(size.x, size.y) * 0.34 * big
-	var body := tint.lerp(Color.WHITE, flash)
+	# white blinks while hit: on and off a few times (and the older soft flash)
+	var blink_on := _blink > 0.0 and fmod(_blink, 0.12) > 0.05
+	var body := tint.lerp(Color.WHITE, maxf(flash, 0.85 if blink_on else 0.0))
 	if dead:
 		body = Color(0.2, 0.2, 0.2, 0.4)
-	# shadow
-	draw_set_transform(Vector2(c.x, size.y * 0.93), 0, Vector2(1, 0.25))
-	draw_circle(Vector2.ZERO, s * 0.9, Color(0, 0, 0, 0.35))
-	draw_set_transform(Vector2.ZERO)
+	# shadow (the New theme stands it on a painted stump instead)
+	if UiSkin.tex("enemy_stand") == null:
+		draw_set_transform(Vector2(c.x, size.y * 0.93), 0, Vector2(1, 0.25))
+		draw_circle(Vector2.ZERO, s * 0.9, Color(0, 0, 0, 0.35))
+		draw_set_transform(Vector2.ZERO)
 	var eye_y := -s * 0.15
 	match shape:
 		0:  # blob
@@ -124,8 +144,31 @@ func _draw() -> void:
 		var pts := PackedVector2Array([c + Vector2(-s * 0.45, cy), c + Vector2(-s * 0.45, cy - s * 0.35), c + Vector2(-s * 0.22, cy - s * 0.15),
 			c + Vector2(0, cy - s * 0.45), c + Vector2(s * 0.22, cy - s * 0.15), c + Vector2(s * 0.45, cy - s * 0.35), c + Vector2(s * 0.45, cy)])
 		draw_colored_polygon(pts, Color(1, 0.82, 0.3))
-	if not dead:
+	if not dead and hurt > 0.0:
+		_draw_pained_face(c, s, eye_y)
+	elif not dead:
 		for side in [-1, 1]:
 			var ep := c + Vector2(side * s * 0.25, eye_y)
 			draw_circle(ep, s * 0.13, Color(1, 1, 0.9))
 			draw_circle(ep + Vector2(side * 2, 2), s * 0.06, Color(0.1, 0.05, 0.05))
+
+
+## Ouch: eyes squeezed shut into "> <", brows pulled up in the middle, a small round "o" of a mouth, and a bead of
+## sweat. It fades back to the normal face as `hurt` runs out.
+func _draw_pained_face(c: Vector2, s: float, eye_y: float) -> void:
+	var ink := Color(0.1, 0.05, 0.05)
+	var w := maxf(2.0, s * 0.07)
+	for side in [-1, 1]:
+		var ep := c + Vector2(side * s * 0.25, eye_y)
+		var r := s * 0.12
+		# a ">" on the left, a "<" on the right: both point at the nose
+		draw_polyline(PackedVector2Array([ep + Vector2(-side * r, -r * 0.8), ep + Vector2(side * r * 0.6, 0), ep + Vector2(-side * r, r * 0.8)]), ink, w, true)
+		# brows tilted up towards the middle
+		draw_line(ep + Vector2(-side * r * 1.1, -r * 1.6), ep + Vector2(side * r * 0.9, -r * 2.3), ink, w * 0.8, true)
+	var mouth := c + Vector2(0, eye_y + s * 0.32)
+	draw_circle(mouth, s * 0.09, ink)
+	draw_circle(mouth + Vector2(0, s * 0.02), s * 0.05, Color(0.75, 0.25, 0.3))
+	# a sweat drop on the side of the head
+	var sd := c + Vector2(s * 0.55, eye_y - s * 0.1)
+	draw_circle(sd, s * 0.07, Color(0.6, 0.85, 1.0, 0.9))
+	draw_colored_polygon(PackedVector2Array([sd + Vector2(-s * 0.06, -s * 0.02), sd + Vector2(0, -s * 0.16), sd + Vector2(s * 0.06, -s * 0.02)]), Color(0.6, 0.85, 1.0, 0.9))

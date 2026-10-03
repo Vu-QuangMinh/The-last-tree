@@ -148,7 +148,8 @@ func _play_fight(fs: FightScreen) -> void:
 		# spells phase: cast every living spell, then end the turn
 		var live := fs._cards.filter(func(c): return c.charges > 0)
 		if live.is_empty():
-			continue  # the damage step runs by itself
+			fs._on_end_turn()  # the Release waits for the player now
+			continue
 		if fights <= 2 and f.turn == 1 and snaps == 0:
 			await _wait_frames(6)
 			await _snap("fight%d_alive" % fights)

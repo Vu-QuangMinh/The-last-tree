@@ -28,7 +28,7 @@ func _ready() -> void:
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.add_theme_constant_override("separation", 24)
 	add_child(v)
-	var t := UiTheme.label(title, 40, Color.WHITE)
+	var t := UiTheme.heading(title, 40, Color.WHITE)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(t)
 	var st := UiTheme.label(subtitle, 20, UiTheme.MUTED)

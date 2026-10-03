@@ -39,6 +39,8 @@ const ALL := [
 	{"id": "ward_stone", "name": "Ward Stone", "aspect": "Defence", "desc": "Start every fight with Aegis 1.", "cost": 35, "starter": false, "pool": "normal", "tier": "rare", "icon": "🛡"},
 	{"id": "thornbark", "name": "Thornbark", "aspect": "Defence", "desc": "Thorns 1 in every fight.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🌵"},
 	{"id": "iron_bark", "name": "Iron Bark", "aspect": "Defence", "desc": "Start every fight with 2 Shield.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🌲"},
+	{"id": "seed_of_life", "name": "Seed of Life", "aspect": "Health", "desc": "You start every run with it. A second chance: if you lose a fight, it breaks and that fight starts over from the beginning, with the HP and bottles you had going in.", "cost": 0, "starter": true, "pool": "none", "tier": "rare", "icon": "🌼"},
+	{"id": "broken_seed_of_life", "name": "Broken Seed of Life", "aspect": "Health", "desc": "Cracked and spent: it gave you your second chance. The merchant can mend it for 100 Leaves.", "cost": 0, "starter": true, "pool": "none", "tier": "rare", "icon": "🥀"},
 	{"id": "healing_sap", "name": "Healing Sap", "aspect": "Health", "desc": "Heal 2 after every fight.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🍯"},
 	{"id": "mending_moss", "name": "Mending Moss", "aspect": "Health", "desc": "Heal 1 at the start of each of your turns.", "cost": 40, "starter": false, "pool": "normal", "tier": "rare", "icon": "🌿"},
 	# ---- rewards

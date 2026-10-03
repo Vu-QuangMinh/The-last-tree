@@ -15,6 +15,9 @@ var _col: Color
 var _medal: Control
 var _hover := false
 var _t := 0.0
+var _frame: StyleBoxTexture  # New theme: the painted treasure frame (and its hover twin)
+var _frame_hover: StyleBoxTexture
+var _ring: Texture2D  # New theme: the medal ring of this artifact's tier
 
 
 static func make(a: Dictionary) -> ArtifactCard:
@@ -41,7 +44,13 @@ func _ready() -> void:
 	_box.content_margin_bottom = 20
 	_box.shadow_color = Color(0, 0, 0, 0.5)
 	_box.shadow_size = 6
-	add_theme_stylebox_override("panel", _box)
+	_frame = UiSkin.box("treasure_card_frame", [12, 12, 12, 12], [26, 22, 26, 24])
+	if _frame != null:
+		_frame_hover = UiSkin.box("treasure_card_frame_hover", [12, 12, 12, 12], [26, 22, 26, 24])
+		_ring = UiSkin.tex("medal_ring_cursed" if cursed else "medal_ring_" + str(a.get("tier", "common")))
+		add_theme_stylebox_override("panel", _frame)
+	else:
+		add_theme_stylebox_override("panel", _box)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -52,14 +61,22 @@ func _ready() -> void:
 	_medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_medal.draw.connect(_draw_medal)
 	v.add_child(_medal)
-	var icon := UiTheme.label(a.get("icon", "◆"), 60, Color.WHITE)
-	icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var icon: Control = UiSkin.artifact_icon(str(a.get("id", "")), 76)
+	if icon != null:
+		icon.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+		icon.offset_left = -38
+		icon.offset_right = 38
+		icon.offset_top = -38
+		icon.offset_bottom = 38
+	else:
+		icon = UiTheme.label(a.get("icon", "◆"), 60, Color.WHITE)
+		icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_medal.add_child(icon)
 	# name: big and in its tier colour
-	var name_l := UiTheme.label(a.name, 30, _col)
+	var name_l := UiTheme.heading(a.name, 30, _col)
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_l.add_theme_constant_override("outline_size", 6)
 	name_l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
@@ -89,6 +106,10 @@ func _process(d: float) -> void:
 	_t += d
 	_hover = is_visible_in_tree() and get_global_rect().has_point(get_global_mouse_position())
 	# hovered: the frame lights up in its colour and the medallion glows
+	if _frame != null:
+		add_theme_stylebox_override("panel", _frame_hover if _hover else _frame)
+		_medal.queue_redraw()
+		return
 	var target := _col if _hover else _col.darkened(0.35)
 	_box.border_color = _box.border_color.lerp(target, minf(1.0, d * 12.0))
 	_box.set_border_width_all(3 if _hover else 2)
@@ -98,6 +119,12 @@ func _process(d: float) -> void:
 func _draw_medal() -> void:
 	var c := _medal.size / 2.0
 	var r := 52.0
+	if _ring != null:  # New theme: a dark disc behind the artifact, the painted ring around it
+		var s := 112.0 / maxf(_ring.get_width(), _ring.get_height())
+		var sz := Vector2(_ring.get_width(), _ring.get_height()) * s
+		_medal.draw_circle(c, 46.0, Color(0.2, 0.13, 0.1))
+		_medal.draw_texture_rect(_ring, Rect2(c - sz / 2.0, sz), false)
+		return
 	var pulse := 0.5 + 0.5 * sin(_t * 2.5)
 	var glow := 0.18 + (0.22 if _hover else 0.08) * pulse
 	for k in 4:

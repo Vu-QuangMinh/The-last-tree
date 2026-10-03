@@ -22,7 +22,7 @@ OPS = {
     "amplify": {"n"}, "echo": {"n"}, "retain": {"n"}, "overload": {"n"}, "cleanse": {"what"},
     "siphon": {"n", "target"}, "execute": {"max", "target"}, "insert": {"el", "pos", "target"},
     "transmute": {"n", "to"}, "sacrifice": {"hp"}, "copy_last": set(),
-    "barrage": {"n"}, "passive": {"key", "n"}, "move": {"n", "target"}, "pluck": {"n", "target"}, "steal": {"n", "el", "target"}, "infuse": {"el"}, "annihilate": {"target"}, "rearrange": {"n"}, "duplicate": {"times"}, "summon_spells": {"n"}, "redirect": {"target"}, "curse": {"key", "target"}, "each_turn": {"effects"},
+    "barrage": {"n"}, "conjure": {"n"}, "random_hit": {"n", "target"}, "passive": {"key", "n"}, "move": {"n", "target"}, "pluck": {"n", "target"}, "steal": {"n", "el", "target"}, "infuse": {"el"}, "annihilate": {"target"}, "rearrange": {"n"}, "duplicate": {"times"}, "summon_spells": {"n"}, "redirect": {"target"}, "curse": {"key", "target"}, "each_turn": {"effects"},
 }
 
 
@@ -131,6 +131,8 @@ def describe_op(e):
         return f"put a {ELEMS[e['el']]} at the front of {t}"
     if op == "transmute":
         return f"turn {e['n']} of your stored Essence into {ELEMS[e['to']]}"
+    if op == "conjure":
+        return f"Conjure {e['n']} (next turn, {e['n']} random spell{'s' if e['n'] > 1 else ''} join your active row; each vanishes once cast: Ephemeral)"
     if op == "barrage":
         return f"remove {e['n']} random Essence from random enemies (the same enemy can be hit more than once)"
     if op == "sacrifice":
@@ -175,8 +177,12 @@ def kind_of(effects):
 def describe(s):
     text = "; ".join(describe_op(e) for e in s["effects"])
     text = text[0].upper() + text[1:] + "."
-    if s.get("power"):
+    if s.get("anti"):
+        text = "**Anti-spell** (never cast; at the end of each of your turns it takes effect unless your chant contains its pattern): " + text
+    elif s.get("power"):
         text = "**Power** (leaves your active row for the rest of the fight): " + text
+    if s.get("fleeting"):
+        text += " Fleeting (gone for the rest of the fight once cast)."
     return text
 
 
@@ -192,6 +198,8 @@ def _check_effects(s, effects, errors):
             errors.append(f"{s['id']}: {e['op']} needs a target")
         if e["op"] in ("passive", "curse", "each_turn", "summon_spells") and not s.get("power"):
             errors.append(f"{s['id']}: {e['op']} only belongs on a Power")
+        if s.get("anti") and e.get("target") in ("target", "two"):
+            errors.append(f"{s['id']}: an anti-spell fires by itself, so it can't ask for a target")
         if e["op"] == "each_turn":
             _check_effects(s, e["effects"], errors)
 
@@ -266,6 +274,23 @@ def render(data):
     return "\n".join(lines)
 
 
+## The ids of the spells added in the second batch (marked "new" in the spreadsheet).
+NEW_IDS = set()
+_new_file = ROOT / "data" / "new_spell_ids.txt"
+if _new_file.exists():
+    NEW_IDS = set(_new_file.read_text(encoding="utf-8").split())
+
+
+def spell_type(s):
+    if s.get("anti"):
+        return "Anti-spell"
+    if s.get("power"):
+        return "Power"
+    if s.get("fleeting"):
+        return "Fleeting"
+    return "Starter" if s.get("starter") else "Spell"
+
+
 def write_xlsx(data, path):
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -279,8 +304,8 @@ def write_xlsx(data, path):
     wb = Workbook()
     ws = wb.active
     ws.title = "Spells"
-    headers = ["Name", "Pattern", "Length", "Rarity", "Category", "Fire", "Water", "Air", "Starter", "Effect", "Flavor", "Id"]
-    widths = [20, 22, 8, 11, 12, 6, 7, 6, 8, 90, 44, 18]
+    headers = ["Name", "Pattern", "Length", "Rarity", "Category", "Fire", "Water", "Air", "Type", "Effect", "Flavor", "Id", "New"]
+    widths = [20, 22, 8, 11, 12, 6, 7, 6, 12, 90, 44, 18, 7]
     for c, h in enumerate(headers, 1):
         cell = ws.cell(1, c, h)
         cell.font = head
@@ -290,22 +315,22 @@ def write_xlsx(data, path):
     rows = sorted(data["spells"], key=lambda s: (len(s["pattern"]), s["pattern"], s["name"]))
     for r, s in enumerate(rows, 2):
         p = s["pattern"]
-        vals = [s["name"], " → ".join(ELEMS.get(c, "Any") for c in p), f"=LEN(M{r})", s["rarity"].capitalize(), kind_of(s["effects"]),
-                p.count("F"), p.count("W"), p.count("A"), "yes" if s.get("starter") else "", describe(s), s.get("flavor", ""), s["id"]]
+        vals = [s["name"], " → ".join(ELEMS.get(c, "Any") for c in p), f"=LEN(N{r})", s["rarity"].capitalize(), kind_of(s["effects"]),
+                p.count("F"), p.count("W"), p.count("A"), spell_type(s), describe(s), s.get("flavor", ""), s["id"], "new" if s["id"] in NEW_IDS else ""]
         for c, v in enumerate(vals, 1):
             cell = ws.cell(r, c, v)
             cell.font = font
             cell.border = border
             cell.alignment = Alignment(wrap_text=c in (2, 10, 11), vertical="top", horizontal="left" if c in (1, 2, 10, 11, 12) else "center")
-        ws.cell(r, 13, p).font = Font(name="Arial", size=8, color="999999")  # raw pattern, used by the Length formula
+        ws.cell(r, 14, p).font = Font(name="Arial", size=8, color="999999")  # raw pattern, used by the Length formula
         for j, el in enumerate("FWA"):
             if p.count(el):
                 ws.cell(r, 6 + j).fill = PatternFill("solid", fgColor=fills[el])
     for c, w in enumerate(widths + [8], 1):
         ws.column_dimensions[get_column_letter(c)].width = w
-    ws.cell(1, 13, "code").font = Font(name="Arial", size=8, color="999999")
+    ws.cell(1, 14, "code").font = Font(name="Arial", size=8, color="999999")
     ws.freeze_panes = "B2"
-    ws.auto_filter.ref = f"A1:L{len(rows) + 1}"
+    ws.auto_filter.ref = f"A1:M{len(rows) + 1}"
     wb.calculation.fullCalcOnLoad = True
     wb.save(path)
 

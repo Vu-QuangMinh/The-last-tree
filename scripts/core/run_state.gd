@@ -45,6 +45,8 @@ var _fuse_count := 0
 var over := false
 var won := false
 var reward_bottle := ""  # a bottle found after the last fight ("" if none)
+var fight_snapshot := {}  # you as you went into the current fight (the Seed of Life puts it back)
+const SEED_MEND_PRICE := 100
 ## Chance to find a bottle after winning a fight (if you have a free slot).
 const BOTTLE_DROP := {"fight": 0.25, "elite": 0.5, "boss": 1.0}
 
@@ -60,7 +62,41 @@ func setup(p_db: SpellDB, p_unlocked_spells: Array, p_unlocked_artifacts: Array,
 	for s in db.starters():
 		spellbook.append(s.id)
 		loadout.append(s.id)
+	artifacts.append("seed_of_life")  # every run starts with its second chance
 	map = MapGen.generate(rng)
+
+
+## Everything about the run, for the save file (see SaveManager.save_run): every variable of the run and of you,
+## and where the random numbers had got to (so the next room comes out the same).
+func to_save() -> Dictionary:
+	var d := _vars_of(self, ["db", "rng", "player"])
+	d.rng_seed = rng.seed
+	d.rng_state = rng.state
+	d.player = _vars_of(player, [])
+	return d
+
+
+static func from_save(d: Dictionary, p_db: SpellDB) -> RunState:
+	var r := RunState.new()
+	r.db = p_db
+	for k in d:
+		if not (k in ["rng_seed", "rng_state", "player"]) and k in r:
+			r.set(k, d[k])
+	r.rng.seed = d.rng_seed
+	r.rng.state = d.rng_state
+	for k in d.player:
+		if k in r.player:
+			r.player.set(k, d.player[k])
+	return r
+
+
+static func _vars_of(o: Object, skip: Array) -> Dictionary:
+	var out := {}
+	for p in o.get_property_list():
+		if p.usage & PROPERTY_USAGE_SCRIPT_VARIABLE and not (p.name in skip):
+			var v = o.get(p.name)
+			out[p.name] = v.duplicate(true) if (v is Array or v is Dictionary) else v
+	return out
 
 
 ## Active spell slots: 5, changed by artifacts (never by the chant length), at most 8.
@@ -150,7 +186,7 @@ func encounter_ids() -> Array:
 	var ids := EnemyDefs.encounter(kind, act, depth(), rng, met)
 	met.append_array(ids)
 	encounter = ids.duplicate()
-	encounter_extra = ids.map(func(id): return EnemyDefs.extra_hp(act, depth(), rng, EnemyDefs.get_def(id).get("boss", false)))
+	encounter_extra = ids.map(func(id): return EnemyDefs.extra_hp(act, depth(), rng, EnemyDefs.get_def(id).get("boss", false), ids.size()))
 	return ids
 
 
@@ -163,6 +199,9 @@ func encounter_hp(i: int) -> Array:
 # ------------------------------------------------------------------ fights
 
 func make_fight(enemy_ids: Array) -> Fight:
+	fight_snapshot = {"hp": player.hp, "max_hp": player.max_hp, "bottles": player.bottles.duplicate(),
+		"echo_casts": player.echo_casts, "echo_charged": player.echo_charged,
+		"kindling_chants": player.kindling_chants, "kindling_charged": player.kindling_charged}
 	var f := Fight.new(db, player)
 	f.rng.seed = rng.randi()
 	f.artifacts = artifacts
@@ -210,6 +249,29 @@ func finish_fight(f: Fight) -> void:
 			map = MapGen.generate(rng)
 
 
+## The Seed of Life: lose with it intact and the fight starts over.
+func can_revive() -> bool:
+	return "seed_of_life" in artifacts and not fight_snapshot.is_empty()
+
+
+## Put you back as you were when the fight began; the Seed breaks.
+func revive() -> void:
+	for k in fight_snapshot:
+		player.set(k, fight_snapshot[k] if not (fight_snapshot[k] is Array) else fight_snapshot[k].duplicate())
+	var i := artifacts.find("seed_of_life")
+	if i >= 0:
+		artifacts[i] = "broken_seed_of_life"
+	artifacts_plus.erase("seed_of_life")
+	over = false
+
+
+## The merchant mends a Broken Seed of Life.
+func mend_seed() -> void:
+	var i := artifacts.find("broken_seed_of_life")
+	if i >= 0:
+		artifacts[i] = "seed_of_life"
+
+
 func is_boss_node() -> bool:
 	return current_node().get("type", "") == "boss"
 
@@ -226,7 +288,7 @@ func spell_offer(n := 3, kind := "fight") -> Array:
 		if id in spellbook:
 			continue
 		var s := db.get_spell(id)
-		if not s.is_empty():
+		if not s.is_empty() and not s.get("starter", false):  # the starting spells are never offered again
 			by_rarity[s.rarity].append(s)
 	var out := []
 	for i in n:
@@ -323,16 +385,22 @@ func upgrade_artifact(id: String) -> void:
 const NEXT_TIER := {"common": "rare", "rare": "legendary"}
 
 
+## (The Seed of Life, whole or broken, is never traded: it's the run's own second chance.)
+const UNTRADEABLE := ["seed_of_life", "broken_seed_of_life"]
+
+
 func tradeable_artifacts(tier := "") -> Array:
 	return artifacts.filter(func(id):
+		if id in UNTRADEABLE:
+			return false
 		var t: String = Artifacts.get_def(id).get("tier", "common")
-		return NEXT_TIER.has(t) and (tier == "" or t == tier) and artifacts.filter(func(o): return Artifacts.get_def(o).get("tier", "") == t).size() >= 2)
+		return NEXT_TIER.has(t) and (tier == "" or t == tier) and artifacts.filter(func(o): return not (o in UNTRADEABLE) and Artifacts.get_def(o).get("tier", "") == t).size() >= 2)
 
 
 ## Up to 3 artifacts of the tier above, not owned and not cursed.
 func trade_offer(tier: String) -> Array:
 	var want: String = NEXT_TIER.get(tier, "")
-	var pool := Artifacts.ALL.filter(func(a): return a.tier == want and a.pool != "curse" and a.get("aspect", "") != "Cursed" and not (a.id in artifacts))
+	var pool := Artifacts.ALL.filter(func(a): return a.tier == want and not (a.pool in ["curse", "none"]) and a.get("aspect", "") != "Cursed" and not (a.id in artifacts))
 	var out := []
 	while not pool.is_empty() and out.size() < 3:
 		var pick: Dictionary = pool[rng.randi() % pool.size()]
@@ -354,10 +422,16 @@ func rest() -> float:
 
 # ------------------------------------------------------------------ fusing (campfires)
 
-## A spell can be fused if it isn't a Power and hasn't been fused already.
+## A spell can be fused if it isn't a Power and hasn't been fused already. (Anti-spells fuse only with
+## anti-spells: see can_fuse_pair.)
 func can_fuse(id: String) -> bool:
 	var s := spell(id)
 	return not s.is_empty() and not s.get("power", false) and not s.get("fused", false)
+
+
+## Two spells can be fused together if both are anti-spells or neither is.
+func can_fuse_pair(id_a: String, id_b: String) -> bool:
+	return can_fuse(id_a) and can_fuse(id_b) and id_a != id_b and spell(id_a).get("anti", false) == spell(id_b).get("anti", false)
 
 
 func fusable() -> Array:
@@ -379,8 +453,10 @@ static func fusion_name(id_a: String, id_b: String, name_a := "", name_b := "") 
 
 
 ## Forge the fused spell from two spells (not yet committed): the first spell's pattern comes first and the
-## second's follows it, whole (nothing is lost: its length is the sum of both). It does everything both did.
-func fuse_preview(id_a: String, id_b: String) -> Dictionary:
+## second's follows it. Then the player may shoot ONE Essence out of it (drop = its index among the Essence still
+## needed; -1 = none), and the rest close up. Wax seals stay where they were: the sealed Essence are still shown
+## (and still not needed). It does everything both did.
+func fuse_preview(id_a: String, id_b: String, drop := -1) -> Dictionary:
 	var a := spell(id_a)
 	var b := spell(id_b)
 	var order := ["common", "rare", "legendary"]
@@ -388,10 +464,41 @@ func fuse_preview(id_a: String, id_b: String) -> Dictionary:
 	var effects: Array = a.effects.duplicate(true) + b.effects.duplicate(true)
 	var s := {
 		"id": "fused_%d" % (_fuse_count + 1), "name": fusion_name(id_a, id_b, a.name, b.name),
-		"pattern": a.pattern + b.pattern, "effects": effects, "rarity": rarity,
+		"pattern": "", "effects": effects, "rarity": rarity,
 		"flavor": "Forged at a campfire from %s and %s." % [a.name, b.name],
 		"fused": true, "fused_from": [a.name, b.name],
 	}
+	if a.get("anti", false) and b.get("anti", false):
+		# the mirror of a spell fusion: a spell needs one pattern AND then the other; a fused anti-spell keeps both
+		# patterns, one row each, and EITHER one in your chant breaks it. It does both effects. (Nothing to shoot.)
+		s.anti = true
+		s.patterns = [String(a.pattern), String(b.pattern)]
+		s.pattern = a.pattern + b.pattern
+	else:
+		var full_a: String = a.get("full_pattern", a.pattern)
+		var full: String = full_a + String(b.get("full_pattern", b.pattern))
+		var sl: Array = a.get("seals", []).duplicate()
+		for i in b.get("seals", []):
+			sl.append(i + full_a.length())
+		if drop >= 0:
+			# the drop-th Essence that isn't sealed: take it out, and the seals after it move one to the left
+			var live := -1
+			for i in full.length():
+				if i in sl:
+					continue
+				live += 1
+				if live == drop:
+					full = full.substr(0, i) + full.substr(i + 1)
+					sl = sl.map(func(k): return k - 1 if k > i else k)
+					break
+		var p := ""
+		for i in full.length():
+			if not (i in sl):
+				p += full[i]
+		s.pattern = p
+		if not sl.is_empty():
+			s.full_pattern = full
+			s.seals = sl
 	s.size = s.pattern.length()
 	s.rarity_name = SpellDB.RARITY_NAMES[rarity]
 	s.power = false
@@ -411,7 +518,15 @@ func fuse_commit(new_spell: Dictionary, id_a: String, id_b: String) -> void:
 		loadout.erase(id)
 		upgraded.erase(id)
 		seals.erase(id)
-	fused[new_spell.id] = new_spell
+	# kept like any spell: its whole pattern, with the seals on top (see spell())
+	var stored := new_spell.duplicate(true)
+	if stored.has("full_pattern"):
+		stored.pattern = stored.full_pattern
+		stored.size = stored.pattern.length()
+		seals[stored.id] = stored.seals.duplicate()
+		stored.erase("full_pattern")
+		stored.erase("seals")
+	fused[new_spell.id] = stored
 	spellbook.append(new_spell.id)
 	if was_active and loadout.size() < active_slots():
 		loadout.append(new_spell.id)
@@ -434,7 +549,7 @@ func seal_spell(id: String, idx: int) -> void:
 
 ## Spells that still have an Essence left to seal.
 func upgradable() -> Array:
-	return spellbook.filter(func(id): return String(spell(id).pattern).length() > 0)
+	return spellbook.filter(func(id): return String(spell(id).pattern).length() > 0 and not spell(id).has("patterns"))
 
 
 ## Indices (into the full pattern) of a spell that can still be sealed.
@@ -493,7 +608,7 @@ func choose_event_option(opt: Dictionary) -> Dictionary:
 			return {"text": "You heal %d." % player.heal(n)}
 		"amber":
 			amber += n
-			return {"text": "+%d Amber." % n}
+			return {"text": "+%d Leaves." % n}
 		"max_hp":
 			player.max_hp += n
 			player.hp += n
@@ -516,13 +631,13 @@ func choose_event_option(opt: Dictionary) -> Dictionary:
 					got.append(Bottles.get_def(b).name)
 			if got.is_empty():
 				amber += opt.get("amber", 0)
-				return {"text": "Your bottle slots are full. You keep your Amber."}
+				return {"text": "Your bottle slots are full. You keep your Leaves."}
 			return {"text": "You take: %s." % ", ".join(got)}
 		"spell":
-			var pool := unlocked_spells.filter(func(id): return not (id in spellbook) and db.get_spell(id).get("rarity", "") == opt.rarity)
+			var pool := unlocked_spells.filter(func(id): return not (id in spellbook) and db.get_spell(id).get("rarity", "") == opt.rarity and not db.get_spell(id).get("starter", false))
 			if pool.is_empty():
 				amber += opt.get("amber", 0)
-				return {"text": "There was nothing left to learn. You keep your Amber."}
+				return {"text": "There was nothing left to learn. You keep your Leaves."}
 			var id: String = pool[rng.randi() % pool.size()]
 			learn_spell(id)
 			return {"text": "You learn %s." % db.get_spell(id).name}
@@ -536,9 +651,9 @@ func choose_event_option(opt: Dictionary) -> Dictionary:
 			amber += n
 			var c := Artifacts.offer(unlocked_artifacts, artifacts, rng, 1, "curse")
 			if c.is_empty():
-				return {"text": "+%d Amber." % n}
+				return {"text": "+%d Leaves." % n}
 			gain_artifact(c[0].id)
-			return {"text": "+%d Amber, and %s clings to you: %s" % [n, c[0].name, c[0].desc]}
+			return {"text": "+%d Leaves, and %s clings to you: %s" % [n, c[0].name, c[0].desc]}
 		"gamble":
 			if rng.randf() < 0.5:
 				player.heal(player.max_hp)
@@ -568,6 +683,8 @@ func shop_stock() -> Array:
 	for b in Bottles.random(rng, 2):
 		items.append({"kind": "bottle", "bottle": b, "price": Bottles.get_def(b).price})
 	items.append({"kind": "upgrade", "price": PRICES.upgrade})
+	if "broken_seed_of_life" in artifacts:
+		items.append({"kind": "mend_seed", "price": SEED_MEND_PRICE})
 	items.append({"kind": "heal", "price": PRICES.heal})
 	return items
 

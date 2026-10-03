@@ -10,6 +10,14 @@ var index := -1
 var clickable := false
 var _t := 0.0
 var _box: StyleBoxFlat
+var _art_normal: StyleBoxTexture  # New theme: slot art (null in Default)
+var _art_hover: StyleBoxTexture
+
+## New theme: a bottle without a painted picture of its own is shown as the nearest of five colour bottles
+const ART := {
+	"bottle_orange": Color(0.94, 0.35, 0.15), "bottle_green": Color(0.27, 0.7, 0.27), "bottle_purple": Color(0.7, 0.35, 0.65),
+	"bottle_gray": Color(0.72, 0.7, 0.68), "bottle_blue": Color(0.3, 0.55, 0.8),
+}
 
 
 static func make(p_id: String, p_index := -1, p_clickable := false) -> BottleChip:
@@ -31,6 +39,7 @@ func _ready() -> void:
 		add_theme_stylebox_override("panel", _box)
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		tooltip_text = ""
+		_apply_art()
 		return
 	var b := Bottles.get_def(id)
 	_box.bg_color = Color(0.06, 0.08, 0.1, 0.92)
@@ -42,15 +51,51 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if clickable else Control.CURSOR_ARROW
 	var how := "Click it on your turn to drink it. It's gone once used." if clickable else "Drink it during a fight (click it on your turn)."
-	tooltip_text = Keywords.tooltip("%s %s" % [b.get("icon", ""), b.get("name", id)], b.get("desc", ""), "[color=#9aa89a]Bottle · %d Amber · %s[/color]" % [b.get("price", 0), how])
+	tooltip_text = Keywords.tooltip(b.get("name", id), b.get("desc", ""), "[color=#9aa89a]Bottle · %d Amber · %s[/color]" % [b.get("price", 0), how], UiSkin.inline(id, b.get("icon", ""), 28))
+	_apply_art()
 	if clickable:
-		mouse_entered.connect(func(): _box.border_color = Color(1, 1, 1))
-		mouse_exited.connect(func(): _box.border_color = Color(0.55, 0.9, 1.0))
+		mouse_entered.connect(func():
+			_box.border_color = Color(1, 1, 1)
+			if _art_hover != null:
+				add_theme_stylebox_override("panel", _art_hover))
+		mouse_exited.connect(func():
+			_box.border_color = Color(0.55, 0.9, 1.0)
+			if _art_normal != null:
+				add_theme_stylebox_override("panel", _art_normal))
+
+
+## New theme: a wooden slot (an empty one shows a faint flask), and a filled one gets the painted bottle on top.
+func _apply_art() -> void:
+	_art_normal = UiSkin.box("bottle_slot_empty")
+	if _art_normal == null:
+		return
+	_art_hover = UiSkin.box("bottle_slot_hover")
+	var tex := UiSkin.tex("bottle_slot_empty")
+	custom_minimum_size = Vector2(54.0 * tex.get_width() / tex.get_height(), 54.0)  # the slot keeps its drawn proportions
+	add_theme_stylebox_override("panel", _art_normal)
+
+
+func _art_name() -> String:
+	if UiSkin.tex(id) != null:
+		return id  # its own painted bottle (assets/ui/new/<id>.png)
+	var col: Color = Bottles.get_def(id).get("color", Color.WHITE)
+	var best := "bottle_gray"
+	var best_d := 9.0
+	for k in ART:
+		var d := Vector2(col.r - ART[k].r, col.g - ART[k].g).length_squared() + pow(col.b - ART[k].b, 2)
+		if d < best_d:
+			best_d = d
+			best = k
+	return best
 
 
 ## A little glass flask: a round body with its liquid (the bottle's colour, gently sloshing), a neck, a cork,
 ## a glint on the glass, and its symbol small in the liquid.
 func _draw() -> void:
+	if _art_normal != null:
+		if id != "":
+			UiSkin.draw_fit(self, _art_name(), size / 2.0 + Vector2(0, 1), 42.0)
+		return
 	if id == "":
 		# an empty slot: a faint flask outline
 		var c0 := Vector2(size.x / 2.0, size.y * 0.62)

@@ -1,0 +1,26 @@
+Intent Bubble Attack: A rounded speech-style bubble in cream paper colour with a thick red outline and a small tail pointing down, completely empty, wide horizontal shape about 2.5 to 1.
+Intent Bubble Defend: A rounded speech-style bubble in cream paper colour with a thick blue outline and a small tail pointing down, completely empty, wide horizontal shape about 2.5 to 1.
+Intent Bubble Debuff: A rounded speech-style bubble in cream paper colour with a thick purple outline and a small tail pointing down, completely empty, wide horizontal shape about 2.5 to 1.
+Intent Bubble Special: A rounded speech-style bubble in cream paper colour with a thick amber outline and a small tail pointing down, completely empty, wide horizontal shape about 2.5 to 1.
+Intent Attack: A single bold pair of small crossed swords in red-orange with a thick dark outline, square image.
+Intent Armor: A single bold round-topped shield in light blue with a thick dark outline, square image.
+Intent Freeze: A single bold light-blue snowflake with a thick dark outline, square image.
+Intent Burn: A single bold orange flame with a thick dark outline, square image.
+Intent Poison: A single bold green droplet with a thick dark outline, square image.
+Intent Steal: A single bold grabbing hand in lavender with a thick dark outline, square image.
+Intent Summon: A single bold plus sign surrounded by three small sparkles in violet with a thick dark outline, square image.
+Intent Unknown: A single bold question-mark symbol in grey with a thick dark outline, square image.
+Intent Mend: A single bold green plus sign with two small curling leaf sprouts growing from it with a thick dark outline, square image.
+Intent Shuffle: A single bold pair of curved arrows crossing over each other in blue with a thick dark outline, square image.
+Intent Silence: A single bold pale mint hush swirl with a small closed-lips shape in purple with a thick dark outline, square image.
+Intent Lock: A single bold chunky padlock in purple with a small round keyhole with a thick dark outline, square image.
+Intent Ethereal: A single bold cute floating ghost in pale blue with a wavy bottom edge and two simple eyes, slightly see-through with a thick dark outline, square image.
+Intent Empower: A single bold flexed arm with a small upward arrow beside it in warm orange with a thick dark outline, square image.
+Intent Toll: A single bold broken chain link in purple with a small minus sign beside it with a thick dark outline, square image.
+Intent Invert: A single bold pair of circular arrows chasing each other, one half orange-red and one half blue-teal with a thick dark outline, square image.
+Intent Hex: A single bold lit candle with a purple flame and a small cursed eye shape floating above it with a thick dark outline, square image.
+Intent Mimic: A single bold theatre mask in purple with a wide grin and a small mirrored copy faintly behind it with a thick dark outline, square image.
+Intent Frail: A single bold heart in purple with a jagged crack through the middle with a thick dark outline, square image.
+Intent Blind: A single bold pair of small hands covering two eyes in purple, in the style of the see-no-evil monkey but a plain round face with a thick dark outline, square image.
+Intent Confuse: A single bold purple spiral swirl with two tiny dizzy stars beside it with a thick dark outline, square image.
+Intent Bleed: A single bold red blood droplet with one smaller drop falling beside it with a thick dark outline, square image.

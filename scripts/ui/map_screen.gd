@@ -8,11 +8,11 @@ signal codex_pressed
 
 ## type -> [icon, name, ring colour, description]
 const LOOK := {
-	"fight": ["⚔", "Fight", Color(0.45, 0.36, 0.28), "A normal fight. Rewards: a spell (70% Common, 30% Rare) and Amber."],
-	"elite": ["👹", "Elite", Color(0.75, 0.15, 0.12), "A tough fight. Rewards: a Rare spell, an artifact and more Amber."],
+	"fight": ["⚔", "Fight", Color(0.45, 0.36, 0.28), "A normal fight. Rewards: a spell (70% Common, 30% Rare) and Leaves."],
+	"elite": ["👹", "Elite", Color(0.75, 0.15, 0.12), "A tough fight. Rewards: a Rare spell, an artifact and more Leaves."],
 	"rest": ["🔥", "Campfire", Color(0.9, 0.5, 0.1), "Rest (heal 30%) or upgrade a spell."],
 	"treasure": ["🎁", "Treasure", Color(0.85, 0.65, 0.1), "Pick an artifact. One of them is cursed."],
-	"shop": ["🛒", "Merchant", Color(0.2, 0.55, 0.3), "Spend Amber on spells, artifacts, an upgrade or a meal."],
+	"shop": ["🛒", "Merchant", Color(0.2, 0.55, 0.3), "Spend Leaves on spells, artifacts, an upgrade or a meal."],
 	"event": ["❓", "Unknown", Color(0.45, 0.3, 0.65), "Usually a strange encounter with choices; sometimes a fight, a merchant or treasure."],
 	"boss": ["👑", "Boss", Color(0.55, 0.1, 0.35), "The guardian of this act."],
 }

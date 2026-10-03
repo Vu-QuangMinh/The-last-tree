@@ -39,7 +39,8 @@ func _swap(c: Control) -> void:
 func show_menu() -> void:
 	Audio.play_music("menu")
 	var m := MenuScreen.new()
-	m.play.connect(start_run)
+	m.play.connect(_new_run)
+	m.continue_run.connect(continue_run)
 	m.codex.connect(open_codex)
 	m.unlocks.connect(func():
 		Audio.play("ui_open_panel")
@@ -167,8 +168,9 @@ func open_codex() -> void:
 	overlay_layer.add_child(c)
 
 
-func _message(title: String, body: String, buttons: Array, col := Color.WHITE) -> MessageScreen:
+func _message(title: String, body: String, buttons: Array, col := Color.WHITE, extra: Control = null) -> MessageScreen:
 	var s := MessageScreen.new()
+	s.extra = extra
 	s.title = title
 	s.body = body
 	s.buttons = buttons
@@ -179,6 +181,40 @@ func _message(title: String, body: String, buttons: Array, col := Color.WHITE) -
 
 
 # ------------------------------------------------------------------ run flow
+
+## New run: the saved one (there's only ever one) is replaced, so ask first if there is one.
+func _new_run() -> void:
+	if not SaveManager.has_run():
+		start_run()
+		return
+	var s := _message("Start a new run?", "You have a run in progress. Starting a new one replaces it: the saved run will be lost.", ["Start a new run", "Back"], UiTheme.DANGER)
+	s.pressed.connect(func(i):
+		if i == 0:
+			SaveManager.clear_run()
+			start_run()
+		else:
+			show_menu())
+
+
+## Save the run where it stands (the map, or the start of a fight) so it can be continued later.
+func _checkpoint(resume: String, ids: Array = []) -> void:
+	if run == null or run.over:
+		return
+	SaveManager.save_run({"resume": resume, "ids": ids.duplicate(), "run": run.to_save()})
+
+
+## Continue: the saved run, back where you left it (on the map, or at the start of the fight you were in).
+func continue_run() -> void:
+	var d := SaveManager.load_run()
+	if d.is_empty():
+		show_menu()
+		return
+	run = RunState.from_save(d.run, GameData.db)
+	if d.resume == "fight" and not d.ids.is_empty():
+		_show_loadout(d.ids)
+	else:
+		show_map()
+
 
 func start_run() -> void:
 	run = RunState.new()
@@ -191,6 +227,7 @@ func start_run() -> void:
 
 
 func show_map() -> void:
+	_checkpoint("map")
 	Audio.play_music("map")
 	var m := MapScreen.new()
 	m.setup(run)
@@ -263,7 +300,7 @@ func _show_event(ev: Dictionary) -> void:
 ## The Tinker: pick an artifact (shown as it will be); pay and it becomes its + version. Skip: pay nothing.
 func _tinker(opt: Dictionary) -> void:
 	var ids := run.upgradable_artifacts()
-	var ch := _choice("Upgrade an artifact", "Pay %d Amber: it becomes its + version." % opt.get("amber", 0), [], ids.map(func(id): return Artifacts.view(id, true)), true)
+	var ch := _choice("Upgrade an artifact", "Pay %d Leaves: it becomes its + version." % opt.get("amber", 0), [], ids.map(func(id): return Artifacts.view(id, true)), true)
 	ch.chosen.connect(func(k):
 		if k < 0 or k >= ids.size():
 			show_map()
@@ -321,6 +358,7 @@ func _show_shop(stock: Array) -> void:
 
 
 func _show_loadout(ids: Array) -> void:
+	_checkpoint("fight", ids)
 	var l := LoadoutScreen.new()
 	l.setup(run, ids)
 	l.confirmed.connect(func(): _start_fight(ids))
@@ -328,21 +366,44 @@ func _show_loadout(ids: Array) -> void:
 	_swap(l)
 
 
+var _last_ids: Array = []  # the current fight's enemies (the Seed of Life starts it over)
+
+
 func _start_fight(ids: Array) -> void:
+	_last_ids = ids.duplicate()
+	_checkpoint("fight", ids)  # (with the spells you just chose)
 	var f := run.make_fight(ids)
 	var fs := FightScreen.new()
 	fs.setup(run, f)
+	fs.run_saved = true
 	fs.finished.connect(func(_won): _after_fight(f))
 	fs.menu_requested.connect(func(): run = null; show_menu())
 	Audio.play_music("boss" if run.current_kind() == "boss" else "fight")
 	_swap(fs)
 
 
+## Your HP bar (the one from fights) with the numbers beside it.
+func _hp_box() -> Control:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 12)
+	var heart := UiSkin.icon("icon_heart", 30)
+	if heart != null:
+		heart.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		h.add_child(heart)
+	var bar := HpBar.new()
+	bar.custom_minimum_size = Vector2(460, 26)
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bar.set_values(run.player.hp, run.player.max_hp, 0.0)
+	h.add_child(bar)
+	h.add_child(UiTheme.label("%d / %d" % [run.player.hp, run.player.max_hp], 24, Color.WHITE))
+	return h
+
+
 ## Campfire: rest to heal, or fuse two spells into one.
 func _show_rest() -> void:
 	var heal := int(run.player.max_hp * RunState.REST_HEAL)
 	var can_fuse := run.fusable().size() >= 2
-	var s := _message("A campfire", "Rest (heal %d HP, you have %d / %d), or Fuse two of your spells into one stronger spell." % [heal, run.player.hp, run.player.max_hp], ["Rest  (+%d HP)" % heal, "Fuse two spells"], Color(1, 0.75, 0.45))
+	var s := _message("A campfire", "Rest (heal %d HP, you have %d / %d), or Fuse two of your spells into one stronger spell." % [heal, run.player.hp, run.player.max_hp], ["Rest  (+%d HP)" % heal, "Fuse two spells"], Color(1, 0.75, 0.45), _hp_box())
 	s.disabled = [false, not can_fuse]
 	s.pressed.connect(func(i):
 		if i == 0:
@@ -368,13 +429,19 @@ func _after_fight(f: Fight) -> void:
 	for id in SaveManager.add_to_codex(f.defeated):
 		Events.toast.emit("New Codex entry: %s" % EnemyDefs.get_def(id).name, Color(1, 0.9, 0.5))
 	var act_before := run.act
+	if not f.won and run.can_revive():
+		# the Seed of Life: back to the start of this fight's preparation, as you were going in
+		run.revive()
+		Events.toast.emit("The Seed of Life gives you a second chance", Color(0.75, 1.0, 0.6))
+		_show_loadout(_last_ids)
+		return
 	run.finish_fight(f)
 	if run.over:
 		_end_run()
 		return
 	if run.reward_bottle != "":
 		var bd := Bottles.get_def(run.reward_bottle)
-		Events.toast.emit("Found a bottle: %s %s" % [bd.icon, bd.name], Color(0.7, 0.95, 1))
+		Events.toast.emit("Found a bottle: %s %s" % [UiSkin.icon_token(run.reward_bottle, bd.icon), bd.name], Color(0.7, 0.95, 1))
 	var steps: Array = []  # callables, each shows one screen and then calls the next
 	var offer := run.spell_offer(3, kind)
 	var title: String = {"fight": "Victory", "elite": "The elite falls: rare spells", "boss": "The boss falls: legendary spells"}.get(kind, "Victory")
@@ -437,6 +504,7 @@ func _end_run() -> void:
 	Audio.play("seedling_gain")
 	Audio.stop_music()
 	SaveManager.record_run(seeds, run.act, run.kills, run.won)
+	SaveManager.clear_run()  # the run is over: nothing to continue
 	var title := "The last tree stands!" if run.won else "The last tree has fallen"
 	var body := "Act %d reached · %d enemies defeated · %d spells learned\n+%d Seedlings (spend them on Unlocks)." % [run.act, run.kills, run.spellbook.size() - 4, seeds]
 	var s := _message(title, body, ["Play again", "Main menu"], Color(0.6, 1, 0.5) if run.won else UiTheme.DANGER)

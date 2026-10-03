@@ -25,12 +25,12 @@ func _ready() -> void:
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 16)
 	v.add_child(top)
-	_title = UiTheme.label("", 32, Color.WHITE)
+	_title = UiTheme.heading("", 32, Color.WHITE)
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(_title)
 	top.add_child(UiTheme.button("Spells", func(): _tab = "spells"; _refresh(), 20))
 	top.add_child(UiTheme.button("Artifacts", func(): _tab = "artifacts"; _refresh(), 20))
-	top.add_child(UiTheme.button("Close  (Esc)", func(): closed.emit(), 20))
+	top.add_child(UiTheme.button(UiTheme.hk("Close", "Esc"), func(): closed.emit(), 20))
 	v.add_child(UiTheme.label("Unlocked spells and artifacts can show up as rewards in future runs.", 17, UiTheme.MUTED))
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(1840, 920)
@@ -73,7 +73,17 @@ func _refresh() -> void:
 			p.custom_minimum_size = Vector2(440, 150)
 			var v := VBoxContainer.new()
 			p.add_child(v)
-			v.add_child(UiTheme.label("◆ " + a.name, 22, Color(1, 0.85, 0.5)))
+			var art := UiSkin.artifact_icon(a.id, 44)  # New theme: the painted artifact beside its name
+			if art != null:
+				var head := HBoxContainer.new()
+				head.add_theme_constant_override("separation", 10)
+				head.add_child(art)
+				var nm := UiTheme.label(a.name, 22, Color(1, 0.85, 0.5))
+				nm.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+				head.add_child(nm)
+				v.add_child(head)
+			else:
+				v.add_child(UiTheme.label("◆ " + a.name, 22, Color(1, 0.85, 0.5)))
 			var d := UiTheme.label(a.desc, 16, UiTheme.MUTED)
 			d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			v.add_child(d)

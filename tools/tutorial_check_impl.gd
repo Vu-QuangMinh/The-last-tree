@@ -85,6 +85,8 @@ func run(t: SceneTree, p_out: String) -> void:
 				fs._clear_chant()
 			"release":
 				fs._on_end_turn()
+			"undo":
+				fs._undo_last()
 			"win":
 				# free play: chant everything that matches an enemy start, then cast what comes alive
 				if fs.phase == "build":

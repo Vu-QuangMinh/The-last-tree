@@ -16,6 +16,11 @@ var _cracks: Array = []  # fracture lines, in orb units (centre 0,0, radius 1): 
 var _sparks: Array = []  # light spewing out of the cracks: [pos, vel, life] in pixels from the centre
 var highlight := false
 var dim := false
+var hover_lift := 0.0  # px the icon floats up while the mouse is on it
+var _lift_tween: Tween
+
+## New theme: the bead art for each element (anything else, "?" included, is the wildcard bead)
+const ART := {"F": "essence_fire", "W": "essence_water", "A": "essence_wind"}
 
 
 static func make(p_el: String, px := 40.0) -> ElementIcon:
@@ -30,9 +35,19 @@ func refresh() -> void:
 	queue_redraw()
 
 
+## The mouse is over this element (or has left): it floats up 3 px and drops back.
+func set_hover(on: bool) -> void:
+	if is_instance_valid(_lift_tween):
+		_lift_tween.kill()
+	_lift_tween = create_tween()
+	_lift_tween.tween_method(func(v: float):
+		hover_lift = v
+		queue_redraw(), hover_lift, 3.0 if on else 0.0, 0.08)
+
+
 func _process(d: float) -> void:
-	if burning or poisoned:
-		queue_redraw()  # the flames flicker, the venom bubbles
+	if burning or poisoned or ghost:
+		queue_redraw()  # the flames flicker, the venom bubbles, a doomed Essence blinks
 	if cracked > 0.0 or not _sparks.is_empty():
 		_spew(d)
 		queue_redraw()
@@ -128,19 +143,24 @@ func _draw_seal(c: Vector2, r: float) -> void:
 
 
 func _draw() -> void:
+	draw_set_transform(Vector2(0, -hover_lift), 0.0, Vector2.ONE)
 	var r := minf(size.x, size.y) / 2.0 - 2.0
 	var c := size / 2.0
 	if sealed:
-		_draw_seal(c, r)  # sealed by an upgrade: the wax hides the Essence underneath
+		if not (UiSkin.draw_fit(self, "wax_seal_on_card", c, r * 2.25) or UiSkin.draw_fit(self, "wax_seal", c, r * 2.3)):  # New theme: the painted wax seal
+			_draw_seal(c, r)
 		return
 	var a := 1.0
 	if ghost:
-		a = 0.28
+		# it fades in and out (all of them together) instead of being crossed out, so you still see what it is
+		a = 0.2 + 0.65 * (0.5 + 0.5 * cos(Time.get_ticks_msec() / 1000.0 * TAU / 1.2))
 	elif dim:
 		a = 0.45
 	if highlight:
 		draw_circle(c, r + 3.0, Color(1, 1, 1, 0.9))
-	if CardPip.ICON.has(el):
+	if UiSkin.draw_fit(self, ART.get(el, "essence_any"), c, r * 2.0 + 2.0, Color(1, 1, 1, a)):
+		pass  # the New theme's art
+	elif CardPip.ICON.has(el):
 		CardPip.draw_pip(self, c, r, el, a)
 	else:
 		# any element / hidden: a white disc with the three colours blended inside
@@ -217,10 +237,6 @@ func _draw() -> void:
 	if hexed:
 		draw_arc(c, r + 1.0, 0, TAU, 32, Color(0.75, 0.3, 0.95), 3.0)
 		draw_circle(c + Vector2(-r * 0.62, -r * 0.62), r * 0.22, Color(0.75, 0.3, 0.95))
-	if ghost:
-		var d := r * 0.55
-		draw_line(c + Vector2(-d, -d), c + Vector2(d, d), Color(1, 0.35, 0.3, 0.9), 3.0)
-		draw_line(c + Vector2(d, -d), c + Vector2(-d, d), Color(1, 0.35, 0.3, 0.9), 3.0)
 
 
 ## Three curved wedges, Fire / Water / Air, blending into each other around the orb.

@@ -20,10 +20,16 @@ static func card_text(s: Dictionary) -> String:
 ## The same rules as one paragraph (tooltips, reports).
 static func describe(s: Dictionary) -> String:
 	var text := " ".join(s.effects.map(func(e): return sentence(e)))
-	if s.get("power", false):
+	if s.get("anti", false) and s.has("patterns"):
+		text = "Anti-spell: it comes alive with every chant, unless the chant contains EITHER of its patterns: " + text
+	elif s.get("anti", false):
+		text = "Anti-spell: it comes alive with every chant, unless the chant contains its pattern: " + text
+	elif s.get("power", false):
 		text = "Power: " + text + " (Once cast, it leaves your active row and lasts the whole fight.)"
 	elif s.get("fleeting", false):
 		text += " Fleeting."
+	if s.get("ephemeral", false):
+		text += " Ephemeral."
 	return text
 
 
@@ -160,6 +166,8 @@ static func describe_op(e: Dictionary) -> String:
 			return "remove %d random Essence of %s" % [n, t]
 		"echo_next":
 			return "the next spell you cast this fight is cast twice"
+		"conjure":
+			return "Conjure %d" % n
 		"grimoire_pick":
 			return "choose a spell from your spellbook: it joins your active spells for this fight"
 		"rearrange":
@@ -176,6 +184,7 @@ static func describe_op(e: Dictionary) -> String:
 				"echo_first": "the first spell you cast each turn is cast twice",
 				"attune": "one of your draws each turn is always your most-used Essence",
 				"chant_slots": "+%d chant slot%s" % [n, "" if n == 1 else "s"],
+				"draw_bonus": "+%d Essence every turn" % n,
 				"strike_bonus": "your spells remove %d more Essence" % n}.get(e.key, e.key)
 		"curse":
 			var many := tg == "all"

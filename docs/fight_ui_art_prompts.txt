@@ -1,0 +1,76 @@
+BG Act1 Dusk Forest: A cozy twilight forest clearing seen from the front, layered flat hills and simple round-topped trees in deep green, a big friendly old tree silhouette far in the middle with a faint soft green glow, a few tiny firefly dots, a darker wooden-brown ground band across the bottom fifth, calm empty centre, low contrast, landscape 16:9.
+BG Act2 Rot Swamp: A spooky-cute swamp forest seen from the front, layered flat hills and bent twisted tree shapes in plum and purple tones, drifting pale purple spores, a few mushrooms along the bottom edge, a sick-looking old tree silhouette far in the middle with a dim purple glow, a dark wooden ground band across the bottom fifth, calm empty centre, low contrast, landscape 16:9.
+BG Act3 Winter Night: A snowy winter night scene seen from the front, layered flat hills and rounded snow-covered pine shapes in soft blue and white, gentle falling snow dots, a frosted old tree silhouette far in the middle with a faint ice-blue glow, a snowy ground band across the bottom fifth, calm empty centre, low contrast, landscape 16:9.
+Panel Wood Frame: An empty rounded rectangle panel frame, dark wood-brown fill with a slightly lighter inner edge and a thick dark outline, small rounded corners, only a faint wood-grain hint, nothing inside, identical corners and plain straight edges so it can be stretched, square image.
+Panel Paper Frame: An empty rounded rectangle in warm cream paper colour with a thick brown outline, a soft inner shadow along the top edge, nothing inside, identical corners and plain straight edges so it can be stretched, square image.
+Panel Log Translucent: A soft semi-transparent dark wood-brown rounded rectangle, very low contrast, no decoration, nothing inside, plain straight edges so it can be stretched.
+Speech Bubble Tail: A small pointed tail for a speech bubble in warm cream paper colour with a thick brown outline, pointing down and to the left, matches the cream paper panel, square image.
+Section Label Tab: A tiny flat wide rounded tab in leaf green with a darker green outline, completely empty, horizontal shape.
+Button Chant Normal: A big chunky rounded button in warm amber-gold with a lighter highlight band across the top, a thick dark-brown outline and a thick bottom lip like a pressable key, cheerful and inviting, completely empty, wide horizontal shape about 4 to 1.
+Button Chant Hover: The same big chunky amber-gold rounded button as the normal state but a little brighter with a soft warm glow around it, completely empty, wide horizontal shape about 4 to 1.
+Button Chant Pressed: The same big chunky amber-gold rounded button but darker, pushed down slightly, the bottom lip flattened and no glow, completely empty, wide horizontal shape about 4 to 1.
+Button Chant Disabled: The same big chunky rounded button but washed-out grey-beige with no highlight and a thin grey outline, completely empty, wide horizontal shape about 4 to 1.
+Button Small Normal: A small rounded button in leaf green with a lighter top highlight, a thick dark outline and a thin bottom lip, completely empty, wide horizontal shape about 3.5 to 1.
+Button Small Hover: The same small leaf-green rounded button but brighter with a soft glow, completely empty, wide horizontal shape about 3.5 to 1.
+Button Small Pressed: The same small leaf-green rounded button but darker and pushed down slightly, completely empty, wide horizontal shape about 3.5 to 1.
+Button Small Disabled: The same small rounded button in washed-out grey-green with no highlight, completely empty, wide horizontal shape about 3.5 to 1.
+Button Menu Normal: A small quiet rounded button in wood-brown with a lighter edge and a thick dark outline, completely empty, wide horizontal shape about 3 to 1.
+Button Menu Hover: The same small wood-brown rounded button with a leaf-green edge and a soft glow, completely empty, wide horizontal shape about 3 to 1.
+Button Menu Pressed: The same small wood-brown rounded button but darker and pushed down slightly, completely empty, wide horizontal shape about 3 to 1.
+Button Pause Normal: A wide rounded button in wood-brown with a lighter inner edge and a thick dark outline, simple and calm, completely empty, very wide horizontal shape about 6 to 1.
+Button Pause Hover: The same wide wood-brown rounded button with a leaf-green edge and a soft green glow, completely empty, very wide horizontal shape about 6 to 1.
+Button Pause Quit Hover: The same wide wood-brown rounded button but with a warm red edge and a soft red glow, completely empty, very wide horizontal shape about 6 to 1.
+Button Close X: A small round cream button with a thick brown outline and a soft highlight, completely empty (no x drawn), square image.
+Essence Fire: A round glossy bead in orange-red with a simple cartoon flame shape inside it, a small white shine dot on the upper left, thick dark outline, square image.
+Essence Water: A round glossy bead in blue-teal with a simple cartoon water droplet shape inside it, a small white shine dot on the upper left, thick dark outline, square image.
+Essence Wind: A round glossy bead in pale mint-white with a simple cartoon swirl of two curls inside it, a small white shine dot on the upper left, thick dark outline, square image.
+Essence Any: A round glossy bead in soft grey-lilac with a simple four-pointed sparkle star inside it, a small white shine dot on the upper left, thick dark outline, square image.
+Chant Slot Empty: A shallow round socket dented into dark wood, a soft inner shadow, a faint dashed ring inside showing where a bead goes, completely empty, square image.
+Chant Slot Hover: The same shallow round wooden socket with a glowing leaf-green ring around the edge, completely empty, square image.
+Chant Slot Filled Glow: The same shallow round wooden socket with a glowing warm amber ring around the edge, completely empty, square image.
+Bag Slot Ghost: A faint semi-transparent round outline only, a soft grey ring with nothing inside, square image.
+Pip Fire: A small flat round dot in orange-red with a thick dark outline and a tiny shine, no symbol inside, square image.
+Pip Water: A small flat round dot in blue-teal with a thick dark outline and a tiny shine, no symbol inside, square image.
+Pip Wind: A small flat round dot in pale mint with a thick dark outline and a tiny shine, no symbol inside, square image.
+Pip Any: A small flat round dot in soft grey-lilac with a thick dark outline and a tiny shine, no symbol inside, square image.
+HP Bar Frame: An empty horizontal rounded capsule bar with a thick dark outline, deep dark red inside, a light glassy highlight strip along the top edge, nothing else, very wide horizontal shape about 17 to 1.
+Enemy HP Bar Frame: A thin empty horizontal rounded capsule bar with a thick dark outline, deep dark red inside, a small highlight along the top, nothing else, very wide horizontal shape about 13 to 1.
+Icon Heart: A plump cartoon heart in warm red with a small white shine dot and a thick dark outline, square image.
+Icon Armor Shield: A small round-topped shield in light blue with a thick dark outline and a simple highlight, square image.
+Status Badge Pill: A small rounded pill shape in a neutral light cream colour with a thick dark outline, completely empty so it can be tinted, wide horizontal shape about 2.5 to 1.
+Status Burn: A single bold small orange flame symbol with a thick dark outline, square image.
+Status Poison: A single bold green droplet symbol with one small bubble beside it and a thick dark outline, square image.
+Status Freeze: A single bold light-blue snowflake symbol with a thick dark outline, square image.
+Status Weak: A single bold sword symbol drooping down limply in grey with a thick dark outline, square image.
+Status Thorns: A single bold small spiky green bush symbol with a thick dark outline, square image.
+Status Silence: A single bold pale mint hush swirl symbol with a small closed-lips shape and a thick dark outline, square image.
+Bottle Slot Empty: A small rounded square wood-brown slot with a lighter inner bevel and a thick outline, with a faint dim glass bottle silhouette in the middle, portrait shape about 6 to 7.
+Bottle Slot Hover: The same small wood-brown bottle slot with a soft leaf-green glow around the edge, portrait shape about 6 to 7.
+Bottle Green: A small round-bellied glass potion bottle with a cork stopper, filled with bright green liquid, a white shine on the glass, thick dark outline, portrait shape.
+Bottle Orange: A small round-bellied glass potion bottle with a cork stopper, filled with bright orange liquid, a white shine on the glass, thick dark outline, portrait shape.
+Bottle Blue: A small round-bellied glass potion bottle with a cork stopper, filled with bright blue liquid, a white shine on the glass, thick dark outline, portrait shape.
+Bottle Purple: A small round-bellied glass potion bottle with a cork stopper, filled with bright purple liquid, a white shine on the glass, thick dark outline, portrait shape.
+Bottle Grey: A small round-bellied glass potion bottle with a cork stopper, filled with pale grey mist, a white shine on the glass, thick dark outline, portrait shape.
+Portrait Keeper: A small round portrait of a friendly little tree-keeper child with a green leaf on their head and big happy eyes, simple shapes, set in a circular cream frame with a brown outline, square image.
+Artifact Slot Normal: A rounded square wood-brown slot with a lighter inner bevel and a thick dark outline, completely empty, square image.
+Artifact Slot Hover: The same rounded square wood-brown slot with a soft leaf-green glow around the edge, completely empty, square image.
+Artifact Slot Charged: The same rounded square wood-brown slot with a bright pulsing gold glow ring around it, completely empty, square image.
+Artifact Slot Upgraded: The same rounded square wood-brown slot with a small gold star badge in its top-right corner, completely empty, square image.
+Amber Counter Pill: A wide rounded pill in dark brown with a thin amber-orange outline, completely empty with space on the left for a gem and on the right for a number, wide horizontal shape about 3 to 1.
+Icon Amber Gem: A faceted orange-amber gem with four or five simple facets, a bright centre, one small white sparkle and a thick dark outline, square image.
+Enemy Stand: A flat oval ground shadow with a small mossy wooden disc and a tuft of grass on it, seen from the front, soft and low, nothing else, wide horizontal shape about 5 to 1.
+Target Marker: A bold amber-gold ring with four small inward-pointing corner arrows, a thick dark outline, empty middle, square image.
+Aim Arrow Head: A chunky arrow head in amber gold with a thick dark outline, pointing up, nothing else, square image.
+Floating Number Damage: A small chunky red starburst splat shape with a thick dark outline and an empty centre, square image.
+Floating Number Heal: A small chunky green starburst splat shape with a thick dark outline and an empty centre, square image.
+Floating Number Block: A small chunky blue starburst splat shape with a thick dark outline and an empty centre, square image.
+Card Overlay Charged: A soft pulsing green-gold glow ring shaped as a rounded rectangle outline with small corners, transparent in the middle, landscape shape about 5 to 4.
+Card Overlay Locked: A dim dark rounded rectangle overlay with a small chunky padlock in the centre, landscape shape about 5 to 4.
+Card Overlay Silenced: A dim dark rounded rectangle overlay with a pale mint hush swirl in the centre, landscape shape about 5 to 4.
+Card Overlay Used: A dim grey rounded rectangle overlay with a small white tick mark in the centre, landscape shape about 5 to 4.
+Badge Multiplier: A round amber-gold badge with a thick dark outline, a small shine and a slight tilt, completely empty, square image.
+Banner Slam Word: A bold tilted ribbon banner in warm gold with a thick dark outline and a few small spark stars at its ends, completely empty, comic energy but simple, very wide horizontal shape about 7 to 1.
+Toast Strip: A flat wide rounded strip in cream paper with a thick brown outline and a soft shadow, one small green leaf in the left corner, otherwise empty, very wide horizontal shape about 14 to 1.
+Banner Grimoire Ink Header: A wide cream paper ribbon banner with a thick brown outline and slightly curled ends, completely empty, very wide horizontal shape about 13 to 1.
+Board Pause Menu: A tall rounded wood-brown board with a lighter inner edge, a thick dark outline and a small green leaf sprig on top centre like a hanger, completely empty, portrait shape about 10 to 9.
+Scroll Bar: A thin vertical rounded track in dark wood with a rounded leaf-green thumb on it, very tall narrow shape.

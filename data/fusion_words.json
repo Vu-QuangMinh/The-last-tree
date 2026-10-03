@@ -1,114 +1,891 @@
 {
   "_comment": "Each spell's words for fused names: [adjective, noun]. A fused spell is named '<adjective of one> <noun of the other>' (tools/make_fusion_names.py decides which, the same whichever order they are fused in).",
-  "ember": ["Smouldering", "Ember"],
-  "spark": ["Sparking", "Spark"],
-  "cinder": ["Ashen", "Cinder"],
-  "droplet": ["Dripping", "Droplet"],
-  "mist": ["Misty", "Mist"],
-  "ripple": ["Rippling", "Ripple"],
-  "chill": ["Chilling", "Chill"],
-  "whisper": ["Whispering", "Whisper"],
-  "updraft": ["Rising", "Updraft"],
-  "taint": ["Tainted", "Taint"],
-  "fire_ball": ["Blazing", "Fireball"],
-  "twin_flames": ["Twin", "Flames"],
-  "flare": ["Flaring", "Flare"],
-  "water_wall": ["Walled", "Bulwark"],
-  "tide_pool": ["Pooling", "Tidepool"],
-  "frost_nova": ["Frostbound", "Nova"],
-  "tailwind": ["Swift", "Tailwind"],
-  "cyclone": ["Spinning", "Cyclone"],
-  "miasma": ["Noxious", "Miasma"],
-  "gust": ["Gusting", "Gust"],
-  "fan_the_flames": ["Fanned", "Bellows"],
-  "wildfire": ["Wild", "Wildfire"],
-  "blowtorch": ["Searing", "Blowtorch"],
-  "phase_shift": ["Phasing", "Shift"],
-  "steam": ["Steaming", "Steam"],
-  "hot_spring": ["Bubbling", "Spring"],
-  "scald": ["Scalding", "Scald"],
-  "boil": ["Boiling", "Cauldron"],
-  "mist_veil": ["Veiled", "Veil"],
-  "undertow": ["Dragging", "Undertow"],
-  "rain": ["Rainsoaked", "Rain"],
-  "refresh": ["Refreshing", "Renewal"],
-  "inferno": ["Infernal", "Inferno"],
-  "glacier": ["Glacial", "Glacier"],
-  "tempest": ["Tempestuous", "Tempest"],
-  "annihilate": ["Annihilating", "Oblivion"],
-  "thermal_burst": ["Thermal", "Burst"],
-  "steam_cloud": ["Clouded", "Cloud"],
-  "firestorm": ["Stormfire", "Firestorm"],
-  "kindling_wind": ["Kindled", "Kindling"],
-  "mistwalk": ["Wandering", "Mistwalk"],
-  "whirlpool": ["Swirling", "Whirlpool"],
-  "searing_mist": ["Blistering", "Haze"],
-  "boiling_tide": ["Seething", "Tide"],
-  "gale_force": ["Forceful", "Gale"],
-  "alchemy": ["Alchemical", "Alchemy"],
-  "storm_front": ["Thundering", "Front"],
-  "geyser": ["Erupting", "Geyser"],
-  "recall": ["Remembered", "Recall"],
-  "blight_wind": ["Blighted", "Blight"],
-  "backdraft": ["Backfiring", "Backdraft"],
-  "meteor": ["Falling", "Meteor"],
-  "tidal_wave": ["Tidal", "Wave"],
-  "hurricane": ["Howling", "Hurricane"],
-  "steam_engine": ["Clockwork", "Engine"],
-  "aurora": ["Shimmering", "Aurora"],
-  "phoenix_rite": ["Reborn", "Phoenix"],
-  "eye_of_the_storm": ["Stormeyed", "Eye"],
-  "supernova": ["Starborn", "Supernova"],
-  "deluge": ["Drowning", "Deluge"],
-  "convergence": ["Converging", "Convergence"],
-  "clear_sight": ["Clear-eyed", "Sight"],
-  "bandage": ["Bandaged", "Bandage"],
-  "borrowed_breath": ["Borrowed", "Breath"],
-  "kindle": ["Kindling", "Hearth"],
-  "siphon": ["Siphoning", "Siphon"],
-  "conjure_flame": ["Conjured", "Flame"],
-  "summon_rain": ["Summoned", "Downpour"],
-  "steady_mind": ["Steady", "Mind"],
-  "unbind": ["Unbound", "Release"],
-  "thorn_mantle": ["Thorned", "Mantle"],
-  "cauterize": ["Cauterizing", "Brand"],
-  "snuff_out": ["Snuffing", "Snuff"],
-  "graft": ["Grafted", "Graft"],
-  "alchemists_breath": ["Alchemist's", "Draught"],
-  "blood_price": ["Bloodbound", "Price"],
-  "ward": ["Warding", "Ward"],
-  "scatter": ["Scattering", "Barrier"],
-  "soak": ["Soaking", "Soak"],
-  "mimic": ["Mimicking", "Mimic"],
-  "riptide": ["Riptorn", "Riptide"],
-  "trade_winds": ["Trading", "Winds"],
-  "rising_tide": ["Swelling", "Flood"],
-  "ember_crown": ["Crowned", "Crown"],
-  "venom_coat": ["Venomous", "Venom"],
-  "echo_chamber": ["Echoing", "Echo"],
-  "attunement": ["Attuned", "Attunement"],
-  "frailty": ["Frail", "Frailty"],
-  "purify": ["Purifying", "Purity"],
-  "leech": ["Absorbing", "Leech"],
-  "reforge": ["Reforged", "Forge"],
-  "soul_siphon": ["Soulbound", "Soul"],
-  "last_rites": ["Final", "Rites"],
-  "long_chant": ["Lengthened", "Chant"],
-  "stillness": ["Still", "Stillness"],
-  "pyromancy": ["Pyromantic", "Pyromancy"],
-  "decoy": ["Misleading", "Decoy"],
-  "storm_crown": ["Storm-crowned", "Diadem"],
-  "unshackle": ["Unshackled", "Shackles"],
-  "avatar_of_flame": ["Avatar", "Pyre"],
-  "world_tree_blessing": ["Blessed", "Blessing"],
-  "spark_word": ["Spoken", "Word"],
-  "spring_word": ["Springing", "Wellspring"],
-  "breath_word": ["Breathing", "Whisperwind"],
-  "resonance": ["Resonant", "Resonance"],
-  "triune_chant": ["Triune", "Trinity"],
-  "grimoire": ["Scholarly", "Grimoire"],
-  "tide_thief": ["Thieving", "Thief"],
-  "sirens_call": ["Siren", "Song"],
-  "maelstrom_grasp": ["Grasping", "Maelstrom"],
-  "arcane_barrage": ["Barraging", "Barrage"]
+  "ember": [
+    "Smouldering",
+    "Ember"
+  ],
+  "spark": [
+    "Sparking",
+    "Spark"
+  ],
+  "cinder": [
+    "Ashen",
+    "Cinder"
+  ],
+  "droplet": [
+    "Dripping",
+    "Droplet"
+  ],
+  "mist": [
+    "Misty",
+    "Mist"
+  ],
+  "ripple": [
+    "Rippling",
+    "Ripple"
+  ],
+  "chill": [
+    "Chilling",
+    "Chill"
+  ],
+  "whisper": [
+    "Whispering",
+    "Whisper"
+  ],
+  "updraft": [
+    "Rising",
+    "Updraft"
+  ],
+  "taint": [
+    "Tainted",
+    "Taint"
+  ],
+  "fire_ball": [
+    "Blazing",
+    "Fireball"
+  ],
+  "twin_flames": [
+    "Twin",
+    "Flames"
+  ],
+  "flare": [
+    "Flaring",
+    "Flare"
+  ],
+  "water_wall": [
+    "Walled",
+    "Bulwark"
+  ],
+  "tide_pool": [
+    "Pooling",
+    "Tidepool"
+  ],
+  "frost_nova": [
+    "Frostbound",
+    "Nova"
+  ],
+  "tailwind": [
+    "Swift",
+    "Tailwind"
+  ],
+  "cyclone": [
+    "Spinning",
+    "Cyclone"
+  ],
+  "miasma": [
+    "Noxious",
+    "Miasma"
+  ],
+  "gust": [
+    "Gusting",
+    "Gust"
+  ],
+  "fan_the_flames": [
+    "Fanned",
+    "Bellows"
+  ],
+  "wildfire": [
+    "Wild",
+    "Wildfire"
+  ],
+  "blowtorch": [
+    "Searing",
+    "Blowtorch"
+  ],
+  "phase_shift": [
+    "Phasing",
+    "Shift"
+  ],
+  "steam": [
+    "Steaming",
+    "Steam"
+  ],
+  "hot_spring": [
+    "Bubbling",
+    "Spring"
+  ],
+  "scald": [
+    "Scalding",
+    "Scald"
+  ],
+  "boil": [
+    "Boiling",
+    "Cauldron"
+  ],
+  "mist_veil": [
+    "Veiled",
+    "Veil"
+  ],
+  "undertow": [
+    "Dragging",
+    "Undertow"
+  ],
+  "rain": [
+    "Rainsoaked",
+    "Rain"
+  ],
+  "refresh": [
+    "Refreshing",
+    "Renewal"
+  ],
+  "inferno": [
+    "Infernal",
+    "Inferno"
+  ],
+  "glacier": [
+    "Glacial",
+    "Glacier"
+  ],
+  "tempest": [
+    "Tempestuous",
+    "Tempest"
+  ],
+  "annihilate": [
+    "Annihilating",
+    "Oblivion"
+  ],
+  "thermal_burst": [
+    "Thermal",
+    "Burst"
+  ],
+  "steam_cloud": [
+    "Clouded",
+    "Cloud"
+  ],
+  "firestorm": [
+    "Stormfire",
+    "Firestorm"
+  ],
+  "kindling_wind": [
+    "Kindled",
+    "Kindling"
+  ],
+  "mistwalk": [
+    "Wandering",
+    "Mistwalk"
+  ],
+  "whirlpool": [
+    "Swirling",
+    "Whirlpool"
+  ],
+  "searing_mist": [
+    "Blistering",
+    "Haze"
+  ],
+  "boiling_tide": [
+    "Seething",
+    "Tide"
+  ],
+  "gale_force": [
+    "Forceful",
+    "Gale"
+  ],
+  "alchemy": [
+    "Alchemical",
+    "Alchemy"
+  ],
+  "storm_front": [
+    "Thundering",
+    "Front"
+  ],
+  "geyser": [
+    "Erupting",
+    "Geyser"
+  ],
+  "recall": [
+    "Remembered",
+    "Recall"
+  ],
+  "blight_wind": [
+    "Blighted",
+    "Blight"
+  ],
+  "backdraft": [
+    "Backfiring",
+    "Backdraft"
+  ],
+  "meteor": [
+    "Falling",
+    "Meteor"
+  ],
+  "tidal_wave": [
+    "Tidal",
+    "Wave"
+  ],
+  "hurricane": [
+    "Howling",
+    "Hurricane"
+  ],
+  "steam_engine": [
+    "Clockwork",
+    "Engine"
+  ],
+  "aurora": [
+    "Shimmering",
+    "Aurora"
+  ],
+  "phoenix_rite": [
+    "Reborn",
+    "Phoenix"
+  ],
+  "eye_of_the_storm": [
+    "Stormeyed",
+    "Eye"
+  ],
+  "supernova": [
+    "Starborn",
+    "Supernova"
+  ],
+  "deluge": [
+    "Drowning",
+    "Deluge"
+  ],
+  "convergence": [
+    "Converging",
+    "Convergence"
+  ],
+  "clear_sight": [
+    "Clear-eyed",
+    "Sight"
+  ],
+  "bandage": [
+    "Bandaged",
+    "Bandage"
+  ],
+  "borrowed_breath": [
+    "Borrowed",
+    "Breath"
+  ],
+  "kindle": [
+    "Kindling",
+    "Hearth"
+  ],
+  "siphon": [
+    "Siphoning",
+    "Siphon"
+  ],
+  "conjure_flame": [
+    "Conjured",
+    "Flame"
+  ],
+  "summon_rain": [
+    "Summoned",
+    "Downpour"
+  ],
+  "steady_mind": [
+    "Steady",
+    "Mind"
+  ],
+  "unbind": [
+    "Unbound",
+    "Release"
+  ],
+  "thorn_mantle": [
+    "Thorned",
+    "Mantle"
+  ],
+  "cauterize": [
+    "Cauterizing",
+    "Brand"
+  ],
+  "snuff_out": [
+    "Snuffing",
+    "Snuff"
+  ],
+  "graft": [
+    "Grafted",
+    "Graft"
+  ],
+  "alchemists_breath": [
+    "Alchemist's",
+    "Draught"
+  ],
+  "blood_price": [
+    "Bloodbound",
+    "Price"
+  ],
+  "ward": [
+    "Warding",
+    "Ward"
+  ],
+  "scatter": [
+    "Scattering",
+    "Barrier"
+  ],
+  "soak": [
+    "Soaking",
+    "Soak"
+  ],
+  "mimic": [
+    "Mimicking",
+    "Mimic"
+  ],
+  "riptide": [
+    "Riptorn",
+    "Riptide"
+  ],
+  "trade_winds": [
+    "Trading",
+    "Winds"
+  ],
+  "rising_tide": [
+    "Swelling",
+    "Flood"
+  ],
+  "ember_crown": [
+    "Crowned",
+    "Crown"
+  ],
+  "venom_coat": [
+    "Venomous",
+    "Venom"
+  ],
+  "echo_chamber": [
+    "Echoing",
+    "Echo"
+  ],
+  "attunement": [
+    "Attuned",
+    "Attunement"
+  ],
+  "frailty": [
+    "Frail",
+    "Frailty"
+  ],
+  "purify": [
+    "Purifying",
+    "Purity"
+  ],
+  "leech": [
+    "Absorbing",
+    "Leech"
+  ],
+  "reforge": [
+    "Reforged",
+    "Forge"
+  ],
+  "soul_siphon": [
+    "Soulbound",
+    "Soul"
+  ],
+  "last_rites": [
+    "Final",
+    "Rites"
+  ],
+  "long_chant": [
+    "Lengthened",
+    "Chant"
+  ],
+  "stillness": [
+    "Still",
+    "Stillness"
+  ],
+  "pyromancy": [
+    "Pyromantic",
+    "Pyromancy"
+  ],
+  "decoy": [
+    "Misleading",
+    "Decoy"
+  ],
+  "storm_crown": [
+    "Storm-crowned",
+    "Diadem"
+  ],
+  "unshackle": [
+    "Unshackled",
+    "Shackles"
+  ],
+  "avatar_of_flame": [
+    "Avatar",
+    "Pyre"
+  ],
+  "world_tree_blessing": [
+    "Blessed",
+    "Blessing"
+  ],
+  "spark_word": [
+    "Spoken",
+    "Word"
+  ],
+  "spring_word": [
+    "Springing",
+    "Wellspring"
+  ],
+  "breath_word": [
+    "Breathing",
+    "Whisperwind"
+  ],
+  "resonance": [
+    "Resonant",
+    "Resonance"
+  ],
+  "triune_chant": [
+    "Triune",
+    "Trinity"
+  ],
+  "grimoire": [
+    "Scholarly",
+    "Grimoire"
+  ],
+  "tide_thief": [
+    "Thieving",
+    "Thief"
+  ],
+  "sirens_call": [
+    "Siren",
+    "Song"
+  ],
+  "maelstrom_grasp": [
+    "Grasping",
+    "Maelstrom"
+  ],
+  "arcane_barrage": [
+    "Barraging",
+    "Barrage"
+  ],
+  "flicker": [
+    "Flickering",
+    "Flicker"
+  ],
+  "drizzle": [
+    "Drizzling",
+    "Drizzle"
+  ],
+  "breeze": [
+    "Breezy",
+    "Breeze"
+  ],
+  "tinder": [
+    "Tinder-dry",
+    "Tinder"
+  ],
+  "spark_shower": [
+    "Showering",
+    "Shower"
+  ],
+  "dewdrop": [
+    "Dewy",
+    "Dewdrop"
+  ],
+  "zephyr": [
+    "Gentle",
+    "Zephyr"
+  ],
+  "ashfall": [
+    "Ash-grey",
+    "Ashfall"
+  ],
+  "summoning_word": [
+    "Summoning",
+    "Summons"
+  ],
+  "smolder": [
+    "Smoldering",
+    "Embers"
+  ],
+  "calm_waters": [
+    "Calm",
+    "Stillwater"
+  ],
+  "still_air": [
+    "Windless",
+    "Hush"
+  ],
+  "wisp": [
+    "Wispy",
+    "Wisp"
+  ],
+  "splash": [
+    "Splashy",
+    "Splash"
+  ],
+  "flame_lash": [
+    "Lashing",
+    "Lash"
+  ],
+  "steam_burst": [
+    "Hissing",
+    "Vent"
+  ],
+  "wildspark": [
+    "Wild-sparked",
+    "Sparks"
+  ],
+  "quench": [
+    "Quenching",
+    "Quench"
+  ],
+  "tide_ward": [
+    "Tide-warded",
+    "Seawall"
+  ],
+  "mist_step": [
+    "Misted",
+    "Footstep"
+  ],
+  "ember_gust": [
+    "Ember-blown",
+    "Gale-sparks"
+  ],
+  "rain_song": [
+    "Rain-sung",
+    "Rainsong"
+  ],
+  "whirl": [
+    "Whirling",
+    "Whirl"
+  ],
+  "wild_flame": [
+    "Untamed",
+    "Wildflame"
+  ],
+  "wellspring_rite": [
+    "Welling",
+    "Fount"
+  ],
+  "gale_call": [
+    "Wind-called",
+    "Call"
+  ],
+  "twin_comets": [
+    "Comet-struck",
+    "Comets"
+  ],
+  "undercurrent": [
+    "Undercurrent",
+    "Current"
+  ],
+  "crosswind": [
+    "Crosswinded",
+    "Crosswind"
+  ],
+  "scalding_rain": [
+    "Scalded",
+    "Downfall"
+  ],
+  "searing_brand": [
+    "Branded",
+    "Mark"
+  ],
+  "cold_snap": [
+    "Snap-frozen",
+    "Snap"
+  ],
+  "hailstone": [
+    "Hail-battered",
+    "Hail"
+  ],
+  "cinder_rain": [
+    "Cinder-rained",
+    "Cinderfall"
+  ],
+  "brine": [
+    "Briny",
+    "Brine"
+  ],
+  "quiet_wind": [
+    "Quiet",
+    "Lull"
+  ],
+  "phoenix_feather": [
+    "Feathered",
+    "Plume"
+  ],
+  "tidecaller": [
+    "Tide-called",
+    "Tidecaller"
+  ],
+  "ash_and_ember": [
+    "Fanned-up",
+    "Ashes"
+  ],
+  "water_whip": [
+    "Whipping",
+    "Whip"
+  ],
+  "thieving_wind": [
+    "Pilfering",
+    "Pilferer"
+  ],
+  "kindled_heart": [
+    "Warm-hearted",
+    "Heart"
+  ],
+  "mirror_pool": [
+    "Mirrored",
+    "Mirror"
+  ],
+  "updraft_lance": [
+    "Uplifted",
+    "Lance"
+  ],
+  "steam_vent": [
+    "Venting",
+    "Fumes"
+  ],
+  "sea_breeze": [
+    "Salt-aired",
+    "Seabreeze"
+  ],
+  "firefly": [
+    "Glowing",
+    "Firefly"
+  ],
+  "fog_of_war": [
+    "Fogbound",
+    "Fog"
+  ],
+  "heat_haze": [
+    "Hazy",
+    "Shimmer"
+  ],
+  "hush_of_rain": [
+    "Hushed",
+    "Patter"
+  ],
+  "smoke_signal": [
+    "Smoky",
+    "Signal"
+  ],
+  "ripplewind": [
+    "Rippled",
+    "Ripplewind"
+  ],
+  "coal_toss": [
+    "Coal-hot",
+    "Coal"
+  ],
+  "spray": [
+    "Splashing",
+    "Spray"
+  ],
+  "flamecaller": [
+    "Flame-called",
+    "Caller"
+  ],
+  "tsunami_ward": [
+    "Wave-walled",
+    "Tsunami"
+  ],
+  "thunderhead": [
+    "Rumbling",
+    "Thunderhead"
+  ],
+  "lava_flow": [
+    "Molten",
+    "Lava"
+  ],
+  "frostbite": [
+    "Frostbitten",
+    "Frostbite"
+  ],
+  "tempest_veil": [
+    "Storm-veiled",
+    "Shroud"
+  ],
+  "ember_storm": [
+    "Ember-stormed",
+    "Emberstorm"
+  ],
+  "healing_rain": [
+    "Healing",
+    "Rainfall"
+  ],
+  "sky_lance": [
+    "Sky-thrown",
+    "Skylance"
+  ],
+  "witch_fire": [
+    "Witching",
+    "Witchfire"
+  ],
+  "stormcaller": [
+    "Storm-called",
+    "Stormcaller"
+  ],
+  "deep_freeze": [
+    "Deep-frozen",
+    "Permafrost"
+  ],
+  "molten_core": [
+    "Seething-core",
+    "Core"
+  ],
+  "silent_tide": [
+    "Silent",
+    "Tidewall"
+  ],
+  "windless_night": [
+    "Moonless",
+    "Nightfall"
+  ],
+  "cinder_shield": [
+    "Cinder-rimmed",
+    "Buckler"
+  ],
+  "gale_slash": [
+    "Sweeping",
+    "Slash"
+  ],
+  "rainbow_bridge": [
+    "Rainbowed",
+    "Bridge"
+  ],
+  "corrode": [
+    "Corroded",
+    "Rust"
+  ],
+  "wind_shear": [
+    "Shearing",
+    "Shear"
+  ],
+  "hearth_song": [
+    "Homely",
+    "Hearthsong"
+  ],
+  "brimstone": [
+    "Sulphurous",
+    "Brimstone"
+  ],
+  "undertow_grip": [
+    "Gripping",
+    "Grip"
+  ],
+  "mistral": [
+    "Mistral-swept",
+    "Mistral"
+  ],
+  "spirit_lantern": [
+    "Lantern-lit",
+    "Lantern"
+  ],
+  "soothing_mist": [
+    "Soothing",
+    "Balm"
+  ],
+  "ashen_veil": [
+    "Ash-veiled",
+    "Smokeveil"
+  ],
+  "ice_lance": [
+    "Icy",
+    "Icicle"
+  ],
+  "grave_wind": [
+    "Grave-chilled",
+    "Gravewind"
+  ],
+  "sunlit_grove": [
+    "Sunlit",
+    "Grove"
+  ],
+  "dustdevil": [
+    "Dust-spun",
+    "Dustdevil"
+  ],
+  "glacial_spike": [
+    "Glacier-spiked",
+    "Spike"
+  ],
+  "inferno_lance": [
+    "Lancing",
+    "Pyrelance"
+  ],
+  "maelstrom_ward": [
+    "Maelstrom-warded",
+    "Eddy"
+  ],
+  "storm_legion": [
+    "Legion-born",
+    "Legion"
+  ],
+  "steam_titan": [
+    "Titanic",
+    "Titan"
+  ],
+  "frozen_tomb": [
+    "Entombed",
+    "Tomb"
+  ],
+  "sky_sovereign": [
+    "Sovereign",
+    "Sovereign's Sky"
+  ],
+  "phoenix_dive": [
+    "Diving",
+    "Dive"
+  ],
+  "tidal_surge": [
+    "Surging",
+    "Surge"
+  ],
+  "wildfire_pact": [
+    "Pact-bound",
+    "Pact"
+  ],
+  "moon_tide": [
+    "Moonlit",
+    "Moontide"
+  ],
+  "cyclone_edge": [
+    "Edged",
+    "Blade"
+  ],
+  "ember_chorus": [
+    "Chorusing",
+    "Chorus"
+  ],
+  "winter_gale": [
+    "Wintry",
+    "Wintergale"
+  ],
+  "forge_fire": [
+    "Forged",
+    "Anvil"
+  ],
+  "gust_front": [
+    "Gusty",
+    "Gustfront"
+  ],
+  "blood_moon": [
+    "Blood-moon",
+    "Moon"
+  ],
+  "solar_flare": [
+    "Solar",
+    "Sunflare"
+  ],
+  "abyssal_tide": [
+    "Abyssal",
+    "Abyss"
+  ],
+  "heavens_gale": [
+    "Heavenly",
+    "Heavens"
+  ],
+  "elemental_fury": [
+    "Furious",
+    "Fury"
+  ],
+  "tide_of_ages": [
+    "Ageless",
+    "Ages"
+  ],
+  "firestorm_herald": [
+    "Heralded",
+    "Herald"
+  ],
+  "storm_sermon": [
+    "Preaching",
+    "Sermon"
+  ],
+  "sunfall": [
+    "Sun-fallen",
+    "Sunfall"
+  ],
+  "worlds_end": [
+    "World-ending",
+    "Ending"
+  ]
 }

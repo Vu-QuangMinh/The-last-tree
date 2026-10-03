@@ -154,7 +154,7 @@ func test_trade_two_of_a_tier_for_one_above() -> void:
 	var offer := run.trade_offer("common")
 	assert_true(not offer.is_empty() and offer.all(func(a): return a.tier == "rare" and a.get("aspect", "") != "Cursed"))
 	run.trade_artifacts("iron_bark", "healing_sap", offer[0].id)
-	assert_eq(run.artifacts, [offer[0].id])
+	assert_eq(run.artifacts, ["seed_of_life", offer[0].id], "the starting Seed of Life is never part of a trade")
 
 
 func test_prefight_essence_matches_the_fight() -> void:
@@ -451,6 +451,20 @@ func test_rearrange_moves_a_chant_element_and_recounts() -> void:
 	assert_eq(SpellText.card_text(db.get_spell("tempest")), "Gain 2 random Essence next turn.\nRearrange 1.")
 
 
+func test_changing_the_chant_never_puts_a_live_spell_to_sleep() -> void:
+	# Tempest (AAA) and Fire Ball (FF) both wake on AAAFF; moving the last F to the front (FAAAF) breaks up FF,
+	# but Fire Ball stays alive
+	var f := _fight(["ashling"], ["tempest", "fire_ball"], "AAAFF")
+	_set_hp(f.enemies[0], "WWWWWWWW")
+	f.arranger = func(_s): return [4, 0]  # AAAFF -> FAAAF
+	f.cast_chant(_all(5))
+	assert_eq(f.charges.get("fire_ball", 0), 1)
+	f.resolve_spell("tempest")
+	assert_eq(f.chant_string(), "FAAAF")
+	assert_eq(f.charges.get("fire_ball", 0), 1, "Fire Ball keeps its charge")
+	assert_true(not f.charges.has("tempest"), "the spell just cast is used up")
+
+
 func test_duplicate_copies_an_element_in_the_chant() -> void:
 	var f := _fight(["ashling"], ["resonance"], "AFW")
 	f.chant_picker = func(_s): return 1  # the F
@@ -583,6 +597,9 @@ func test_fuse_keeps_every_element_first_card_first() -> void:
 	assert_eq(other.pattern, "F?FWW", "the order sets the pattern")
 	assert_eq(other.name, prev.name, "but not the name")
 	assert_true(not prev.name.contains("+"), "a real name: " + prev.name)
+	var shot := run.fuse_preview("water_wall", "inferno", 2)
+	assert_eq(shot.pattern, "WW?F", "the shot Essence is gone and the rest close up")
+	assert_eq(shot.size, 4)
 	run.fuse_commit(prev, "water_wall", "inferno")
 	assert_true(not ("water_wall" in run.spellbook) and not ("inferno" in run.spellbook), "both used up")
 	assert_true(prev.id in run.spellbook)
@@ -602,3 +619,160 @@ func test_thermal_burst_hits_two_different_enemies() -> void:
 	assert_eq(f.enemies[1].size(), 5)
 	assert_true(not (0 in asked[0]), "the second pick can't be the first target again")
 	assert_eq(SpellText.card_text(db.get_spell("thermal_burst")), "Remove the 2 leftmost Essence of 2 different enemies.")
+
+
+func test_anti_spell_comes_alive_unless_its_pattern_is_chanted() -> void:
+	var f := _fight(["ashling"], ["calm_waters"], "")  # Calm Waters: W anti-spell (10 Shield, Aegis 1, heal 4)
+	_set_hp(f.enemies[0], "AAAAAAAA")
+	f.player.hp = 30
+	f.player.stock.clear()
+	f.player.add_element("F")
+	f.cast_chant([0])  # F: no W, so it comes alive like any spell
+	assert_eq(f.charges.get("calm_waters", 0), 1, "alive after the chant")
+	f.resolve_all()
+	assert_eq(f.player.shield, 10.0, "cast like a spell")
+	var g := _fight(["ashling"], ["calm_waters"], "")
+	_set_hp(g.enemies[0], "AAAAAAAA")
+	g.player.stock.clear()
+	g.player.add_element("W")
+	g.cast_chant([0])  # W: breaks it
+	assert_true(g.anti_broken.has("calm_waters"))
+	assert_true(not g.charges.has("calm_waters"), "broken: no charge")
+	var h := _fight(["ashling"], ["calm_waters"], "")
+	_set_hp(h.enemies[0], "AAAAAAAA")
+	h.player.hp = 30
+	h.pass_turn()  # no chant at all: it still goes off at the end of the turn
+	assert_true(h.lines.any(func(l): return l.contains("Calm Waters takes effect")))
+
+
+func test_conjure_splits_into_ephemeral_spells_that_merge_back() -> void:
+	var f := _fight(["ashling"], ["summoning_word"], "A")  # Summoning Word: A, Conjure 1
+	_set_hp(f.enemies[0], "AAAAAAAAAAAA")
+	f.player.hp = 99
+	f.cast_chant([0])
+	f.resolve_spell("summoning_word")
+	var eph := f.loadout.filter(func(s): return s.get("ephemeral", false))
+	assert_eq(eph.size(), 1, "it appears right away")
+	assert_true(f.conjuring.has("summoning_word"), "the conjuring spell turned into it")
+	assert_true(not f.shown_spells().any(func(s): return s.id == "summoning_word"), "and is gone from the row")
+	var sp: Dictionary = eph[0]
+	assert_eq(sp.expires_turn, f.turn + 1, "it lasts until the end of next turn")
+	# casting it (the last of its group) merges it back into Summoning Word
+	f.charges[sp.id] = 1
+	f.resolve_spell(sp.id, 0)
+	assert_true(not f.loadout.any(func(s): return s.id == sp.id), "gone once cast")
+	assert_true(not f.conjuring.has("summoning_word"), "and Summoning Word is back")
+	assert_true(f.shown_spells().any(func(s): return s.id == "summoning_word"))
+	# uncast ones expire at the end of the NEXT turn
+	var g := _fight(["ashling"], ["summoning_word"], "A")
+	_set_hp(g.enemies[0], "AAAAAAAAAAAA")
+	g.player.hp = 99
+	g.cast_chant([0])
+	g.resolve_spell("summoning_word")
+	g.finish_turn()  # end of this turn: still here
+	assert_eq(g.loadout.filter(func(s): return s.get("ephemeral", false)).size(), 1, "survives the first turn's end")
+	g.pass_turn()  # end of the next turn: it expires and merges back
+	assert_eq(g.loadout.filter(func(s): return s.get("ephemeral", false)).size(), 0, "expired")
+	assert_true(not g.conjuring.has("summoning_word"))
+
+
+func test_seed_of_life_restores_the_fight_start_and_breaks() -> void:
+	var run := RunState.new()
+	run.setup(db, [], [], 4)
+	run.gain_artifact("seed_of_life")
+	run.player.hp = 33.0
+	run.player.bottles = ["fire_flask"]
+	var f := run.make_fight(["ashling"])
+	f.player.hp = 0.0
+	f.player.bottles.clear()
+	assert_true(run.can_revive())
+	run.revive()
+	assert_eq(run.player.hp, 33.0, "HP as it was going in")
+	assert_eq(run.player.bottles, ["fire_flask"], "bottles as they were")
+	assert_true("broken_seed_of_life" in run.artifacts and not ("seed_of_life" in run.artifacts))
+	assert_true(not run.can_revive(), "only once")
+	assert_true(run.shop_stock().any(func(it): return it.kind == "mend_seed" and it.price == 100))
+	run.mend_seed()
+	assert_true("seed_of_life" in run.artifacts)
+
+
+func test_fusing_keeps_wax_seals_in_place() -> void:
+	var run := RunState.new()
+	run.setup(db, [], [], 4)
+	run.learn_spell("inferno")  # F?F
+	run.seal_spell("water_wall", 1)  # W[W]
+	var prev := run.fuse_preview("water_wall", "inferno")
+	assert_eq(prev.pattern, "WF?F", "the sealed W is still not needed")
+	assert_eq(prev.full_pattern, "WWF?F")
+	assert_eq(prev.seals, [1], "the seal stays on the second W")
+	var shot := run.fuse_preview("water_wall", "inferno", 0)  # shoot the first W
+	assert_eq(shot.full_pattern, "WF?F")
+	assert_eq(shot.seals, [0], "the seal slides left with its Essence")
+	assert_eq(shot.pattern, "F?F")
+	run.fuse_commit(shot, "water_wall", "inferno")
+	var s := run.spell(shot.id)
+	assert_eq(s.pattern, "F?F")
+	assert_eq(s.full_pattern, "WF?F")
+	assert_eq(s.seals, [0])
+
+
+func test_saved_run_comes_back_the_same() -> void:
+	var run := RunState.new()
+	run.setup(db, [], [], 9)
+	run.learn_spell("inferno")
+	run.seal_spell("water_wall", 1)
+	run.gain_artifact("echo_shell")
+	run.player.hp = 33.0
+	run.player.bottles = ["fire_flask"]
+	run.amber = 77
+	run.move_to(run.map[0].find_custom(func(n): return n != null))
+	var text := var_to_str(run.to_save())  # what goes in the file
+	var back := RunState.from_save(str_to_var(text), db)
+	assert_eq(back.spellbook, run.spellbook)
+	assert_eq(back.seals, run.seals)
+	assert_eq(back.artifacts, run.artifacts)
+	assert_eq(back.player.hp, 33.0)
+	assert_eq(back.player.bottles, ["fire_flask"])
+	assert_eq(back.amber, 77)
+	assert_eq(back.row, run.row)
+	assert_eq(back.col, run.col)
+	assert_true(back.map == run.map, "the same map")
+	assert_eq(back.rng.randi(), run.rng.randi(), "the dice pick up where they left off")
+
+
+func test_fused_anti_spell_breaks_on_either_pattern() -> void:
+	var run := RunState.new()
+	run.setup(db, ["fog_of_war", "heat_haze"], [], 4)
+	run.learn_spell("fog_of_war")  # FW
+	run.learn_spell("heat_haze")  # FA
+	assert_true(not run.can_fuse_pair("fog_of_war", "fire_ball"), "an anti-spell can't fuse with a spell")
+	assert_true(run.can_fuse_pair("fog_of_war", "heat_haze"))
+	var fz := run.fuse_preview("fog_of_war", "heat_haze", 0)
+	assert_true(fz.get("anti", false))
+	assert_eq(fz.patterns, ["FW", "FA"], "both patterns kept whole (nothing shot out)")
+	assert_eq(fz.effects.size(), 2, "both spells' effects")
+	var f := _fight(["ashling"], [], "")
+	f.loadout = [fz]
+	assert_eq(f._occ(fz, "AFA"), [0], "the second pattern alone breaks it")
+	assert_eq(f._occ(fz, "WFW"), [0], "the first pattern alone breaks it")
+	assert_eq(f._occ(fz, "AAWW"), [], "neither: it stays whole")
+
+
+func test_undo_restores_the_fight_before_a_spell() -> void:
+	var f := _fight(["ashling", "gale_sprite"], ["fire_ball", "water_wall"], "FFWW")
+	_set_hp(f.enemies[0], "FWAF")
+	_set_hp(f.enemies[1], "W")
+	f.cast_chant(_all(4))
+	var hp0: String = f.enemies[0].hp_text()
+	var snap := f.snapshot()
+	f.resolve_spell("fire_ball", 1)  # kills the Gale Sprite (its only Essence)
+	f.resolve_spell("water_wall")
+	assert_eq(f.enemies.size(), 1, "the Gale Sprite is gone")
+	assert_eq(f.player.shield, 4.0)
+	f.restore(snap)
+	assert_eq(f.enemies.size(), 2, "undo brings it back")
+	assert_eq(f.enemies[1].hp_text(), "W")
+	assert_eq(f.enemies[0].hp_text(), hp0)
+	assert_eq(f.player.shield, 0.0, "and the Shield is gone again")
+	assert_eq(f.charges.get("fire_ball", 0), 1, "the spell is awake again")
+	assert_eq(f.charges.get("water_wall", 0), 1)
