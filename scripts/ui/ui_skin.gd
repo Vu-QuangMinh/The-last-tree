@@ -10,6 +10,9 @@ const LABELS := ["Default", "New"]
 
 static var _tex := {}
 
+## artifact id -> picture name, where they differ
+const ARTIFACT_ART := {"scholar_quill": "scholars_quill"}
+
 
 static func is_new() -> bool:
 	return SaveManager.setting("theme", "default") == "new"
@@ -101,6 +104,24 @@ static func fill_number(row: Container, text: String, h: float, white := false, 
 		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(r)
 	return true
+
+
+## A picture to put INSIDE rich text ([img] in a RichTextLabel / tooltip): the painted one in the New theme, `fallback` (the
+## old emoji or text) otherwise or when that picture isn't there.
+static func inline(name: String, fallback := "", px := 24) -> String:
+	if tex(name) == null:
+		return fallback
+	return "[img=%dx%d]%s[/img]" % [px, px, DIR + name + ".png"]
+
+
+## The same for a plain Label (a toast): a marker the toast turns into a picture, or into `fallback` when there isn't one.
+static func icon_token(name: String, fallback := "") -> String:
+	return "{icon:%s|%s}" % [name, fallback]
+
+
+## An artifact's painted icon (assets/ui/new/<id>.png) in a square of `px`; null in Default or if that artifact has none yet.
+static func artifact_icon(id: String, px: float) -> TextureRect:
+	return icon(ARTIFACT_ART.get(id, id), px)
 
 
 ## Draw `name` centred in a box of `px`, keeping its proportions. Returns false if there's no art.

@@ -13,7 +13,7 @@ var _box: StyleBoxFlat
 var _art_normal: StyleBoxTexture  # New theme: slot art (null in Default)
 var _art_hover: StyleBoxTexture
 
-## New theme: the bottle art, by the nearest of its five colours
+## New theme: a bottle without a painted picture of its own is shown as the nearest of five colour bottles
 const ART := {
 	"bottle_orange": Color(0.94, 0.35, 0.15), "bottle_green": Color(0.27, 0.7, 0.27), "bottle_purple": Color(0.7, 0.35, 0.65),
 	"bottle_gray": Color(0.72, 0.7, 0.68), "bottle_blue": Color(0.3, 0.55, 0.8),
@@ -51,7 +51,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if clickable else Control.CURSOR_ARROW
 	var how := "Click it on your turn to drink it. It's gone once used." if clickable else "Drink it during a fight (click it on your turn)."
-	tooltip_text = Keywords.tooltip("%s %s" % [b.get("icon", ""), b.get("name", id)], b.get("desc", ""), "[color=#9aa89a]Bottle · %d Amber · %s[/color]" % [b.get("price", 0), how])
+	tooltip_text = Keywords.tooltip(b.get("name", id), b.get("desc", ""), "[color=#9aa89a]Bottle · %d Amber · %s[/color]" % [b.get("price", 0), how], UiSkin.inline(id, b.get("icon", ""), 28))
 	_apply_art()
 	if clickable:
 		mouse_entered.connect(func():
@@ -76,6 +76,8 @@ func _apply_art() -> void:
 
 
 func _art_name() -> String:
+	if UiSkin.tex(id) != null:
+		return id  # its own painted bottle (assets/ui/new/<id>.png)
 	var col: Color = Bottles.get_def(id).get("color", Color.WHITE)
 	var best := "bottle_gray"
 	var best_d := 9.0

@@ -8,21 +8,40 @@ Medal Ring Cursed: An empty round medallion ring in dull crimson-red metal with 
 Map Node Treasure: A small round map marker with a cream paper background and a thick brown outline, a tiny closed wooden treasure chest with a gold lock in the middle, simple and readable at a small size, square image.
 Treasure Chest Closed: A cheerful small wooden treasure chest with gold corner bands and a round gold lock, lid closed, seen from the front and slightly above, a soft warm glow leaking from the seam, square image.
 Treasure Chest Open: The same small wooden treasure chest with the lid open, golden light and a few tiny sparkles rising out of it, seen from the front and slightly above, square image.
-Artifact Chant Bell: A small brass handbell with a short wooden handle and a leaf-shaped clapper, a tiny sound arc on each side, square image.
-Artifact Echo Shell: A spiral seashell in pale pink and cream with two faint mint-green echo rings fading outward from its opening, square image.
-Artifact Bandolier: A leather bandolier strap crossing the frame diagonally with two small empty potion bottle loops and a brass buckle, square image.
-Artifact Lock Pick: Two thin metal lock picks crossed over a small round padlock with a keyhole, square image.
-Artifact Keen Eye: A single wide-open cartoon eye with a bright green iris and a small white shine, one tiny leaf growing from the eyebrow, square image.
-Artifact Calm Stone: A smooth round blue-grey pebble with a few soft ripple rings around it as if resting on still water, calm and peaceful, square image.
-Artifact Rain Chalice: A small wooden cup with a gold rim catching one large blue raindrop falling into it, tiny splash droplets, square image.
-Artifact Ward Stone: A short carved standing stone with a glowing pale gold rune circle on its face and a thin protective ring around it, square image.
-Artifact Thornbark: A curved piece of rough bark with several sharp green thorns sprouting along its edge, square image.
-Artifact Iron Bark: A thick piece of tree bark wrapped with two dark iron bands, a small shield-like shine on the metal, square image.
-Artifact Healing Sap: A single golden-amber drop of tree sap hanging from the tip of a green leaf, a tiny pink heart glowing inside the drop, square image.
-Artifact Mending Moss: A soft clump of bright green moss with two small sparkly plus signs rising from it, square image.
-Artifact Scholar Quill: A long white feather quill resting in a small round ink pot, one drop of dark blue ink at the tip, square image.
-Artifact Seedling Pouch: A small cloth drawstring pouch in warm tan with a tiny green sprout of two leaves poking out of the top, square image.
-Artifact Blood Pact: A rolled parchment scroll tied with a red ribbon and sealed with a crimson wax drop, a faint red-purple glow around it, slightly ominous but cute, square image.
-Artifact Broken Crown: A small golden crown with a cracked band and one missing point, a few tiny gold fragments floating beside it, a faint red-purple glow, square image.
-Artifact Glass Heart: A heart made of pale translucent glass with a bright crack running through it and a soft red glow inside, a few tiny glass shards, square image.
-Artifact Withered Idol: A small carved wooden idol figure with a blank round face, grey and withered, a couple of dry brown leaves clinging to it, a faint red-purple glow, square image.
+Artifact Ember Charm: A short stubby red-orange candle in a small brass holder with a ring loop on top and a tiny cheerful flame, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Wind Chime: A tiny glass wind chime with three short pale tubes and a small clapper hanging from a little round wooden ring, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Fire Emblem: A round enamel badge pin in orange-red with a bold cartoon flame engraved on it and a thin gold rim, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Water Emblem: A round enamel badge pin in blue-teal with a bold cartoon water droplet engraved on it and a thin gold rim, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Air Emblem: A round enamel badge pin in pale mint-white with a bold cartoon two-curl swirl engraved on it and a thin gold rim, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Lucky Acorn: A plump glossy brown acorn with a gold-tinted cap and a tiny four-leaf clover tied to its stem with a thread, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Second Wind: A small brass whistle on a loop of cord with a tiny mint-green swirl engraved on its side, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Flame Lens: A round hand lens with a red glass disc, a warm brass rim and a short wooden handle, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Tide Lens: A round hand lens with a blue glass disc, a warm brass rim and a short wooden handle, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Gale Lens: A round hand lens with a mint-green glass disc, a warm brass rim and a short wooden handle, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Prism Shard: A single tall faceted crystal shard with soft rainbow-coloured facets, pointed at both ends, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Spell Pouch: A small cloth drawstring pouch in leaf green with a cream leaf-shaped patch stitched on the front, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Spell Satchel: A leather shoulder satchel with a gold-trimmed flap, a brass buckle, a short strap and a small gold star stitched on the flap, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Chant Bell: A small brass handbell with a short wooden handle and a leaf-shaped clapper, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Echo Shell: A spiral seashell in pale pink and cream with a smooth glossy opening and a tiny loop of cord at its tip, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Bandolier: A leather bandolier strap coiled loosely like a belt with two small empty potion bottle loops and a brass buckle, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Kindling Stone: A rough dark grey stone with glowing orange ember cracks running through it, small enough to hold in one hand, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Venom Gland: A small round-bellied glass flask with a cork stopper, filled with murky toxic green liquid and one bubble, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Lock Pick: Two thin metal lock picks crossed over a small round brass padlock with a keyhole, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Keen Eye: A round brass monocle on a thin chain, its glass showing a bright green cartoon eye iris with a small white shine, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Calm Stone: A smooth round blue-grey pebble with a faint white band across it, plain and calm, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Rain Chalice: A small wooden cup with a gold rim and a single glossy blue raindrop gem resting inside it, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Ward Stone: A short carved grey stone tablet with a pale gold rune circle engraved on its face and a small hole for a cord, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Thornbark: A curved piece of rough bark worn like a bracer, with several sharp green thorns sprouting along its edge, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Iron Bark: A thick round disc of tree bark wrapped with two dark iron bands and a small iron stud in the centre, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Healing Sap: A small corked glass vial of golden-amber tree sap with a green leaf tied to the neck by a thread, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Mending Moss: A small corked glass jar packed with soft bright green moss, a tiny leaf tag tied to the neck, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Scholar Quill: A long white feather quill resting in a small round ink pot, one drop of dark blue ink at the tip, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Seedling Pouch: A small cloth drawstring pouch in warm tan with a tiny green sprout of two leaves poking out of the top, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Heartwood Seed: A large glossy brown seed with golden grain lines and one tiny green sprout, set in a small gold cup base, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Ember Heart: A heart-shaped orange-red gem pendant with flame-like facets in a gold setting on a short gold chain, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Tide Heart: A heart-shaped blue-teal gem pendant with wave-like facets in a gold setting on a short gold chain, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Gale Heart: A heart-shaped pale mint-green gem pendant with swirl-like facets in a gold setting on a short gold chain, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Blood Pact: A rolled parchment scroll tied with a red ribbon and sealed with a crimson wax drop, slightly ominous but cute, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Broken Crown: A small golden crown with a cracked band and one missing point, a couple of tiny gold fragments lying beside it, tarnished and slightly ominous, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Glass Heart: A heart-shaped pale translucent glass pendant on a thin cord with a bright crack running through it and a soft red tint inside, a single pocket-sized object centred, no hands, no scene, square image.
+Artifact Withered Idol: A small carved wooden idol figure with a blank round face, grey and withered, a couple of dry brown leaves clinging to it, a single pocket-sized object centred, no hands, no scene, square image.

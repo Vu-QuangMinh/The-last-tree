@@ -68,9 +68,12 @@ static func make(e: EnemyState) -> IntentChip:
 	return c
 
 
-## New theme: art for the intent kinds that have some
+## New theme: the painted icon of each intent kind (assets/ui/new/intent_<kind>.png). Burn / Poison / Unknown are painted too,
+## but no enemy intent uses them (burn and poison are statuses).
 const ART := {"attack": "intent_attack", "armor": "intent_armor", "freeze": "intent_freeze", "steal": "intent_steal", "summon": "intent_summon",
-	"bleed": "intent_poison", "blind": "intent_unknown", "confuse": "intent_unknown"}
+	"bleed": "intent_bleed", "blind": "intent_blind", "confuse": "intent_confuse", "mend": "intent_mend", "shuffle": "intent_shuffle",
+	"silence": "intent_silence", "lock": "intent_lock", "ethereal": "intent_ethereal", "empower": "intent_empower", "toll": "intent_toll",
+	"invert": "intent_invert", "hex": "intent_hex", "mimic": "intent_mimic", "frail": "intent_frail"}
 
 
 ## New theme: the bubble is five fixed-ratio pieces: two end caps, the arrow in the middle, and a stretchy piece on each
@@ -122,7 +125,7 @@ func build(e: EnemyState) -> void:
 	if e.freeze_turns > 0:
 		row.add_child(_part("❄", "", Color(0.5, 0.8, 1.0), "freeze"))
 		row.add_child(_word("skips", Color(0.7, 0.9, 1)))
-		tooltip_text = "[b][font_size=25]Frozen[/font_size][/b]\n❄ " + Keywords.colorize("Frozen: it skips its next action.")
+		tooltip_text = "[b][font_size=25]Frozen[/font_size][/b]\n" + UiSkin.inline("intent_freeze", "❄", 24) + " " + Keywords.colorize("Frozen: it skips its next action.")
 		return
 	var m := e.intent
 	var lines := ["[b][font_size=25]%s intends to…[/font_size][/b]" % e.name]
@@ -131,7 +134,7 @@ func build(e: EnemyState) -> void:
 		var look: Array = LOOK.get(m.kind, ["?", GREY])
 		var info: Array = INFO.get(m.kind, [m.kind.capitalize(), ""])
 		var what := EnemyDefs.describe_move(_single(m), e.dmg_bonus) if m.kind != "attack" else _attack_words(m, e)
-		lines.append("%s [color=#%s][b]%s[/b][/color]: %s\n[color=#b8c2b8]%s[/color]" % [look[0], (look[1] as Color).lightened(0.35).to_html(false), info[0], Keywords.colorize(what), info[1]])
+		lines.append("%s [color=#%s][b]%s[/b][/color]: %s\n[color=#b8c2b8]%s[/color]" % [UiSkin.inline(ART.get(m.kind, ""), look[0], 24), (look[1] as Color).lightened(0.35).to_html(false), info[0], Keywords.colorize(what), info[1]])
 		m = m.get("also", {})
 	if e.redirect_to != null and is_instance_valid(e.redirect_to):
 		var who := "itself" if e.redirect_to == e else e.redirect_to.name
@@ -187,11 +190,11 @@ func _add_move(row: HBoxContainer, m: Dictionary, e: EnemyState) -> void:
 
 
 func _part(glyph: String, num: String, col: Color, kind := "") -> Control:
-	if kind == "attack" or kind == "mend":
-		# New theme: an attack is the crossed swords then the number in painted digits: "+5" (or "+3×2" for several hits); a mend is just "+1"
-		var digits := UiSkin.number(num if kind == "mend" else "+" + num, 34, false, 0.7)
+	if kind == "attack":
+		# New theme: an attack is the crossed swords then the number in painted digits: "+5" (or "+3×2" for several hits)
+		var digits := UiSkin.number("+" + num, 34, false, 0.7)
 		if digits != null:
-			var sword := UiSkin.icon("intent_attack", 38) if kind == "attack" else null
+			var sword := UiSkin.icon("intent_attack", 38)
 			if sword == null:
 				return digits
 			var row := HBoxContainer.new()  # crossed swords, then the + sign, then the damage
@@ -209,11 +212,16 @@ func _part(glyph: String, num: String, col: Color, kind := "") -> Control:
 		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		h.add_child(art)
 		if num != "":
-			var n := UiTheme.label(num, 22, Color.WHITE)
-			n.add_theme_constant_override("outline_size", 6)
-			n.add_theme_color_override("font_outline_color", Color(0.2, 0.1, 0.08))
-			n.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			h.add_child(n)
+			var painted := UiSkin.number(num, 28, false, 0.7)  # the painted digits, like the attack's
+			if painted != null:
+				painted.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+				h.add_child(painted)
+			else:
+				var n := UiTheme.label(num, 22, Color.WHITE)
+				n.add_theme_constant_override("outline_size", 6)
+				n.add_theme_color_override("font_outline_color", Color(0.2, 0.1, 0.08))
+				n.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				h.add_child(n)
 		return h
 	var p := PanelContainer.new()
 	var sb := StyleBoxFlat.new()

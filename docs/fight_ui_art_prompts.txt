@@ -59,18 +59,6 @@ Artifact Slot Upgraded: The same rounded square wood-brown slot with a small gol
 Amber Counter Pill: A wide rounded pill in dark brown with a thin amber-orange outline, completely empty with space on the left for a gem and on the right for a number, wide horizontal shape about 3 to 1.
 Icon Amber Gem: A faceted orange-amber gem with four or five simple facets, a bright centre, one small white sparkle and a thick dark outline, square image.
 Enemy Stand: A flat oval ground shadow with a small mossy wooden disc and a tuft of grass on it, seen from the front, soft and low, nothing else, wide horizontal shape about 5 to 1.
-Intent Bubble Attack: A rounded speech-style bubble in cream paper colour with a thick red outline and a small tail pointing down, completely empty, wide horizontal shape about 2.5 to 1.
-Intent Bubble Defend: A rounded speech-style bubble in cream paper colour with a thick blue outline and a small tail pointing down, completely empty, wide horizontal shape about 2.5 to 1.
-Intent Bubble Debuff: A rounded speech-style bubble in cream paper colour with a thick purple outline and a small tail pointing down, completely empty, wide horizontal shape about 2.5 to 1.
-Intent Bubble Special: A rounded speech-style bubble in cream paper colour with a thick amber outline and a small tail pointing down, completely empty, wide horizontal shape about 2.5 to 1.
-Intent Attack: A single bold pair of small crossed swords in red-orange with a thick dark outline, square image.
-Intent Armor: A single bold round-topped shield in light blue with a thick dark outline, square image.
-Intent Freeze: A single bold light-blue snowflake with a thick dark outline, square image.
-Intent Burn: A single bold orange flame with a thick dark outline, square image.
-Intent Poison: A single bold green droplet with a thick dark outline, square image.
-Intent Steal: A single bold grabbing hand in lavender with a thick dark outline, square image.
-Intent Summon: A single bold plus sign surrounded by three small sparkles in violet with a thick dark outline, square image.
-Intent Unknown: A single bold question-mark symbol in grey with a thick dark outline, square image.
 Target Marker: A bold amber-gold ring with four small inward-pointing corner arrows, a thick dark outline, empty middle, square image.
 Aim Arrow Head: A chunky arrow head in amber gold with a thick dark outline, pointing up, nothing else, square image.
 Floating Number Damage: A small chunky red starburst splat shape with a thick dark outline and an empty centre, square image.

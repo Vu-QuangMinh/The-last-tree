@@ -73,7 +73,17 @@ func _refresh() -> void:
 			p.custom_minimum_size = Vector2(440, 150)
 			var v := VBoxContainer.new()
 			p.add_child(v)
-			v.add_child(UiTheme.label("◆ " + a.name, 22, Color(1, 0.85, 0.5)))
+			var art := UiSkin.artifact_icon(a.id, 44)  # New theme: the painted artifact beside its name
+			if art != null:
+				var head := HBoxContainer.new()
+				head.add_theme_constant_override("separation", 10)
+				head.add_child(art)
+				var nm := UiTheme.label(a.name, 22, Color(1, 0.85, 0.5))
+				nm.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+				head.add_child(nm)
+				v.add_child(head)
+			else:
+				v.add_child(UiTheme.label("◆ " + a.name, 22, Color(1, 0.85, 0.5)))
 			var d := UiTheme.label(a.desc, 16, UiTheme.MUTED)
 			d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			v.add_child(d)

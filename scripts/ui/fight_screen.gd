@@ -1233,7 +1233,7 @@ const INTERACTIVE_OPS := ["infuse", "rearrange", "duplicate", "move", "pluck", "
 
 
 func _is_auto(spell: Dictionary) -> bool:
-	if _needs_pick(spell):
+	if _needs_pick(spell) and not _single_target(spell):
 		return false
 	for e in spell.effects:
 		if e.op in INTERACTIVE_OPS:
@@ -1258,10 +1258,19 @@ func _auto_cast() -> void:
 				next = id
 		if next == "":
 			return
-		await fight.resolve_spell(next, -1)
+		var only := fight.target_candidates()
+		await fight.resolve_spell(next, only[0] if _needs_pick(fight._find_spell(next)) else -1)
 		_sync_views()
 		_refresh_all()
 		tut.emit("cast", next)
+
+
+## A spell that only needs one enemy picked while exactly one enemy is left: nothing to choose, so it casts itself.
+func _single_target(spell: Dictionary) -> bool:
+	for e in spell.effects:
+		if e.get("target", "") == "two":
+			return false
+	return fight.target_candidates().size() == 1
 
 
 ## Does the player point this spell at an enemy before it resolves? (Effects aimed at "target".)

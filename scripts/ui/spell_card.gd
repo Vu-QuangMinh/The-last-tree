@@ -248,7 +248,9 @@ func _build_icons() -> void:
 	if spell.get("fused", false):
 		paths.append("special_fused")
 	for p in paths:
-		var t := CardPip.tex("res://assets/card/icons/%s.png" % p)
+		var t: Texture2D = UiSkin.tex(p)  # New theme: the painted icon (assets/ui/new); otherwise / when it has none, the old PNG
+		if t == null:
+			t = CardPip.tex("res://assets/card/icons/%s.png" % p)
 		if t != null:
 			var s := minf(ICON_BOX.x / t.get_width(), ICON_BOX.y / t.get_height())
 			icons.append([t, Vector2(t.get_width(), t.get_height()) * s])

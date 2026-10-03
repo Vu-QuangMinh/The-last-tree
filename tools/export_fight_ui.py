@@ -8,6 +8,7 @@ import io
 import os
 import re
 import sys
+import unicodedata
 
 import numpy as np
 import pymupdf
@@ -24,11 +25,15 @@ os.makedirs(OUT, exist_ok=True)
 PAGE_PREFIX = {
     1: {"Thorns": "status_", "Weak": "status_", "Silenced": "status_", "Burn": "status_", "Freeze": "status_", "Poison": "status_",
         "Orange": "bottle_", "Green": "bottle_", "Purple": "bottle_", "Gray": "bottle_", "Blue": "bottle_"},
+    5: {k: "intent_" for k in ["Armor", "Attack", "Burn", "Freeze", "Poison", "Steal", "Summon", "Unknown", "Mend", "Bleed", "Blind", "Confuse", "Empower",
+                               "Ethereal", "Frail", "Hex", "Invert", "Lock", "Mimic", "Shuffle", "Silence", "Toll"]},  # page 5 top: the INTENT icons
+    7: {"common": "rarity_", "rare": "rarity_", "legendary": "rarity_", "fleeting": "special_", "power": "special_", "fused": "special_",
+        "Defense": "kind_", "Utility": "kind_"},  # the card's icon strip (the card looks for rarity_*, special_*, kind_*)
     2: {"Armor": "intent_", "Attact": "intent_", "Attack": "intent_", "Burn": "intent_", "Freeze": "intent_", "Poison": "intent_", "Steal": "intent_",
         "Summon": "intent_", "Unknown": "intent_"},
 }
 RENAME = {"attact": "attack", "air": "wind", "press": "pressed"}
-SKIP = {"BOTTLE", "STATUS", "FIRE BALL", "Remove the rightmost", "Essence of the target.", "X"}  # headings, and the text of the mock card
+SKIP = {"BOTTLE", "STATUS", "FIRE BALL", "Remove the rightmost", "Essence of the target.", "X", "INTENT"}  # headings, and the text of the mock card
 # page 1 has two "Button Small Pressed" labels: the grey one (right) is the disabled state
 DUP = {("button_small_pressed", 1): "button_small_disabled"}
 # unlabeled shapes on page 0, read row by row, left to right
@@ -49,6 +54,7 @@ TIGHT_MERGE_PX = 4  # pieces drawn right next to each other (scroll bar head / b
 
 
 def snake(label):
+    label = unicodedata.normalize("NFKC", label).replace("'", "")  # "Shuﬄe" ligature, "Scholar's Quill"
     return "_".join(label.replace("  ", " ").lower().split())
 
 
@@ -118,14 +124,21 @@ SKIP_PREFIX = ("HP Bar", "HP", "Shield", "Blank (")  # headings / legend text on
 ART_LEFT = ("Scroll Bar", "Volume Bar", "Button Close X", "Menu Leaf")  # these labels sit to the RIGHT of their art
 
 
+def art_is_left(label_rect, pg):
+    """Treasure art (page 5 below the intents, pages 6 and 7): the label is printed to the RIGHT of its picture."""
+    return pg in (6, 7, 8) or (pg == 5 and label_rect.y0 > 450)
+
+
 def name_for(label, pg):
     if label.startswith("BG ") or label in SKIP or (label.strip() in SKIP_PREFIX or label.startswith("Blank (")) or label.startswith("Perfect Victory Banner") or label.startswith("Victory Banner") or label.startswith("Defeat Banner"):
         return None
     for start, kw, nm in LABEL_RULES:
         if label.startswith(start) and (kw is None or kw in label):
             return nm
-    pre = PAGE_PREFIX.get(pg, {}).get(label.strip(), "")
+    pre = PAGE_PREFIX.get(pg, {}).get(unicodedata.normalize("NFKC", label).strip(), "")
     n = pre + snake(label)
+    if pg >= 7:  # the flasks and merchant items keep their names ("Air Flask" is air_flask; RENAME turns air into wind for the Air Emblem)
+        return n
     return "_".join(RENAME.get(p, p) for p in n.split("_"))
 
 
@@ -190,6 +203,21 @@ for pg in range(len(doc)):
         if nm is None:
             continue
         cx = (lr.x0 + lr.x1) / 2.0
+        if art_is_left(lr, pg):  # treasure art: picture to the left of the label, same row (normal grouping keeps its sparkles)
+            cy = (lr.y0 + lr.y1) / 2.0
+            bl, bdl = None, 1e9
+            for i, (r, _m, _im) in enumerate(tight_comps if pg == 5 else comps):
+                if i in taken or r.x1 > lr.x0 + 8 or lr.x0 - r.x1 > 70 or not (r.y0 - 6 <= cy <= r.y1 + 6):
+                    continue
+                d2 = lr.x0 - r.x1
+                if d2 < bdl:
+                    bl, bdl = i, d2
+            if bl is None:
+                print("no art for label", repr(t), "page", pg)
+                continue
+            taken.add(bl)
+            pics[nm] = (tight_comps if pg == 5 else comps)[bl]
+            continue
         if t.startswith(ART_LEFT):  # art sits left of its label: look among the finely grouped pieces
             cy = (lr.y0 + lr.y1) / 2.0
             bl, bdl = None, 1e9

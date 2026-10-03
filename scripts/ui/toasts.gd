@@ -21,9 +21,30 @@ func show_toast(text: String, color: Color) -> void:
 	var strip := UiSkin.box("toast_strip", [20, 14, 20, 14], [34, 6, 22, 9])
 	p.add_theme_stylebox_override("panel", strip if strip != null else UiTheme.panel_box(0.85, 10))
 	p.mouse_filter = MOUSE_FILTER_IGNORE
-	var l := UiTheme.label(text, 18, color.darkened(0.55) if strip != null else color)  # dark text on the cream strip
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	p.add_child(l)
+	var row := HBoxContainer.new()  # the text, with each {icon:name|fallback} marker turned into a picture (or its fallback)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 4)
+	row.mouse_filter = MOUSE_FILTER_IGNORE
+	p.add_child(row)
+	var rest := text
+	var pics := []
+	var rx := RegEx.create_from_string("\\{icon:([^|}]*)\\|([^}]*)\\}")
+	for m in rx.search_all(text):
+		var art := UiSkin.icon(m.get_string(1), 26)
+		if art != null:
+			pics.append(art)
+			rest = rest.replace(m.get_string(), "\u0001")
+		else:
+			rest = rest.replace(m.get_string(), m.get_string(2))
+	var pieces := rest.split("\u0001")
+	for i in pieces.size():
+		var part := pieces[i].strip_edges()
+		if part != "":
+			var l := UiTheme.label(part, 18, color.darkened(0.55) if strip != null else color)  # dark text on the cream strip
+			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			row.add_child(l)
+		if i < pics.size():
+			row.add_child(pics[i])
 	add_child(p)
 	var tw := p.create_tween()
 	tw.tween_interval(LIFE)

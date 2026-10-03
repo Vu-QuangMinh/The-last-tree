@@ -132,8 +132,9 @@ static func glossary(text: String) -> Array:
 
 
 ## A tooltip body: title, coloured rules text, then what its keywords mean.
-static func tooltip(title: String, body: String, extra := "") -> String:
-	var s := "[b][font_size=25]%s[/font_size][/b]\n%s" % [_escape(title), colorize(body)]
+## `icon` is rich text shown before the title (e.g. UiSkin.inline(...)).
+static func tooltip(title: String, body: String, extra := "", icon := "") -> String:
+	var s := "[b][font_size=25]%s%s[/font_size][/b]\n%s" % [(icon + " ") if icon != "" else "", _escape(title), colorize(body)]
 	if extra != "":
 		s += "\n" + extra
 	var gl := glossary(body)

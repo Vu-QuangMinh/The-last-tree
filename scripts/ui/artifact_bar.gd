@@ -86,13 +86,17 @@ class ArtifactChip extends PanelContainer:
 			c.mouse_entered.connect(func(): if not c.charged: c.add_theme_stylebox_override("panel", c.art_hover))
 			c.mouse_exited.connect(func(): if not c.charged: c.add_theme_stylebox_override("panel", c.art_normal))
 		c.mouse_filter = Control.MOUSE_FILTER_STOP
-		var l := UiTheme.label(a.get("icon", "◆"), 28, Color.WHITE)
-		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		c.add_child(l)
+		var art := UiSkin.artifact_icon(id, 40)  # New theme: the painted artifact; otherwise its symbol
+		if art != null:
+			c.add_child(art)
+		else:
+			var l := UiTheme.label(a.get("icon", "◆"), 28, Color.WHITE)
+			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			c.add_child(l)
 		var tier: String = Artifacts.TIER_NAMES.get(a.get("tier", "common"), "")
-		c.tooltip_text = Keywords.tooltip("%s %s" % [a.get("icon", ""), a.name], a.desc, "[color=#9aa89a]%s artifact · %s[/color]" % [tier, a.get("aspect", "")])
+		c.tooltip_text = Keywords.tooltip(a.name, a.desc, "[color=#9aa89a]%s artifact · %s[/color]" % [tier, a.get("aspect", "")], UiSkin.inline(UiSkin.ARTIFACT_ART.get(id, id), a.get("icon", ""), 28))
 		c._sb = sb
 		c._base_border = sb.border_color
 		c._base_tip = c.tooltip_text
