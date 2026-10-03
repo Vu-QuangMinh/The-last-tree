@@ -26,8 +26,26 @@ static var _fonts := {}
 static func family(file: String) -> Font:
 	if not _fonts.has(file):
 		var path := "res://assets/fonts/%s.TTF" % file
-		_fonts[file] = load(path) if ResourceLoader.exists(path) else null
+		_fonts[file] = with_fallbacks(load(path)) if ResourceLoader.exists(path) else null
 	return _fonts[file]
+
+
+const FALLBACK_FONTS := ["NotoColorEmoji.ttf", "NotoSansSymbols2-Regular.ttf", "DejaVuSans.ttf"]
+static var _fallbacks: Array[Font] = []
+
+
+## Gives a font the bundled emoji / symbol fonts as fallbacks, so characters like 🔥 ⌫ ✿ → draw everywhere.
+## The web build can't reach system fonts, so without these they show as hex-code boxes.
+static func with_fallbacks(f: Font) -> Font:
+	if f == null or not f.fallbacks.is_empty():
+		return f
+	if _fallbacks.is_empty():
+		for file in FALLBACK_FONTS:
+			var path: String = "res://assets/fonts/" + file
+			if ResourceLoader.exists(path):
+				_fallbacks.append(load(path))
+	f.fallbacks = _fallbacks
+	return f
 
 
 ## Settings → Look → Show Hotkey: whether button texts carry their key, like "Chant  (Enter)".
@@ -61,7 +79,7 @@ static func title_font() -> Font:
 		for f in DirAccess.get_files_at("res://assets/fonts"):
 			var path := "res://assets/fonts/" + f.trim_suffix(".import")
 			if "ciel" in f.to_lower() and ResourceLoader.exists(path):
-				_title_font = load(path)
+				_title_font = with_fallbacks(load(path))
 				break
 	return _title_font
 
@@ -89,7 +107,7 @@ static func font_choice() -> String:
 ## single italic face, so its bold is that face emboldened. Null when the files aren't there (the caller keeps its font).
 static func cut(kind: String) -> Font:
 	if font_choice() == "acherus":
-		var base: Font = load("res://assets/fonts/SVN-Acherus-Italic.otf") if ResourceLoader.exists("res://assets/fonts/SVN-Acherus-Italic.otf") else null
+		var base: Font = with_fallbacks(load("res://assets/fonts/SVN-Acherus-Italic.otf")) if ResourceLoader.exists("res://assets/fonts/SVN-Acherus-Italic.otf") else null
 		if base == null or kind == "regular" or kind == "oblique":
 			return base
 		if _acherus_bold == null:
@@ -104,11 +122,12 @@ static func get_theme() -> Theme:
 	if _theme:
 		return _theme
 	var t := Theme.new()
+	with_fallbacks(ThemeDB.fallback_font)  # Godot's own font, used by any control that has no theme
 	var font: Font = cut("regular")
 	if font == null:
 		var sys := SystemFont.new()
 		sys.font_names = PackedStringArray(["Segoe UI", "Arial", "Helvetica", "Noto Sans"])
-		font = sys
+		font = with_fallbacks(sys)
 	t.default_font = font
 	t.default_font_size = 18
 	# the same family for rich text: bold / italic / bold italic stay what they were, in their Futura cuts

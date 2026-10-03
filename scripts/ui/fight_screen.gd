@@ -2888,7 +2888,7 @@ func _slam(text: String, col: Color, outline: Color, font_px: int) -> void:
 	f.font_names = PackedStringArray(["Impact", "Arial Black", "Segoe UI Black", "Arial"])
 	f.font_weight = 900
 	f.font_italic = true
-	l.add_theme_font_override("font", f)
+	l.add_theme_font_override("font", UiTheme.with_fallbacks(f))
 	l.add_theme_font_size_override("font_size", font_px)
 	l.add_theme_color_override("font_color", col)
 	l.add_theme_constant_override("outline_size", 22)
