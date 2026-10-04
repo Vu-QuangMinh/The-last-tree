@@ -158,7 +158,14 @@ func _draw() -> void:
 		a = 0.45
 	if highlight:
 		draw_circle(c, r + 3.0, Color(1, 1, 1, 0.9))
-	if UiSkin.draw_fit(self, ART.get(el, "essence_any"), c, r * 2.0 + 2.0, Color(1, 1, 1, a)):
+	if el == "hidden":
+		# Blind: you can't see what it is. A grey mystery disc (not the rainbow Any bead, which a painted Essence uses)
+		draw_circle(c, r, Color(0.42, 0.44, 0.5, a), true, -1.0, true)
+		draw_arc(c, r - 1.0, 0.0, TAU, 40, Color(0.22, 0.23, 0.28, a), maxf(1.5, r * 0.1), true)
+		var hf := get_theme_default_font()
+		var hs := int(r * 1.35)
+		draw_string(hf, c + Vector2(-hs * 0.28, hs * 0.36), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, hs, Color(0.85, 0.87, 0.92, a))
+	elif UiSkin.draw_fit(self, ART.get(el, "essence_any"), c, r * 2.0 + 2.0, Color(1, 1, 1, a)):
 		pass  # the New theme's art
 	elif CardPip.ICON.has(el):
 		CardPip.draw_pip(self, c, r, el, a)

@@ -37,16 +37,15 @@
   },
   {
    "id": "cinder",
-   "name": "Cinder",
+   "name": "Dab",
    "pattern": "F",
    "effects": [
     {
      "op": "expose",
-     "turns": 1,
-     "target": "target"
+     "n": 1
     }
    ],
-   "flavor": "Glowing ash marks the weak spot.",
+   "flavor": "A fingertip of paint, right on the weak spot.",
    "rarity": "common"
   },
   {
@@ -440,6 +439,7 @@
      "target": "self"
     }
    ],
+   "fleeting": true,
    "flavor": "Blades pass through you. Curses don't.",
    "rarity": "common"
   },
@@ -727,16 +727,15 @@
   },
   {
    "id": "geyser",
-   "name": "Geyser",
+   "name": "Splatter",
    "pattern": "WFA",
    "effects": [
     {
      "op": "expose",
-     "turns": 1,
-     "target": "all"
+     "n": 3
     }
    ],
-   "flavor": "Blown wide open.",
+   "flavor": "It erupts in every colour at once.",
    "rarity": "rare"
   },
   {
@@ -1222,16 +1221,15 @@
   },
   {
    "id": "soak",
-   "name": "Soak",
+   "name": "Spritz",
    "pattern": "WW",
    "effects": [
     {
      "op": "expose",
-     "turns": 2,
-     "target": "target"
+     "n": 2
     }
    ],
-   "flavor": "Drenched and sagging.",
+   "flavor": "A quick mist of colour, and they're anyone's.",
    "rarity": "rare"
   },
   {
@@ -1372,16 +1370,20 @@
   },
   {
    "id": "frailty",
-   "name": "Frailty",
+   "name": "Stain",
    "pattern": "AWW",
    "effects": [
     {
-     "op": "curse",
-     "key": "exposed",
-     "target": "target"
+     "op": "each_turn",
+     "effects": [
+      {
+       "op": "expose",
+       "n": 1
+      }
+     ]
     }
    ],
-   "flavor": "It never recovers its guard.",
+   "flavor": "It never washes out.",
    "power": true,
    "rarity": "rare"
   },
@@ -1809,16 +1811,15 @@
   },
   {
    "id": "zephyr",
-   "name": "Zephyr",
+   "name": "Fleck",
    "pattern": "A",
    "effects": [
     {
      "op": "expose",
-     "turns": 1,
-     "target": "random"
+     "n": 1
     }
    ],
-   "flavor": "A gentle wind finds the gaps.",
+   "flavor": "The wind carries a single speck of colour.",
    "rarity": "common"
   },
   {
@@ -2020,16 +2021,15 @@
   },
   {
    "id": "ember_gust",
-   "name": "Ember Gust",
+   "name": "Spatter",
    "pattern": "AF",
    "effects": [
     {
      "op": "expose",
-     "turns": 2,
-     "target": "target"
+     "n": 2
     }
    ],
-   "flavor": "Wind carries the sparks right into the cracks.",
+   "flavor": "Hot paint, flicked off the brush.",
    "rarity": "common"
   },
   {
@@ -2163,16 +2163,15 @@
   },
   {
    "id": "searing_brand",
-   "name": "Searing Brand",
+   "name": "Daub",
    "pattern": "FF",
    "effects": [
     {
      "op": "expose",
-     "turns": 2,
-     "target": "all"
+     "n": 2
     }
    ],
-   "flavor": "Marked, then lit.",
+   "flavor": "Slapped on thick, still smoking.",
    "rarity": "rare"
   },
   {
@@ -2502,8 +2501,7 @@
    "effects": [
     {
      "op": "expose",
-     "turns": 1,
-     "target": "target"
+     "n": 2
     }
    ],
    "flavor": "Splash them, and see where they flinch.",
@@ -2537,16 +2535,17 @@
   },
   {
    "id": "thunderhead",
-   "name": "Thunderhead",
+   "name": "Raigeki",
    "pattern": "AAF",
    "effects": [
     {
-     "op": "barrage",
-     "n": 3
+     "op": "pluck",
+     "n": 3,
+     "target": "target"
     }
    ],
-   "flavor": "The cloud grumbles, then strikes.",
-   "rarity": "rare"
+   "flavor": "The sky picks three, and does not miss.",
+   "rarity": "legendary"
   },
   {
    "id": "lava_flow",
@@ -2854,16 +2853,15 @@
   },
   {
    "id": "mistral",
-   "name": "Mistral",
+   "name": "Splotch",
    "pattern": "AAW",
    "effects": [
     {
      "op": "expose",
-     "turns": 1,
-     "target": "all"
+     "n": 3
     }
    ],
-   "flavor": "A cold wind that finds everyone's weak side.",
+   "flavor": "A cold wind throws the whole pot.",
    "rarity": "rare"
   },
   {
@@ -3054,8 +3052,7 @@
     },
     {
      "op": "expose",
-     "turns": 2,
-     "target": "target"
+     "n": 2
     },
     {
      "op": "poison",

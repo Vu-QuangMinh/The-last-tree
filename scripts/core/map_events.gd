@@ -6,8 +6,13 @@ extends RefCounted
 ##   bottle n (n random bottles, if you have room)
 ##   gamble (50%: heal to full, else an ambush fight) · fight · none
 ##   upgrade_artifact (pick one: it becomes its + version) · trade_artifacts (give 2 of a tier, pick 1 of the next)
+##   apply_seals (apply your purple seals: one Essence of a spell each) · resin n (gain n purple resin)
 
 const ALL := [
+	{"id": "resin_shrine", "title": "The Resin Shrine", "text": "An old stone basin, stained purple at the rim. Your purple seals grow warm as you come near, as if they want to be pressed into something.",
+		"options": [{"label": "Press your purple seals into your spells (one Essence each)", "do": "apply_seals"},
+			{"label": "Scrape some old resin from the basin (lose 4 HP): +1 purple resin", "hp": 4, "do": "resin", "n": 1},
+			{"label": "Walk on", "do": "none"}]},
 	{"id": "well", "title": "The Whispering Well", "text": "A mossy well whispers your name. It sounds hungry, and a little bit greedy.",
 		"options": [{"label": "Drop in 20 Leaves (a random spell needs 1 Essence less)", "amber": 20, "do": "upgrade", "n": 1},
 			{"label": "Drink deeply (heal 12)", "do": "heal", "n": 12},

@@ -18,8 +18,6 @@ var poison := 0
 var weak_turns := 0
 var weak25 := false  # Stillness (permanent)
 var freeze_turns := 0
-var expose_turns := 0
-var expose_perm := false  # Frailty
 var no_mend := false  # Cauterize
 var ethereal := false  # from its own intent: your next chant can't touch it
 var phased := false  # from your spell: your spells remove double from it this turn
@@ -31,7 +29,6 @@ var is_boss := false
 var is_elite := false
 var phase := 1
 var hexed_turns := 0
-var expose_fresh := false  # applied this turn: it doesn't tick down until your next chant has had its chance
 var redirect_to: EnemyState = null  # this turn's intent was redirected at this enemy
 
 
@@ -267,8 +264,6 @@ func shatter() -> void:
 	armor.fill(false)
 
 
-func is_exposed() -> bool:
-	return expose_perm or expose_turns > 0
 
 
 func damage_mult() -> float:
@@ -319,8 +314,6 @@ func describe_statuses() -> Array:
 		out.append("Stillness (deals 25% less)")
 	if freeze_turns > 0:
 		out.append("Frozen (skips its next action)")
-	if is_exposed():
-		out.append("Exposed (your chant takes 1 extra)")
 	if no_mend:
 		out.append("Cauterized (can't mend)")
 	if ethereal:

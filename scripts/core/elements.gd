@@ -3,7 +3,7 @@ extends RefCounted
 ## The three elements. Letters are used everywhere: F = Fire, W = Water, A = Air.
 
 const ALL: Array[String] = ["F", "W", "A"]
-const NAMES := {"F": "Fire", "W": "Water", "A": "Air", "?": "Unknown"}
+const NAMES := {"F": "Fire", "W": "Water", "A": "Air", "?": "Any"}
 const COLORS := {"F": Color(1.0, 0.45, 0.2), "W": Color(0.3, 0.62, 1.0), "A": Color(0.55, 0.95, 0.78), "?": Color(0.6, 0.6, 0.6)}
 
 

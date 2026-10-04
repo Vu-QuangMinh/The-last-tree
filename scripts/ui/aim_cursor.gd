@@ -4,6 +4,8 @@ extends Control
 ##   "shoot": a red crosshair (remove spells: you shoot the Essence off);
 ##   "hand":  an open hand (steal spells); while you drag an Essence it closes into a fist, and a sucking tether
 ##            stretches from the enemy's row to the Essence in your hand.
+##   "brush": a paint brush dipped in rainbow paint (Expose: you paint an Essence into an Any Essence); its tip
+##            is the hotspot, and it presses down when you paint.
 ## Drawn in screen coordinates on top of everything; the screen hides the real pointer while it shows.
 
 var mode := "shoot"
@@ -24,6 +26,17 @@ func kick() -> void:
 	_kick = 1.0
 
 
+## The rainbow the brush's paint cycles through (also the colours of the splash it leaves).
+const RAINBOW := [Color(1.0, 0.3, 0.35), Color(1.0, 0.62, 0.2), Color(1.0, 0.9, 0.3), Color(0.35, 0.9, 0.45),
+	Color(0.3, 0.7, 1.0), Color(0.7, 0.45, 1.0)]
+
+
+static func rainbow(u: float) -> Color:
+	u = fposmod(u, 1.0) * RAINBOW.size()
+	var k := int(u)
+	return (RAINBOW[k] as Color).lerp(RAINBOW[(k + 1) % RAINBOW.size()], u - k)
+
+
 func _process(d: float) -> void:
 	_t += d
 	_kick = maxf(0.0, _kick - d * 5.0)
@@ -34,6 +47,8 @@ func _draw() -> void:
 	var m := (point if point.x >= 0.0 else get_global_mouse_position()) - global_position
 	if mode == "shoot":
 		_draw_crosshair(m)
+	elif mode == "brush":
+		_draw_brush(m)
 	else:
 		if holding != "":
 			_draw_tether(tether_from - global_position, m)
@@ -100,3 +115,52 @@ func _draw_hand(m: Vector2) -> void:
 	draw_line(palm, thumb, skin, 6.0, true)
 	draw_circle(palm, 12.0, line)
 	draw_circle(palm, 10.5, skin)
+
+
+const BRUSH_SCALE := 1.8
+
+
+## A round paint brush, handle up and to the right, its bristles loaded with paint that shifts through the rainbow.
+## m is the very tip. After a dab (kick) the brush presses in and springs back.
+func _draw_brush(at: Vector2) -> void:
+	draw_set_transform(at, 0.0, Vector2.ONE * BRUSH_SCALE)
+	var m := Vector2.ZERO
+	var press := _kick * 6.0
+	var dir := Vector2(1, -1.25).normalized()  # from the tip up the handle
+	var side := dir.orthogonal()
+	var tip := m + dir * press * 0.3
+	var line := Color(0.22, 0.13, 0.08)
+	# bristles: a teardrop of paint from the tip to the ferrule, splaying wider while pressed
+	var b0 := tip + dir * 26.0
+	var wide := 8.0 + press * 0.7
+	var tuft := PackedVector2Array([tip, tip + dir * 9.0 + side * wide, b0 + side * 6.0, b0 - side * 6.0, tip + dir * 9.0 - side * wide])
+	draw_colored_polygon(tuft, line)
+	var inner := PackedVector2Array()
+	var c := (tip + b0) / 2.0
+	for p in tuft:
+		inner.append(c + (p - c) * 0.8)
+	draw_colored_polygon(inner, Color(0.95, 0.88, 0.7))
+	# the paint on the bristles: bands of rainbow sliding along
+	for k in 4:
+		var u := float(k) / 4.0
+		var col := rainbow(u + _t * 0.35)
+		var a := tip.lerp(b0, u * 0.62)
+		var w := 3.0 + 4.5 * sin(PI * (0.2 + u * 0.6))
+		draw_line(a, tip.lerp(b0, u * 0.62 + 0.16), col, w * 2.0, true)
+	draw_circle(tip + dir * 3.0, 3.5, rainbow(_t * 0.35))
+	# a drip hanging off the tip
+	var drip := fmod(_t * 0.8, 1.0)
+	draw_circle(tip + Vector2(0, 4.0 + drip * 10.0), 2.6 * (1.0 - drip * 0.6), Color(rainbow(_t * 0.35), 1.0 - drip))
+	# the ferrule: silver, with two crimp lines
+	var f1 := b0 + dir * 12.0
+	draw_line(b0, f1, line, 15.0)
+	draw_line(b0, f1, Color(0.78, 0.8, 0.86), 12.0)
+	draw_line(b0 + dir * 4.0 - side * 6.0, b0 + dir * 4.0 + side * 6.0, Color(0.5, 0.52, 0.58), 1.5)
+	draw_line(b0 + dir * 8.0 - side * 6.0, b0 + dir * 8.0 + side * 6.0, Color(0.5, 0.52, 0.58), 1.5)
+	# the wooden handle, tapering, with a red-painted end
+	var h1 := f1 + dir * 34.0
+	draw_colored_polygon(PackedVector2Array([f1 + side * 6.5, h1 + side * 4.0, h1 - side * 4.0, f1 - side * 6.5]), line)
+	draw_colored_polygon(PackedVector2Array([f1 + side * 5.0, h1 + side * 2.6, h1 - side * 2.6, f1 - side * 5.0]), Color(0.78, 0.55, 0.3))
+	draw_circle(h1, 4.5, line)
+	draw_circle(h1, 3.2, Color(0.85, 0.25, 0.25))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

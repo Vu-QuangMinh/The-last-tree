@@ -115,7 +115,7 @@ func _enemy_panel(id: String, index: int, width := 440.0) -> Control:
 	var hp := HFlowContainer.new()
 	var known := SaveManager.in_codex(id)
 	for c in hp_now:
-		hp.add_child(ElementIcon.make(c if known else "?", 26))
+		hp.add_child(ElementIcon.make(c if known else "hidden", 26))
 	v.add_child(hp)
 	# a light-hearted description; the moves are in the portrait's hover tooltip
 	var bio := UiTheme.label(EnemyDefs.BIOS.get(id, d.get("flavor", "")), 17, Color(0.88, 0.9, 0.82))

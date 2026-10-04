@@ -233,6 +233,7 @@ func show_map() -> void:
 	m.setup(run)
 	m.node_chosen.connect(_on_node)
 	m.codex_pressed.connect(open_codex)
+	m.menu_requested.connect(func(): run = null; show_menu())
 	_swap(m)
 
 
@@ -283,6 +284,9 @@ func _show_event(ev: Dictionary) -> void:
 			"trade_artifacts":
 				_barter()
 				return
+			"apply_seals":
+				_apply_seals("The Resin Shrine", show_map)
+				return
 		var res: Dictionary = run.choose_event_option(ev.options[i])
 		if run.player.is_dead():
 			run.over = true
@@ -295,6 +299,26 @@ func _show_event(ev: Dictionary) -> void:
 				_show_loadout(run.encounter_ids())
 			else:
 				show_map()))
+
+
+## Apply the purple seals you hold, one at a time: choose a spell, then the Essence to seal. Keep going while you
+## have seals; skip to stop (the rest are kept). `back` is where you return (the map, the shop, the campfire).
+func _apply_seals(where: String, back: Callable) -> void:
+	var ids := run.upgradable()
+	if run.purple_seals <= 0 or ids.is_empty():
+		back.call()
+		return
+	var cards := ids.map(func(id): return run.spell(id))
+	var ch := _choice(where, "You hold %d purple seal%s. Choose a spell: one Essence of its pattern gets sealed (it won't be needed any more). Skip to keep the rest for later." % [run.purple_seals, "" if run.purple_seals == 1 else "s"], cards, [], true)
+	ch.chosen.connect(func(k):
+		if k < 0 or k >= ids.size():
+			back.call()
+			return
+		var seal := SealScreen.new()
+		seal.setup(run, ids[k])
+		seal.use_held = true
+		seal.done.connect(func(): _apply_seals(where, back))
+		_swap(seal))
 
 
 ## The Tinker: pick an artifact (shown as it will be); pay and it becomes its + version. Skip: pay nothing.
@@ -342,10 +366,11 @@ func _show_shop(stock: Array) -> void:
 	var sh := ShopScreen.new()
 	sh.setup(run, stock)
 	sh.leave.connect(show_map)
+	sh.apply_seals_requested.connect(func(): _apply_seals("The Merchant", func(): _show_shop(stock)))
 	sh.upgrade_requested.connect(func():
 		var ids := run.upgradable()
 		var cards := ids.map(func(id): return run.spell(id))
-		var ch := _choice("A wax seal", "Choose a spell. Then choose which Essence of its pattern to seal: it won't be needed any more.", cards, [], false)
+		var ch := _choice("A purple seal", "Choose a spell. Then choose which Essence of its pattern to seal: it won't be needed any more.", cards, [], false)
 		ch.chosen.connect(func(k):
 			if k < 0:
 				_show_shop(stock)
@@ -403,20 +428,27 @@ func _hp_box() -> Control:
 func _show_rest() -> void:
 	var heal := int(run.player.max_hp * RunState.REST_HEAL)
 	var can_fuse := run.fusable().size() >= 2
-	var s := _message("A campfire", "Rest (heal %d HP, you have %d / %d), or Fuse two of your spells into one stronger spell." % [heal, run.player.hp, run.player.max_hp], ["Rest  (+%d HP)" % heal, "Fuse two spells"], Color(1, 0.75, 0.45), _hp_box())
-	s.disabled = [false, not can_fuse]
+	var can_heat := (run.resin > 0 or run.purple_seals > 0) and not run.upgradable().is_empty()
+	var heat_label := "Heat up the resin  (%d → purple seals)" % run.resin if run.resin > 0 else "Apply your purple seals  (%d)" % run.purple_seals
+	var s := _message("A campfire", "Rest (heal %d HP, you have %d / %d), Fuse two of your spells into one stronger spell, or Heat up your purple resin: it becomes purple seals you can press into your spells (here, at the merchant, or later)." % [heal, run.player.hp, run.player.max_hp], ["Rest  (+%d HP)" % heal, "Fuse two spells", heat_label], Color(1, 0.75, 0.45), _hp_box())
+	s.disabled = [false, not can_fuse, not can_heat]
 	s.pressed.connect(func(i):
 		if i == 0:
 			run.rest()
 			Audio.play("rest_heal")
 			show_map()
 			return
+		if i == 2:
+			var n := run.heat_resin()
+			if n > 0:
+				Audio.play("spell_glow")
+				Events.toast.emit("The resin melts into %d purple seal%s" % [n, "" if n == 1 else "s"], Color(0.88, 0.7, 1.0))
+			_apply_seals("The campfire", show_map)
+			return
 		var fs := FuseScreen.new()
 		fs.setup(run)
 		fs.back.connect(_show_rest)
-		fs.fused.connect(func(sp):
-			Events.toast.emit("Forged %s" % sp.name, Color(1, 0.8, 0.5))
-			show_map())
+		fs.fused.connect(func(_sp): show_map())  # (the fuse screen showed the new spell and the resin)
 		_swap(fs))
 
 

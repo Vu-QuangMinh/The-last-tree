@@ -13,9 +13,10 @@ const RARE_CHANCE := 0.3
 ## Amber: the run's money, spent at merchants and in some events.
 const START_AMBER := 30
 const AMBER := {"fight": [14, 22], "elite": [28, 38], "boss": [60, 60]}
-const PRICES := {"common": 45, "rare": 75, "legendary": 140, "artifact": 110, "artifact_rare": 170, "upgrade": 60, "heal": 40}
+const PRICES := {"common": 45, "rare": 75, "legendary": 140, "artifact": 110, "artifact_rare": 170, "upgrade": 100, "heal": 40}
 ## What a "?" room turns out to be.
 const UNKNOWN_ODDS := {"fight": 0.15, "treasure": 0.08, "shop": 0.07}
+const SEAL_EVENT_ODDS := 0.3  # a "?" event is the Resin Shrine this often while you hold purple seals
 
 var rng := RandomNumberGenerator.new()
 var db: SpellDB
@@ -37,6 +38,8 @@ var met: Array = []  # enemy ids met this run, oldest first
 var upgraded: Array = []  # (legacy: upgrades are wax seals now, see `seals`)
 var seals := {}  # spell id -> [indices of its pattern sealed by upgrades]: those Essence are no longer needed
 var amber := START_AMBER
+var resin := 0  # purple resin: one per fusion. Heated at a campfire, it becomes a purple seal
+var purple_seals := 0  # heated resin, ready to apply: each seals one Essence of a spell's pattern (campfire, merchant, some events)
 var seen_events: Array = []
 var encounter: Array = []  # the ids of the encounter being prepared
 var encounter_extra: Array = []  # the extra Essence each of those enemies will have (rolled once)
@@ -453,8 +456,8 @@ static func fusion_name(id_a: String, id_b: String, name_a := "", name_b := "") 
 
 
 ## Forge the fused spell from two spells (not yet committed): the first spell's pattern comes first and the
-## second's follows it. Then the player may shoot ONE Essence out of it (drop = its index among the Essence still
-## needed; -1 = none), and the rest close up. Wax seals stay where they were: the sealed Essence are still shown
+## second's follows it. (drop: an Essence taken out of it, by its index among the Essence still needed; -1 = none.
+## Fusing at a campfire takes none out: it gives a piece of purple resin instead.) Wax seals stay where they were: the sealed Essence are still shown
 ## (and still not needed). It does everything both did.
 func fuse_preview(id_a: String, id_b: String, drop := -1) -> Dictionary:
 	var a := spell(id_a)
@@ -512,6 +515,7 @@ func fuse_preview(id_a: String, id_b: String, drop := -1) -> Dictionary:
 ## Use up the two spells and add the fused one (into the active row if either of them was there).
 func fuse_commit(new_spell: Dictionary, id_a: String, id_b: String) -> void:
 	_fuse_count += 1
+	resin += 1  # the fusion drips a piece of purple resin
 	var was_active := id_a in loadout or id_b in loadout
 	for id in [id_a, id_b]:
 		spellbook.erase(id)
@@ -547,6 +551,23 @@ func seal_spell(id: String, idx: int) -> void:
 	seals[id] = sl
 
 
+## Campfire: heat all your purple resin. Each piece becomes a purple seal, kept until you apply it.
+func heat_resin() -> int:
+	var n := resin
+	purple_seals += n
+	resin = 0
+	return n
+
+
+## Apply one of your purple seals: it seals one Essence of a spell's pattern. False if you have none.
+func use_purple_seal(id: String, idx: int) -> bool:
+	if purple_seals <= 0 or not (idx in sealable(id)):
+		return false
+	purple_seals -= 1
+	seal_spell(id, idx)
+	return true
+
+
 ## Spells that still have an Essence left to seal.
 func upgradable() -> Array:
 	return spellbook.filter(func(id): return String(spell(id).pattern).length() > 0 and not spell(id).has("patterns"))
@@ -576,8 +597,10 @@ func resolve_unknown() -> String:
 			break
 		r -= UNKNOWN_ODDS[k]
 	n["as"] = kind
-	if kind == "event":
-		var pool := MapEvents.ALL.filter(func(e): return not (e.id in seen_events))
+	if kind == "event" and purple_seals > 0 and not upgradable().is_empty() and rng.randf() < SEAL_EVENT_ODDS:
+		n["event"] = "resin_shrine"  # holding purple seals: the shrine can turn up (any number of times)
+	elif kind == "event":
+		var pool := MapEvents.ALL.filter(func(e): return not (e.id in seen_events) and e.id != "resin_shrine")
 		if pool.is_empty():
 			pool = MapEvents.ALL
 		var ev: Dictionary = pool[rng.randi() % pool.size()]
@@ -588,6 +611,8 @@ func resolve_unknown() -> String:
 
 ## Can you take this event option (enough Amber / HP)?
 func can_choose(opt: Dictionary) -> bool:
+	if opt.get("do", "") == "apply_seals" and (purple_seals <= 0 or upgradable().is_empty()):
+		return false
 	if opt.get("do", "") == "upgrade_artifact" and upgradable_artifacts().is_empty():
 		return false
 	if opt.get("do", "") == "trade_artifacts" and tradeable_artifacts().is_empty():
@@ -609,6 +634,9 @@ func choose_event_option(opt: Dictionary) -> Dictionary:
 		"amber":
 			amber += n
 			return {"text": "+%d Leaves." % n}
+		"resin":
+			resin += n
+			return {"text": "+%d purple resin. Heat it at a campfire to make a purple seal." % n}
 		"max_hp":
 			player.max_hp += n
 			player.hp += n
@@ -623,7 +651,7 @@ func choose_event_option(opt: Dictionary) -> Dictionary:
 				var free := sealable(id)
 				seal_spell(id, free[rng.randi() % free.size()])
 				names.append(spell(id).name)
-			return {"text": "A wax seal: %s needs one Essence less." % (", ".join(names) if not names.is_empty() else "nothing left to upgrade")}
+			return {"text": "A purple seal: %s needs one Essence less." % (", ".join(names) if not names.is_empty() else "nothing left to upgrade")}
 		"bottle":
 			var got := []
 			for b in Bottles.random(rng, maxi(1, n)):

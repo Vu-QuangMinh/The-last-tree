@@ -22,6 +22,7 @@ var targeted := false
 var move_mode := false
 var move_pick := -1  # the element picked up in move mode
 var pick_mode := false  # choosing an element to remove (Pluck)
+var paint_mode := false  # with pick_mode: Expose's brush (armoured Essence can be painted, Any ones can't)
 var pick_i := -1
 var _hp_icons: Array = []  # the orbs currently shown, left to right
 
@@ -146,18 +147,13 @@ func refresh(preview: Dictionary) -> void:
 		if not e.armor[i]:
 			ghosts[i] = true
 		seen += 1
-	if k > 0 and e.is_exposed():
-		for i in range(e.size() - 1, -1, -1):
-			if not ghosts.has(i) and not e.armor[i]:
-				ghosts[i] = true
-				break
 	var mask := fight.hidden_mask(e)
 	var px := 38.0 if e.size() <= 7 else 30.0
 	if move_mode or pick_mode:
 		px = 48.0 if e.size() <= 6 else 40.0
 	for i in e.size():
 		var hidden: bool = mask.size() > i and mask[i]
-		var icon := ElementIcon.make("?" if hidden else e.elements[i], px)
+		var icon := ElementIcon.make("hidden" if hidden else e.elements[i], px)
 		icon.armored = e.armor[i]
 		icon.burning = e.is_lit(i)
 		icon.poisoned = e.is_poisoned(i)
@@ -168,8 +164,9 @@ func refresh(preview: Dictionary) -> void:
 			_make_clickable(icon, i)
 		elif pick_mode:
 			icon.highlight = i == pick_i
-			icon.dim = e.armor[i]
-			if not e.armor[i]:
+			var can: bool = (e.elements[i] != "?") if paint_mode else not e.armor[i]
+			icon.dim = not can
+			if can:
 				_make_clickable(icon, i)
 				# the Essence under the cursor lights up
 				icon.mouse_entered.connect(func(): icon.highlight = true; icon.queue_redraw())

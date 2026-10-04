@@ -130,3 +130,11 @@ func test_element_letters_are_coloured() -> void:
 	assert_true(s.begins_with("A chant") and s.contains(". A spell"), "the English article stays plain: " + s)
 	var t := Keywords.colorize("F W A is in there, written F, W and A for short.")
 	assert_eq(t.count("[b]A[/b]"), 2, "an A after another element letter is Air: " + t)
+
+
+func test_any_essence_in_hp_matches_anything() -> void:
+	assert_eq(Chant.prefix_match(["?", "W", "F"], "AW"), 2, "? takes the A, then W")
+	assert_eq(Chant.prefix_match(["?", "?"], "F"), 1, "one chant element hits one Any")
+	assert_eq(Chant.prefix_match(["F", "?"], "WFA"), 2, "F then Any")
+	assert_eq(Chant.find_hp(["?", "W"], "FFWA"), 1, "found where the W follows")
+

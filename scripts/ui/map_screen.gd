@@ -5,6 +5,7 @@ extends Control
 
 signal node_chosen(col: int)
 signal codex_pressed
+signal menu_requested  # Main Menu from the pause menu (the run is saved on the map)
 
 ## type -> [icon, name, ring colour, description]
 const LOOK := {
@@ -25,6 +26,7 @@ var _content: Control
 var _scroll: ScrollContainer
 var sheet: PanelContainer  # the parchment (the tutorial points at it)
 var legend: VBoxContainer
+var _pause: PauseMenu
 
 
 func setup(p_run: RunState) -> void:
@@ -97,6 +99,30 @@ func _ready() -> void:
 	await get_tree().process_frame
 	var y := _pos(maxi(0, run.row), 0).y
 	_scroll.scroll_vertical = int(clampf(y - 700, 0, _content.custom_minimum_size.y))
+	# ☰ Menu (bottom right, as in fights): Resume, Settings, Main Menu, Quit. The run is saved on the map.
+	var menu_btn := UiTheme.button("☰ Menu", _open_pause_menu, 18)
+	menu_btn.custom_minimum_size = Vector2(130, 44)
+	menu_btn.position = Vector2(1920 - 150, 1024)
+	UiTheme.use_menu_style(menu_btn)
+	UiTheme.use_heading_font(menu_btn)
+	add_child(menu_btn)
+
+
+func _open_pause_menu() -> void:
+	if _pause != null:
+		return
+	var saved := "Your run is saved: Continue on the main menu brings you back to this map."
+	_pause = PauseMenu.open(self, "Return to the Main Menu? " + saved, "Quit The Last Tree? " + saved)
+	_pause.resumed.connect(func():
+		_pause.queue_free()
+		_pause = null)
+	_pause.main_menu.connect(func(): menu_requested.emit())
+
+
+func _unhandled_key_input(ev: InputEvent) -> void:
+	if _pause == null and ev.pressed and not ev.echo and (ev as InputEventKey).keycode == KEY_ESCAPE:
+		get_viewport().set_input_as_handled()
+		_open_pause_menu()
 
 
 func _legend_row(t: String, count: int) -> Control:

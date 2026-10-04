@@ -133,7 +133,7 @@ static func _content() -> Dictionary:
 		["Changing the chant", "Some spells change this turn's chant: Spark Word, Spring Word and Breath Word add an Essence anywhere you like; Resonance copies an Essence (×2), Triune Chant triples it (×3). Changes count straight away: new matches wake more spells (up to their limit)."],
 		["One chant per turn", "You Chant once per turn. If you don't want to, press Pass (E) and keep your Essence."],
 		["Armour", "Armoured Essence (grey ring) count for matching but are not removed that turn. F (F) W hit by FFW leaves F."],
-		["Exposed", "An Exposed enemy loses 1 extra Essence from the back whenever your Release hits it. Expose lasts until the end of your turn for each turn it has."],
+		["Expose (paint)", "Expose N gives you a paint brush: paint N enemy Essence, on any enemies. Each becomes a rainbow Any Essence for the rest of the fight, and any Essence in your chant hits it."],
 		["Confused and Blind", "Confused: your next chant is read backwards and the preview is off. Blind: some enemy Essence show as {?}; they still match normally."],
 		["Warded and Ethereal enemies", "Warded enemies can only be struck by chants of 4 or more Essence. An Ethereal enemy can't be touched by the chant that turn."],
 	]
@@ -183,10 +183,11 @@ static func _content() -> Dictionary:
 	c["The run"] = [
 		["The map", "Each act is a map of 12 floors and a boss, drawn like Slay the Spire: paths branch and merge, and you pick your way up one room at a time. Floor 1 is always fights, floor 6 is always treasure, and the floor before the boss is always a campfire. Elites and campfires never appear before floor 5, and the same special room never comes twice in a row on a path. ⚔ Fight · 👹 Elite · ❓ Unknown · 🛒 Merchant · 🎁 Treasure · 🔥 Campfire · 👑 Boss."],
 		["Unknown rooms", "A ? room is usually an event: a little story with a choice (a gamble, a trade of HP or Leaves for spells, artifacts or upgrades). Sometimes it turns out to be a fight, a merchant or treasure instead."],
-		["Leaves and the merchant", "Fights give Leaves (elites and bosses more). The merchant sells spells (Common 45, Rare 75, Legendary 140), artifacts (110, rare 170), 2 bottles (20–80, by strength), a wax seal for one of your spells (60) and a hot meal (heal 30%, 40)."],
+		["Leaves and the merchant", "Fights give Leaves (elites and bosses more). The merchant sells spells (Common 45, Rare 75, Legendary 140), artifacts (110, rare 170), 2 bottles (20–80, by strength), a purple seal for one of your spells (100) and a hot meal (heal 30%, 40)."],
 		["Rewards", "Normal fight: pick 1 of 3 spells (70% Common, 30% Rare each). Elite: 1 of 3 Rare spells and an artifact. Boss: 1 of 3 Legendary spells and a relic that raises your Essence income; you also heal half your HP."],
-		["Campfires", "Either rest (heal 30% of max HP) or Fuse two spells into one."],
-		["Fusing", "Fuse melts two spells into ONE spell that does everything both did. Its pattern is the first spell you picked followed by the whole of the second (nothing is lost). It gets a name of its own. You see the result before you confirm. Both spells are used up; fused spells can't be fused again, and Powers can't be fused."],
+		["Campfires", "Rest (heal 30% of max HP), Fuse two spells into one, or Heat up your purple resin into purple seals."],
+		["Fusing", "Fuse melts two spells into ONE spell that does everything both did. Its pattern is the first spell you picked followed by the whole of the second (nothing is lost). It gets a name of its own. You see the result before you confirm. Both spells are used up; fused spells can't be fused again, and Powers can't be fused. Before fusing you can look over all your other spells, and you're warned if the new pattern would break one of your anti-spells. Every fusion drips a piece of purple resin."],
+		["Purple resin and purple seals", "Each fusion drips a piece of purple resin (your count is in the top bar). At a campfire you can Heat up the resin instead of resting or fusing: every piece becomes a purple seal. A purple seal covers one Essence of a spell's pattern, so that Essence isn't needed any more. Apply seals right there at the campfire, ask the merchant to apply them (free), or press them in at a Resin Shrine (a ? room). Seals you don't use are kept. The merchant also sells a purple seal for 100 Leaves."],
 		["Treasure", "Choose 1 of 3 artifacts. One of them is always cursed."],
 		["Enemies grow", "Deeper floors add extra random Essence to the end of enemies' Essence, and later acts hit harder and send bigger groups."],
 		["Seedlings and unlocks", "Every fight earns Seedlings (more for elites and bosses, a bonus for winning). Spend them in Unlocks to add spells and artifacts to future runs."],

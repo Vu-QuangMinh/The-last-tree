@@ -105,7 +105,7 @@ var _bottle_from := Vector2.ZERO
 var _picking_any := false  # every enemy's Essence is pickable (a spell that takes any Essence, anywhere)
 var _picking_any_cancellable := true
 var _prepicked := {}  # EnemyState -> the Essence already chosen for it (the picker hands it straight back)
-var _pick_style := "shoot"  # "shoot": remove spells (a crosshair, you shoot the Essence off) · "hand": steal (drag it to your bag)
+var _pick_style := "shoot"  # "shoot": remove spells (a crosshair, you shoot the Essence off) · "hand": steal (drag it to your bag) · "brush": Expose (paint it Any)
 var _pick_only: EnemyState = null  # picking again on the same enemy (a spell that takes several)
 var _steal_drag := {}  # while dragging a stolen Essence: {enemy, index, el, from, icon}
 var _aim_cursor: AimCursor
@@ -146,6 +146,7 @@ func setup(p_run: RunState, p_fight: Fight) -> void:
 	fight.chooser = _choose_target
 	fight.mover = _mover
 	fight.picker = _picker
+	fight.painter = _painter
 	fight.placer = _placer
 	fight.chant_picker = _chant_picker
 	fight.element_chooser = _element_chooser
@@ -1746,71 +1747,14 @@ func _spell_chooser(spells: Array) -> int:
 func _open_pause_menu() -> void:
 	if _pause_overlay != null:
 		return
-	var overlay := Control.new()
-	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	overlay.z_index = 100
-	var shade := ColorRect.new()
-	shade.color = Color(0, 0, 0, 0.6)
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	overlay.add_child(shade)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	overlay.add_child(center)
-	var panel := PanelContainer.new()
-	var board := UiSkin.box("board_pause_menu", [64, 64, 64, 64], [52, 48, 52, 48])
-	panel.add_theme_stylebox_override("panel", board if board != null else UiTheme.panel_box(0.95, 16))
-	panel.custom_minimum_size = Vector2(420 if board != null else 380, 0)
-	center.add_child(panel)
-	_add_pause_leaf.call_deferred(panel, overlay)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 12)
-	panel.add_child(v)
-	var paused := UiTheme.heading("Paused", 28, Color.WHITE)
-	paused.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER  # centred on the board
-	v.add_child(paused)
-	var resume_btn := UiTheme.button("Resume", _close_pause_menu, 20)
-	resume_btn.custom_minimum_size = Vector2(320, 52)
-	UiTheme.use_menu_style(resume_btn)
-	v.add_child(resume_btn)
-	var settings_btn := UiTheme.button("Settings", func():
-		var s := SettingsScreen.new()
-		s.closed.connect(func():
-			s.queue_free()
-			_refresh_all())  # (the Show Hotkey setting may have changed)
-		overlay.add_child(s), 20)
-	settings_btn.custom_minimum_size = Vector2(320, 52)
-	UiTheme.use_menu_style(settings_btn)
-	v.add_child(settings_btn)
-	var menu_btn := UiTheme.button("Main Menu", func(): _confirm_in(v, panel,
-		"Return to the Main Menu? Your run is saved: Continue on the main menu starts this fight over." if run_saved else "Abandon this run and return to the Main Menu?",
-		func(): menu_requested.emit()), 20)
-	menu_btn.custom_minimum_size = Vector2(320, 52)
-	UiTheme.use_menu_style(menu_btn)
-	v.add_child(menu_btn)
-	var quit_btn := UiTheme.button("Quit to Desktop", func(): _confirm_in(v, panel,
-		"Quit The Last Tree? Your run is saved: Continue on the main menu starts this fight over." if run_saved else "Quit The Last Tree?",
-		func(): get_tree().quit()), 20)
-	quit_btn.custom_minimum_size = Vector2(320, 52)
-	UiTheme.use_menu_style(quit_btn)
-	v.add_child(quit_btn)
-	add_child(overlay)
-	_pause_overlay = overlay
-
-
-## New theme: the leaf that sits on the top edge of the pause board (once the board has its real size).
-func _add_pause_leaf(panel: Control, overlay: Control) -> void:
-	var leaf := UiSkin.icon("menu_leaf", 92)
-	if leaf == null:
-		return
-	await get_tree().process_frame
-	if not is_instance_valid(panel) or not is_instance_valid(overlay):
-		leaf.free()
-		return
-	leaf.position = panel.global_position - overlay.global_position + Vector2(panel.size.x * 0.58, -58.0)
-	overlay.add_child(leaf)
+	var saved := "Your run is saved: Continue on the main menu starts this fight over."
+	var pm := PauseMenu.open(self,
+		"Return to the Main Menu? " + saved if run_saved else "Abandon this run and return to the Main Menu?",
+		"Quit The Last Tree? " + saved if run_saved else "Quit The Last Tree?")
+	pm.resumed.connect(_close_pause_menu)
+	pm.settings_closed.connect(_refresh_all)
+	pm.main_menu.connect(func(): menu_requested.emit())
+	_pause_overlay = pm
 
 
 func _close_pause_menu() -> void:
@@ -1818,25 +1762,6 @@ func _close_pause_menu() -> void:
 		return
 	_pause_overlay.queue_free()
 	_pause_overlay = null
-
-
-## Swaps a menu's buttons (v) for a Yes/Cancel confirmation, in the same popup (panel).
-func _confirm_in(v: VBoxContainer, panel: PanelContainer, text: String, on_yes: Callable) -> void:
-	v.hide()
-	var cv := VBoxContainer.new()
-	cv.add_theme_constant_override("separation", 12)
-	panel.add_child(cv)
-	var l := UiTheme.label(text, 19, UiTheme.DANGER)
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.custom_minimum_size = Vector2(320, 0)
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	cv.add_child(l)
-	var yes := UiTheme.button("Yes", on_yes, 20)
-	yes.custom_minimum_size = Vector2(320, 48)
-	cv.add_child(yes)
-	var no := UiTheme.button("Cancel", func(): cv.queue_free(); v.show(), 20)
-	no.custom_minimum_size = Vector2(320, 48)
-	cv.add_child(no)
 
 
 # ------------------------------------------------------------------ aiming (the arrow)
@@ -2130,27 +2055,28 @@ func _picks_any_essence(eff: Dictionary) -> bool:
 
 ## Every enemy's Essence becomes pickable at once; the one under the cursor lights up. Returns
 ## [enemy index, Essence index], or [] if it was put back (right-click, when cancellable).
-func _pick_any_essence(spell: Dictionary, cancellable: bool, only: EnemyState = null) -> Array:
+func _pick_any_essence(spell: Dictionary, cancellable: bool, only: EnemyState = null, style := "") -> Array:
 	var eff: Dictionary = fight.current_eff if _picks_any_essence(fight.current_eff) else {}
 	if eff.is_empty():
 		for e2 in spell.effects:
 			if _picks_any_essence(e2):
 				eff = e2
 				break
-	_pick_style = "hand" if eff.get("op", "") == "steal" else "shoot"
+	_pick_style = style if style != "" else ("hand" if eff.get("op", "") == "steal" else "shoot")
 	_pick_only = only
 	_picking_any = true
 	_picking_any_cancellable = cancellable
 	tut.emit("picking", null)
 	for v in _views.values():
 		v.pick_mode = only == null or v.enemy == only
+		v.paint_mode = _pick_style == "brush"
 		v.pick_i = -1
-	# the pointer becomes a crosshair (remove) or an open hand (steal)
+	# the pointer becomes a crosshair (remove), an open hand (steal) or a paint brush (Expose)
 	_aim_cursor = AimCursor.new()
 	_aim_cursor.mode = _pick_style
 	add_child(_aim_cursor)
 	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
-	var how := "drag an enemy's Essence down into your bag" if _pick_style == "hand" else "shoot an enemy's Essence off"
+	var how: String = {"hand": "drag an enemy's Essence down into your bag", "brush": "paint an enemy's Essence: it becomes an Any Essence"}.get(_pick_style, "shoot an enemy's Essence off")
 	_prompt.text = "%s: %s%s" % [spell.name, how, "  ·  right-click to put it back" if cancellable else ""]
 	_callout("[b]%s[/b]: %s" % [spell.name, how], Vector2(960, 150), Color(1, 0.85, 0.4), 2.0)
 	_refresh_all()
@@ -2165,9 +2091,15 @@ func _pick_any_essence(spell: Dictionary, cancellable: bool, only: EnemyState = 
 	for v in _views.values():
 		if is_instance_valid(v):
 			v.pick_mode = false
+			v.paint_mode = false
 			v.pick_i = -1
 	_refresh_all()
 	return got
+
+
+## Expose: the brush comes out and you paint one enemy Essence (anywhere) into an Any Essence. Asked once per paint.
+func _painter(spell: Dictionary) -> Array:
+	return await _pick_any_essence(spell, false, null, "brush")
 
 
 ## Remove spells: BANG. A gunshot, a muzzle flash where you aimed, the crosshair kicks, and the Essence takes a bullet
@@ -2240,6 +2172,12 @@ func _end_steal_drag(at: Vector2) -> void:
 func _on_hp_clicked(v: EnemyView, index: int) -> void:
 	if _picking_any:
 		if _pick_only != null and v.enemy != _pick_only:
+			return
+		if _pick_style == "brush":
+			if index < v.enemy.size() and v.enemy.elements[index] != "?" and _allowed("pick", index):
+				if is_instance_valid(_aim_cursor):
+					_aim_cursor.kick()  # the brush presses down
+				_any_picked.emit([fight.enemies.find(v.enemy), index])
 			return
 		if index < v.enemy.size() and not v.enemy.armor[index] and _allowed("pick", index) and _steal_drag.is_empty():
 			if _pick_style == "hand":
@@ -2555,6 +2493,23 @@ func _anim(ev: Dictionary) -> void:
 		"chant":
 			_prompt.text = "Chanting " + " ".join(Array(ev.chant.split("")).map(func(c): return Elements.NAMES[c]))
 			await _wait(0.25)
+		"paint":
+			# Expose: a blotch of rainbow paint slaps onto the Essence, then fades away to reveal the Any Essence
+			var pv: EnemyView = _views.get(ev.enemy)
+			if pv:
+				# the row just left pick mode: let it settle at its normal size before aiming at the orb
+				await get_tree().process_frame
+				await get_tree().process_frame
+				var splash := PaintSplash.new()
+				var ic: Control = pv._hp_icons[ev.index] if ev.index < pv._hp_icons.size() else null
+				splash.radius = (ic.size.x if ic else 40.0) * 0.62
+				splash.position = pv.hp_point(ev.index) - _fx.global_position
+				_fx.add_child(splash)
+				Audio.play("sfx_expose_apply")
+				splash.play(_refresh_all)  # the icon underneath turns Any while the paint covers it
+				await _wait(0.5)
+			else:
+				_refresh_all()
 		"strike":
 			_step_pos = -1
 			var v: EnemyView = _views.get(ev.enemy)
@@ -3301,7 +3256,7 @@ func _effect_words(e: Dictionary) -> String:
 		"freeze":
 			return "Frozen"
 		"expose":
-			return "Exposed"
+			return ""  # the paint splashes say it
 		"shield":
 			return "+%d Shield" % n
 		"heal":

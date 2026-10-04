@@ -407,16 +407,36 @@ func test_redirect_turns_an_attack_on_itself() -> void:
 
 
 func test_spells_resolve_before_the_damage_step() -> void:
-	# Soak (WW) exposes the target; with spells first, this turn's chant already gets the bonus
+	# Spritz (WW) paints 2 Essence Any; with spells first, this turn's chant already hits them
 	var f := _fight(["ashling"], ["soak"], "WW")
 	var e: EnemyState = f.enemies[0]
-	_set_hp(e, "WWAAAAAF")
+	_set_hp(e, "AAWWF")
 	f.player.hp = 99
+	f.painter = func(_s):
+		var i: int = e.elements.find_custom(func(x): return x != "?")
+		return [0, i]
 	f.cast_chant(_all(2))
-	assert_eq(e.size(), 8, "nothing struck before the spells")
+	assert_eq(e.size(), 5, "nothing struck before the spells")
 	f.resolve_spell("soak", 0)
+	assert_eq(e.hp_text(), "??WWF", "the two leftmost were painted Any")
 	f.finish_turn()
-	assert_eq(e.hp_text(), "AAAAA", "WW strikes, and Exposed takes the last one too")
+	assert_eq(e.hp_text(), "WWF", "WW hits the two Any Essence")
+
+
+func test_expose_paints_anywhere_and_upgrades_add_one() -> void:
+	var f := _fight(["ashling", "ashling"], ["spray"], "WA")
+	var a: EnemyState = f.enemies[0]
+	var b: EnemyState = f.enemies[1]
+	_set_hp(a, "FFF")
+	_set_hp(b, "FFF")
+	var picks := [[0, 2], [1, 1]]
+	f.painter = func(_s): return picks.pop_front()
+	f.cast_chant(_all(2))
+	f.resolve_spell("spray")
+	assert_eq(a.hp_text(), "FF?", "one on the first enemy, at the end")
+	assert_eq(b.hp_text(), "F?F", "one on the second, in the middle")
+	var up := SpellDB.upgrade(f.db.get_spell("spray"))
+	assert_eq(up.effects[0].n, 3, "Spray+ paints 3")
 
 
 func test_every_spell_triggers_once_per_turn() -> void:
@@ -776,3 +796,27 @@ func test_undo_restores_the_fight_before_a_spell() -> void:
 	assert_eq(f.player.shield, 0.0, "and the Shield is gone again")
 	assert_eq(f.charges.get("fire_ball", 0), 1, "the spell is awake again")
 	assert_eq(f.charges.get("water_wall", 0), 1)
+
+
+func test_fusion_drips_resin_heated_into_seals() -> void:
+	var run := RunState.new()
+	run.setup(db, [], [], 4)
+	var ids: Array = run.fusable()
+	assert_true(ids.size() >= 2, "the starters can be fused")
+	var fz := run.fuse_preview(ids[0], ids[1])
+	assert_eq(fz.pattern, run.spell(ids[0]).pattern + run.spell(ids[1]).pattern, "the whole of both patterns")
+	run.fuse_commit(fz, ids[0], ids[1])
+	assert_eq(run.resin, 1, "one piece of purple resin per fusion")
+	assert_true(not run.use_purple_seal(fz.id, 0), "resin can't seal anything until it's heated")
+	assert_eq(run.heat_resin(), 1, "the campfire heats it")
+	assert_eq(run.resin, 0)
+	assert_eq(run.purple_seals, 1, "it's a purple seal now")
+	var n: int = String(run.spell(fz.id).pattern).length()
+	assert_true(run.use_purple_seal(fz.id, 0), "the seal is applied")
+	assert_eq(run.purple_seals, 0, "and used up")
+	assert_eq(String(run.spell(fz.id).pattern).length(), n - 1, "one Essence less to chant")
+	run.resin = 2
+	run.purple_seals = 1
+	var back := RunState.from_save(JSON.parse_string(JSON.stringify(run.to_save())), db)
+	assert_eq(int(back.resin), 2, "resin is saved with the run")
+	assert_eq(int(back.purple_seals), 1, "so are held seals")

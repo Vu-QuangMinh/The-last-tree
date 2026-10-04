@@ -61,7 +61,7 @@
   - **Weaken** means the enemy deals 50% less damage.
   - **Freeze** means the enemy skips its next action.
   - **Expose** means the next time your chant strikes this enemy, it also loses its rightmost element.
-  - **Ethereal**, on you: no damage from attacks this turn, but double damage from effects. On an enemy (from your spell): your spells remove double from it this turn. As an enemy intent: your next chant can't touch it, but spells still remove double.
+  - **Ethereal**, on you: no damage from attacks this turn. On an enemy (from your spell): your spells remove double from it this turn. As an enemy intent: your next chant can't touch it, but spells still remove double.
 
 ### 3.1 Powers (like Slay the Spire)
 A **Power** fires once, then **leaves your active row for the rest of the fight**. Its slot stays empty, and it's back next fight. Its effect lasts the whole fight:
@@ -81,7 +81,7 @@ A **Power** fires once, then **leaves your active row for the rest of the fight*
 ## 4. You
 - You have **40 HP**, which carries between fights (rest sites heal).
 - **Shield** lasts until your next turn. **Aegis** blocks one hit completely.
-- Enemy **curses** can freeze stored elements (unusable for a turn) or hit you with effect damage, which Ethereal doubles.
+- Enemy **curses** can freeze stored elements (unusable for a turn) or hit you with effect damage.
 
 ## 5. Enemies (first draft)
 Each enemy has an **HP bar of elements**, shows its **intent** for its next action, and may have a **passive**.

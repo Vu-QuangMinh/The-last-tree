@@ -15,7 +15,7 @@ var max_hp := 50.0
 var shield := 0.0
 var aegis := 0
 var thorns_turn := 0  # thorns that last until your next turn
-var ethereal := false  # this enemy turn: no attack damage, double effect damage
+var ethereal := false  # this enemy turn: no attack damage
 var bleed := 0
 var confuse_turns := 0
 var blind_turns := 0
@@ -108,10 +108,8 @@ func take_attack(x: float) -> float:
 	return x
 
 
-## Damage from effects (bleed, hexes, burning hide, blood price): skips shield, doubled while ethereal.
+## Damage from effects (bleed, hexes, burning hide, blood price): skips shield.
 func take_effect(x: float) -> float:
-	if ethereal:
-		x *= 2.0
 	hp -= x
 	damage_taken += maxf(0.0, x)
 	return x
@@ -130,7 +128,7 @@ func describe_statuses() -> Array:
 	if thorns_turn + passive("thorns") > 0:
 		out.append("Thorns %d" % (thorns_turn + passive("thorns")))
 	if ethereal:
-		out.append("Ethereal (no attack damage, double effect damage)")
+		out.append("Ethereal (no attack damage this turn)")
 	if bleed > 0:
 		out.append("Bleed %d" % bleed)
 	if confuse_turns > 0:

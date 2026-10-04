@@ -4,6 +4,7 @@ extends RefCounted
 ##   chooser:     (spell, candidates: Array[int]) -> int        target enemy, when one wasn't given up front
 ##   mover:       (spell, enemy) -> [from, to]                   Move: rearrange an enemy's HP ([] skips)
 ##   picker:      (spell, enemy) -> int                          Pluck: which HP element to remove
+##   painter:     (spell) -> [enemy, index]                      Expose: which Essence becomes Any ([] = none left)
 ##   redirector:  (spell, source, candidates) -> int             Misdirection: who the intent hits instead
 ##   placer:      (spell, el) -> int                             Infuse: where in the chant the element goes
 ##   chant_picker:(spell) -> int                                 Resonance: which chant element to copy
@@ -61,6 +62,7 @@ var turn_ctx := {}  # {entries, amplify, echo, retain, last, cast_any}
 var chooser: Callable
 var mover: Callable
 var picker: Callable
+var painter: Callable
 var redirector: Callable
 var placer: Callable
 var chant_picker: Callable
@@ -76,6 +78,12 @@ func _init(p_db: SpellDB, p_player: PlayerState) -> void:
 	chooser = func(_s, cands): return cands[0]
 	mover = func(_s, _e): return []
 	picker = func(_s, e): return e.armor.find(false)
+	painter = func(_s):  # by default: the first Essence that isn't Any yet
+		for e in alive():
+			var i: int = e.elements.find_custom(func(x): return x != "?")
+			if i >= 0:
+				return [enemies.find(e), i]
+		return []
 	redirector = func(_s, src, _cands): return enemies.find(src)
 	placer = func(_s, _el): return chant.size()
 	chant_picker = func(_s): return 0
@@ -293,7 +301,7 @@ func preview(c: String, raw := true) -> Dictionary:
 		for i in k:
 			if e.armor[i]:
 				armored += 1
-		var n: int = k - armored + (1 if e.is_exposed() else 0) + extra
+		var n: int = k - armored + extra
 		removed[e] = k
 		if n >= e.size():
 			dies.append(e)
@@ -542,7 +550,7 @@ func _strike(c: String) -> Array:
 		var k := Chant.prefix_match(e.elements, c)
 		if k == 0:
 			continue
-		var at := c.find("".join(e.elements.slice(0, k)))
+		var at := Chant.find_hp(e.elements.slice(0, k), c)
 		plans.append({"enemy": e, "k": k, "at": at})
 	if plans.is_empty():
 		return []
@@ -562,8 +570,6 @@ func _strike(c: String) -> Array:
 		var e: EnemyState = pl.enemy
 		var before: int = e.size()
 		var removed: Array = e.strike_prefix(pl.k)
-		if e.is_exposed() and not e.is_dead():
-			removed.append_array(e.remove_right(1))
 		if extra > 0 and not e.is_dead():
 			removed.append_array(e.remove_right(extra))
 		e.struck_this_turn = true
@@ -678,8 +684,20 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 				if not e.is_boss:
 					e.freeze_turns = maxi(e.freeze_turns, eff.turns)
 		"expose":
-			for e in targets:
-				e.expose_turns = maxi(e.expose_turns, eff.turns)
+			# paint n Essence of your choice, on any enemies: each becomes an Any Essence ("?") for the rest of the fight
+			for i in eff.n:
+				if not alive().any(func(x): return x.elements.any(func(el): return el != "?")):
+					break
+				var got: Array = await painter.call(spell)
+				if got.size() < 2 or got[0] < 0 or got[0] >= enemies.size():
+					break
+				var e: EnemyState = enemies[got[0]]
+				if e.is_dead() or got[1] >= e.size() or e.elements[got[1]] == "?":
+					continue
+				var was: String = e.elements[got[1]]
+				e.elements[got[1]] = "?"
+				_log("%s paints %s's %s: it's an Any Essence now." % [spell.name, e.name, Elements.NAMES.get(was, "Essence")])
+				await anim.call({"type": "paint", "enemy": e, "index": got[1], "was": was})
 		"ethereal":
 			if eff.target == "self":
 				player.ethereal = true
@@ -843,7 +861,7 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 				else:
 					taken = e.purge(eff.el, eff.n)
 				for el in taken:
-					player.add_element(el)
+					player.add_element(el if el != "?" else _random_element())  # a stolen Any Essence settles on one element
 				if not taken.is_empty():
 					_log("%s steals %s from %s." % [spell.name, ", ".join(taken.map(func(x): return Elements.NAMES[x])), e.name])
 				await anim.call({"type": "stolen", "enemy": e, "els": taken})
@@ -877,8 +895,6 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 				match eff.key:
 					"no_mend":
 						e.no_mend = true
-					"exposed":
-						e.expose_perm = true
 					"weak25":
 						e.weak25 = true
 		"each_turn":
@@ -1102,9 +1118,6 @@ func end_player_turn() -> void:
 	turn_ctx = {}
 	chant.clear()
 	spoken = false
-	for e in alive():
-		if e.expose_turns > 0:
-			e.expose_turns -= 1
 	# conjured elements that weren't used fade (unless you hold the Prism Shard); frozen marks wear off
 	if not has_artifact("prism_shard"):
 		player.stock = player.stock.filter(func(s): return not s.temp)

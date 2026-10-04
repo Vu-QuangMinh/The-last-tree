@@ -90,7 +90,7 @@ static func describe_op(e: Dictionary) -> String:
 		"freeze":
 			return "Freeze %d on %s" % [e.turns, t]
 		"expose":
-			return "Expose %d on %s" % [e.turns, t]
+			return "Expose %d" % n
 		"ethereal":
 			return "you become Ethereal this turn" if tg == "self" else "make %s Phased this turn" % t
 		"shield":

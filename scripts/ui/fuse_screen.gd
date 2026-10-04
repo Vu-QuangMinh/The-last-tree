@@ -7,7 +7,7 @@ extends Control
 signal fused(new_spell: Dictionary)
 signal back
 
-const RULES := "Fuse melts two of your spells into ONE spell that does everything both of them did.\n• Its pattern: the first spell you pick, then the whole of the second.\n• Then you may shoot ONE Essence out of the new pattern. The rest close up.\n• Anti-spells fuse only with anti-spells. The new anti-spell keeps BOTH patterns, one row each: chanting either one breaks it. It does both effects.\n• Both spells are used up, and the new one takes a single slot in your active row.\n• Only spells that can be fused are shown: Powers and fused spells can't be."
+const RULES := "Fuse melts two of your spells into ONE spell that does everything both of them did.\n• Its pattern: the first spell you pick, then the whole of the second.\n• The fusion drips a piece of purple resin. Heat it at a campfire to make a purple seal for any spell.\n• Anti-spells fuse only with anti-spells. The new anti-spell keeps BOTH patterns, one row each: chanting either one breaks it. It does both effects.\n• Both spells are used up, and the new one takes a single slot in your active row.\n• Only spells that can be fused are shown: Powers and fused spells can't be."
 
 var run: RunState
 var _slots: Array = ["", ""]  # ids in the two fuse slots: the first one's pattern goes first
@@ -19,10 +19,9 @@ var _drag := {}  # the card being dragged: {id, from} (from = slot index, or -1 
 var _fly: Array = []  # [{id, from: Vector2}] cards that run from a slot back down to the list
 var _status: RichTextLabel
 var _fuse_btn: Button
-var _drop := -1  # the Essence shot out of the fused pattern (-1 = none yet)
-var _shot_for: Array = []  # the pair of spells the shot was made on (a new pair starts unshot)
-var _out: SpellCard  # the fused spell's card, once both slots are full: you shoot an Essence out of it
-var _aim: AimCursor
+var _out: SpellCard  # the fused spell's card, once both slots are full
+var _busy := false  # the fusion is playing
+var _others: Control  # the "your other spells" overlay, while it's open
 
 
 func setup(p_run: RunState) -> void:
@@ -85,6 +84,9 @@ func _ready() -> void:
 	_fuse_btn = UiTheme.button("Fuse them!", _commit, 24)
 	_fuse_btn.custom_minimum_size = Vector2(260, 56)
 	side.add_child(_fuse_btn)
+	var see := UiTheme.button("👁 See all your other spells", _show_others, 18)
+	see.tooltip_text = "Look over every spell you own before you fuse: check the new pattern doesn't break an anti-spell, and plan the order with your other spells."
+	side.add_child(see)
 	v.add_child(UiTheme.label("Your spells (drag two onto the slots, or click them):", 18, UiTheme.MUTED))
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -103,10 +105,6 @@ func _ready() -> void:
 	var back_btn := UiTheme.button("Back to the campfire", func(): back.emit(), 20)
 	back_btn.custom_minimum_size = Vector2(300, 52)
 	bh.add_child(back_btn)
-	_aim = AimCursor.new()
-	_aim.mode = "shoot"
-	_aim.visible = false
-	add_child(_aim)
 	_refresh()
 
 
@@ -158,14 +156,12 @@ func _refresh() -> void:
 	for c in _result_box.get_children():
 		c.queue_free()
 	_out = null
-	if _slots != _shot_for:
-		_drop = -1  # a different pair: nothing shot yet
 	_fuse_btn.disabled = _slots[0] == "" or _slots[1] == ""
 	if _slots[0] != "" and _slots[1] != "":
-		_preview = run.fuse_preview(_slots[0], _slots[1], _drop)
+		_preview = run.fuse_preview(_slots[0], _slots[1])
 		_out = SpellCard.make(_preview)
 		_result_box.add_child(_out)
-		_status.text = _shot_status()
+		_status.text = _pattern_notes(_preview)
 	else:
 		_preview = {}
 		var first: String = _slots[0] if _slots[0] != "" else _slots[1]
@@ -288,81 +284,305 @@ func _notification(what: int) -> void:
 
 
 func _commit() -> void:
-	if _slots[0] == "" or _slots[1] == "" or _preview.is_empty():
+	if _busy or _slots[0] == "" or _slots[1] == "" or _preview.is_empty():
 		return
+	_busy = true
+	var a := run.spell(_slots[0])
+	var b := run.spell(_slots[1])
+	var from_a: Vector2 = _slot_box[0].global_position
+	var from_b: Vector2 = _slot_box[1].global_position
 	run.fuse_commit(_preview, _slots[0], _slots[1])
+	await _play_fusion(a, b, from_a, from_b, _preview)
 	fused.emit(_preview)
 
 
-func _shot_status() -> String:
-	if _drop >= 0:
-		return Keywords.colorize("Shot! The new pattern is %d Essence long. Fuse them when you're ready, or swap a spell out to start over." % String(_preview.pattern).length())
-	if _can_shoot():
-		return Keywords.colorize("Aim at the new pattern and shoot ONE Essence out of it. Or fuse them as they are.")
-	return ""
+# ------------------------------------------------------------------ your other spells
+
+## Every spell you own except the two being fused: the active row first (in its order), then the rest.
+func _other_ids() -> Array:
+	var out: Array = run.loadout.filter(func(id): return not (id in _slots))
+	for id in run.spellbook:
+		if not (id in _slots) and not (id in out):
+			out.append(id)
+	return out
 
 
-func _can_shoot() -> bool:
-	# (a fused anti-spell keeps both its patterns whole: nothing to shoot)
-	return _drop < 0 and is_instance_valid(_out) and not _preview.get("anti", false) and String(_preview.get("pattern", "")).length() >= 2
+## What the new pattern means for your other spells: an anti-spell whose pattern is inside it would be broken
+## every time you cast the new spell; an active spell whose pattern is inside it wakes along with it. (BBCode.)
+func _pattern_notes(sp: Dictionary) -> String:
+	var p: String = sp.get("pattern", "")
+	var lines := [Keywords.colorize("The new spell is ready. Fuse them when you're happy, or swap a spell out.")]
+	for id in _other_ids():
+		var o := run.spell(id)
+		if o.get("anti", false):
+			for pat in o.get("patterns", [o.pattern]):
+				if String(pat) != "" and not Chant.occurrences(String(pat), p).is_empty():
+					lines.append("[color=#ff7a6b]⚠ Its pattern contains %s's pattern: chanting it would break %s.[/color]" % [o.name.xml_escape(), o.name.xml_escape()])
+					break
+		elif id in run.loadout and String(o.pattern) != "" and not Chant.occurrences(String(o.pattern), p).is_empty():
+			lines.append(Keywords.colorize("✦ Chanting it also wakes %s." % o.name))
+	return "\n".join(lines)
 
 
-## The crosshair replaces the pointer while it's over the fused card (until an Essence has been shot).
-func _process(_d: float) -> void:
-	var aiming := _can_shoot() and _out.get_global_rect().has_point(get_global_mouse_position())
-	if aiming != _aim.visible:
-		_aim.visible = aiming
-		Input.mouse_mode = Input.MOUSE_MODE_HIDDEN if aiming else Input.MOUSE_MODE_VISIBLE
-
-
-func _input(ev: InputEvent) -> void:
-	if not (_aim.visible and ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT):
+## An overlay with all your other spells, so you can plan the fusion around them. Click anywhere (or Esc) to close.
+func _show_others() -> void:
+	if _others != null:
 		return
-	accept_event()
-	var orbs := _out.live_orbs()
-	var best := -1
-	var best_d := INF
-	for i in orbs.size():
-		var o: Control = orbs[i]
-		var d: float = (o.get_global_rect().get_center() - ev.position).length()
-		if d < best_d and d <= o.size.x * 0.75:
-			best = i
-			best_d = d
-	if best >= 0:
-		_shoot(orbs, best)
+	_others = Control.new()
+	_others.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_others.mouse_filter = Control.MOUSE_FILTER_STOP
+	_others.z_index = 80
+	var shade := ColorRect.new()
+	shade.color = Color(0.03, 0.04, 0.03, 0.96)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_others.add_child(shade)
+	var v := VBoxContainer.new()
+	v.position = Vector2(60, 50)
+	v.size = Vector2(1800, 980)
+	v.add_theme_constant_override("separation", 10)
+	_others.add_child(v)
+	v.add_child(UiTheme.heading("Your other spells", 34, Color(1, 0.85, 0.6)))
+	var sub := "Anti-spells are marked: make sure the new pattern doesn't contain theirs. Click anywhere or press Esc to close."
+	if not _preview.is_empty():
+		sub = "The new pattern: %s.   %s" % [" ".join(Array(String(_preview.pattern).split("")).map(func(c): return Elements.NAMES.get(c, c))), sub]
+	var sl := UiTheme.label(sub, 18, UiTheme.MUTED)
+	sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(sl)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(scroll)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 10)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(col)
+	var ids := _other_ids()
+	var active: Array = ids.filter(func(id): return id in run.loadout)
+	var rest: Array = ids.filter(func(id): return not (id in run.loadout))
+	for group in [["Active row, in order (left to right)", active], ["Spellbook", rest]]:
+		if group[1].is_empty():
+			continue
+		col.add_child(UiTheme.label(group[0], 20, Color(1, 0.9, 0.7)))
+		var flow := HFlowContainer.new()
+		flow.add_theme_constant_override("h_separation", 12)
+		flow.add_theme_constant_override("v_separation", 12)
+		col.add_child(flow)
+		for id in group[1]:
+			var sp := run.spell(id)
+			var cell := VBoxContainer.new()
+			cell.add_child(SpellCard.make(sp))
+			if sp.get("anti", false):
+				var tag := UiTheme.label("ANTI-SPELL", 16, Color(1, 0.45, 0.4))
+				tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				cell.add_child(tag)
+			flow.add_child(cell)
+	_others.gui_input.connect(func(ev):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			_close_others())
+	add_child(_others)
 
 
-## BANG: a gunshot, a muzzle flash and a bullet hole where you aimed; the Essence shatters and the rest snap together.
-func _shoot(orbs: Array, index: int) -> void:
-	var orb: Control = orbs[index]
-	var at := orb.get_global_rect().get_center()
-	var col: Color = Elements.COLORS.get(String(_preview.pattern[index]), Color.WHITE)
-	Audio.play_gunshot()
-	_aim.kick()
-	var fx := Vfx.make(self, 80)
-	fx.glow(at, 90, Color(1, 0.95, 0.75, 1.0), 0.12)
-	fx.flare(at, 180, Color(1, 0.85, 0.4, 0.95), 0.14)
-	fx.burst(at, 16, Color(1, 0.8, 0.35), Vector2(250, 650), Vector2(0.1, 0.25), Vector2(3, 6))
-	fx.ring(at, 6, 40, Color(1, 0.9, 0.6), 0.18, 4.0)
-	var hole := fx.part(at, Vector2.ZERO, Color(0.05, 0.03, 0.03, 0.95), 0.7, 9.0, Vfx.SMOKE)
-	hole.size1 = 9.0
-	hole.hold = 0.6
-	for sh in fx.burst(at, 10, col.darkened(0.2), Vector2(120, 320), Vector2(0.4, 0.7), Vector2(4, 8), Vfx.SHARD):
-		sh.grav = Vector2(0, 900)
-		sh.spin = randf_range(-12, 12)
-		sh.size1 = sh.size0
-	_drop = index
-	_preview = run.fuse_preview(_slots[0], _slots[1], _drop)
-	_shot_for = _slots.duplicate()
-	_out.spell = _preview
-	_status.text = _shot_status()
-	# the shot Essence vanishes, then its gap closes and the others snap into place
-	var tw := orb.create_tween()
-	tw.tween_property(orb, "modulate:a", 0.0, 0.06)
-	tw.tween_interval(0.15)
-	tw.tween_property(orb, "custom_minimum_size:x", 0.0, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-	tw.tween_callback(orb.queue_free)
+func _close_others() -> void:
+	if _others != null:
+		_others.queue_free()
+		_others = null
 
 
-func _exit_tree() -> void:
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+func _unhandled_key_input(ev: InputEvent) -> void:
+	if _others != null and ev.pressed and (ev as InputEventKey).keycode == KEY_ESCAPE:
+		get_viewport().set_input_as_handled()
+		_close_others()
+
+
+# ------------------------------------------------------------------ the fusion
+
+## The two cards twist into each other in a tightening spiral, flaring white, and collapse into a white-hot ball.
+## A single drop of purple resin falls from it and lands as a piece you can pick up; the ball becomes the new card.
+func _play_fusion(a: Dictionary, b: Dictionary, from_a: Vector2, from_b: Vector2, result: Dictionary) -> void:
+	var stage := Control.new()
+	stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	stage.mouse_filter = Control.MOUSE_FILTER_STOP
+	stage.z_index = 90
+	add_child(stage)
+	var shade := ColorRect.new()
+	shade.color = Color(0, 0, 0, 0)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stage.add_child(shade)
+	create_tween().tween_property(shade, "color:a", 0.85, 0.3)
+	var mid := Vector2(960, 430)
+	var half := Vector2(SpellCard.W, SpellCard.H) / 2.0
+	var cards: Array = []
+	for k in 2:
+		var c := SpellCard.make(a if k == 0 else b)
+		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		c.pivot_offset = half
+		stage.add_child(c)
+		c.global_position = from_a if k == 0 else from_b
+		cards.append(c)
+	# 1. they rise to either side of the middle
+	var tw := create_tween().set_parallel()
+	for k in 2:
+		tw.tween_property(cards[k], "global_position", mid - half + Vector2(-260 if k == 0 else 260, 0), 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	await tw.finished
+	Audio.play("spell_glow")
+	# 2. the twist: they orbit each other faster and faster, flipping like ribbons, shrinking and burning white
+	var dur := 1.5
+	var t0 := Time.get_ticks_msec() / 1000.0
+	while true:
+		var t := clampf((Time.get_ticks_msec() / 1000.0 - t0) / dur, 0.0, 1.0)
+		var ease_t := t * t
+		var ang := ease_t * TAU * 3.0
+		var r := 260.0 * (1.0 - ease_t)
+		for k in 2:
+			var c: SpellCard = cards[k]
+			var a2 := ang + (0.0 if k == 0 else PI)
+			c.global_position = mid - half + Vector2(cos(a2) * r, sin(a2) * r * 0.35)
+			c.rotation = (0.3 + ease_t * 2.5) * sin(a2) * (1.0 if k == 0 else -1.0)
+			var sz := lerpf(1.0, 0.12, ease_t)
+			c.scale = Vector2(sz * maxf(0.08, absf(cos(ang * 1.5 + k * PI / 2.0))), sz)
+			var glow := 1.0 + ease_t * 4.0
+			c.modulate = Color(glow, glow, glow * 0.95, 1.0)
+		if randf() < 0.6:
+			var col := Color(1, 0.95, 0.8) if randf() < 0.6 else Color(0.85, 0.6, 1.0)
+			_vfx(stage).part(mid + Vector2.from_angle(randf() * TAU) * r, Vector2.from_angle(ang + PI / 2.0) * 300.0, col, 0.5, randf_range(4, 9), Vfx.SPARK)
+		if t >= 1.0:
+			break
+		await get_tree().process_frame
+	for c in cards:
+		c.queue_free()
+	# 3. a white-hot ball
+	Audio.play("discovery_unlock")
+	_vfx(stage).flash(Color(1, 1, 1, 0.8), 0.25)
+	_vfx(stage).ring(mid, 20, 320, Color(1, 0.95, 0.85), 0.5, 10.0)
+	_vfx(stage).burst(mid, 30, Color(1, 0.97, 0.88), Vector2(250, 750), Vector2(0.3, 0.7), Vector2(4, 9), Vfx.SPARK)
+	var ball := HotBall.new()
+	ball.position = mid - stage.global_position
+	stage.add_child(ball)
+	var bt := create_tween()
+	bt.tween_property(ball, "radius", 70.0, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await bt.finished
+	await get_tree().create_timer(0.35).timeout
+	# 4. a single drop of purple resin swells at its bottom and falls
+	var drop := WaxDrop.new()
+	drop.position = ball.position + Vector2(0, 62)
+	stage.add_child(drop)
+	var floor_y := mid.y + 330.0 - stage.global_position.y
+	var dt := create_tween()
+	dt.tween_property(drop, "swell", 1.0, 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	dt.tween_property(drop, "position:y", floor_y, 0.42).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	# 5. meanwhile the ball cools into the new spell
+	var card := SpellCard.make(result)
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.pivot_offset = half
+	card.scale = Vector2(0.15, 0.15)
+	card.modulate = Color(6, 6, 6, 0)
+	stage.add_child(card)
+	card.global_position = mid - half
+	await get_tree().create_timer(0.35).timeout
+	var ct := create_tween().set_parallel()
+	ct.tween_property(card, "scale", Vector2(1.15, 1.15), 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	ct.tween_property(card, "modulate", Color(1, 1, 1, 1), 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	ct.tween_property(ball, "radius", 0.0, 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	await dt.finished
+	# the drop lands: a purple splat, and a lump of resin to pick up
+	drop.queue_free()
+	var land := Vector2(mid.x, floor_y + stage.global_position.y)
+	Audio.play("elem_remove", -2.0)
+	_vfx(stage).burst(land, 14, Color(0.6, 0.25, 0.75), Vector2(120, 380), Vector2(0.3, 0.6), Vector2(4, 8), Vfx.GLOW, 0.0, PI, -PI / 2.0)
+	_vfx(stage).ring(land, 6, 60, Color(0.75, 0.45, 0.9), 0.35, 5.0, 0.0, 0.35)
+	var piece := ResinIcon.make(64)
+	piece.size = Vector2(64, 64)
+	piece.pivot_offset = piece.size / 2.0
+	piece.mouse_filter = Control.MOUSE_FILTER_STOP
+	piece.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	piece.tooltip_text = "Purple resin (click to collect).\nEvery fusion drips a piece. Heat it at a campfire and it becomes a purple seal: each seal covers one Essence of a spell's pattern, so that Essence isn't needed any more."
+	stage.add_child(piece)
+	piece.global_position = land - piece.size / 2.0
+	piece.scale = Vector2(1.4, 0.5)
+	create_tween().tween_property(piece, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	var hint := UiTheme.label("A drop of purple resin! Click it to collect.", 20, Color(0.88, 0.7, 1.0))
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.size = Vector2(800, 30)
+	hint.position = land - stage.global_position + Vector2(-400, 48)
+	stage.add_child(hint)
+	var title := UiTheme.heading("Forged: %s!" % result.name, 34, Color(1, 0.85, 0.6))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.size = Vector2(1200, 50)
+	title.position = Vector2(mid.x - 600, 70) - stage.global_position
+	stage.add_child(title)
+	var cont := UiTheme.button("Continue", func(): pass, 22)
+	cont.custom_minimum_size = Vector2(240, 54)
+	cont.position = Vector2(1920 - 300, 990) - stage.global_position
+	stage.add_child(cont)
+	var state := {"got": false}
+	var collect := func():
+		if state.got:
+			return
+		state.got = true
+		if is_instance_valid(hint):
+			hint.queue_free()
+		Audio.play("elem_pickup")
+		Events.toast.emit("+1 purple resin", Color(0.88, 0.7, 1.0))
+		var ft := create_tween().set_parallel()
+		ft.tween_property(piece, "global_position", Vector2(1500, 0), 0.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+		ft.tween_property(piece, "scale", Vector2(0.4, 0.4), 0.5)
+		ft.tween_property(piece, "modulate:a", 0.0, 0.3).set_delay(0.2)
+	piece.gui_input.connect(func(ev):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			collect.call())
+	await cont.pressed
+	collect.call()  # (left on the ground: it's yours anyway)
+	await get_tree().create_timer(0.3).timeout
+
+
+## The fusion's effects layer (a Vfx frees itself once it has nothing left to draw: make a new one then).
+var _fxv: Vfx
+
+
+func _vfx(stage: Control) -> Vfx:
+	if not is_instance_valid(_fxv) or _fxv.is_queued_for_deletion():
+		_fxv = Vfx.make(stage, 5)
+	return _fxv
+
+
+## The white-hot ball the two cards collapse into: a pulsing core with a soft halo.
+class HotBall extends Node2D:
+	var radius := 0.0:
+		set(v):
+			radius = v
+			queue_redraw()
+
+	func _process(_d: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		if radius <= 0.5:
+			return
+		var pulse := 1.0 + 0.06 * sin(Time.get_ticks_msec() / 1000.0 * 18.0)
+		var r := radius * pulse
+		for k in 6:
+			var u := 1.0 - k / 6.0
+			draw_circle(Vector2.ZERO, r * (1.0 + 1.6 * u), Color(1.0, 0.92, 0.75, 0.07))
+		draw_circle(Vector2.ZERO, r, Color(1.0, 0.97, 0.9))
+		draw_circle(Vector2.ZERO, r * 0.7, Color(1, 1, 1))
+
+
+## The drop of purple resin: it swells at the bottom of the ball (a teardrop that stretches), then falls.
+class WaxDrop extends Node2D:
+	var swell := 0.0:
+		set(v):
+			swell = v
+			queue_redraw()
+
+	func _draw() -> void:
+		var r := 6.0 + 8.0 * swell
+		var tail := 8.0 + 18.0 * swell
+		var pts := PackedVector2Array()
+		for k in 20:
+			var a := PI / 2.0 + (k - 10) / 10.0 * PI * 0.92
+			pts.append(Vector2(cos(a), sin(a)) * r + Vector2(0, tail))
+		pts.append(Vector2.ZERO)
+		draw_colored_polygon(pts, Color(0.48, 0.16, 0.6))
+		draw_circle(Vector2(-r * 0.3, tail - r * 0.1), r * 0.25, Color(0.85, 0.6, 1.0, 0.8))

@@ -7,16 +7,21 @@ extends RefCounted
 
 
 ## Length of the longest prefix of `hp` (Array of element letters) that occurs contiguously in `chant`.
-## "?" (blinded) elements still match normally: blindness only hides them from the player.
+## A "?" in the HP is an Any Essence (painted by Expose): any chant element hits it.
+## (Blinded elements are still their real letters: blindness only hides them from the player.)
 static func prefix_match(hp: Array, chant: String) -> int:
 	var best := 0
 	for k in range(1, mini(hp.size(), chant.length()) + 1):
-		var s := "".join(hp.slice(0, k))
-		if chant.contains(s):
+		if find_hp(hp.slice(0, k), chant) >= 0:
 			best = k
 		else:
 			break
 	return best
+
+
+## Where the run of HP elements `seg` first appears in the chant ("?" in it matches anything), or -1.
+static func find_hp(seg: Array, chant: String) -> int:
+	return first_index("".join(seg), chant) if "?" in seg else chant.find("".join(seg))
 
 
 ## Start indices of non-overlapping occurrences of `pattern` in `chant`, left to right ("?" matches anything).

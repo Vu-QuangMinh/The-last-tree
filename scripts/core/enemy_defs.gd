@@ -188,7 +188,7 @@ static func encounter(kind: String, act: int, floor: int, rng: RandomNumberGener
 const GROUP_ODDS := {
 	1: [[1, 0.2], [2, 0.45], [3, 0.27], [4, 0.08]],
 	2: [[2, 0.3], [3, 0.38], [4, 0.22], [5, 0.1]],
-	3: [[2, 0.18], [3, 0.35], [4, 0.3], [5, 0.17]],
+	3: [[2, 0.08], [3, 0.3], [4, 0.37], [5, 0.25]],
 }
 
 
@@ -204,19 +204,21 @@ static func group_size(act: int, floor: int, rng: RandomNumberGenerator) -> int:
 	return odds[-1][0]
 
 
-## Extra random elements added to the end of an enemy's Essence on deeper floors (bosses excluded).
-## Act 1 starts at 3 elements; by the middle of act 2 every enemy has 7 or more. The size of the group scales it:
+## Extra random elements added to the end of an enemy's Essence on deeper floors (act 2 and 3 bosses get a few too).
+## Act 1 starts at 3 elements; act 2 enemies have 8 or more, act 3 ones 11 or more. The size of the group scales it:
 ## a lone enemy gets 2 more, and each enemy beyond the second takes 1 fewer from every enemy in the fight.
 static func extra_hp(act: int, floor: int, rng: RandomNumberGenerator, boss := false, group := 2) -> Array:
 	var n := 0
-	if not boss:
+	if boss:
+		n = [0, 0, 3, 5][act]  # the act 2 and 3 bosses come back tougher
+	else:
 		match act:
 			1:
 				n = 0 if floor <= 2 else (2 if floor <= 4 else 3)
 			2:
-				n = 3 if floor <= 3 else 4
+				n = 5 if floor <= 3 else 6
 			3:
-				n = 5 if floor <= 4 else 6
+				n = 8 if floor <= 4 else 9
 		if group == 1 and not (act == 1 and floor <= 2):
 			n += 2
 		elif group > 2:
@@ -228,7 +230,7 @@ static func extra_hp(act: int, floor: int, rng: RandomNumberGenerator, boss := f
 
 
 static func attack_bonus(act: int) -> int:
-	return [0, 0, 2, 3][act]
+	return [0, 0, 4, 6][act]
 
 
 static func describe_move(m: Dictionary, bonus := 0) -> String:
