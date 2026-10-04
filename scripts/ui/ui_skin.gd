@@ -120,6 +120,19 @@ static func icon_token(name: String, fallback := "") -> String:
 	return "{icon:%s|%s}" % [name, fallback]
 
 
+## New theme: a Button gets the painted Seedling beside its text (`text` without the old ✿ glyph); otherwise it keeps `plain`.
+static func seedling_button(b: Button, text: String, plain: String, px := 24) -> void:
+	var t := tex("icon_seedling")
+	if t == null:
+		b.text = plain
+		return
+	b.text = text
+	b.icon = t
+	b.expand_icon = false
+	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	b.add_theme_constant_override("icon_max_width", px)
+
+
 ## An artifact's painted icon (assets/ui/new/<id>.png) in a square of `px`; null in Default or if that artifact has none yet.
 static func artifact_icon(id: String, px: float) -> TextureRect:
 	return icon(ARTIFACT_ART.get(id, id), px)

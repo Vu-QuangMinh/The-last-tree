@@ -1589,7 +1589,9 @@ func _status_badges() -> Array:
 
 
 ## status keyword -> art in assets/ui/new/ (New theme only)
-const STATUS_ART := {"shield": "icon_armor_shield", "thorns": "status_thorns", "silence": "status_silenced"}
+const STATUS_ART := {"shield": "icon_armor_shield", "thorns": "status_thorns", "silence": "status_silenced", "aegis": "status_aegis",
+	"echo": "status_echo_ready", "overload": "status_overload", "ethereal": "intent_ethereal", "bleed": "intent_bleed",
+	"confuse": "intent_confuse", "blind": "intent_blind", "frail": "intent_frail", "lock": "intent_toll"}
 
 
 func _refresh_statuses() -> void:
@@ -1706,12 +1708,13 @@ func _spell_chooser(spells: Array) -> int:
 	overlay.add_child(v)
 	var t := UiTheme.heading("Grimoire Ink: choose a spell to join your active spells for this fight", 28, Color(1, 0.9, 0.55))
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var ribbon := UiSkin.box("banner_grimoire_ink", [0, 0, 0, 0], [90, 14, 90, 24])
+	var ribbon := UiSkin.box("banner_grimoire_ink", [184, 0, 174, 0], [110, 10, 110, 22])
 	if ribbon != null:  # New theme: the title on a paper ribbon (dark ink, not gold)
 		t.add_theme_color_override("font_color", Color(0.28, 0.16, 0.1))
 		var rb := PanelContainer.new()
 		rb.add_theme_stylebox_override("panel", ribbon)
 		rb.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		rb.custom_minimum_size = Vector2(0, 110)  # the ribbon art is cut at this height: its end curls keep their shape
 		rb.add_child(t)
 		v.add_child(rb)
 	else:

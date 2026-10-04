@@ -18,7 +18,7 @@ func show_toast(text: String, color: Color) -> void:
 	if get_child_count() >= MAX:
 		get_child(0).queue_free()
 	var p := PanelContainer.new()
-	var strip := UiSkin.box("toast_strip", [20, 14, 20, 14], [34, 6, 22, 9])
+	var strip := UiSkin.box("toast_strip", [38, 0, 38, 0], [40, 6, 30, 9])
 	p.add_theme_stylebox_override("panel", strip if strip != null else UiTheme.panel_box(0.85, 10))
 	p.mouse_filter = MOUSE_FILTER_IGNORE
 	var row := HBoxContainer.new()  # the text, with each {icon:name|fallback} marker turned into a picture (or its fallback)

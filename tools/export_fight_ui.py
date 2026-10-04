@@ -24,16 +24,18 @@ os.makedirs(OUT, exist_ok=True)
 # short labels that repeat across pages get a prefix from the page they are on
 PAGE_PREFIX = {
     1: {"Thorns": "status_", "Weak": "status_", "Silenced": "status_", "Burn": "status_", "Freeze": "status_", "Poison": "status_",
+        "Aegis": "status_", "Echo Ready": "status_", "Overloard": "status_",
         "Orange": "bottle_", "Green": "bottle_", "Purple": "bottle_", "Gray": "bottle_", "Blue": "bottle_"},
-    5: {k: "intent_" for k in ["Armor", "Attack", "Burn", "Freeze", "Poison", "Steal", "Summon", "Unknown", "Mend", "Bleed", "Blind", "Confuse", "Empower",
+    5: {k: "intent_" for k in ["Bubble", "Redirect", "Armor", "Attack", "Burn", "Freeze", "Poison", "Steal", "Summon", "Unknown", "Mend", "Bleed", "Blind", "Confuse", "Empower",
                                "Ethereal", "Frail", "Hex", "Invert", "Lock", "Mimic", "Shuffle", "Silence", "Toll"]},  # page 5 top: the INTENT icons
     7: {"common": "rarity_", "rare": "rarity_", "legendary": "rarity_", "fleeting": "special_", "power": "special_", "fused": "special_",
         "Defense": "kind_", "Utility": "kind_"},  # the card's icon strip (the card looks for rarity_*, special_*, kind_*)
-    2: {"Armor": "intent_", "Attact": "intent_", "Attack": "intent_", "Burn": "intent_", "Freeze": "intent_", "Poison": "intent_", "Steal": "intent_",
+    2: {"Locked": "card_overlay_", "Silenced": "card_overlay_", "Used": "card_overlay_", "Charged": "card_overlay_",
+        "Armor": "intent_", "Attact": "intent_", "Attack": "intent_", "Burn": "intent_", "Freeze": "intent_", "Poison": "intent_", "Steal": "intent_",
         "Summon": "intent_", "Unknown": "intent_"},
 }
-RENAME = {"attact": "attack", "air": "wind", "press": "pressed"}
-SKIP = {"BOTTLE", "STATUS", "FIRE BALL", "Remove the rightmost", "Essence of the target.", "X", "INTENT"}  # headings, and the text of the mock card
+RENAME = {"attact": "attack", "air": "wind", "press": "pressed", "overloard": "overload"}
+SKIP = {"BOTTLE", "STATUS", "FIRE BALL", "Remove the rightmost", "Essence of the target.", "X", "INTENT", "Card Overlay", "Leaf set", "Treasure"}  # headings, and the text of the mock card
 # page 1 has two "Button Small Pressed" labels: the grey one (right) is the disabled state
 DUP = {("button_small_pressed", 1): "button_small_disabled"}
 # unlabeled shapes on page 0, read row by row, left to right
@@ -45,9 +47,11 @@ ROW2_Y = 599  # ...and below this centre line is the row of signs
 # (the key is a name, or a prefix ending in "_"; the value is the final HEIGHT in px for "h:" or WIDTH for "w:")
 FIT = {"panel_wood_frame": "w:140", "panel_paper_frame": "w:190", "status_badge_pill": "h:36",
        "button_chant_": "h:58", "button_play_": "h:58", "button_close_x_": "h:64", "intent_bubble_": "k:1.1", "card_overlay_": "k:4", "scroll_bar_": "w:20", "volume_bar_grabber": "w:28", "hp_head_": "h:26", "button_small_": "h:36", "button_menu_": "h:44", "amber_counter_pill": "h:46", "toast_strip": "h:44"}
-MAXSIDE = {"game_title": 900, "hp_bar_frame": 460, "banner_grimoire_ink": 1100, "board_pause_menu": 260, "enemy_stand": 300}
+MAXSIDE = {"game_title": 900, "hp_bar_frame": 460, "banner_grimoire_ink": 520, "board_pause_menu": 260, "enemy_stand": 300}
 DEFAULT_MAX = 128
 COMMON = {"button_close_x_": "button_close_x_normal", "button_chant_": "button_chant_normal", "button_small_": "button_small_normal", "button_menu_": "button_menu_normal"}
+TIGHT_ART = {"bottle_orange", "bottle_green", "bottle_purple", "bottle_gray", "bottle_blue"}  # drawn nearly touching: group finely
+NEAR_PT = 6.0  # pieces of one object (3x3 board, 3-part strips) lie closer than this
 MERGE_PX = 16  # pieces closer than this (px at 4x) belong to one object (sparkles stay with their icon)
 DIGIT_MERGE_PX = 2  # the digits and signs sit close together: group them tighter
 TIGHT_MERGE_PX = 4  # pieces drawn right next to each other (scroll bar head / body / head): split at ~1 pt gaps
@@ -94,14 +98,34 @@ def components(doc, pg, merge=MERGE_PX):
     return out
 
 
+LABEL_GAP = 5.0  # points: two words further apart than this are two labels that merely share a text line ("Poison   Aegis")
+
+
 def labels(page):
     """Text lines, with the two-line "Floating / Number X" labels joined."""
     ls = []
+    words = page.get_text("words")
     for b in page.get_text("dict")["blocks"]:
         for line in b.get("lines", []):
             t = "".join(s["text"] for s in line["spans"]).strip()
-            if t:
-                ls.append([t, pymupdf.Rect(line["bbox"])])
+            if not t:
+                continue
+            lr = pymupdf.Rect(line["bbox"])
+            mine = sorted([w for w in words if pymupdf.Rect(w[:4]).intersects(lr) and abs((w[1] + w[3]) / 2 - (lr.y0 + lr.y1) / 2) < 3], key=lambda w: w[0])
+            groups = [[mine[0]]] if mine else []
+            for w in mine[1:]:
+                if w[0] - groups[-1][-1][2] > LABEL_GAP:
+                    groups.append([w])
+                else:
+                    groups[-1].append(w)
+            if len(groups) > 1 and page.number in (1,):  # only the status / icon rows run labels together
+                for g in groups:
+                    r = pymupdf.Rect(g[0][:4])
+                    for w in g[1:]:
+                        r |= pymupdf.Rect(w[:4])
+                    ls.append([" ".join(w[4] for w in g), r])
+                continue
+            ls.append([t, lr])
     merged = []
     for t, r in ls:
         for m in merged:
@@ -142,7 +166,7 @@ def name_for(label, pg):
     return "_".join(RENAME.get(p, p) for p in n.split("_"))
 
 
-MULTI = {"board_pause_menu": "stack", "intent_bubble": "row", "game_title": "row"}  # drawn as several separate pieces (gaps between)
+MULTI = {"board_pause_menu": "near", "banner_grimoire_ink": "near", "toast_strip": "near", "intent_bubble": "row", "game_title": "row"}  # drawn as several separate pieces (gaps between)
 
 
 def gather_siblings(comps, best, taken, mode):
@@ -150,7 +174,19 @@ def gather_siblings(comps, best, taken, mode):
     picture again, gaps included: the pieces are told apart later by those gaps."""
     r0 = comps[best][0]
     chosen = [best]
+    if mode == "near":  # grow outwards over every piece within a few points of the group (the 3x3 board, the 3-part strips)
+        union = pymupdf.Rect(r0)
+        grew = True
+        while grew:
+            grew = False
+            for i, (r, _m, _im) in enumerate(comps):
+                if i not in chosen and i not in taken and (union + (-NEAR_PT, -NEAR_PT, NEAR_PT, NEAR_PT)).intersects(r):
+                    chosen.append(i)
+                    union |= r
+                    grew = True
     for i, (r, _m, _im) in enumerate(comps):
+        if mode == "near":
+            break
         if i == best or i in taken:
             continue
         if mode == "stack" and abs(r.x0 - r0.x0) < 6 and abs(r.x1 - r0.x1) < 6:
@@ -234,10 +270,11 @@ for pg in range(len(doc)):
             taken_tight.add(bl)
             pics[nm] = tight_comps[bl]
             continue
+        pool, tk = (tight_comps, taken_tight) if nm in TIGHT_ART else (comps, taken)
         best, bd = None, 1e9
-        for i, (r, _m, _im) in enumerate(comps):
+        for i, (r, _m, _im) in enumerate(pool):
             inside = r.contains(pymupdf.Point((lr.x0 + lr.x1) / 2, (lr.y0 + lr.y1) / 2))  # label printed on the art itself
-            if i in taken or (r.y1 > lr.y0 + 14 and not inside):
+            if i in tk or (r.y1 > lr.y0 + 14 and not inside):
                 continue
             if not (r.x0 - 25 <= cx <= r.x1 + 25 or r.x0 - 6 <= lr.x0 <= r.x1 + 6):
                 continue
@@ -252,12 +289,12 @@ for pg in range(len(doc)):
         if nm in seen:
             nm = DUP.get((nm, pg), nm + "_2")
         seen[nm] = True
-        taken.add(best)
+        tk.add(best)
         if nm in MULTI:
-            comps[best] = gather_siblings(comps, best, taken, MULTI[nm])
+            pool[best] = gather_siblings(pool, best, tk, MULTI[nm])
         if os.environ.get("EXPORT_DEBUG"):
-            print("  %s <- %s" % (nm, [round(v) for v in comps[best][0]]))
-        pics[nm] = comps[best]
+            print("  %s <- %s" % (nm, [round(v) for v in pool[best][0]]))
+        pics[nm] = pool[best]
     if pg == 0:  # the digits and signs: no labels, read them in order
         tight = components(doc, pg, DIGIT_MERGE_PX)
         band = sorted([c for c in tight if DIGIT_BAND[0] < c[0].y0 < DIGIT_BAND[1] and c[0].y1 < DIGIT_BAND[1] + 10 and c[0].width < 130],
@@ -266,6 +303,25 @@ for pg in range(len(doc)):
             pics[nm] = c
         if len(band) != len(DIGITS):
             print("WARNING: found %d digit shapes, expected %d" % (len(band), len(DIGITS)))
+
+
+# ---------------------------------------------------------------- the leaf sets (page 3 = act 1, page 4 = act 3): ten leaves each
+LEAF_PX = 96  # longest side of one leaf
+
+
+def export_leaves():
+    for pg, pre, ymin, ymax in ((3, "leaf_a1_", 715, 800), (4, "leaf_a3_", 372, 445)):
+        row = [c for c in components(doc, pg, 1 if pg == 3 else TIGHT_MERGE_PX) if c[0].width < 80 and c[0].height < 80 and c[0].y0 > ymin - 5 and c[0].y1 < ymax + 40 and c[0].y0 < ymax - 20]
+        if pg == 3:
+            row = [c for c in row if c[0].y0 > 715]
+        row.sort(key=lambda c: c[0].x0)
+        if len(row) != 10:
+            print("WARNING: leaf set on page %d: expected 10 leaves, found %d" % (pg, len(row)))
+        for i, c in enumerate(row):
+            im = finish(c)
+            k = LEAF_PX / max(im.size)
+            im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.LANCZOS).save(os.path.join(OUT, "%s%02d.png" % (pre, i)))
+        print("leaves", pre, len(row))
 
 
 def finish(comp):
@@ -288,6 +344,7 @@ def target_size(name, wpt, hpt):
 
 
 cuts = {n: finish(c) for n, c in pics.items()}
+export_leaves()
 
 
 def split_runs(im, axis, min_gap=6):
@@ -350,16 +407,61 @@ def join_pieces(pieces, axis):
 
 # the wood panel is drawn as three columns (left | middle | right) and the pause board as three rows (top | middle |
 # bottom), with a gap between them: join them back into one picture that the game 9-slices
-for nm, axis in (("panel_wood_frame", 0), ("board_pause_menu", 1)):
+SLICES = {}  # name -> (widths of the columns, heights of the rows) in source px: the 9-slice / 3-slice margins
+
+
+def runs_of(im, axis, min_gap=6):
+    a = np.asarray(im.getchannel("A")) > 10
+    prof = a.any(axis=0 if axis == 0 else 1)
+    out, start, gap, last = [], None, 0, 0
+    for i, v in enumerate(list(prof) + [False] * (min_gap + 1)):
+        if v:
+            if start is None:
+                start = i
+            last, gap = i, 0
+        elif start is not None:
+            gap += 1
+            if gap >= min_gap:
+                out.append((start, last + 1))
+                start, gap = None, 0
+    return out
+
+
+def join_grid(im):
+    """The 3x3 pause board: nine pieces with white gaps between them, put back to back (edges defringed) into one picture."""
+    cols, rows = runs_of(im, 0), runs_of(im, 1)
+    if len(cols) != 3 or len(rows) != 3:
+        print("WARNING: grid: expected 3x3 pieces, found %dx%d" % (len(cols), len(rows)))
+        return None, None
+    cw = [x1 - x0 for x0, x1 in cols]
+    rh = [y1 - y0 for y0, y1 in rows]
+    out = Image.new("RGBA", (sum(cw), sum(rh)))
+    y = 0
+    for r, (y0, y1) in enumerate(rows):
+        x = 0
+        for c, (x0, x1) in enumerate(cols):
+            sides = (["l"] if c > 0 else []) + (["r"] if c < 2 else []) + (["t"] if r > 0 else []) + (["b"] if r < 2 else [])
+            out.paste(defringe(im.crop((x0, y0, x1, y1)), *sides), (x, y))
+            x += cw[c]
+        y += rh[r]
+    return out, (cw, rh)
+
+
+for nm in ("panel_wood_frame", "banner_grimoire_ink", "toast_strip"):  # three columns (left | middle | right)
     if nm in cuts:
-        parts = split_runs(cuts[nm], axis)
+        parts = split_runs(cuts[nm], 0)
         if len(parts) == 3:
-            cuts[nm] = join_pieces(parts, axis)
+            SLICES[nm] = ([p.width for p in parts], [parts[0].height])
+            cuts[nm] = join_pieces(parts, 0)
         else:
             print("WARNING: %s: expected 3 parts, found %d" % (nm, len(parts)))
+if "board_pause_menu" in cuts:  # 3x3
+    joined, info = join_grid(cuts["board_pause_menu"])
+    if joined is not None:
+        cuts["board_pause_menu"], SLICES["board_pause_menu"] = joined, info
 # the intent bubble: two end caps and an arrow in the middle (fixed), two stretchy pieces between them
 if "intent_bubble" in cuts:
-    parts = split_runs(cuts.pop("intent_bubble"), 0)
+    parts = split_runs(cuts.pop("intent_bubble"), 0, 4)
     names = ["intent_bubble_cap_l", "intent_bubble_stretch_l", "intent_bubble_tail", "intent_bubble_stretch_r", "intent_bubble_cap_r"]
     if len(parts) == 5:
         edges = [("r",), ("l", "r"), ("l", "r"), ("l", "r"), ("l",)]
@@ -436,6 +538,10 @@ for name, im in cuts.items():
     size = target_size("num_" + ref[5:] if ref.startswith("numw_") else ref, cuts[ref].width / 4.0, cuts[ref].height / 4.0)
     im.resize(size, Image.LANCZOS).save(os.path.join(OUT, name + ".png"))
     print(name, size)
+    if name in SLICES:
+        kx, ky = size[0] / im.width, size[1] / im.height
+        cw, rh = SLICES[name]
+        print("   slice margins (px in the saved png): left %d right %d top %d bottom %d" % (round(cw[0] * kx), round(cw[-1] * kx), round(rh[0] * ky), round(rh[-1] * ky)))
 
 
 # ---------------------------------------------------------------- the Victory / Defeat banners (page 4)
@@ -460,7 +566,8 @@ def split_banners():
     labs = {t: r for t, r in labels(pg)}
     bg_bottom = max(r.y1 for t, r in labs.items() if t.startswith("BG "))
     left = min(r.x0 for t, r in labs.items() if t.endswith("Banner"))
-    area = pymupdf.Rect(0, bg_bottom + 12, left - 4, 792)
+    top = max([r.y1 for t, r in labs.items() if t.startswith("Leaf set")] + [bg_bottom]) + 12  # the leaf set sits between the background and the banners
+    area = pymupdf.Rect(0, top, left - 4, 792)
 
     def render(keep, zoom, clip):
         ln = list(lines)

@@ -138,8 +138,14 @@ func build(e: EnemyState) -> void:
 		m = m.get("also", {})
 	if e.redirect_to != null and is_instance_valid(e.redirect_to):
 		var who := "itself" if e.redirect_to == e else e.redirect_to.name
-		row.add_child(_word("↪ " + who, Color(0.6, 1, 0.8)))
-		lines.append("↪ " + Keywords.colorize("Redirected: its attacks hit %s, and anything aimed at you fizzles." % who))
+		var redir := UiSkin.icon("intent_redirect", 30)  # New theme: the painted U-turn arrow instead of ↪
+		if redir != null:
+			redir.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			row.add_child(redir)
+			row.add_child(_word(who, Color(0.6, 1, 0.8)))
+		else:
+			row.add_child(_word("↪ " + who, Color(0.6, 1, 0.8)))
+		lines.append(UiSkin.inline("intent_redirect", "↪", 24) + " " + Keywords.colorize("Redirected: its attacks hit %s, and anything aimed at you fizzles." % who))
 	tooltip_text = "\n".join(lines)
 
 

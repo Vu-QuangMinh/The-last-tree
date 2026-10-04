@@ -186,10 +186,14 @@ func _draw() -> void:
 			var t0 := i * TAU / 12.0
 			draw_arc(c, r + 1.5, t0, t0 + TAU / 24.0, 4, Color(1, 1, 1, 0.9), 2.0)
 	if frozen:
-		draw_circle(c, r, Color(0.7, 0.9, 1.0, 0.55))
-		for k in 3:
-			var d := Vector2.from_angle(k * PI / 3.0) * r * 0.7
-			draw_line(c - d, c + d, Color(1, 1, 1, 0.95), 2.0)
+		var ice := UiSkin.tex("essence_frozen_overlay")  # New theme: the painted ice ball over the bead
+		if ice != null:
+			draw_texture_rect(ice, Rect2(c - Vector2(r, r) * 1.04, Vector2(r, r) * 2.08), false)
+		else:
+			draw_circle(c, r, Color(0.7, 0.9, 1.0, 0.55))
+			for k in 3:
+				var d := Vector2.from_angle(k * PI / 3.0) * r * 0.7
+				draw_line(c - d, c + d, Color(1, 1, 1, 0.95), 2.0)
 	if burning:
 		# a flickering ring of fire, and flame tongues licking up around the top
 		var t := Time.get_ticks_msec() / 1000.0
