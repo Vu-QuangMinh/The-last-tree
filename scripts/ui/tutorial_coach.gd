@@ -40,7 +40,9 @@ func _ready() -> void:
 	h.add_theme_constant_override("separation", 14)
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bubble.add_child(h)
-	var face := UiTheme.label("🌱", 54, Color.WHITE)
+	var face: Control = UiSkin.icon("icon_seedling", 64)  # New theme: the painted Seedling
+	if face == null:
+		face = UiTheme.label("🌱", 54, Color.WHITE)
 	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	h.add_child(face)
 	var v := VBoxContainer.new()

@@ -1,22 +1,45 @@
 # Art / UI progress (New theme)
 
-Source of truth for art: `assets/ui/Fight UI.pdf`, cut into `assets/ui/new/` by `python tools/export_fight_ui.py`
-(then `Godot --headless --editor --quit` to import). Last update: 2026-10-04.
+Source of truth for art: `assets/ui/Fight UI.pdf`, cut into `assets/ui/new/<folder>/` by `python tools/export_fight_ui.py`
+(about 5 minutes; then `Godot --headless --editor --quit` to import). Last update: 2026-10-05.
 
 ## Done
-- Pause board cut as 3x3 pieces and 9-sliced (margins 95/90/95/94); Grimoire Ink ribbon and Toast Strip cut as 3 pieces and 3-sliced.
-- Amber Coin icon in the amber counter (replaces the leaf drawn in code).
-- Status icons: Aegis, Echo Ready, Overload added; all player status badges use art.
-- Leaf sets: act 1 (10 leaves) and act 3 (11 snow-dusted leaves) in `BackdropFx`; act 3 snow dots replaced.
-- Essence Frozen Overlay on frozen essence (replaces the code-drawn ice).
-- Seed of Life / Broken Seed of Life art (treasure, artifact bar, shop), Seedling icon (HUD, Unlocks, menu), Redirect intent icon.
-- Items 1-4 audit (artifacts 39/39, bottles 20/20, intents 19/19 + Redirect, statuses): nothing missing.
-- Exporter: `near` gather mode, 3x3 grid join, label splitting, tight grouping for bottles, leaf-set export, slice-margin printout.
+**Fight UI and shared pieces**
+- Pause board (3x3, 9-slice), Grimoire Ink ribbon and Toast Strip (3-slice), Legend Plate and Map Scroll (3-slice), wood frame (3x3).
+- Amber Coin (80%), Seedling icon (HUD, Unlocks, menu, hint panels, tutorial), Redirect and Mend intent icons, all player status badges, Essence Frozen Overlay.
+- Leaf sets (act 1: 10, act 3: 11 snow-dusted) in `BackdropFx`; act 3 snow dots replaced.
+- The user's template SpellCard restored (merge with Vu-QuangMinh's anti-spell / ephemeral features), artifact slot art, auto-cast (incl. anti-spells and a lone enemy), chant button shows its base, essence glow when a chant builds towards a spell, Perfect word 30 px lower.
+- Scroll bars: `ScrollThumb` (fixed-size painted thumb that rides the track), attached to every ScrollContainer by `main.gd`.
+- Art folders: `assets/ui/new/` is sorted by what things are (`folder_for()` in the exporter; `UiSkin.path_of()` finds a name in any folder).
+
+**Map and rooms**
+- Map: painted rings + icons, visited = ring only, hero marker, ink path dots, painted scroll and legend; the sprout walks to the chosen room eating the path dots; the map opens scrolled to your room; merchant node uses the face avatar `map_icon_merchant`.
+- Room backgrounds: `assets/Room Background/*.png` -> `python tools/import_room_backgrounds.py` -> `assets/ui/new/backgrounds/room_<id>.jpg` (16:9 crop, Y0 default 230). `Backdrop.room` is set by `main.gd` (`_room_bg`) for the elite arena, 3 bosses (by act), loadout, reward, defeat, merchant, empty hollow, campfire / fuse and the 14 events.
+- Merchant: the big portrait stands above "Leave the shop".
+- Picking up an artifact pops up its card (`RunState.artifact_gained` -> `main._on_artifact_found`).
+- Campfire room (pages 9-10 of the PDF): `CampfireScreen`, `CampfireHot`, `CampfireFlame`, `CampfireSparks`, layout generated into `scripts/ui/campfire_layout.gd`. Forest wind + act-1 leaves, wriggling smoke, big/small flame blended by noise with ground light, random sparks (behind the sign), hover glow (half strength). Signboard reads CAMPFIRE / SEAL / FUSE / REST; first click selects (post rises out of the grass, second board shows what it does, post + object stay lit), second click confirms, click elsewhere cancels; the fire counts as part of SEAL. Positions and z come from the demo page automatically (move things in the PDF, re-run the exporter).
 
 ## To do
-- Treasure Card Frame Cursed (prompt only in `treasure_art_prompts.txt`), treasure chest closed/open, map node treasure.
-- Step 3: map room icons (fight, elite, campfire, treasure, merchant, unknown, boss) in `map_screen.gd` and the wiki "The map" text; no art or prompts yet.
-- Step 2: headings/labels still using emoji (fuse_screen, shop_screen, seal_screen, tutorial_coach, tutorial_screen, enemy_view skull, fight_screen Sprout/close/undo/clear, settings play/stop). Needs a TextureRect beside the Label; new art for Fuse, Merchant cart, skull, pointing hands.
-- Artifact/bottle `icon` emoji fields remain as Default-theme fallbacks (by design).
-- `docs/missing_item_prompts.txt` prompts for Seed of Life, Broken Seed, Aegis, Echo Ready, Overload, Redirect are now drawn: can be retired.
-- Not checked visually: shop screen and main menu after the Seedling icon change, act 3 leaf size after raising it to 48 px, motion of leaves.
+**Art still missing**
+- Backgrounds: Treasure Room, Screen Victory (they fall back to the act's picture).
+- Treasure chest closed / open, Treasure Card Frame Cursed (prompts in `treasure_art_prompts.txt`).
+- Icons per room (see `map_room_art_prompts.txt` for what is already drawn): Fuse screen (title flame, eye "See all", warning, wake, arrow), Merchant (cart for the title, price tag, Buy coin), event cost/reward glyphs (Max HP, Leaves, artifact, spell, Legendary, Cursed, purple resin), tutorial pointing hands + Sprout box, Elite / Boss badges, Resin icon (still drawn in code: `ResinIcon`).
+- Other rooms are still plain screens over their backgrounds (campfire is the only one rebuilt from separate objects).
+
+**Code**
+- Step 2 of the emoji plan: headings / labels with emoji (fuse_screen, shop_screen "🛒", seal_screen, tutorial_screen, enemy_view skull, fight_screen close / undo / clear, settings play / stop, wiki map text). Needs a TextureRect beside the Label.
+- The Default theme keeps the old text-button campfire (by design); artifact / bottle `icon` emoji fields stay as its fallback.
+- Merchant text in ShopScreen still says "a badger", the art is a bearded man.
+- Damage splat `float_damage` was dropped by Vu-QuangMinh ("no blood"): not restored.
+
+**To check by eye (only still pictures were looked at)**
+- Campfire: hover on the cauldron and the fire, flame / smoke / spark motion, the faint wood sliver under the CAMPFIRE board.
+- Map walk animation (dots eaten along longer paths), scroll thumb on every screen, artifact pop-up in a real run, shop and menu after the Seedling change, act-3 leaf size.
+- Room backgrounds: the crop (Y0) per picture may need tuning (the log along the bottom is cut off).
+
+**Asking the artist**
+- The demo page has a brown placeholder plank at the top centre: left out of the scene. What is it for?
+
+**Housekeeping**
+- `assets/Room Background/` (93 MB of 2048 px originals) is git-ignored; keep the sources outside the repo or in a release asset.
+- Watch merges with Vu-QuangMinh: his commits are made from an older copy and have silently dropped this work before (card design, artifact slots, auto-cast). After every pull: diff against the last own commit.

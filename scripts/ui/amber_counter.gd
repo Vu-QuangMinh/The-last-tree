@@ -28,7 +28,7 @@ func _ready() -> void:
 	h.add_theme_constant_override("separation", 8)
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(h)
-	var coin := UiSkin.icon("icon_amber", 38)  # New theme: the painted amber leaf instead of the one drawn in code
+	var coin := UiSkin.icon("icon_amber", 27)  # New theme: the painted amber leaf instead of the one drawn in code
 	if coin != null:
 		_gem = coin
 		coin.size_flags_vertical = Control.SIZE_SHRINK_CENTER

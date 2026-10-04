@@ -181,7 +181,12 @@ func _add_move(row: HBoxContainer, m: Dictionary, e: EnemyState) -> void:
 		"mend":
 			# a red heart with a green up-arrow, then how many (only when more than one), then which Essence
 			# (a random one shows the wildcard bead). No "+".
-			row.add_child(MendIcon.make(34))
+			var mend_art := UiSkin.icon("intent_mend", 34)  # New theme: the painted green cross; otherwise the heart drawn in code
+			if mend_art != null:
+				mend_art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+				row.add_child(mend_art)
+			else:
+				row.add_child(MendIcon.make(34))
 			if m.n > 1:
 				var digits := UiSkin.number(str(m.n), 34, false, 0.7)
 				row.add_child(digits if digits != null else _word(str(m.n), Color.WHITE))

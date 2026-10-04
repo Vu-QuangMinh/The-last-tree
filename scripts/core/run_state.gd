@@ -18,6 +18,8 @@ const PRICES := {"common": 45, "rare": 75, "legendary": 140, "artifact": 110, "a
 const UNKNOWN_ODDS := {"fight": 0.15, "treasure": 0.08, "shop": 0.07}
 const SEAL_EVENT_ODDS := 0.3  # a "?" event is the Resin Shrine this often while you hold purple seals
 
+signal artifact_gained(id: String)
+
 var rng := RandomNumberGenerator.new()
 var db: SpellDB
 var player := PlayerState.new()
@@ -352,6 +354,7 @@ func gain_artifact(id: String) -> void:
 	if id in artifacts:
 		return
 	artifacts.append(id)
+	artifact_gained.emit(id)  # (the UI shows the artifact that was found)
 	if id == "blood_pact":
 		player.max_hp -= 12
 		player.hp = minf(player.hp, player.max_hp)

@@ -963,7 +963,9 @@ func _show_help() -> void:
 	var head := HBoxContainer.new()
 	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(head)
-	var sprout := UiTheme.label("🌱", 34, Color.WHITE)
+	var sprout: Control = UiSkin.icon("icon_seedling", 40)  # New theme: the painted Seedling instead of the 🌱 emoji
+	if sprout == null:
+		sprout = UiTheme.label("🌱", 34, Color.WHITE)
 	sprout.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	head.add_child(sprout)
 	var who := UiTheme.label("Seedling", 22, Color(0.2, 0.45, 0.15))
@@ -1324,6 +1326,7 @@ func _on_cast() -> void:
 	await fight.cast_chant(idx)
 	_sync_views()
 	_refresh_all()
+	await _auto_cast()  # spells with no choice to make (shield, heal, a lone enemy to hit...) cast themselves
 	tut.emit("chanted", fight.chant_string())
 	busy = false
 	_refresh_all()
@@ -1363,6 +1366,7 @@ func _on_card_clicked(card: SpellCard) -> void:
 	_sync_views()
 	_refresh_all()
 	tut.emit("cast", spell.id)
+	await _auto_cast()
 	busy = false
 	_refresh_all()
 	if fight.over:
@@ -1373,7 +1377,8 @@ func _on_card_clicked(card: SpellCard) -> void:
 		await _damage_step()
 
 
-## Every awake spell waits for your click (none cast themselves). These ones also ask you for something more.
+## Spells with no choice to make (nothing to aim, place or pick; or a single enemy left to aim at) cast themselves, in chant order.
+## Aimed-at-a-choice and interactive ones wait for the player's click.
 const INTERACTIVE_OPS := ["infuse", "rearrange", "duplicate", "move", "pluck", "redirect", "annihilate"]
 
 
@@ -1397,7 +1402,7 @@ func _auto_cast() -> void:
 			var sp := fight._find_spell(id)
 			if not _is_auto(sp):
 				continue
-			var pos := Chant.first_index(sp.pattern, c)
+			var pos := 0 if sp.get("anti", false) else Chant.first_index(sp.pattern, c)  # an anti-spell's charge isn't from a match: it goes first
 			if pos >= 0 and pos < best:
 				best = pos
 				next = id
@@ -2893,7 +2898,7 @@ func _slam(text: String, col: Color, outline: Color, font_px: int) -> void:
 ## lettering falls onto it. For "perfect" the word PERFECT then flickers on above it, in front. Returns false (and
 ## shows nothing) when the Theme is Default or the art is missing, so the caller falls back to the old slam text.
 ## How far PERFECT is lifted above its place in the art (it overlapped VICTORY by ~80 px there).
-const PERFECT_RAISE := 90.0
+const PERFECT_RAISE := 60.0
 
 
 func _result_banner(kind: String) -> bool:
