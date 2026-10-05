@@ -26,10 +26,23 @@ func _ready() -> void:
 	var toasts: VBoxContainer = load("res://scripts/ui/toasts.gd").new()
 	tl.add_child(toasts)
 	add_child(tl)
+	# New theme: every scroll area gets the painted, never-stretched thumb
+	get_tree().node_added.connect(func(n: Node): if n is ScrollContainer: ScrollThumb.attach.call_deferred(n))
 	show_menu()
 
 
+## The room whose painted background the screens use (Backdrop.room): set when a room is entered, cleared on the map / menu.
+var _room_bg := ""
+const EVENT_BG := {"resin_shrine": "event_resin_shrine", "well": "event_whispering_well", "lost_sprite": "event_lost_sprite",
+	"mushroom_ring": "event_mushroom_ring", "hollow_stump": "event_hollow_stump", "bard": "event_travelling_bard",
+	"cursed_shrine": "event_cursed_shrine", "amber_vein": "event_golden_thicket", "old_tome": "event_old_spellbook",
+	"squirrel": "event_squirrel_merchant", "tinker": "event_tinker_cart", "barterer": "event_barterer",
+	"lost_camp": "event_abandoned_camp", "apothecary": "event_wandering_apothecary"}
+const BOSS_BG := ["", "boss_woodcutter", "boss_blightmother", "boss_last_winter"]  # by act
+
+
 func _swap(c: Control) -> void:
+	Backdrop.room = _room_bg
 	if is_instance_valid(current):
 		current.queue_free()
 	current = c
@@ -37,6 +50,7 @@ func _swap(c: Control) -> void:
 
 
 func show_menu() -> void:
+	_room_bg = ""
 	Audio.play_music("menu")
 	var m := MenuScreen.new()
 	m.play.connect(_new_run)
@@ -210,6 +224,7 @@ func continue_run() -> void:
 		show_menu()
 		return
 	run = RunState.from_save(d.run, GameData.db)
+	run.artifact_gained.connect(_on_artifact_found)
 	if d.resume == "fight" and not d.ids.is_empty():
 		_show_loadout(d.ids)
 	else:
@@ -217,7 +232,9 @@ func continue_run() -> void:
 
 
 func start_run() -> void:
+	_room_bg = ""
 	run = RunState.new()
+	run.artifact_gained.connect(_on_artifact_found)
 	run.setup(GameData.db, SaveManager.unlocked_spells(), SaveManager.unlocked_artifacts())
 	var offer := Artifacts.keepsakes(run.rng, 3)
 	var ch := _choice("Choose a keepsake", "It stays with you for the whole run.", [], offer, false)
@@ -227,6 +244,7 @@ func start_run() -> void:
 
 
 func show_map() -> void:
+	_room_bg = ""
 	_checkpoint("map")
 	Audio.play_music("map")
 	var m := MapScreen.new()
@@ -248,10 +266,13 @@ func _on_node(col: int) -> void:
 
 
 func _enter_room(kind: String) -> void:
+	_room_bg = {"shop": "merchant_shop", "rest": "campfire_night", "treasure": "treasure_room"}.get(kind, "")
 	match kind:
 		"event":
 			Audio.play("map_event_trigger")
-			_show_event(MapEvents.get_event(run.current_node().event))
+			var ev := MapEvents.get_event(run.current_node().event)
+			_room_bg = EVENT_BG.get(ev.get("id", ""), "")
+			_show_event(ev)
 		"shop":
 			_show_shop(run.shop_stock())
 		"rest":
@@ -259,6 +280,7 @@ func _enter_room(kind: String) -> void:
 		"treasure":
 			var offer := run.treasure_offer()
 			if offer.is_empty():
+				_room_bg = "empty_hollow"
 				var s := _message("An empty hollow", "Nothing left to find here.", ["Continue"])
 				s.pressed.connect(func(_i): show_map())
 				return
@@ -383,6 +405,7 @@ func _show_shop(stock: Array) -> void:
 
 
 func _show_loadout(ids: Array) -> void:
+	_room_bg = "screen_loadout"
 	_checkpoint("fight", ids)
 	var l := LoadoutScreen.new()
 	l.setup(run, ids)
@@ -395,6 +418,8 @@ var _last_ids: Array = []  # the current fight's enemies (the Seed of Life start
 
 
 func _start_fight(ids: Array) -> void:
+	var fight_kind := run.current_kind()
+	_room_bg = "elite_arena" if fight_kind == "elite" else (BOSS_BG[clampi(run.act, 1, 3)] if fight_kind == "boss" else "")
 	_last_ids = ids.duplicate()
 	_checkpoint("fight", ids)  # (with the spells you just chose)
 	var f := run.make_fight(ids)
@@ -405,6 +430,55 @@ func _start_fight(ids: Array) -> void:
 	fs.menu_requested.connect(func(): run = null; show_menu())
 	Audio.play_music("boss" if run.current_kind() == "boss" else "fight")
 	_swap(fs)
+
+
+## An artifact was picked up: its card (frame and picture) pops up in the middle of the screen for a moment (click to dismiss).
+func _on_artifact_found(id: String) -> void:
+	var ov := Control.new()
+	ov.size = Vector2(1920, 1080)
+	ov.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.55)
+	dim.size = Vector2(1920, 1080)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ov.add_child(dim)
+	var box := VBoxContainer.new()
+	box.size = Vector2(1920, 1080)
+	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_theme_constant_override("separation", 18)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ov.add_child(box)
+	var title := UiTheme.heading("You found an artifact!", 40, Color(1, 0.9, 0.55))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(row)
+	var card := ArtifactCard.make(Artifacts.view(id, false))
+	card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(card)
+	var hint := UiTheme.label("Click to continue", 18, UiTheme.MUTED)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(hint)
+	overlay_layer.add_child(ov)
+	Audio.play("artifact_get")
+	ov.modulate.a = 0.0
+	card.pivot_offset = Vector2(ArtifactCard.W / 2.0, 120.0)
+	card.scale = Vector2(0.7, 0.7)
+	var pop := ov.create_tween().set_parallel(true)
+	pop.tween_property(ov, "modulate:a", 1.0, 0.18)
+	pop.tween_property(card, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var close := func():
+		if not is_instance_valid(ov) or ov.has_meta("closing"):
+			return
+		ov.set_meta("closing", true)
+		var tw := ov.create_tween()
+		tw.tween_property(ov, "modulate:a", 0.0, 0.2)
+		tw.tween_callback(ov.queue_free)
+	ov.gui_input.connect(func(ev: InputEvent): if ev is InputEventMouseButton and ev.pressed: close.call())
+	card.clicked.connect(close)
+	get_tree().create_timer(4.0).timeout.connect(close)
 
 
 ## Your HP bar (the one from fights) with the numbers beside it.
@@ -426,35 +500,55 @@ func _hp_box() -> Control:
 
 ## Campfire: rest to heal, or fuse two spells into one.
 func _show_rest() -> void:
+	_room_bg = "campfire_night"
 	var heal := int(run.player.max_hp * RunState.REST_HEAL)
 	var can_fuse := run.fusable().size() >= 2
 	var can_heat := (run.resin > 0 or run.purple_seals > 0) and not run.upgradable().is_empty()
 	var heat_label := "Heat up the resin  (%d → purple seals)" % run.resin if run.resin > 0 else "Apply your purple seals  (%d)" % run.purple_seals
+	if UiSkin.tex("campfire_bg") != null:  # New theme: the painted campfire, where you click what you want to do
+		var cs := CampfireScreen.new()
+		cs.setup(run)
+		cs.enabled = {"seal": can_heat, "fuse": can_fuse, "rest": true}
+		cs.hints = {  # (what the signboard's second board says: short, it is a small board)
+			"rest": "Rest: heal %d HP\n(you have %d / %d)" % [heal, run.player.hp, run.player.max_hp],
+			"fuse": "Fuse two spells into\none stronger spell" if can_fuse else "You need two\nspells to fuse",
+			"seal": ("Heat the resin\n(%d → purple seals)" % run.resin if run.resin > 0 else "Press your purple\nseals (%d) into spells" % run.purple_seals) if can_heat else "Needs purple resin\nor purple seals",
+		}
+		cs.extra = _hp_box()
+		cs.chosen.connect(func(which: String): _campfire_choice({"rest": 0, "fuse": 1, "seal": 2}[which]))
+		_swap(cs)
+		return
 	var s := _message("A campfire", "Rest (heal %d HP, you have %d / %d), Fuse two of your spells into one stronger spell, or Heat up your purple resin: it becomes purple seals you can press into your spells (here, at the merchant, or later)." % [heal, run.player.hp, run.player.max_hp], ["Rest  (+%d HP)" % heal, "Fuse two spells", heat_label], Color(1, 0.75, 0.45), _hp_box())
 	s.disabled = [false, not can_fuse, not can_heat]
-	s.pressed.connect(func(i):
-		if i == 0:
-			run.rest()
-			Audio.play("rest_heal")
-			show_map()
-			return
-		if i == 2:
-			var n := run.heat_resin()
-			if n > 0:
-				Audio.play("spell_glow")
-				Events.toast.emit("The resin melts into %d purple seal%s" % [n, "" if n == 1 else "s"], Color(0.88, 0.7, 1.0))
-			_apply_seals("The campfire", show_map)
-			return
-		var fs := FuseScreen.new()
-		fs.setup(run)
-		fs.back.connect(_show_rest)
-		fs.fused.connect(func(_sp): show_map())  # (the fuse screen showed the new spell and the resin)
-		_swap(fs))
+	s.pressed.connect(_campfire_choice)
+
+
+## What you chose at the campfire: 0 rest, 1 fuse two spells, 2 heat the resin / press the seals.
+func _campfire_choice(i: int) -> void:
+	if i == 0:
+		run.rest()
+		Audio.play("rest_heal")
+		show_map()
+		return
+	if i == 2:
+		var n := run.heat_resin()
+		if n > 0:
+			Audio.play("spell_glow")
+			Events.toast.emit("The resin melts into %d purple seal%s" % [n, "" if n == 1 else "s"], Color(0.88, 0.7, 1.0))
+		_apply_seals("The campfire", show_map)
+		return
+	var fs := FuseScreen.new()
+	fs.setup(run)
+	_room_bg = "campfire_fuse"
+	fs.back.connect(_show_rest)
+	fs.fused.connect(func(_sp): show_map())  # (the fuse screen showed the new spell and the resin)
+	_swap(fs)
 
 
 ## Rewards: normal fights 3 cards (70% common, 30% rare); elites 3 rares and an artifact;
 ## bosses 3 legendaries and a relic that raises your element income.
 func _after_fight(f: Fight) -> void:
+	_room_bg = "screen_reward"
 	var kind := run.current_kind()
 	if not (kind in ["fight", "elite", "boss"]):
 		kind = "fight"
@@ -531,6 +625,7 @@ func _choice(title: String, sub: String, spells: Array, arts: Array, can_skip: b
 
 
 func _end_run() -> void:
+	_room_bg = "" if run.won else "screen_defeat"  # (no victory picture yet: the act's)
 	var seeds := run.final_seedlings()
 	Audio.play("victory_fanfare" if run.won else "defeat_stinger")
 	Audio.play("seedling_gain")

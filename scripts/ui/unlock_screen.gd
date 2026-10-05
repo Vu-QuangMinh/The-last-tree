@@ -6,6 +6,8 @@ signal closed
 
 var _body: HFlowContainer
 var _title: Label
+var _seed_row: HBoxContainer  # New theme: the painted Seedling and the count, beside the title
+var _seed_count: Label
 var _tab := "spells"
 
 
@@ -28,6 +30,16 @@ func _ready() -> void:
 	_title = UiTheme.heading("", 32, Color.WHITE)
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(_title)
+	var seed_art := UiSkin.icon("icon_seedling", 40)
+	if seed_art != null:
+		_title.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		_seed_row = HBoxContainer.new()
+		_seed_row.add_theme_constant_override("separation", 8)
+		_seed_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_seed_row.add_child(seed_art)
+		_seed_count = UiTheme.heading("", 32, Color.WHITE)
+		_seed_row.add_child(_seed_count)
+		top.add_child(_seed_row)
 	top.add_child(UiTheme.button("Spells", func(): _tab = "spells"; _refresh(), 20))
 	top.add_child(UiTheme.button("Artifacts", func(): _tab = "artifacts"; _refresh(), 20))
 	top.add_child(UiTheme.button(UiTheme.hk("Close", "Esc"), func(): closed.emit(), 20))
@@ -45,7 +57,11 @@ func _ready() -> void:
 
 
 func _refresh() -> void:
-	_title.text = "Unlocks  ·  ✿ %d Seedlings" % SaveManager.data.seedlings
+	if _seed_row != null:
+		_title.text = "Unlocks  ·"
+		_seed_count.text = "%d Seedlings" % SaveManager.data.seedlings
+	else:
+		_title.text = "Unlocks  ·  ✿ %d Seedlings" % SaveManager.data.seedlings
 	for c in _body.get_children():
 		c.queue_free()
 	if _tab == "spells":
@@ -63,6 +79,7 @@ func _refresh() -> void:
 					Events.toast.emit("%s unlocked" % s.name, UiTheme.ACCENT)
 				_refresh.call_deferred())
 			b.disabled = SaveManager.data.seedlings < cost
+			UiSkin.seedling_button(b, "Unlock  %d" % cost, b.text)
 			box.add_child(b)
 			_body.add_child(box)
 	else:
@@ -96,6 +113,7 @@ func _refresh() -> void:
 						Events.toast.emit("%s unlocked" % a.name, UiTheme.ACCENT)
 					_refresh.call_deferred())
 				b.disabled = SaveManager.data.seedlings < a.cost
+				UiSkin.seedling_button(b, "Unlock  %d" % a.cost, b.text)
 				v.add_child(b)
 			_body.add_child(p)
 

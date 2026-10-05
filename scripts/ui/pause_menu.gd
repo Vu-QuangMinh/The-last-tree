@@ -35,7 +35,7 @@ func _ready() -> void:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(center)
 	var panel := PanelContainer.new()
-	var board := UiSkin.box("board_pause_menu", [64, 64, 64, 64], [52, 48, 52, 48])
+	var board := UiSkin.box("board_pause_menu", [95, 90, 95, 94], [60, 56, 60, 56])
 	panel.add_theme_stylebox_override("panel", board if board != null else UiTheme.panel_box(0.95, 16))
 	panel.custom_minimum_size = Vector2(420 if board != null else 380, 0)
 	center.add_child(panel)

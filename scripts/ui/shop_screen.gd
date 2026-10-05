@@ -57,8 +57,27 @@ func _ready() -> void:
 	var hud := HudBar.new()
 	hud.setup(run)
 	add_child(hud)
+	_place_merchant.call_deferred(leave_btn, v)
 	_refresh()
 
+
+## New theme: the merchant himself stands above the Leave button (behind the goods, so they never get covered).
+func _place_merchant(leave_btn: Control, behind: Control) -> void:
+	var t := UiSkin.tex("merchant_portrait")
+	if t == null or not is_instance_valid(leave_btn):
+		return
+	await get_tree().process_frame
+	var r := TextureRect.new()
+	r.texture = t
+	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	r.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var h := 340.0
+	r.size = Vector2(h * t.get_width() / t.get_height(), h)
+	var lb := leave_btn.get_global_rect()
+	r.position = Vector2(lb.end.x - r.size.x, lb.position.y - r.size.y - 4.0) - global_position
+	add_child(r)
+	move_child(r, behind.get_index())  # just under the goods
 
 var _panels: Array = []  # the stretchable frames (everything but the spell cards)
 var _boxes: Array = []  # each item: its picture or card, then its Buy button

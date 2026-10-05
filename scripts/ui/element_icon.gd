@@ -21,6 +21,8 @@ var _lift_tween: Tween
 
 ## New theme: the bead art for each element (anything else, "?" included, is the wildcard bead)
 const ART := {"F": "essence_fire", "W": "essence_water", "A": "essence_wind"}
+## the halo colour of a lit orb
+const GLOW := {"F": Color(1.0, 0.55, 0.15), "W": Color(0.35, 0.7, 1.0), "A": Color(0.6, 1.0, 0.55)}
 
 
 static func make(p_el: String, px := 40.0) -> ElementIcon:
@@ -46,7 +48,7 @@ func set_hover(on: bool) -> void:
 
 
 func _process(d: float) -> void:
-	if burning or poisoned or ghost:
+	if burning or poisoned or ghost or highlight:
 		queue_redraw()  # the flames flicker, the venom bubbles, a doomed Essence blinks
 	if cracked > 0.0 or not _sparks.is_empty():
 		_spew(d)
@@ -156,8 +158,13 @@ func _draw() -> void:
 		a = 0.2 + 0.65 * (0.5 + 0.5 * cos(Time.get_ticks_msec() / 1000.0 * TAU / 1.2))
 	elif dim:
 		a = 0.45
+	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 5.0)
 	if highlight:
-		draw_circle(c, r + 3.0, Color(1, 1, 1, 0.9))
+		# lit (the chant is building this orb): a soft halo in the element's colour, breathing, behind the bead
+		var gc: Color = GLOW.get(el, Color(1, 0.95, 0.8))
+		for k in 5:
+			var t := float(k) / 4.0
+			draw_circle(c, r * (1.7 - 0.62 * t), Color(gc, (0.12 + 0.34 * t) * (0.75 + 0.25 * pulse)), true, -1.0, true)
 	if el == "hidden":
 		# Blind: you can't see what it is. A grey mystery disc (not the rainbow Any bead, which a painted Essence uses)
 		draw_circle(c, r, Color(0.42, 0.44, 0.5, a), true, -1.0, true)
@@ -178,6 +185,12 @@ func _draw() -> void:
 		var fs := int(r * 1.35)
 		draw_string_outline(f, c + Vector2(-fs * 0.28, fs * 0.36), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, fs, maxi(2, int(r * 0.18)), Color(0, 0, 0, 0.55 * a))
 		draw_string(f, c + Vector2(-fs * 0.28, fs * 0.36), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.95 * a))
+	if highlight and el != "hidden":
+		# ...and the bead itself shines: a bright wash, a hot core and a light rim
+		var gc2: Color = GLOW.get(el, Color(1, 0.95, 0.8))
+		draw_circle(c, r, Color(1, 1, 0.92, 0.05 + 0.07 * pulse), true, -1.0, true)
+		draw_circle(c, r * 0.55, Color(gc2.lightened(0.4), 0.14 + 0.12 * pulse), true, -1.0, true)
+		draw_arc(c, r - 0.5, 0.0, TAU, 40, Color(gc2.lightened(0.6), 0.7 + 0.3 * pulse), maxf(1.5, r * 0.09), true)
 	if armored:
 		draw_arc(c, r + 1.0, 0, TAU, 32, Color(0.85, 0.85, 0.9, a), 4.0)
 		_mini_shield(c + Vector2(r * 0.62, -r * 0.62), r * 0.38, a)
@@ -186,10 +199,14 @@ func _draw() -> void:
 			var t0 := i * TAU / 12.0
 			draw_arc(c, r + 1.5, t0, t0 + TAU / 24.0, 4, Color(1, 1, 1, 0.9), 2.0)
 	if frozen:
-		draw_circle(c, r, Color(0.7, 0.9, 1.0, 0.55))
-		for k in 3:
-			var d := Vector2.from_angle(k * PI / 3.0) * r * 0.7
-			draw_line(c - d, c + d, Color(1, 1, 1, 0.95), 2.0)
+		var ice := UiSkin.tex("essence_frozen_overlay")  # New theme: the painted ice ball over the bead
+		if ice != null:
+			draw_texture_rect(ice, Rect2(c - Vector2(r, r) * 1.04, Vector2(r, r) * 2.08), false)
+		else:
+			draw_circle(c, r, Color(0.7, 0.9, 1.0, 0.55))
+			for k in 3:
+				var d := Vector2.from_angle(k * PI / 3.0) * r * 0.7
+				draw_line(c - d, c + d, Color(1, 1, 1, 0.95), 2.0)
 	if burning:
 		# a flickering ring of fire, and flame tongues licking up around the top
 		var t := Time.get_ticks_msec() / 1000.0

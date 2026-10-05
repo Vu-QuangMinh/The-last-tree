@@ -4,6 +4,9 @@ extends Control
 ## act changes the mood (1 dusk green, 2 rot purple, 3 winter blue).
 
 var act := 1
+## A room's own picture (assets/ui/new/room_<id>.jpg) instead of the act's: main.gd sets it before it shows a room's screens
+## (and clears it on the map), so every screen of one room shares it. Empty, or a room without a picture: the act's.
+static var room := ""
 var tree_glow := true
 var _t := 0.0
 
@@ -31,7 +34,8 @@ void fragment() {
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var art := UiSkin.tex(ART.get(act, ""))
+	var room_art: Texture2D = UiSkin.tex("room_" + room) if room != "" else null
+	var art: Texture2D = room_art if room_art != null else UiSkin.tex(ART.get(act, ""))
 	if art != null:
 		_art_node = TextureRect.new()
 		_art_node.texture = art
@@ -45,9 +49,10 @@ func _ready() -> void:
 		mat.shader = sh
 		_art_node.material = mat
 		add_child(_art_node)
-		var fx := BackdropFx.new()
-		fx.act = act
-		add_child(fx)
+		if room_art == null:  # (leaves, fireflies and snow belong to the act's own painting)
+			var fx := BackdropFx.new()
+			fx.act = act
+			add_child(fx)
 
 
 func _process(d: float) -> void:

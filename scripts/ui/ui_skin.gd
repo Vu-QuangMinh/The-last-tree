@@ -10,6 +10,10 @@ const OPTIONS := ["default", "new"]
 const LABELS := ["Default", "New"]
 
 static var _tex := {}
+static var _paths := {}  # name -> res:// path ("" = there is none)
+## The art is sorted into folders under DIR (by what it is); a name is looked up in each, as a png and then a jpg.
+const FOLDERS := ["panels", "buttons", "essence", "intent", "status", "icons", "cards", "numbers", "treasure", "map", "fx",
+	"backgrounds", "leaves", "title", "characters", "artifacts", "bottles", "campfire", "misc"]
 
 ## artifact id -> picture name, where they differ
 const ARTIFACT_ART := {"scholar_quill": "scholars_quill"}
@@ -24,13 +28,29 @@ static func set_theme(id: String) -> void:
 	UiTheme.reset()  # the shared Theme is rebuilt for the next screen
 
 
+## Where a picture of the New set is (res:// path), or "" when there is no such picture.
+static func path_of(name: String) -> String:
+	if not _paths.has(name):
+		var found := ""
+		for folder in FOLDERS:
+			for ext in [".png", ".jpg"]:  # (the room backgrounds are jpg: big, flat-coloured pictures)
+				var p: String = DIR + folder + "/" + name + ext
+				if ResourceLoader.exists(p):
+					found = p
+					break
+			if found != "":
+				break
+		_paths[name] = found
+	return _paths[name]
+
+
 ## A texture from the New set, or null when the theme is Default (or the file isn't there).
 static func tex(name: String) -> Texture2D:
 	if not is_new():
 		return null
 	if not _tex.has(name):
-		var p := DIR + name + ".png"
-		_tex[name] = load(p) if ResourceLoader.exists(p) else null
+		var p := path_of(name)
+		_tex[name] = load(p) if p != "" else null
 	return _tex[name]
 
 
@@ -112,12 +132,25 @@ static func fill_number(row: Container, text: String, h: float, white := false, 
 static func inline(name: String, fallback := "", px := 24) -> String:
 	if tex(name) == null:
 		return fallback
-	return "[img=%dx%d]%s[/img]" % [px, px, DIR + name + ".png"]
+	return "[img=%dx%d]%s[/img]" % [px, px, path_of(name)]
 
 
 ## The same for a plain Label (a toast): a marker the toast turns into a picture, or into `fallback` when there isn't one.
 static func icon_token(name: String, fallback := "") -> String:
 	return "{icon:%s|%s}" % [name, fallback]
+
+
+## New theme: a Button gets the painted Seedling beside its text (`text` without the old ✿ glyph); otherwise it keeps `plain`.
+static func seedling_button(b: Button, text: String, plain: String, px := 24) -> void:
+	var t := tex("icon_seedling")
+	if t == null:
+		b.text = plain
+		return
+	b.text = text
+	b.icon = t
+	b.expand_icon = false
+	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	b.add_theme_constant_override("icon_max_width", px)
 
 
 ## An artifact's painted icon (assets/ui/new/<id>.png) in a square of `px`; null in Default or if that artifact has none yet.

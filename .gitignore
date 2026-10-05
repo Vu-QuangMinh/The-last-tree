@@ -4,3 +4,6 @@
 # full-size spell art masters (game uses the 256px copies in assets/card/art)
 art_source/
 build/
+
+# 2048 px originals of the room backgrounds (the game uses the 16:9 jpgs in assets/ui/new/backgrounds)
+assets/Room Background/

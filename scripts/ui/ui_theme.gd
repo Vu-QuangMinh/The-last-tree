@@ -201,11 +201,10 @@ static func get_theme() -> Theme:
 ## New theme: the wooden scroll bar (track + grabber) and the volume slider (the same track on its side + a round knob).
 static func _skin_scrollbars(t: Theme) -> void:
 	var track := UiSkin.box("scroll_track", [0, 10, 0, 10], [10, 10, 10, 10])
-	var grab := UiSkin.box("scroll_bar_grabber", [0, 10, 0, 10], [10, 10, 10, 10])
-	if track != null and grab != null:
+	if track != null and UiSkin.tex("scroll_bar_grabber") != null:
 		t.set_stylebox("scroll", "VScrollBar", track)
 		for g in ["grabber", "grabber_highlight", "grabber_pressed"]:
-			t.set_stylebox(g, "VScrollBar", grab)
+			t.set_stylebox(g, "VScrollBar", StyleBoxEmpty.new())  # the painted thumb is a ScrollThumb on top of the bar (it never stretches)
 	var slider_track := UiSkin.box("slider_track", [10, 0, 10, 0], [10, 10, 10, 10])
 	var knob := UiSkin.tex("volume_bar_grabber")
 	if slider_track != null and knob != null:
@@ -257,11 +256,8 @@ static func chant_button_styles() -> Dictionary:
 		return {}
 	var out := {}
 	for state in ["normal", "hover", "pressed", "disabled"]:
-		var b := UiSkin.box("button_chant_" + state, [20, 16, 20, 12], [20, 6, 20, 6])
-		if b != null:
-			# only the amber face: the art's dark 3D base strip under it (rows 48-57) is left out (the pressed face sits
-			# 2 px lower in its image, so its window is moved down with it)
-			b.region_rect = Rect2(0, 2 if state == "pressed" else 0, b.texture.get_width(), 48)
+		# the whole picture: amber face AND its dark 3D base strip (the bottom 14 px stay unstretched)
+		var b := UiSkin.box("button_chant_" + state, [20, 16, 20, 14], [20, 4, 20, 16])
 		out[state] = b
 	return out
 

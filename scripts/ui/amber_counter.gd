@@ -28,10 +28,15 @@ func _ready() -> void:
 	h.add_theme_constant_override("separation", 8)
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(h)
-	_gem = Control.new()
-	_gem.custom_minimum_size = Vector2(34, 36)
-	_gem.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_gem.draw.connect(_draw_gem)
+	var coin := UiSkin.icon("icon_amber", 27)  # New theme: the painted amber leaf instead of the one drawn in code
+	if coin != null:
+		_gem = coin
+		coin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	else:
+		_gem = Control.new()
+		_gem.custom_minimum_size = Vector2(34, 36)
+		_gem.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_gem.draw.connect(_draw_gem)
 	h.add_child(_gem)
 	_label = UiTheme.label("0", 26, Color(0.75, 1.0, 0.6))
 	_label.add_theme_constant_override("outline_size", 5)
@@ -80,7 +85,8 @@ func _make_custom_tooltip(for_text: String) -> Object:
 func _process(d: float) -> void:
 	_t += d
 	position.x = 1920.0 - 24.0 - size.x  # keep the right edge in place as the number grows
-	_gem.queue_redraw()
+	if not _gem is TextureRect:
+		_gem.queue_redraw()
 	var run: RunState = get_run.call() if get_run.is_valid() else null
 	visible = run != null
 	if run == null:

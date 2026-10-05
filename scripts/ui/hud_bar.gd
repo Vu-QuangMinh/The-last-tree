@@ -6,6 +6,8 @@ signal codex_pressed
 
 var run: RunState
 var _label: Label
+var _seed_icon: TextureRect  # New theme: the painted Seedling replaces the ✿ in the line
+var _label2: Label  # ...and the rest of the line, after it
 var _arts: HBoxContainer
 var _heart: TextureRect
 var _resin: HBoxContainer  # purple resin: a lump of resin and how many pieces you carry
@@ -39,6 +41,12 @@ func _ready() -> void:
 		_heart.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		info.add_child(_heart)
 	info.add_child(_label)
+	_seed_icon = UiSkin.icon("icon_seedling", 30)
+	if _seed_icon != null:
+		_seed_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		info.add_child(_seed_icon)
+		_label2 = UiTheme.label("", 20, Color.WHITE)
+		info.add_child(_label2)
 	h.add_child(info)
 	_resin = _counter(ResinIcon.make(34))
 	h.add_child(_resin)
@@ -53,7 +61,11 @@ func _ready() -> void:
 
 func refresh() -> void:
 	var p := run.player
-	_label.text = ("" if _heart != null else "♥ ") + "%d / %d     Act %d     ✿ %d Seedlings     %d spells · %d slots" % [p.hp, p.max_hp, run.act, run.seedlings, run.spellbook.size(), run.active_slots()]
+	if _label2 != null:
+		_label.text = ("" if _heart != null else "♥ ") + "%d / %d     Act %d    " % [p.hp, p.max_hp, run.act]
+		_label2.text = "%d Seedlings     %d spells · %d slots" % [run.seedlings, run.spellbook.size(), run.active_slots()]
+	else:
+		_label.text = ("" if _heart != null else "♥ ") + "%d / %d     Act %d     ✿ %d Seedlings     %d spells · %d slots" % [p.hp, p.max_hp, run.act, run.seedlings, run.spellbook.size(), run.active_slots()]
 	if _resin != null:
 		(_resin.get_child(1) as Label).text = "%d resin" % run.resin
 		_resin.tooltip_text = RESIN_TIP % [run.resin, "" if run.resin == 1 else "s"]

@@ -54,6 +54,8 @@ func _ready() -> void:
 		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		if pair[0] == "Play" or pair[0] == "Continue":
 			UiTheme.use_play_style(b)
+		elif pair[0].begins_with("Unlocks"):
+			UiSkin.seedling_button(b, "Unlocks  (%d)" % SaveManager.data.seedlings, pair[0], 26)
 		v.add_child(b)
 	var info := UiTheme.label("Runs %d  ·  Wins %d  ·  Best act %d" % [st.runs, st.wins, st.get("best_act", 0)], 18, UiTheme.MUTED)
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
