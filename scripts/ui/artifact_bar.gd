@@ -60,9 +60,6 @@ class ArtifactChip extends PanelContainer:
 	var id := ""
 	var charged := false
 	var _sb: StyleBoxFlat
-	var art_normal: StyleBoxTexture  # New theme: the slot art (null in Default)
-	var art_hover: StyleBoxTexture
-	var art_charged: StyleBoxTexture
 	var _base_border: Color
 	var _base_tip := ""
 	var _t := 0.0
@@ -82,17 +79,8 @@ class ArtifactChip extends PanelContainer:
 		sb.set_content_margin_all(5)
 		c.add_theme_stylebox_override("panel", sb)
 		c.custom_minimum_size = Vector2(px, px)
-		var slot := UiSkin.box("artifact_slot_upgraded" if plus else "artifact_slot_normal", [0, 0, 0, 0], [8, 8, 8, 8])
-		if slot != null:  # New theme: the painted slot (normal / upgraded star / hover / charged) instead of the faint outline
-			c.art_normal = slot
-			c.art_hover = UiSkin.box("artifact_slot_hover", [0, 0, 0, 0], [8, 8, 8, 8])
-			c.art_charged = UiSkin.box("artifact_slot_charged", [0, 0, 0, 0], [8, 8, 8, 8])
-			c.add_theme_stylebox_override("panel", slot)
-			c.mouse_entered.connect(func(): if not c.charged: c.add_theme_stylebox_override("panel", c.art_hover))
-			c.mouse_exited.connect(func(): if not c.charged: c.add_theme_stylebox_override("panel", c.art_normal))
-		else:
-			c.mouse_entered.connect(func(): if not c.charged: sb.border_color = FAINT_HOVER)
-			c.mouse_exited.connect(func(): if not c.charged: sb.border_color = FAINT)
+		c.mouse_entered.connect(func(): if not c.charged: sb.border_color = FAINT_HOVER)
+		c.mouse_exited.connect(func(): if not c.charged: sb.border_color = FAINT)
 		c.mouse_filter = Control.MOUSE_FILTER_STOP
 		var art := UiSkin.artifact_icon(id, px * ICON / SIZE)  # New theme: the painted artifact; otherwise its symbol
 		if art != null:
@@ -120,8 +108,6 @@ class ArtifactChip extends PanelContainer:
 			return
 		charged = on
 		_t = 0.0
-		if art_charged != null:
-			add_theme_stylebox_override("panel", art_charged if on else art_normal)
 		if not on:
 			_sb.border_color = _base_border
 			_sb.shadow_size = 0
