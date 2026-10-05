@@ -17,6 +17,13 @@ var shape := 0
 var crown := false
 var spikes := false
 var dead := false
+var _enemy: EnemyState = null  # for drawn art: how much Essence it has left picks the face
+var _max_hp := 1  # Essence it started with (or the most it has had since)
+var _art := {}  # face name -> Texture2D, for enemies with drawn art (empty: drawn procedurally)
+
+## Enemies with drawn art: one picture per face (angry: half its Essence or more; normal: low, under half; hurt: just hit).
+const ART := {"ashling": "res://assets/enemies/ashling_%s.webp"}
+const ART_FACES := ["angry", "normal", "hurt"]
 
 const SHAPES := {
 	"puddle_slime": 0, "splitter_ooze": 0, "tide_colossus": 0, "blightmother": 0, "last_gasp_spore": 0,
@@ -29,6 +36,14 @@ const SHAPES := {
 
 func setup(e: EnemyState) -> void:
 	enemy_id = e.id
+	_enemy = e
+	_max_hp = maxi(1, maxi(e.size(), str(e.def.get("hp", "")).length()))
+	_art.clear()
+	if ART.has(e.id):
+		for face in ART_FACES:
+			var path: String = ART[e.id] % face
+			if ResourceLoader.exists(path):
+				_art[face] = load(path)
 	shape = SHAPES.get(e.id, hash(e.id) % 6)
 	var counts := {"F": 0, "W": 0, "A": 0}
 	for c in e.def.hp:
@@ -87,6 +102,9 @@ func _draw() -> void:
 		draw_set_transform(Vector2(c.x, size.y * 0.93), 0, Vector2(1, 0.25))
 		draw_circle(Vector2.ZERO, s * 0.9, Color(0, 0, 0, 0.35))
 		draw_set_transform(Vector2.ZERO)
+	if not _art.is_empty():
+		_draw_art(blink_on)
+		return
 	var eye_y := -s * 0.15
 	match shape:
 		0:  # blob
@@ -172,3 +190,27 @@ func _draw_pained_face(c: Vector2, s: float, eye_y: float) -> void:
 	var sd := c + Vector2(s * 0.55, eye_y - s * 0.1)
 	draw_circle(sd, s * 0.07, Color(0.6, 0.85, 1.0, 0.9))
 	draw_colored_polygon(PackedVector2Array([sd + Vector2(-s * 0.06, -s * 0.02), sd + Vector2(0, -s * 0.16), sd + Vector2(s * 0.06, -s * 0.02)]), Color(0.6, 0.85, 1.0, 0.9))
+
+
+## Drawn art instead of the procedural body: hurt for a moment after a hit, angry while it has at least half its
+## Essence, the normal (worn-out) face below half. It bobs and jolts like the procedural ones and blinks bright when hit.
+func _draw_art(blink_on: bool) -> void:
+	var face := "angry"
+	if _enemy != null:
+		_max_hp = maxi(_max_hp, _enemy.size())
+		if _enemy.size() * 2 < _max_hp:
+			face = "normal"
+	if hurt > 0.0 and not dead:
+		face = "hurt"
+	var tex: Texture2D = _art.get(face, _art.values()[0])
+	var side := minf(size.x, size.y) * 0.88 * big
+	var c := Vector2(size.x / 2.0, size.y - side * 0.5 + sin(bob) * 4.0)
+	if _shake > 0.0:
+		c += Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake) * 0.5)
+	var mod := Color.WHITE
+	if dead:
+		mod = Color(0.05, 0.05, 0.05, 0.4)  # an unknown silhouette (codex), like the procedural grey
+	elif blink_on or flash > 0.0:
+		var b := 1.0 + 0.9 * maxf(flash, 1.0 if blink_on else 0.0)
+		mod = Color(b, b, b)
+	draw_texture_rect(tex, Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side)), false, mod)

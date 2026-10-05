@@ -172,8 +172,10 @@ func _ready() -> void:
 	# top-right: coming next
 	var np := PanelContainer.new()
 	np.add_theme_stylebox_override("panel", UiTheme.panel_box(0.85, 10))
-	np.position = Vector2(1560, 16)
 	np.custom_minimum_size = Vector2(330, 0)
+	# hugging the top and right edges of the screen (it grows leftwards and down)
+	np.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	np.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	var nv := VBoxContainer.new()
 	np.add_child(nv)
 	nv.add_child(UiTheme.heading("Coming next turn", 16, UiTheme.MUTED))

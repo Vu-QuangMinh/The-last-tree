@@ -171,7 +171,7 @@ func _refresh() -> void:
 					art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 					uv.add_child(art)
 					var title := "Purple seal" if it.kind == "upgrade" else "A hot meal"
-					var body := "Seal one Essence of a spell's pattern: that Essence isn't needed any more." if it.kind == "upgrade" else "Heal %d HP." % int(run.player.max_hp * RunState.REST_HEAL)
+					var body := "Used to seal off an Essence and shorten a spell." if it.kind == "upgrade" else "Heal %d HP." % int(run.player.max_hp * RunState.REST_HEAL)
 					uv.add_child(_centered(UiTheme.heading(title, 22, Color(0.85, 1, 0.8))))
 					var bd := _centered(UiTheme.label(body, 17, Color(0.85, 1, 0.8)))
 					bd.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -179,7 +179,7 @@ func _refresh() -> void:
 					uv.add_child(bd)
 					p.add_child(uv)
 				else:
-					var txt := "🟣 Purple seal\n\nSeal one Essence of a spell's pattern: that Essence isn't needed any more." if it.kind == "upgrade" else "🍲 A hot meal\n\nHeal %d HP." % int(run.player.max_hp * RunState.REST_HEAL)
+					var txt := "🟣 Purple seal\n\nUsed to seal off an Essence and shorten a spell." if it.kind == "upgrade" else "🍲 A hot meal\n\nHeal %d HP." % int(run.player.max_hp * RunState.REST_HEAL)
 					var l := UiTheme.label(txt, 19, Color(0.85, 1, 0.8))
 					l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 					l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

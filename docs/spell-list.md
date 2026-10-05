@@ -161,7 +161,7 @@ Generated from `data/spells.json` by `tools/spell_report.py`. Edit the JSON, the
 | **Grave Wind** | 🌪️ 💧 💧 | Rare | Offensive | If the target has 3 or fewer Essence, destroy it. | *It carries away the weak.* |
 | **Hush of Rain** | 🌪️ 💧 💧 | Common | Defensive | **Anti-spell** (never cast; at the end of each of your turns it takes effect unless your chant contains its pattern): Heal 2. | *Listen to the rain instead of speaking.* |
 | **Inferno** | 🔥 ❔ 🔥 | Rare | Offensive | Remove the rightmost Essence of all enemies. | *Everything burns a little.* |
-| **Witch Fire** | 🔥 ❔ 🔥 | Rare | Offensive | Burn 4 on the target. | *Green flames, foul smoke.* |
+| **Witch Fire** | 🔥 ❔ 🔥 | Legendary | Offensive | Burn 4 on the target. | *Green flames, foul smoke.* |
 | **Ashen Veil** | 🔥 🌪️ 🌪️ | Rare | Defensive | You become Ethereal this turn. | *Become smoke. Smoke can't be hit.* |
 | **Ember Storm** | 🔥 🌪️ 🔥 | Common | Offensive | Burn 1 on all enemies. | *Embers everywhere, all at once.* |
 | **Kindling Wind** | 🔥 🌪️ 🔥 | Rare | Offensive | Amplify 1. | *Whatever your chant hit burns one Essence deeper.* |

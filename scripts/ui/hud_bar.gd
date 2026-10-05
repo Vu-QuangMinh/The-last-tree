@@ -12,7 +12,7 @@ var _resin: HBoxContainer  # purple resin: a lump of resin and how many pieces y
 var _seals: HBoxContainer  # purple seals (heated resin) ready to apply
 
 const RESIN_TIP := "Purple resin: %d piece%s.\nEvery fusion drips a piece. Heat it at a campfire to turn it into a purple seal."
-const SEAL_TIP := "Purple seals: %d ready.\nEach one seals one Essence of a spell's pattern, so that Essence isn't needed any more. Apply them at a campfire (when you heat resin), ask the merchant, or find a Resin Shrine in a ? room."
+const SEAL_TIP := "Purple seals: %d ready.\nUsed to seal off an Essence and shorten a spell. Apply them at a campfire (when you heat resin), ask the merchant, or find a Resin Shrine in a ? room."
 
 
 func setup(p_run: RunState) -> void:

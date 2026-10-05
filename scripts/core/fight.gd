@@ -137,7 +137,7 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 	# you always start with one of each element; the rest are random (in a random order)
 	var hand := ["F", "W", "A"]
 	while hand.size() < start_n:
-		hand.append(_random_element())
+		hand.append(_draw_element())
 	for i in hand.size():
 		var j := rng.randi_range(i, hand.size() - 1)
 		var tmp: String = hand[i]
@@ -209,9 +209,31 @@ func _log(s: String) -> void:
 
 # ------------------------------------------------------------------ draws
 
-## One random element, each equally likely.
+## One random element, each equally likely (enemies, and anything that isn't a draw of yours).
 func _random_element() -> String:
 	return ["F", "W", "A"][rng.randi() % 3]
+
+
+## Your draws are pseudo-random: every draw an element misses adds DROUGHT_BOOST to its weight (from 1), and it
+## drops back to 1 once it comes up. Over a fight the three even out, and long droughts of one element don't happen.
+const DROUGHT_BOOST := 0.6
+var drought := {"F": 0, "W": 0, "A": 0}  # draws in a row each element has missed (this fight)
+
+
+func _draw_element() -> String:
+	var total := 0.0
+	for el in drought:
+		total += 1.0 + DROUGHT_BOOST * drought[el]
+	var r := rng.randf() * total
+	var pick := "A"
+	for el in drought:
+		r -= 1.0 + DROUGHT_BOOST * drought[el]
+		if r < 0.0:
+			pick = el
+			break
+	for el in drought:
+		drought[el] = 0 if el == pick else drought[el] + 1
+	return pick
 
 
 ## Lenses: every chanted element of a lens's colour has a 25% chance to come back after the Release.
@@ -247,9 +269,7 @@ func _roll_next_draw(upcoming: int) -> void:
 	player.overload = 0
 	var attune := player.passive("attune")
 	for i in maxi(0, n):
-		var el := _random_element()
-		if i == 0 and attune > 0:
-			el = player.passives.get("attune_el", el)
+		var el: String = player.passives.get("attune_el", "F") if i == 0 and attune > 0 else _draw_element()
 		player.next_draw.append({"el": el, "temp": false})
 	for h in HEARTS:
 		if has_artifact(h):
@@ -718,7 +738,7 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 			player.thorns_turn += eff.n
 		"draw":
 			for i in eff.n:
-				var el: String = _random_element() if eff.get("el", "random") == "random" else eff.el
+				var el: String = _draw_element() if eff.get("el", "random") == "random" else eff.el
 				if eff.when == "now":
 					player.add_element(el, eff.get("temp", false))
 				else:
@@ -889,7 +909,7 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 			if eff.key == "draw_bonus":
 				# next turn's draw is already rolled: the extra Essence joins it right away
 				for k in eff.n:
-					player.next_draw.append({"el": _random_element(), "temp": false})
+					player.next_draw.append({"el": _draw_element(), "temp": false})
 		"curse":
 			for e in targets:
 				match eff.key:
