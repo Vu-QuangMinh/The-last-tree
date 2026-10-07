@@ -5,6 +5,7 @@ extends Control
 
 signal node_chosen(col: int)
 signal codex_pressed
+signal test_room_chosen(room: Dictionary)  # Dev Mode: Room Test
 signal menu_requested  # Main Menu from the pause menu (the run is saved on the map)
 
 ## type -> [icon, name, ring colour, description]
@@ -24,6 +25,7 @@ const COL_W := 138.0
 const INK := Color(0.28, 0.2, 0.12)
 
 var run: RunState
+var test_rooms: Array = []  # Dev Mode Room Test: [{type, label, act, event}], laid out as a plain grid, no paths
 var _content: Control
 var _scroll: ScrollContainer
 var sheet: PanelContainer  # the parchment (the tutorial points at it)
@@ -45,7 +47,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UiTheme.get_theme()
 	var bd := Backdrop.new()
-	bd.act = run.act
+	bd.act = 1 if not test_rooms.is_empty() else run.act
 	add_child(bd)
 	var shade := ColorRect.new()
 	shade.color = Color(0, 0, 0, 0.45)
@@ -76,18 +78,24 @@ func _ready() -> void:
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	sheet.add_child(_scroll)
 	_content = Control.new()
-	var rows := run.map.size()
-	_content.custom_minimum_size = Vector2(_map_w, rows * ROW_H + 140)
-	_content.draw.connect(_draw_paths)
+	var testing := not test_rooms.is_empty()
+	var rows := _test_rows() if testing else run.map.size()
+	_content.custom_minimum_size = Vector2(_map_w, _test_height() if testing else rows * ROW_H + 140)
+	if not testing:
+		_content.draw.connect(_draw_paths)
 	_scroll.add_child(_content)
-	var choices := run.choices()
-	for f in rows:
-		for n in run.map[f]:
-			if n == null:
-				continue
-			var nb := _node_button(f, n, choices)
-			_buttons[Vector2i(f, n.col)] = nb
-			_content.add_child(nb)
+	var choices := [] if testing else run.choices()
+	if testing:
+		for i in test_rooms.size():
+			_content.add_child(_test_button(i))
+	else:
+		for f in rows:
+			for n in run.map[f]:
+				if n == null:
+					continue
+				var nb := _node_button(f, n, choices)
+				_buttons[Vector2i(f, n.col)] = nb
+				_content.add_child(nb)
 	# left: title and legend
 	var left := VBoxContainer.new()
 	legend = left
@@ -95,16 +103,22 @@ func _ready() -> void:
 	left.size = Vector2(370, 900)
 	left.add_theme_constant_override("separation", 10)
 	add_child(left)
-	var title := UiTheme.label(["", "Act I", "Act II", "Act III"][run.act], 40, Color.WHITE)
-	left.add_child(title)
-	left.add_child(UiTheme.label(["", "The Edge of the Wood", "The Rotting Hollow", "The Last Winter"][run.act], 24, Color(0.85, 1, 0.75)))
-	left.add_child(UiTheme.label("Floor %d of %d, then the boss" % [maxi(0, run.floor_no()), MapGen.FLOORS], 18, UiTheme.MUTED))
-	var gap := Control.new()
-	gap.custom_minimum_size = Vector2(0, 14)
-	left.add_child(gap)
-	var counts := MapGen.counts(run.map)
-	for t in ["fight", "elite", "event", "shop", "treasure", "rest", "boss"]:
-		left.add_child(_legend_row(t, counts.get(t, 0)))
+	if testing:
+		left.add_child(UiTheme.label("Room Test", 40, Color.WHITE))
+		left.add_child(UiTheme.label("Dev Mode", 24, Color(0.85, 1, 0.75)))
+		left.add_child(UiTheme.label("Click any room to go straight in.", 18, UiTheme.MUTED))
+		left.add_child(UiTheme.label("Every room has a Back to room map button.", 18, UiTheme.MUTED))
+	else:
+		left.add_child(UiTheme.label(["", "Act I", "Act II", "Act III"][run.act], 40, Color.WHITE))
+	if not testing:
+		left.add_child(UiTheme.label(["", "The Edge of the Wood", "The Rotting Hollow", "The Last Winter"][run.act], 24, Color(0.85, 1, 0.75)))
+		left.add_child(UiTheme.label("Floor %d of %d, then the boss" % [maxi(0, run.floor_no()), MapGen.FLOORS], 18, UiTheme.MUTED))
+		var gap := Control.new()
+		gap.custom_minimum_size = Vector2(0, 14)
+		left.add_child(gap)
+		var counts := MapGen.counts(run.map)
+		for t in ["fight", "elite", "event", "shop", "treasure", "rest", "boss"]:
+			left.add_child(_legend_row(t, counts.get(t, 0)))
 	var hud := HudBar.new()
 	hud.setup(run)
 	hud.codex_pressed.connect(func(): codex_pressed.emit())
@@ -116,7 +130,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame  # (the scroll area has its real size only now)
 	# your room always in view, a little below the middle so the rooms ahead show above it
-	var py := _pos(maxi(0, run.row), maxi(0, run.col)).y
+	var py := _pos(0, 0).y if testing else _pos(maxi(0, run.row), maxi(0, run.col)).y
 	var view_h := _scroll.size.y
 	_scroll.scroll_vertical = int(clampf(py - view_h * 0.58, 0.0, maxf(0.0, _content.custom_minimum_size.y - view_h)))
 	# ☰ Menu (bottom right, as in fights): Resume, Settings, Main Menu, Quit. The run is saved on the map.
@@ -168,7 +182,50 @@ func _legend_row(t: String, count: int) -> Control:
 	return p
 
 
+const TEST_COLS := 5
+const TEST_ROW_H := 160.0
+const TEST_COL_W := 190.0
+
+
+func _test_rows() -> int:
+	return ceili(test_rooms.size() / float(TEST_COLS))
+
+
+## The five columns, spread evenly: the outer left one 10 px in from the full spread, the outer right one 5 px in.
+func _test_x(c: int) -> float:
+	var left := _cx - (TEST_COLS - 1) / 2.0 * TEST_COL_W + 10.0
+	var right := _cx + (TEST_COLS - 1) / 2.0 * TEST_COL_W - 5.0
+	return lerpf(left, right, c / float(TEST_COLS - 1))
+
+
+func _test_height() -> float:
+	return _test_rows() * TEST_ROW_H + 140.0
+
+
+## Room Test: five rooms to a row, the first row at the bottom, climbing until every room is there.
+func _test_button(i: int) -> Control:
+	var room: Dictionary = test_rooms[i]
+	var b: Button = _node_button(i / TEST_COLS, {"type": room.type, "col": i % TEST_COLS, "next": []}, [])
+	b.disabled = false
+	b.modulate = Color.WHITE
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	b.tooltip_text = room.label
+	b.pressed.connect(func():
+		Audio.play("map_node_select")
+		test_room_chosen.emit(room))
+	var l := UiTheme.label(room.label, 15, INK)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.size = Vector2(TEST_COL_W - 20.0, 44)
+	l.position = Vector2((b.size.x - l.size.x) / 2.0, b.size.y + 2.0)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(l)
+	return b
+
+
 func _pos(f: int, c: int) -> Vector2:
+	if not test_rooms.is_empty():
+		return Vector2(_test_x(c), (_test_rows() - f) * TEST_ROW_H + 10.0)
 	var rows := run.map.size()
 	var y := (rows - f) * ROW_H + 10.0
 	var x := _cx + (c - (MapGen.COLS - 1) / 2.0) * _col_w
@@ -199,9 +256,10 @@ func _node_button(f: int, n: Dictionary, choices: Array) -> Control:
 	b.focus_mode = Control.FOCUS_NONE
 	b.tooltip_text = "%s
 %s" % [look[1], look[3]]
-	var here: bool = f == run.row and n.col == run.col
+	var testing := not test_rooms.is_empty()  # (Room Test: no visited / here look at all, run.row there is just the last test room)
+	var here: bool = not testing and f == run.row and n.col == run.col
 	var can: bool = f == run.row + 1 and n.col in choices
-	var visited: bool = f < run.row or here
+	var visited: bool = not testing and (f < run.row or here)
 	# New theme: a painted ring, with the room's icon in it (a visited room is just its ring with a leaf; you are the sprout)
 	var ring_name: String = "map_ring_" + str(ART.get(n.type, "normal"))
 	var icon_name: String = _icon_name(n.type)

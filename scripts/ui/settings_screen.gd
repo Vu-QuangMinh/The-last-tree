@@ -40,7 +40,7 @@ func _build() -> void:
 	v.add_child(UiTheme.heading("Look", 22, UiTheme.ACCENT))
 	v.add_child(_theme_row())
 	v.add_child(_font_row())
-	v.add_child(_hotkey_row())
+	v.add_child(_tick_row("Show Hotkey", "show_hotkeys", true))
 	v.add_child(UiTheme.heading("Volume", 22, UiTheme.ACCENT))
 	v.add_child(_volume_row("Overall", Audio.overall_level, func(x): Audio.set_overall_level(x); Audio.play("ui_click")))
 	v.add_child(_volume_row("Sound", Audio.sfx_level, func(x): Audio.set_sfx_level(x); Audio.play("ui_click")))
@@ -50,6 +50,7 @@ func _build() -> void:
 	v.add_child(_track_row("Main Menu music", "menu"))
 	v.add_child(_track_row("Fight music", "fight"))
 	v.add_child(_track_row("Boss music", "boss"))
+	v.add_child(_tick_row("Dev Mode", "dev_mode", false))
 	if not Audio.preview_changed.is_connected(_on_preview_changed):
 		Audio.preview_changed.connect(_on_preview_changed)
 
@@ -100,19 +101,20 @@ func _font_row() -> Control:
 	return row
 
 
-## Show Hotkey: a tick box (Artifact Slot Hover as the frame, Card Overlay Used as the tick in the New theme).
-## Off = button texts lose their key: "Chant  (Enter)" becomes "Chant". Screens opened afterwards follow it.
-func _hotkey_row() -> Control:
+## A tick box saved as a setting (Artifact Slot Hover as the frame, Card Overlay Used as the tick in the New theme).
+## Show Hotkey off = button texts lose their key: "Chant  (Enter)" becomes "Chant". Screens opened afterwards follow it.
+## Dev Mode adds the Dev buttons to the main menu.
+func _tick_row(text: String, key: String, default: bool) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
-	var on: bool = SaveManager.setting("show_hotkeys", true)
+	var on: bool = SaveManager.setting(key, default)
 	var frame := UiSkin.tex("artifact_slot_hover")
 	var tick := UiSkin.tex("card_overlay_used")
 	if frame == null or tick == null:
 		var cb := CheckBox.new()
-		cb.text = "Show Hotkey"
+		cb.text = text
 		cb.button_pressed = on
-		cb.toggled.connect(func(v): SaveManager.set_setting("show_hotkeys", v))
+		cb.toggled.connect(func(v): SaveManager.set_setting(key, v))
 		row.add_child(cb)
 		return row
 	var box := Control.new()
@@ -137,15 +139,15 @@ func _hotkey_row() -> Control:
 	ck.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ck.visible = on
 	box.add_child(ck)
-	var label := UiTheme.label("Show Hotkey", 18)
+	var label := UiTheme.label(text, 18)
 	label.mouse_filter = Control.MOUSE_FILTER_STOP
 	label.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var toggle := func(ev: InputEvent):
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			var now: bool = not SaveManager.setting("show_hotkeys", true)  # (read it each time: a lambda keeps its own copy of `on`)
+			var now: bool = not SaveManager.setting(key, default)  # (read it each time: a lambda keeps its own copy of `on`)
 			ck.visible = now
-			SaveManager.set_setting("show_hotkeys", now)
+			SaveManager.set_setting(key, now)
 			Audio.play("ui_click")
 	box.gui_input.connect(toggle)
 	label.gui_input.connect(toggle)

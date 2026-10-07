@@ -9,6 +9,7 @@ signal unlocks
 signal how_to
 signal tutorial
 signal settings
+signal room_test  # Dev Mode
 
 
 func _ready() -> void:
@@ -17,6 +18,9 @@ func _ready() -> void:
 	add_child(Backdrop.new())
 	var v := VBoxContainer.new()
 	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var dev: bool = SaveManager.setting("dev_mode", false)
+	if dev:
+		v.offset_right = -480.0  # the whole column moves left: the Dev buttons take the right side
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.add_theme_constant_override("separation", 16)
 	add_child(v)
@@ -60,3 +64,23 @@ func _ready() -> void:
 	var info := UiTheme.label("Runs %d  ·  Wins %d  ·  Best act %d" % [st.runs, st.wins, st.get("best_act", 0)], 18, UiTheme.MUTED)
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(info)
+	if dev:
+		_dev_column()
+
+
+## Dev Mode: a column of test buttons on the right (more to come).
+func _dev_column() -> void:
+	var d := VBoxContainer.new()
+	d.position = Vector2(1180, 0)
+	d.size = Vector2(360, 1080)
+	d.alignment = BoxContainer.ALIGNMENT_CENTER
+	d.add_theme_constant_override("separation", 16)
+	add_child(d)
+	var h := UiTheme.heading("Dev", 30, UiTheme.ACCENT)
+	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	d.add_child(h)
+	for pair in [["Room Test", room_test]]:
+		var sig: Signal = pair[1]
+		var b := UiTheme.button(pair[0], func(): sig.emit(), 26)
+		b.custom_minimum_size = Vector2(360, 60)
+		d.add_child(b)

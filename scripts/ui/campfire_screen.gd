@@ -6,7 +6,7 @@ extends Control
 ## on them (the cauldron AND its fire count as one: SEAL; the log and books: FUSE; the tent: REST).
 ## The signboard in front of the fire reads CAMPFIRE, or the word of whatever the mouse is on. Click a choice and the post
 ## rises out of the grass, showing a second board with what the choice does, while the post and the choice stay lit; click
-## it again to do it (click anywhere else to cancel).
+## the BOARD to do it (clicking the choice again, or anywhere else, cancels).
 
 signal chosen(which: String)  # "seal" | "fuse" | "rest"
 
@@ -14,7 +14,7 @@ const CHOICES := {"resin": "seal", "fuse": "fuse", "rest": "rest"}  # picture ->
 const WORDS := {"seal": "SEAL", "fuse": "FUSE", "rest": "REST"}
 const IDLE_WORD := "CAMPFIRE"
 const RISE_TIME := 0.42
-const CONFIRM_HINT := "Click again to confirm  ·  click anywhere else to cancel"
+const CONFIRM_HINT := "Click the signboard to confirm  ·  click anywhere else to cancel"
 
 var run: RunState
 var enabled := {"seal": true, "fuse": true, "rest": true}
@@ -24,6 +24,7 @@ var extra: Control  # shown at the bottom left (your HP)
 var _stage: Control
 var _post: TextureRect  # the signboard's post with its two boards
 var _post_mat: ShaderMaterial
+var _post_bits: BitMap  # the drawn pixels of the post: only they count as the board
 var _post_home := Vector2.ZERO  # where it stands lowered (behind the grass)
 var _title: Label  # on the top board
 var _info: Label  # on the second board
@@ -142,6 +143,12 @@ func _make_post(tex: Texture2D, L: Dictionary, by_id: Dictionary) -> TextureRect
 	sh.code = CampfireHot.GLOW_SHADER
 	_post_mat.shader = sh
 	_post.material = _post_mat
+	var pimg := tex.get_image()
+	if pimg != null:
+		if pimg.is_compressed():
+			pimg.decompress()
+		_post_bits = BitMap.new()
+		_post_bits.create_from_image_alpha(pimg, 0.12)
 	_post_home = Vector2(L.x, L.y)
 	var sh_layer: Dictionary = by_id.get("sign_shadow", {})
 	var sh_tex := UiSkin.tex(sh_layer.get("file", ""))
@@ -347,15 +354,20 @@ func _refresh_hint() -> void:
 
 
 func _on_press(which: String) -> void:
-	if which == _selected:  # the second click on the chosen thing: do it
-		if not enabled.get(which, true):
-			Audio.play("ui_error")
-			return
-		Audio.play("ui_click")
-		chosen.emit(which)
+	Audio.play("ui_click")
+	if which == _selected:  # the board is up: clicking the chosen thing again puts it back (another one switches the board)
+		_cancel()
+		return
+	_select(which)
+
+
+## The second click, on the board: do the chosen thing.
+func _confirm() -> void:
+	if not enabled.get(_selected, true):
+		Audio.play("ui_error")
 		return
 	Audio.play("ui_click")
-	_select(which)
+	chosen.emit(_selected)
 
 
 func _select(which: String) -> void:
@@ -371,15 +383,40 @@ func _select(which: String) -> void:
 	_refresh_flame()
 
 
-## Clicking anywhere that is not a choice puts the choice back: the post sinks into the grass.
+func _cancel() -> void:
+	_selected = ""
+	for w in _hot:
+		_hot[w].set_selected(false)
+	_raise(false)
+	_set_post_glow(0.0)
+	_info.visible = false
+	_refresh_title()
+	_refresh_hint()
+	_refresh_flame()
+
+
+## Is the point on the raised signboard (its drawn pixels)?
+func _on_board(pos: Vector2) -> bool:
+	if _post == null or not _raised or _post_bits == null:
+		return false
+	var local := pos - _post.position
+	var bs := _post_bits.get_size()
+	if _post.size.x <= 0.0 or _post.size.y <= 0.0:
+		return false
+	var x := int(local.x / _post.size.x * bs.x)
+	var y := int(local.y / _post.size.y * bs.y)
+	return local.x >= 0.0 and local.y >= 0.0 and x < bs.x and y < bs.y and _post_bits.get_bit(x, y)
+
+
+## With the board up: a click on it confirms, a click anywhere else that is not a choice cancels.
 func _gui_input(ev: InputEvent) -> void:
-	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT and _selected != "":
-		_selected = ""
-		for w in _hot:
-			_hot[w].set_selected(false)
-		_raise(false)
-		_set_post_glow(0.0)
-		_info.visible = false
-		_refresh_title()
-		_refresh_hint()
-		_refresh_flame()
+	if _selected == "":
+		return
+	if ev is InputEventMouseMotion:
+		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if _on_board(ev.position) else Control.CURSOR_ARROW
+	elif ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+		if _on_board(ev.position):
+			_confirm()
+		else:
+			_cancel()
+		mouse_default_cursor_shape = Control.CURSOR_ARROW

@@ -37,22 +37,40 @@ func _ready() -> void:
 	var room_art: Texture2D = UiSkin.tex("room_" + room) if room != "" else null
 	var art: Texture2D = room_art if room_art != null else UiSkin.tex(ART.get(act, ""))
 	if art != null:
-		_art_node = TextureRect.new()
-		_art_node.texture = art
-		_art_node.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		_art_node.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		_art_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		_art_node.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var sh := Shader.new()
-		sh.code = WIND_SHADER
-		var mat := ShaderMaterial.new()
-		mat.shader = sh
-		_art_node.material = mat
+		var trees: Texture2D = UiSkin.tex("room_" + room + "_trees") if room_art != null else null
+		var front: Texture2D = UiSkin.tex("room_" + room + "_front") if trees != null else null
+		_art_node = _art_rect(art)
+		if trees == null:  # (one picture: all of it sways)
+			_art_node.material = _wind_material()
 		add_child(_art_node)
+		if trees != null:  # (a room picture in layers, drawn a little oversize: only the wood sways, over the still picture, under the rest)
+			var t := _art_rect(trees)
+			t.material = _wind_material()
+			add_child(t)
+			if front != null:
+				add_child(_art_rect(front))
 		if room_art == null:  # (leaves, fireflies and snow belong to the act's own painting)
 			var fx := BackdropFx.new()
 			fx.act = act
 			add_child(fx)
+
+
+func _art_rect(tex: Texture2D) -> TextureRect:
+	var r := TextureRect.new()
+	r.texture = tex
+	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	r.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	r.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return r
+
+
+func _wind_material() -> ShaderMaterial:
+	var sh := Shader.new()
+	sh.code = WIND_SHADER
+	var mat := ShaderMaterial.new()
+	mat.shader = sh
+	return mat
 
 
 func _process(d: float) -> void:

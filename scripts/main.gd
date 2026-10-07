@@ -7,6 +7,8 @@ var screen_layer := CanvasLayer.new()
 var overlay_layer := CanvasLayer.new()
 var current: Control
 var run: RunState
+var _test_mode := false  # Dev Mode "Room Test": a throwaway run, nothing is saved or recorded
+var _back_layer := CanvasLayer.new()  # the "Back to room map" button of a test room
 
 
 func _ready() -> void:
@@ -26,6 +28,14 @@ func _ready() -> void:
 	var toasts: VBoxContainer = load("res://scripts/ui/toasts.gd").new()
 	tl.add_child(toasts)
 	add_child(tl)
+	_back_layer.layer = 9
+	_back_layer.visible = false
+	var back := UiTheme.button("Back to room map", func(): show_room_test(), 18)
+	back.theme = UiTheme.get_theme()  # (this layer is outside every screen)
+	back.custom_minimum_size = Vector2(240, 44)
+	back.position = Vector2(24, 120)
+	_back_layer.add_child(back)
+	add_child(_back_layer)
 	# New theme: every scroll area gets the painted, never-stretched thumb
 	get_tree().node_added.connect(func(n: Node): if n is ScrollContainer: ScrollThumb.attach.call_deferred(n))
 	show_menu()
@@ -47,9 +57,11 @@ func _swap(c: Control) -> void:
 		current.queue_free()
 	current = c
 	screen_layer.add_child(c)
+	_back_layer.visible = _test_mode and not (c is MapScreen)
 
 
 func show_menu() -> void:
+	_test_mode = false
 	_room_bg = ""
 	Audio.play_music("menu")
 	var m := MenuScreen.new()
@@ -64,13 +76,18 @@ func show_menu() -> void:
 	m.how_to.connect(open_wiki)
 	m.tutorial.connect(start_tutorial)
 	m.settings.connect(open_settings)
+	m.room_test.connect(start_room_test)
 	_swap(m)
 
 
 func open_settings() -> void:
 	Audio.play("ui_open_panel")
 	var s := SettingsScreen.new()
-	s.closed.connect(s.queue_free)
+	var dev_before: bool = SaveManager.setting("dev_mode", false)
+	s.closed.connect(func():
+		s.queue_free()
+		if current is MenuScreen and SaveManager.setting("dev_mode", false) != dev_before:
+			show_menu())  # (the Dev buttons appear or go)
 	overlay_layer.add_child(s)
 
 
@@ -212,7 +229,7 @@ func _new_run() -> void:
 
 ## Save the run where it stands (the map, or the start of a fight) so it can be continued later.
 func _checkpoint(resume: String, ids: Array = []) -> void:
-	if run == null or run.over:
+	if _test_mode or run == null or run.over:
 		return
 	SaveManager.save_run({"resume": resume, "ids": ids.duplicate(), "run": run.to_save()})
 
@@ -244,6 +261,9 @@ func start_run() -> void:
 
 
 func show_map() -> void:
+	if _test_mode:
+		show_room_test()
+		return
 	_room_bg = ""
 	_checkpoint("map")
 	Audio.play_music("map")
@@ -253,6 +273,64 @@ func show_map() -> void:
 	m.codex_pressed.connect(open_codex)
 	m.menu_requested.connect(func(): run = null; show_menu())
 	_swap(m)
+
+
+# ------------------------------------------------------------------ Dev Mode: Room Test
+
+## Every room of the game, in the order they appear on the Room Test map.
+func _test_rooms() -> Array:
+	var out: Array = []
+	for a in [1, 2, 3]:
+		out.append({"type": "fight", "label": "Fight · Act %d" % a, "act": a, "row": 5})
+	for a in [1, 2, 3]:
+		out.append({"type": "elite", "label": "Elite · Act %d" % a, "act": a, "row": 8})
+	for a in [1, 2, 3]:
+		out.append({"type": "boss", "label": "Boss · Act %d" % a, "act": a, "row": MapGen.FLOORS})
+	for t in [["rest", "Campfire"], ["treasure", "Treasure"], ["shop", "Merchant"]]:
+		out.append({"type": t[0], "label": t[1], "act": 1, "row": 3})
+	for ev in MapEvents.ALL:
+		out.append({"type": "event", "label": ev.title, "act": 1, "row": 3, "event": ev.id})
+	return out
+
+
+func start_room_test() -> void:
+	_test_mode = true
+	run = RunState.new()
+	run.artifact_gained.connect(_on_artifact_found)
+	run.setup(GameData.db, SaveManager.unlocked_spells(), SaveManager.unlocked_artifacts())
+	run.amber = 999  # (so shops and events can be tried)
+	run.resin = 2
+	show_room_test()
+
+
+func show_room_test() -> void:
+	_room_bg = ""
+	Audio.play_music("map")
+	var m := MapScreen.new()
+	m.setup(run)
+	m.test_rooms = _test_rooms()
+	m.test_room_chosen.connect(_enter_test_room)
+	m.codex_pressed.connect(open_codex)
+	m.menu_requested.connect(func(): run = null; show_menu())
+	_swap(m)
+
+
+## Go straight into a room: the run is put on a one-room map that holds just that room.
+func _enter_test_room(room: Dictionary) -> void:
+	run.over = false
+	run.won = false
+	run.player.hp = run.player.max_hp
+	run.act = room.act
+	var rows: Array = []
+	for f in MapGen.FLOORS + 1:
+		var r := []
+		r.resize(MapGen.COLS)
+		rows.append(r)
+	rows[room.row][0] = {"type": room.type, "next": [], "col": 0, "event": room.get("event", "")}
+	run.map = rows
+	run.row = room.row
+	run.col = 0
+	_enter_room(room.type)
 
 
 func _on_node(col: int) -> void:
@@ -296,9 +374,7 @@ func _enter_room(kind: String) -> void:
 ## A "?" event: its story and choices (options you can't afford are greyed out).
 func _show_event(ev: Dictionary) -> void:
 	var labels: Array = ev.options.map(func(o): return o.label)
-	var s := _message(ev.title, ev.text, labels, Color(0.8, 0.7, 1))
-	s.disabled = ev.options.map(func(o): return not run.can_choose(o))
-	s.pressed.connect(func(i):
+	var pick := func(i: int):
 		match ev.options[i].get("do", ""):
 			"upgrade_artifact":
 				_tinker(ev.options[i])
@@ -314,13 +390,37 @@ func _show_event(ev: Dictionary) -> void:
 			run.over = true
 			_end_run()
 			return
+		if ev.get("id", "") == "apothecary" and i < 3:  # (what you chose is shown as a picture: pay, snatch, walk on)
+			_room_bg = ["apothecary_pay", "apothecary_snatch", "apothecary_walk"][i]
 		var after := _message(ev.title, res.text, ["Fight!" if res.get("fight", false) else "Continue"], Color(0.8, 0.7, 1))
 		after.pressed.connect(func(_k):
 			if res.get("fight", false):
 				run.current_node()["as"] = "fight"
 				_show_loadout(run.encounter_ids())
 			else:
-				show_map()))
+				show_map())
+	if ev.get("id", "") == "apothecary" and UiSkin.tex("apothecary_bg") != null:
+		_show_apothecary(ev, pick)  # (New theme: the painted clearing, where you click what you want to do)
+		return
+	var s := _message(ev.title, ev.text, labels, Color(0.8, 0.7, 1))
+	s.disabled = ev.options.map(func(o): return not run.can_choose(o))
+	s.pressed.connect(pick)
+
+
+## The Wandering Apothecary as a picture: the merchant (pay), the cart (a free sample), the signpost (walk on).
+func _show_apothecary(ev: Dictionary, pick: Callable) -> void:
+	var opts: Array = ev.options
+	var sc := ApothecaryScreen.new()
+	sc.setup(run)
+	sc.enabled = {"pay": run.can_choose(opts[0]), "sample": run.can_choose(opts[1]), "walk": true}
+	sc.hints = {  # (the plate's lines: text, colour, and whether the amber leaf follows)
+		"pay": [{"t": "Pay: %d" % opts[0].amber, "c": ApothecaryScreen.GOLD, "coin": true}, {"t": "%d random bottles" % opts[0].n, "c": ApothecaryScreen.WHITE}],
+		"sample": [{"t": "Snatch a bottle and run", "c": ApothecaryScreen.WHITE}, {"t": "Lose %d HP" % opts[1].hp, "c": UiTheme.DANGER}],
+		"walk": [{"t": "Walk On", "c": ApothecaryScreen.WHITE}],
+	}
+	sc.extra = _hp_box()
+	sc.chosen.connect(func(which: String): pick.call({"pay": 0, "sample": 1, "walk": 2}[which]))
+	_swap(sc)
 
 
 ## Apply the purple seals you hold, one at a time: choose a spell, then the Essence to seal. Keep going while you
@@ -552,7 +652,7 @@ func _after_fight(f: Fight) -> void:
 	var kind := run.current_kind()
 	if not (kind in ["fight", "elite", "boss"]):
 		kind = "fight"
-	for id in SaveManager.add_to_codex(f.defeated):
+	for id in ([] if _test_mode else SaveManager.add_to_codex(f.defeated)):
 		Events.toast.emit("New Codex entry: %s" % EnemyDefs.get_def(id).name, Color(1, 0.9, 0.5))
 	var act_before := run.act
 	if not f.won and run.can_revive():
@@ -562,6 +662,8 @@ func _after_fight(f: Fight) -> void:
 		_show_loadout(_last_ids)
 		return
 	run.finish_fight(f)
+	if _test_mode:
+		run.act = act_before  # (a boss would move on to the next act)
 	if run.over:
 		_end_run()
 		return
@@ -625,6 +727,12 @@ func _choice(title: String, sub: String, spells: Array, arts: Array, can_skip: b
 
 
 func _end_run() -> void:
+	if _test_mode:  # (a lost test fight records nothing: back to the room map)
+		run.over = false
+		run.won = false
+		run.player.hp = run.player.max_hp
+		show_room_test()
+		return
 	_room_bg = "" if run.won else "screen_defeat"  # (no victory picture yet: the act's)
 	var seeds := run.final_seedlings()
 	Audio.play("victory_fanfare" if run.won else "defeat_stinger")

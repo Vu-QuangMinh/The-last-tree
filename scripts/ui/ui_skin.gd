@@ -13,7 +13,7 @@ static var _tex := {}
 static var _paths := {}  # name -> res:// path ("" = there is none)
 ## The art is sorted into folders under DIR (by what it is); a name is looked up in each, as a png and then a jpg.
 const FOLDERS := ["panels", "buttons", "essence", "intent", "status", "icons", "cards", "numbers", "treasure", "map", "fx",
-	"backgrounds", "leaves", "title", "characters", "artifacts", "bottles", "campfire", "misc"]
+	"backgrounds", "leaves", "title", "characters", "artifacts", "bottles", "campfire", "room", "misc"]
 
 ## artifact id -> picture name, where they differ
 const ARTIFACT_ART := {"scholar_quill": "scholars_quill"}
