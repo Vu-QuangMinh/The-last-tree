@@ -11,7 +11,6 @@ var _card_holder: CenterContainer
 var _orbs: HBoxContainer
 var _hint: Label
 var _sealed := false
-var use_held := false  # applying one of the purple seals you hold (heated resin): it uses one up
 
 
 func setup(p_run: RunState, p_id: String) -> void:
@@ -119,10 +118,7 @@ func _seal(i: int, orb: ElementIcon) -> void:
 	var sq := wax.create_tween()
 	sq.tween_property(wax, "scale", Vector2(1.25, 0.8), 0.06)
 	sq.tween_property(wax, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	if use_held:
-		run.use_purple_seal(spell_id, i)
-	else:
-		run.seal_spell(spell_id, i)
+	run.seal_spell(spell_id, i)
 	await get_tree().create_timer(0.4).timeout
 	wax.queue_free()
 	_rebuild()

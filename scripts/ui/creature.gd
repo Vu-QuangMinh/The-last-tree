@@ -26,6 +26,9 @@ const ART := {"ashling": "res://assets/enemies/ashling_%s.webp"}
 const ART_FACES := ["angry", "normal", "hurt"]
 
 const SHAPES := {
+	# act 1 (the Verdant Circle)
+	"iceling": 1, "zephling": 1, "purple_slime": 0, "green_slime": 0, "yellow_slime": 0, "giant_slime": 0,
+	"bramble_back": 4, "winged_tortoise": 3, "yeti": 4, "rolling_bear": 4, "mirror_fairy": 2, "tomato_knight": 2, "greenseer": 5,
 	"puddle_slime": 0, "splitter_ooze": 0, "tide_colossus": 0, "blightmother": 0, "last_gasp_spore": 0,
 	"gale_sprite": 1, "mirror_wisp": 1, "storm_imp": 1, "hush_moth": 1, "leech_bat": 1, "echo_wraith": 1, "storm_rider": 1,
 	"stone_knight": 2, "warded_golem": 2, "lockwarden": 2, "woodcutter": 2, "gem_king": 2, "inverter": 2, "mimic_chest": 3,
@@ -56,7 +59,7 @@ func setup(e: EnemyState) -> void:
 	tint = (col / total).darkened(0.25)
 	tint.a = 1.0
 	accent = Elements.COLORS[e.def.hp[0]]
-	big = 1.2 if e.is_boss else (1.1 if e.is_elite else 1.0)
+	big = 1.2 if e.is_boss else (1.1 if e.is_elite or e.id == "giant_slime" else 1.0)
 	crown = e.is_boss or e.id == "gem_king"
 	spikes = e.is_elite
 	bob = randf() * TAU

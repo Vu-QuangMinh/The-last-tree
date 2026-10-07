@@ -194,7 +194,7 @@ func run(t: SceneTree) -> void:
 	# a crowded run: 9 active spells
 	var big := RunState.new()
 	big.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 5)
-	for art in ["broken_crown", "spell_pouch", "spell_satchel"]:
+	for art in ["broken_crown", "tangled_grimoire", "spell_satchel"]:
 		big.gain_artifact(art)
 	for id in ["inferno", "miasma", "kindle", "tide_thief", "sirens_call", "glacier", "whirlpool", "tempest", "firestorm"]:
 		big.learn_spell(id)

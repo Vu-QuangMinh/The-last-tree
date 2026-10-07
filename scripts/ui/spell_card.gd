@@ -166,7 +166,7 @@ func _ready() -> void:
 		d.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		d.add_theme_color_override("default_color", INK)
 		# plain sentences; the size is picked once the rest of the card is built (see _fit_text)
-		d.text = "[center]" + Keywords.colorize(SpellText.card_text(spell), true) + "[/center]"
+		d.text = "[center]" + Keywords.colorize(SpellText.card_text(spell), true, false, _zi(23)) + "[/center]"
 		_rules = d
 		# the rules sit in the middle of the space left, so the card has no empty gap
 		var mid := CenterContainer.new()
@@ -191,12 +191,15 @@ func _ready() -> void:
 	v.add_child(tag_l)
 	_tag_l = tag_l
 	_fit_text()
-	var pattern_words := "anything (every Essence is sealed: it wakes on every chant)"
+	# no pattern at all: it wakes whenever you chant (sealed down to nothing, or made that way)
+	var pattern_words := "nothing: it wakes whenever you chant" if String(spell.get("full_pattern", spell.pattern)) == "" else "anything (every Essence is sealed: it wakes on every chant)"
 	if spell.pattern != "":
 		pattern_words = " ".join(Array(spell.pattern.split("")).map(func(c): return "any Essence" if c == "?" else Elements.NAMES.get(c, c)))
 	var extra := "[color=#9aa89a]%s %s  ·  chant %s[/color]" % [spell.rarity_name, SpellDB.KIND_NAMES[spell.kind], pattern_words]
 	if not seals.is_empty():
 		extra += "\n[color=#c79be0]Sealed: %d Essence of its pattern %s no longer needed.[/color]" % [seals.size(), "is" if seals.size() == 1 else "are"]
+	if spell.get("burden", "") != "":
+		extra += "\n[color=#ff8a7a]Cursed (Tangled Grimoire): it needs %d more Essence than it used to.[/color]" % String(spell.burden).length()
 	if spell.has("flavor"):
 		extra += "\n[i][color=#9aa89a]\"%s\"[/color][/i]" % spell.flavor
 	tooltip_text = Keywords.tooltip(spell.name, SpellText.describe(spell), extra, "", [Keywords.ANY_ESSENCE] if "?" in full else [])

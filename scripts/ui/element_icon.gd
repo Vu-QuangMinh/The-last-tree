@@ -8,6 +8,7 @@ var ghost := false  # will be removed by the current chant (preview)
 var temp := false  # conjured: fades at end of turn
 var frozen := false
 var hexed := false
+var wall := false  # part of a hedge wall (Bramble Matron): a ring of thorny bramble around it
 var burning := false  # will burn away (Burn takes the leftmost): flickering flames around it
 var poisoned := false  # will be eaten by Poison (it takes the rightmost): green venom bubbling on it
 var sealed := false  # upgraded away: a purple wax seal covers it (this Essence isn't needed any more)
@@ -258,6 +259,15 @@ func _draw() -> void:
 				draw_colored_polygon(PackedVector2Array([end - side * 0.4, end + dir * reach * 0.8, end + side * 0.4]), Color(1, 1, 0.95, 0.9))
 		for s in _sparks:
 			draw_circle(c + s[0], (2.0 + 3.0 * s[2]) * maxf(1.0, r / 40.0), Color(1.0, 0.97, 0.8, s[2]))
+	if wall:
+		# a ring of bramble: dark green, with thorns sticking out
+		draw_arc(c, r + 1.5, 0, TAU, 32, Color(0.2, 0.32, 0.12), maxf(2.5, r * 0.22), true)
+		for k in 8:
+			var ta := k * TAU / 8.0 + 0.3
+			var tb := c + Vector2.from_angle(ta) * (r + 1.0)
+			var tt := c + Vector2.from_angle(ta) * (r + r * 0.42)
+			var ts := Vector2.from_angle(ta + PI / 2.0) * r * 0.12
+			draw_colored_polygon(PackedVector2Array([tb - ts, tt, tb + ts]), Color(0.36, 0.25, 0.12))
 	if hexed:
 		draw_arc(c, r + 1.0, 0, TAU, 32, Color(0.75, 0.3, 0.95), 3.0)
 		draw_circle(c + Vector2(-r * 0.62, -r * 0.62), r * 0.22, Color(0.75, 0.3, 0.95))

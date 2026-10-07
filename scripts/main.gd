@@ -33,7 +33,7 @@ func _ready() -> void:
 
 ## The room whose painted background the screens use (Backdrop.room): set when a room is entered, cleared on the map / menu.
 var _room_bg := ""
-const EVENT_BG := {"resin_shrine": "event_resin_shrine", "well": "event_whispering_well", "lost_sprite": "event_lost_sprite",
+const EVENT_BG := {"well": "event_whispering_well", "lost_sprite": "event_lost_sprite",
 	"mushroom_ring": "event_mushroom_ring", "hollow_stump": "event_hollow_stump", "bard": "event_travelling_bard",
 	"cursed_shrine": "event_cursed_shrine", "amber_vein": "event_golden_thicket", "old_tome": "event_old_spellbook",
 	"squirrel": "event_squirrel_merchant", "tinker": "event_tinker_cart", "barterer": "event_barterer",
@@ -63,6 +63,7 @@ func show_menu() -> void:
 		overlay_layer.add_child(u))
 	m.how_to.connect(open_wiki)
 	m.tutorial.connect(start_tutorial)
+	m.test_mode.connect(open_test_mode)
 	m.settings.connect(open_settings)
 	_swap(m)
 
@@ -196,6 +197,46 @@ func _message(title: String, body: String, buttons: Array, col := Color.WHITE, e
 
 # ------------------------------------------------------------------ run flow
 
+## Test mode: the sandbox screen (your picks are kept between fights in _test_state). Nothing here touches the
+## saved run, unlocks or stats.
+var _test_state := {}
+
+
+func open_test_mode() -> void:
+	run = null
+	_room_bg = ""
+	Audio.play_music("menu")
+	var t := TestModeScreen.new()
+	t.setup(_test_state)
+	t.back.connect(show_menu)
+	t.fight_requested.connect(_test_fight)
+	_swap(t)
+
+
+## A test fight: the picked enemies against the picked spells, at full HP, then back to the test screen.
+func _test_fight(ids: Array, spells: Array) -> void:
+	var r := RunState.new()
+	r.setup(GameData.db, [], [], 0)
+	r.artifacts.clear()  # (no Seed of Life: it's a test)
+	r.spellbook = spells.duplicate()
+	r.loadout = spells.duplicate()
+	var top_act := 1
+	for id in ids:
+		top_act = maxi(top_act, int(EnemyDefs.E[id].act))
+	r.act = top_act
+	r.row = 4
+	r.encounter = ids.duplicate()
+	r.encounter_extra = ids.map(func(id): return EnemyDefs.extra_for(id, top_act, r.depth(), r.rng, ids.size()))
+	run = r
+	var f := r.make_fight(ids)
+	var fs := FightScreen.new()
+	fs.setup(r, f)
+	fs.finished.connect(func(_won): open_test_mode())
+	fs.menu_requested.connect(open_test_mode)
+	Audio.play_music("boss" if ids.any(func(id): return EnemyDefs.E[id].get("boss", false)) else "fight")
+	_swap(fs)
+
+
 ## New run: the saved one (there's only ever one) is replaced, so ask first if there is one.
 func _new_run() -> void:
 	if not SaveManager.has_run():
@@ -306,9 +347,6 @@ func _show_event(ev: Dictionary) -> void:
 			"trade_artifacts":
 				_barter()
 				return
-			"apply_seals":
-				_apply_seals("The Resin Shrine", show_map)
-				return
 		var res: Dictionary = run.choose_event_option(ev.options[i])
 		if run.player.is_dead():
 			run.over = true
@@ -323,39 +361,16 @@ func _show_event(ev: Dictionary) -> void:
 				show_map()))
 
 
-## Apply the purple seals you hold, one at a time: choose a spell, then the Essence to seal. Keep going while you
-## have seals; skip to stop (the rest are kept). `back` is where you return (the map, the shop, the campfire).
-func _apply_seals(where: String, back: Callable) -> void:
-	var ids := run.upgradable()
-	if run.purple_seals <= 0 or ids.is_empty():
-		back.call()
-		return
-	var cards := ids.map(func(id): return run.spell(id))
-	var ch := _choice(where, "You hold %d purple seal%s. Choose a spell: one Essence of its pattern gets sealed (it won't be needed any more). Skip to keep the rest for later." % [run.purple_seals, "" if run.purple_seals == 1 else "s"], cards, [], true)
-	ch.chosen.connect(func(k):
-		if k < 0 or k >= ids.size():
-			back.call()
-			return
-		var seal := SealScreen.new()
-		seal.setup(run, ids[k])
-		seal.use_held = true
-		seal.done.connect(func(): _apply_seals(where, back))
-		_swap(seal))
-
-
 ## The Tinker: pick an artifact (shown as it will be); pay and it becomes its + version. Skip: pay nothing.
+## The Tinker: a random one of your artifacts becomes its + version.
 func _tinker(opt: Dictionary) -> void:
 	var ids := run.upgradable_artifacts()
-	var ch := _choice("Upgrade an artifact", "Pay %d Leaves: it becomes its + version." % opt.get("amber", 0), [], ids.map(func(id): return Artifacts.view(id, true)), true)
-	ch.chosen.connect(func(k):
-		if k < 0 or k >= ids.size():
-			show_map()
-			return
-		run.amber -= opt.get("amber", 0)
-		run.upgrade_artifact(ids[k])
-		var a := Artifacts.view(ids[k], true)
-		var done := _message("The Tinker's Cart", "%s %s: %s" % [a.get("icon", ""), a.name, a.desc], ["Continue"], Color(0.8, 0.7, 1))
-		done.pressed.connect(func(_i): show_map()))
+	var id: String = ids[run.rng.randi() % ids.size()]
+	run.amber -= opt.get("amber", 0)
+	run.upgrade_artifact(id)
+	var a := Artifacts.view(id, true)
+	var done := _message("The Tinker's Cart", "The gnome tinkers with your %s.\n%s %s: %s" % [Artifacts.view(id).name, a.get("icon", ""), a.name, a.desc], ["Continue"], Color(0.8, 0.7, 1))
+	done.pressed.connect(func(_i): show_map())
 
 
 ## The Barterer: pick two artifacts of the same tier, then one of 3 from the tier above. Skipping at any step
@@ -388,11 +403,10 @@ func _show_shop(stock: Array) -> void:
 	var sh := ShopScreen.new()
 	sh.setup(run, stock)
 	sh.leave.connect(show_map)
-	sh.apply_seals_requested.connect(func(): _apply_seals("The Merchant", func(): _show_shop(stock)))
 	sh.upgrade_requested.connect(func():
 		var ids := run.upgradable()
 		var cards := ids.map(func(id): return run.spell(id))
-		var ch := _choice("A purple seal", "Choose a spell. Then choose which Essence of its pattern to seal: it won't be needed any more.", cards, [], false)
+		var ch := _choice("A wax seal", "Choose a spell. Then choose which Essence of its pattern to seal: it won't be needed any more.", cards, [], false)
 		ch.chosen.connect(func(k):
 			if k < 0:
 				_show_shop(stock)
@@ -458,6 +472,13 @@ func _on_artifact_found(id: String) -> void:
 	var card := ArtifactCard.make(Artifacts.view(id, false))
 	card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(card)
+	if run != null and run.curse_note != "":
+		var curse := UiTheme.label("CURSE: " + run.curse_note, 22, UiTheme.DANGER)
+		curse.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		curse.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		curse.custom_minimum_size = Vector2(900, 0)
+		curse.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		box.add_child(curse)
 	var hint := UiTheme.label("Click to continue", 18, UiTheme.MUTED)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(hint)
@@ -503,45 +524,35 @@ func _show_rest() -> void:
 	_room_bg = "campfire_night"
 	var heal := int(run.player.max_hp * RunState.REST_HEAL)
 	var can_fuse := run.fusable().size() >= 2
-	var can_heat := (run.resin > 0 or run.purple_seals > 0) and not run.upgradable().is_empty()
-	var heat_label := "Heat up the resin  (%d → purple seals)" % run.resin if run.resin > 0 else "Apply your purple seals  (%d)" % run.purple_seals
 	if UiSkin.tex("campfire_bg") != null:  # New theme: the painted campfire, where you click what you want to do
 		var cs := CampfireScreen.new()
 		cs.setup(run)
-		cs.enabled = {"seal": can_heat, "fuse": can_fuse, "rest": true}
+		cs.enabled = {"fuse": can_fuse, "rest": true}
 		cs.hints = {  # (what the signboard's second board says: short, it is a small board)
 			"rest": "Rest: heal %d HP\n(you have %d / %d)" % [heal, run.player.hp, run.player.max_hp],
 			"fuse": "Fuse two spells into\none stronger spell" if can_fuse else "You need two\nspells to fuse",
-			"seal": ("Heat the resin\n(%d → purple seals)" % run.resin if run.resin > 0 else "Press your purple\nseals (%d) into spells" % run.purple_seals) if can_heat else "Needs purple resin\nor purple seals",
 		}
 		cs.extra = _hp_box()
-		cs.chosen.connect(func(which: String): _campfire_choice({"rest": 0, "fuse": 1, "seal": 2}[which]))
+		cs.chosen.connect(func(which: String): _campfire_choice({"rest": 0, "fuse": 1}[which]))
 		_swap(cs)
 		return
-	var s := _message("A campfire", "Rest (heal %d HP, you have %d / %d), Fuse two of your spells into one stronger spell, or Heat up your purple resin: it becomes purple seals you can press into your spells (here, at the merchant, or later)." % [heal, run.player.hp, run.player.max_hp], ["Rest  (+%d HP)" % heal, "Fuse two spells", heat_label], Color(1, 0.75, 0.45), _hp_box())
-	s.disabled = [false, not can_fuse, not can_heat]
+	var s := _message("A campfire", "Rest (heal %d HP, you have %d / %d), or Fuse two of your spells into one stronger spell." % [heal, run.player.hp, run.player.max_hp], ["Rest  (+%d HP)" % heal, "Fuse two spells"], Color(1, 0.75, 0.45), _hp_box())
+	s.disabled = [false, not can_fuse]
 	s.pressed.connect(_campfire_choice)
 
 
-## What you chose at the campfire: 0 rest, 1 fuse two spells, 2 heat the resin / press the seals.
+## What you chose at the campfire: 0 rest, 1 fuse two spells.
 func _campfire_choice(i: int) -> void:
 	if i == 0:
 		run.rest()
 		Audio.play("rest_heal")
 		show_map()
 		return
-	if i == 2:
-		var n := run.heat_resin()
-		if n > 0:
-			Audio.play("spell_glow")
-			Events.toast.emit("The resin melts into %d purple seal%s" % [n, "" if n == 1 else "s"], Color(0.88, 0.7, 1.0))
-		_apply_seals("The campfire", show_map)
-		return
 	var fs := FuseScreen.new()
 	fs.setup(run)
 	_room_bg = "campfire_fuse"
 	fs.back.connect(_show_rest)
-	fs.fused.connect(func(_sp): show_map())  # (the fuse screen showed the new spell and the resin)
+	fs.fused.connect(func(_sp): show_map())  # (the fuse screen showed the new spell and its wax seal)
 	_swap(fs)
 
 

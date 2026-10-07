@@ -1,10 +1,9 @@
 class_name ShopScreen
 extends Control
-## The merchant: spend Amber on spells, artifacts, bottles, an upgrade (a purple seal) or a hot meal; and it applies purple seals you already hold.
+## The merchant: spend Amber on spells, artifacts, bottles, a wax seal (it seals one Essence of a spell of yours) or a hot meal.
 
 signal leave
 signal upgrade_requested
-signal apply_seals_requested  # you hold purple seals: the merchant presses them into your spells for you
 
 var run: RunState
 var stock: Array = []
@@ -46,11 +45,6 @@ func _ready() -> void:
 	bottom.add_theme_constant_override("separation", 16)
 	bottom.size_flags_horizontal = Control.SIZE_SHRINK_END
 	v.add_child(bottom)
-	if run.purple_seals > 0 and not run.upgradable().is_empty():
-		var apply_btn := UiTheme.button("Ask the merchant to apply your purple seals (%d)" % run.purple_seals, func(): apply_seals_requested.emit(), 20)
-		apply_btn.custom_minimum_size = Vector2(0, 56)
-		apply_btn.tooltip_text = "Free: you already heated the resin. Each seal covers one Essence of a spell's pattern."
-		bottom.add_child(apply_btn)
 	var leave_btn := UiTheme.button("Leave the shop", func(): leave.emit(), 22)
 	leave_btn.custom_minimum_size = Vector2(260, 56)
 	bottom.add_child(leave_btn)
@@ -189,8 +183,8 @@ func _refresh() -> void:
 					uv.alignment = BoxContainer.ALIGNMENT_CENTER
 					art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 					uv.add_child(art)
-					var title := "Purple seal" if it.kind == "upgrade" else "A hot meal"
-					var body := "Used to seal off an Essence and shorten a spell." if it.kind == "upgrade" else "Heal %d HP." % int(run.player.max_hp * RunState.REST_HEAL)
+					var title := "Wax seal" if it.kind == "upgrade" else "A hot meal"
+					var body := "Seal one Essence of a spell's pattern: it won't be needed any more." if it.kind == "upgrade" else "Heal %d HP." % int(run.player.max_hp * RunState.REST_HEAL)
 					uv.add_child(_centered(UiTheme.heading(title, 22, Color(0.85, 1, 0.8))))
 					var bd := _centered(UiTheme.label(body, 17, Color(0.85, 1, 0.8)))
 					bd.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -198,7 +192,7 @@ func _refresh() -> void:
 					uv.add_child(bd)
 					p.add_child(uv)
 				else:
-					var txt := "🟣 Purple seal\n\nUsed to seal off an Essence and shorten a spell." if it.kind == "upgrade" else "🍲 A hot meal\n\nHeal %d HP." % int(run.player.max_hp * RunState.REST_HEAL)
+					var txt := "🟣 Wax seal\n\nSeal one Essence of a spell's pattern: it won't be needed any more." if it.kind == "upgrade" else "🍲 A hot meal\n\nHeal %d HP." % int(run.player.max_hp * RunState.REST_HEAL)
 					var l := UiTheme.label(txt, 19, Color(0.85, 1, 0.8))
 					l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 					l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

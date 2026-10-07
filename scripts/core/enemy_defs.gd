@@ -3,28 +3,61 @@ extends RefCounted
 ## Every enemy: Essence pattern (elements, left to right), moves (cycled in order), passives.
 ## Moves are used in the listed order, looping. Normal enemies mix offence, defence and utility.
 ## Move kinds: attack {n, hits}, armor {pos}, mend {el, n, who: self/ally/all}, shuffle, silence {turns}, frail {turns},
-## lock {len}, steal {n}, confuse, blind {turns}, bleed {n}, freeze {n}, ethereal, empower {n},
+## lock {len}, steal {n}, confuse, blind {turns}, bleed {n}, freeze {n}, ethereal, empower {n}, brittle {turns},
 ## summon {id, n}, toll, invert, hex, mimic. A move may carry `also` (a second move done the same turn).
 
 const E := {
-	# ---------------- act 1
-	"ashling": {"name": "Ashling", "act": 1, "hp": "FFW", "moves": [{"kind": "attack", "n": 5}, {"kind": "mend", "el": "F", "n": 1, "who": "self"}, {"kind": "bleed", "n": 1, "also": {"kind": "attack", "n": 2}}],
-		"flavor": "A spark that learned to bite."},
-	"puddle_slime": {"name": "Puddle Slime", "act": 1, "hp": "WAW", "moves": [{"kind": "attack", "n": 3}, {"kind": "mend", "el": "W", "n": 1, "who": "self"}, {"kind": "frail", "turns": 1}],
+	# ---------------- act 1: the Verdant Circle (druids, changed animals, elemental spirits). tier = how early in the
+	# act it can show up (see ENCOUNTERS_ACT1); its Essence is exactly its pattern (no extra Essence on deeper floors).
+	"ashling": {"name": "Ashling", "act": 1, "tier": 1.0, "hp": "FFA", "moves": [{"kind": "attack", "n": 3}],
+		"flavor": "A small fire spirit."},
+	"iceling": {"name": "Iceling", "act": 1, "tier": 1.0, "hp": "WWA", "moves": [{"kind": "attack", "n": 3}],
+		"flavor": "A small ice spirit."},
+	"zephling": {"name": "Zephling", "act": 1, "tier": 1.0, "hp": "AAW", "moves": [{"kind": "attack", "n": 3}],
+		"flavor": "A small air spirit."},
+	"purple_slime": {"name": "Purple Slime", "act": 1, "tier": 1.5, "hp": "WFWAW", "moves": [{"kind": "attack", "n": 4}],
+		"flavor": "Wobbly, wet and purple."},
+	"green_slime": {"name": "Green Slime", "act": 1, "tier": 1.5, "hp": "AWAFA", "moves": [{"kind": "attack", "n": 4}],
+		"flavor": "Light as air, for a slime."},
+	"yellow_slime": {"name": "Yellow Slime", "act": 1, "tier": 1.5, "hp": "FAFWF", "moves": [{"kind": "attack", "n": 4}],
+		"flavor": "Warm to the touch. Don't touch it."},
+	"bramble_back": {"name": "Bramble Back", "act": 1, "tier": 2.0, "hp": "FAFWFAF", "moves": [{"kind": "attack", "n": 5}], "passives": ["thorns"],
+		"flavor": "An enraged porcupine on two legs."},
+	"winged_tortoise": {"name": "Winged Tortoise", "act": 1, "tier": 2.0, "hp": "WAWWAWW", "moves": [{"kind": "armor", "pos": -1}, {"kind": "attack", "n": 5}],
+		"flavor": "A shell that learned to fly."},
+	"leech_bat": {"name": "Leech Bat", "act": 1, "tier": 2.5, "hp": "AFAWAFA", "moves": [{"kind": "attack", "n": 5, "also": {"kind": "mend", "el": "random", "n": 1, "who": "self"}}],
+		"flavor": "Shiny fangs, and it feeds on every bite."},
+	"hush_moth": {"name": "Hush Moth", "act": 1, "tier": 2.0, "hp": "AWAAWAW", "moves": [{"kind": "silence", "turns": 1}, {"kind": "attack", "n": 5}],
+		"flavor": "Its wings steal your words."},
+	"cinder_hound": {"name": "Cinder Hound", "act": 1, "tier": 2.5, "hp": "FFAFFWFFAF", "moves": [{"kind": "attack", "n": 6}], "passives": ["burn_immune"],
+		"flavor": "Flame Essence burns under its skin like tattoos."},
+	"mirror_fairy": {"name": "Mirror Fairy", "act": 1, "tier": 2.5, "hp": "AWFWAAWFWA", "moves": [{"kind": "confuse"}, {"kind": "attack", "n": 6}],
+		"flavor": "A fairy's face in a mirror, her hands gripping it from behind."},
+	"yeti": {"name": "Yeti", "act": 1, "tier": 2.5, "hp": "WWAWWAWWAWWA", "moves": [{"kind": "freeze", "n": 2}, {"kind": "attack", "n": 7}],
+		"flavor": "Big, white and very cold."},
+	"greenseer": {"name": "Greenseer", "act": 1, "tier": 3.0, "hp": "AWFAWAFWAWFAW", "moves": [{"kind": "summon", "ids": ["purple_slime", "green_slime", "yellow_slime"], "n": 1}, {"kind": "mend", "el": "random", "n": 2, "who": "self"}, {"kind": "attack", "n": 6}],
+		"flavor": "A druid in moss clothes under a big mushroom hat."},
+	"rolling_bear": {"name": "Rolling Bear", "act": 1, "tier": 3.0, "hp": "FWFAFWFAFWFAFWF", "moves": [{"kind": "attack", "n": 3, "also": {"kind": "empower", "n": 2}}],
+		"flavor": "It rolls. It never stops rolling."},
+	"giant_slime": {"name": "Giant Slime", "act": 1, "tier": 3.0, "hp": "FWAFWAFWAF", "moves": [{"kind": "attack", "n": 7}], "passives": ["slime_burst"],
+		"flavor": "A giant rainbow slime."},
+	"tomato_knight": {"name": "Tomato Knight", "act": 1, "tier": 3.0, "hp": "FFWFFAFFWFFAFFW", "moves": [{"kind": "armor", "pos": -1}, {"kind": "attack", "n": 7}],
+		"moves2": [{"kind": "attack", "n": 4, "hits": 2}], "passives": ["rage_at_half"],
+		"flavor": "Ripe, red and armoured."},
+	# ---------------- in reserve (not in any act's pool for now; kept to reuse in later acts)
+	"puddle_slime": {"name": "Puddle Slime", "act": 0, "hp": "WAW", "moves": [{"kind": "attack", "n": 3}, {"kind": "mend", "el": "W", "n": 1, "who": "self"}, {"kind": "frail", "turns": 1}],
 		"flavor": "It keeps refilling itself."},
-	"gale_sprite": {"name": "Gale Sprite", "act": 1, "hp": "AFA", "moves": [{"kind": "attack", "n": 3, "hits": 2}, {"kind": "armor", "pos": 0}, {"kind": "freeze", "n": 1}],
+	"gale_sprite": {"name": "Gale Sprite", "act": 0, "hp": "AFA", "moves": [{"kind": "attack", "n": 3, "hits": 2}, {"kind": "armor", "pos": 0}, {"kind": "freeze", "n": 1}],
 		"flavor": "Two quick jabs of wind."},
-	"cinder_hound": {"name": "Cinder Hound", "act": 1, "hp": "FFF", "moves": [{"kind": "attack", "n": 6}, {"kind": "armor", "pos": 0}, {"kind": "empower", "n": 1, "also": {"kind": "attack", "n": 3}}], "passives": ["burning_hide"],
-		"flavor": "Touching it hurts."},
-	"stone_knight": {"name": "Stone Knight", "act": 1, "hp": "FFW", "moves": [{"kind": "armor", "pos": 1}, {"kind": "attack", "n": 8}, {"kind": "frail", "turns": 1, "also": {"kind": "attack", "n": 3}}],
+	"stone_knight": {"name": "Stone Knight", "act": 0, "hp": "FFW", "moves": [{"kind": "armor", "pos": 1}, {"kind": "attack", "n": 8}, {"kind": "frail", "turns": 1, "also": {"kind": "attack", "n": 3}}],
 		"flavor": "Braces, then swings."},
-	"tidecaller": {"name": "Tidecaller", "act": 1, "hp": "WAWA", "moves": [{"kind": "mend", "el": "W", "n": 1, "who": "self"}, {"kind": "attack", "n": 5}, {"kind": "freeze", "n": 1}],
+	"tidecaller": {"name": "Tidecaller", "act": 0, "hp": "WAWA", "moves": [{"kind": "mend", "el": "W", "n": 1, "who": "self"}, {"kind": "attack", "n": 5}, {"kind": "freeze", "n": 1}],
 		"flavor": "The tide always comes back."},
-	"mirror_wisp": {"name": "Mirror Wisp", "act": 1, "hp": "AWF", "moves": [{"kind": "attack", "n": 4, "also": {"kind": "shuffle"}}, {"kind": "blind", "turns": 1}, {"kind": "armor", "pos": 0}],
+	"mirror_wisp": {"name": "Mirror Wisp", "act": 0, "hp": "AWF", "moves": [{"kind": "attack", "n": 4, "also": {"kind": "shuffle"}}, {"kind": "blind", "turns": 1}, {"kind": "armor", "pos": 0}],
 		"flavor": "Never in the same order twice."},
-	"frost_hex": {"name": "Frost Hex", "act": 1, "hp": "WWA", "moves": [{"kind": "freeze", "n": 1}, {"kind": "attack", "n": 4}, {"kind": "mend", "el": "W", "n": 1, "who": "self"}],
+	"frost_hex": {"name": "Frost Hex", "act": 0, "hp": "WWA", "moves": [{"kind": "freeze", "n": 1}, {"kind": "attack", "n": 4}, {"kind": "mend", "el": "W", "n": 1, "who": "self"}],
 		"flavor": "Your fingers go numb."},
-	"pickpocket_imp": {"name": "Pickpocket Imp", "act": 1, "hp": "AFA", "moves": [{"kind": "steal", "n": 1}, {"kind": "attack", "n": 4}, {"kind": "armor", "pos": 0}],
+	"pickpocket_imp": {"name": "Pickpocket Imp", "act": 0, "hp": "AFA", "moves": [{"kind": "steal", "n": 1}, {"kind": "attack", "n": 4}, {"kind": "armor", "pos": 0}],
 		"flavor": "It wears what it steals."},
 	# ---------------- act 2
 	"splitter_ooze": {"name": "Splitter Ooze", "act": 2, "hp": "WWFF", "moves": [{"kind": "attack", "n": 4}, {"kind": "mend", "el": "random", "n": 1, "who": "self"}, {"kind": "frail", "turns": 2}], "passives": ["split"],
@@ -37,12 +70,8 @@ const E := {
 		"flavor": "Marks your Essence with pain."},
 	"shrine_maiden": {"name": "Shrine Maiden", "act": 2, "hp": "WAW", "moves": [{"kind": "mend", "el": "random", "n": 1, "who": "all"}, {"kind": "attack", "n": 3}, {"kind": "frail", "turns": 1}],
 		"flavor": "She mends everyone but you."},
-	"hush_moth": {"name": "Hush Moth", "act": 2, "hp": "AAW", "moves": [{"kind": "silence", "turns": 2}, {"kind": "attack", "n": 4}, {"kind": "armor", "pos": 0}],
-		"flavor": "Its wings steal your words."},
 	"blinding_beetle": {"name": "Blinding Beetle", "act": 2, "hp": "FAF", "moves": [{"kind": "blind", "turns": 2}, {"kind": "attack", "n": 4}, {"kind": "empower", "n": 1}],
 		"flavor": "A flash, and everything blurs."},
-	"leech_bat": {"name": "Leech Bat", "act": 2, "hp": "WFA", "moves": [{"kind": "bleed", "n": 2}, {"kind": "attack", "n": 3}, {"kind": "mend", "el": "random", "n": 1, "who": "self"}],
-		"flavor": "Small bites that keep bleeding."},
 	# ---------------- act 3
 	"inverter": {"name": "Inverter", "act": 3, "hp": "FWFW", "moves": [{"kind": "invert"}, {"kind": "attack", "n": 5}, {"kind": "armor", "pos": 0}],
 		"flavor": "Fire becomes water, water becomes fire."},
@@ -67,8 +96,12 @@ const E := {
 		"flavor": "A wave that stands up."},
 	"hollow_stag": {"name": "Hollow Stag", "act": 1, "elite": true, "hp": "AWFAWFAWFAWF", "moves": [{"kind": "attack", "n": 7}, {"kind": "empower", "n": 2, "also": {"kind": "attack", "n": 3}}],
 		"flavor": "Every charge hits harder than the last."},
-	"bramble_matron": {"name": "Bramble Matron", "act": 1, "elite": true, "hp": "WFWFA", "moves": [{"kind": "summon", "id": "ashling", "n": 1}, {"kind": "attack", "n": 4, "hits": 2}], "passives": ["burning_hide"],
-		"flavor": "Her brood of sparks never stops coming."},
+	"bramble_matron": {"name": "Bramble Matron", "act": 1, "elite": true, "hp": "WFAWFAWFA", "walls": 3, "passives": ["briar_walls"],
+		# her own turn (planned when her intent shows): a wall down -> regrow it; both up -> sing / attack, in turn.
+		# Each wall attacks on its own, in this pattern.
+		"moves": [{"kind": "sing"}, {"kind": "attack", "n": 1, "hits": 2}],
+		"wall_moves": [{"kind": "attack", "n": 2, "hits": 1}, {"kind": "attack", "n": 1, "hits": 2}, {"kind": "attack", "n": 1, "hits": 3}],
+		"flavor": "A hedge that sings."},
 	"mirror_knight": {"name": "Mirror Knight", "act": 2, "elite": true, "hp": "WAFWAF", "moves": [{"kind": "armor", "pos": 0, "also": {"kind": "attack", "n": 5}}, {"kind": "shuffle", "also": {"kind": "attack", "n": 7}}],
 		"flavor": "Its guard is where you least expect."},
 	"void_archon": {"name": "Void Archon", "act": 3, "elite": true, "hp": "AFWAFWA", "moves": [{"kind": "blind", "turns": 2, "also": {"kind": "attack", "n": 5}}, {"kind": "lock", "len": 2}, {"kind": "attack", "n": 4, "hits": 3}],
@@ -96,14 +129,33 @@ const PASSIVE_TEXT := {
 	"last_gasp": "Last Gasp: gives you Bleed 2 when it dies.",
 	"gem_crown": "Gem Crown: at the end of its turn, armours its first Essence if nothing is armoured (not when it has 1 left).",
 	"echo": "Echo: repeats each action twice.",
+	"briar_walls": "Briar Walls: she hides between two hedge walls (3 Essence each, the two ends of her row). They are part of her: leftmost and rightmost effects hit the ends of her row (a wall while it stands), random effects pick wall Essence first, and Snipe can reach anything. She regrows a fallen wall (she shows it first); with both up she sings (Power +1) or attacks. When her own Essence is gone, the walls fall with her.",
+	"thorns": "Thorns 2: you lose 2 HP whenever your Release hits it.",
+	"burn_immune": "Fireproof: Burn has no effect on it.",
+	"slime_burst": "Burst: when it dies, two small slimes pop out.",
+	"rage_at_half": "Shield Wall: above half its Essence it guards and strikes in turn. At half or below it drops its shield and attacks twice every turn.",
 }
 
 ## Light-hearted descriptions for the preparation screen.
 const BIOS := {
-	"ashling": "A campfire spark that got ambitious. Bites like a toddler with a grudge, then refuels on pure spite.",
+	"ashling": "A campfire spark that got ambitious. Bites like a toddler with a grudge.",
+	"iceling": "A snowflake with an attitude. Small, cold, and surprisingly pointy.",
+	"zephling": "A gust of wind that decided to have a face. Mostly harmless, mostly.",
+	"purple_slime": "Wobbles. Squelches. Hits you. That's the whole personality.",
+	"green_slime": "The lightest slime in the forest, and very proud of it.",
+	"yellow_slime": "Warm, sticky, and a little bit angry about it.",
+	"bramble_back": "A porcupine that stood up and got mad. Hitting it with your chant is a prickly business.",
+	"winged_tortoise": "Slow to fly, quick to hide. Every other turn it tucks another Essence behind its shell.",
+	"leech_bat": "Shiny fangs, zero shame. Every bite patches it back up.",
+	"mirror_fairy": "She lives in the mirror and turns your words backwards. Read your chant from the right!",
+	"yeti": "Huge, fluffy, and it freezes your Essence solid before punching you.",
+	"greenseer": "The druid in the mushroom hat. Grows slimes, heals itself, and lets them do the fighting.",
+	"rolling_bear": "Starts as a gentle roll and ends as an avalanche. It gets stronger every single turn.",
+	"giant_slime": "A rainbow of wobble. Pop it and two smaller slimes come out to finish the job.",
+	"tomato_knight": "Guards behind a big shield while it's healthy. Squish it past halfway and it throws the shield away and goes berserk.",
 	"puddle_slime": "Technically a puddle. Emotionally, also a puddle. It keeps topping itself up so it never has to face the drain.",
 	"gale_sprite": "Two jabs, no manners. Toughens up when you look at it funny, and loves freezing your fingers mid-spell.",
-	"cinder_hound": "Good boy. Very hot boy. Touching it with your chant WILL burn you, and it knows.",
+	"cinder_hound": "Good boy. Very hot boy. Flames run under its fur like tattoos, so Burn just tickles.",
 	"stone_knight": "Spends a whole turn bracing, then swings like it gets paid by the bruise. Politely makes you fragile first.",
 	"tidecaller": "Refills itself like a tide that refuses to go out. Also freezes things, because the ocean is petty.",
 	"mirror_wisp": "Never in the same order twice. Blinds you, reshuffles itself, and giggles about it.",
@@ -114,9 +166,8 @@ const BIOS := {
 	"toll_keeper": "Every word costs extra. Shortens your chant and charges admission in bruises.",
 	"hexer": "Curses one of your Essence so chanting it hurts. Heals its friends, which is honestly the most annoying part.",
 	"shrine_maiden": "Heals everyone except you. Very devout. Very inconvenient.",
-	"hush_moth": "Its wings whisper \"shhh\" at one of your spells until it forgets how to work.",
+	"hush_moth": "Its wings whisper \"shhh\" at one of your spells: it can't fire for a turn.",
 	"blinding_beetle": "One shiny flash and suddenly everything is question marks. Gets stronger the longer you squint.",
-	"leech_bat": "Tiny bites, lots of bleeding, zero shame. Patches itself up with your blood money.",
 	"inverter": "Fire becomes water, water becomes fire, and your plans become confetti.",
 	"warded_golem": "Short chants bounce right off. Say something meaningful: at least four Essence long.",
 	"echo_wraith": "Everything it does, it does twice. Everything it does, it does twice.",
@@ -128,7 +179,7 @@ const BIOS := {
 	"lockwarden": "Chains your spells shut and expects you to guess the combination.",
 	"tide_colossus": "A wave that stood up and decided to stay standing. Mends two at a time and swings like a tsunami.",
 	"hollow_stag": "Every charge hits harder than the last. Antlers optional, ego mandatory.",
-	"bramble_matron": "Her brood of sparks never stops coming, and hugging her is a mistake.",
+	"bramble_matron": "A druid wrapped in a living hedge. Her two walls do the fighting while she sings them stronger. Cut the walls, or Snipe her straight through them.",
 	"mirror_knight": "Its guard is always exactly where you didn't aim. Rude, but fair.",
 	"void_archon": "Steals the light, then your words, then your patience.",
 	"woodcutter": "He came for the last tree, and he brought friends and an axe. Mostly the axe.",
@@ -153,6 +204,86 @@ static func elites(act: int) -> Array:
 	return E.keys().filter(func(k): return E[k].get("elite", false) and E[k].act <= act and E[k].act >= act - 1)
 
 
+## Act 1 normal fights, the Slay the Spire way: a fixed list of hand-made, themed encounters. Each one is always the
+## same group of enemies and always the same tier (how far into the act it can appear); only WHICH encounter you meet
+## is picked (by weight). A group of smaller enemies is worth one bigger one: the three slimes together are a tier-2.5
+## fight, like a Yeti. tier -> [{name, ids (left to right), w}]
+const ENCOUNTERS_ACT1 := {
+	1.0: [
+		{"name": "A Fire Spirit", "ids": ["ashling"], "w": 1.0},
+		{"name": "An Ice Spirit", "ids": ["iceling"], "w": 1.0},
+		{"name": "An Air Spirit", "ids": ["zephling"], "w": 1.0},
+	],
+	1.5: [
+		{"name": "Purple Slime", "ids": ["purple_slime"], "w": 1.0},
+		{"name": "Green Slime", "ids": ["green_slime"], "w": 1.0},
+		{"name": "Yellow Slime", "ids": ["yellow_slime"], "w": 1.0},
+		{"name": "Steam", "ids": ["ashling", "iceling"], "w": 1.0},
+		{"name": "Wildfire", "ids": ["zephling", "ashling"], "w": 1.0},
+		{"name": "Frost Wind", "ids": ["iceling", "zephling"], "w": 1.0},
+	],
+	2.0: [
+		{"name": "Bramble Back", "ids": ["bramble_back"], "w": 1.0},
+		{"name": "Winged Tortoise", "ids": ["winged_tortoise"], "w": 1.0},
+		{"name": "Hush Moth", "ids": ["hush_moth"], "w": 1.0},
+		{"name": "The Elemental Trio", "ids": ["ashling", "iceling", "zephling"], "w": 1.0},
+		{"name": "Marsh", "ids": ["purple_slime", "iceling"], "w": 0.7},
+		{"name": "Hot Puddle", "ids": ["yellow_slime", "ashling"], "w": 0.7},
+		{"name": "Breezy Ooze", "ids": ["green_slime", "zephling"], "w": 0.7},
+	],
+	2.5: [
+		{"name": "Cinder Hound", "ids": ["cinder_hound"], "w": 1.0},
+		{"name": "Mirror Fairy", "ids": ["mirror_fairy"], "w": 1.0},
+		{"name": "Yeti", "ids": ["yeti"], "w": 1.0},
+		{"name": "Leech Bat", "ids": ["leech_bat"], "w": 1.0},
+		{"name": "The Slime Trio", "ids": ["purple_slime", "green_slime", "yellow_slime"], "w": 1.0},
+		{"name": "The Forest Floor", "ids": ["bramble_back", "winged_tortoise"], "w": 0.8},
+	],
+	3.0: [
+		{"name": "The Greenseer's Garden", "ids": ["greenseer", "green_slime"], "w": 1.0},
+		{"name": "Rolling Bear", "ids": ["rolling_bear"], "w": 1.0},
+		{"name": "Giant Slime", "ids": ["giant_slime"], "w": 1.0},
+		{"name": "Tomato Knight", "ids": ["tomato_knight"], "w": 1.0},
+		{"name": "Hound and Embers", "ids": ["cinder_hound", "ashling"], "w": 0.7},
+		{"name": "Blizzard", "ids": ["yeti", "iceling"], "w": 0.7},
+		{"name": "Hall of Mirrors", "ids": ["mirror_fairy", "zephling"], "w": 0.7},
+		{"name": "Night Wings", "ids": ["leech_bat", "hush_moth"], "w": 0.7},
+	],
+}
+
+
+## Which tier of Act 1 fights a map row (0-based, 12 rows) brings.
+static func act1_tier(row: int) -> float:
+	if row <= 1:
+		return 1.0
+	if row <= 3:
+		return 1.5
+	if row <= 5:
+		return 2.0
+	if row <= 8:
+		return 2.5
+	return 3.0
+
+
+## An Act 1 fight of this tier, weighted, and never one of the last two encounters met (like Slay the Spire).
+## recent: the names of the encounters met so far this run.
+static func act1_encounter(tier: float, rng: RandomNumberGenerator, recent: Array = []) -> Dictionary:
+	var pool: Array = ENCOUNTERS_ACT1[tier]
+	var last_two := recent.slice(maxi(0, recent.size() - 2))
+	var fresh := pool.filter(func(enc): return not (enc.name in last_two))
+	if fresh.is_empty():
+		fresh = pool
+	var total := 0.0
+	for enc in fresh:
+		total += enc.w
+	var r := rng.randf() * total
+	for enc in fresh:
+		r -= enc.w
+		if r < 0.0:
+			return enc.duplicate(true)
+	return fresh[-1].duplicate(true)
+
+
 ## Enemy ids for a node. floor is 1-based within the act. seen: ids met earlier this run (avoided when possible).
 static func encounter(kind: String, act: int, floor: int, rng: RandomNumberGenerator, seen: Array = []) -> Array:
 	match kind:
@@ -171,8 +302,6 @@ static func encounter(kind: String, act: int, floor: int, rng: RandomNumberGener
 					out.append(n[rng.randi() % n.size()])
 			return out
 	var pool := normals(act)
-	if act == 1 and floor <= 2:
-		pool = ["ashling", "puddle_slime", "gale_sprite", "frost_hex"]
 	var count := group_size(act, floor, rng)
 	var out := []
 	for i in count:
@@ -229,6 +358,14 @@ static func extra_hp(act: int, floor: int, rng: RandomNumberGenerator, boss := f
 	return out
 
 
+## The extra Essence this enemy gets: none for the tiered Act 1 enemies (their Essence is exactly as designed).
+static func extra_for(id: String, act: int, floor: int, rng: RandomNumberGenerator, group := 2) -> Array:
+	var d := get_def(id)
+	if d.has("tier") or d.has("walls"):
+		return []
+	return extra_hp(act, floor, rng, d.get("boss", false), group)
+
+
 static func attack_bonus(act: int) -> int:
 	return [0, 0, 4, 6][act]
 
@@ -240,7 +377,7 @@ static func describe_move(m: Dictionary, bonus := 0) -> String:
 			var n: int = m.n + bonus
 			s = "Attack %d" % n if m.get("hits", 1) == 1 else "Attack %d×%d" % [n, m.hits]
 		"armor":
-			s = "Armour its %s Essence" % ["1st", "2nd", "3rd", "4th"][mini(m.pos, 3)]
+			s = "Armour its next Essence (the first one not armoured yet)" if m.pos < 0 else "Armour its %s Essence" % ["1st", "2nd", "3rd", "4th"][mini(m.pos, 3)]
 		"mend":
 			var el: String = "random Essence" if m.el == "random" else Elements.NAMES[m.el]
 			s = "Mend +%d %s%s" % [m.n, el, {"self": "", "ally": " on an ally", "all": " on every enemy"}[m.get("who", "self")]]
@@ -265,7 +402,7 @@ static func describe_move(m: Dictionary, bonus := 0) -> String:
 		"empower":
 			s = "Empower +%d" % m.n
 		"summon":
-			s = "Call %d %s" % [m.n, E[m.id].name]
+			s = "Call %d %s" % [m.n, E[m.id].name] if m.has("id") else "Call %d random small slime%s" % [m.n, "" if m.n == 1 else "s"]
 		"toll":
 			s = "Toll: your next chant holds at most %d Essence" % PlayerState.TOLL_CAP
 		"invert":
@@ -274,6 +411,14 @@ static func describe_move(m: Dictionary, bonus := 0) -> String:
 			s = "Hex one of your Essence (chanting it costs 2 HP)"
 		"mimic":
 			s = "Mimic: its Essence becomes your last chant, backwards"
+		"wall_attack":
+			s = "Each wall attacks for %d%s" % [m.n + bonus, (" × %d hits" % m.hits) if m.get("hits", 1) > 1 else ""]
+		"regrow":
+			s = "Regrow her %s wall" % ("left" if m.get("side", "L") == "L" else "right")
+		"sing":
+			s = "Sing: Power +1 (her and her walls hit 1 harder)"
+		"brittle":
+			s = "Brittle %d: the Shield you gain is 25%% smaller" % m.turns
 		"frail":
 			s = "Frail you (%d turn%s: you take 25%% more damage)" % [m.turns, "" if m.turns == 1 else "s"]
 	if m.has("also"):

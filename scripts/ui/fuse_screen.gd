@@ -7,7 +7,7 @@ extends Control
 signal fused(new_spell: Dictionary)
 signal back
 
-const RULES := "Fuse melts two of your spells into ONE spell that does everything both of them did.\n• Its pattern: the first spell you pick, then the whole of the second.\n• The fusion drips a piece of purple resin. Heat it at a campfire to make a purple seal for any spell.\n• Anti-spells fuse only with anti-spells. The new anti-spell keeps BOTH patterns, one row each: chanting either one breaks it. It does both effects.\n• Both spells are used up, and the new one takes a single slot in your active row.\n• Only spells that can be fused are shown: Powers and fused spells can't be."
+const RULES := "Melt two spells into one that does everything both did."
 
 var run: RunState
 var _slots: Array = ["", ""]  # ids in the two fuse slots: the first one's pattern goes first
@@ -398,7 +398,7 @@ func _unhandled_key_input(ev: InputEvent) -> void:
 # ------------------------------------------------------------------ the fusion
 
 ## The two cards twist into each other in a tightening spiral, flaring white, and collapse into a white-hot ball.
-## A single drop of purple resin falls from it and lands as a piece you can pick up; the ball becomes the new card.
+## The ball becomes the new card, and a drop of purple wax seals one Essence of it (you choose which).
 func _play_fusion(a: Dictionary, b: Dictionary, from_a: Vector2, from_b: Vector2, result: Dictionary) -> void:
 	var stage := Control.new()
 	stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -411,47 +411,66 @@ func _play_fusion(a: Dictionary, b: Dictionary, from_a: Vector2, from_b: Vector2
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stage.add_child(shade)
 	create_tween().tween_property(shade, "color:a", 0.85, 0.3)
-	var mid := Vector2(960, 430)
+	var view_size := get_viewport_rect().size
+	var mid := Vector2(view_size.x / 2.0, 430)  # the middle of the screen (it can be wider than 1920)
 	var half := Vector2(SpellCard.W, SpellCard.H) / 2.0
+	# the two cards live in a picture of their own (a SubViewport) so the black hole can bend the picture
+	var vp := SubViewport.new()
+	vp.size = Vector2i(view_size)
+	vp.transparent_bg = true
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	stage.add_child(vp)
+	var vroot := Control.new()
+	vroot.theme = UiTheme.get_theme()
+	vroot.size = view_size
+	vp.add_child(vroot)
+	var view := TextureRect.new()
+	view.texture = vp.get_texture()
+	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var hole_mat := ShaderMaterial.new()
+	hole_mat.shader = load("res://assets/card/black_hole.gdshader")
+	hole_mat.set_shader_parameter("center", mid)
+	hole_mat.set_shader_parameter("size", view_size)
+	view.material = hole_mat
+	stage.add_child(view)
 	var cards: Array = []
 	for k in 2:
 		var c := SpellCard.make(a if k == 0 else b)
 		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		c.pivot_offset = half
-		stage.add_child(c)
-		c.global_position = from_a if k == 0 else from_b
+		vroot.add_child(c)
+		c.position = (from_a if k == 0 else from_b) - stage.global_position
 		cards.append(c)
 	# 1. they rise to either side of the middle
 	var tw := create_tween().set_parallel()
 	for k in 2:
-		tw.tween_property(cards[k], "global_position", mid - half + Vector2(-260 if k == 0 else 260, 0), 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(cards[k], "position", mid - half + Vector2(-260 if k == 0 else 260, 0), 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	await tw.finished
 	Audio.play("spell_glow")
-	# 2. the twist: they orbit each other faster and faster, flipping like ribbons, shrinking and burning white
-	var dur := 1.5
+	# 2. a black hole opens between them and swallows them: they stretch into long strands, wound in a spiral,
+	# drawn faster and faster into the dark (spaghettified), while sparks spiral in after them
+	var dur := 1.9
 	var t0 := Time.get_ticks_msec() / 1000.0
 	while true:
 		var t := clampf((Time.get_ticks_msec() / 1000.0 - t0) / dur, 0.0, 1.0)
-		var ease_t := t * t
-		var ang := ease_t * TAU * 3.0
-		var r := 260.0 * (1.0 - ease_t)
-		for k in 2:
+		hole_mat.set_shader_parameter("hole", 46.0 * smoothstep(0.0, 0.25, t) * (1.0 - 0.55 * smoothstep(0.85, 1.0, t)))
+		hole_mat.set_shader_parameter("twist", 14.0 * t * t)
+		hole_mat.set_shader_parameter("pull", pow(t, 2.6))
+		for k in 2:  # they drift in a little too, so the strands wrap round the hole
 			var c: SpellCard = cards[k]
-			var a2 := ang + (0.0 if k == 0 else PI)
-			c.global_position = mid - half + Vector2(cos(a2) * r, sin(a2) * r * 0.35)
-			c.rotation = (0.3 + ease_t * 2.5) * sin(a2) * (1.0 if k == 0 else -1.0)
-			var sz := lerpf(1.0, 0.12, ease_t)
-			c.scale = Vector2(sz * maxf(0.08, absf(cos(ang * 1.5 + k * PI / 2.0))), sz)
-			var glow := 1.0 + ease_t * 4.0
-			c.modulate = Color(glow, glow, glow * 0.95, 1.0)
-		if randf() < 0.6:
-			var col := Color(1, 0.95, 0.8) if randf() < 0.6 else Color(0.85, 0.6, 1.0)
-			_vfx(stage).part(mid + Vector2.from_angle(randf() * TAU) * r, Vector2.from_angle(ang + PI / 2.0) * 300.0, col, 0.5, randf_range(4, 9), Vfx.SPARK)
+			c.position = mid - half + Vector2(-260 if k == 0 else 260, 0) * (1.0 - 0.35 * t)
+		if randf() < 0.7:
+			var col := Color(1, 0.95, 0.85) if randf() < 0.5 else Color(0.75, 0.5, 1.0)
+			var ang := randf() * TAU
+			var far := randf_range(160.0, 380.0)
+			var p := mid + Vector2.from_angle(ang) * far
+			var vel := (Vector2.from_angle(ang + PI / 2.0) * 0.9 - Vector2.from_angle(ang) * 0.6) * far * 2.2
+			_vfx(stage).part(p, vel, col, 0.45, randf_range(3, 7), Vfx.SPARK)
 		if t >= 1.0:
 			break
 		await get_tree().process_frame
-	for c in cards:
-		c.queue_free()
+	view.queue_free()
+	vp.queue_free()
 	# 3. a white-hot ball
 	Audio.play("discovery_unlock")
 	_vfx(stage).flash(Color(1, 1, 1, 0.8), 0.25)
@@ -464,49 +483,22 @@ func _play_fusion(a: Dictionary, b: Dictionary, from_a: Vector2, from_b: Vector2
 	bt.tween_property(ball, "radius", 70.0, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	await bt.finished
 	await get_tree().create_timer(0.35).timeout
-	# 4. a single drop of purple resin swells at its bottom and falls
-	var drop := WaxDrop.new()
-	drop.position = ball.position + Vector2(0, 62)
-	stage.add_child(drop)
-	var floor_y := mid.y + 330.0 - stage.global_position.y
-	var dt := create_tween()
-	dt.tween_property(drop, "swell", 1.0, 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	dt.tween_property(drop, "position:y", floor_y, 0.42).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	# 5. meanwhile the ball cools into the new spell
+	# 4. the ball cools into the new spell
 	var card := SpellCard.make(result)
 	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	card.pivot_offset = half
 	card.scale = Vector2(0.15, 0.15)
 	card.modulate = Color(6, 6, 6, 0)
 	stage.add_child(card)
-	card.global_position = mid - half
-	await get_tree().create_timer(0.35).timeout
+	await get_tree().process_frame
+	# centred on the screen. (Its plain position: setting global_position on a scaled card would place its scaled
+	# corner there, and it grows around its centre from the wrong spot.)
+	card.pivot_offset = card.size / 2.0
+	card.position = mid - stage.global_position - card.size / 2.0
 	var ct := create_tween().set_parallel()
 	ct.tween_property(card, "scale", Vector2(1.15, 1.15), 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	ct.tween_property(card, "modulate", Color(1, 1, 1, 1), 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	ct.tween_property(ball, "radius", 0.0, 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	await dt.finished
-	# the drop lands: a purple splat, and a lump of resin to pick up
-	drop.queue_free()
-	var land := Vector2(mid.x, floor_y + stage.global_position.y)
-	Audio.play("elem_remove", -2.0)
-	_vfx(stage).burst(land, 14, Color(0.6, 0.25, 0.75), Vector2(120, 380), Vector2(0.3, 0.6), Vector2(4, 8), Vfx.GLOW, 0.0, PI, -PI / 2.0)
-	_vfx(stage).ring(land, 6, 60, Color(0.75, 0.45, 0.9), 0.35, 5.0, 0.0, 0.35)
-	var piece := ResinIcon.make(64)
-	piece.size = Vector2(64, 64)
-	piece.pivot_offset = piece.size / 2.0
-	piece.mouse_filter = Control.MOUSE_FILTER_STOP
-	piece.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	piece.tooltip_text = "Purple resin (click to collect).\nEvery fusion drips a piece. Heat it at a campfire and it becomes a purple seal: each seal covers one Essence of a spell's pattern, so that Essence isn't needed any more."
-	stage.add_child(piece)
-	piece.global_position = land - piece.size / 2.0
-	piece.scale = Vector2(1.4, 0.5)
-	create_tween().tween_property(piece, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
-	var hint := UiTheme.label("A drop of purple resin! Click it to collect.", 20, Color(0.88, 0.7, 1.0))
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.size = Vector2(800, 30)
-	hint.position = land - stage.global_position + Vector2(-400, 48)
-	stage.add_child(hint)
+	await ct.finished
 	var title := UiTheme.heading("Forged: %s!" % result.name, 34, Color(1, 0.85, 0.6))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.size = Vector2(1200, 50)
@@ -514,27 +506,95 @@ func _play_fusion(a: Dictionary, b: Dictionary, from_a: Vector2, from_b: Vector2
 	stage.add_child(title)
 	var cont := UiTheme.button("Continue", func(): pass, 22)
 	cont.custom_minimum_size = Vector2(240, 54)
-	cont.position = Vector2(1920 - 300, 990) - stage.global_position
+	cont.position = Vector2(view_size.x - 300, 990) - stage.global_position
 	stage.add_child(cont)
-	var state := {"got": false}
-	var collect := func():
-		if state.got:
-			return
-		state.got = true
-		if is_instance_valid(hint):
-			hint.queue_free()
-		Audio.play("elem_pickup")
-		Events.toast.emit("+1 purple resin", Color(0.88, 0.7, 1.0))
-		var ft := create_tween().set_parallel()
-		ft.tween_property(piece, "global_position", Vector2(1500, 0), 0.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-		ft.tween_property(piece, "scale", Vector2(0.4, 0.4), 0.5)
-		ft.tween_property(piece, "modulate:a", 0.0, 0.3).set_delay(0.2)
-	piece.gui_input.connect(func(ev):
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			collect.call())
+	# 5. a drop of purple wax gathers above the new spell: you click the Essence it seals (a fused anti-spell keeps
+	# both its patterns whole, so there is nothing to seal)
+	if result.id in run.upgradable():
+		cont.disabled = true
+		card = await _wax_seal(stage, card, result.id, mid)
 	await cont.pressed
-	collect.call()  # (left on the ground: it's yours anyway)
-	await get_tree().create_timer(0.3).timeout
+	await get_tree().create_timer(0.2).timeout
+
+
+## The fusion's drop of purple wax: it hangs above the new card, swelling, until you click one of its Essence; then
+## it falls onto that Essence, splashes, and seals it (that Essence isn't needed any more). Returns the new card.
+func _wax_seal(stage: Control, card: SpellCard, id: String, mid: Vector2) -> SpellCard:
+	var top := card.get_global_rect().position.y
+	var drop := WaxDrop.new()
+	drop.position = Vector2(mid.x, top - 70.0) - stage.global_position
+	stage.add_child(drop)
+	create_tween().tween_property(drop, "swell", 1.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	var hint := UiTheme.label("A drop of purple wax! Click an Essence of the new spell to seal it: it won't be needed any more.", 22, Color(0.9, 0.75, 1.0))
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.size = Vector2(900, 60)
+	hint.position = Vector2(mid.x - 450, card.get_global_rect().end.y + 30.0) - stage.global_position
+	stage.add_child(hint)
+	# pick an Essence: the one under the mouse lights up, a click seals it
+	var picked := [-1]
+	var orb_at := func(at: Vector2) -> int:
+		var orbs := card.live_orbs()
+		for k in orbs.size():
+			if (orbs[k] as Control).get_global_rect().grow(4.0).has_point(at):
+				return k
+		return -1
+	var on_input := func(ev: InputEvent):
+		if picked[0] >= 0:
+			return
+		if ev is InputEventMouseMotion:
+			var over: int = orb_at.call(ev.global_position)
+			var orbs := card.live_orbs()
+			for k in orbs.size():
+				orbs[k].highlight = k == over
+				orbs[k].queue_redraw()
+			drop.position.x = (orbs[over].get_global_rect().get_center().x if over >= 0 else mid.x) - stage.global_position.x
+			stage.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if over >= 0 else Control.CURSOR_ARROW
+		elif ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			picked[0] = orb_at.call(ev.global_position)
+	stage.gui_input.connect(on_input)
+	while picked[0] < 0:
+		await get_tree().process_frame
+	stage.gui_input.disconnect(on_input)
+	stage.mouse_default_cursor_shape = Control.CURSOR_ARROW
+	hint.queue_free()
+	# it falls onto that Essence...
+	var orb: Control = card.live_orbs()[picked[0]]
+	var at := orb.get_global_rect().get_center()
+	drop.position.x = at.x - stage.global_position.x
+	var ft := create_tween()
+	ft.tween_property(drop, "position:y", at.y - 26.0 - stage.global_position.y, 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await ft.finished
+	drop.queue_free()
+	# ...splash, and the seal is pressed in
+	Audio.play("sfx_lock_break")
+	var fx := _vfx(stage)
+	fx.glow(at, 160, Color(0.8, 0.45, 1.0, 0.8), 0.45)
+	fx.ring(at, 20, 120, Color(0.8, 0.5, 1.0), 0.4, 8.0)
+	for d in fx.burst(at, 18, Color(0.62, 0.25, 0.7), Vector2(120, 360), Vector2(0.4, 0.7), Vector2(4, 8), Vfx.DROP):
+		d.grav = Vector2(0, 1000)
+		d.size1 = d.size0 * 0.6
+	run.seal_spell(id, run.sealable(id)[picked[0]])
+	var sealed := SpellCard.make(run.spell(id))
+	sealed.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stage.add_child(sealed)
+	sealed.pivot_offset = card.pivot_offset
+	sealed.position = card.position
+	sealed.scale = card.scale
+	card.queue_free()
+	var sq := sealed.create_tween()
+	sq.tween_property(sealed, "scale", card.scale * Vector2(1.06, 0.95), 0.07)
+	sq.tween_property(sealed, "scale", card.scale, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var left := String(run.spell(id).pattern).length()
+	var done := UiTheme.label(("Sealed! It now needs %d Essence." % left) if left > 0 else "Sealed! It now wakes on every chant.", 22, Color(0.9, 0.75, 1.0))
+	done.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	done.size = Vector2(900, 30)
+	done.position = Vector2(mid.x - 450, sealed.get_global_rect().end.y + 30.0) - stage.global_position
+	stage.add_child(done)
+	for c in stage.get_children():
+		if c is Button:
+			c.disabled = false
+	return sealed
 
 
 ## The fusion's effects layer (a Vfx frees itself once it has nothing left to draw: make a new one then).
@@ -569,7 +629,7 @@ class HotBall extends Node2D:
 		draw_circle(Vector2.ZERO, r * 0.7, Color(1, 1, 1))
 
 
-## The drop of purple resin: it swells at the bottom of the ball (a teardrop that stretches), then falls.
+## The drop of purple wax: a teardrop that swells, then falls onto the Essence you chose.
 class WaxDrop extends Node2D:
 	var swell := 0.0:
 		set(v):

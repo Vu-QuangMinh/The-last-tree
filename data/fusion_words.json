@@ -342,7 +342,7 @@
   ],
   "echo_chamber": [
     "Echoing",
-    "Echo"
+    "Voice"
   ],
   "attunement": [
     "Attuned",
@@ -372,9 +372,9 @@
     "Final",
     "Rites"
   ],
-  "long_chant": [
-    "Lengthened",
-    "Chant"
+  "broken_clock": [
+    "Ticking",
+    "Clock"
   ],
   "stillness": [
     "Still",
@@ -887,5 +887,13 @@
   "worlds_end": [
     "World-ending",
     "Ending"
+  ],
+  "thorn_dart": [
+    "Thorned",
+    "Dart"
+  ],
+  "hawks_eye": [
+    "Hawk-Eyed",
+    "Hawk"
   ]
 }

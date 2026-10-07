@@ -31,8 +31,8 @@ const ALL := [
 	# ---- enemies
 	{"id": "liquid_fire", "color": Color(1.0, 0.6, 0.1), "name": "Liquid Fire", "icon": "🧨", "price": 36, "desc": "Burn 3 on an enemy.",
 		"effects": [{"op": "burn", "n": 3, "target": "target"}]},
-	{"id": "venom_vial", "color": Color(0.45, 0.95, 0.2), "name": "Venom Vial", "icon": "🐍", "price": 36, "desc": "Poison 3 on an enemy.",
-		"effects": [{"op": "poison", "n": 3, "target": "target"}]},
+	{"id": "venom_vial", "color": Color(0.45, 0.95, 0.2), "name": "Venom Vial", "icon": "🐍", "price": 36, "desc": "Poison 2 on an enemy.",
+		"effects": [{"op": "poison", "n": 2, "target": "target"}]},
 	{"id": "thiefs_brew", "color": Color(0.6, 0.4, 0.9), "name": "Thief's Brew", "icon": "🫳", "price": 30, "desc": "Steal 1 Essence of your choice from an enemy.",
 		"effects": [{"op": "steal", "n": 1, "el": "any", "target": "target"}]},
 	{"id": "frost_phial", "color": Color(0.75, 0.93, 1.0), "name": "Frost Phial", "icon": "❄", "price": 44, "desc": "Freeze an enemy: it skips its next action (not bosses).",

@@ -282,7 +282,7 @@
    "effects": [
     {
      "op": "poison",
-     "n": 2,
+     "n": 1,
      "target": "target"
     }
    ],
@@ -758,7 +758,7 @@
    "effects": [
     {
      "op": "poison",
-     "n": 2,
+     "n": 1,
      "target": "all"
     }
    ],
@@ -986,18 +986,18 @@
   {
    "id": "borrowed_breath",
    "name": "Borrowed Breath",
-   "pattern": "A",
+   "pattern": "",
    "effects": [
     {
      "op": "draw",
      "n": 1,
-     "when": "next",
+     "when": "now",
      "el": "A",
      "temp": true
     }
    ],
    "flavor": "A breath that isn't yours to keep.",
-   "rarity": "common"
+   "rarity": "rare"
   },
   {
    "id": "kindle",
@@ -1041,7 +1041,7 @@
     {
      "op": "draw",
      "n": 2,
-     "when": "next",
+     "when": "now",
      "el": "F",
      "temp": true
     }
@@ -1057,7 +1057,7 @@
     {
      "op": "draw",
      "n": 2,
-     "when": "next",
+     "when": "now",
      "el": "W",
      "temp": true
     }
@@ -1340,7 +1340,7 @@
   },
   {
    "id": "echo_chamber",
-   "name": "Echo Chamber",
+   "name": "Echoed Voice",
    "pattern": "AWA",
    "effects": [
     {
@@ -1349,9 +1349,9 @@
      "n": 1
     }
    ],
-   "flavor": "The first spell each turn rings twice.",
+   "flavor": "Say it once; the forest says it again.",
    "power": true,
-   "rarity": "rare"
+   "rarity": "legendary"
   },
   {
    "id": "attunement",
@@ -1464,19 +1464,25 @@
    "rarity": "rare"
   },
   {
-   "id": "long_chant",
-   "name": "Long Chant",
-   "pattern": "AAWA",
+   "id": "broken_clock",
+   "name": "A Broken Clock",
+   "pattern": "?????",
    "effects": [
     {
-     "op": "passive",
-     "key": "chant_slots",
-     "n": 2
+     "op": "draw",
+     "n": 1,
+     "when": "next",
+     "el": "random"
+    },
+    {
+     "op": "strike",
+     "from": "right",
+     "n": 1,
+     "target": "random"
     }
    ],
-   "flavor": "Two more slots in your chant line.",
-   "power": true,
-   "rarity": "legendary"
+   "flavor": "It ticks, it tocks, it strikes at random.",
+   "rarity": "rare"
   },
   {
    "id": "stillness",
@@ -2222,7 +2228,7 @@
    "effects": [
     {
      "op": "poison",
-     "n": 2,
+     "n": 1,
      "target": "target"
     }
    ],
@@ -2264,7 +2270,7 @@
   {
    "id": "tidecaller",
    "name": "Tidecaller",
-   "pattern": "W?",
+   "pattern": "A?A",
    "effects": [
     {
      "op": "draw",
@@ -2372,7 +2378,7 @@
    "effects": [
     {
      "op": "poison",
-     "n": 2,
+     "n": 1,
      "target": "all"
     }
    ],
@@ -2579,7 +2585,7 @@
     },
     {
      "op": "poison",
-     "n": 2,
+     "n": 1,
      "target": "target"
     }
    ],
@@ -2632,9 +2638,8 @@
    "pattern": "AAA",
    "effects": [
     {
-     "op": "strike",
-     "from": "right",
-     "n": 3,
+     "op": "pluck",
+     "n": 2,
      "target": "target"
     }
    ],
@@ -2981,9 +2986,8 @@
    "pattern": "FFFA",
    "effects": [
     {
-     "op": "strike",
-     "from": "right",
-     "n": 4,
+     "op": "pluck",
+     "n": 3,
      "target": "target"
     }
    ],
@@ -3056,7 +3060,7 @@
     },
     {
      "op": "poison",
-     "n": 3,
+     "n": 2,
      "target": "target"
     }
    ],
@@ -3383,13 +3387,41 @@
     },
     {
      "op": "poison",
-     "n": 3,
+     "n": 2,
      "target": "all"
     }
    ],
    "flavor": "There is nothing after this. Use it well.",
    "rarity": "legendary",
    "fleeting": true
+  },
+  {
+   "id": "thorn_dart",
+   "name": "Thorn Dart",
+   "pattern": "AW",
+   "effects": [
+    {
+     "op": "pluck",
+     "n": 1,
+     "target": "target"
+    }
+   ],
+   "flavor": "Small, quiet, and exactly where you meant it.",
+   "rarity": "common"
+  },
+  {
+   "id": "hawks_eye",
+   "name": "Hawk's Eye",
+   "pattern": "AFA",
+   "effects": [
+    {
+     "op": "pluck",
+     "n": 2,
+     "target": "target"
+    }
+   ],
+   "flavor": "Nothing hides from the hawk.",
+   "rarity": "rare"
   }
  ]
 }

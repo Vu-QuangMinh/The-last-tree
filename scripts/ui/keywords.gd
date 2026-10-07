@@ -5,7 +5,7 @@ extends RefCounted
 ## keyword -> [colour on dark UI, colour on parchment, explanation]
 const K := {
 	"annihilate": [Color(1.0, 0.35, 0.5), Color(0.7, 0.05, 0.25), "Annihilate: choose Fire, Water or Air. Every Essence of that kind is removed from the enemies, armoured or not."],
-	"conjure": [Color(0.75, 0.9, 1.0), Color(0.15, 0.4, 0.65), "Conjure N: the spell splits into N random spells, right away, in its place. They're Ephemeral. When they're all gone, it comes back."],
+	"conjure": [Color(0.75, 0.9, 1.0), Color(0.15, 0.4, 0.65), "Conjure N: the spell splits into N random spells, right away, in its place. They're Ephemeral. When they're all gone, it comes back. (Conjure N Fire / Water / Air instead gives you N temporary Essence of that kind right now: they fade at the end of the turn if you don't chant them.)"],
 	"ephemeral": [Color(0.85, 0.95, 1.0), Color(0.3, 0.45, 0.65), "Ephemeral: a conjured spell. It vanishes once cast, or at the end of your next turn if you don't cast it."],
 	"anti-spell": [Color(0.95, 0.5, 0.85), Color(0.55, 0.1, 0.45), "Anti-spell: the opposite of a spell. Every time you chant, it comes alive and is cast like any other spell, UNLESS the chant contains its pattern: that breaks it for the turn. (Pass without chanting and it still goes off at the end of your turn.)"],
 	"fleeting": [Color(0.8, 0.85, 1.0), Color(0.3, 0.35, 0.6), "Fleeting: once you cast it, the spell is gone for the rest of the fight."],
@@ -21,14 +21,15 @@ const K := {
 	"stolen": [Color(0.45, 0.85, 1.0), Color(0.05, 0.4, 0.65), "Steal: take Essence off an enemy and put it in your bag, ready for a later chant. When an enemy Steals, it takes Essence from your bag and adds it to its own."],
 	"fused": [Color(1.0, 0.7, 0.9), Color(0.6, 0.15, 0.45), "Fused: forged from two spells at a campfire. It does everything both did, and can't be fused again."],
 	"fuse": [Color(1.0, 0.7, 0.9), Color(0.6, 0.15, 0.45), "Fuse: at a campfire, melt two spells into one that does everything both did. Its pattern is the first spell's pattern followed by the whole of the second's."],
+	"snipe": [Color(1.0, 0.4, 0.35), Color(0.7, 0.1, 0.08), "Snipe N: remove N Essence you choose (the crosshair), from any enemy and any part of it. Walls and shields don't get in the way."],
 	"targeted": [Color(1.0, 0.75, 0.3), Color(0.7, 0.35, 0.0), "Targeted: you pick which Essence to hit, anywhere in the enemy's row (click it, or Tab + Enter)."],
 	"infuse": [Color(0.95, 0.85, 0.5), Color(0.55, 0.4, 0.0), "Infuse: put the Essence anywhere you like in this turn's chant. It counts at once, so it can wake more spells."],
 	"rearrange": [Color(0.95, 0.85, 0.5), Color(0.55, 0.4, 0.0), "Rearrange N: grab an Essence of this turn's chant and drag it to another spot (N times). It counts at once, so it can wake more spells."],
 	"duplicate": [Color(0.95, 0.85, 0.5), Color(0.55, 0.4, 0.0), "Duplicate N: pick an Essence of this turn's chant; N copies of it appear right beside it. They count at once, so they can wake more spells."],
 	"execute": [Color(1.0, 0.35, 0.35), Color(0.65, 0.05, 0.05), "Execute: destroy the enemy outright if its Essence is low enough (not bosses)."],
-	"burn": [Color(1.0, 0.55, 0.2), Color(0.78, 0.3, 0.0), "Burn N: at the start of the enemy's turn, before it acts, it loses its N leftmost Essence (armour doesn't help), then Burn drops by 1. It stays until it runs out. If it burns away completely, it's defeated before it can attack."],
-	"poison": [Color(0.55, 0.9, 0.3), Color(0.25, 0.5, 0.05), "Poison N: at the start of the enemy's turn, it loses its N rightmost Essence (armour doesn't help), then Poison drops by 1. It stays until it runs out."],
-	"shield": [Color(0.55, 0.8, 1.0), Color(0.1, 0.35, 0.7), "Shield: blocks that much attack damage until your next turn."],
+	"burn": [Color(1.0, 0.55, 0.2), Color(0.78, 0.3, 0.0), "Burn N: at the start of the enemy's turn, before it acts, it loses its N rightmost Essence (armour doesn't help), then Burn drops by 1. It stays until it runs out. If it burns away completely, it's defeated before it can attack."],
+	"poison": [Color(0.55, 0.9, 0.3), Color(0.25, 0.5, 0.05), "Poison N: it grows by 1 at the start of every enemy turn. The moment an enemy's Poison is as high as the Essence it has left (or higher), it dies, armour or not."],
+	"shield": [Color(0.55, 0.8, 1.0), Color(0.1, 0.35, 0.7), "Shield: blocks that much attack damage. It stays from turn to turn and builds up, until attacks use it up (it resets between fights)."],
 	"aegis": [Color(1.0, 0.9, 0.5), Color(0.6, 0.45, 0.0), "Aegis: blocks one whole enemy hit, whatever its size."],
 	"thorns": [Color(0.75, 0.85, 0.4), Color(0.35, 0.45, 0.05), "Thorns: when an enemy hits you, it loses that many of its rightmost Essence."],
 	"heal": [Color(0.45, 1.0, 0.55), Color(0.1, 0.5, 0.15), "Heal: restore HP, up to your maximum."],
@@ -50,6 +51,7 @@ const K := {
 	"bleed": [Color(1.0, 0.35, 0.4), Color(0.65, 0.05, 0.1), "Bleed: at the start of your turn you lose that much HP, then Bleed goes down by 1."],
 	"confuse": [Color(0.85, 0.55, 1.0), Color(0.45, 0.15, 0.6), "Confused: your next chant is read backwards, and there's no preview."],
 	"confused": [Color(0.85, 0.55, 1.0), Color(0.45, 0.15, 0.6), "Confused: your next chant is read backwards, and there's no preview."],
+	"brittle": [Color(0.6, 0.8, 1.0), Color(0.15, 0.35, 0.6), "Brittle N: for N turns, the Shield you gain is 25% smaller."],
 	"frail": [Color(1.0, 0.5, 0.6), Color(0.65, 0.1, 0.25), "Frail: you take 25% more attack damage."],
 	"blind": [Color(0.7, 0.7, 0.75), Color(0.3, 0.3, 0.35), "Blind: some enemy Essence show as ?. They still match normally."],
 	"silence": [Color(0.85, 0.55, 1.0), Color(0.45, 0.15, 0.6), "Silenced: that spell can't fire for a few turns."],
@@ -72,6 +74,22 @@ const NUMBER_DARK := Color(1.0, 0.88, 0.4)
 const NUMBER_LIGHT := Color(0.55, 0.3, 0.0)
 
 const LETTER_KEY := {"F": "fire", "W": "water", "A": "air"}
+const ELEMENT_WORDS := {"Fire": "F", "Water": "W", "Air": "A", "Wind": "A"}
+const ELEMENT_ART := {"F": "essence_fire", "W": "essence_water", "A": "essence_wind"}
+
+
+## An element's bead picture for rich text ("" when there's none, or outside the running game: the UI skin needs the
+## game's settings, which the headless tests don't load, so it's looked up only at run time).
+static func _element_pic(el: String, px: int) -> String:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null or not tree.root.has_node("SaveManager"):
+		return ""
+	return load("res://scripts/ui/ui_skin.gd").inline(ELEMENT_ART[el], "", px)
+
+
+## Does a capitalised word follow (so the element name is part of a name, like "Fire Ball")?
+static func _starts_a_name(text: String, at: int) -> bool:
+	return at + 1 < text.length() and text[at] == " " and text[at + 1] == text[at + 1].to_upper() and text[at + 1] != text[at + 1].to_lower()
 
 static var _re: RegEx
 
@@ -89,7 +107,9 @@ static func _regex() -> RegEx:
 
 ## BBCode with keywords, element letters (F W A) and numbers coloured. on_parchment picks the darker palette.
 ## links: keywords become [url] links, so a KeywordText can show each one's explanation on hover.
-static func colorize(text: String, on_parchment := false, links := false) -> String:
+## Element names written out (Fire, Water, Air) are shown as their bead pictures instead, icon_px tall; a name that
+## starts a longer name (Fire Ball, Water Wall) stays a word.
+static func colorize(text: String, on_parchment := false, links := false, icon_px := 22) -> String:
 	var out := ""
 	var last := 0
 	for m in _regex().search_all(text):
@@ -97,6 +117,12 @@ static func colorize(text: String, on_parchment := false, links := false) -> Str
 		var word := m.get_string()
 		var key := m.get_string(1).to_lower()
 		var letter := m.get_string(2) + m.get_string(3) + m.get_string(4)
+		if word in ELEMENT_WORDS and not _starts_a_name(text, m.get_end()):
+			var pic := _element_pic(ELEMENT_WORDS[word], icon_px)
+			if pic != "":
+				out += pic
+				last = m.get_end()
+				continue
 		if letter != "":
 			key = LETTER_KEY[letter]
 		var col: Color
@@ -141,7 +167,8 @@ static func tooltip(title: String, body: String, extra := "", icon := "", more_g
 	var s := "[b][font_size=25]%s%s[/font_size][/b]\n%s" % [(icon + " ") if icon != "" else "", _escape(title), colorize(body)]
 	if extra != "":
 		s += "\n" + extra
-	var gl := glossary(body) + more_gloss
+	# (a keyword whose explanation IS the body, like a status badge's, isn't explained a second time)
+	var gl := (glossary(body) + more_gloss).filter(func(g): return g.strip_edges() != body.strip_edges())
 	if not gl.is_empty():
 		s += "\n[color=#8c9a8c]────────────[/color]"
 		for g in gl:
@@ -162,7 +189,26 @@ static func make_tooltip(bbcode: String) -> Control:
 	r.add_theme_font_size_override("bold_font_size", 21)
 	r.add_theme_color_override("default_color", Color(0.9, 0.92, 0.86))
 	r.text = bbcode
+	# the tooltip's window is placed before its text has wrapped to its full height, so it can hang off the screen:
+	# each time it changes size, push the window back inside the screen
+	r.resized.connect(func(): _keep_on_screen.call_deferred(r))
 	return r
+
+
+## Moves the window holding `c` (a tooltip) back inside the visible screen, if any of it sticks out.
+static func _keep_on_screen(c: Control) -> void:
+	if not is_instance_valid(c) or not c.is_inside_tree():
+		return
+	var w := c.get_window()
+	if w == null or w == c.get_tree().root:
+		return
+	var screen := c.get_tree().root.get_visible_rect().size
+	var pos := Vector2(w.position)
+	var sz := Vector2(w.size)
+	pos.x = clampf(pos.x, 0.0, maxf(0.0, screen.x - sz.x))
+	pos.y = clampf(pos.y, 0.0, maxf(0.0, screen.y - sz.y))
+	if Vector2i(pos) != w.position:
+		w.position = Vector2i(pos)
 
 
 const ICON_PATH := {"{F}": "res://assets/icons/el_fire.png", "{W}": "res://assets/icons/el_water.png", "{A}": "res://assets/icons/el_wind.png", "{?}": "res://assets/icons/el_any.png"}

@@ -13,10 +13,9 @@ const RARE_CHANCE := 0.3
 ## Amber: the run's money, spent at merchants and in some events.
 const START_AMBER := 30
 const AMBER := {"fight": [14, 22], "elite": [28, 38], "boss": [60, 60]}
-const PRICES := {"common": 45, "rare": 75, "legendary": 140, "artifact": 110, "artifact_rare": 170, "upgrade": 100, "heal": 40}
+const PRICES := {"common": 45, "rare": 75, "legendary": 140, "artifact": 110, "artifact_rare": 170, "upgrade": 160, "heal": 40}
 ## What a "?" room turns out to be.
 const UNKNOWN_ODDS := {"fight": 0.15, "treasure": 0.08, "shop": 0.07}
-const SEAL_EVENT_ODDS := 0.3  # a "?" event is the Resin Shrine this often while you hold purple seals
 
 signal artifact_gained(id: String)
 
@@ -38,12 +37,14 @@ var kills := 0
 var defeated_ids: Array = []
 var met: Array = []  # enemy ids met this run, oldest first
 var upgraded: Array = []  # (legacy: upgrades are wax seals now, see `seals`)
+var burdens := {}  # spell id -> Essence added to the end of its pattern (the Tangled Grimoire's curse)
+var curse_note := ""  # what the last cursed artifact just did (shown when it's found)
 var seals := {}  # spell id -> [indices of its pattern sealed by upgrades]: those Essence are no longer needed
 var amber := START_AMBER
-var resin := 0  # purple resin: one per fusion. Heated at a campfire, it becomes a purple seal
-var purple_seals := 0  # heated resin, ready to apply: each seals one Essence of a spell's pattern (campfire, merchant, some events)
 var seen_events: Array = []
 var encounter: Array = []  # the ids of the encounter being prepared
+var encounter_name := ""  # its name (Act 1's hand-made encounters, e.g. "The Slime Trio"; "" otherwise)
+var recent_encounters: Array = []  # names of the encounters met so far (an encounter never comes up twice in 3)
 var encounter_extra: Array = []  # the extra Essence each of those enemies will have (rolled once)
 var fused := {}  # id -> spell dict, for spells forged at campfires ("fused_1", ...)
 var _fuse_count := 0
@@ -107,11 +108,9 @@ static func _vars_of(o: Object, skip: Array) -> Dictionary:
 ## Active spell slots: 5, changed by artifacts (never by the chant length), at most 8.
 func active_slots() -> int:
 	var n := BASE_ACTIVE
-	for a in ["spell_satchel", "spell_pouch"]:
+	for a in ["spell_satchel", "broken_crown", "tangled_grimoire", "spell_pouch"]:  # (+1 each; the Pouch is retired)
 		if a in artifacts:
 			n += 1
-	if "broken_crown" in artifacts:
-		n += 2
 	if "withered_idol" in artifacts:
 		n -= 1
 	return clampi(n, 3, MAX_ACTIVE)
@@ -121,6 +120,12 @@ func active_slots() -> int:
 ## shows them, under a wax seal (full_pattern + seals).
 func spell(id: String) -> Dictionary:
 	var s: Dictionary = fused[id] if fused.has(id) else db.get_spell(id)
+	var extra: String = burdens.get(id, "")
+	if extra != "" and not s.is_empty():
+		s = s.duplicate(true)
+		s.pattern = String(s.pattern) + extra  # cursed: it needs more Essence
+		s.size = String(s.pattern).length()
+		s.burden = extra
 	var sl: Array = seals.get(id, [])
 	if sl.is_empty() or s.is_empty():
 		return s
@@ -188,10 +193,19 @@ func encounter_ids() -> Array:
 	var kind := current_kind()
 	if not (kind in ["fight", "elite", "boss"]):
 		kind = "fight"
-	var ids := EnemyDefs.encounter(kind, act, depth(), rng, met)
+	var ids: Array
+	encounter_name = ""
+	if act == 1 and kind == "fight":
+		# a hand-made, themed encounter of the tier this floor brings (see EnemyDefs.ENCOUNTERS_ACT1)
+		var enc := EnemyDefs.act1_encounter(EnemyDefs.act1_tier(row), rng, recent_encounters)
+		ids = enc.ids
+		encounter_name = enc.name
+		recent_encounters.append(enc.name)
+	else:
+		ids = EnemyDefs.encounter(kind, act, depth(), rng, met)
 	met.append_array(ids)
 	encounter = ids.duplicate()
-	encounter_extra = ids.map(func(id): return EnemyDefs.extra_hp(act, depth(), rng, EnemyDefs.get_def(id).get("boss", false), ids.size()))
+	encounter_extra = ids.map(func(id): return EnemyDefs.extra_for(id, act, depth(), rng, ids.size()))
 	return ids
 
 
@@ -354,10 +368,23 @@ func gain_artifact(id: String) -> void:
 	if id in artifacts:
 		return
 	artifacts.append(id)
-	artifact_gained.emit(id)  # (the UI shows the artifact that was found)
+	curse_note = ""
 	if id == "blood_pact":
 		player.max_hp -= 12
 		player.hp = minf(player.hp, player.max_hp)
+	if id == "broken_crown":
+		player.max_hp -= 15
+		player.hp = minf(player.hp, player.max_hp)
+		curse_note = "−15 max HP."
+	if id == "spell_satchel":
+		# it eats 2 random spells (you always keep at least one)
+		var eaten := lose_random_spells(2)
+		curse_note = "It ate %s." % " and ".join(eaten) if not eaten.is_empty() else ""
+	if id == "tangled_grimoire":
+		# 4 random spells each need 1 more Essence
+		var hit := burden_random_spells(4)
+		curse_note = "Now needing 1 more Essence: %s." % ", ".join(hit) if not hit.is_empty() else ""
+	artifact_gained.emit(id)  # (the UI shows the artifact that was found, and what its curse did)
 	if id == "bandolier":
 		for b in Bottles.random(rng, 2):
 			gain_bottle(b)
@@ -371,6 +398,10 @@ func remove_artifact(id: String) -> void:
 	artifacts_plus.erase(id)
 	if id == "blood_pact":
 		player.max_hp += 12
+	if id == "broken_crown":
+		player.max_hp += 15
+	if id == "tangled_grimoire":
+		burdens.clear()  # the curse lasts as long as you keep the artifact
 	while player.bottles.size() > bottle_slots():
 		player.bottles.pop_back()
 	while loadout.size() > active_slots():
@@ -460,7 +491,8 @@ static func fusion_name(id_a: String, id_b: String, name_a := "", name_b := "") 
 
 ## Forge the fused spell from two spells (not yet committed): the first spell's pattern comes first and the
 ## second's follows it. (drop: an Essence taken out of it, by its index among the Essence still needed; -1 = none.
-## Fusing at a campfire takes none out: it gives a piece of purple resin instead.) Wax seals stay where they were: the sealed Essence are still shown
+## Fusing at a campfire takes none out: a drop of purple wax seals one Essence of the new spell instead, see the
+## FuseScreen.) Wax seals stay where they were: the sealed Essence are still shown
 ## (and still not needed). It does everything both did.
 func fuse_preview(id_a: String, id_b: String, drop := -1) -> Dictionary:
 	var a := spell(id_a)
@@ -518,13 +550,13 @@ func fuse_preview(id_a: String, id_b: String, drop := -1) -> Dictionary:
 ## Use up the two spells and add the fused one (into the active row if either of them was there).
 func fuse_commit(new_spell: Dictionary, id_a: String, id_b: String) -> void:
 	_fuse_count += 1
-	resin += 1  # the fusion drips a piece of purple resin
 	var was_active := id_a in loadout or id_b in loadout
 	for id in [id_a, id_b]:
 		spellbook.erase(id)
 		loadout.erase(id)
 		upgraded.erase(id)
 		seals.erase(id)
+		burdens.erase(id)  # (a burdened spell's extra Essence is part of the fused pattern now)
 	# kept like any spell: its whole pattern, with the seals on top (see spell())
 	var stored := new_spell.duplicate(true)
 	if stored.has("full_pattern"):
@@ -552,23 +584,6 @@ func seal_spell(id: String, idx: int) -> void:
 	sl.append(idx)
 	sl.sort()
 	seals[id] = sl
-
-
-## Campfire: heat all your purple resin. Each piece becomes a purple seal, kept until you apply it.
-func heat_resin() -> int:
-	var n := resin
-	purple_seals += n
-	resin = 0
-	return n
-
-
-## Apply one of your purple seals: it seals one Essence of a spell's pattern. False if you have none.
-func use_purple_seal(id: String, idx: int) -> bool:
-	if purple_seals <= 0 or not (idx in sealable(id)):
-		return false
-	purple_seals -= 1
-	seal_spell(id, idx)
-	return true
 
 
 ## Spells that still have an Essence left to seal.
@@ -600,13 +615,20 @@ func resolve_unknown() -> String:
 			break
 		r -= UNKNOWN_ODDS[k]
 	n["as"] = kind
-	if kind == "event" and purple_seals > 0 and not upgradable().is_empty() and rng.randf() < SEAL_EVENT_ODDS:
-		n["event"] = "resin_shrine"  # holding purple seals: the shrine can turn up (any number of times)
-	elif kind == "event":
-		var pool := MapEvents.ALL.filter(func(e): return not (e.id in seen_events) and e.id != "resin_shrine")
+	if kind == "event":
+		var pool := MapEvents.ALL.filter(func(e): return not (e.id in seen_events))
 		if pool.is_empty():
 			pool = MapEvents.ALL
-		var ev: Dictionary = pool[rng.randi() % pool.size()]
+		var total := 0.0
+		for e in pool:
+			total += float(e.get("weight", 1.0))
+		var r2 := rng.randf() * total
+		var ev: Dictionary = pool[-1]
+		for e in pool:
+			r2 -= float(e.get("weight", 1.0))
+			if r2 < 0.0:
+				ev = e
+				break
 		seen_events.append(ev.id)
 		n["event"] = ev.id
 	return kind
@@ -614,12 +636,12 @@ func resolve_unknown() -> String:
 
 ## Can you take this event option (enough Amber / HP)?
 func can_choose(opt: Dictionary) -> bool:
-	if opt.get("do", "") == "apply_seals" and (purple_seals <= 0 or upgradable().is_empty()):
-		return false
 	if opt.get("do", "") == "upgrade_artifact" and upgradable_artifacts().is_empty():
 		return false
 	if opt.get("do", "") == "trade_artifacts" and tradeable_artifacts().is_empty():
 		return false
+	if spellbook.size() <= opt.get("lose_spells", 0):
+		return false  # (you always keep at least one spell)
 	return amber >= opt.get("amber", 0) and player.hp > opt.get("hp", 0) and player.max_hp > opt.get("max_hp", 0) + 5
 
 
@@ -630,6 +652,43 @@ func choose_event_option(opt: Dictionary) -> Dictionary:
 	if opt.has("max_hp"):
 		player.max_hp -= opt.max_hp
 		player.hp = minf(player.hp, player.max_hp)
+	var price := ""
+	if opt.get("lose_spells", 0) > 0:
+		price = "Gone: %s. " % ", ".join(lose_random_spells(opt.lose_spells))
+	if opt.get("burden", 0) > 0:
+		price = "Tangled (1 more Essence each): %s. " % ", ".join(burden_random_spells(opt.burden))
+	var res := _do_event_option(opt)
+	res.text = price + String(res.text)
+	return res
+
+
+## Take n random spells from your spellbook (you always keep at least one). Returns their names.
+func lose_random_spells(n: int) -> Array:
+	var names := []
+	for k in n:
+		if spellbook.size() <= 1:
+			break
+		var gone: String = spellbook[rng.randi() % spellbook.size()]
+		names.append(spell(gone).name)
+		spellbook.erase(gone)
+		loadout.erase(gone)
+		seals.erase(gone)
+		burdens.erase(gone)
+	return names
+
+
+## n random spells each need 1 more Essence (a random one, added to the end of the pattern). Returns their names.
+func burden_random_spells(n: int) -> Array:
+	var pool := spellbook.duplicate()
+	var names := []
+	for k in mini(n, pool.size()):
+		var sid: String = pool.pop_at(rng.randi() % pool.size())
+		burdens[sid] = String(burdens.get(sid, "")) + Elements.random(rng)
+		names.append(spell(sid).name)
+	return names
+
+
+func _do_event_option(opt: Dictionary) -> Dictionary:
 	var n: int = opt.get("n", 0)
 	match opt.do:
 		"heal":
@@ -637,9 +696,6 @@ func choose_event_option(opt: Dictionary) -> Dictionary:
 		"amber":
 			amber += n
 			return {"text": "+%d Leaves." % n}
-		"resin":
-			resin += n
-			return {"text": "+%d purple resin. Heat it at a campfire to make a purple seal." % n}
 		"max_hp":
 			player.max_hp += n
 			player.hp += n
@@ -743,6 +799,44 @@ func move_active(from: int, to: int) -> void:
 	var id: String = loadout[from]
 	loadout.remove_at(from)
 	loadout.insert(clampi(to, 0, loadout.size()), id)
+
+
+## Loadout drag & drop (before each encounter): spell `id` is let go over the active row (to_active) or the
+## spellbook, on top of spell `onto` ("" = empty space). Dropped on another spell, the two switch places (in the row,
+## between the row and the book, or in the book's order). False when it can't go there (the active row is full).
+func drop_spell(id: String, to_active: bool, onto := "") -> bool:
+	if not (id in spellbook) or onto == id:
+		return id in spellbook
+	var from_active := id in loadout
+	var onto_active := onto in loadout
+	if to_active:
+		if onto_active:
+			var j := loadout.find(onto)
+			if from_active:
+				loadout[loadout.find(id)] = onto  # two active spells switch places
+			loadout[j] = id  # (a spellbook spell takes its place: the other one goes back to the book)
+			return true
+		if from_active:
+			loadout.erase(id)
+			loadout.append(id)  # dropped on an empty slot: to the end of the row
+			return true
+		if loadout.size() >= active_slots():
+			return false
+		loadout.append(id)
+		return true
+	# over the spellbook
+	if from_active:
+		if onto != "" and onto in spellbook and not onto_active:
+			loadout[loadout.find(id)] = onto  # it switches places with the spell it was dropped on
+		else:
+			loadout.erase(id)
+		return true
+	if onto != "" and onto in spellbook and not onto_active:
+		var a := spellbook.find(id)
+		var b := spellbook.find(onto)
+		spellbook[a] = onto
+		spellbook[b] = id
+	return true
 
 
 ## Loadout editing (before each encounter).

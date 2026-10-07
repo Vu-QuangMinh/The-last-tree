@@ -2,8 +2,8 @@ class_name Artifacts
 extends RefCounted
 ## Relics kept for the run.
 ##   tier: common / rare / legendary. Normal offers (keepsakes, elites, treasure, the merchant) are Common 75% of the
-##         time and Rare 25%; Legendary artifacts only drop from bosses. Anything that adds spell slots is Rare or
-##         Legendary.
+##         time and Rare 25%; Legendary artifacts only drop from bosses. An extra spell slot only ever comes from a
+##         Legendary, cursed artifact (+1 each: the Hungry Satchel, the Broken Crown, the Tangled Grimoire).
 ##   pool "normal": keepsakes, elites, treasure and the merchant. starter = available from the first run.
 ##   pool "boss":   only from bosses: element income relics and the Legendary slot artifacts.
 ##   pool "curse":  stronger, but each one hurts you somehow. Treasure rooms offer one.
@@ -24,18 +24,20 @@ const ALL := [
 	{"id": "gale_lens", "name": "Gale Lens", "aspect": "Essence refund", "desc": "After each Release, every Air in your chant has a 25% chance to come back to your bag.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🟢"},
 	{"id": "prism_shard", "name": "Prism Shard", "aspect": "Essence income", "desc": "Conjured Essence no longer fades at the end of the turn.", "cost": 35, "starter": false, "pool": "normal", "tier": "rare", "icon": "🔮"},
 	# ---- spells
-	{"id": "spell_pouch", "name": "Spell Pouch", "aspect": "Spell slots", "desc": "+1 active spell slot.", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "👝"},
-	{"id": "spell_satchel", "name": "Spell Satchel", "aspect": "Spell slots", "desc": "+1 active spell slot.", "cost": 60, "starter": false, "pool": "boss", "tier": "legendary", "icon": "🎒"},
+	{"id": "spell_pouch", "name": "Spell Pouch", "aspect": "Spell slots", "desc": "+1 active spell slot.", "cost": 0, "starter": false, "pool": "none", "tier": "rare", "icon": "👝"},  # (retired: kept so old saves load)
+	{"id": "spell_satchel", "name": "Hungry Satchel", "aspect": "Cursed", "desc": "+1 active spell slot. CURSE: when you take it, it eats 2 random spells from your spellbook.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "🎒"},
 	{"id": "chant_bell", "name": "Chant Bell", "aspect": "Spells", "desc": "The first spell you cast each turn is cast twice.", "cost": 50, "starter": false, "pool": "normal", "tier": "rare", "icon": "🔔"},
 	{"id": "echo_shell", "name": "Echo Shell", "aspect": "Spells", "desc": "Every 10th spell you cast charges it. While charged, the next spell you cast is cast twice.", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "🐚"},
 	{"id": "bandolier", "name": "Bandolier", "aspect": "Bottles", "desc": "+2 bottle slots. When you take it, gain 2 random bottles.", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "🎽"},
-	{"id": "kindling_stone", "name": "Kindling Stone", "aspect": "Burn & Poison", "desc": "Every 3rd chant charges it. While charged, the next Burn you apply is doubled.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "💥"},
+	{"id": "kindling_stone", "name": "Kindling Stone", "aspect": "Burn & Poison", "desc": "Every 3rd spell you cast puts 1 Burn on a random enemy.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "💥"},
 	{"id": "venom_gland", "name": "Venom Gland", "aspect": "Burn & Poison", "desc": "Your Poison applies 1 extra stack.", "cost": 25, "starter": false, "pool": "normal", "tier": "common", "icon": "🧪"},
 	{"id": "lock_pick", "name": "Lock Pick", "aspect": "Debuffs", "desc": "Locks on your spells have 1 fewer symbol.", "cost": 30, "starter": false, "pool": "normal", "tier": "common", "icon": "🗝"},
 	{"id": "keen_eye", "name": "Keen Eye", "aspect": "Debuffs", "desc": "You can't be Blinded.", "cost": 25, "starter": false, "pool": "normal", "tier": "common", "icon": "👁"},
 	{"id": "calm_stone", "name": "Calm Stone", "aspect": "Debuffs", "desc": "You can't be Confused.", "cost": 25, "starter": false, "pool": "normal", "tier": "common", "icon": "💠"},
 	# ---- defence and health
 	{"id": "rain_chalice", "name": "Rain Chalice", "aspect": "Defence", "desc": "Start every fight with 4 Shield.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🏆"},
+	{"id": "echo_chamber", "name": "Echo Chamber", "aspect": "Spells", "desc": "If you Chant 3 Essence or fewer, every spell you cast this turn is cast twice (lengthening the chant later doesn't stop it).", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "🔊"},
+	{"id": "shield_of_silence", "name": "Shield of Silence", "aspect": "Defence", "desc": "When you pass your turn without chanting, gain 5 Shield.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🤫"},
 	{"id": "ward_stone", "name": "Ward Stone", "aspect": "Defence", "desc": "Start every fight with Aegis 1.", "cost": 35, "starter": false, "pool": "normal", "tier": "rare", "icon": "🛡"},
 	{"id": "thornbark", "name": "Thornbark", "aspect": "Defence", "desc": "Thorns 1 in every fight.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🌵"},
 	{"id": "iron_bark", "name": "Iron Bark", "aspect": "Defence", "desc": "Start every fight with 2 Shield.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🌲"},
@@ -53,7 +55,8 @@ const ALL := [
 	{"id": "gale_heart", "name": "Gale Heart", "aspect": "Essence income", "desc": "+1 Air every turn.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "💚"},
 	# ---- cursed: strong, with a price
 	{"id": "blood_pact", "name": "Blood Pact", "aspect": "Cursed", "desc": "+1 Essence every turn. CURSE: −12 max HP.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "🩸"},
-	{"id": "broken_crown", "name": "Broken Crown", "aspect": "Cursed", "desc": "+2 active spell slots (up to the max of 8). CURSE: start every fight with 2 fewer Essence.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "👑"},
+	{"id": "broken_crown", "name": "Broken Crown", "aspect": "Cursed", "desc": "+1 active spell slot. CURSE: −15 max HP.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "👑"},
+	{"id": "tangled_grimoire", "name": "Tangled Grimoire", "aspect": "Cursed", "desc": "+1 active spell slot. CURSE: when you take it, 4 random spells each need 1 more Essence (a random one, added to the end of their pattern).", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "📖"},
 	{"id": "glass_heart", "name": "Glass Heart", "aspect": "Cursed", "desc": "Every enemy your Release hits also loses its rightmost Essence. CURSE: you take 25% more damage.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "💔"},
 	{"id": "withered_idol", "name": "Withered Idol", "aspect": "Cursed", "desc": "+2 Essence every turn. CURSE: −1 active spell slot.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "🗿"},
 ]
@@ -79,12 +82,14 @@ const PLUS := {
 	"flame_lens": [0.25, 0.4, "After each Release, every Fire in your chant has a 40% chance to come back to your bag."],
 	"tide_lens": [0.25, 0.4, "After each Release, every Water in your chant has a 40% chance to come back to your bag."],
 	"gale_lens": [0.25, 0.4, "After each Release, every Air in your chant has a 40% chance to come back to your bag."],
-	"kindling_stone": [3, 2, "Every 2nd chant charges it. While charged, the next Burn you apply is doubled."],
+	"kindling_stone": [3, 2, "Every 2nd spell you cast puts 1 Burn on a random enemy."],
 	"echo_shell": [10, 7, "Every 7th spell you cast charges it. While charged, the next spell you cast is cast twice."],
 	"venom_gland": [1, 2, "Your Poison applies 2 extra stacks."],
 	"lock_pick": [1, 2, "Locks on your spells have 2 fewer symbols."],
 	"rain_chalice": [4, 6, "Start every fight with 6 Shield."],
 	"ward_stone": [1, 2, "Start every fight with Aegis 2."],
+	"echo_chamber": [3, 4, "If you Chant 4 Essence or fewer, every spell you cast this turn is cast twice (lengthening the chant later doesn't stop it)."],
+	"shield_of_silence": [5, 8, "When you pass your turn without chanting, gain 8 Shield."],
 	"thornbark": [1, 2, "Thorns 2 in every fight."],
 	"iron_bark": [2, 3, "Start every fight with 3 Shield."],
 	"healing_sap": [2, 3, "Heal 3 after every fight."],
@@ -119,7 +124,13 @@ static func view(id: String, plus := false) -> Dictionary:
 static func charge_state(id: String, p: PlayerState, plus := false) -> Array:
 	match id:
 		"kindling_stone":
-			return [p.kindling_charged, "CHARGED: your next Burn is doubled." if p.kindling_charged else "%d / %d chants" % [p.kindling_chants, int(num(id, plus))]]
+			# it glows when the next spell you cast will set an enemy alight
+			var every := int(num(id, plus))
+			var ready := p.kindling_chants >= every - 1
+			return [ready, "READY: your next spell puts 1 Burn on a random enemy." if ready else "%d / %d spells" % [p.kindling_chants, every]]
+		"echo_chamber":
+			# it shines while it's on (a short chant this turn)
+			return [p.echo_chamber_on, "ON: every spell you cast this turn is cast twice." if p.echo_chamber_on else "Chant %d Essence or fewer to turn it on." % int(num(id, plus))]
 		"echo_shell":
 			return [p.echo_charged, "CHARGED: your next spell is cast twice." if p.echo_charged else "%d / %d spells" % [p.echo_casts, int(num(id, plus))]]
 	return []

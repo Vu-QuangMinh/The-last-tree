@@ -34,7 +34,7 @@ const LOOK := {
 	"silence": ["🔇", PURPLE], "lock": ["🔒", PURPLE], "steal": ["✋", PURPLE], "confuse": ["🌀", PURPLE],
 	"blind": ["🙈", PURPLE], "bleed": ["🩸", PURPLE], "freeze": ["❄", PURPLE], "ethereal": ["👻", BLUE],
 	"empower": ["💪", BLUE], "summon": ["👤+", BLUE], "toll": ["⛓", PURPLE], "invert": ["🔄", PURPLE],
-	"hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE],
+	"hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE],
 }
 
 
@@ -59,12 +59,15 @@ const INFO := {
 	"hex": ["Hex", "Marks one of your Essence: chanting it costs 2 HP."],
 	"mimic": ["Mimic", "Its Essence becomes your last chant, backwards."],
 	"frail": ["Frail", "You take 25% more attack damage for a few turns."],
+	"brittle": ["Brittle", "The Shield you gain is 25% smaller for a few turns."],
+	"regrow": ["Regrow", ""],
+	"sing": ["Sing", ""],
 }
 
 
-static func make(e: EnemyState) -> IntentChip:
+static func make(e: EnemyState, move := {}) -> IntentChip:
 	var c := IntentChip.new()
-	c.build(e)
+	c.build(e, move)
 	return c
 
 
@@ -94,7 +97,8 @@ static func _bubble_parts() -> Dictionary:
 	return parts
 
 
-func build(e: EnemyState) -> void:
+## move: show this move instead of the enemy's own intent (a Bramble Matron wall's).
+func build(e: EnemyState, move := {}) -> void:
 	_bubble = _bubble_parts()
 	var bubble: StyleBox = null
 	if not _bubble.is_empty():
@@ -127,8 +131,8 @@ func build(e: EnemyState) -> void:
 		row.add_child(_word("skips", Color(0.7, 0.9, 1)))
 		tooltip_text = "[b][font_size=25]Frozen[/font_size][/b]\n" + UiSkin.inline("intent_freeze", "❄", 24) + " " + Keywords.colorize("Frozen: it skips its next action.")
 		return
-	var m := e.intent
-	var lines := ["[b][font_size=25]%s intends to…[/font_size][/b]" % e.name]
+	var m: Dictionary = move if not move.is_empty() else e.intent
+	var lines := ["[b][font_size=25]%s intends to…[/font_size][/b]" % (e.name if move.is_empty() else "Her wall")]
 	while not m.is_empty():
 		_add_move(row, m, e)
 		var look: Array = LOOK.get(m.kind, ["?", GREY])
@@ -193,7 +197,7 @@ func _add_move(row: HBoxContainer, m: Dictionary, e: EnemyState) -> void:
 			num = "+%d" % m.n
 		"lock":
 			num = str(m.len)
-		"blind", "silence", "frail":
+		"blind", "silence", "frail", "brittle":
 			num = str(m.turns)
 		"toll":
 			num = str(PlayerState.TOLL_CAP)
