@@ -10,15 +10,15 @@ extends Control
 
 signal chosen(which: String)  # "seal" | "fuse" | "rest"
 
-const CHOICES := {"resin": "seal", "fuse": "fuse", "rest": "rest"}  # picture -> choice
+const CHOICES := {"fuse": "fuse", "rest": "rest"}  # picture -> choice (the fire pit itself is just scenery)
 const WORDS := {"seal": "SEAL", "fuse": "FUSE", "rest": "REST"}
 const IDLE_WORD := "CAMPFIRE"
 const RISE_TIME := 0.42
 const CONFIRM_HINT := "Click the signboard to confirm  ·  click anywhere else to cancel"
 
 var run: RunState
-var enabled := {"seal": true, "fuse": true, "rest": true}
-var hints := {"seal": "", "fuse": "", "rest": ""}  # what each choice does (or why it can't be chosen): the second board
+var enabled := {"fuse": true, "rest": true}
+var hints := {"fuse": "", "rest": ""}  # what each choice does (or why it can't be chosen): the second board
 var extra: Control  # shown at the bottom left (your HP)
 
 var _stage: Control
@@ -339,7 +339,7 @@ func _on_hover(which: String, on: bool) -> void:
 
 func _refresh_flame() -> void:
 	if _flame != null:
-		_flame.boost = enabled.get("seal", true) and (_hovered == "seal" or _selected == "seal")
+		_flame.boost = false
 
 
 func _refresh_hint() -> void:

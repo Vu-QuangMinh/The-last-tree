@@ -48,33 +48,34 @@ func test_occurrences_are_non_overlapping() -> void:
 	assert_eq(Chant.occurrences("AF", "AFWAF"), [0, 3])
 
 
-func test_burn_takes_leftmost_poison_takes_rightmost_then_both_drop_by_one() -> void:
+func test_burn_takes_the_rightmost_then_is_gone() -> void:
 	var e := _enemy("FWAWFAW")
 	e.burn = 2
+	assert_true(e.is_lit(6) and e.is_lit(5) and not e.is_lit(4), "the 2 rightmost are marked to burn")
+	assert_eq(e.burn_off(), ["A", "W"])
+	assert_eq(e.burn, 0, "used up")
+	assert_eq(e.hp_text(), "FWAWF")
+
+
+func test_poison_grows_each_turn_and_kills_when_it_catches_up() -> void:
+	var e := _enemy("FWAWF")
+	e.armor = [true, true, true, true, true]  # (armour doesn't help)
 	e.poison = 3
-	assert_true(e.is_lit(0) and e.is_lit(1) and not e.is_lit(2), "the 2 leftmost are marked to burn")
-	assert_true(e.is_poisoned(6) and e.is_poisoned(4) and not e.is_poisoned(3), "the 3 rightmost are marked for poison")
-	assert_eq(e.burn_off(), ["F", "W"])
-	assert_eq(e.burn, 1)
+	assert_true(not e.is_dead(), "Poison 3, 5 Essence left")
 	e.begin_turn()
-	assert_eq(e.hp_text(), "AW")
-	assert_eq(e.poison, 2)
-	# next turn: Burn 1 takes the A, Poison 2 wants two but only the W is left
-	assert_eq(e.burn_off(), ["A"])
+	assert_eq(e.poison, 4, "+1 every turn")
+	assert_eq(e.hp_text(), "FWAWF", "it doesn't eat Essence")
+	assert_true(not e.is_dead())
 	e.begin_turn()
-	assert_true(e.is_dead())
-	assert_eq(e.burn, 0)
-	assert_eq(e.poison, 1)
+	assert_true(e.is_dead(), "Poison 5 = 5 Essence left: it dies")
 
 
-func test_burn_and_poison_ignore_armour() -> void:
+func test_poison_kills_the_moment_the_essence_drops_to_it() -> void:
 	var e := _enemy("FWA")
-	e.armor = [true, false, true]
-	e.burn = 1
-	e.poison = 1
-	assert_eq(e.burn_off(), ["F"])
-	assert_eq(e.poison_bite(), ["A"])
-	assert_eq(e.hp_text(), "W")
+	e.poison = 2
+	assert_true(not e.is_dead())
+	e.remove_right(1)  # (a spell or the Release takes one)
+	assert_true(e.is_dead(), "Poison 2, 2 Essence left: dead at once")
 
 
 func test_wildcard_matches_any_element() -> void:

@@ -68,10 +68,10 @@ func run(t: SceneTree) -> void:
 	var cards: Array = l._active_row.get_children().filter(func(c): return c is SpellCard)
 	var c0: SpellCard = cards[0]
 	var at := c0.get_global_rect().get_center()
-	l._press = {"i": 0, "id": run.loadout[0], "at": at}
+	l._press = {"id": run.loadout[0], "at": at, "card": c0}
 	l._begin_drag(at)
 	for k in 14:
-		l._drag.set_pointer(at + Vector2(40.0 * k, -20))
+		l._move_drag(at + Vector2(40.0 * k, -20))
 		await tree.process_frame
 	await _wait(2)
 	await _shot("04_loadout_drag")

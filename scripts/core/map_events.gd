@@ -2,19 +2,16 @@ class_name MapEvents
 extends RefCounted
 ## "?" rooms. Stepping into one usually brings an event (a little story with choices), but it can also turn out
 ## to be a fight, a merchant or treasure. Each option: label, optional costs (amber / hp / max_hp), and what it does:
+## Extra prices an option can ask: lose_spells n (n random spells, gone) · burden n (n random spells need 1 more
+## Essence). An event's "weight" (default 1) makes it rarer or commoner among the "?" rooms.
 ##   heal n · lose_hp n · max_hp n · amber n · upgrade n (a wax seal on n random spells) · spell rarity · artifact pool
 ##   bottle n (n random bottles, if you have room)
 ##   gamble (50%: heal to full, else an ambush fight) · fight · none
-##   upgrade_artifact (pick one: it becomes its + version) · trade_artifacts (give 2 of a tier, pick 1 of the next)
-##   apply_seals (apply your purple seals: one Essence of a spell each) · resin n (gain n purple resin)
+##   upgrade_artifact (a random one becomes its + version) · trade_artifacts (give 2 of a tier, pick 1 of the next)
 
 const ALL := [
-	{"id": "resin_shrine", "title": "The Resin Shrine", "text": "An old stone basin, stained purple at the rim. Your purple seals grow warm as you come near, as if they want to be pressed into something.",
-		"options": [{"label": "Press your purple seals into your spells (one Essence each)", "do": "apply_seals"},
-			{"label": "Scrape some old resin from the basin (lose 4 HP): +1 purple resin", "hp": 4, "do": "resin", "n": 1},
-			{"label": "Walk on", "do": "none"}]},
 	{"id": "well", "title": "The Whispering Well", "text": "A mossy well whispers your name. It sounds hungry, and a little bit greedy.",
-		"options": [{"label": "Drop in 20 Leaves (a random spell needs 1 Essence less)", "amber": 20, "do": "upgrade", "n": 1},
+		"options": [{"label": "Drop in 60 Leaves (a random spell needs 1 Essence less)", "amber": 60, "do": "upgrade", "n": 1},
 			{"label": "Drink deeply (heal 12)", "do": "heal", "n": 12},
 			{"label": "Walk on", "do": "none"}]},
 	{"id": "lost_sprite", "title": "A Lost Sprite", "text": "A tiny wind sprite is crying under a leaf. It swears it knows a great spell, if you can get it home.",
@@ -24,13 +21,17 @@ const ALL := [
 		"options": [{"label": "Dance! (half the time: heal to full; otherwise: an ambush)", "do": "gamble"},
 			{"label": "Walk around it, very carefully", "do": "none"}]},
 	{"id": "hollow_stump", "title": "The Hollow Stump", "text": "Something glints inside a hollow stump. Something else growls inside a hollow stump.",
-		"options": [{"label": "Reach in anyway (lose 8 HP): gain an artifact", "hp": 8, "do": "artifact", "pool": "normal"},
+		"weight": 0.4,  # (artifact events are rare, and dear)
+		"options": [{"label": "Reach in and let it bite (lose 12 max HP): gain an artifact", "max_hp": 12, "do": "artifact", "pool": "normal"},
+			{"label": "Feed it 2 of your spells (2 random spells, gone): gain an artifact", "lose_spells": 2, "do": "artifact", "pool": "normal"},
+			{"label": "Let its thorns tangle your spellbook (2 random spells need 1 more Essence): gain an artifact", "burden": 2, "do": "artifact", "pool": "normal"},
 			{"label": "Leave it be", "do": "none"}]},
 	{"id": "bard", "title": "A Travelling Bard", "text": "A bard with a lute made of antlers offers to teach you a song of legend. For a fee, naturally.",
 		"options": [{"label": "Pay 35 Leaves: learn a Legendary spell", "amber": 35, "do": "spell", "rarity": "legendary"},
 			{"label": "Just listen for a while (heal 5)", "do": "heal", "n": 5}]},
 	{"id": "cursed_shrine", "title": "A Cursed Shrine", "text": "A grinning idol sits on a heap of golden leaves. The leaves are lovely. The grin is not.",
-		"options": [{"label": "Take the idol and the leaves: a cursed artifact and 40 Leaves", "do": "curse_amber", "n": 40},
+		"weight": 0.4,
+		"options": [{"label": "Take the idol: a cursed artifact", "do": "curse_amber", "n": 0},
 			{"label": "Pray instead (heal 8)", "do": "heal", "n": 8}]},
 	{"id": "amber_vein", "title": "A Golden Thicket", "text": "Golden leaves have drifted deep under a bramble. They look valuable, and the bramble looks extremely sharp.",
 		"options": [{"label": "Reach in (lose 5 HP): +45 Leaves", "hp": 5, "do": "amber", "n": 45},
@@ -42,7 +43,7 @@ const ALL := [
 		"options": [{"label": "Buy it for 25 Leaves (+6 max HP)", "amber": 25, "do": "max_hp", "n": 6},
 			{"label": "Politely decline", "do": "none"}]},
 	{"id": "tinker", "title": "The Tinker's Cart", "text": "A gnome with a hundred tiny tools squints at your pack. \"I can make any of those better. For a price, naturally.\"",
-		"options": [{"label": "Pay 40 Leaves: upgrade an artifact (it becomes its + version)", "amber": 40, "do": "upgrade_artifact"},
+		"options": [{"label": "Pay 40 Leaves: upgrade a random artifact", "amber": 40, "do": "upgrade_artifact"},
 			{"label": "No thank you", "do": "none"}]},
 	{"id": "barterer", "title": "The Barterer", "text": "An old tortoise wears a shell piled high with trinkets. \"Two of yours for one of mine. Mine are better. Mostly.\"",
 		"options": [{"label": "Trade 2 artifacts of the same tier for 1 of the next tier", "do": "trade_artifacts"},

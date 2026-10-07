@@ -109,3 +109,5 @@ firestorm_herald
 storm_sermon
 sunfall
 worlds_end
+thorn_dart
+hawks_eye

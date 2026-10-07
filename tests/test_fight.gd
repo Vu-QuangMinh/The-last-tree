@@ -93,19 +93,18 @@ func test_warded_ignores_short_chants() -> void:
 	assert_eq(f.enemies[0].size(), 6)
 
 
-func test_burn_takes_leftmost_each_enemy_turn_and_lasts() -> void:
+func test_burn_takes_rightmost_once_then_is_gone() -> void:
 	var f := _fight(["ashling"], [], "")
 	var e: EnemyState = f.enemies[0]
 	_set_hp(e, "FWAWFAAW")
 	assert_eq(e.ignite(2, f.rng), 2)
 	assert_eq(e.burn, 2)
 	f.player.hp = 99
-	f.pass_turn()  # its turn: the fire takes F W first, then Burn drops to 1
-	assert_eq(e.hp_text(), "AWFAAW")
-	assert_eq(e.burn, 1)
-	f.pass_turn()
-	assert_true(e.hp_text().begins_with("WFAAW"), "Burn 1 takes just the A: " + e.hp_text())
+	f.pass_turn()  # its turn: the fire takes the rightmost A W, then the Burn is gone
+	assert_eq(e.hp_text(), "FWAWFA")
 	assert_eq(e.burn, 0)
+	f.pass_turn()
+	assert_eq(e.hp_text(), "FWAWFA", "nothing more burns")
 
 
 func test_burned_out_enemy_never_attacks() -> void:
@@ -284,6 +283,79 @@ func test_absorb_heals_only_when_it_defeats() -> void:
 	assert_true(not ("heal" in events), "no heal animation either: %s" % [events])
 
 
+func test_act1_enemies_keep_their_designed_essence() -> void:
+	var f := _fight(["yeti", "tomato_knight", "ashling"], [], "")
+	assert_eq(f.enemies.map(func(e): return e.size()), [12, 15, 3], "exactly the HP of the roster, no extra Essence")
+
+
+func test_bramble_back_thorns_prick_your_release() -> void:
+	var f := _fight(["bramble_back"], [], "FA")
+	f.player.shield = 99.0  # (its attack on the enemy turn is blocked: only the thorns get through)
+	var hp0 := f.player.hp
+	f.cast(_all(2))
+	assert_eq(f.player.hp, hp0 - 2.0, "Thorns 2: hitting it with the Release costs 2 HP")
+
+
+func test_cinder_hound_is_fireproof() -> void:
+	var f := _fight(["cinder_hound"], [], "")
+	f.enemies[0].ignite(3)
+	assert_eq(f.enemies[0].burn, 0)
+
+
+func test_winged_tortoise_armours_the_next_essence() -> void:
+	var f := _fight(["winged_tortoise"], [], "")
+	var e: EnemyState = f.enemies[0]
+	f._do_move(e, {"kind": "armor", "pos": -1})
+	f._do_move(e, {"kind": "armor", "pos": -1})
+	assert_eq(e.armor.slice(0, 3), [true, true, false], "one more Essence behind the shell each time")
+
+
+func test_giant_slime_bursts_into_two_different_slimes() -> void:
+	var f := _fight(["giant_slime"], [], "F")
+	_set_hp(f.enemies[0], "F")
+	f.cast(_all(1))
+	var ids: Array = f.enemies.map(func(e): return e.id)
+	assert_eq(ids.size(), 2)
+	assert_true(ids[0] != ids[1] and ids.all(func(id): return id.ends_with("_slime")), str(ids))
+	assert_eq(f.enemies[0].size(), 5)
+
+
+func test_tomato_knight_drops_its_shield_at_half() -> void:
+	var f := _fight(["tomato_knight"], [], "FFWFFAFF")
+	var e: EnemyState = f.enemies[0]
+	e.set_armor(14)
+	f.cast(_all(8))  # 15 -> 7 Essence: half or less
+	assert_eq(e.size(), 7)
+	assert_eq(e.phase, 2)
+	assert_true(not e.armor.has(true), "the shield is gone")
+	assert_eq(e.intent.kind, "attack")
+	assert_eq(e.intent.get("hits", 1), 2, "it attacks twice from now on")
+
+
+func test_rolling_bear_gains_power_every_turn() -> void:
+	var f := _fight(["rolling_bear"], [], "")
+	f.player.hp = 999
+	f.end_player_turn()
+	f.end_player_turn()
+	assert_eq(f.enemies[0].dmg_bonus, 4, "+2 after every attack")
+
+
+func test_act1_encounters_are_fixed_and_never_repeat_the_last_two() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3
+	for tier in EnemyDefs.ENCOUNTERS_ACT1:
+		for enc in EnemyDefs.ENCOUNTERS_ACT1[tier]:
+			for id in enc.ids:
+				assert_true(EnemyDefs.E.has(id), id)
+	var recent := []
+	for i in 40:
+		var enc := EnemyDefs.act1_encounter(2.0, rng, recent)
+		assert_true(not (enc.name in recent.slice(maxi(0, recent.size() - 2))), "no repeat of the last two")
+		recent.append(enc.name)
+	var slimes := EnemyDefs.ENCOUNTERS_ACT1[2.5].filter(func(e): return e.name == "The Slime Trio")
+	assert_eq(slimes[0].ids, ["purple_slime", "green_slime", "yellow_slime"], "always the same three")
+
+
 func test_split_makes_a_twin() -> void:
 	var f := _fight(["splitter_ooze"], [], "W")
 	_set_hp(f.enemies[0], "WWFF")
@@ -292,25 +364,24 @@ func test_split_makes_a_twin() -> void:
 	assert_eq(f.enemies[0].hp_text() + "|" + f.enemies[1].hp_text(), "W|FF")
 
 
-func test_kindling_stone_charges_every_third_chant() -> void:
-	var f := _fight(["ashling"], ["ember"], "")
+func test_kindling_stone_burns_on_every_third_spell() -> void:
+	var f := _fight(["ashling"], ["water_wall"], "")
 	f.artifacts = ["kindling_stone"]
 	var e: EnemyState = f.enemies[0]
 	f.player.hp = 99
 	var burns := []
-	for i in 4:
+	for i in 3:
 		_set_hp(e, "AAAAAAAAAA")
+		e.burn = 0
 		f.player.stock.clear()
-		f.player.add_element("F")
-		f.cast_chant([0])
-		f.resolve_all()  # Ember: Burn 1 on the target
+		for ch in "WW":
+			f.player.add_element(ch)
+		f.cast_chant(_all(2))
+		f.resolve_spell("water_wall")
 		burns.append(e.burn)
 		f.finish_turn()
-	# Burn lasts (dropping by 1 each enemy turn): 1 -> 0, 1 -> 0, doubled 2 -> 1, then 1 + 1 = 2
-	assert_eq(burns, [1, 1, 2, 2], "3rd chant charges the stone and its Burn is doubled")
-	assert_true(not f.player.kindling_charged)
-	assert_eq(f.player.kindling_chants, 1)
-
+	assert_eq(burns, [0, 0, 1], "the 3rd spell cast puts 1 Burn on a random enemy")
+	assert_eq(f.player.kindling_chants, 0, "and the count starts over")
 
 func test_lens_refunds_about_a_quarter_of_its_element() -> void:
 	var f := _fight(["ashling"], [], "")
@@ -587,9 +658,13 @@ func test_spell_slots_start_at_5_and_cap_at_8() -> void:
 	assert_eq(run.active_slots(), 5)
 	assert_eq(run.loadout.size(), 3, "Fire Ball, Water Wall, Tailwind")
 	assert_true(not ("gust" in run.loadout), "Gust is not a starter")
-	for a in ["spell_pouch", "spell_satchel", "broken_crown"]:
+	for a in ["spell_satchel", "broken_crown", "tangled_grimoire"]:
 		run.gain_artifact(a)
-	assert_eq(run.active_slots(), 8, "5 + 1 + 1 + 2 = 9, capped at 8")
+	assert_eq(run.active_slots(), 8, "5 + 1 + 1 + 1")
+	for a in Artifacts.ALL:
+		if a.id in ["spell_satchel", "broken_crown", "tangled_grimoire"]:
+			assert_eq(a.tier, "legendary", a.id)
+			assert_eq(a.aspect, "Cursed", "%s: a spell slot always comes with a curse" % a.id)
 
 
 func test_artifact_tiers() -> void:
@@ -597,7 +672,7 @@ func test_artifact_tiers() -> void:
 		assert_true(a.has("tier"), a.id)
 		if a.tier == "legendary":
 			assert_eq(a.pool, "boss", "%s: legendaries only drop from bosses" % a.id)
-		if a.aspect == "Spell slots" or a.id == "broken_crown":
+		if a.aspect == "Spell slots" or a.id in ["broken_crown", "spell_satchel", "tangled_grimoire"]:
 			assert_true(a.tier in ["rare", "legendary"], "%s adds slots, so it can't be common" % a.id)
 	var rng := RandomNumberGenerator.new()
 	for i in 20:
@@ -798,7 +873,7 @@ func test_undo_restores_the_fight_before_a_spell() -> void:
 	assert_eq(f.charges.get("water_wall", 0), 1)
 
 
-func test_fusion_drips_resin_heated_into_seals() -> void:
+func test_fusion_wax_seals_one_essence_of_the_new_spell() -> void:
 	var run := RunState.new()
 	run.setup(db, [], [], 4)
 	var ids: Array = run.fusable()
@@ -806,17 +881,336 @@ func test_fusion_drips_resin_heated_into_seals() -> void:
 	var fz := run.fuse_preview(ids[0], ids[1])
 	assert_eq(fz.pattern, run.spell(ids[0]).pattern + run.spell(ids[1]).pattern, "the whole of both patterns")
 	run.fuse_commit(fz, ids[0], ids[1])
-	assert_eq(run.resin, 1, "one piece of purple resin per fusion")
-	assert_true(not run.use_purple_seal(fz.id, 0), "resin can't seal anything until it's heated")
-	assert_eq(run.heat_resin(), 1, "the campfire heats it")
-	assert_eq(run.resin, 0)
-	assert_eq(run.purple_seals, 1, "it's a purple seal now")
+	assert_true(fz.id in run.upgradable(), "the new spell can take the fusion's wax")
 	var n: int = String(run.spell(fz.id).pattern).length()
-	assert_true(run.use_purple_seal(fz.id, 0), "the seal is applied")
-	assert_eq(run.purple_seals, 0, "and used up")
+	run.seal_spell(fz.id, run.sealable(fz.id)[1])  # the drop lands on its 2nd Essence
 	assert_eq(String(run.spell(fz.id).pattern).length(), n - 1, "one Essence less to chant")
-	run.resin = 2
-	run.purple_seals = 1
-	var back := RunState.from_save(JSON.parse_string(JSON.stringify(run.to_save())), db)
-	assert_eq(int(back.resin), 2, "resin is saved with the run")
-	assert_eq(int(back.purple_seals), 1, "so are held seals")
+	assert_eq(run.spell(fz.id).seals, [1], "shown under a wax seal")
+	assert_true(not ("resin" in run), "no purple resin any more")
+	var back := RunState.from_save(str_to_var(var_to_str(run.to_save())), db)
+	assert_eq(back.spell(fz.id).seals, [1], "the seal is saved with the run")
+
+
+
+func test_newcomers_show_their_intent_before_acting() -> void:
+	var f := _fight(["giant_slime"], [], "F")
+	_set_hp(f.enemies[0], "F")
+	f.player.hp = 99
+	f.cast(_all(1))  # the Release kills it: two slimes pop out, then it's the enemies' turn
+	assert_eq(f.enemies.size(), 2)
+	assert_eq(f.player.hp, 99.0, "the new slimes only show their intent this turn")
+	assert_true(f.enemies.all(func(e): return e.intent.kind == "attack"), "and that intent is still shown")
+	f.end_player_turn()
+	assert_eq(f.player.hp, 99.0 - 8.0, "next turn they attack (4 each)")
+
+
+func test_loadout_drag_and_drop_switches_spells() -> void:
+	var run := RunState.new()
+	run.setup(db, [], [], 4)
+	run.learn_spell("inferno")
+	run.learn_spell("tidecaller")
+	run.toggle_active("tidecaller")  # (new spells go straight into the row while there's room: put one back)
+	var row: Array = run.loadout.duplicate()
+	var book: Array = run.spellbook.filter(func(id): return not (id in run.loadout))
+	assert_true(run.drop_spell(row[0], true, row[1]))
+	assert_eq(run.loadout.slice(0, 2), [row[1], row[0]], "two active spells switch places")
+	assert_true(run.drop_spell(book[0], true, row[0]))
+	assert_true(book[0] in run.loadout and not (row[0] in run.loadout), "a spellbook spell dropped on an active one takes its place")
+	assert_true(run.drop_spell(book[0], false))
+	assert_true(not (book[0] in run.loadout), "dragged down into the spellbook: out of the row")
+	while run.loadout.size() < run.active_slots() and run.spellbook.any(func(id): return not (id in run.loadout)):
+		run.toggle_active(run.spellbook.filter(func(id): return not (id in run.loadout))[0])
+	var spare: Array = run.spellbook.filter(func(id): return not (id in run.loadout))
+	if not spare.is_empty() and run.loadout.size() == run.active_slots():
+		assert_true(not run.drop_spell(spare[0], true), "a full row has no empty space to drop into")
+
+
+func test_shield_builds_up_and_brittle_shrinks_it() -> void:
+	var f := _fight(["ashling"], ["water_wall"], "WW")
+	f.player.hp = 99
+	f.enemies[0].def.moves = [{"kind": "mend", "el": "F", "n": 1, "who": "self"}]  # (it never attacks here)
+	f.enemies[0].move_index = 0
+	f._plan(f.enemies[0])
+	f.cast_chant(_all(2))
+	f.resolve_spell("water_wall")
+	f.end_player_turn()
+	assert_eq(f.player.shield, 4.0, "Shield stays into your next turn")
+	f.player.stock.clear()
+	for ch in "WW":
+		f.player.add_element(ch)
+	f.cast_chant(_all(2))
+	f.resolve_spell("water_wall")
+	assert_eq(f.player.shield, 8.0, "and builds up")
+	f.player.brittle_turns = 2
+	assert_eq(f.player.gain_shield(4.0), 3.0, "Brittle: 25% less Shield (rounded down)")
+	assert_eq(f.player.shield, 11.0)
+
+
+func test_slot_artifacts_bring_their_curses() -> void:
+	var run := RunState.new()
+	run.setup(db, [], [], 6)
+	for id in ["inferno", "tidecaller", "searing_brand", "frost_nova"]:
+		run.learn_spell(id)
+	var n := run.spellbook.size()
+	run.gain_artifact("spell_satchel")
+	assert_eq(run.spellbook.size(), n - 2, "the Hungry Satchel eats 2 spells")
+	assert_true(run.curse_note.begins_with("It ate"), run.curse_note)
+	var hp := run.player.max_hp
+	run.gain_artifact("broken_crown")
+	assert_eq(run.player.max_hp, hp - 15.0, "the Broken Crown costs 15 max HP")
+	var before := {}
+	for id in run.spellbook:
+		before[id] = String(run.spell(id).pattern).length()
+	run.gain_artifact("tangled_grimoire")
+	var longer := run.spellbook.filter(func(id): return String(run.spell(id).pattern).length() == before[id] + 1)
+	assert_eq(longer.size(), mini(4, run.spellbook.size()), "4 spells need 1 more Essence")
+	assert_eq(run.active_slots(), 8)
+
+
+func test_bramble_matron_walls() -> void:
+	var f := _fight(["bramble_matron"], [], "")
+	var e: EnemyState = f.enemies[0]
+	assert_eq(e.size(), 13, "3 + 7 + 3")
+	assert_eq([e.parts.count("L"), e.parts.count(""), e.parts.count("R")], [3, 7, 3])
+	assert_eq(e.walls_standing(), 2)
+	# rightmost effects take the right end of her row: the right wall, then (once it's down) her own Essence
+	e.remove_right(5)
+	assert_eq([e.parts.count("L"), e.parts.count(""), e.parts.count("R")], [3, 5, 0])
+	assert_eq(e.walls_standing(), 1)
+	# a wall down: her next intent is to regrow it (shown first), and on her turn she does
+	f._plan(e)
+	assert_eq(e.intent, {"kind": "regrow", "side": "R"})
+	var bonus := e.dmg_bonus
+	f._do_move(e, e.intent)
+	assert_eq(e.parts.count("R"), 3, "the right wall grows back")
+	# both walls up: she sings (Power +1), or attacks
+	f._do_move(e, {"kind": "sing"})
+	assert_eq(e.dmg_bonus, bonus + 1)
+	assert_eq(e.power, 1)
+	assert_true(e.describe_statuses().any(func(t): return t.begins_with("Power 1")), "Power shows as a status")
+	# each standing wall attacks
+	f.player.hp = 99
+	f.player.shield = 0
+	e.wall_step = {"L": 1, "R": 1}  # both walls on their 2nd move: 1 damage, 2 hits
+	f._wall_turns(e)
+	assert_eq(f.player.hp, 99.0 - 4.0 * (1 + e.dmg_bonus), "each wall attacks on its own: 2 walls x 2 hits")
+	assert_eq(e.wall_step, {"L": 2, "R": 2})
+	# her own Essence gone: she dies and the walls fall with her
+	var own := []
+	for i in e.size():
+		if e.parts[i] == "":
+			own.append(i)
+	own.reverse()
+	for i in own:
+		e.pluck(i)
+	assert_true(e.is_dead(), "dead with her walls still up")
+	f._cleanup()
+	assert_true(f.won, "the fight is over")
+
+
+func test_all_enemy_spells_hit_each_part_of_the_matron() -> void:
+	var f := _fight(["bramble_matron"], ["inferno"], "")
+	var e: EnemyState = f.enemies[0]
+	f._apply({"op": "strike", "from": "right", "n": 1, "target": "all"}, db.get_spell("inferno"), {})
+	assert_eq([e.parts.count("L"), e.parts.count(""), e.parts.count("R")], [2, 6, 2], "the left wall, she and the right wall each lose 1")
+	f._apply({"op": "random_hit", "n": 1, "target": "all"}, db.get_spell("inferno"), {})
+	assert_eq([e.parts.count("L"), e.parts.count(""), e.parts.count("R")], [1, 5, 1], "random hits on every enemy: 1 from each part")
+
+
+func test_matron_regrows_one_wall_per_turn() -> void:
+	var f := _fight(["bramble_matron"], [], "")
+	var e: EnemyState = f.enemies[0]
+	e.remove_right(3)
+	e.remove_left(3)
+	assert_eq(e.walls_standing(), 0)
+	f._plan(e)
+	assert_eq(e.intent, {"kind": "regrow", "side": "L"}, "turn 1: the left wall")
+	f._do_move(e, e.intent)
+	assert_eq(e.walls_standing(), 1, "only one wall a turn")
+	f._plan(e)
+	assert_eq(e.intent, {"kind": "regrow", "side": "R"}, "turn 2: the right wall")
+	f._do_move(e, e.intent)
+	assert_eq(e.walls_standing(), 2)
+
+
+func test_shield_of_silence_shields_a_silent_turn() -> void:
+	var f := _fight(["ashling"], [], "F")
+	f.artifacts = ["shield_of_silence"]
+	f.enemies[0].def.moves = [{"kind": "mend", "el": "F", "n": 1, "who": "self"}]  # (it doesn't attack here)
+	f._plan(f.enemies[0])
+	f.pass_turn()
+	assert_eq(f.player.shield, 5.0, "passed without chanting: +5 Shield")
+
+
+func test_echo_chamber_casts_every_spell_twice_after_a_short_chant() -> void:
+	var f := _fight(["ashling"], ["water_wall"], "WWF")
+	f.artifacts = ["echo_chamber"]
+	f.cast_chant(_all(2))  # WW: 2 Essence, short enough
+	assert_true(f.player.echo_chamber_on)
+	f.resolve_spell("water_wall")
+	assert_eq(f.player.shield, 8.0, "Water Wall cast twice: 4 + 4")
+	var g := _fight(["ashling"], ["water_wall"], "WWFAW")
+	g.artifacts = ["echo_chamber"]
+	g.cast_chant(_all(4))  # 4 Essence: too long
+	assert_true(not g.player.echo_chamber_on)
+	g.resolve_spell("water_wall")
+	assert_eq(g.player.shield, 4.0, "once")
+
+
+func test_echoed_voice_echoes_the_first_spell_each_turn() -> void:
+	var f := _fight(["ashling"], ["water_wall", "tailwind"], "WWAA")
+	f.player.passives["echo_first"] = 1
+	f.cast_chant(_all(4))
+	f.resolve_spell("water_wall")
+	assert_eq(f.player.shield, 8.0, "the turn's first spell echoes: 4 + 4")
+	assert_eq(db.get_spell("echo_chamber").name, "Echoed Voice")
+	assert_eq(db.get_spell("echo_chamber").rarity, "legendary")
+
+
+func test_storm_crown_refunds_an_air_each_chant() -> void:
+	var f := _fight(["ashling"], [], "F")
+	_set_hp(f.enemies[0], "WWWWWWWWWW")
+	f.player.hp = 99
+	f.player.passives["refund_air"] = 1
+	var before := f.player.stock.size()
+	f.cast(_all(1))  # chant the F: after the Release, an Air comes back
+	assert_true(f.player.stock.any(func(s): return s.el == "A" and not s.temp), "an Air in the bag")
+	assert_eq(db.get_spell("storm_crown").effects[0].key, "refund_air")
+
+
+func test_the_triplet() -> void:
+	assert_true("the_triplet" in EnemyDefs.elites(1), "a mini boss of act 1")
+	assert_eq(EnemyDefs.ids_of("the_triplet"), ["triplet_fire", "triplet_water", "triplet_air"])
+	assert_true(not ("triplet_fire" in EnemyDefs.elites(1)), "its members never come alone")
+	var f := _fight(["triplet_fire", "triplet_water", "triplet_air"], ["water_wall", "tailwind"], "FFWWAA")
+	for e in f.enemies:
+		assert_eq(e.size(), 5)
+	# out of step: on the first turn each one shows a different kind of move
+	var kinds := f.enemies.map(func(e): return e.intent.kind)
+	assert_eq(kinds, ["ignite_spell", "attack", "armor"])
+	var fire: EnemyState = f.enemies[0]
+	var water: EnemyState = f.enemies[1]
+	var air: EnemyState = f.enemies[2]
+	# the water one heals 1 on a hurt one (its own element), never past 5
+	var heal: Dictionary = water.def.moves[2]
+	f._do_move(water, heal)
+	assert_eq([fire.size(), water.size(), air.size()], [5, 5, 5], "nobody hurt: nothing")
+	air.pluck(0)
+	f._do_move(water, heal)
+	assert_eq(air.size(), 5, "the only hurt one gets it")
+	assert_eq(air.elements[-1], "A", "of its own element")
+	# Power and Armour land on one of the three at random
+	var total_power := 0
+	var armoured := 0
+	for i in 5:
+		f._do_move(fire, fire.def.moves[2])
+		f._do_move(air, air.def.moves[2])
+	for e in f.enemies:
+		total_power += e.power
+		armoured += e.armor.count(true)
+	assert_eq(total_power, 5, "5 Power handed out")
+	assert_true(f.enemies.filter(func(e): return e.power > 0).size() >= 2, "spread across them, not always itself")
+	assert_eq(armoured, 5, "(5 can always fit: each has 5 Essence)")
+
+
+func test_an_ignited_spell_burns_you_when_cast() -> void:
+	var f := _fight(["triplet_fire"], ["water_wall"], "WW")
+	var e: EnemyState = f.enemies[0]
+	f._do_move(e, {"kind": "ignite_spell", "turns": 1})
+	assert_true(f.player.ignited.has("water_wall"))
+	f.player.hp = 50
+	f.cast_chant(_all(2))
+	f.resolve_spell("water_wall")
+	assert_eq(f.player.hp, 45.0, "casting it burns you for 5, Shield or not")
+	assert_eq(f.player.shield, 4.0, "the spell still works")
+
+
+func test_enraged_bear() -> void:
+	var f := _fight(["enraged_bear"], ["water_wall", "tailwind"], "WWWW")
+	var e: EnemyState = f.enemies[0]
+	assert_eq(e.size(), 12)
+	assert_true("enraged_bear" in EnemyDefs.elites(1))
+	# it just attacks
+	f.player.hp = 50
+	f._do_move(e, e.def.moves[0])
+	assert_eq(f.player.hp, 50.0 - 4 - e.dmg_bonus)
+	assert_eq(f.player.brittle_turns, 0, "no Brittle")
+	# every separate Shield gain: Power +1
+	var p0 := e.power
+	f._apply({"op": "shield", "n": 4}, db.get_spell("water_wall"), {})
+	f._apply({"op": "shield", "n": 3}, db.get_spell("water_wall"), {})
+	assert_eq(e.power, p0 + 2, "two separate Shields: Power +2")
+
+
+func test_attunement_gives_the_picked_essence_every_turn() -> void:
+	var f := _fight(["ashling"], ["attunement"], "FWA")
+	f.attune_chooser = func(_s): return "W"
+	var before := f.player.next_draw.size()
+	f.cast_chant(_all(3))
+	f.resolve_spell("attunement")
+	assert_eq(f.player.passives.get("attune_el", ""), "W", "the one you picked")
+	assert_eq(f.player.next_draw.size(), before + 1, "it joins next turn's draw right away")
+	assert_eq(f.player.next_draw[-1].el, "W")
+	assert_true(SpellText.describe(db.get_spell("attunement")).contains("Gain 1 of that Essence each turn"))
+
+
+func test_yin_yang_beast() -> void:
+	var f := _fight(["yin_yang_beast"], ["fire_ball", "water_wall", "tailwind", "smolder"], "")
+	var e: EnemyState = f.enemies[0]
+	assert_eq(e.size(), 30)
+	assert_eq(e.yin, "white")
+	assert_true("yin_yang_beast" in EnemyDefs.BOSSES[1])
+	assert_true(not ("gem_king" in EnemyDefs.E) and not ("hollow_stag" in EnemyDefs.E), "removed")
+	# 1. Inversion: 3 spells flip, and it turns black
+	assert_eq(e.intent.kind, "invert_spells")
+	var anti_before := f.loadout.filter(func(s): return s.get("anti", false)).size()
+	f._do_move(e, e.intent)
+	assert_eq(e.yin, "black")
+	var changed := 0
+	for k in 4:
+		if f.loadout[k].get("anti", false) != db.get_spell(f.loadout[k].id).get("anti", false):
+			changed += 1
+	assert_eq(changed, 3, "3 spells flipped")
+	assert_true(not db.get_spell("fire_ball").get("anti", false), "the spell itself (outside the fight) is untouched")
+	# 2. Roar: silences 2 spells, small hit
+	f._plan(e)
+	assert_eq(e.intent.kind, "silence")
+	f.player.hp = 99
+	f._do_move(e, e.intent)
+	assert_eq(f.player.silenced.size(), 2)
+	assert_eq(f.player.hp, 99.0 - 5 - e.dmg_bonus)
+	# 3. Charge: 30, and each spell cast changes it (black: anti-spells lower it, spells raise it)
+	f._plan(e)
+	assert_eq(e.intent.kind, "charge")
+	assert_eq(e.charge_dmg, 30)
+	f._charge_react({"anti": true})
+	assert_eq(e.charge_dmg, 25, "its own colour: -5")
+	f._charge_react({})
+	f._charge_react({})
+	assert_eq(e.charge_dmg, 35, "the other colour: +5 each")
+	for k in 10:
+		f._charge_react({"anti": true})
+	assert_eq(e.charge_dmg, 0, "never below 0")
+	f._charge_react({})
+	f._do_move(e, e.intent)
+	f._plan(e)
+	assert_eq(e.intent.left, 2)
+	f._do_move(e, e.intent)
+	f._plan(e)
+	assert_eq(e.intent.left, 1)
+	f.player.hp = 99
+	f.player.shield = 0
+	f._do_move(e, e.intent)
+	assert_eq(f.player.hp, 99.0 - 5 - e.dmg_bonus, "the hit lands")
+	assert_eq(e.charge_dmg, -1)
+	f._plan(e)
+	assert_eq(e.intent.kind, "invert_spells", "and round again")
+	# it dies: two cubs, one white and one black, out of step
+	e.elements.clear()
+	f._cleanup()
+	var cubs := f.alive()
+	assert_eq(cubs.size(), 2)
+	assert_eq(cubs.map(func(c): return c.yin), ["white", "black"])
+	assert_eq(cubs.map(func(c): return c.size()), [10, 10])
+	assert_eq(cubs.map(func(c): return c.intent.kind), ["invert_spells", "silence"])
+	assert_true(not f.won)

@@ -22,6 +22,7 @@ var targeted := false
 var move_mode := false
 var move_pick := -1  # the element picked up in move mode
 var pick_mode := false  # choosing an element to remove (Pluck)
+var keep_big := false  # a spell that picks several Essence is still being cast: keep the row enlarged between picks
 var paint_mode := false  # with pick_mode: Expose's brush (armoured Essence can be painted, Any ones can't)
 var pick_i := -1
 var _hp_icons: Array = []  # the orbs currently shown, left to right
@@ -31,6 +32,8 @@ func setup(e: EnemyState, f: Fight) -> void:
 	enemy = e
 	fight = f
 	custom_minimum_size = Vector2(300, 470)
+	if enemy != null and enemy.has_passive("briar_walls"):
+		custom_minimum_size.x = 640.0  # room for her two hedges beside her own Essence
 	alignment = BoxContainer.ALIGNMENT_END
 	add_theme_constant_override("separation", 4)
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -39,6 +42,7 @@ func setup(e: EnemyState, f: Fight) -> void:
 	_intent_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var holder := Control.new()
 	holder.custom_minimum_size = Vector2(300, 230)
+	holder.size_flags_horizontal = Control.SIZE_SHRINK_CENTER  # (centred when the view is wider, e.g. the Matron's)
 	holder.mouse_filter = Control.MOUSE_FILTER_PASS
 	holder.clip_contents = false
 	add_child(holder)
@@ -149,12 +153,22 @@ func refresh(preview: Dictionary) -> void:
 		seen += 1
 	var mask := fight.hidden_mask(e)
 	var px := 38.0 if e.size() <= 7 else 30.0
-	if move_mode or pick_mode:
+	var walled := e.has_passive("briar_walls")
+	if walled:
+		px = 30.0
+	if move_mode or pick_mode or keep_big:
 		px = 48.0 if e.size() <= 6 else 40.0
+		if walled:
+			px = 34.0
+	e._fix_lit()
+	# an enemy behind walls (Bramble Matron): each wall is a hedge with its own Essence under it, hers stack in a
+	# framed block in the middle. Still one row, in order: left wall, her, right wall.
+	var place: Array = _wall_layout(e, px) if walled else []  # (walled: where each Essence goes, by index)
 	for i in e.size():
 		var hidden: bool = mask.size() > i and mask[i]
 		var icon := ElementIcon.make("hidden" if hidden else e.elements[i], px)
 		icon.armored = e.armor[i]
+		icon.wall = e.parts[i] != ""
 		icon.burning = e.is_lit(i)
 		icon.poisoned = e.is_poisoned(i)
 		icon.ghost = ghosts.has(i)
@@ -173,7 +187,7 @@ func refresh(preview: Dictionary) -> void:
 				icon.mouse_exited.connect(func():
 					icon.highlight = pick_i == i
 					icon.queue_redraw())
-		_hp_row.add_child(icon)
+		(place[i] if walled else _hp_row).add_child(icon)
 		_hp_icons.append(icon)
 	if move_mode and move_pick >= 0:
 		var end := UiTheme.label("▸", 30, Color(1, 0.9, 0.4))
@@ -189,12 +203,13 @@ func refresh(preview: Dictionary) -> void:
 		sk.add_theme_constant_override("outline_size", maxi(3, int(px * 0.12)))
 		sk.add_theme_color_override("font_outline_color", Color.BLACK)
 		sk.tooltip_text = "Your chant would defeat it."
-		_hp_row.add_child(sk)
+		(_link.skull_cell if walled else _hp_row).add_child(sk)
 	var st := e.describe_statuses()
 	for p in e.def.get("passives", []):
-		st.append(EnemyDefs.PASSIVE_TEXT[p].get_slice(":", 0))
+		if not (p in EnemyDefs.HIDDEN_PASSIVES):
+			st.append(EnemyDefs.PASSIVE_TEXT[p].get_slice(":", 0))
 	_status.text = "[center]" + " · ".join(st.map(func(s): return _status_bbcode(s.get_slice(" (", 0)))) + "[/center]"
-	tooltip_text = ""  # the fight screen's hover panel explains it (info_text)
+	tooltip_text = ""  # (in a fight only the intent bubble explains anything: see FightScreen._update_hover_info)
 	creature.tooltip_text = ""
 	_ring.visible = (targetable or move_mode or pick_mode) and _marker == null
 	_ring.modulate = Color(1, 1, 1, 1.0 if targeted or move_mode or pick_mode else 0.35)
@@ -225,6 +240,114 @@ func intent_chip() -> Control:
 
 ## Everything about this enemy, for the hover panel: its Essence, every status (Burn and Poison say exactly which
 ## Essence they'll take), armour, its passives and its moves.
+
+## The Matron's row: the left wall's Essence on one line beside her first row, the right wall's beside her second
+## row, a hedge above each wall, and a thin line running through every Essence in order (left wall, her rows, right
+## wall), so you can read it as one row. Returns where each Essence goes, by its index in the row.
+func _wall_layout(e: EnemyState, px: float) -> Array:
+	var full := int(e.def.get("walls", 5))
+	var gap := 3.0
+	var wall_w := full * px + (full - 1) * gap
+	var body_w := 6 * px + 5 * gap
+	var nb := e.parts.count("")
+	var rows_n := maxi(1, ceili(nb / 6.0))  # (6 or fewer of her own: one line, walls on each side)
+	_link = LinkedRows.new()
+	_link.add_theme_constant_override("separation", 4)
+	_link.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hp_row.add_child(_link)
+	# the hedges, above their walls
+	var hedges := _row_of(wall_w, body_w)
+	for side in ["L", "R"]:
+		var cell: Control = hedges[0 if side == "L" else 2]
+		var col := VBoxContainer.new()
+		col.alignment = BoxContainer.ALIGNMENT_END
+		col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cell.add_child(col)
+		if side in e.parts and fight != null:
+			# the wall's own intent, over its head (its tooltip says just what it's about to do)
+			var chip := IntentChip.make(e, fight.wall_move(e, side))
+			col.add_child(chip)
+		var hedge := HedgeWall.make(e.parts.count(side) / float(full), side == "R", Vector2(wall_w, 90))
+		col.add_child(hedge)
+		hedges_by_side[side] = hedge
+	var rows := []
+	for r in rows_n:
+		rows.append(_row_of(wall_w, body_w))
+	var out := []
+	var k := 0
+	for i in e.size():
+		match e.parts[i]:
+			"L":
+				out.append(rows[0][0])
+			"R":
+				out.append(rows[mini(1, rows_n - 1)][2])
+			_:
+				out.append(rows[mini(k / 6, rows_n - 1)][1])
+				k += 1
+	_link.skull_cell = rows[maxi(0, ceili(nb / 6.0) - 1)][1]
+	_link.icons = _hp_icons
+	_link.parts = e.parts.duplicate()
+	return out
+
+
+## One line of the Matron's row: [left cell][her cell][right cell], each a fixed width so the lines stay aligned.
+func _row_of(wall_w: float, body_w: float) -> Array:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 12)
+	h.alignment = BoxContainer.ALIGNMENT_CENTER
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_link.add_child(h)
+	var cells := []
+	for k in 3:
+		var w: float = body_w if k == 1 else wall_w
+		var c := HBoxContainer.new()
+		c.custom_minimum_size = Vector2(w, 0)
+		c.add_theme_constant_override("separation", 3)
+		# (the left wall's Essence keep to her side, so the line through them never jumps a gap)
+		# (the left wall's Essence keep to her side, the right wall's too; hers stay centred under her)
+		c.alignment = [BoxContainer.ALIGNMENT_END, BoxContainer.ALIGNMENT_CENTER, BoxContainer.ALIGNMENT_BEGIN][k]
+		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		h.add_child(c)
+		cells.append(c)
+	return cells
+
+
+var _link: LinkedRows
+var hedges_by_side := {}  # "L" / "R" -> the HedgeWall drawn for that wall (the Matron)
+
+
+## The rows of the Matron's Essence, with a thin line drawn behind them through every Essence in order, and a faint
+## frame behind her own.
+class LinkedRows extends VBoxContainer:
+	var icons: Array = []
+	var parts: Array = []
+	var skull_cell: Control
+
+	func _process(_d: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		var pts := PackedVector2Array()
+		var body := Rect2()
+		for i in icons.size():
+			var ic: Control = icons[i]
+			if not is_instance_valid(ic) or not ic.is_inside_tree():
+				continue
+			var r := Rect2(ic.global_position - global_position, ic.size)
+			pts.append(r.get_center())
+			if i < parts.size() and parts[i] == "":
+				body = r if body.size == Vector2.ZERO else body.merge(r)
+		if body.size != Vector2.ZERO:
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = Color(0.25, 0.15, 0.3, 0.4)
+			sb.border_color = Color(0.8, 0.6, 1.0, 0.7)
+			sb.set_border_width_all(2)
+			sb.set_corner_radius_all(10)
+			draw_style_box(sb, body.grow(5))
+		if pts.size() >= 2:
+			draw_polyline(pts, Color(0.1, 0.06, 0.03, 0.55), 4.0, true)
+			draw_polyline(pts, Color(0.95, 0.88, 0.7, 0.75), 1.6, true)
+
 func info_text() -> String:
 	var e := enemy
 	var title := e.name + (" (Boss)" if e.is_boss else (" (Elite)" if e.is_elite else ""))
@@ -238,30 +361,29 @@ func info_text() -> String:
 	if not armoured.is_empty():
 		lines.append("• Armour on Essence %s: it still counts for matching, but your chant can't remove it this turn." % ", ".join(armoured))
 	if e.burn > 0:
-		var gone := names.slice(0, mini(e.burn, e.size()))
-		lines.append("• Burn %d: at the start of its turn it loses its %d leftmost Essence (%s), then Burn drops to %d." % [e.burn, gone.size(), ", ".join(gone), e.burn - 1])
+		var gone := names.slice(e.size() - mini(e.burn, e.size()))
+		lines.append("• Burn %d: at the start of its turn it loses its %d rightmost Essence (%s), then the Burn is gone." % [e.burn, gone.size(), ", ".join(gone)])
 	if e.poison > 0:
-		var n := mini(e.poison, e.size())
-		var gone := names.slice(e.size() - n)
-		lines.append("• Poison %d: at the start of its turn it loses its %d rightmost Essence (%s), then Poison drops to %d." % [e.poison, n, ", ".join(gone), e.poison - 1])
+		lines.append("• Poison %d: it grows by 1 every turn. Once it reaches the Essence left (%d), it dies, armour or not." % [e.poison, e.size()])
 	for s in e.describe_statuses():
 		if s.begins_with("Burn") or s.begins_with("Poison"):
 			continue
 		lines.append("• " + s)
 	for p in e.def.get("passives", []):
-		lines.append("• " + EnemyDefs.PASSIVE_TEXT[p])
+		if not (p in EnemyDefs.HIDDEN_PASSIVES):
+			lines.append("• " + EnemyDefs.PASSIVE_TEXT[p])
 	if lines.size() == 1:
 		lines.append("No effects on it right now.")
-	# its moves, briefly (once it's in your Codex)
-	lines.append("")
-	if SaveManager.in_codex(e.id):
-		var moves: Array = e.def.moves2 if (e.phase == 2 and e.def.has("moves2")) else e.def.moves
-		lines.append("Moves, in order: " + "  →  ".join(moves.map(func(m): return EnemyDefs.describe_move(m, e.dmg_bonus))))
-	else:
-		lines.append("Moves unknown: defeat it once to record them in the Codex.")
 	# its own lines already explain every effect, so no keyword glossary underneath (it stays compact)
-	var flavor := "\n[i][color=#9aa89a]\"%s\"[/color][/i]" % e.def.get("flavor", "")
-	return "[b][font_size=25]%s[/font_size][/b]\n%s%s" % [title, Keywords.colorize("\n".join(lines)), flavor]
+	return "[b][font_size=25]%s[/font_size][/b]\n%s" % [title, Keywords.colorize("\n".join(lines))]
+
+
+## Is the mouse over its HP (its Essence row, or the status line under it)? Hovering there shows info_text().
+func hp_hovered(m: Vector2) -> bool:
+	for c in [_hp_row, _link, _status]:
+		if c != null and is_instance_valid(c) and c.is_visible_in_tree() and c.get_global_rect().has_point(m):
+			return true
+	return false
 
 
 func _tooltip() -> String:
@@ -272,7 +394,8 @@ func _tooltip() -> String:
 	for s in e.describe_statuses():
 		lines.append("• " + s)
 	for p in e.def.get("passives", []):
-		lines.append("• " + EnemyDefs.PASSIVE_TEXT[p])
+		if not (p in EnemyDefs.HIDDEN_PASSIVES):
+			lines.append("• " + EnemyDefs.PASSIVE_TEXT[p])
 	lines.append("Hover its portrait to see its moves.")
 	var flavor := "[i][color=#9aa89a]\"%s\"[/color][/i]" % e.def.get("flavor", "")
 	return Keywords.tooltip(title, "\n".join(lines), flavor)

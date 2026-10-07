@@ -34,7 +34,7 @@ const LOOK := {
 	"silence": ["🔇", PURPLE], "lock": ["🔒", PURPLE], "steal": ["✋", PURPLE], "confuse": ["🌀", PURPLE],
 	"blind": ["🙈", PURPLE], "bleed": ["🩸", PURPLE], "freeze": ["❄", PURPLE], "ethereal": ["👻", BLUE],
 	"empower": ["💪", BLUE], "summon": ["👤+", BLUE], "toll": ["⛓", PURPLE], "invert": ["🔄", PURPLE],
-	"hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE],
+	"hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED],
 }
 
 
@@ -45,6 +45,9 @@ const INFO := {
 	"mend": ["Mend", "Regrows Essence at the right end of its row."],
 	"shuffle": ["Shuffle", "Moves its first Essence to the end."],
 	"silence": ["Silence", "One of your spells can't fire for a few turns."],
+	"invert_spells": ["Inversion", "Some of your spells flip: a spell becomes an anti-spell, an anti-spell a spell."],
+	"charge": ["Charging", "Something big is coming when the hourglass runs out."],
+	"ignite_spell": ["Ignite", "Sets one of your spells on fire for your next turn: casting it burns you for 5 HP."],
 	"lock": ["Lock", "Locks one of your spells. Chant the lock's symbols, unbroken, to break it."],
 	"steal": ["Steal", "Takes Essence from your bag and adds it to its own."],
 	"confuse": ["Confuse", "Your next chant is read backwards, and there's no preview."],
@@ -59,12 +62,15 @@ const INFO := {
 	"hex": ["Hex", "Marks one of your Essence: chanting it costs 2 HP."],
 	"mimic": ["Mimic", "Its Essence becomes your last chant, backwards."],
 	"frail": ["Frail", "You take 25% more attack damage for a few turns."],
+	"brittle": ["Brittle", "The Shield you gain is 25% smaller for a few turns."],
+	"regrow": ["Regrow", ""],
+	"sing": ["Sing", ""],
 }
 
 
-static func make(e: EnemyState) -> IntentChip:
+static func make(e: EnemyState, move := {}) -> IntentChip:
 	var c := IntentChip.new()
-	c.build(e)
+	c.build(e, move)
 	return c
 
 
@@ -94,7 +100,8 @@ static func _bubble_parts() -> Dictionary:
 	return parts
 
 
-func build(e: EnemyState) -> void:
+## move: show this move instead of the enemy's own intent (a Bramble Matron wall's).
+func build(e: EnemyState, move := {}) -> void:
 	_bubble = _bubble_parts()
 	var bubble: StyleBox = null
 	if not _bubble.is_empty():
@@ -127,13 +134,15 @@ func build(e: EnemyState) -> void:
 		row.add_child(_word("skips", Color(0.7, 0.9, 1)))
 		tooltip_text = "[b][font_size=25]Frozen[/font_size][/b]\n" + UiSkin.inline("intent_freeze", "❄", 24) + " " + Keywords.colorize("Frozen: it skips its next action.")
 		return
-	var m := e.intent
-	var lines := ["[b][font_size=25]%s intends to…[/font_size][/b]" % e.name]
+	var m: Dictionary = move if not move.is_empty() else e.intent
+	var lines := ["[b][font_size=25]%s intends to…[/font_size][/b]" % (e.name if move.is_empty() else "Her wall")]
 	while not m.is_empty():
 		_add_move(row, m, e)
 		var look: Array = LOOK.get(m.kind, ["?", GREY])
 		var info: Array = INFO.get(m.kind, [m.kind.capitalize(), ""])
 		var what := EnemyDefs.describe_move(_single(m), e.dmg_bonus) if m.kind != "attack" else _attack_words(m, e)
+		if m.kind == "charge":
+			what = "Charging: %d turn%s left, then it hits for %d" % [m.left, "" if m.left == 1 else "s", charge_damage(e)]
 		lines.append("%s [color=#%s][b]%s[/b][/color]: %s\n[color=#b8c2b8]%s[/color]" % [UiSkin.inline(ART.get(m.kind, ""), look[0], 24), (look[1] as Color).lightened(0.35).to_html(false), info[0], Keywords.colorize(what), info[1]])
 		m = m.get("also", {})
 	if e.redirect_to != null and is_instance_valid(e.redirect_to):
@@ -162,6 +171,11 @@ func _make_custom_tooltip(for_text: String) -> Object:
 	return Keywords.make_tooltip(for_text)
 
 
+## The hit a charging enemy will land (its charge so far, plus Power).
+static func charge_damage(e: EnemyState) -> int:
+	return attack_damage({"n": maxi(0, e.charge_dmg)}, e)
+
+
 static func attack_damage(m: Dictionary, e: EnemyState) -> int:
 	return int(floorf((m.n + e.dmg_bonus) * e.damage_mult()))
 
@@ -181,24 +195,24 @@ func _add_move(row: HBoxContainer, m: Dictionary, e: EnemyState) -> void:
 		"mend":
 			# a red heart with a green up-arrow, then how many (only when more than one), then which Essence
 			# (a random one shows the wildcard bead). No "+".
-			var mend_art := UiSkin.icon("intent_mend", 34)  # New theme: the painted green cross; otherwise the heart drawn in code
-			if mend_art != null:
-				mend_art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-				row.add_child(mend_art)
-			else:
-				row.add_child(MendIcon.make(34))
+			row.add_child(MendIcon.make(34))  # a red heart with a green up-arrow (the user's design: no "+")
 			if m.n > 1:
 				var digits := UiSkin.number(str(m.n), 34, false, 0.7)
 				row.add_child(digits if digits != null else _word(str(m.n), Color.WHITE))
 			row.add_child(ElementIcon.make("?" if m.el == "random" else m.el, 26))
 			return
-		"bleed", "freeze", "steal", "summon":
+		"bleed", "freeze", "steal", "summon", "invert_spells":
 			num = str(m.n)
+		"charge":
+			row.add_child(Hourglass.make(int(m.left), e))  # turns left, inside an hourglass that flips each turn
+			# then the hit it will land (it changes as you cast spells while it charges)
+			row.add_child(_part("⚔", str(charge_damage(e)), RED, "attack"))
+			return
 		"empower":
 			num = "+%d" % m.n
 		"lock":
 			num = str(m.len)
-		"blind", "silence", "frail":
+		"blind", "silence", "frail", "brittle":
 			num = str(m.turns)
 		"toll":
 			num = str(PlayerState.TOLL_CAP)

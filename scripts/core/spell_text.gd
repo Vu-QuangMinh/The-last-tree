@@ -72,9 +72,7 @@ static func describe_op(e: Dictionary) -> String:
 				s += ". If it has Burn, remove 1 more"
 			return s
 		"pluck":
-			if n == 1:
-				return "Targeted: remove 1 Essence of your choice from %s" % t
-			return "Targeted: remove %d Essence of your choice from %s, one at a time" % [n, t]
+			return "snipe %d" % n  # (you pick the Essence with the crosshair: see the Snipe keyword)
 		"steal":
 			if e.get("el", "any") == "any":
 				return "Steal %d Essence of your choice from %s" % [n, t]
@@ -105,6 +103,8 @@ static func describe_op(e: Dictionary) -> String:
 			return "gain %d Thorns this turn" % n
 		"draw":
 			var what: String = ("%d random Essence" % n) if e.get("el", "random") == "random" else "%d %s" % [n, _el(e.el)]
+			if e.get("temp", false) and e.when == "now":
+				return "conjure %s" % what  # temporary Essence, right now: "Conjure 2 Water"
 			return "gain %s%s%s" % [what, " (Conjured)" if e.get("temp", false) else "", "" if e.when == "now" else " next turn"]
 		"move":
 			if n == 1:
@@ -157,7 +157,9 @@ static func describe_op(e: Dictionary) -> String:
 		"redirect":
 			return "Redirect the intent of %s" % t
 		"infuse":
-			return "Infuse %s into the chant" % _a(_el(e.el))
+			if e.el == "random":
+				return "Infuse %s into the chant" % ("a random Essence" if n <= 1 else "%d random Essence" % n)
+			return "Infuse %s into the chant" % (_a(_el(e.el)) if n <= 1 else "%d %s" % [n, _el(e.el)])
 		"annihilate":
 			return "Annihilate 1 kind of Essence on %s" % t
 		"barrage":
@@ -167,7 +169,7 @@ static func describe_op(e: Dictionary) -> String:
 		"echo_next":
 			return "the next spell you cast this fight is cast twice"
 		"conjure":
-			return "Conjure %d" % n
+			return "conjure %d spell%s" % [n, "" if n == 1 else "s"]
 		"grimoire_pick":
 			return "choose a spell from your spellbook: it joins your active spells for this fight"
 		"rearrange":
@@ -181,8 +183,9 @@ static func describe_op(e: Dictionary) -> String:
 				"thorns": "gain %d Thorns for the rest of the fight" % n,
 				"strike_poison": "all enemies your Release hits get Poison %d" % n,
 				"strike_burn": "all enemies your Release hits get Burn %d" % n,
+				"refund_air": "refund %d Air each chant" % n,
 				"echo_first": "the first spell you cast each turn is cast twice",
-				"attune": "one of your draws each turn is always your most-used Essence",
+				"attune": "pick 1 Essence. Gain 1 of that Essence each turn",
 				"chant_slots": "+%d chant slot%s" % [n, "" if n == 1 else "s"],
 				"draw_bonus": "+%d Essence every turn" % n,
 				"strike_bonus": "your spells remove %d more Essence" % n}.get(e.key, e.key)

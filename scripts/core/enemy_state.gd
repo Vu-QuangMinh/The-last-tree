@@ -2,10 +2,12 @@ class_name EnemyState
 extends RefCounted
 ## One enemy in a fight. HP is a row of Essence (left to right); `armor[i]` marks Essence that can't be
 ## removed this turn (it still counts for matching).
-## Burn N: at the start of its turn it loses its N leftmost Essence, then Burn drops by 1.
-## Poison N: at the start of its turn it loses its N rightmost Essence, then Poison drops by 1.
-## Both stay until they run down (the Release doesn't clear them). Fire and venom ignore armour.
+## Burn N: at the start of its turn it loses its N rightmost Essence, then the Burn is gone.
+## Poison N: grows by 1 every turn; it dies once Poison reaches the Essence it has left. Fire and venom ignore armour.
 
+## Just summoned (or popped out mid-fight): it shows its intent first and only acts after a whole turn of yours.
+var fresh := false
+var keep_intent := false  # (it skipped its first enemy turn: keep the intent it showed, don't plan a new one)
 var def: Dictionary
 var id := ""
 var name := ""
@@ -13,6 +15,12 @@ var elements: Array = []  # element letters
 var armor: Array = []  # bool per element
 var dmg_bonus := 0
 var lit: Array = []  # (legacy, kept in step with elements; unused)
+var acting_part := ""  # which part is acting right now ("L" / "R": one of her walls; "": the enemy itself)
+var yin := ""  # the Yin Yang Beast's colour: "white" or "black" ("" for everyone else)
+var charge_dmg := -1  # a Charge in progress: the hit it will land (-1: not charging)
+var power := 0  # Power: +1 damage per hit for each stack (her song; Empower)
+var wall_step := {"L": 0, "R": 0}  # where each wall is in its attack pattern (a regrown wall starts over)
+var parts: Array = []  # per Essence: "" = the enemy itself, "L" / "R" = a wall it stands behind (Bramble Matron)
 var burn := 0
 var poison := 0
 var weak_turns := 0
@@ -45,28 +53,97 @@ func setup(p_def: Dictionary, extra: Array = []) -> void:
 	_fix_lit()
 	is_boss = def.get("boss", false)
 	is_elite = def.get("elite", false)
+	yin = def.get("yin", "")
 
 
 func size() -> int:
 	return elements.size()
 
 
+## Dead: no Essence left, or Poison has caught up with the Essence it has left (armour doesn't help).
 func is_dead() -> bool:
-	return elements.is_empty()
+	if elements.is_empty() or poisoned_out():
+		return true
+	return has_passive("briar_walls") and not ("" in parts)
+
+
+# ------------------------------------------------------------------ walls (Bramble Matron)
+
+## Does a wall still stand in front of it?
+func has_walls() -> bool:
+	return "L" in parts or "R" in parts
+
+
+## How many of its walls still stand (0 to 2).
+func walls_standing() -> int:
+	return int("L" in parts) + int("R" in parts)
+
+
+## Remove n Essence from one part of the row (a wall, or "" for the enemy itself), from that part's right or left
+## end (armour holds). Used when an effect hits every enemy: each part of the Matron is hit on its own.
+func remove_in_part(part: String, n: int, from_right: bool) -> Array:
+	_fix_lit()
+	var removed := []
+	while removed.size() < n:
+		var k := -1
+		for m in elements.size():
+			var i: int = elements.size() - 1 - m if from_right else m
+			if parts[i] == part and not armor[i]:
+				k = i
+				break
+		if k < 0:
+			break
+		removed.append(_remove_at(k))
+	return removed
+
+
+## A random Essence for a random effect: a wall's while any wall stands. -1: none.
+func random_pick(rng: RandomNumberGenerator) -> int:
+	_fix_lit()
+	var free := []
+	for i in elements.size():
+		if not armor[i] and (parts[i] != "" or not has_walls()):
+			free.append(i)
+	if free.is_empty():
+		for i in elements.size():
+			if not armor[i]:
+				free.append(i)
+	return free[rng.randi() % free.size()] if not free.is_empty() else -1
+
+
+## Regrow a wall on this side: n new Essence (random), at the very edge of its row.
+func grow_wall(side: String, els: Array) -> void:
+	_fix_lit()
+	for el in els:
+		if side == "L":
+			elements.push_front(el)
+			armor.push_front(false)
+			lit.push_front(false)
+			parts.push_front("L")
+		else:
+			elements.append(el)
+			armor.append(false)
+			lit.append(false)
+			parts.append("R")
+
+
+## Poison as high as (or higher than) the Essence it has left: it dies at once.
+func poisoned_out() -> bool:
+	return poison > 0 and poison >= elements.size()
 
 
 func hp_text() -> String:
 	return "".join(elements)
 
 
-## Will this Essence burn away at the start of its next turn? (The leftmost `burn` of them.)
+## Will this Essence burn away at the start of its next turn? (The rightmost `burn` of them.)
 func is_lit(i: int) -> bool:
-	return i >= 0 and i < mini(burn, elements.size())
+	return i >= 0 and i < elements.size() and i >= elements.size() - burn
 
 
-## Will this Essence be eaten by Poison at the start of its next turn? (The rightmost `poison` of them.)
-func is_poisoned(i: int) -> bool:
-	return i < elements.size() and i >= elements.size() - poison and i >= 0
+## (Poison doesn't eat Essence any more: it builds up until it kills, see poisoned_out. No Essence is marked.)
+func is_poisoned(_i: int) -> bool:
+	return false
 
 
 ## Keeps `lit` the same length as `elements` (anything new starts unlit).
@@ -75,22 +152,28 @@ func _fix_lit() -> void:
 		lit.append(false)
 	if lit.size() > elements.size():
 		lit.resize(elements.size())
+	while parts.size() < elements.size():
+		parts.append("")
+	if parts.size() > elements.size():
+		parts.resize(elements.size())
 
 
 ## Burn: add n to its Burn. Returns n.
 func ignite(n: int, _rng: RandomNumberGenerator = null) -> int:
+	if has_passive("burn_immune"):
+		return 0  # fireproof (Cinder Hound)
 	n = maxi(0, n)
 	burn += n
 	return n
 
 
-## Start of the enemy's turn (before it acts): Burn takes its `burn` leftmost Essence (armour doesn't stop
-## fire), then Burn drops by 1.
+## Start of the enemy's turn (before it acts): Burn takes its `burn` rightmost Essence (armour doesn't stop
+## fire), then the Burn is used up.
 func burn_off() -> Array:
 	var removed := []
 	for i in mini(burn, elements.size()):
-		removed.append(_remove_at(0))
-	burn = maxi(0, burn - 1)
+		removed.push_front(_remove_at(elements.size() - 1))
+	burn = 0
 	return removed
 
 
@@ -106,6 +189,7 @@ func _remove_at(i: int) -> String:
 	elements.remove_at(i)
 	armor.remove_at(i)
 	lit.remove_at(i)
+	parts.remove_at(i)
 	return el
 
 
@@ -179,6 +263,7 @@ func rotate_left() -> void:
 		elements.append(elements.pop_front())
 		armor.append(armor.pop_front())
 		lit.append(lit.pop_front())
+		parts.append(parts.pop_front())
 
 
 func rotate_right() -> void:
@@ -187,6 +272,7 @@ func rotate_right() -> void:
 		elements.push_front(elements.pop_back())
 		armor.push_front(armor.pop_back())
 		lit.push_front(lit.pop_back())
+		parts.push_front(parts.pop_back())
 
 
 func swap_first_two() -> void:
@@ -201,6 +287,9 @@ func swap_first_two() -> void:
 		var l: bool = lit[0]
 		lit[0] = lit[1]
 		lit[1] = l
+		var pt: String = parts[0]
+		parts[0] = parts[1]
+		parts[1] = pt
 
 
 func convert(pos: String, to: String, from := "") -> void:
@@ -231,10 +320,13 @@ func move_element(from: int, to: int) -> void:
 	elements.remove_at(from)
 	armor.remove_at(from)
 	lit.remove_at(from)
+	var pa: String = parts[from]
+	parts.remove_at(from)
 	to = clampi(to, 0, elements.size())
 	elements.insert(to, el)
 	armor.insert(to, ar)
 	lit.insert(to, li)
+	parts.insert(to, pa)
 
 
 func insert_front(el: String) -> void:
@@ -242,6 +334,7 @@ func insert_front(el: String) -> void:
 	elements.push_front(el)
 	armor.push_front(false)
 	lit.push_front(false)
+	parts.push_front("")
 
 
 ## Mend / steal: add an element at the end (blocked by Cauterize for mending).
@@ -252,6 +345,7 @@ func append(el: String, is_mend := true) -> bool:
 	elements.append(el)
 	armor.append(false)
 	lit.append(false)
+	parts.append("")
 	return true
 
 
@@ -281,11 +375,12 @@ func begin_turn(_rng: RandomNumberGenerator = null) -> Dictionary:
 	ethereal = false
 	var out := {"burn": [], "poison": []}
 	if poison > 0 and not is_dead():
-		out.poison = poison_bite()
+		poison += 1  # Poison grows by 1 every turn (and kills once it reaches the Essence left)
+		out.poison = ["+1"]
 	return out
 
 
-## Poison: it loses its `poison` rightmost Essence (armour doesn't stop it), then Poison drops by 1.
+## (Old Poison: ate its `poison` rightmost Essence, then dropped by 1. Unused now.)
 func poison_bite(_rng: RandomNumberGenerator = null) -> Array:
 	var removed := []
 	for i in mini(poison, elements.size()):
@@ -304,10 +399,12 @@ func end_turn() -> void:
 
 func describe_statuses() -> Array:
 	var out := []
+	if power > 0:
+		out.append("Power %d (+%d damage per hit)" % [power, power])
 	if burn > 0:
-		out.append("Burn %d (loses its %d leftmost Essence at the start of its turn, then Burn drops by 1)" % [burn, burn])
+		out.append("Burn %d (loses its %d rightmost Essence at the start of its turn, then the Burn is gone)" % [burn, burn])
 	if poison > 0:
-		out.append("Poison %d (loses its %d rightmost Essence at the start of its turn, then Poison drops by 1)" % [poison, poison])
+		out.append("Poison %d (+1 every turn; it dies once Poison reaches the Essence it has left)" % poison)
 	if weak_turns > 0:
 		out.append("Weakened %d turn%s (deals 50%% less)" % [weak_turns, "" if weak_turns == 1 else "s"])
 	if weak25:

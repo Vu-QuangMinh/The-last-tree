@@ -5,7 +5,7 @@ const VERSION := 3
 const SPELL_COST := {"common": 15, "rare": 30, "legendary": 60}
 const POWER_EXTRA := 10
 ## Unlocked from the first run (plus the four starters): commons, some rares, and enough legendaries for the bosses.
-const DEFAULT_SPELLS := ["ember", "spark", "droplet", "mist", "whisper", "updraft", "twin_flames", "flare",
+const DEFAULT_SPELLS := ["thorn_dart", "hawks_eye", "ember", "spark", "droplet", "mist", "whisper", "updraft", "twin_flames", "flare",
 	"tide_pool", "cyclone", "fan_the_flames", "steam", "scald", "mist_veil", "rain", "inferno", "glacier",
 	"tempest", "thermal_burst", "whirlpool", "alchemy", "clear_sight", "bandage", "kindle",
 	"spark_word", "spring_word", "breath_word", "firestorm", "storm_front", "leech", "searing_mist", "blight_wind",
@@ -104,7 +104,7 @@ func clear_run() -> void:
 func unlocked_spells() -> Array:
 	var out: Array = GameData.db.starters().map(func(s): return s.id)
 	for id in DEFAULT_SPELLS + Array(data.spells):
-		if not (id in out):
+		if not (id in out) and not GameData.db.get_spell(id).is_empty():  # (spells removed from the game are skipped)
 			out.append(id)
 	return out
 

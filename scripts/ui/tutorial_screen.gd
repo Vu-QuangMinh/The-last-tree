@@ -60,7 +60,7 @@ const LESSONS := [
 			{"say": "That's the whole game: the chant is your main damage, and arranging it in the right order wakes spells that finish the job. The best keeper will know which order to chant to maximize their chances of success! (Each spell triggers once per turn.)", "focus": "none", "then": "tap"},
 			{"say": "Tap Chant.", "focus": "chant_btn", "then": "chanted"},
 			{"say": "Both spells are awake. Tap Water Wall to cast it.", "focus": "card:water_wall", "then": "cast:water_wall"},
-			{"say": "4 Shield: the blue glass over your HP bar. Shield blocks attack damage until your next turn.", "focus": "player", "then": "tap"},
+			{"say": "4 Shield: the blue glass over your HP bar. Shield blocks attack damage, and it stays from turn to turn, building up until attacks use it up.", "focus": "player", "then": "tap"},
 			{"say": "Fire Ball needs a target. Tap it: it pulls out an arrow.", "focus": "card:fire_ball", "then": "aiming:fire_ball"},
 			{"say": "Let's make a mistake on purpose, so you can see how to fix one. Tap the Ashling (or press Tab to switch targets and Enter to confirm).", "focus": "enemy:0", "then": "target:0"},
 			{"say": "Fire Ball knocked off the Ashling's last A… but the Ashling was going to die anyway: your chant starts with A, so the Release would have finished it. Now look at the Gale Sprite: A W F still leaves its last A, so it survives and hits you next turn. Fire Ball was wasted!", "focus": "enemies", "then": "tap"},

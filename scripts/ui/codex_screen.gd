@@ -83,7 +83,7 @@ func _entry(id: String) -> Control:
 	var lines := []
 	for ps in d.get("passives", []):
 		lines.append(EnemyDefs.PASSIVE_TEXT[ps])
-	lines.append("Moves: " + " → ".join(d.moves.map(func(m): return EnemyDefs.describe_move(m))))
+	lines.append("Moves: " + " → ".join(d.moves.map(func(m): return EnemyDefs.describe_move(m, 0, true)).filter(func(t): return t != "")))
 	if d.has("moves2"):
 		lines.append("Below half Essence: " + " → ".join(d.moves2.map(func(m): return EnemyDefs.describe_move(m))))
 	lines.append("\"%s\"" % d.get("flavor", ""))

@@ -10,11 +10,7 @@ var _seed_icon: TextureRect  # New theme: the painted Seedling replaces the ✿ 
 var _label2: Label  # ...and the rest of the line, after it
 var _arts: HBoxContainer
 var _heart: TextureRect
-var _resin: HBoxContainer  # purple resin: a lump of resin and how many pieces you carry
-var _seals: HBoxContainer  # purple seals (heated resin) ready to apply
 
-const RESIN_TIP := "Purple resin: %d piece%s.\nEvery fusion drips a piece. Heat it at a campfire to turn it into a purple seal."
-const SEAL_TIP := "Purple seals: %d ready.\nUsed to seal off an Essence and shorten a spell. Apply them at a campfire (when you heat resin), ask the merchant, or find a Resin Shrine in a ? room."
 
 
 func setup(p_run: RunState) -> void:
@@ -48,12 +44,6 @@ func _ready() -> void:
 		_label2 = UiTheme.label("", 20, Color.WHITE)
 		info.add_child(_label2)
 	h.add_child(info)
-	_resin = _counter(ResinIcon.make(34))
-	h.add_child(_resin)
-	var seal_icon := ElementIcon.make("F", 34)
-	seal_icon.sealed = true
-	_seals = _counter(seal_icon)
-	h.add_child(_seals)
 	h.add_child(UiTheme.button("Codex", func(): codex_pressed.emit()))
 	h.add_child(UiTheme.button(UiTheme.hk("Wiki", "F1"), func(): get_tree().root.get_node("Main").open_wiki() if get_tree().root.has_node("Main") else null))
 	refresh()
@@ -66,13 +56,6 @@ func refresh() -> void:
 		_label2.text = "%d Seedlings     %d spells · %d slots" % [run.seedlings, run.spellbook.size(), run.active_slots()]
 	else:
 		_label.text = ("" if _heart != null else "♥ ") + "%d / %d     Act %d     ✿ %d Seedlings     %d spells · %d slots" % [p.hp, p.max_hp, run.act, run.seedlings, run.spellbook.size(), run.active_slots()]
-	if _resin != null:
-		(_resin.get_child(1) as Label).text = "%d resin" % run.resin
-		_resin.tooltip_text = RESIN_TIP % [run.resin, "" if run.resin == 1 else "s"]
-		_resin.visible = run.resin > 0 or run._fuse_count > 0
-		(_seals.get_child(1) as Label).text = "%d seal%s" % [run.purple_seals, "" if run.purple_seals == 1 else "s"]
-		_seals.tooltip_text = SEAL_TIP % run.purple_seals
-		_seals.visible = run.purple_seals > 0
 	for c in _arts.get_children():
 		c.queue_free()
 	for id in run.artifacts:
@@ -83,15 +66,4 @@ func refresh() -> void:
 		gap.custom_minimum_size = Vector2(12, 0)
 		_arts.add_child(gap)
 	for i in run.bottle_slots():
-		_arts.add_child(BottleChip.make(run.player.bottles[i] if i < run.player.bottles.size() else "", i, false))
-
-
-## An icon and a count side by side, with a tooltip (purple resin, purple seals).
-func _counter(icon: Control) -> HBoxContainer:
-	var box := HBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	box.mouse_filter = Control.MOUSE_FILTER_STOP
-	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	box.add_child(icon)
-	box.add_child(UiTheme.label("", 20, Color(0.88, 0.7, 1.0)))
-	return box
+		_arts.add_child(BottleChip.make(run.player.bottles[i] if i < run.player.bottles.size() else "", i, false, 56.0))

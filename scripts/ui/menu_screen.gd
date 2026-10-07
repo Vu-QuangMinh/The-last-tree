@@ -8,6 +8,7 @@ signal codex
 signal unlocks
 signal how_to
 signal tutorial
+signal test_mode  # the sandbox: pick enemies and spells, fight, come back
 signal settings
 signal room_test  # Dev Mode
 
@@ -47,7 +48,7 @@ func _ready() -> void:
 	v.add_child(gap)
 	var st: Dictionary = SaveManager.data.stats
 	var tut_label := "Tutorial" if SaveManager.setting("tutorial_done", false) else "Tutorial  (recommended)"
-	var items := [["Play", play], [tut_label, tutorial], ["How to play · Wiki", how_to], ["Codex", codex], ["Unlocks  (✿ %d)" % SaveManager.data.seedlings, unlocks], ["Settings", settings], ["Quit", null]]
+	var items := [["Play", play], [tut_label, tutorial], ["Test mode", test_mode], ["How to play · Wiki", how_to], ["Codex", codex], ["Unlocks  (✿ %d)" % SaveManager.data.seedlings, unlocks], ["Settings", settings], ["Quit", null]]
 	if SaveManager.has_run():
 		items.insert(0, ["Continue", continue_run])  # the saved run, where you left it
 		items[1][0] = "New run"
