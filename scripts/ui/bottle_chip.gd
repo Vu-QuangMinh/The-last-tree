@@ -35,7 +35,9 @@ func _ready() -> void:
 	# no box: just a soft, faint outline of the square it sits in (a touch brighter under the mouse)
 	_box = StyleBoxFlat.new()
 	_box.bg_color = Color(0, 0, 0, 0)
-	_box.border_color = FAINT
+	var idle := Color(1, 1, 1, 0.0) if UiSkin.has_slot_frame() else FAINT  # (the shared frame replaces the outline)
+	var hover := Color(1, 1, 1, 0.2) if UiSkin.has_slot_frame() else FAINT_HOVER
+	_box.border_color = idle
 	_box.set_border_width_all(1)
 	_box.set_corner_radius_all(10)
 	_box.anti_aliasing = true
@@ -49,8 +51,8 @@ func _ready() -> void:
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if clickable else Control.CURSOR_ARROW
 	var how := "Click it on your turn to drink it. It's gone once used." if clickable else "Drink it during a fight (click it on your turn)."
 	tooltip_text = Keywords.tooltip(b.get("name", id), b.get("desc", ""), "[color=#9aa89a]Bottle · %d Amber · %s[/color]" % [b.get("price", 0), how], UiSkin.inline(id, b.get("icon", ""), 28))
-	mouse_entered.connect(func(): _box.border_color = FAINT_HOVER)
-	mouse_exited.connect(func(): _box.border_color = FAINT)
+	mouse_entered.connect(func(): _box.border_color = hover)
+	mouse_exited.connect(func(): _box.border_color = idle)
 
 
 func _art_name() -> String:

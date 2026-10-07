@@ -8,7 +8,9 @@ var run: RunState
 var _label: Label
 var _seed_icon: TextureRect  # New theme: the painted Seedling replaces the ✿ in the line
 var _label2: Label  # ...and the rest of the line, after it
-var _arts: HBoxContainer
+var _arts: HBoxContainer  # the artifacts, then the bottles: each in its own row with its own frame
+var _art_row: HBoxContainer
+var _bottle_row: HBoxContainer
 var _heart: TextureRect
 
 
@@ -25,8 +27,16 @@ func _ready() -> void:
 	h.add_theme_constant_override("separation", 24)
 	add_child(h)
 	_arts = HBoxContainer.new()
-	_arts.add_theme_constant_override("separation", 4)
+	_arts.add_theme_constant_override("separation", 12)  # (between the artifacts' frame and the bottles')
 	h.add_child(_arts)
+	_art_row = HBoxContainer.new()
+	_art_row.add_theme_constant_override("separation", 4)
+	_arts.add_child(_art_row)
+	_bottle_row = HBoxContainer.new()
+	_bottle_row.add_theme_constant_override("separation", 4)
+	_arts.add_child(_bottle_row)
+	UiSkin.frame_behind(_art_row, Vector2(16, 6))
+	UiSkin.frame_behind(_bottle_row, Vector2(16, 6))
 	_label = UiTheme.label("", 20, Color.WHITE)
 	_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var info := HBoxContainer.new()
@@ -56,14 +66,10 @@ func refresh() -> void:
 		_label2.text = "%d Seedlings     %d spells · %d slots" % [run.seedlings, run.spellbook.size(), run.active_slots()]
 	else:
 		_label.text = ("" if _heart != null else "♥ ") + "%d / %d     Act %d     ✿ %d Seedlings     %d spells · %d slots" % [p.hp, p.max_hp, run.act, run.seedlings, run.spellbook.size(), run.active_slots()]
-	for c in _arts.get_children():
+	for c in _art_row.get_children() + _bottle_row.get_children():
 		c.queue_free()
 	for id in run.artifacts:
-		_arts.add_child(ArtifactBar.ArtifactChip.make(id, id in run.artifacts_plus, 56.0))
+		_art_row.add_child(ArtifactBar.ArtifactChip.make(id, id in run.artifacts_plus, 56.0))
 	# your bottles (and empty bottle slots), after the artifacts
-	if run.bottle_slots() > 0:
-		var gap := Control.new()
-		gap.custom_minimum_size = Vector2(12, 0)
-		_arts.add_child(gap)
 	for i in run.bottle_slots():
-		_arts.add_child(BottleChip.make(run.player.bottles[i] if i < run.player.bottles.size() else "", i, false, 56.0))
+		_bottle_row.add_child(BottleChip.make(run.player.bottles[i] if i < run.player.bottles.size() else "", i, false, 56.0))

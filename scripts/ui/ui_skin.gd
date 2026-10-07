@@ -73,6 +73,30 @@ static func box(name: String, margins := [0, 0, 0, 0], content := [0, 0, 0, 0]) 
 	return b
 
 
+## New theme: the painted slot frame (3 slices: left cap | middle | right cap, assets/ui/new/panels/slot_strip.png).
+static func has_slot_frame() -> bool:
+	return tex("slot_strip") != null
+
+
+## New theme: ONE frame behind all the children of `row` (a row of artifact or bottle slots), drawn from the first child's
+## left edge to the last one's right edge and growing with them. Does nothing in Default or while the row is empty.
+static func frame_behind(row: Control, pad := Vector2(16, 11)) -> void:
+	var sb := box("slot_strip", [28, 0, 27, 0])
+	if sb == null:
+		return
+	row.sort_children.connect(row.queue_redraw)
+	row.draw.connect(func():
+		var all := Rect2()
+		var any := false
+		for k in row.get_children():
+			if k is Control and k.visible and not k.is_queued_for_deletion():
+				var r := Rect2(k.position, k.size)  # (not its scale: a charged artifact pulses, the frame stays still)
+				all = r if not any else all.merge(r)
+				any = true
+		if any:
+			row.draw_style_box(sb, all.grow_individual(pad.x, pad.y, pad.x, pad.y)))
+
+
 ## A TextureRect showing `name` inside a square of `px`; null when there's no art.
 static func icon(name: String, px: float) -> TextureRect:
 	var t := tex(name)

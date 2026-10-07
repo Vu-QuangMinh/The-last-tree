@@ -316,6 +316,7 @@ func _ready() -> void:
 	under.add_child(_hp_label)
 	_bottle_row = HBoxContainer.new()
 	_bottle_row.add_theme_constant_override("separation", 6)
+	UiSkin.frame_behind(_bottle_row)  # New theme: one painted frame around all the bottles
 	under.add_child(_bottle_row)
 	_pstatus = RichTextLabel.new()
 	_pstatus.bbcode_enabled = true

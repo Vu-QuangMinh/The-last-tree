@@ -40,7 +40,7 @@ FOLDER_RULES = [
     (("status_badge_pill",), "panels"), (("status_",), "status"), (("icon_", "menu_leaf"), "icons"),
     (("card_overlay_", "kind_", "rarity_", "special_"), "cards"), (("num_", "numw_", "float_"), "numbers"),
     (("treasure_", "medal_"), "treasure"), (("map_", "legend_plate", "merchant_portrait"), "map"), (("button_",), "buttons"),
-    (("panel_", "board_", "banner_", "toast_", "scroll_", "slider_", "hp_", "amber_counter_pill", "artifact_slot_", "bottle_slot_", "chant_slot_", "wax_seal", "volume_bar"), "panels"),
+    (("panel_", "board_", "banner_", "toast_", "scroll_", "slider_", "hp_", "amber_counter_pill", "artifact_slot_", "bottle_slot_", "slot_strip", "chant_slot_", "wax_seal", "volume_bar"), "panels"),
     (("bg_", "room_"), "backgrounds"), (("leaf_",), "leaves"), (("game_title", "victory_", "defeat_", "perfect_"), "title"),
     (("portrait_", "enemy_stand"), "characters"), (("bottle_",), "bottles"), (("campfire_",), "campfire"),
 ]
@@ -88,7 +88,7 @@ ROW2_Y = 599  # ...and below this centre line is the row of signs
 # pieces that are 9-sliced / drawn 1:1 are cut to an exact on-screen size (FIT); everything else is fitted into MAXSIDE px
 # (the key is a name, or a prefix ending in "_"; the value is the final HEIGHT in px for "h:" or WIDTH for "w:")
 FIT = {"panel_wood_frame": "w:140", "panel_paper_frame": "w:190", "status_badge_pill": "h:36",
-       "button_chant_": "h:58", "button_play_": "h:58", "button_close_x_": "h:64", "intent_bubble_": "k:1.1", "card_overlay_": "k:4", "scroll_bar_": "w:20", "volume_bar_grabber": "w:28", "hp_head_": "h:26", "button_small_": "h:36", "button_menu_": "h:44", "amber_counter_pill": "h:46", "toast_strip": "h:44", "legend_plate": "h:70", "map_scroll": "w:1080"}
+       "button_chant_": "h:58", "button_play_": "h:58", "button_close_x_": "h:64", "intent_bubble_": "k:1.1", "card_overlay_": "k:4", "scroll_bar_": "w:20", "volume_bar_grabber": "w:28", "hp_head_": "h:26", "button_small_": "h:36", "button_menu_": "h:44", "amber_counter_pill": "h:46", "toast_strip": "h:44", "slot_strip": "h:72", "legend_plate": "h:70", "map_scroll": "w:1080"}
 MAXSIDE = {"merchant_portrait": 480, "map_path_dot": 48, "game_title": 900, "hp_bar_frame": 460, "banner_grimoire_ink": 520, "board_pause_menu": 260, "enemy_stand": 300}
 DEFAULT_MAX = 128
 COMMON = {"button_close_x_": "button_close_x_normal", "button_chant_": "button_chant_normal", "button_small_": "button_small_normal", "button_menu_": "button_menu_normal"}
@@ -185,9 +185,10 @@ def labels(page):
 LABEL_RULES = [("Left HP Head", None, "hp_head_left_hp"), ("Left Shield Head", None, "hp_head_left_shield"),
                ("Left Blank Head", None, "hp_head_left_blank"), ("Right Blank Head", None, "hp_head_right_blank"),
                ("Right HP Head", "không có", "hp_head_right_hp"), ("Right HP Head", "và có", "hp_head_right_shield"),
-               ("Demo HP Body", None, "hp_body_demo")]
+               ("Demo HP Body", None, "hp_body_demo"),
+               ("Artifact and Bottle Slot", None, "slot_strip")]
 SKIP_PREFIX = ("HP Bar", "HP", "Shield", "Blank (")  # headings / legend text on the HP-bar block
-ART_LEFT = ("Scroll Bar", "Volume Bar", "Button Close X", "Menu Leaf")  # these labels sit to the RIGHT of their art
+ART_LEFT = ("Scroll Bar", "Volume Bar", "Button Close X", "Menu Leaf", "Artifact and Bottle Slot")  # these labels sit to the RIGHT of their art
 
 
 def art_is_left(label_rect, pg):
@@ -208,7 +209,7 @@ def name_for(label, pg):
     return "_".join(RENAME.get(p, p) for p in n.split("_"))
 
 
-MULTI = {"board_pause_menu": "near", "banner_grimoire_ink": "near", "toast_strip": "near", "intent_bubble": "row", "game_title": "row"}  # drawn as several separate pieces (gaps between)
+MULTI = {"board_pause_menu": "near", "banner_grimoire_ink": "near", "toast_strip": "near", "slot_strip": "row", "intent_bubble": "row", "game_title": "row"}  # drawn as several separate pieces (gaps between)
 
 
 def gather_siblings(comps, best, taken, mode, allow=None):
@@ -657,6 +658,8 @@ for pg in range(len(doc)):
                 print("no art for label", repr(t), "page", pg)
                 continue
             taken_tight.add(bl)
+            if nm in MULTI:  # a 3-slice strip drawn left of its label: gather its pieces
+                tight_comps[bl] = gather_siblings(tight_comps, bl, taken_tight, MULTI[nm])
             pics[nm] = tight_comps[bl]
             continue
         pool, tk = (tight_comps, taken_tight) if nm in TIGHT_ART else (comps, taken)
@@ -797,7 +800,7 @@ def seal_seams(im, axis, seams, reach=14):
     return Image.fromarray(a, "RGBA")
 
 
-HOLE_FILL = {"map_scroll": 1, "legend_plate": 0, "toast_strip": 0, "banner_grimoire_ink": 0}  # name -> axis the seams run across
+HOLE_FILL = {"map_scroll": 1, "legend_plate": 0, "toast_strip": 0, "slot_strip": 0, "banner_grimoire_ink": 0}  # name -> axis the seams run across
 
 
 def fill_holes(im, axis, gap=8):
@@ -875,7 +878,7 @@ def join_grid(im):
     return out, (cw, rh)
 
 
-for nm in ("banner_grimoire_ink", "toast_strip", "legend_plate"):  # three columns (left | middle | right)
+for nm in ("banner_grimoire_ink", "toast_strip", "slot_strip", "legend_plate"):  # three columns (left | middle | right)
     if nm in cuts:
         parts = split_runs(cuts[nm], 0)
         if len(parts) == 3:
