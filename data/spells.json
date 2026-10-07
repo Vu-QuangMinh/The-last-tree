@@ -989,11 +989,8 @@
    "pattern": "",
    "effects": [
     {
-     "op": "draw",
-     "n": 1,
-     "when": "now",
-     "el": "A",
-     "temp": true
+     "op": "infuse",
+     "el": "A"
     }
    ],
    "flavor": "A breath that isn't yours to keep.",
@@ -1039,11 +1036,9 @@
    "pattern": "FA",
    "effects": [
     {
-     "op": "draw",
-     "n": 2,
-     "when": "now",
+     "op": "infuse",
      "el": "F",
-     "temp": true
+     "n": 2
     }
    ],
    "flavor": "Two flames, borrowed for a turn.",
@@ -1055,11 +1050,9 @@
    "pattern": "WW",
    "effects": [
     {
-     "op": "draw",
-     "n": 2,
-     "when": "now",
+     "op": "infuse",
      "el": "W",
-     "temp": true
+     "n": 2
     }
    ],
    "flavor": "Two drops, gone by nightfall.",
@@ -1364,7 +1357,7 @@
      "n": 1
     }
    ],
-   "flavor": "Choose an Essence; one draw each turn is always it.",
+   "flavor": "Choose an Essence; it comes to you every turn.",
    "power": true,
    "rarity": "rare"
   },
@@ -1537,16 +1530,9 @@
    "pattern": "AAAF",
    "effects": [
     {
-     "op": "each_turn",
-     "effects": [
-      {
-       "op": "draw",
-       "n": 2,
-       "when": "now",
-       "el": "A",
-       "temp": true
-      }
-     ]
+     "op": "passive",
+     "key": "refund_air",
+     "n": 1
     }
    ],
    "flavor": "A conjured Wind every turn.",
@@ -1918,11 +1904,8 @@
    "pattern": "A",
    "effects": [
     {
-     "op": "draw",
-     "n": 1,
-     "when": "now",
-     "el": "random",
-     "temp": true
+     "op": "infuse",
+     "el": "random"
     }
    ],
    "flavor": "A little light that brings a little help.",
@@ -2015,11 +1998,8 @@
    "pattern": "WA",
    "effects": [
     {
-     "op": "draw",
-     "n": 1,
-     "when": "now",
-     "el": "random",
-     "temp": true
+     "op": "infuse",
+     "el": "random"
     }
    ],
    "flavor": "Step aside, into the fog.",
@@ -2273,11 +2253,9 @@
    "pattern": "A?A",
    "effects": [
     {
-     "op": "draw",
-     "n": 2,
-     "when": "now",
+     "op": "infuse",
      "el": "W",
-     "temp": true
+     "n": 2
     }
    ],
    "flavor": "The water comes when called, for a turn.",
@@ -3077,11 +3055,9 @@
      "n": 2
     },
     {
-     "op": "draw",
-     "n": 2,
-     "when": "now",
+     "op": "infuse",
      "el": "random",
-     "temp": true
+     "n": 2
     },
     {
      "op": "amplify",

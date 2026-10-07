@@ -34,7 +34,7 @@ const LOOK := {
 	"silence": ["🔇", PURPLE], "lock": ["🔒", PURPLE], "steal": ["✋", PURPLE], "confuse": ["🌀", PURPLE],
 	"blind": ["🙈", PURPLE], "bleed": ["🩸", PURPLE], "freeze": ["❄", PURPLE], "ethereal": ["👻", BLUE],
 	"empower": ["💪", BLUE], "summon": ["👤+", BLUE], "toll": ["⛓", PURPLE], "invert": ["🔄", PURPLE],
-	"hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE],
+	"hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED],
 }
 
 
@@ -45,6 +45,9 @@ const INFO := {
 	"mend": ["Mend", "Regrows Essence at the right end of its row."],
 	"shuffle": ["Shuffle", "Moves its first Essence to the end."],
 	"silence": ["Silence", "One of your spells can't fire for a few turns."],
+	"invert_spells": ["Inversion", "Some of your spells flip: a spell becomes an anti-spell, an anti-spell a spell."],
+	"charge": ["Charging", "Something big is coming when the hourglass runs out."],
+	"ignite_spell": ["Ignite", "Sets one of your spells on fire for your next turn: casting it burns you for 5 HP."],
 	"lock": ["Lock", "Locks one of your spells. Chant the lock's symbols, unbroken, to break it."],
 	"steal": ["Steal", "Takes Essence from your bag and adds it to its own."],
 	"confuse": ["Confuse", "Your next chant is read backwards, and there's no preview."],
@@ -138,6 +141,8 @@ func build(e: EnemyState, move := {}) -> void:
 		var look: Array = LOOK.get(m.kind, ["?", GREY])
 		var info: Array = INFO.get(m.kind, [m.kind.capitalize(), ""])
 		var what := EnemyDefs.describe_move(_single(m), e.dmg_bonus) if m.kind != "attack" else _attack_words(m, e)
+		if m.kind == "charge":
+			what = "Charging: %d turn%s left, then it hits for %d" % [m.left, "" if m.left == 1 else "s", charge_damage(e)]
 		lines.append("%s [color=#%s][b]%s[/b][/color]: %s\n[color=#b8c2b8]%s[/color]" % [UiSkin.inline(ART.get(m.kind, ""), look[0], 24), (look[1] as Color).lightened(0.35).to_html(false), info[0], Keywords.colorize(what), info[1]])
 		m = m.get("also", {})
 	if e.redirect_to != null and is_instance_valid(e.redirect_to):
@@ -166,6 +171,11 @@ func _make_custom_tooltip(for_text: String) -> Object:
 	return Keywords.make_tooltip(for_text)
 
 
+## The hit a charging enemy will land (its charge so far, plus Power).
+static func charge_damage(e: EnemyState) -> int:
+	return attack_damage({"n": maxi(0, e.charge_dmg)}, e)
+
+
 static func attack_damage(m: Dictionary, e: EnemyState) -> int:
 	return int(floorf((m.n + e.dmg_bonus) * e.damage_mult()))
 
@@ -191,8 +201,13 @@ func _add_move(row: HBoxContainer, m: Dictionary, e: EnemyState) -> void:
 				row.add_child(digits if digits != null else _word(str(m.n), Color.WHITE))
 			row.add_child(ElementIcon.make("?" if m.el == "random" else m.el, 26))
 			return
-		"bleed", "freeze", "steal", "summon":
+		"bleed", "freeze", "steal", "summon", "invert_spells":
 			num = str(m.n)
+		"charge":
+			row.add_child(Hourglass.make(int(m.left), e))  # turns left, inside an hourglass that flips each turn
+			# then the hit it will land (it changes as you cast spells while it charges)
+			row.add_child(_part("⚔", str(charge_damage(e)), RED, "attack"))
+			return
 		"empower":
 			num = "+%d" % m.n
 		"lock":

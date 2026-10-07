@@ -150,6 +150,7 @@ func setup(p_run: RunState, p_fight: Fight) -> void:
 	fight.placer = _placer
 	fight.chant_picker = _chant_picker
 	fight.element_chooser = _element_chooser
+	fight.attune_chooser = _attune_chooser
 	fight.arranger = _arranger
 	fight.redirector = _redirector
 	fight.spell_chooser = _spell_chooser
@@ -481,6 +482,7 @@ func _refresh_all() -> void:
 		var s: Dictionary = card.spell
 		card.state = ""
 		card.state_text = ""
+		card.ignited = p.ignited.has(s.id)
 		if p.used_powers.has(s.id):
 			card.state = "used"
 			card.state_text = "Gone for this fight" if s.get("fleeting", false) else "Power in effect"
@@ -1555,7 +1557,12 @@ func _status_badges() -> Array:
 	# every Power you've cast this fight: a badge for the rest of it (hover: what it does)
 	for id in p.used_powers:
 		var sp := fight._find_spell(id)
-		if sp.get("power", false):
+		if id == "attunement" and p.passives.has("attune_el"):
+			# its badge: the Essence you picked (hover: gain 1 of it each turn)
+			var el: String = p.passives.attune_el
+			out.append(["+%d each turn" % p.passive("attune"), Elements.COLORS[el], "attune_" + el,
+				Keywords.tooltip(sp.name, "Gain %d %s each turn." % [p.passive("attune"), Elements.NAMES[el]], "[color=#9aa89a]Power: it lasts the whole fight.[/color]"), id])
+		elif sp.get("power", false):
 			var pth := power_theme(sp)
 			out.append(["%s %s" % [pth.icon, sp.name], pth.col, "", Keywords.tooltip(sp.name, SpellText.describe(sp), "[color=#9aa89a]Power: it lasts the whole fight.[/color]"), id])
 	return out
@@ -1678,10 +1685,12 @@ func _refresh_statuses() -> void:
 		var chip := TipPanel.new()  # its tooltip is rich text
 		var col: Color = b[1]
 		var pill := UiSkin.box("status_badge_pill", [17, 16, 17, 16], [14, 3, 14, 5])
-		var icon: TextureRect = UiSkin.icon(STATUS_ART.get(b[2], ""), 24) if pill != null else null
+		var icon: Control = UiSkin.icon(STATUS_ART.get(b[2], ""), 24) if pill != null else null
 		var text: String = b[0]
 		if icon != null:
 			text = text.substr(text.find(" ") + 1)  # the art replaces the leading emoji
+		if String(b[2]).begins_with("attune_"):
+			icon = ElementIcon.make(String(b[2]).substr(7), 24)  # (Attunement: the Essence you picked)
 		if pill != null:
 			pill.modulate_color = col.lightened(0.15)
 			chip.add_theme_stylebox_override("panel", pill)
@@ -1911,6 +1920,12 @@ func _update_hover_info(d: float, m := Vector2(-1, -1)) -> void:
 				key = "intent:%d" % v.get_instance_id()
 				text = chip.get_meta("info", "")
 				anchor = chip.get_global_rect()
+				break
+			# its HP: every status on it explained (Power, Burn, Poison, armour, passives...)
+			if v.hp_hovered(m):
+				key = "hp:%d" % v.get_instance_id()
+				text = v.info_text()
+				anchor = Rect2(m - Vector2(20, 20), Vector2(40, 40))
 				break
 	if key != _hover_key:
 		_hover_key = key
@@ -2667,6 +2682,13 @@ func _anim(ev: Dictionary) -> void:
 			await _wake_fx(ev.hits, true)
 			_refresh_all()
 		"spell":
+			if ev.spell.id == "attunement":
+				# no dissolve: its Essence fly out of the card for you to pick one (_attune_chooser)
+				var c := _card_for(ev.spell.id)
+				if c:
+					c.create_tween().tween_property(c, "modulate:a", 0.0, 0.25)
+				Audio.play("spell_glow")
+				return
 			if ev.spell.get("power", false):
 				await _power_fly(ev.spell)
 				return
@@ -2793,6 +2815,29 @@ func _anim(ev: Dictionary) -> void:
 			Audio.play("sfx_silence_apply")
 			_refresh_all()
 			await _wait(0.15)
+		"invert_spells":
+			# some of your spells flip (spell <-> anti-spell): the row is rebuilt with their new look
+			Audio.play("sfx_silence_apply")
+			_build_spells()
+			_refresh_all()
+			await _wait(0.6)
+		"charge_tick":
+			_refresh_all()
+			await _wait(0.3)
+		"ignite_spell":
+			Audio.play("sfx_burn_apply")
+			_refresh_all()
+			await _wait(0.15)
+		"ignite_burn":
+			# the burning card scorches you
+			Audio.play("sfx_burn_apply")
+			var card := _card_for(ev.id)
+			if card:
+				var fx := Vfx.make(_fx, 70)
+				fx.burst(card.global_position + card.size * card.scale / 2.0, 16, Color(1.0, 0.55, 0.2), Vector2(80, 240), Vector2(0.25, 0.5), Vector2(4, 8), Vfx.SPARK)
+			_shake(5.0)
+			_refresh_all()
+			await _wait(0.25)
 		"bleed_tick":
 			Audio.play("sfx_bleed_tick")
 			_refresh_all()
@@ -3085,6 +3130,91 @@ var _choosing_el := false
 
 ## The screen dims; Fire, Water and Air float softly out of the card and shine. Pick one (click, or F / W / A):
 ## the other two drift back into the card and vanish, and the chosen one shakes violently, cracks and shatters.
+## Attunement: the screen dims, the card's Essence shine and fly to the middle; you click one, and it flies down to
+## your statuses, where it becomes a badge (+1 of it each turn).
+func _attune_chooser(spell: Dictionary) -> String:
+	var card := _card_for(spell.id)
+	var from := (card.global_position + card.size * card.scale / 2.0) if card else Vector2(960, 620)
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	dim.z_index = 70
+	add_child(dim)
+	dim.create_tween().tween_property(dim, "color:a", 0.7, 0.35)
+	var title := UiTheme.label("%s: pick an Essence to gain every turn" % spell.name, 34, Color(1.0, 0.92, 0.7))
+	title.add_theme_constant_override("outline_size", 8)
+	title.add_theme_color_override("font_outline_color", Color.BLACK)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.size = Vector2(1920, 50)
+	title.position = Vector2(0, 250)
+	title.z_index = 72
+	title.modulate.a = 0.0
+	add_child(title)
+	title.create_tween().tween_property(title, "modulate:a", 1.0, 0.4)
+	var els := []
+	for ch in String(spell.get("pattern", "FWA")):
+		if ch in ["F", "W", "A"] and not (ch in els):
+			els.append(ch)
+	if els.is_empty():
+		els = ["F", "W", "A"]
+	var orbs := {}
+	var px := 120.0
+	for i in els.size():
+		var el: String = els[i]
+		var ic := ElementIcon.make(el, px)
+		ic.size = Vector2(px, px)
+		ic.pivot_offset = ic.size / 2.0
+		ic.position = from - ic.size / 2.0
+		ic.scale = Vector2(0.3, 0.3)
+		ic.z_index = 72
+		ic.highlight = true
+		ic.mouse_filter = Control.MOUSE_FILTER_STOP
+		ic.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		add_child(ic)
+		var to := Vector2(960 + (i - (els.size() - 1) / 2.0) * 260, 440) - ic.size / 2.0
+		var tw := ic.create_tween().set_parallel(true)
+		tw.tween_property(ic, "position", to, 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT).set_delay(i * 0.12)
+		tw.tween_property(ic, "scale", Vector2.ONE, 0.8).set_trans(Tween.TRANS_SINE).set_delay(i * 0.12)
+		var glow := ic.create_tween().set_loops()
+		glow.tween_property(ic, "modulate", Color(1.7, 1.6, 1.4), 0.6).set_trans(Tween.TRANS_SINE)
+		glow.tween_property(ic, "modulate", Color(1.2, 1.15, 1.05), 0.6).set_trans(Tween.TRANS_SINE)
+		ic.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _element_chosen.emit(el))
+		orbs[el] = ic
+	Audio.play("spell_glow")
+	_choosing_el = true
+	var chosen: String = await _element_chosen
+	_choosing_el = false
+	title.create_tween().tween_property(title, "modulate:a", 0.0, 0.25)
+	# the others fade away; the chosen one flies down to your statuses
+	for el in orbs:
+		var o: ElementIcon = orbs[el]
+		o.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if el != chosen:
+			var gone := o.create_tween().set_parallel(true)
+			gone.tween_property(o, "scale", Vector2(0.3, 0.3), 0.4)
+			gone.tween_property(o, "modulate:a", 0.0, 0.4)
+			gone.chain().tween_callback(o.queue_free)
+	var ic: ElementIcon = orbs[chosen]
+	var target := _status_row.global_position + Vector2(_status_row.size.x + 40.0, 16.0)
+	var fly := ic.create_tween().set_parallel(true)
+	fly.tween_property(ic, "position", target - ic.size / 2.0, 0.6).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN).set_delay(0.15)
+	fly.tween_property(ic, "scale", Vector2(0.22, 0.22), 0.6).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN).set_delay(0.15)
+	var fade := dim.create_tween()
+	fade.tween_property(dim, "color:a", 0.0, 0.5)
+	fade.tween_callback(dim.queue_free)
+	await fly.finished
+	ic.queue_free()
+	title.queue_free()
+	# it arrives: a little burst where it becomes a badge
+	var col: Color = Elements.COLORS[chosen]
+	var fx := Vfx.make(_fx, 70)
+	fx.ring(target, 6, 60, col, 0.35, 5.0)
+	fx.burst(target, 14, col.lightened(0.3), Vector2(80, 220), Vector2(0.2, 0.4), Vector2(3, 6), Vfx.GLOW)
+	Audio.play("artifact_get", -6.0)
+	return chosen
+
+
 func _element_chooser(spell: Dictionary, counts: Dictionary) -> String:
 	var card := _card_for(spell.id)
 	var from := (card.global_position + card.size * card.scale / 2.0) if card else Vector2(960, 620)

@@ -48,12 +48,12 @@ func test_occurrences_are_non_overlapping() -> void:
 	assert_eq(Chant.occurrences("AF", "AFWAF"), [0, 3])
 
 
-func test_burn_takes_the_rightmost_then_drops_by_one() -> void:
+func test_burn_takes_the_rightmost_then_is_gone() -> void:
 	var e := _enemy("FWAWFAW")
 	e.burn = 2
 	assert_true(e.is_lit(6) and e.is_lit(5) and not e.is_lit(4), "the 2 rightmost are marked to burn")
 	assert_eq(e.burn_off(), ["A", "W"])
-	assert_eq(e.burn, 1)
+	assert_eq(e.burn, 0, "used up")
 	assert_eq(e.hp_text(), "FWAWF")
 
 

@@ -157,7 +157,9 @@ static func describe_op(e: Dictionary) -> String:
 		"redirect":
 			return "Redirect the intent of %s" % t
 		"infuse":
-			return "Infuse %s into the chant" % _a(_el(e.el))
+			if e.el == "random":
+				return "Infuse %s into the chant" % ("a random Essence" if n <= 1 else "%d random Essence" % n)
+			return "Infuse %s into the chant" % (_a(_el(e.el)) if n <= 1 else "%d %s" % [n, _el(e.el)])
 		"annihilate":
 			return "Annihilate 1 kind of Essence on %s" % t
 		"barrage":
@@ -181,8 +183,9 @@ static func describe_op(e: Dictionary) -> String:
 				"thorns": "gain %d Thorns for the rest of the fight" % n,
 				"strike_poison": "all enemies your Release hits get Poison %d" % n,
 				"strike_burn": "all enemies your Release hits get Burn %d" % n,
+				"refund_air": "refund %d Air each chant" % n,
 				"echo_first": "the first spell you cast each turn is cast twice",
-				"attune": "one of your draws each turn is always your most-used Essence",
+				"attune": "pick 1 Essence. Gain 1 of that Essence each turn",
 				"chant_slots": "+%d chant slot%s" % [n, "" if n == 1 else "s"],
 				"draw_bonus": "+%d Essence every turn" % n,
 				"strike_bonus": "your spells remove %d more Essence" % n}.get(e.key, e.key)

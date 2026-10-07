@@ -206,7 +206,8 @@ func refresh(preview: Dictionary) -> void:
 		(_link.skull_cell if walled else _hp_row).add_child(sk)
 	var st := e.describe_statuses()
 	for p in e.def.get("passives", []):
-		st.append(EnemyDefs.PASSIVE_TEXT[p].get_slice(":", 0))
+		if not (p in EnemyDefs.HIDDEN_PASSIVES):
+			st.append(EnemyDefs.PASSIVE_TEXT[p].get_slice(":", 0))
 	_status.text = "[center]" + " · ".join(st.map(func(s): return _status_bbcode(s.get_slice(" (", 0)))) + "[/center]"
 	tooltip_text = ""  # (in a fight only the intent bubble explains anything: see FightScreen._update_hover_info)
 	creature.tooltip_text = ""
@@ -361,7 +362,7 @@ func info_text() -> String:
 		lines.append("• Armour on Essence %s: it still counts for matching, but your chant can't remove it this turn." % ", ".join(armoured))
 	if e.burn > 0:
 		var gone := names.slice(e.size() - mini(e.burn, e.size()))
-		lines.append("• Burn %d: at the start of its turn it loses its %d rightmost Essence (%s), then Burn drops to %d." % [e.burn, gone.size(), ", ".join(gone), e.burn - 1])
+		lines.append("• Burn %d: at the start of its turn it loses its %d rightmost Essence (%s), then the Burn is gone." % [e.burn, gone.size(), ", ".join(gone)])
 	if e.poison > 0:
 		lines.append("• Poison %d: it grows by 1 every turn. Once it reaches the Essence left (%d), it dies, armour or not." % [e.poison, e.size()])
 	for s in e.describe_statuses():
@@ -369,19 +370,20 @@ func info_text() -> String:
 			continue
 		lines.append("• " + s)
 	for p in e.def.get("passives", []):
-		lines.append("• " + EnemyDefs.PASSIVE_TEXT[p])
+		if not (p in EnemyDefs.HIDDEN_PASSIVES):
+			lines.append("• " + EnemyDefs.PASSIVE_TEXT[p])
 	if lines.size() == 1:
 		lines.append("No effects on it right now.")
-	# its moves, briefly (once it's in your Codex)
-	lines.append("")
-	if SaveManager.in_codex(e.id):
-		var moves: Array = e.def.moves2 if (e.phase == 2 and e.def.has("moves2")) else e.def.moves
-		lines.append("Moves, in order: " + "  →  ".join(moves.map(func(m): return EnemyDefs.describe_move(m, e.dmg_bonus))))
-	else:
-		lines.append("Moves unknown: defeat it once to record them in the Codex.")
 	# its own lines already explain every effect, so no keyword glossary underneath (it stays compact)
-	var flavor := "\n[i][color=#9aa89a]\"%s\"[/color][/i]" % e.def.get("flavor", "")
-	return "[b][font_size=25]%s[/font_size][/b]\n%s%s" % [title, Keywords.colorize("\n".join(lines)), flavor]
+	return "[b][font_size=25]%s[/font_size][/b]\n%s" % [title, Keywords.colorize("\n".join(lines))]
+
+
+## Is the mouse over its HP (its Essence row, or the status line under it)? Hovering there shows info_text().
+func hp_hovered(m: Vector2) -> bool:
+	for c in [_hp_row, _link, _status]:
+		if c != null and is_instance_valid(c) and c.is_visible_in_tree() and c.get_global_rect().has_point(m):
+			return true
+	return false
 
 
 func _tooltip() -> String:
@@ -392,7 +394,8 @@ func _tooltip() -> String:
 	for s in e.describe_statuses():
 		lines.append("• " + s)
 	for p in e.def.get("passives", []):
-		lines.append("• " + EnemyDefs.PASSIVE_TEXT[p])
+		if not (p in EnemyDefs.HIDDEN_PASSIVES):
+			lines.append("• " + EnemyDefs.PASSIVE_TEXT[p])
 	lines.append("Hover its portrait to see its moves.")
 	var flavor := "[i][color=#9aa89a]\"%s\"[/color][/i]" % e.def.get("flavor", "")
 	return Keywords.tooltip(title, "\n".join(lines), flavor)

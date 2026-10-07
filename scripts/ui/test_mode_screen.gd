@@ -94,7 +94,7 @@ func _ready() -> void:
 		lbl.custom_minimum_size = Vector2(150, 0)
 		row.add_child(lbl)
 		for id in group[1]:
-			var b := UiTheme.button(EnemyDefs.E[id].name, func(): _add_enemy(id), 14)
+			var b := UiTheme.button(EnemyDefs.name_of(id), func(): _add_enemy(id), 14)
 			row.add_child(b)
 		egrid.add_child(row)
 	# --- your active spells
@@ -189,18 +189,20 @@ func _slot_box() -> StyleBoxFlat:
 func _enemy_groups() -> Array:
 	var out := []
 	for act in [1, 2, 3]:
-		out.append(["Act %d" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and not EnemyDefs.E[k].get("elite", false) and not EnemyDefs.E[k].get("boss", false))])
-		out.append(["Act %d mini bosses" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and EnemyDefs.E[k].get("elite", false))])
-	out.append(["Bosses", EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].get("boss", false))])
+		out.append(["Act %d" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and not EnemyDefs.E[k].get("elite", false) and not EnemyDefs.E[k].get("boss", false) and not EnemyDefs.E[k].get("member", false))])
+		out.append(["Act %d mini bosses" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and EnemyDefs.E[k].get("elite", false) and not EnemyDefs.E[k].get("member", false))
+			+ EnemyDefs.ELITE_GROUPS.keys().filter(func(k): return EnemyDefs.ELITE_GROUPS[k].act == act)])
+		out.append(["Act %d bosses" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and EnemyDefs.E[k].get("boss", false))])
 	out.append(["In reserve", EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == 0)])
 	return out.filter(func(g): return not g[1].is_empty())
 
 
 func _add_enemy(id: String) -> void:
-	if state.enemies.size() >= MAX_ENEMIES:
+	var ids := EnemyDefs.ids_of(id)  # (a group mini boss brings all its members)
+	if state.enemies.size() + ids.size() > MAX_ENEMIES:
 		Events.toast.emit("Up to 5 enemies.", UiTheme.DANGER)
 		return
-	state.enemies.append(id)
+	state.enemies.append_array(ids)
 	_refresh()
 
 

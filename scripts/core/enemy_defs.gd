@@ -86,17 +86,32 @@ const E := {
 	"storm_imp": {"name": "Storm Imp", "act": 3, "hp": "AAF", "moves": [{"kind": "attack", "n": 1, "hits": 3}, {"kind": "ethereal"}, {"kind": "empower", "n": 1}],
 		"flavor": "Flickers out of reach."},
 	# ---------------- elites
-	"gem_king": {"name": "Gem King", "act": 1, "elite": true, "hp": "FWAWF", "moves": [{"kind": "attack", "n": 6}, {"kind": "armor", "pos": 0, "also": {"kind": "attack", "n": 2}}], "passives": ["gem_crown"],
-		"flavor": "Its crown hardens whatever it wears first."},
 	"storm_rider": {"name": "Storm Rider", "act": 2, "elite": true, "hp": "AAFAA", "moves": [{"kind": "attack", "n": 3, "hits": 2}, {"kind": "attack", "n": 2, "also": {"kind": "shuffle"}}],
 		"flavor": "Fast, and hard to read."},
 	"lockwarden": {"name": "Lockwarden", "act": 2, "elite": true, "hp": "WFWAF", "moves": [{"kind": "lock", "len": 2}, {"kind": "attack", "n": 5}, {"kind": "attack", "n": 5}],
 		"flavor": "Chains your spells shut."},
 	"tide_colossus": {"name": "Tide Colossus", "act": 3, "elite": true, "hp": "WWWWFW", "moves": [{"kind": "mend", "el": "W", "n": 2, "who": "self"}, {"kind": "attack", "n": 8}],
 		"flavor": "A wave that stands up."},
-	"hollow_stag": {"name": "Hollow Stag", "act": 1, "elite": true, "hp": "AWFAWFAWFAWF", "moves": [{"kind": "attack", "n": 7}, {"kind": "empower", "n": 2, "also": {"kind": "attack", "n": 3}}],
-		"flavor": "Every charge hits harder than the last."},
-	"bramble_matron": {"name": "Bramble Matron", "act": 1, "elite": true, "hp": "WFAWFAWFA", "walls": 3, "passives": ["briar_walls"],
+	# The Triplet (a mini boss of three separate enemies): one spirit of each element, each with its own cycle of moves.
+	# They START at different points of it ("start"); a stun or a death can bring them in step later, and that's fine.
+	# Their support moves land on one of the three at random: the fire one gives Power +1, the air one Armour, and the
+	# water one heals 1 Essence (that sprite's own element, never past 5), always on a hurt one if any is hurt.
+	"triplet_fire": {"name": "Ember Sprite", "act": 1, "elite": true, "member": true, "start": 0, "hp": "FFFFF",
+		"moves": [{"kind": "ignite_spell", "turns": 1}, {"kind": "attack", "n": 3}, {"kind": "empower", "n": 1, "who": "random"}],
+		"flavor": "Sets your words on fire."},
+	"triplet_water": {"name": "Ripple Sprite", "act": 1, "elite": true, "member": true, "start": 1, "hp": "WWWWW",
+		"moves": [{"kind": "freeze", "n": 1}, {"kind": "attack", "n": 3}, {"kind": "mend", "el": "own", "n": 1, "who": "random_hurt", "cap": 5}],
+		"flavor": "Freezes your Essence."},
+	"triplet_air": {"name": "Zephyr Sprite", "act": 1, "elite": true, "member": true, "start": 2, "hp": "AAAAA",
+		"moves": [{"kind": "silence", "turns": 1}, {"kind": "attack", "n": 3}, {"kind": "armor", "pos": -1, "who": "random"}],
+		"flavor": "Steals your voice."},
+	# Enraged Rolling Bear (a mini boss): bigger, red fur. It attacks every turn, and every time you gain Shield it
+	# gains Power +1 (once per separate gain).
+	"enraged_bear": {"name": "Enraged Rolling Bear", "act": 1, "elite": true, "hp": "FWFAFWFAFWFA", "passives": ["shield_rage"],
+		"tint": Color(0.78, 0.16, 0.12), "size": 1.3,
+		"moves": [{"kind": "attack", "n": 4}],
+		"flavor": "Hide behind a shield and it only gets angrier."},
+	"bramble_matron": {"name": "Bramble Matron", "act": 1, "elite": true, "hp": "WFAWFAW", "walls": 3, "passives": ["briar_walls"],
 		# her own turn (planned when her intent shows): a wall down -> regrow it; both up -> sing / attack, in turn.
 		# Each wall attacks on its own, in this pattern.
 		"moves": [{"kind": "sing"}, {"kind": "attack", "n": 1, "hits": 2}],
@@ -107,6 +122,20 @@ const E := {
 	"void_archon": {"name": "Void Archon", "act": 3, "elite": true, "hp": "AFWAFWA", "moves": [{"kind": "blind", "turns": 2, "also": {"kind": "attack", "n": 5}}, {"kind": "lock", "len": 2}, {"kind": "attack", "n": 4, "hits": 3}],
 		"flavor": "It steals the light, then the words."},
 	# ---------------- bosses (moves2 = second phase, at half HP)
+	# The Yin Yang Beast (an Act 1 boss): black and white. Inversion (3 of your spells flip: spell <-> anti-spell, and it
+	# turns the other colour) -> Roar (silence 2 spells, a small hit) -> a 3-turn Charge (an hourglass), then a big hit.
+	# While it charges, each spell of ITS colour you cast (white: spells, black: anti-spells) lowers the hit by 5, each
+	# of the other colour raises it by 5 (never below 0). None of that is told in the fight: the Codex explains it.
+	# When it dies it splits into two clones (one white, one black, out of step) that do the same at a smaller size.
+	"yin_yang_beast": {"name": "Yin Yang Beast", "act": 1, "boss": true, "hp": "FWAFWAFWAFWAFWAFWAFWAFWAFWAFWA", "yin": "white",
+		"passives": ["yinyang_split"],
+		"moves": [{"kind": "invert_spells", "n": 3}, {"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 5}},
+			{"kind": "charge", "left": 3, "n": 30}, {"kind": "charge", "left": 2}, {"kind": "charge", "left": 1, "hit": true}],
+		"flavor": "Two halves of one temper."},
+	"yin_yang_clone": {"name": "Yin Yang Cub", "act": 1, "member": true, "hp": "FWAFWAFWAF", "yin": "white",
+		"moves": [{"kind": "invert_spells", "n": 1}, {"kind": "silence", "turns": 1, "n": 1, "also": {"kind": "attack", "n": 2}},
+			{"kind": "charge", "left": 3, "n": 10}, {"kind": "charge", "left": 2}, {"kind": "charge", "left": 1, "hit": true}],
+		"flavor": "Half a beast, all the temper."},
 	"woodcutter": {"name": "The Woodcutter", "act": 1, "boss": true, "hp": "FWAFWAFFWAWFA",
 		"moves": [{"kind": "attack", "n": 8}, {"kind": "summon", "id": "ashling", "n": 1}, {"kind": "armor", "pos": 0, "also": {"kind": "attack", "n": 4}}],
 		"moves2": [{"kind": "attack", "n": 5, "hits": 2}, {"kind": "mend", "el": "random", "n": 1, "who": "self"}],
@@ -133,6 +162,8 @@ const PASSIVE_TEXT := {
 	"thorns": "Thorns 2: you lose 2 HP whenever your Release hits it.",
 	"burn_immune": "Fireproof: Burn has no effect on it.",
 	"slime_burst": "Burst: when it dies, two small slimes pop out.",
+	"yinyang_split": "Split: when it dies, it splits into two Yin Yang Cubs (10 Essence each), one white and one black.",
+	"shield_rage": "Enraged: every time you gain Shield, it gains Power +1 (its attacks deal 1 more damage).",
 	"rage_at_half": "Shield Wall: above half its Essence it guards and strikes in turn. At half or below it drops its shield and attacks twice every turn.",
 }
 
@@ -174,11 +205,15 @@ const BIOS := {
 	"mimic_chest": "Turns into your last words, backwards. Not the treasure you were hoping for.",
 	"last_gasp_spore": "Mostly harmless until it dies. Then it sneezes on you, and you bleed about it.",
 	"storm_imp": "Three tiny zaps, then it flickers out of reach. Hits harder every time it gets bored.",
-	"gem_king": "Its crown hardens whatever it wears first. Royal, sparkly, and extremely bad at sharing.",
 	"storm_rider": "Fast, loud and hard to read. Imagine a thunderstorm that learned to ride a horse.",
 	"lockwarden": "Chains your spells shut and expects you to guess the combination.",
 	"tide_colossus": "A wave that stood up and decided to stay standing. Mends two at a time and swings like a tsunami.",
-	"hollow_stag": "Every charge hits harder than the last. Antlers optional, ego mandatory.",
+	"triplet_fire": "The hot-headed one of the Triplet. Touch a burning spell and you'll feel it.",
+	"triplet_water": "The calm one of the Triplet. Calm like a frozen lake.",
+	"triplet_air": "The quiet one of the Triplet. It prefers that you be quiet too.",
+	"enraged_bear": "The Rolling Bear, but someone woke it up. Red-furred, huge, and it takes your shields personally.",
+	"yin_yang_beast": "A beast of black and white that turns your words inside out, then charges.",
+	"yin_yang_clone": "What's left when the Yin Yang Beast falls apart: two smaller, angrier halves.",
 	"bramble_matron": "A druid wrapped in a living hedge. Her two walls do the fighting while she sings them stronger. Cut the walls, or Snipe her straight through them.",
 	"mirror_knight": "Its guard is always exactly where you didn't aim. Rude, but fair.",
 	"void_archon": "Steals the light, then your words, then your patience.",
@@ -187,7 +222,9 @@ const BIOS := {
 	"last_winter": "The end of every season. Freezes your hands, scrambles your words, and calls a storm to finish the job.",
 }
 
-const BOSSES := {1: "woodcutter", 2: "blightmother", 3: "last_winter"}
+const BOSSES := {1: ["woodcutter", "yin_yang_beast"], 2: ["blightmother"], 3: ["last_winter"]}
+## Passives the fight never tells you about (only the Codex does, once you've beaten it).
+const HIDDEN_PASSIVES := ["yinyang_split"]
 
 
 static func get_def(id: String) -> Dictionary:
@@ -201,7 +238,23 @@ static func normals(act: int) -> Array:
 
 
 static func elites(act: int) -> Array:
-	return E.keys().filter(func(k): return E[k].get("elite", false) and E[k].act <= act and E[k].act >= act - 1)
+	var out := E.keys().filter(func(k): return E[k].get("elite", false) and not E[k].get("member", false) and E[k].act <= act and E[k].act >= act - 1)
+	return out + ELITE_GROUPS.keys().filter(func(k): return ELITE_GROUPS[k].act <= act and ELITE_GROUPS[k].act >= act - 1)
+
+
+## Mini bosses that are a group: always met together, left to right.
+const ELITE_GROUPS := {
+	"the_triplet": {"name": "The Triplet", "act": 1, "ids": ["triplet_fire", "triplet_water", "triplet_air"]},
+}
+
+
+## The enemies an id brings into a fight: a group's members, or just itself.
+static func ids_of(id: String) -> Array:
+	return ELITE_GROUPS[id].ids.duplicate() if ELITE_GROUPS.has(id) else [id]
+
+
+static func name_of(id: String) -> String:
+	return ELITE_GROUPS[id].name if ELITE_GROUPS.has(id) else E[id].name
 
 
 ## Act 1 normal fights, the Slay the Spire way: a fixed list of hand-made, themed encounters. Each one is always the
@@ -288,13 +341,14 @@ static func act1_encounter(tier: float, rng: RandomNumberGenerator, recent: Arra
 static func encounter(kind: String, act: int, floor: int, rng: RandomNumberGenerator, seen: Array = []) -> Array:
 	match kind:
 		"boss":
-			return [BOSSES[act]]
+			var bosses: Array = BOSSES[act]
+			return [bosses[rng.randi() % bosses.size()]]
 		"elite":
 			var pool := elites(act)
-			var fresh := pool.filter(func(id): return not (id in seen))
+			var fresh := pool.filter(func(id): return not (ids_of(id)[0] in seen))
 			if not fresh.is_empty():
 				pool = fresh
-			var out := [pool[rng.randi() % pool.size()]]
+			var out := ids_of(pool[rng.randi() % pool.size()])
 			if act >= 2:
 				# an elite brings 1 escort (sometimes 2 in act 3)
 				var n := normals(act)
@@ -370,7 +424,7 @@ static func attack_bonus(act: int) -> int:
 	return [0, 0, 4, 6][act]
 
 
-static func describe_move(m: Dictionary, bonus := 0) -> String:
+static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 	var s := ""
 	match m.kind:
 		"attack":
@@ -378,13 +432,29 @@ static func describe_move(m: Dictionary, bonus := 0) -> String:
 			s = "Attack %d" % n if m.get("hits", 1) == 1 else "Attack %d×%d" % [n, m.hits]
 		"armor":
 			s = "Armour its next Essence (the first one not armoured yet)" if m.pos < 0 else "Armour its %s Essence" % ["1st", "2nd", "3rd", "4th"][mini(m.pos, 3)]
+			if m.get("who", "self") == "random":
+				s = "Armour 1 Essence of one of them, at random"
 		"mend":
-			var el: String = "random Essence" if m.el == "random" else Elements.NAMES[m.el]
-			s = "Mend +%d %s%s" % [m.n, el, {"self": "", "ally": " on an ally", "all": " on every enemy"}[m.get("who", "self")]]
+			var el: String = "random Essence" if m.el == "random" else ("Essence" if m.el == "own" else Elements.NAMES[m.el])
+			s = "Mend +%d %s%s" % [m.n, el, {"self": "", "ally": " on an ally", "all": " on every enemy", "weakest": " on the most hurt of them", "random_hurt": " on one of them at random (a hurt one first)"}[m.get("who", "self")]]
 		"shuffle":
 			s = "Shuffle its Essence"
 		"silence":
-			s = "Silence one of your spells (%d turns)" % m.turns
+			var many: int = m.get("n", 1)
+			s = "Silence %s (%d turn%s)" % ["one of your spells" if many == 1 else "%d of your spells" % many, m.turns, "" if m.turns == 1 else "s"]
+		"invert_spells":
+			s = "Invert %d of your spell%s (a spell becomes an anti-spell, an anti-spell a spell)" % [m.n, "" if m.n == 1 else "s"]
+			if full:
+				s += ", and it turns the other colour (white / black)"
+		"charge":
+			if full and m.has("n"):
+				s = "Charge for 3 turns (an hourglass), then hit for %d. While it charges, every spell of its colour you cast (white: spells, black: anti-spells) lowers the hit by 5, and every one of the other colour raises it by 5 (never below 0)" % m.n
+			elif full:
+				s = ""
+			else:
+				s = "Charging: %d turn%s left" % [m.left, "" if m.left == 1 else "s"]
+		"ignite_spell":
+			s = "Ignite one of your spells for your next turn (casting it burns you for %d)" % Fight.IGNITE_DAMAGE
 		"lock":
 			s = "Lock one of your spells (%d symbols)" % m.len
 		"steal":
@@ -400,7 +470,7 @@ static func describe_move(m: Dictionary, bonus := 0) -> String:
 		"ethereal":
 			s = "Go Ethereal (your next chant can't touch it)"
 		"empower":
-			s = "Empower +%d" % m.n
+			s = "Empower +%d" % m.n + (" one of them, at random" if m.get("who", "self") == "random" else "")
 		"summon":
 			s = "Call %d %s" % [m.n, E[m.id].name] if m.has("id") else "Call %d random small slime%s" % [m.n, "" if m.n == 1 else "s"]
 		"toll":
@@ -422,5 +492,5 @@ static func describe_move(m: Dictionary, bonus := 0) -> String:
 		"frail":
 			s = "Frail you (%d turn%s: you take 25%% more damage)" % [m.turns, "" if m.turns == 1 else "s"]
 	if m.has("also"):
-		s += " + " + describe_move(m.also, bonus)
+		s += " + " + describe_move(m.also, bonus, full)
 	return s

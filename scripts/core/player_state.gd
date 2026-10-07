@@ -29,6 +29,7 @@ var next_draw: Array = []  # [{el, temp}] shown in "Coming next"
 var passives := {}  # key -> n (from Powers and artifacts)
 var each_turn: Array = []  # [{spell, effects}]
 var silenced := {}  # spell id -> turns
+var ignited := {}  # spell id -> turns: casting it burns you (the Ember Sprite)
 var locks := {}  # spell id -> pattern
 var used_powers := {}  # spell id -> true
 # ---- per run (artifact counters that carry between fights)
@@ -68,6 +69,7 @@ func reset_fight() -> void:
 	passives.clear()
 	each_turn.clear()
 	silenced.clear()
+	ignited.clear()
 	locks.clear()
 	used_powers.clear()
 	echo_next = false

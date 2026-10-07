@@ -23,6 +23,7 @@ var _t := 0.0
 var state := ""  # "", "silenced", "locked", "used"
 var state_text := ""
 var lock_pattern := ""
+var ignited := false  # wrapped in a thin line of flame: casting it burns you (the Ember Sprite)
 var selected := false
 var compact := false
 ## Drawn this many times bigger: fonts, orbs and margins are all laid out at the larger size (not stretched),
@@ -45,6 +46,7 @@ var _lock_row: HBoxContainer
 var _box: StyleBoxFlat
 var _shade: ColorRect
 var _orbit: OrbitSpark  # pending: the chant you're building will wake this spell
+var _flame: FlameOutline
 
 
 func _z(x: float) -> float:
@@ -218,6 +220,11 @@ func _ready() -> void:
 	_orbit.margins = [_box.content_margin_left, _box.content_margin_top, _box.content_margin_right, _box.content_margin_bottom]
 	_orbit.visible = false
 	add_child(_orbit)
+	_flame = FlameOutline.new()
+	_flame.zoom = zoom
+	_flame.margins = _orbit.margins
+	_flame.visible = false
+	add_child(_flame)
 	_state = UiTheme.label("", _zi(20), Color.WHITE)
 	_state.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_state.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -335,6 +342,7 @@ func _sync_zoom() -> void:
 	z.state = state
 	z.state_text = state_text
 	z.lock_pattern = lock_pattern
+	z.ignited = ignited
 	z.selected = selected
 	z.refresh()
 
@@ -568,6 +576,7 @@ func refresh() -> void:
 			_lock_row.add_child(ElementIcon.make(ch, _z(28)))
 	_state.visible = state != ""
 	_shade.visible = state in ["silenced", "locked", "broken"]
+	_flame.visible = ignited and state != "used"
 	if spell.get("anti", false):
 		# an anti-spell is always active: its spark keeps circling, unless the chant breaks it (state "broken")
 		_orbit.color = Color(1.0, 0.55, 0.95)

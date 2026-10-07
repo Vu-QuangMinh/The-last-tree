@@ -2,9 +2,8 @@ class_name EnemyState
 extends RefCounted
 ## One enemy in a fight. HP is a row of Essence (left to right); `armor[i]` marks Essence that can't be
 ## removed this turn (it still counts for matching).
-## Burn N: at the start of its turn it loses its N leftmost Essence, then Burn drops by 1.
-## Poison N: at the start of its turn it loses its N rightmost Essence, then Poison drops by 1.
-## Both stay until they run down (the Release doesn't clear them). Fire and venom ignore armour.
+## Burn N: at the start of its turn it loses its N rightmost Essence, then the Burn is gone.
+## Poison N: grows by 1 every turn; it dies once Poison reaches the Essence it has left. Fire and venom ignore armour.
 
 ## Just summoned (or popped out mid-fight): it shows its intent first and only acts after a whole turn of yours.
 var fresh := false
@@ -17,6 +16,8 @@ var armor: Array = []  # bool per element
 var dmg_bonus := 0
 var lit: Array = []  # (legacy, kept in step with elements; unused)
 var acting_part := ""  # which part is acting right now ("L" / "R": one of her walls; "": the enemy itself)
+var yin := ""  # the Yin Yang Beast's colour: "white" or "black" ("" for everyone else)
+var charge_dmg := -1  # a Charge in progress: the hit it will land (-1: not charging)
 var power := 0  # Power: +1 damage per hit for each stack (her song; Empower)
 var wall_step := {"L": 0, "R": 0}  # where each wall is in its attack pattern (a regrown wall starts over)
 var parts: Array = []  # per Essence: "" = the enemy itself, "L" / "R" = a wall it stands behind (Bramble Matron)
@@ -52,6 +53,7 @@ func setup(p_def: Dictionary, extra: Array = []) -> void:
 	_fix_lit()
 	is_boss = def.get("boss", false)
 	is_elite = def.get("elite", false)
+	yin = def.get("yin", "")
 
 
 func size() -> int:
@@ -166,12 +168,12 @@ func ignite(n: int, _rng: RandomNumberGenerator = null) -> int:
 
 
 ## Start of the enemy's turn (before it acts): Burn takes its `burn` rightmost Essence (armour doesn't stop
-## fire), then Burn drops by 1.
+## fire), then the Burn is used up.
 func burn_off() -> Array:
 	var removed := []
 	for i in mini(burn, elements.size()):
 		removed.push_front(_remove_at(elements.size() - 1))
-	burn = maxi(0, burn - 1)
+	burn = 0
 	return removed
 
 
@@ -400,7 +402,7 @@ func describe_statuses() -> Array:
 	if power > 0:
 		out.append("Power %d (+%d damage per hit)" % [power, power])
 	if burn > 0:
-		out.append("Burn %d (loses its %d rightmost Essence at the start of its turn, then Burn drops by 1)" % [burn, burn])
+		out.append("Burn %d (loses its %d rightmost Essence at the start of its turn, then the Burn is gone)" % [burn, burn])
 	if poison > 0:
 		out.append("Poison %d (+1 every turn; it dies once Poison reaches the Essence it has left)" % poison)
 	if weak_turns > 0:

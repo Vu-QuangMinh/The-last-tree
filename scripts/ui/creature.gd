@@ -19,20 +19,23 @@ var spikes := false
 var dead := false
 var _enemy: EnemyState = null  # for drawn art: how much Essence it has left picks the face
 var _max_hp := 1  # Essence it started with (or the most it has had since)
+var _yin_rot := 0.0  # the Yin Yang Beast's symbol: turned upside down (PI) when it is black
+var _yin_target := 0.0
+var _yin_last := ""
 var _art := {}  # face name -> Texture2D, for enemies with drawn art (empty: drawn procedurally)
 
 ## Enemies with drawn art: one picture per face (angry: half its Essence or more; normal: low, under half; hurt: just hit).
-const ART := {"ashling": "res://assets/enemies/ashling_%s.webp"}
+const ART := {"ashling": "res://assets/enemies/ashling_%s.webp", "triplet_fire": "res://assets/enemies/ashling_%s.webp"}
 const ART_FACES := ["angry", "normal", "hurt"]
 
 const SHAPES := {
 	# act 1 (the Verdant Circle)
-	"iceling": 1, "zephling": 1, "purple_slime": 0, "green_slime": 0, "yellow_slime": 0, "giant_slime": 0,
-	"bramble_back": 4, "winged_tortoise": 3, "yeti": 4, "rolling_bear": 4, "mirror_fairy": 2, "tomato_knight": 2, "greenseer": 5,
+	"iceling": 1, "zephling": 1, "triplet_fire": 1, "triplet_water": 1, "triplet_air": 1, "purple_slime": 0, "green_slime": 0, "yellow_slime": 0, "giant_slime": 0,
+	"bramble_back": 4, "winged_tortoise": 3, "yeti": 4, "rolling_bear": 4, "enraged_bear": 4, "mirror_fairy": 2, "tomato_knight": 2, "greenseer": 5,
 	"puddle_slime": 0, "splitter_ooze": 0, "tide_colossus": 0, "blightmother": 0, "last_gasp_spore": 0,
 	"gale_sprite": 1, "mirror_wisp": 1, "storm_imp": 1, "hush_moth": 1, "leech_bat": 1, "echo_wraith": 1, "storm_rider": 1,
-	"stone_knight": 2, "warded_golem": 2, "lockwarden": 2, "woodcutter": 2, "gem_king": 2, "inverter": 2, "mimic_chest": 3,
-	"cinder_hound": 4, "blinding_beetle": 4, "hollow_stag": 4, "bramble_matron": 5, "mirror_knight": 2, "void_archon": 1, "pickpocket_imp": 4, "overgrowth_vine": 5, "shrine_maiden": 5,
+	"stone_knight": 2, "warded_golem": 2, "lockwarden": 2, "woodcutter": 2, "yin_yang_beast": 4, "yin_yang_clone": 4, "inverter": 2, "mimic_chest": 3,
+	"cinder_hound": 4, "blinding_beetle": 4, "bramble_matron": 5, "mirror_knight": 2, "void_archon": 1, "pickpocket_imp": 4, "overgrowth_vine": 5, "shrine_maiden": 5,
 	"tidecaller": 5, "hexer": 5, "toll_keeper": 5, "frost_hex": 5, "ashling": 1, "last_winter": 1,
 }
 
@@ -57,10 +60,13 @@ func setup(e: EnemyState) -> void:
 		col += Elements.COLORS[k] * counts[k]
 		total += counts[k]
 	tint = (col / total).darkened(0.25)
+	if e.def.has("tint"):
+		tint = e.def.tint  # (a look of its own: the Enraged Rolling Bear's red fur)
 	tint.a = 1.0
 	accent = Elements.COLORS[e.def.hp[0]]
 	big = 1.2 if e.is_boss else (1.1 if e.is_elite or e.id == "giant_slime" else 1.0)
-	crown = e.is_boss or e.id == "gem_king"
+	big = e.def.get("size", big)
+	crown = e.is_boss
 	spikes = e.is_elite
 	bob = randf() * TAU
 	# hovering the portrait shows the enemy's moves (clicks still reach whatever holds it)
@@ -82,6 +88,14 @@ func hit(strength := 1.0) -> void:
 
 
 func _process(d: float) -> void:
+	if _enemy != null and _enemy.yin != "":
+		if _yin_last == "":
+			_yin_rot = 0.0 if _enemy.yin == "white" else PI
+			_yin_target = _yin_rot
+		elif _enemy.yin != _yin_last:
+			_yin_target += PI  # it inverted: the symbol spins half a turn
+		_yin_last = _enemy.yin
+		_yin_rot = move_toward(_yin_rot, _yin_target, d * TAU)
 	bob += d * 2.0
 	flash = maxf(0.0, flash - d * 3.0)
 	hurt = maxf(0.0, hurt - d)
@@ -92,6 +106,9 @@ func _process(d: float) -> void:
 
 func _draw() -> void:
 	var c := Vector2(size.x / 2.0, size.y * 0.58 + sin(bob) * 4.0)
+	if _enemy != null and _enemy.yin != "":
+		tint = Color(0.92, 0.91, 0.88) if _enemy.yin == "white" else Color(0.13, 0.13, 0.15)  # black and white only
+		accent = Color(0.5, 0.5, 0.5)
 	if _shake > 0.0:  # the jolt of a hit
 		c += Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake) * 0.5)
 	var s := minf(size.x, size.y) * 0.34 * big
@@ -107,6 +124,7 @@ func _draw() -> void:
 		draw_set_transform(Vector2.ZERO)
 	if not _art.is_empty():
 		_draw_art(blink_on)
+		_draw_yinyang(c, s)
 		return
 	var eye_y := -s * 0.15
 	match shape:
@@ -176,6 +194,32 @@ func _draw() -> void:
 
 ## Ouch: eyes squeezed shut into "> <", brows pulled up in the middle, a small round "o" of a mouth, and a bead of
 ## sweat. It fades back to the normal face as `hurt` runs out.
+	_draw_yinyang(c, s)
+
+
+## The Yin Yang Beast's symbol on its head: the white half up while it is white; it spins round each time it inverts.
+func _draw_yinyang(c: Vector2, s: float) -> void:
+	if _enemy == null or _enemy.yin == "":
+		return
+	var r := s * 0.32
+	var at := c + Vector2(0, -s * 1.05)
+	var white := Color(0.97, 0.96, 0.92)
+	var black := Color(0.08, 0.08, 0.1)
+	draw_set_transform(at, _yin_rot)
+	draw_circle(Vector2.ZERO, r + 2.0, Color(0.45, 0.45, 0.45))
+	draw_circle(Vector2.ZERO, r, black)
+	var top := PackedVector2Array()
+	for k in 25:
+		var t := PI + k / 24.0 * PI
+		top.append(Vector2(cos(t), sin(t)) * r)
+	draw_colored_polygon(top, white)
+	draw_circle(Vector2(-r / 2.0, 0), r / 2.0, white)
+	draw_circle(Vector2(r / 2.0, 0), r / 2.0, black)
+	draw_circle(Vector2(-r / 2.0, 0), r / 6.0, black)
+	draw_circle(Vector2(r / 2.0, 0), r / 6.0, white)
+	draw_set_transform(Vector2.ZERO)
+
+
 func _draw_pained_face(c: Vector2, s: float, eye_y: float) -> void:
 	var ink := Color(0.1, 0.05, 0.05)
 	var w := maxf(2.0, s * 0.07)
