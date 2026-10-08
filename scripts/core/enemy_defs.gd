@@ -124,19 +124,38 @@ const E := {
 	# ---------------- bosses (moves2 = second phase, at half HP)
 	# The Yin Yang Beast (an Act 1 boss): black and white. Inversion (3 of your spells flip: spell <-> anti-spell, and it
 	# turns the other colour) -> Roar (silence 2 spells, a small hit) -> a 3-turn Charge (an hourglass), then a big hit.
-	# While it charges, each spell of ITS colour you cast (white: spells, black: anti-spells) lowers the hit by 5, each
-	# of the other colour raises it by 5 (never below 0). None of that is told in the fight: the Codex explains it.
+	# While it charges, each spell of the OTHER colour you cast (white: spells, black: anti-spells) lowers the hit by 5,
+	# each of its own colour raises it by 5 (never below 0). None of that is told in the fight: the Codex explains it.
 	# When it dies it splits into two clones (one white, one black, out of step) that do the same at a smaller size.
 	"yin_yang_beast": {"name": "Yin Yang Beast", "act": 1, "boss": true, "hp": "FWAFWAFWAFWAFWAFWAFWAFWAFWAFWA", "yin": "white",
 		"passives": ["yinyang_split"],
 		"moves": [{"kind": "invert_spells", "n": 3}, {"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 5}},
 			{"kind": "charge", "left": 3, "n": 30}, {"kind": "charge", "left": 2}, {"kind": "charge", "left": 1, "hit": true}],
 		"flavor": "Two halves of one temper."},
+	# The Cubs both flip a spell first. Then the white one charges while the black one roars every turn (silence 2,
+	# hit for 2); once the white one's hit lands they swap, and so on.
 	"yin_yang_clone": {"name": "Yin Yang Cub", "act": 1, "member": true, "hp": "FWAFWAFWAF", "yin": "white",
-		"moves": [{"kind": "invert_spells", "n": 1}, {"kind": "silence", "turns": 1, "n": 1, "also": {"kind": "attack", "n": 2}},
+		"opener": [{"kind": "invert_spells", "n": 1}],
+		"moves": [{"kind": "charge", "left": 3, "n": 10}, {"kind": "charge", "left": 2}, {"kind": "charge", "left": 1, "hit": true},
+			{"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 2}},
+			{"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 2}},
+			{"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 2}}],
+		"moves_black": [{"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 2}},
+			{"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 2}},
+			{"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 2}},
 			{"kind": "charge", "left": 3, "n": 10}, {"kind": "charge", "left": 2}, {"kind": "charge", "left": 1, "hit": true}],
 		"flavor": "Half a beast, all the temper."},
-	"woodcutter": {"name": "The Woodcutter", "act": 1, "boss": true, "hp": "FWAFWAFFWAWFA",
+	# The Invoker (an Act 1 boss): he never attacks. Each turn he conjures 3 of his 10 spells (no repeats) as cards on his
+	# side; on his turn he casts every one your chant matched, or else the one it came closest to (ties: random). At 0
+	# Essence he rises again with 10 more, and from then on chants Quas / Wex / Exort, one a turn: that Essence is
+	# stripped from his spells' patterns for the rest of the fight (they get easier to set off).
+	"invoker": {"name": "The Invoker", "act": 1, "boss": true, "hp": "FWAFWAFWAFWAFWAFWAFW", "hp2": "AWFAWFAWFA",
+		"invokes": true, "passives": ["invoker", "invoker_rebirth"], "tint": Color(0.5, 0.3, 0.72),
+		"moves": [{"kind": "invoke"}],
+		"flavor": "Ten spells, three words, no patience."},
+	"forge_spirit": {"name": "Forge Spirit", "act": 1, "member": true, "hp": "FFF", "moves": [{"kind": "attack", "n": 3}],
+		"flavor": "A spark of the Invoker's forge, with a temper to match."},
+	"woodcutter": {"name": "The Woodcutter", "act": 0, "boss": true, "hp": "FWAFWAFFWAWFA",
 		"moves": [{"kind": "attack", "n": 8}, {"kind": "summon", "id": "ashling", "n": 1}, {"kind": "armor", "pos": 0, "also": {"kind": "attack", "n": 4}}],
 		"moves2": [{"kind": "attack", "n": 5, "hits": 2}, {"kind": "mend", "el": "random", "n": 1, "who": "self"}],
 		"flavor": "He came for the last tree."},
@@ -162,6 +181,8 @@ const PASSIVE_TEXT := {
 	"thorns": "Thorns 2: you lose 2 HP whenever your Release hits it.",
 	"burn_immune": "Fireproof: Burn has no effect on it.",
 	"slime_burst": "Burst: when it dies, two small slimes pop out.",
+	"invoker": "Invoker: every turn he conjures 3 spells. On his turn he casts every one your chant matched, or else the one it came closest to.",
+	"invoker_rebirth": "Second wind: at 0 Essence he rises again with 10 more, and starts chanting Quas, Wex or Exort, one a turn: each strips that Essence (Water, Air, Fire) from his spells for the rest of the fight.",
 	"yinyang_split": "Split: when it dies, it splits into two Yin Yang Cubs (10 Essence each), one white and one black.",
 	"shield_rage": "Enraged: every time you gain Shield, it gains Power +1 (its attacks deal 1 more damage).",
 	"rage_at_half": "Shield Wall: above half its Essence it guards and strikes in turn. At half or below it drops its shield and attacks twice every turn.",
@@ -214,6 +235,8 @@ const BIOS := {
 	"enraged_bear": "The Rolling Bear, but someone woke it up. Red-furred, huge, and it takes your shields personally.",
 	"yin_yang_beast": "A beast of black and white that turns your words inside out, then charges.",
 	"yin_yang_clone": "What's left when the Yin Yang Beast falls apart: two smaller, angrier halves.",
+	"invoker": "A sorcerer who remembers every spell ever cast. He never swings a fist: he just reads your chant back at you.",
+	"forge_spirit": "Hot, small, and very eager to prove itself.",
 	"bramble_matron": "A druid wrapped in a living hedge. Her two walls do the fighting while she sings them stronger. Cut the walls, or Snipe her straight through them.",
 	"mirror_knight": "Its guard is always exactly where you didn't aim. Rude, but fair.",
 	"void_archon": "Steals the light, then your words, then your patience.",
@@ -222,9 +245,35 @@ const BIOS := {
 	"last_winter": "The end of every season. Freezes your hands, scrambles your words, and calls a storm to finish the job.",
 }
 
-const BOSSES := {1: ["woodcutter", "yin_yang_beast"], 2: ["blightmother"], 3: ["last_winter"]}
+const BOSSES := {1: ["yin_yang_beast", "invoker"], 2: ["blightmother"], 3: ["last_winter"]}
 ## Passives the fight never tells you about (only the Codex does, once you've beaten it).
-const HIDDEN_PASSIVES := ["yinyang_split"]
+const HIDDEN_PASSIVES := ["yinyang_split", "invoker_rebirth"]
+
+## The Invoker's spells (Dota 2's Invoker: Quas = Water, Wex = Air, Exort = Fire). Each one's "cast" is the move he makes
+## when it goes off; "desc" is its card text.
+const INVOKER_WORDS := {"W": "Quas", "A": "Wex", "F": "Exort"}
+const INVOKER_SPELLS := [
+	{"id": "inv_cold_snap", "name": "Cold Snap", "pattern": "WWW", "kind": "damage", "desc": "Deal 1 damage to you, 4 times.",
+		"cast": {"kind": "attack", "n": 1, "hits": 4}},
+	{"id": "inv_ghost_walk", "name": "Ghost Walk", "pattern": "WWA", "kind": "utility", "desc": "He cleanses all his debuffs.",
+		"cast": {"kind": "cleanse_self"}},
+	{"id": "inv_ice_wall", "name": "Ice Wall", "pattern": "WWF", "kind": "defense", "desc": "He Armours 3 of his Essence.",
+		"cast": {"kind": "armor", "pos": -1, "count": 3}},
+	{"id": "inv_emp", "name": "EMP", "pattern": "AAA", "kind": "utility", "desc": "You lose 2 random Essence from your bag, and take 2 damage.",
+		"cast": {"kind": "drain_essence", "n": 2, "also": {"kind": "attack", "n": 2}}},
+	{"id": "inv_tornado", "name": "Tornado", "pattern": "AAW", "kind": "damage", "desc": "Deal 3 damage to you and Silence 1 of your spells (1 turn).",
+		"cast": {"kind": "attack", "n": 3, "also": {"kind": "silence", "n": 1, "turns": 1}}},
+	{"id": "inv_alacrity", "name": "Alacrity", "pattern": "AAF", "kind": "utility", "desc": "He gains Power +2.",
+		"cast": {"kind": "empower", "n": 2}},
+	{"id": "inv_sun_strike", "name": "Sun Strike", "pattern": "FFF", "kind": "damage", "desc": "Deal 10 damage to you.",
+		"cast": {"kind": "attack", "n": 10}},
+	{"id": "inv_forge_spirit", "name": "Forge Spirit", "pattern": "FFW", "kind": "utility", "desc": "He summons a Forge Spirit (3 Essence, attacks for 3).",
+		"cast": {"kind": "summon", "id": "forge_spirit", "n": 1}},
+	{"id": "inv_chaos_meteor", "name": "Chaos Meteor", "pattern": "FFA", "kind": "damage", "desc": "Deal 2 damage to you, 3 times, and Ignite 3 of your spells.",
+		"cast": {"kind": "attack", "n": 2, "hits": 3, "also": {"kind": "ignite_spell", "n": 3, "turns": 1}}},
+	{"id": "inv_deafening_blast", "name": "Deafening Blast", "pattern": "WAF", "kind": "damage", "desc": "Deal 5 damage to you and Disarm you (your next Release does nothing).",
+		"cast": {"kind": "attack", "n": 5, "also": {"kind": "disarm", "turns": 1}}},
+]
 
 
 static func get_def(id: String) -> Dictionary:
@@ -445,10 +494,22 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 		"invert_spells":
 			s = "Invert %d of your spell%s (a spell becomes an anti-spell, an anti-spell a spell)" % [m.n, "" if m.n == 1 else "s"]
 			if full:
+				s += ". A spell turned anti gives it 1 Essence of its pattern; one turned back gains 1 random Essence"
+			if full:
 				s += ", and it turns the other colour (white / black)"
+		"invoke":
+			s = "Cast one of his spells (every one your chant matched, or else the closest)"
+			if m.has("word"):
+				s += ", then chant %s: his spells lose every %s" % [INVOKER_WORDS[m.word], Elements.NAMES[m.word]]
+		"cleanse_self":
+			s = "Cleanse all its debuffs"
+		"drain_essence":
+			s = "You lose %d random Essence from your bag" % m.n
+		"disarm":
+			s = "Disarm you (your next Release does nothing)"
 		"charge":
 			if full and m.has("n"):
-				s = "Charge for 3 turns (an hourglass), then hit for %d. While it charges, every spell of its colour you cast (white: spells, black: anti-spells) lowers the hit by 5, and every one of the other colour raises it by 5 (never below 0)" % m.n
+				s = "Charge for 3 turns (an hourglass), then hit for %d. While it charges, every spell of the other colour you cast (white: spells, black: anti-spells) lowers the hit by 5, and every one of its own colour raises it by 5 (never below 0)" % m.n
 			elif full:
 				s = ""
 			else:

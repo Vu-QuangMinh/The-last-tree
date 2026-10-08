@@ -29,6 +29,7 @@ var next_draw: Array = []  # [{el, temp}] shown in "Coming next"
 var passives := {}  # key -> n (from Powers and artifacts)
 var each_turn: Array = []  # [{spell, effects}]
 var silenced := {}  # spell id -> turns
+var disarmed_turns := 0  # Disarmed (the Invoker's Deafening Blast): your Release does nothing
 var ignited := {}  # spell id -> turns: casting it burns you (the Ember Sprite)
 var locks := {}  # spell id -> pattern
 var used_powers := {}  # spell id -> true
@@ -70,6 +71,7 @@ func reset_fight() -> void:
 	each_turn.clear()
 	silenced.clear()
 	ignited.clear()
+	disarmed_turns = 0
 	locks.clear()
 	used_powers.clear()
 	echo_next = false
@@ -155,6 +157,8 @@ func describe_statuses() -> Array:
 		out.append("Frail %d (you take 25%% more damage)" % frail_turns)
 	if brittle_turns > 0:
 		out.append("Brittle %d (you gain 25%% less Shield)" % brittle_turns)
+	if disarmed_turns > 0:
+		out.append("Disarmed (your Release does nothing this turn)")
 	if overload > 0:
 		out.append("Overload: %d fewer Essence next turn" % overload)
 	return out

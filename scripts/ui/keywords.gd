@@ -56,6 +56,7 @@ const K := {
 	"frail": [Color(1.0, 0.5, 0.6), Color(0.65, 0.1, 0.25), "Frail: you take 25% more attack damage."],
 	"blind": [Color(0.7, 0.7, 0.75), Color(0.3, 0.3, 0.35), "Blind: some enemy Essence show as ?. They still match normally."],
 	"silence": [Color(0.85, 0.55, 1.0), Color(0.45, 0.15, 0.6), "Silenced: that spell can't fire for a few turns."],
+	"disarmed": [Color(1.0, 0.6, 0.5), Color(0.7, 0.2, 0.1), "Disarmed: your Release does nothing this turn (your spells still work)."],
 	"ignited": [Color(1.0, 0.55, 0.2), Color(0.75, 0.3, 0.0), "Ignited: the spell is wrapped in flame for your turn. You can still cast it, but casting it burns you for 5 HP (Shield doesn't help)."],
 	"lock": [Color(1.0, 0.8, 0.4), Color(0.6, 0.4, 0.0), "Lock: the spell can't fire until your chant contains the lock's symbols, unbroken."],
 	"redirect": [Color(0.55, 1.0, 0.8), Color(0.05, 0.5, 0.35), "Redirect: the enemy's attack hits another enemy of your choice (or itself); anything aimed at you fizzles."],

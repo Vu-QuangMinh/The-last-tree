@@ -34,7 +34,7 @@ const LOOK := {
 	"silence": ["🔇", PURPLE], "lock": ["🔒", PURPLE], "steal": ["✋", PURPLE], "confuse": ["🌀", PURPLE],
 	"blind": ["🙈", PURPLE], "bleed": ["🩸", PURPLE], "freeze": ["❄", PURPLE], "ethereal": ["👻", BLUE],
 	"empower": ["💪", BLUE], "summon": ["👤+", BLUE], "toll": ["⛓", PURPLE], "invert": ["🔄", PURPLE],
-	"hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED],
+	"hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "invoke": ["✨", BLUE], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE],
 }
 
 
@@ -45,6 +45,10 @@ const INFO := {
 	"mend": ["Mend", "Regrows Essence at the right end of its row."],
 	"shuffle": ["Shuffle", "Moves its first Essence to the end."],
 	"silence": ["Silence", "One of your spells can't fire for a few turns."],
+	"invoke": ["Invoke", "He casts his spells that your chant matched (glowing gold), or else the one it came closest to."],
+	"cleanse_self": ["Cleanse", "Removes every debuff on it."],
+	"drain_essence": ["Drain", "Takes Essence out of your bag."],
+	"disarm": ["Disarm", "Your next Release does nothing."],
 	"invert_spells": ["Inversion", "Some of your spells flip: a spell becomes an anti-spell, an anti-spell a spell."],
 	"charge": ["Charging", "Something big is coming when the hourglass runs out."],
 	"ignite_spell": ["Ignite", "Sets one of your spells on fire for your next turn: casting it burns you for 5 HP."],
@@ -203,6 +207,11 @@ func _add_move(row: HBoxContainer, m: Dictionary, e: EnemyState) -> void:
 			return
 		"bleed", "freeze", "steal", "summon", "invert_spells":
 			num = str(m.n)
+		"invoke":
+			row.add_child(_part(look[0], "", look[1], m.kind))
+			if m.has("word"):
+				row.add_child(_word(EnemyDefs.INVOKER_WORDS[m.word] + "!", Elements.COLORS[m.word].lightened(0.3)))
+			return
 		"charge":
 			row.add_child(Hourglass.make(int(m.left), e))  # turns left, inside an hourglass that flips each turn
 			# then the hit it will land (it changes as you cast spells while it charges)

@@ -188,6 +188,12 @@ func _ready() -> void:
 	if spell.get("ephemeral", false):
 		tags.append("EPHEMERAL")
 	var tag_l := UiTheme.label(" · ".join(tags), _zi(13), RARITY_COLORS[spell.rarity])
+	# many tags (an inverted conjured spell: ANTI-SPELL · EPHEMERAL) would widen the card: the line shrinks to fit
+	var tag_font := tag_l.get_theme_font("font")
+	var tag_fs := _zi(13)
+	while tag_fs > _zi(8) and tag_font.get_string_size(tag_l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, tag_fs).x > _z(RULES_W):
+		tag_fs -= 1
+	tag_l.add_theme_font_size_override("font_size", tag_fs)
 	tag_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tag_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(tag_l)

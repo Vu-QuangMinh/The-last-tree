@@ -841,7 +841,9 @@ func test_fused_anti_spell_breaks_on_either_pattern() -> void:
 	run.learn_spell("fog_of_war")  # FW
 	run.learn_spell("heat_haze")  # FA
 	assert_true(not run.can_fuse_pair("fog_of_war", "fire_ball"), "an anti-spell can't fuse with a spell")
-	assert_true(run.can_fuse_pair("fog_of_war", "heat_haze"))
+	assert_true(not run.can_fuse("fog_of_war") and not run.can_fuse_pair("fog_of_war", "heat_haze"), "anti-spells can't be fused at all")
+	assert_true(not ("fog_of_war" in run.fusable()))
+	# (an old fused anti-spell, made before that rule, still works)
 	var fz := run.fuse_preview("fog_of_war", "heat_haze", 0)
 	assert_true(fz.get("anti", false))
 	assert_eq(fz.patterns, ["FW", "FA"], "both patterns kept whole (nothing shot out)")
@@ -1183,15 +1185,15 @@ func test_yin_yang_beast() -> void:
 	f._plan(e)
 	assert_eq(e.intent.kind, "charge")
 	assert_eq(e.charge_dmg, 30)
+	f._charge_react({})
+	assert_eq(e.charge_dmg, 25, "the other colour (it's black, a spell is white): -5")
 	f._charge_react({"anti": true})
-	assert_eq(e.charge_dmg, 25, "its own colour: -5")
-	f._charge_react({})
-	f._charge_react({})
-	assert_eq(e.charge_dmg, 35, "the other colour: +5 each")
+	f._charge_react({"anti": true})
+	assert_eq(e.charge_dmg, 35, "its own colour: +5 each")
 	for k in 10:
-		f._charge_react({"anti": true})
+		f._charge_react({})
 	assert_eq(e.charge_dmg, 0, "never below 0")
-	f._charge_react({})
+	f._charge_react({"anti": true})
 	f._do_move(e, e.intent)
 	f._plan(e)
 	assert_eq(e.intent.left, 2)
@@ -1212,5 +1214,123 @@ func test_yin_yang_beast() -> void:
 	assert_eq(cubs.size(), 2)
 	assert_eq(cubs.map(func(c): return c.yin), ["white", "black"])
 	assert_eq(cubs.map(func(c): return c.size()), [10, 10])
-	assert_eq(cubs.map(func(c): return c.intent.kind), ["invert_spells", "silence"])
+	assert_eq(cubs.map(func(c): return c.intent.kind), ["invert_spells", "invert_spells"], "both flip first")
+	for c in cubs:
+		f._plan(c)
+	assert_eq(cubs.map(func(c): return c.intent.kind), ["charge", "silence"], "then the white one charges, the black one roars")
+	assert_eq(cubs[1].intent.n, 2, "silencing 2 spells")
+	assert_eq(cubs[1].intent.also.n, 2, "and hitting for 2")
+	for k in 3:
+		for c in cubs:
+			f._plan(c)
+	assert_eq(cubs.map(func(c): return c.intent.kind), ["silence", "charge"], "after the hit they swap")
 	assert_true(not f.won)
+
+
+func test_invoker() -> void:
+	var f := _fight(["invoker"], ["fire_ball"], "")
+	var e: EnemyState = f.enemies[0]
+	assert_eq(e.size(), 20)
+	assert_eq(EnemyDefs.BOSSES[1], ["yin_yang_beast", "invoker"], "the Woodcutter is out for now")
+	# 3 spells, no repeats
+	assert_eq(e.conjured.size(), 3)
+	var ids := e.conjured.map(func(s): return s.id)
+	assert_true(ids[0] != ids[1] and ids[1] != ids[2] and ids[0] != ids[2])
+	# a chant that contains a pattern sets that spell off; otherwise the closest one
+	e.conjured = [EnemyDefs.INVOKER_SPELLS[6].duplicate(true), EnemyDefs.INVOKER_SPELLS[0].duplicate(true), EnemyDefs.INVOKER_SPELLS[3].duplicate(true)]
+	for i in 3:
+		e.conjured[i].rank = i
+		e.conjured[i].base = e.conjured[i].pattern
+	assert_eq(f.invoke_picks(e, "FFFWWW"), [0, 1], "Sun Strike and Cold Snap both matched")
+	assert_eq(f.invoke_picks(e, "AAF"), [2], "EMP: 2 of its 3 Air chanted, the closest")
+	assert_eq(f.invoke_picks(e, ""), [0], "nothing chanted: all equally far, the tie goes to its rank")
+	# his turn: Sun Strike hits for 10
+	f.heard = "FFF"
+	f.player.hp = 50
+	f.player.shield = 0
+	f._do_move(e, {"kind": "invoke"})
+	assert_eq(f.player.hp, 40.0 - e.dmg_bonus)
+	# second wind at 0 Essence: 20 more, then he chants a word that strips that Essence from his spells
+	e.elements.clear()
+	f._cleanup()
+	assert_eq(f.alive().size(), 1, "not dead yet")
+	assert_eq(e.phase, 2)
+	assert_eq(e.size(), 10, "phase 2: 10 Essence")
+	f._plan(e)
+	assert_true(e.intent.has("word"))
+	var w: String = e.intent.word
+	f.heard = "Q"
+	f._do_move(e, e.intent)
+	assert_true(w in e.stripped)
+	for sp in e.conjured:
+		assert_true(not String(sp.pattern).contains(w), "every %s is gone from %s" % [w, sp.name])
+
+
+func test_invoker_spell_effects() -> void:
+	var f := _fight(["invoker"], ["fire_ball", "water_wall", "tailwind"], "FFWWAA")
+	var e: EnemyState = f.enemies[0]
+	f.player.hp = 99
+	f._do_move(e, EnemyDefs.INVOKER_SPELLS[3].cast)  # EMP
+	assert_eq(f.player.stock.size(), 4, "2 Essence drained")
+	f._do_move(e, EnemyDefs.INVOKER_SPELLS[9].cast)  # Deafening Blast
+	assert_eq(f.player.disarmed_turns, 1)
+	f._do_move(e, EnemyDefs.INVOKER_SPELLS[8].cast)  # Chaos Meteor
+	assert_eq(f.player.ignited.size(), 3)
+	f._do_move(e, EnemyDefs.INVOKER_SPELLS[2].cast)  # Ice Wall
+	assert_eq(e.armor.count(true), 3)
+	e.burn = 3
+	e.poison = 2
+	f._do_move(e, EnemyDefs.INVOKER_SPELLS[1].cast)  # Ghost Walk
+	assert_eq([e.burn, e.poison], [0, 0])
+	f._do_move(e, EnemyDefs.INVOKER_SPELLS[7].cast)  # Forge Spirit
+	assert_eq(f.alive().size(), 2)
+
+
+func test_yin_yang_inversion_prefers_short_to_anti_and_long_to_spell() -> void:
+	# short spells (Fire Ball FF, Water Wall WW) turn anti far more often than long ones (Meteor FFFF)
+	var short_flips := 0
+	var long_flips := 0
+	for sd in 60:
+		var f := _fight(["yin_yang_beast"], ["fire_ball", "water_wall", "tailwind", "meteor"], "")
+		f.rng.seed = sd
+		var cands := f.shown_spells()
+		var i := f._invert_pick(cands)
+		if String(cands[i].pattern).length() >= 4:
+			long_flips += 1
+		elif String(cands[i].pattern).length() <= 2:
+			short_flips += 1
+	assert_true(short_flips > long_flips * 3, "short %d vs long %d" % [short_flips, long_flips])
+	# a long anti-spell gets turned back into a spell before a short one does
+	var g := _fight(["yin_yang_beast"], ["fire_ball", "meteor"], "")
+	var pool := [g.shown_spells()[0].duplicate(true), g.shown_spells()[1].duplicate(true)]
+	pool[0].anti = true
+	pool[1].anti = true
+	var back_long := 0
+	for sd in 40:
+		g.rng.seed = sd
+		if g._invert_pick(pool) == 1:
+			back_long += 1
+	assert_true(back_long > 30, "the long anti-spell goes back first: %d / 40" % back_long)
+
+
+func test_yin_yang_flips_change_the_pattern() -> void:
+	var f := _fight(["yin_yang_beast"], ["meteor"], "")
+	var e: EnemyState = f.enemies[0]
+	var meteor: Dictionary = f.loadout[0]
+	var size0 := e.size()
+	# a spell turned anti: the beast absorbs 1 Essence of its pattern
+	var anti := f._invert_spell(e, meteor)
+	assert_true(anti.anti)
+	assert_eq(String(anti.pattern).length(), String(meteor.pattern).length() - 1)
+	assert_eq(e.size(), size0 + 1, "the beast took it into its own row")
+	# turned back: natural form first, then 1 random Essence more
+	var back := f._invert_spell(e, anti)
+	assert_true(not back.get("anti", false))
+	assert_eq(String(back.pattern).length(), String(meteor.pattern).length() + 1)
+	# flipped anti again: from its natural form, minus 1 (not minus 1 from the longer one)
+	var again := f._invert_spell(e, back)
+	assert_eq(String(again.pattern).length(), String(meteor.pattern).length() - 1)
+	# a one-Essence spell gives nothing up
+	var one := meteor.duplicate(true)
+	one.pattern = "F"
+	assert_eq(String(f._invert_spell(e, one).pattern), "F")

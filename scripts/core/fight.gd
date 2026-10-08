@@ -29,7 +29,7 @@ const LENSES := {"flame_lens": "F", "tide_lens": "W", "gale_lens": "A"}
 const REDIRECT_DMG_PER_ELEMENT := 3.0
 ## Moves aimed at you. When an intent is redirected, attacks hit the new target and these fizzle.
 const IGNITE_DAMAGE := 5  # casting an Ignited spell burns you this much (the Ember Sprite)
-const AT_PLAYER := ["invert_spells", "ignite_spell", "silence", "lock", "steal", "confuse", "blind", "bleed", "freeze", "toll", "invert", "hex", "mimic", "frail", "brittle"]
+const AT_PLAYER := ["disarm", "drain_essence", "invert_spells", "ignite_spell", "silence", "lock", "steal", "confuse", "blind", "bleed", "freeze", "toll", "invert", "hex", "mimic", "frail", "brittle"]
 
 var rng := RandomNumberGenerator.new()
 var db: SpellDB
@@ -52,7 +52,8 @@ var script_draws: Array = []  # tutorial: fixed draws, one String per turn ("FFW
 var chant: Array = []  # element letters of the spoken chant; spells can change it
 var spoken := false
 var voice_echo := false  # Echoed Voice: the spell being cast is the turn's first, so each effect echoes
-var echo_from := ""  # an artifact repeating the effect being applied (its show starts from the artifact)
+var echo_from := ""
+var heard := ""  # what you chanted this turn ("" if you passed): the Invoker reads it  # an artifact repeating the effect being applied (its show starts from the artifact)
 var used := {}  # spell id -> triggers used this turn
 var current_eff := {}  # the effect being resolved right now (the screen's chooser looks at it)
 var anti_broken := {}  # anti-spell id -> true: its pattern was chanted this turn, so it doesn't fire
@@ -169,7 +170,8 @@ func _spawn(id: String, extra = null) -> EnemyState:
 	if d.has("walls"):
 		for side in ["L", "R"]:
 			e.grow_wall(side, _wall_essence(int(d.walls)))
-	e.move_index = int(d.get("start", 0))  # (the Triplet: each starts its cycle at a different move)
+	e.move_index = int(d.get("start", 0))
+	e.opener = d.get("opener", []).duplicate(true)  # (the Triplet: each starts its cycle at a different move)
 	enemies.append(e)
 	return e
 
@@ -373,7 +375,11 @@ func preview(c: String, raw := true) -> Dictionary:
 		var cnt: int = mini(_occ(s, c).size(), trigger_cap(s)) - (used.get(s.id, 0) if not raw else 0)
 		if cnt > 0:
 			spells[s.id] = cnt
-	return {"removed": removed, "dies": dies, "spells": spells}
+	var invoke := {}  # the Invoker's spells this chant would set off
+	for e in alive():
+		if e.def.get("invokes", false):
+			invoke[e] = invoke_picks(e, c)
+	return {"removed": removed, "dies": dies, "spells": spells, "invoke": invoke}
 
 
 # ------------------------------------------------------------------ your turn
@@ -570,13 +576,18 @@ func resolve_all() -> void:
 func finish_turn() -> void:
 	if over:
 		return
+	heard = chant_string() if spoken else ""
 	if spoken and not chant.is_empty():
 		var c := chant_string()
 		last_chant = c
 		if not charges.is_empty():
 			_log("Unused charges fizzle.")
 		charges.clear()
-		var hit := await _strike(c)
+		var hit := []
+		if player.disarmed_turns > 0:
+			_log("You are Disarmed: your Release does nothing.")
+		else:
+			hit = await _strike(c)
 		var amp: int = turn_ctx.get("amplify", 0)
 		if amp > 0:
 			for e in hit:
@@ -584,7 +595,7 @@ func finish_turn() -> void:
 					e.remove_right(amp)
 			await anim.call({"type": "amplify"})
 		for i in turn_ctx.get("echo", 0):
-			if over:
+			if over or player.disarmed_turns > 0:
 				break
 			_log("Echo! The chant is Released again.")
 			await _strike(chant_string())
@@ -1261,6 +1272,7 @@ func end_player_turn() -> void:
 		player.silenced[s] -= 1
 		if player.silenced[s] <= 0:
 			player.silenced.erase(s)
+	player.disarmed_turns = maxi(0, player.disarmed_turns - 1)
 	for s in player.ignited.keys():
 		player.ignited[s] -= 1
 		if player.ignited[s] <= 0:
@@ -1335,9 +1347,15 @@ func _enemy_phase() -> void:
 
 ## Moves are used strictly in the listed order, looping (a boss switches to its second list at half HP).
 func _plan(e: EnemyState) -> void:
+	if e.def.get("invokes", false):
+		_invoker_plan(e)
+		return
 	if e.has_passive("briar_walls") and e.walls_standing() < 2:
 		# a wall is down: she shows it, and regrows it on her next turn (the left one first)
 		e.intent = {"kind": "regrow", "side": "L" if not ("L" in e.parts) else "R"}
+		return
+	if not e.opener.is_empty():
+		e.intent = e.opener.pop_front()  # (a move it makes once, before its cycle: the Cubs' first flip)
 		return
 	var moves: Array = e.def.moves
 	if e.is_boss and e.phase == 1 and e.size() <= int(e.def.hp.length() / 2) and not e.has_passive("yinyang_split"):
@@ -1354,13 +1372,73 @@ func _plan(e: EnemyState) -> void:
 		e.charge_dmg = int(e.intent.n)  # a Charge starts: the spells you cast meanwhile change the hit
 
 
-## A spell is cast while a Yin Yang Beast charges: one of its colour (white: a spell, black: an anti-spell) lowers the
-## hit by 5, one of the other colour raises it by 5 (never below 0). The fight doesn't say so: you find out.
+## One spell flipped by a Yin Yang Beast (or Cub). It goes back to its natural form first, then:
+## - turned into an anti-spell: the beast absorbs 1 Essence of its pattern (at random) into its own row;
+## - turned into a spell: 1 random Essence is added to its pattern (at a random place).
+## That change lasts until it is flipped again (or the fight ends). A one-Essence pattern gives nothing up.
+func _invert_spell(e: EnemyState, s: Dictionary) -> Dictionary:
+	var natural: Dictionary = s.get("natural", s)
+	var inv := natural.duplicate(true)
+	inv.natural = natural
+	inv.anti = not s.get("anti", false)
+	if inv.has("patterns"):
+		return inv  # (a fused anti-spell's two patterns stay as they are)
+	var p := String(inv.pattern)
+	if inv.anti:
+		var spots := []
+		for i in p.length():
+			if p[i] in ["F", "W", "A"]:
+				spots.append(i)
+		if p.length() > 1 and not spots.is_empty():
+			var i: int = spots[rng.randi() % spots.size()]
+			var el := p[i]
+			p = p.erase(i, 1)
+			e.append(el)
+			_log("%s absorbs a %s from %s." % [e.name, Elements.NAMES[el], inv.name])
+	else:
+		var el := _random_element()
+		var at := rng.randi() % (p.length() + 1)
+		p = p.insert(at, el)
+		_log("%s comes back with an extra %s." % [inv.name, Elements.NAMES[el]])
+	if p != String(inv.pattern):
+		inv.pattern = p
+		inv.size = p.length()
+		inv.erase("full_pattern")  # (its seals no longer line up with the new pattern)
+		inv.erase("seals")
+	return inv
+
+
+## The Yin Yang Beast's (soft) aim: it likes short spells as anti-spells and long ones as spells. Each pick is random,
+## but weighted: a flip that moves a spell that way (a short spell turned anti, a long anti-spell turned back) is far
+## likelier than one that undoes it. "Short" and "long" are against the average pattern length of what it can pick.
+func _invert_pick(cands: Array) -> int:
+	var avg := 0.0
+	for s in cands:
+		avg += String(s.pattern).length()
+	avg /= maxf(1.0, cands.size())
+	var weights := []
+	var total := 0.0
+	for s in cands:
+		var plen := float(String(s.pattern).length())
+		var gain := (plen - avg) if s.get("anti", false) else (avg - plen)  # >0: the flip goes its way
+		var w := pow(4.0, clampf(gain, -3.0, 3.0))
+		weights.append(w)
+		total += w
+	var r := rng.randf() * total
+	for i in weights.size():
+		r -= weights[i]
+		if r <= 0.0:
+			return i
+	return weights.size() - 1
+
+
+## A spell is cast while a Yin Yang Beast charges: one of the other colour (white: a spell, black: an anti-spell) lowers
+## the hit by 5, one of its own colour raises it by 5 (never below 0). The fight doesn't say so: you find out.
 func _charge_react(spell: Dictionary) -> void:
 	var col := "black" if spell.get("anti", false) else "white"
 	for e in alive():
 		if e.yin != "" and e.charge_dmg >= 0:
-			e.charge_dmg = maxi(0, e.charge_dmg + (-5 if col == e.yin else 5))
+			e.charge_dmg = maxi(0, e.charge_dmg + (5 if col == e.yin else -5))
 
 
 ## You gained Shield: an Enraged enemy gains Power +1 for each separate gain.
@@ -1372,6 +1450,89 @@ func _shield_gained(got: float) -> void:
 			e.power += 1
 			e.dmg_bonus += 1
 			_log("%s is enraged by your Shield: Power %d." % [e.name, e.power])
+
+
+## The Invoker conjures 3 new spells (no repeats), stripped of the Essence his words took. In his second wind his
+## intent also says the word he'll chant after casting (one he hasn't said yet).
+func _invoker_plan(e: EnemyState) -> void:
+	var pool := EnemyDefs.INVOKER_SPELLS.duplicate(true)
+	e.conjured.clear()
+	for k in 3:
+		var sp: Dictionary = pool.pop_at(rng.randi() % pool.size())
+		sp.rarity = "rare"
+		sp.rarity_name = "Rare"
+		sp.power = false
+		sp.effects = []
+		sp.base = sp.pattern
+		sp.rank = rng.randf()  # (breaks ties for "closest": random, but the same in the preview and on his turn)
+		e.conjured.append(sp)
+	_strip_conjured(e)
+	e.intent = {"kind": "invoke"}
+	if e.phase == 2:
+		var left := ["W", "A", "F"].filter(func(x): return not (x in e.stripped))
+		if not left.is_empty():
+			e.intent.word = left[rng.randi() % left.size()]
+
+
+func _strip_conjured(e: EnemyState) -> void:
+	for sp in e.conjured:
+		var p := String(sp.base)
+		for x in e.stripped:
+			p = p.replace(x, "")
+		sp.pattern = p
+
+
+## Which of the Invoker's spells a chant sets off: every one it contains, or else the one it came closest to (fewest
+## Essence of the pattern missing; ties broken by each spell's random rank).
+func invoke_picks(e: EnemyState, c: String) -> Array:
+	var full := []
+	var best := -1
+	for i in e.conjured.size():
+		var miss := _missing(String(e.conjured[i].pattern), c)
+		if miss == 0:
+			full.append(i)
+		elif best < 0 or miss < _missing(String(e.conjured[best].pattern), c) or (miss == _missing(String(e.conjured[best].pattern), c) and e.conjured[i].rank < e.conjured[best].rank):
+			best = i
+	if not full.is_empty():
+		return full
+	return [best] if best >= 0 else []
+
+
+## How many Essence of a pattern the chant is short of: its length minus the longest piece of it found in the chant.
+func _missing(p: String, c: String) -> int:
+	var n := p.length()
+	for k in range(n, 0, -1):
+		for start in n - k + 1:
+			if not Chant.occurrences(p.substr(start, k), c).is_empty():
+				return n - k
+	return n
+
+
+## His turn: he casts what your chant set off, then (second wind) chants his word.
+func _invoke(e: EnemyState, m: Dictionary) -> void:
+	for i in invoke_picks(e, heard):
+		if over or e.is_dead():
+			return
+		var sp: Dictionary = e.conjured[i]
+		_log("%s casts %s!" % [e.name, sp.name])
+		await anim.call({"type": "invoke", "enemy": e, "idx": i})
+		await _do_move(e, sp.cast)
+	if m.has("word") and not over and not e.is_dead():
+		e.stripped.append(m.word)
+		_strip_conjured(e)
+		_log("%s chants \"%s!\" His spells lose every %s." % [e.name, EnemyDefs.INVOKER_WORDS[m.word], Elements.NAMES[m.word]])
+		await anim.call({"type": "speech", "enemy": e, "text": EnemyDefs.INVOKER_WORDS[m.word] + "!"})
+
+
+## The Invoker at 0 Essence the first time: he rises again with his second row, and starts chanting.
+func _rebirths() -> void:
+	for e in enemies:
+		if e.has_passive("invoker_rebirth") and e.phase == 1 and e.is_dead():
+			e.phase = 2
+			e.reset_hp(String(e.def.hp2))
+			_log("%s rises again, chanting!" % e.name)
+			anim.call({"type": "boss_phase"})
+			anim.call({"type": "speech", "enemy": e, "text": "Quas, Wex, Exort..."})
 
 
 ## A support move's target: itself, or ("who": "random") any living enemy at random, itself included.
@@ -1422,10 +1583,11 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 					break
 		"armor":
 			var t := _random_one(e, m)  # (itself, or one of them at random)
-			if m.pos < 0:  # the first Essence that isn't armoured yet
-				var free := t.armor.find(false)
-				if free >= 0:
-					t.set_armor(free)
+			if m.pos < 0:  # the first Essence that isn't armoured yet (Ice Wall: several)
+				for k in int(m.get("count", 1)):
+					var free := t.armor.find(false)
+					if free >= 0:
+						t.set_armor(free)
 			else:
 				t.set_armor(mini(m.pos, t.size() - 1))
 		"mend":
@@ -1478,15 +1640,37 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 			for k in m.n:
 				if cands.is_empty():
 					break
-				var s: Dictionary = cands.pop_at(rng.randi() % cands.size())
-				var inv := s.duplicate(true)
-				inv.anti = not s.get("anti", false)
+				var s: Dictionary = cands.pop_at(_invert_pick(cands))
+				var inv := _invert_spell(e, s)
 				loadout[loadout.find(s)] = inv
 				flipped.append(inv.name)
 			e.yin = "black" if e.yin == "white" else "white"
 			if not flipped.is_empty():
 				_log("%s inverts %s." % [e.name, ", ".join(flipped)])
 			await anim.call({"type": "invert_spells", "enemy": e})
+		"invoke":
+			await _invoke(e, m)
+		"cleanse_self":
+			e.burn = 0
+			e.poison = 0
+			e.weak_turns = 0
+			e.weak25 = false
+			e.freeze_turns = 0
+			e.no_mend = false
+			e.phased = false
+			_log("%s cleanses himself." % e.name)
+			await anim.call({"type": "mend", "enemy": e})
+		"drain_essence":
+			for k in m.n:
+				if player.stock.is_empty():
+					break
+				player.stock.remove_at(rng.randi() % player.stock.size())
+			_log("%s drains %d of your Essence." % [e.name, m.n])
+			await anim.call({"type": "silence"})
+		"disarm":
+			player.disarmed_turns = maxi(player.disarmed_turns, m.turns)
+			_log("%s Disarms you: your next Release does nothing." % e.name)
+			await anim.call({"type": "frail"})
 		"charge":
 			if m.get("hit", false):
 				var dmg: int = maxi(0, e.charge_dmg)
@@ -1499,11 +1683,13 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				await anim.call({"type": "charge_tick", "enemy": e})
 		"ignite_spell":
 			var cands := usable_spells().filter(func(s): return not player.ignited.has(s.id))
-			if not cands.is_empty():
-				var s: Dictionary = cands[rng.randi() % cands.size()]
+			for k in int(m.get("n", 1)):
+				if cands.is_empty():
+					break
+				var s: Dictionary = cands.pop_at(rng.randi() % cands.size())
 				player.ignited[s.id] = m.turns
 				_log("%s sets %s on fire: casting it next turn burns you for %d." % [e.name, s.name, IGNITE_DAMAGE])
-				await anim.call({"type": "ignite_spell", "id": s.id})
+			await anim.call({"type": "ignite_spell"})
 		"lock":
 			var cands := active_spells().filter(func(s): return not player.locks.has(s.id))
 			if not cands.is_empty():
@@ -1615,6 +1801,7 @@ func _rage_check(e: EnemyState) -> bool:
 
 
 func _cleanup() -> void:
+	_rebirths()
 	for e in enemies:
 		if _rage_check(e):
 			_plan(e)
@@ -1638,7 +1825,8 @@ func _cleanup() -> void:
 					if alive().size() < MAX_ENEMIES:
 						var cub := _spawn("yin_yang_clone")
 						cub.yin = ["white", "black"][k]
-						cub.move_index = k
+						if k == 1:
+							cub.def.moves = cub.def.moves_black  # (the black one silences first, then charges)
 						cub.fresh = true
 						_plan(cub)
 						anim.call({"type": "spawn", "enemy": cub})
@@ -1659,6 +1847,7 @@ func _cleanup() -> void:
 
 
 func _check_end() -> void:
+	_rebirths()
 	if over:
 		return
 	if player.is_dead():

@@ -472,6 +472,13 @@ func _refresh_all() -> void:
 			pv = fight.preview(chant)
 		elif phase == "spells" and _step_pos < 0 and not _released:
 			pv = fight.preview(fight.chant_string(), false)
+	if phase == "build" and not pv.has("invoke"):
+		# nothing chanted yet: the Invoker still shows which of his spells he'd cast (the closest)
+		var inv := {}
+		for e in fight.alive():
+			if e.def.get("invokes", false):
+				inv[e] = fight.invoke_picks(e, "")
+		pv["invoke"] = inv
 	for e in _views:
 		var v: EnemyView = _views[e]
 		var idx := fight.enemies.find(e)
@@ -1552,6 +1559,8 @@ func _status_badges() -> Array:
 		out.append(["🔔 Toll %d" % p.toll, Color(1.0, 0.6, 0.2), "lock"])
 	if p.overload > 0:
 		out.append(["⚡ Overload %d" % p.overload, Color(1.0, 0.45, 0.3), "overload"])
+	if p.disarmed_turns > 0:
+		out.append(["🚫 Disarmed", Color(1.0, 0.55, 0.45), "disarmed"])
 	if not p.silenced.is_empty():
 		out.append(["🤐 Silenced", Color(0.8, 0.45, 1.0), "silence"])
 	# every Power you've cast this fight: a badge for the rest of it (hover: what it does)
@@ -2824,6 +2833,14 @@ func _anim(ev: Dictionary) -> void:
 		"charge_tick":
 			_refresh_all()
 			await _wait(0.3)
+		"invoke":
+			var iv: EnemyView = _views.get(ev.enemy)
+			if iv:
+				iv.flash_invoked(ev.idx)
+			Audio.play("spell_glow")
+			await _wait(0.45)
+		"speech":
+			await _speech(ev.enemy, ev.text)
 		"ignite_spell":
 			Audio.play("sfx_burn_apply")
 			_refresh_all()
@@ -3130,6 +3147,42 @@ var _choosing_el := false
 
 ## The screen dims; Fire, Water and Air float softly out of the card and shine. Pick one (click, or F / W / A):
 ## the other two drift back into the card and vanish, and the chosen one shakes violently, cracks and shatters.
+## An enemy says something: a speech bubble over its head for a moment (the Invoker's Quas / Wex / Exort).
+func _speech(e: EnemyState, text: String) -> void:
+	var v: EnemyView = _views.get(e)
+	if v == null or not is_instance_valid(v):
+		return
+	var bubble := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(1, 0.98, 0.92)
+	sb.border_color = Color(0.35, 0.2, 0.45)
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(18)
+	sb.content_margin_left = 16
+	sb.content_margin_right = 16
+	sb.content_margin_top = 6
+	sb.content_margin_bottom = 6
+	bubble.add_theme_stylebox_override("panel", sb)
+	bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bubble.z_index = 90
+	var l := UiTheme.label(text, 30, Color(0.3, 0.12, 0.4))
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bubble.add_child(l)
+	_fx.add_child(bubble)
+	await get_tree().process_frame
+	var head := v.creature.global_position + Vector2(v.creature.size.x * 0.75, 10.0)
+	bubble.global_position = head - Vector2(0, bubble.size.y)
+	bubble.pivot_offset = Vector2(0, bubble.size.y)
+	bubble.scale = Vector2(0.3, 0.3)
+	var tw := bubble.create_tween()
+	tw.tween_property(bubble, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(1.0)
+	tw.tween_property(bubble, "modulate:a", 0.0, 0.3)
+	tw.tween_callback(bubble.queue_free)
+	Audio.play("enemy_intent_show")
+	await _wait(1.2)
+
+
 ## Attunement: the screen dims, the card's Essence shine and fly to the middle; you click one, and it flies down to
 ## your statuses, where it becomes a badge (+1 of it each turn).
 func _attune_chooser(spell: Dictionary) -> String:

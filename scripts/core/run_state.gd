@@ -459,11 +459,11 @@ func rest() -> float:
 
 # ------------------------------------------------------------------ fusing (campfires)
 
-## A spell can be fused if it isn't a Power and hasn't been fused already. (Anti-spells fuse only with
-## anti-spells: see can_fuse_pair.)
+## A spell can be fused if it isn't a Power, an anti-spell (they can't be fused: they don't show up at the
+## campfire) or fused already.
 func can_fuse(id: String) -> bool:
 	var s := spell(id)
-	return not s.is_empty() and not s.get("power", false) and not s.get("fused", false)
+	return not s.is_empty() and not s.get("power", false) and not s.get("fused", false) and not s.get("anti", false)
 
 
 ## Two spells can be fused together if both are anti-spells or neither is.

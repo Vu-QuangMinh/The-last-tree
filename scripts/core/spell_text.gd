@@ -11,6 +11,8 @@ const WHOSE := {"target": "an enemy's", "two": "2 different enemies'", "all": "a
 
 ## One sentence per effect, each on its own line.
 static func card_text(s: Dictionary) -> String:
+	if s.has("desc"):
+		return s.desc  # (the Invoker's spells: written out)
 	var lines := []
 	for e in s.effects:
 		lines.append(sentence(e))
@@ -19,6 +21,8 @@ static func card_text(s: Dictionary) -> String:
 
 ## The same rules as one paragraph (tooltips, reports).
 static func describe(s: Dictionary) -> String:
+	if s.has("desc"):
+		return s.desc
 	var text := " ".join(s.effects.map(func(e): return sentence(e)))
 	if s.get("anti", false) and s.has("patterns"):
 		text = "Anti-spell: it comes alive with every chant, unless the chant contains EITHER of its patterns: " + text

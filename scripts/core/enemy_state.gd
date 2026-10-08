@@ -17,7 +17,10 @@ var dmg_bonus := 0
 var lit: Array = []  # (legacy, kept in step with elements; unused)
 var acting_part := ""  # which part is acting right now ("L" / "R": one of her walls; "": the enemy itself)
 var yin := ""  # the Yin Yang Beast's colour: "white" or "black" ("" for everyone else)
-var charge_dmg := -1  # a Charge in progress: the hit it will land (-1: not charging)
+var charge_dmg := -1
+var opener: Array = []  # moves made once before its cycle starts (the Yin Yang Cubs' first flip)
+var conjured: Array = []  # the Invoker's 3 spells this turn (their patterns already stripped)
+var stripped: Array = []  # the Invoker's words so far: Essence gone from his spells' patterns  # a Charge in progress: the hit it will land (-1: not charging)
 var power := 0  # Power: +1 damage per hit for each stack (her song; Empower)
 var wall_step := {"L": 0, "R": 0}  # where each wall is in its attack pattern (a regrown wall starts over)
 var parts: Array = []  # per Essence: "" = the enemy itself, "L" / "R" = a wall it stands behind (Bramble Matron)
@@ -390,6 +393,20 @@ func poison_bite(_rng: RandomNumberGenerator = null) -> Array:
 
 
 ## After its action: timed statuses count down.
+## Back from 0 Essence with a new row (the Invoker's second wind): statuses on it are gone too.
+func reset_hp(hp: String) -> void:
+	elements.clear()
+	for c in hp:
+		elements.append(c)
+	armor.resize(elements.size())
+	armor.fill(false)
+	lit.clear()
+	_fix_lit()
+	burn = 0
+	poison = 0
+	freeze_turns = 0
+
+
 func end_turn() -> void:
 	weak_turns = maxi(0, weak_turns - 1)
 	freeze_turns = maxi(0, freeze_turns - 1)
