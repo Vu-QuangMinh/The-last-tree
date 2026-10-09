@@ -71,6 +71,7 @@ static var _glow_tex: Texture2D
 static var _glyphs: Array = []
 
 var shaker: Callable  # shakes the screen: shaker.call(amount)
+var stopper: Callable  # hit-stop: stopper.call(seconds) freezes the game for a moment on a heavy impact
 var _items: Array = []
 var _add_layer := Control.new()
 var _mix_layer := Control.new()
@@ -298,6 +299,13 @@ func shake(amount: float, delay := 0.0) -> void:
 		shaker.call(amount)
 	else:
 		emit(Vector2.ZERO, delay, 0.0, Callable(), func(_v: Vfx, _at: Vector2) -> void: shaker.call(amount))
+
+
+## Hit-stop: everything freezes for a split second on impact, which is what makes a hit feel heavy.
+## 0.04–0.06 s for a normal hit, up to ~0.12 s for a kill blow. Call it in the frame of the impact.
+func hitstop(sec: float) -> void:
+	if stopper.is_valid():
+		stopper.call(sec)
 
 
 # ------------------------------------------------------------------ running it

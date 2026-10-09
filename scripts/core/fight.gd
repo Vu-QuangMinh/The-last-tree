@@ -62,6 +62,12 @@ var _conjured := 0  # for unique ids of Ephemeral (conjured) spells
 ## is gone from the row; when the last is cast or they expire, they merge back into it.
 var conjuring := {}
 var charges := {}  # spell id -> triggers left right now
+var hm := {}  # the Handyman fight: {phase, kills, body}
+var cast_counts := {}  # spell id -> casts this fight (the Hammer goes for the most-cast)
+var hammer_target := ""
+var hammer_hits := {}  # spell id -> Hammer hits taken (3 break it)
+var broken := {}  # spell id -> true: smashed by the Hammer, gone for the fight
+var stored := {}  # spell id -> true: alive but not cast when you Released; it wakes again on your next Chant
 var turn_ctx := {}  # {entries, amplify, echo, retain, last, cast_any}
 
 var chooser: Callable
@@ -126,6 +132,12 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 	player.reset_fight()
 	enemies.clear()
 	for i in enemy_ids.size():
+		if enemy_ids[i] == "handyman":
+			# the Handyman starts as two hands (he himself only shows up at the very end)
+			hm = {"phase": 1, "kills": 0, "body": false}
+			_spawn("hand_sword", [])
+			_spawn("hand_tweezer", [])
+			continue
 		_spawn(enemy_ids[i], preset_extra[i] if i < preset_extra.size() else null)
 	if has_artifact("thornbark"):
 		player.passives["thorns"] = int(_an("thornbark"))
@@ -134,9 +146,9 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 	if has_artifact("chant_bell"):
 		player.passives["echo_first"] = 1
 	if has_artifact("rain_chalice"):
-		player.shield += _an("rain_chalice")
+		player.lasting += _an("rain_chalice")
 	if has_artifact("iron_bark"):
-		player.shield += _an("iron_bark")
+		player.lasting += _an("iron_bark")
 	if has_artifact("ward_stone"):
 		player.aegis = int(_an("ward_stone"))
 	player.dmg_taken_mult = 1.25 if has_artifact("glass_heart") else 1.0
@@ -213,12 +225,12 @@ func active_spells() -> Array:
 
 ## The active row as you see it: a Conjure spell whose conjured spells are out isn't in it (they stand in its place).
 func shown_spells() -> Array:
-	return loadout.filter(func(s): return not conjuring.has(s.id))
+	return loadout.filter(func(s): return not conjuring.has(s.id) and not broken.has(s.id))
 
 
 ## Spells that can fire this turn (not silenced, not locked, not a spent Power).
 func usable_spells() -> Array:
-	return active_spells().filter(func(s): return not player.silenced.has(s.id) and not player.locks.has(s.id))
+	return active_spells().filter(func(s): return not player.silenced.has(s.id) and not player.locks.has(s.id) and not player.cooldowns.has(s.id))
 
 
 ## The most times a spell can trigger in one turn: once.
@@ -329,7 +341,9 @@ func begin_player_turn() -> void:
 		await anim.call({"type": "bleed_tick"})
 	if has_artifact("mending_moss"):
 		player.heal(_an("mending_moss"))
-	player.thorns_turn = 0  # (Shield stays: it builds up from turn to turn until attacks use it up)
+	player.thorns_turn = 0
+	_hands_back()
+	player.shield = 0.0  # Shield lasts until your next turn starts (it doesn't build up from turn to turn)
 	for d in player.next_draw:
 		player.add_element(d.el, d.temp)
 	_roll_next_draw(turn + 1)
@@ -455,7 +469,24 @@ func _recount() -> Array:
 			var gained: int = n - before.get(sp.id, 0)
 			if gained > 0:
 				woke.append({"id": sp.id, "starts": occ.slice(occ.size() - gained), "len": sp.pattern.length()})
+	# spells stored from an earlier turn wake on any chant (one charge: a match on top doesn't add a second)
+	for sp in usable_spells():
+		if stored.has(sp.id) and charges.get(sp.id, 0) == 0 and used.get(sp.id, 0) == 0:
+			charges[sp.id] = 1
+			if not before.has(sp.id):
+				woke.append({"id": sp.id, "starts": [], "len": 0})
 	return woke
+
+
+## Released with spells still alive: they're stored, awake, until a later Chant (see `stored`).
+func _store_unused() -> void:
+	var kept := []
+	for id in charges:
+		if charges[id] > 0 and not stored.has(id):
+			stored[id] = true
+			kept.append(_find_spell(id).get("name", id))
+	if not kept.is_empty():
+		_log("Stored for your next chant: %s." % ", ".join(kept))
 
 
 ## Anything left to do this turn? (When not, the chant is Released by itself.)
@@ -485,6 +516,9 @@ func resolve_spell(id: String, target_idx := -1) -> void:
 		return
 	var spell := _find_spell(id)
 	used[id] = used.get(id, 0) + 1
+	cast_counts[id] = cast_counts.get(id, 0) + 1
+	stored.erase(id)  # (a stored spell is used up when it's cast)
+	_start_cooldown(spell)
 	charges[id] -= 1  # (the recount after the cast keeps the charges that are left)
 	if charges[id] <= 0:
 		charges.erase(id)
@@ -580,8 +614,7 @@ func finish_turn() -> void:
 	if spoken and not chant.is_empty():
 		var c := chant_string()
 		last_chant = c
-		if not charges.is_empty():
-			_log("Unused charges fizzle.")
+		_store_unused()
 		charges.clear()
 		var hit := []
 		if player.disarmed_turns > 0:
@@ -612,8 +645,8 @@ func finish_turn() -> void:
 		_cleanup()
 	if not spoken:
 		if has_artifact("shield_of_silence"):
-			var got := player.gain_shield(_an("shield_of_silence"))
-			_log("Shield of Silence: you held your tongue (+%d Shield)." % got)
+			var got := player.gain_shield(_an("shield_of_silence"), true)
+			_log("Shield of Silence: you held your tongue (+%d Lasting Shield)." % got)
 			_shield_gained(got)
 			await anim.call({"type": "artifact_used", "id": "shield_of_silence"})
 		await _fire_anti_spells()  # no chant at all this turn: nothing broke them, and they still go off
@@ -628,6 +661,7 @@ func _fire_anti_spells() -> void:
 			return
 		if sp.get("anti", false) and not anti_broken.has(sp.id):
 			_log("%s takes effect: you didn't chant it." % sp.name)
+			_start_cooldown(sp)
 			_charge_react(sp)
 			await _fire(sp, {}, {})
 
@@ -776,7 +810,12 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 		return
 	current_eff = eff
 	var targets := await _targets(eff, spell, tctx)
-	await anim.call({"type": "spell_effect", "op": eff.op, "eff": eff, "targets": targets, "spell": spell, "from_artifact": echo_from})
+	# Gain Essence: rolled before the show, so each orb flies in its own element's colour to its own slot
+	var drawn: Array[String] = []
+	if eff.op == "draw":
+		for i in eff.n:
+			drawn.append(_draw_element() if eff.get("el", "random") == "random" else String(eff.el))
+	await anim.call({"type": "spell_effect", "op": eff.op, "eff": eff, "targets": targets, "spell": spell, "from_artifact": echo_from, "drawn": drawn})
 	match eff.op:
 		"strike":
 			for e in targets:
@@ -846,8 +885,7 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 		"thorns":
 			player.thorns_turn += eff.n
 		"draw":
-			for i in eff.n:
-				var el: String = _draw_element() if eff.get("el", "random") == "random" else eff.el
+			for el in drawn:
 				if eff.when == "now":
 					player.add_element(el, eff.get("temp", false))
 				else:
@@ -891,6 +929,9 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 					changed += 1
 		"sacrifice":
 			player.take_effect(eff.hp)
+		"vulnerable":
+			player.vulnerable = maxi(player.vulnerable, int(eff.n))  # (a self debuff: the price of the spell)
+			_log("You are Vulnerable %d: you take 50%% more damage." % eff.n)
 		"barrage", "random_hit":
 			# Arcane Barrage: each hit picks an enemy at random (from _targets). Bottles: n random Essence of each target.
 			var hits := targets if eff.op == "barrage" else []
@@ -1121,6 +1162,7 @@ func _cleanse(what: String) -> void:
 	if what == "all":
 		player.frail_turns = 0
 		player.brittle_turns = 0
+		player.vulnerable = 0
 	if what in ["all", "frozen"]:
 		for s in player.stock:
 			s.frozen = false
@@ -1272,6 +1314,10 @@ func end_player_turn() -> void:
 		player.silenced[s] -= 1
 		if player.silenced[s] <= 0:
 			player.silenced.erase(s)
+	for s in player.cooldowns.keys():
+		player.cooldowns[s] -= 1
+		if player.cooldowns[s] <= 0:
+			player.cooldowns.erase(s)
 	player.disarmed_turns = maxi(0, player.disarmed_turns - 1)
 	for s in player.ignited.keys():
 		player.ignited[s] -= 1
@@ -1282,6 +1328,7 @@ func end_player_turn() -> void:
 	await _enemy_phase()
 	player.ethereal = false
 	player.frail_turns = maxi(0, player.frail_turns - 1)
+	player.vulnerable = maxi(0, player.vulnerable - 1)
 	player.brittle_turns = maxi(0, player.brittle_turns - 1)
 	if over:
 		return
@@ -1358,7 +1405,7 @@ func _plan(e: EnemyState) -> void:
 		e.intent = e.opener.pop_front()  # (a move it makes once, before its cycle: the Cubs' first flip)
 		return
 	var moves: Array = e.def.moves
-	if e.is_boss and e.phase == 1 and e.size() <= int(e.def.hp.length() / 2) and not e.has_passive("yinyang_split"):
+	if e.is_boss and e.phase == 1 and e.size() <= int(e.def.hp.length() / 2) and not e.has_passive("yinyang_split") and not e.has_passive("hand") and not e.has_passive("handyman"):
 		e.phase = 2
 		e.move_index = 0
 		_log("%s grows desperate!" % e.name)
@@ -1432,13 +1479,21 @@ func _invert_pick(cands: Array) -> int:
 	return weights.size() - 1
 
 
-## A spell is cast while a Yin Yang Beast charges: one of the other colour (white: a spell, black: an anti-spell) lowers
-## the hit by 5, one of its own colour raises it by 5 (never below 0). The fight doesn't say so: you find out.
+## Cooldown N: once cast, the spell can't be cast in your next N turns. (+1: the turn it's cast in ends first.)
+func _start_cooldown(spell: Dictionary) -> void:
+	var cd := int(spell.get("cooldown", 0))
+	if cd > 0:
+		player.cooldowns[spell.id] = cd + 1
+
+
+## A spell is cast while a Yin Yang Beast charges: one of its own colour (white: a spell, black: an anti-spell) raises
+## the hit by 5; one of the other colour leaves it as it is. The fight doesn't say so: you find out.
 func _charge_react(spell: Dictionary) -> void:
 	var col := "black" if spell.get("anti", false) else "white"
 	for e in alive():
 		if e.yin != "" and e.charge_dmg >= 0:
-			e.charge_dmg = maxi(0, e.charge_dmg + (5 if col == e.yin else -5))
+			if col == e.yin:
+				e.charge_dmg += 5
 
 
 ## You gained Shield: an Enraged enemy gains Power +1 for each separate gain.
@@ -1535,6 +1590,87 @@ func _rebirths() -> void:
 			anim.call({"type": "speech", "enemy": e, "text": "Quas, Wex, Exort..."})
 
 
+## The Handyman: hands at 0 Essence are knocked out, not killed (they count towards his next phase); new hands at 4
+## and then 8 knockouts; in his last stand a knocked-out hand stays down, and with every hand down he shows himself.
+func _handyman_step() -> void:
+	if hm.is_empty():
+		return
+	for e in enemies.duplicate():
+		if not e.has_passive("hand") or not e.is_dead() or e.knocked:
+			continue
+		e.charge_dmg = -1
+		if hm.phase >= 3:
+			enemies.erase(e)  # (his last stand: it stays down)
+			_log("%s goes limp for good." % e.name)
+		else:
+			e.knocked = true
+			e.intent = {"kind": "stunned"}
+			hm.kills += 1
+			_log("%s is knocked out (%d)." % [e.name, hm.kills])
+	if hm.phase == 1 and hm.kills >= 4:
+		_hm_phase(2, ["hand_hammer", "hand_crossbow"], "The Handyman reaches out with two more hands!")
+	elif hm.phase == 2 and hm.kills >= 8:
+		_hm_phase(3, ["hand_spear", "hand_shield"], "Two last hands, a spear and a shield: the Handyman makes his last stand!")
+	if hm.phase == 3 and not hm.body and not enemies.any(func(x): return x.has_passive("hand")):
+		hm.body = true
+		var body := _spawn("handyman", [])
+		body.reset_hp(_random_element())
+		body.fresh = true
+		_plan(body)
+		_log("Out of hands, the Handyman shows himself!")
+		anim.call({"type": "boss_phase"})
+		anim.call({"type": "spawn", "enemy": body})
+
+
+func _hm_phase(n: int, ids: Array, line: String) -> void:
+	hm.phase = n
+	hm.kills = 0
+	for id in ids:
+		var h := _spawn(id, [])
+		h.fresh = true
+		_plan(h)
+		anim.call({"type": "spawn", "enemy": h})
+	_log(line)
+	anim.call({"type": "boss_phase"})
+
+
+## Start of your turn: knocked-out hands come back whole (the Crossbow starts loading again from 2).
+func _hands_back() -> void:
+	for e in enemies:
+		if e.knocked:
+			e.knocked = false
+			e.reset_hp(String(e.def.hp))
+			e.move_index = 0
+			_plan(e)
+			_log("%s comes back." % e.name)
+
+
+## The Hammer Hand: it picks the spell you've cast most this fight (a tie: one at random) and sticks to it until it
+## breaks. 3 hits break a spell (a Fleeting one: the first); a broken spell is gone for the fight.
+func _hammer(e: EnemyState) -> void:
+	var cands := shown_spells().filter(func(s): return not player.used_powers.has(s.id))
+	if cands.is_empty():
+		return
+	if hammer_target == "" or broken.has(hammer_target) or not cands.any(func(s): return s.id == hammer_target):
+		var most := 0
+		for s in cands:
+			most = maxi(most, int(cast_counts.get(s.id, 0)))
+		var top := cands.filter(func(s): return int(cast_counts.get(s.id, 0)) == most)
+		hammer_target = top[rng.randi() % top.size()].id
+	var sp := _find_spell(hammer_target)
+	var hits: int = hammer_hits.get(hammer_target, 0) + 1
+	hammer_hits[hammer_target] = hits
+	var smashed: bool = hits >= 3 or sp.get("fleeting", false)
+	if smashed:
+		broken[hammer_target] = true
+		stored.erase(hammer_target)
+		charges.erase(hammer_target)
+		_log("%s smashes %s to pieces!" % [e.name, sp.name])
+	else:
+		_log("%s hammers %s (%d)." % [e.name, sp.name, hits])
+	await anim.call({"type": "hammer", "enemy": e, "id": hammer_target, "hits": hits, "broken": smashed})
+
+
 ## A support move's target: itself, or ("who": "random") any living enemy at random, itself included.
 func _random_one(e: EnemyState, m: Dictionary) -> EnemyState:
 	if m.get("who", "self") != "random":
@@ -1568,10 +1704,10 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 		"attack":
 			for h in m.get("hits", 1):
 				var dmg: float = floorf((m.n + e.dmg_bonus) * e.damage_mult())
-				var shield_before := player.shield
+				var shield_before := player.shield + player.lasting
 				var aegis_before := player.aegis
 				var lost := player.take_attack(dmg)
-				var blocked := player.aegis < aegis_before or player.shield < shield_before
+				var blocked := player.aegis < aegis_before or player.shield + player.lasting < shield_before
 				_log("%s attacks for %d." % [e.name, lost])
 				await anim.call({"type": "attack", "enemy": e, "n": lost, "blocked": blocked, "part": e.acting_part})
 				var th := player.thorns_turn + player.passive("thorns")
@@ -1671,10 +1807,13 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 			player.disarmed_turns = maxi(player.disarmed_turns, m.turns)
 			_log("%s Disarms you: your next Release does nothing." % e.name)
 			await anim.call({"type": "frail"})
+		"hammer_spell":
+			await _hammer(e)
 		"charge":
 			if m.get("hit", false):
 				var dmg: int = maxi(0, e.charge_dmg)
 				e.charge_dmg = -1
+				await anim.call({"type": "hourglass_dust", "enemy": e})  # (the hourglass runs out and crumbles first)
 				if dmg > 0:
 					await _do_move(e, {"kind": "attack", "n": dmg})
 				else:
@@ -1802,11 +1941,12 @@ func _rage_check(e: EnemyState) -> bool:
 
 func _cleanup() -> void:
 	_rebirths()
+	_handyman_step()
 	for e in enemies:
 		if _rage_check(e):
 			_plan(e)
 	for e in enemies.duplicate():
-		if e.is_dead():
+		if e.is_dead() and not e.knocked:
 			enemies.erase(e)
 			if e.is_boss:
 				anim.call({"type": "boss_defeat"})
@@ -1827,6 +1967,7 @@ func _cleanup() -> void:
 						cub.yin = ["white", "black"][k]
 						if k == 1:
 							cub.def.moves = cub.def.moves_black  # (the black one silences first, then charges)
+							cub.reset_hp(String(cub.def.hp_black))  # (a row unlike the white one's)
 						cub.fresh = true
 						_plan(cub)
 						anim.call({"type": "spawn", "enemy": cub})
@@ -1848,12 +1989,13 @@ func _cleanup() -> void:
 
 func _check_end() -> void:
 	_rebirths()
+	_handyman_step()
 	if over:
 		return
 	if player.is_dead():
 		over = true
 		won = false
-	elif alive().is_empty():
+	elif alive().is_empty() and not enemies.any(func(x): return x.knocked):
 		over = true
 		won = true
 

@@ -8,6 +8,7 @@ const TOLL_CAP := 5  # under a Toll, your next chant holds at most this many Ess
 const BASE_DRAW := 3
 const START_ELEMENTS := 5
 
+var lasting := 0.0  # Lasting Shield: like Shield, but it stays from turn to turn until attacks break it
 var hp := 50.0
 var damage_taken := 0.0  # HP lost this fight (attacks and effects; healing doesn't undo it): 0 = Perfect
 var max_hp := 50.0
@@ -21,6 +22,7 @@ var confuse_turns := 0
 var blind_turns := 0
 var toll := 0  # Toll: your next chant holds at most this many Essence (0 = no limit)
 var frail_turns := 0  # Frail: you take 25% more attack damage
+var vulnerable := 0  # Vulnerable N: you take 50% more damage; N drops by 1 after each enemy turn
 var brittle_turns := 0  # Brittle: the Shield you gain is 25% smaller
 var dmg_taken_mult := 1.0  # from artifacts (Glass Heart)
 var overload := 0
@@ -29,6 +31,7 @@ var next_draw: Array = []  # [{el, temp}] shown in "Coming next"
 var passives := {}  # key -> n (from Powers and artifacts)
 var each_turn: Array = []  # [{spell, effects}]
 var silenced := {}  # spell id -> turns
+var cooldowns := {}  # spell id -> turns before it can be cast again (Cooldown N)
 var disarmed_turns := 0  # Disarmed (the Invoker's Deafening Blast): your Release does nothing
 var ignited := {}  # spell id -> turns: casting it burns you (the Ember Sprite)
 var locks := {}  # spell id -> pattern
@@ -44,16 +47,21 @@ var echo_next := false  # Echo Draught: your next spell is cast twice (this figh
 
 
 
-## Gain Shield (it stays from turn to turn and builds up until attacks use it up). Brittle makes it 25% smaller.
-func gain_shield(n: float) -> float:
+## Gain Shield (gone when your next turn starts), or Lasting Shield (stays until attacks break it: the artifacts'
+## kind). Brittle makes either 25% smaller.
+func gain_shield(n: float, p_lasting := false) -> float:
 	if brittle_turns > 0:
 		n = floorf(n * 0.75)
-	shield += n
+	if p_lasting:
+		lasting += n
+	else:
+		shield += n
 	return n
 
 func reset_fight() -> void:
 	damage_taken = 0.0
 	shield = 0.0
+	lasting = 0.0
 	aegis = 0
 	thorns_turn = 0
 	ethereal = false
@@ -62,6 +70,7 @@ func reset_fight() -> void:
 	blind_turns = 0
 	toll = 0
 	frail_turns = 0
+	vulnerable = 0
 	brittle_turns = 0
 	echo_chamber_on = false
 	overload = 0
@@ -70,6 +79,7 @@ func reset_fight() -> void:
 	passives.clear()
 	each_turn.clear()
 	silenced.clear()
+	cooldowns.clear()
 	ignited.clear()
 	disarmed_turns = 0
 	locks.clear()
@@ -112,12 +122,15 @@ func take_attack(x: float) -> float:
 		return 0.0
 	if ethereal:
 		return 0.0
-	x = floorf(x * dmg_taken_mult * (1.25 if frail_turns > 0 else 1.0))
+	x = floorf(x * dmg_taken_mult * (1.25 if frail_turns > 0 else 1.0) * (1.5 if vulnerable > 0 else 1.0))
 	if aegis > 0:
 		aegis -= 1
 		return 0.0
-	var absorbed := minf(shield, x)
+	var absorbed := minf(shield, x)  # (the Shield that's about to expire goes first, then the Lasting one)
 	shield -= absorbed
+	x -= absorbed
+	absorbed = minf(lasting, x)
+	lasting -= absorbed
 	x -= absorbed
 	hp -= x
 	damage_taken += maxf(0.0, x)
@@ -139,6 +152,8 @@ func describe_statuses() -> Array:
 	var out := []
 	if shield > 0.0:
 		out.append("Shield %d" % shield)
+	if lasting > 0.0:
+		out.append("Lasting Shield %d (stays until it's broken)" % lasting)
 	if aegis > 0:
 		out.append("Aegis %d (blocks a whole hit)" % aegis)
 	if thorns_turn + passive("thorns") > 0:
@@ -155,6 +170,8 @@ func describe_statuses() -> Array:
 		out.append("Toll: your next chant holds at most %d Essence" % toll)
 	if frail_turns > 0:
 		out.append("Frail %d (you take 25%% more damage)" % frail_turns)
+	if vulnerable > 0:
+		out.append("Vulnerable %d (you take 50%% more damage)" % vulnerable)
 	if brittle_turns > 0:
 		out.append("Brittle %d (you gain 25%% less Shield)" % brittle_turns)
 	if disarmed_turns > 0:

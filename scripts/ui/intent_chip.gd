@@ -34,7 +34,7 @@ const LOOK := {
 	"silence": ["🔇", PURPLE], "lock": ["🔒", PURPLE], "steal": ["✋", PURPLE], "confuse": ["🌀", PURPLE],
 	"blind": ["🙈", PURPLE], "bleed": ["🩸", PURPLE], "freeze": ["❄", PURPLE], "ethereal": ["👻", BLUE],
 	"empower": ["💪", BLUE], "summon": ["👤+", BLUE], "toll": ["⛓", PURPLE], "invert": ["🔄", PURPLE],
-	"hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "invoke": ["✨", BLUE], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE],
+	"hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE],
 }
 
 
@@ -45,6 +45,8 @@ const INFO := {
 	"mend": ["Mend", "Regrows Essence at the right end of its row."],
 	"shuffle": ["Shuffle", "Moves its first Essence to the end."],
 	"silence": ["Silence", "One of your spells can't fire for a few turns."],
+	"hammer_spell": ["Hammer", "Hits the spell you've cast most this fight, and sticks to it: 3 hits break it for the fight (a Fleeting spell breaks at once)."],
+	"stunned": ["Knocked out", "It skips its action, and comes back whole at the start of your next turn."],
 	"invoke": ["Invoke", "He casts his spells that your chant matched (glowing gold), or else the one it came closest to."],
 	"cleanse_self": ["Cleanse", "Removes every debuff on it."],
 	"drain_essence": ["Drain", "Takes Essence out of your bag."],

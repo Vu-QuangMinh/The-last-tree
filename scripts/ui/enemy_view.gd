@@ -99,6 +99,13 @@ func setup(e: EnemyState, f: Fight) -> void:
 	creature.offset_top = 22  # models stay below the intent bubble
 	holder.add_child(creature)
 	# the intent bubble sits low, just above the model's head (added after the model, so it's drawn over it)
+	if e.def.has("tool"):
+		# a Handyman hand: its tool, held up in front of it
+		var tool := UiTheme.label(e.def.tool, 54, Color.WHITE)
+		tool.position = Vector2(170, 95)
+		tool.rotation = -0.3
+		tool.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(tool)
 	_intent_slot.position = Vector2(0, INTENT_Y)
 	_intent_slot.size = Vector2(300, 46)
 	holder.add_child(_intent_slot)
@@ -144,6 +151,7 @@ func anchor_point() -> Vector2:
 
 ## preview: the dict from Fight.preview (or {} for none).
 func refresh(preview: Dictionary) -> void:
+	creature.modulate = Color(1, 1, 1, 0.4) if enemy.knocked else Color.WHITE
 	if _spell_row != null:
 		_refresh_invoked(preview.get("invoke", {}).get(enemy, []))
 	var e := enemy

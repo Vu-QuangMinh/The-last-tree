@@ -124,8 +124,8 @@ const E := {
 	# ---------------- bosses (moves2 = second phase, at half HP)
 	# The Yin Yang Beast (an Act 1 boss): black and white. Inversion (3 of your spells flip: spell <-> anti-spell, and it
 	# turns the other colour) -> Roar (silence 2 spells, a small hit) -> a 3-turn Charge (an hourglass), then a big hit.
-	# While it charges, each spell of the OTHER colour you cast (white: spells, black: anti-spells) lowers the hit by 5,
-	# each of its own colour raises it by 5 (never below 0). None of that is told in the fight: the Codex explains it.
+	# While it charges, each spell of its own colour you cast (white: spells, black: anti-spells) raises the hit by 5
+	# (one of the other colour doesn't change it). None of that is told in the fight: the Codex explains it.
 	# When it dies it splits into two clones (one white, one black, out of step) that do the same at a smaller size.
 	"yin_yang_beast": {"name": "Yin Yang Beast", "act": 1, "boss": true, "hp": "FWAFWAFWAFWAFWAFWAFWAFWAFWAFWA", "yin": "white",
 		"passives": ["yinyang_split"],
@@ -134,7 +134,9 @@ const E := {
 		"flavor": "Two halves of one temper."},
 	# The Cubs both flip a spell first. Then the white one charges while the black one roars every turn (silence 2,
 	# hit for 2); once the white one's hit lands they swap, and so on.
-	"yin_yang_clone": {"name": "Yin Yang Cub", "act": 1, "member": true, "hp": "FWAFWAFWAF", "yin": "white",
+	# Their rows share no two-Essence run (the white one's pairs: FF FW WW WA AA AF; the black one's: AW WF FA), so a
+	# chant aimed deep into one only ever takes a single Essence off the other.
+	"yin_yang_clone": {"name": "Yin Yang Cub", "act": 1, "member": true, "hp": "FFWWAAFFWW", "hp_black": "AWFAWFAWFA", "yin": "white",
 		"opener": [{"kind": "invert_spells", "n": 1}],
 		"moves": [{"kind": "charge", "left": 3, "n": 10}, {"kind": "charge", "left": 2}, {"kind": "charge", "left": 1, "hit": true},
 			{"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 2}},
@@ -155,6 +157,25 @@ const E := {
 		"flavor": "Ten spells, three words, no patience."},
 	"forge_spirit": {"name": "Forge Spirit", "act": 1, "member": true, "hp": "FFF", "moves": [{"kind": "attack", "n": 3}],
 		"flavor": "A spark of the Invoker's forge, with a temper to match."},
+	# The Handyman (an Act 1 boss). No real HP until the very end: his HANDS are what you fight. A hand at 0 Essence is
+	# only knocked out: it skips its action and comes back whole next turn. 4 knockouts (any hands) -> 2 more hands
+	# (hammer, crossbow); 8 more -> 2 more (spear, shield, 3 Essence each), and from then on a knocked-out hand stays
+	# down. With every hand down, he shows himself: 1 Essence, and an intent to hit you for 999.
+	# (Their rows were searched to overlap as little as possible: a chant aimed at one hand takes at most 2 off another.)
+	"handyman": {"name": "The Handyman", "act": 1, "boss": true, "no_extra": true, "hp": "A", "passives": ["handyman"],
+		"moves": [{"kind": "attack", "n": 999}], "flavor": "Six hands, one job."},
+	"hand_sword": {"name": "Sword Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🗡", "hp": "WWWAF", "moves": [{"kind": "attack", "n": 5}],
+		"flavor": "It swings, and swings, and swings."},
+	"hand_tweezer": {"name": "Tweezer Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🥢", "hp": "FAFWA", "moves": [{"kind": "steal", "n": 1}],
+		"flavor": "Plucks Essence out of your bag and keeps it."},
+	"hand_hammer": {"name": "Hammer Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🔨", "hp": "AWFWA", "moves": [{"kind": "hammer_spell"}],
+		"flavor": "It knows which spell you love most."},
+	"hand_crossbow": {"name": "Crossbow Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🏹", "hp": "FFWAF", "moves": [{"kind": "charge", "left": 2, "n": 20},
+		{"kind": "charge", "left": 1}, {"kind": "charge", "left": 0, "hit": true}], "flavor": "Slow to load. Not slow to hurt."},
+	"hand_spear": {"name": "Spear Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🔱", "hp": "AAA", "moves": [{"kind": "attack", "n": 8}],
+		"flavor": "The last hands are the sharpest."},
+	"hand_shield": {"name": "Shield Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🛡", "hp": "FFF", "moves": [{"kind": "armor", "pos": -1, "who": "random"}],
+		"flavor": "Always covering for one of the others."},
 	"woodcutter": {"name": "The Woodcutter", "act": 0, "boss": true, "hp": "FWAFWAFFWAWFA",
 		"moves": [{"kind": "attack", "n": 8}, {"kind": "summon", "id": "ashling", "n": 1}, {"kind": "armor", "pos": 0, "also": {"kind": "attack", "n": 4}}],
 		"moves2": [{"kind": "attack", "n": 5, "hits": 2}, {"kind": "mend", "el": "random", "n": 1, "who": "self"}],
@@ -181,6 +202,8 @@ const PASSIVE_TEXT := {
 	"thorns": "Thorns 2: you lose 2 HP whenever your Release hits it.",
 	"burn_immune": "Fireproof: Burn has no effect on it.",
 	"slime_burst": "Burst: when it dies, two small slimes pop out.",
+	"hand": "A hand: at 0 Essence it's only knocked out. It skips its action and comes back whole next turn (in his last stand, it stays down).",
+	"handyman": "The Handyman himself: 1 Essence, out in the open at last.",
 	"invoker": "Invoker: every turn he conjures 3 spells. On his turn he casts every one your chant matched, or else the one it came closest to.",
 	"invoker_rebirth": "Second wind: at 0 Essence he rises again with 10 more, and starts chanting Quas, Wex or Exort, one a turn: each strips that Essence (Water, Air, Fire) from his spells for the rest of the fight.",
 	"yinyang_split": "Split: when it dies, it splits into two Yin Yang Cubs (10 Essence each), one white and one black.",
@@ -237,6 +260,7 @@ const BIOS := {
 	"yin_yang_clone": "What's left when the Yin Yang Beast falls apart: two smaller, angrier halves.",
 	"invoker": "A sorcerer who remembers every spell ever cast. He never swings a fist: he just reads your chant back at you.",
 	"forge_spirit": "Hot, small, and very eager to prove itself.",
+	"handyman": "A tinkerer with too many hands and a tool in each. He never shows himself until there's nothing left to hide behind.",
 	"bramble_matron": "A druid wrapped in a living hedge. Her two walls do the fighting while she sings them stronger. Cut the walls, or Snipe her straight through them.",
 	"mirror_knight": "Its guard is always exactly where you didn't aim. Rude, but fair.",
 	"void_archon": "Steals the light, then your words, then your patience.",
@@ -245,7 +269,7 @@ const BIOS := {
 	"last_winter": "The end of every season. Freezes your hands, scrambles your words, and calls a storm to finish the job.",
 }
 
-const BOSSES := {1: ["yin_yang_beast", "invoker"], 2: ["blightmother"], 3: ["last_winter"]}
+const BOSSES := {1: ["yin_yang_beast", "invoker", "handyman"], 2: ["blightmother"], 3: ["last_winter"]}
 ## Passives the fight never tells you about (only the Codex does, once you've beaten it).
 const HIDDEN_PASSIVES := ["yinyang_split", "invoker_rebirth"]
 
@@ -464,7 +488,7 @@ static func extra_hp(act: int, floor: int, rng: RandomNumberGenerator, boss := f
 ## The extra Essence this enemy gets: none for the tiered Act 1 enemies (their Essence is exactly as designed).
 static func extra_for(id: String, act: int, floor: int, rng: RandomNumberGenerator, group := 2) -> Array:
 	var d := get_def(id)
-	if d.has("tier") or d.has("walls"):
+	if d.has("tier") or d.has("walls") or d.get("no_extra", false):
 		return []
 	return extra_hp(act, floor, rng, d.get("boss", false), group)
 
@@ -507,9 +531,15 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			s = "You lose %d random Essence from your bag" % m.n
 		"disarm":
 			s = "Disarm you (your next Release does nothing)"
+		"hammer_spell":
+			s = "Hammer your most-cast spell (3 hits break it for the fight; a Fleeting spell breaks at once)"
+		"stunned":
+			s = "Knocked out: back next turn"
 		"charge":
-			if full and m.has("n"):
-				s = "Charge for 3 turns (an hourglass), then hit for %d. While it charges, every spell of the other colour you cast (white: spells, black: anti-spells) lowers the hit by 5, and every one of its own colour raises it by 5 (never below 0)" % m.n
+			if not full and int(m.get("left", 1)) == 0:
+				s = "Fires at the end of this turn"
+			elif full and m.has("n"):
+				s = "Charge for 3 turns (an hourglass), then hit for %d. While it charges, every spell of its own colour you cast (white: spells, black: anti-spells) raises the hit by 5 (one of the other colour does nothing to it)" % m.n
 			elif full:
 				s = ""
 			else:

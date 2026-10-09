@@ -18,6 +18,7 @@ var lit: Array = []  # (legacy, kept in step with elements; unused)
 var acting_part := ""  # which part is acting right now ("L" / "R": one of her walls; "": the enemy itself)
 var yin := ""  # the Yin Yang Beast's colour: "white" or "black" ("" for everyone else)
 var charge_dmg := -1
+var knocked := false  # a Handyman hand at 0 Essence: skips its action, back whole next turn
 var opener: Array = []  # moves made once before its cycle starts (the Yin Yang Cubs' first flip)
 var conjured: Array = []  # the Invoker's 3 spells this turn (their patterns already stripped)
 var stripped: Array = []  # the Invoker's words so far: Essence gone from his spells' patterns  # a Charge in progress: the hit it will land (-1: not charging)
@@ -416,6 +417,8 @@ func end_turn() -> void:
 
 func describe_statuses() -> Array:
 	var out := []
+	if knocked:
+		out.append("Knocked out (back next turn)")
 	if power > 0:
 		out.append("Power %d (+%d damage per hit)" % [power, power])
 	if burn > 0:

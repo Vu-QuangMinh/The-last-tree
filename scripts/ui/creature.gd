@@ -67,7 +67,7 @@ func setup(e: EnemyState) -> void:
 	accent = Elements.COLORS[e.def.hp[0]]
 	big = 1.2 if e.is_boss else (1.1 if e.is_elite or e.id == "giant_slime" else 1.0)
 	big = e.def.get("size", big)
-	crown = e.is_boss
+	crown = e.is_boss and not e.has_passive("hand")
 	spikes = e.is_elite
 	bob = randf() * TAU
 	# hovering the portrait shows the enemy's moves (clicks still reach whatever holds it)
