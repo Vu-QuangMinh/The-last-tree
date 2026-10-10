@@ -9,8 +9,8 @@ signal menu_requested  # Main Menu from the pause menu (the run is saved on the 
 
 ## type -> [icon, name, ring colour, description]
 const LOOK := {
-	"fight": ["⚔", "Fight", Color(0.45, 0.36, 0.28), "A normal fight. Rewards: a spell (70% Common, 30% Rare) and Leaves."],
-	"elite": ["👹", "Elite", Color(0.75, 0.15, 0.12), "A tough fight. Rewards: a Rare spell, an artifact and more Leaves."],
+	"fight": ["⚔", "Fight", Color(0.45, 0.36, 0.28), "A normal fight. Rewards: a spell and Leaves."],
+	"elite": ["👹", "Elite", Color(0.75, 0.15, 0.12), "A tough fight. Rewards: a spell (better odds), an artifact and more Leaves."],
 	"rest": ["🔥", "Campfire", Color(0.9, 0.5, 0.1), "Rest (heal 30%) or upgrade a spell."],
 	"treasure": ["🎁", "Treasure", Color(0.85, 0.65, 0.1), "Pick an artifact. One of them is cursed."],
 	"shop": ["🛒", "Merchant", Color(0.2, 0.55, 0.3), "Spend Leaves on spells, artifacts, an upgrade or a meal."],
@@ -19,7 +19,7 @@ const LOOK := {
 }
 ## New theme: room type -> the painted ring / icon names (assets/ui/new/map_ring_<x>.png, map_icon_<x>.png)
 const ART := {"fight": "normal", "elite": "elite", "rest": "campfire", "treasure": "treasure", "shop": "merchant", "event": "unknown", "boss": "boss"}
-const ROW_H := 96.0
+const ROW_H := 168.0  # (96 * 1.75: the map was stretched taller)
 const COL_W := 138.0
 const INK := Color(0.28, 0.2, 0.12)
 

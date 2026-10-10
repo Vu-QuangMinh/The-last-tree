@@ -9,7 +9,7 @@ const W := 250.0
 ## Category colours: Offensive red, Defensive blue, Utility gold.
 const KIND_COLORS := {"damage": Color(0.74, 0.22, 0.18), "defense": Color(0.2, 0.42, 0.72), "utility": Color(0.78, 0.58, 0.12)}
 const PARCHMENT := Color(0.93, 0.87, 0.72)
-const RARITY_COLORS := {"common": Color(0.35, 0.3, 0.25), "rare": Color(0.1, 0.35, 0.75), "legendary": Color(0.75, 0.45, 0.0)}
+const RARITY_COLORS := {"common": Color(0.35, 0.3, 0.25), "rare": Color(0.1, 0.35, 0.75), "legendary": Color(0.75, 0.45, 0.0), "unique": Color(0.55, 0.1, 0.55)}
 const INK := Color(0.1, 0.08, 0.06)
 const H := 196.0
 
@@ -23,6 +23,7 @@ var _t := 0.0
 var state := ""  # "", "silenced", "locked", "used"
 var state_text := ""
 var lock_pattern := ""
+var _base_tip := ""  # (its tooltip without the Ignited line)
 var cracks := 0  # Hammer Hand hits taken (1: a few cracks, 2: cracked all over)
 var ignited := false  # wrapped in a thin line of flame: casting it burns you (the Ember Sprite)
 var selected := false
@@ -157,6 +158,7 @@ func _ready() -> void:
 		for i in full.length():
 			var ic := ElementIcon.make(full[i], _z(orb))
 			ic.sealed = i in seals
+			ic.highlight = i in spell.get("lit", [])  # (the Invoker's words freed it: it glows, and needn't be chanted)
 			pat.add_child(ic)
 	v.add_child(pat)
 	_pat = pat
@@ -213,6 +215,7 @@ func _ready() -> void:
 	if spell.has("flavor"):
 		extra += "\n[i][color=#9aa89a]\"%s\"[/color][/i]" % spell.flavor
 	tooltip_text = Keywords.tooltip(spell.name, SpellText.describe(spell), extra, "", [Keywords.ANY_ESSENCE] if "?" in full else [])
+	_base_tip = tooltip_text
 	# overlays
 	if spell.get("anti", false):
 		_add_holo()
@@ -575,7 +578,7 @@ func refresh() -> void:
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if charges > 0 else Control.CURSOR_ARROW
 	_box.border_color = border
 	_box.set_border_width_all(_zi(bw))
-	modulate = Color(1, 1, 1, 0.45) if state == "used" else Color.WHITE
+	modulate = Color(1, 1, 1, 0.45) if state == "used" else (Color(0.55, 0.55, 0.55, 0.8) if state == "spent" else Color.WHITE)
 	if spell.get("ephemeral", false):
 		modulate.a *= EPHEMERAL_ALPHA  # a little see-through: it isn't quite here
 	if is_instance_valid(_zoom):
@@ -591,6 +594,8 @@ func refresh() -> void:
 	_state.visible = state != ""
 	_shade.visible = state in ["silenced", "locked", "broken", "cooldown"]
 	_flame.visible = ignited and state != "used"
+	if _base_tip != "":
+		tooltip_text = _base_tip + ("\n[color=#ff9a4a][b]Ignited:[/b] casting it this turn burns you for %d HP.[/color]" % Fight.IGNITE_DAMAGE if ignited else "")
 	_cracks.set_level(cracks, String(spell.get("id", "")))
 	if spell.get("anti", false):
 		# an anti-spell is always active: its spark keeps circling, unless the chant breaks it (state "broken")

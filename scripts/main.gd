@@ -229,6 +229,7 @@ func _test_fight(ids: Array, spells: Array) -> void:
 	r.encounter_extra = ids.map(func(id): return EnemyDefs.extra_for(id, top_act, r.depth(), r.rng, ids.size()))
 	run = r
 	var f := r.make_fight(ids)
+	f.talk_free = true  # (test mode: a boss's talk costs no Essence)
 	var fs := FightScreen.new()
 	fs.setup(r, f)
 	fs.finished.connect(func(_won): open_test_mode())

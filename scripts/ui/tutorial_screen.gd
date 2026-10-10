@@ -61,7 +61,7 @@ const LESSONS := [
 			{"say": "Tap Chant.", "focus": "chant_btn", "then": "chanted"},
 			{"say": "Both spells are awake. Tap Water Wall to cast it.", "focus": "card:water_wall", "then": "cast:water_wall"},
 			{"say": "4 Shield: the blue glass over your HP bar. Shield blocks attack damage until the start of your next turn, then it's gone.", "focus": "player", "then": "tap"},
-			{"say": "Fire Ball needs a target. Tap it: it pulls out an arrow.", "focus": "card:fire_ball", "then": "aiming:fire_ball"},
+			{"say": "Fire Ball needs a target. Tap it: it pulls out an arrow. (Changed your mind? Right-click or press Esc to put a selected spell back, then pick something else.)", "focus": "card:fire_ball", "then": "aiming:fire_ball"},
 			{"say": "Let's make a mistake on purpose, so you can see how to fix one. Tap the Ashling (or press Tab to switch targets and Enter to confirm).", "focus": "enemy:0", "then": "target:0"},
 			{"say": "Fire Ball knocked off the Ashling's last A… but the Ashling was going to die anyway: your chant starts with A, so the Release would have finished it. Now look at the Gale Sprite: A W F still leaves its last A, so it survives and hits you next turn. Fire Ball was wasted!", "focus": "enemies", "then": "tap"},
 			{"say": "Good news: until you press Release, you can take back any spell you cast. Tap Undo (or press Ctrl+Z or Backspace).", "focus": "undo_btn", "then": "undo"},

@@ -149,18 +149,22 @@ const E := {
 		"flavor": "Half a beast, all the temper."},
 	# The Invoker (an Act 1 boss): he never attacks. Each turn he conjures 3 of his 10 spells (no repeats) as cards on his
 	# side; on his turn he casts every one your chant matched, or else the one it came closest to (ties: random). At 0
-	# Essence he rises again with 10 more, and from then on chants Quas / Wex / Exort, one a turn: that Essence is
+	# Essence he rises again with 15 more, and from then on chants Quas / Wex / Exort, one a turn: that Essence is
 	# stripped from his spells' patterns for the rest of the fight (they get easier to set off).
-	"invoker": {"name": "The Invoker", "act": 1, "boss": true, "hp": "FWAFWAFWAFWAFWAFWAFW", "hp2": "AWFAWFAWFA",
+	"invoker": {"name": "The Invoker", "act": 1, "boss": true, "hp": "FWAFWAFWAFWAFWAFWAFW", "hp2": "AWFAWFAWFAWFAWF",
 		"invokes": true, "passives": ["invoker", "invoker_rebirth"], "tint": Color(0.5, 0.3, 0.72),
 		"moves": [{"kind": "invoke"}],
 		"flavor": "Ten spells, three words, no patience."},
-	"forge_spirit": {"name": "Forge Spirit", "act": 1, "member": true, "hp": "FFF", "moves": [{"kind": "attack", "n": 3}],
+	# (two Forge Spirits come at once: their rows share no start, so one chant can't take both down)
+	"forge_spirit": {"name": "Forge Spirit", "act": 1, "member": true, "hp": "FFW", "moves": [{"kind": "attack", "n": 3}],
+		"flavor": "A spark of the Invoker's forge, with a temper to match."},
+	"forge_spirit_b": {"name": "Forge Spirit", "act": 1, "member": true, "hp": "WAF", "moves": [{"kind": "attack", "n": 3}],
 		"flavor": "A spark of the Invoker's forge, with a temper to match."},
 	# The Handyman (an Act 1 boss). No real HP until the very end: his HANDS are what you fight. A hand at 0 Essence is
-	# only knocked out: it skips its action and comes back whole next turn. 4 knockouts (any hands) -> 2 more hands
-	# (hammer, crossbow); 8 more -> 2 more (spear, shield, 3 Essence each), and from then on a knocked-out hand stays
-	# down. With every hand down, he shows himself: 1 Essence, and an intent to hit you for 999.
+	# only knocked down. In his first two phases each hand has 2 lives: with one left it lies down a turn and is
+	# resurrected (angel wings + hourglass); out of lives it stays down. Every hand out of lives -> 2 more hands
+	# (hammer, crossbow), and the fallen ones get back up too; again -> 2 more (spear, shield, 3 Essence each), and from
+	# then on a fallen hand stays down. With every hand down, he shows himself: 1 Essence, and an intent to hit you for 999.
 	# (Their rows were searched to overlap as little as possible: a chant aimed at one hand takes at most 2 off another.)
 	"handyman": {"name": "The Handyman", "act": 1, "boss": true, "no_extra": true, "hp": "A", "passives": ["handyman"],
 		"moves": [{"kind": "attack", "n": 999}], "flavor": "Six hands, one job."},
@@ -202,7 +206,7 @@ const PASSIVE_TEXT := {
 	"thorns": "Thorns 2: you lose 2 HP whenever your Release hits it.",
 	"burn_immune": "Fireproof: Burn has no effect on it.",
 	"slime_burst": "Burst: when it dies, two small slimes pop out.",
-	"hand": "A hand: at 0 Essence it's only knocked out. It skips its action and comes back whole next turn (in his last stand, it stays down).",
+	"hand": "A hand with 2 lives: at 0 Essence it goes down for a turn, then is resurrected whole. Out of lives, it stays down until every hand is; then they all rise for his next phase (in his last stand, a fallen hand stays down).",
 	"handyman": "The Handyman himself: 1 Essence, out in the open at last.",
 	"invoker": "Invoker: every turn he conjures 3 spells. On his turn he casts every one your chant matched, or else the one it came closest to.",
 	"invoker_rebirth": "Second wind: at 0 Essence he rises again with 10 more, and starts chanting Quas, Wex or Exort, one a turn: each strips that Essence (Water, Air, Fire) from his spells for the rest of the fight.",
@@ -277,25 +281,25 @@ const HIDDEN_PASSIVES := ["yinyang_split", "invoker_rebirth"]
 ## when it goes off; "desc" is its card text.
 const INVOKER_WORDS := {"W": "Quas", "A": "Wex", "F": "Exort"}
 const INVOKER_SPELLS := [
-	{"id": "inv_cold_snap", "name": "Cold Snap", "pattern": "WWW", "kind": "damage", "desc": "Deal 1 damage to you, 4 times.",
+	{"id": "inv_cold_snap", "name": "Cold Snap", "pattern": "WWW", "kind": "damage", "desc_fmt": "Deal %d damage to you, 4 times.", "dmg": [1],
 		"cast": {"kind": "attack", "n": 1, "hits": 4}},
 	{"id": "inv_ghost_walk", "name": "Ghost Walk", "pattern": "WWA", "kind": "utility", "desc": "He cleanses all his debuffs.",
 		"cast": {"kind": "cleanse_self"}},
 	{"id": "inv_ice_wall", "name": "Ice Wall", "pattern": "WWF", "kind": "defense", "desc": "He Armours 3 of his Essence.",
 		"cast": {"kind": "armor", "pos": -1, "count": 3}},
-	{"id": "inv_emp", "name": "EMP", "pattern": "AAA", "kind": "utility", "desc": "You lose 2 random Essence from your bag, and take 2 damage.",
+	{"id": "inv_emp", "name": "EMP", "pattern": "AAA", "kind": "utility", "desc_fmt": "You lose 2 random Essence from your bag, and take %d damage.", "dmg": [2],
 		"cast": {"kind": "drain_essence", "n": 2, "also": {"kind": "attack", "n": 2}}},
-	{"id": "inv_tornado", "name": "Tornado", "pattern": "AAW", "kind": "damage", "desc": "Deal 3 damage to you and Silence 1 of your spells (1 turn).",
+	{"id": "inv_tornado", "name": "Tornado", "pattern": "AAW", "kind": "damage", "desc_fmt": "Deal %d damage to you and Silence 1 of your spells (1 turn).", "dmg": [3],
 		"cast": {"kind": "attack", "n": 3, "also": {"kind": "silence", "n": 1, "turns": 1}}},
 	{"id": "inv_alacrity", "name": "Alacrity", "pattern": "AAF", "kind": "utility", "desc": "He gains Power +2.",
 		"cast": {"kind": "empower", "n": 2}},
-	{"id": "inv_sun_strike", "name": "Sun Strike", "pattern": "FFF", "kind": "damage", "desc": "Deal 10 damage to you.",
+	{"id": "inv_sun_strike", "name": "Sun Strike", "pattern": "FFF", "kind": "damage", "desc_fmt": "Deal %d damage to you.", "dmg": [10],
 		"cast": {"kind": "attack", "n": 10}},
-	{"id": "inv_forge_spirit", "name": "Forge Spirit", "pattern": "FFW", "kind": "utility", "desc": "He summons a Forge Spirit (3 Essence, attacks for 3).",
-		"cast": {"kind": "summon", "id": "forge_spirit", "n": 1}},
-	{"id": "inv_chaos_meteor", "name": "Chaos Meteor", "pattern": "FFA", "kind": "damage", "desc": "Deal 2 damage to you, 3 times, and Ignite 3 of your spells.",
+	{"id": "inv_forge_spirit", "name": "Forge Spirit", "pattern": "FFW", "kind": "utility", "desc": "He summons 2 Forge Spirits (3 Essence each, attack for 3).",
+		"cast": {"kind": "summon", "list": ["forge_spirit", "forge_spirit_b"], "n": 2}},
+	{"id": "inv_chaos_meteor", "name": "Chaos Meteor", "pattern": "FFA", "kind": "damage", "desc_fmt": "Deal %d damage to you, 3 times, and Ignite 3 of your spells.", "dmg": [2],
 		"cast": {"kind": "attack", "n": 2, "hits": 3, "also": {"kind": "ignite_spell", "n": 3, "turns": 1}}},
-	{"id": "inv_deafening_blast", "name": "Deafening Blast", "pattern": "WAF", "kind": "damage", "desc": "Deal 5 damage to you and Disarm you (your next Release does nothing).",
+	{"id": "inv_deafening_blast", "name": "Deafening Blast", "pattern": "WAF", "kind": "damage", "desc_fmt": "Deal %d damage to you and Disarm you (your next Release does nothing).", "dmg": [5],
 		"cast": {"kind": "attack", "n": 5, "also": {"kind": "disarm", "turns": 1}}},
 ]
 
@@ -522,9 +526,11 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			if full:
 				s += ", and it turns the other colour (white / black)"
 		"invoke":
-			s = "Cast one of his spells (every one your chant matched, or else the closest)"
+			s = "Cast his glowing spells"
 			if m.has("word"):
-				s += ", then chant %s: his spells lose every %s" % [INVOKER_WORDS[m.word], Elements.NAMES[m.word]]
+				s = "Chant %s %s" % [INVOKER_WORDS[m.word], Elements.NAMES[m.word]]  # (just what he'll say: "Chant Quas" + the Water icon)
+			if full:
+				s = "Cast the spell he chose this turn, and every one your chant contains" + ((", then chant %s (his spells lose every %s)" % [INVOKER_WORDS[m.word], Elements.NAMES[m.word]]) if m.has("word") else "")
 		"cleanse_self":
 			s = "Cleanse all its debuffs"
 		"drain_essence":
@@ -535,6 +541,8 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			s = "Hammer your most-cast spell (3 hits break it for the fight; a Fleeting spell breaks at once)"
 		"stunned":
 			s = "Knocked out: back next turn"
+		"revive":
+			s = "Resurrected in %d turn%s" % [int(m.left), "" if int(m.left) == 1 else "s"]
 		"charge":
 			if not full and int(m.get("left", 1)) == 0:
 				s = "Fires at the end of this turn"

@@ -22,12 +22,16 @@ var _max_hp := 1  # Essence it started with (or the most it has had since)
 var _yin_rot := 0.0  # the Yin Yang Beast's symbol: turned upside down (PI) when it is black
 var _yin_target := 0.0
 var _yin_last := ""
+var _orbit_t := 0.0
 var _orbs: Array = []  # the Invoker's words so far: their Essence orbit him for the rest of the fight
 var _art := {}  # face name -> Texture2D, for enemies with drawn art (empty: drawn procedurally)
 
 ## Enemies with drawn art: one picture per face (angry: half its Essence or more; normal: low, under half; hurt: just hit).
 const ART := {"ashling": "res://assets/enemies/ashling_%s.webp", "triplet_fire": "res://assets/enemies/ashling_%s.webp"}
 const ART_FACES := ["angry", "normal", "hurt"]
+## Drawn art with two forms (the Yin Yang Beast and its Cubs): form 1 in its starting colour, form 2 once it has
+## flipped (a black Cub is form 2 from the start). Each form has the three faces: path % [face, form].
+const ART_FORMS := {"yin_yang_beast": "res://assets/enemies/yin_yang_%s_%d.webp", "yin_yang_clone": "res://assets/enemies/yin_yang_%s_%d.webp"}
 
 const SHAPES := {
 	# act 1 (the Verdant Circle)
@@ -46,7 +50,13 @@ func setup(e: EnemyState) -> void:
 	_enemy = e
 	_max_hp = maxi(1, maxi(e.size(), str(e.def.get("hp", "")).length()))
 	_art.clear()
-	if ART.has(e.id):
+	if ART_FORMS.has(e.id):
+		for form in [1, 2]:
+			for face in ART_FACES:
+				var fpath: String = ART_FORMS[e.id] % [face, form]
+				if ResourceLoader.exists(fpath):
+					_art["%s_%d" % [face, form]] = load(fpath)
+	elif ART.has(e.id):
 		for face in ART_FACES:
 			var path: String = ART[e.id] % face
 			if ResourceLoader.exists(path):
@@ -100,13 +110,19 @@ func _process(d: float) -> void:
 		orb.create_tween().tween_property(orb, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		_orbs.append(orb)
 	if not _orbs.is_empty():
-		var c := Vector2(size.x / 2.0, size.y * 0.58)
+		_orbit_t += d
+		var c := Vector2(size.x / 2.0, size.y * 0.5)
 		var s := minf(size.x, size.y) * 0.34 * big
 		for k in _orbs.size():
-			var a := bob * 0.6 + TAU * k / _orbs.size()
+			# each on its own ring, tilted 60 degrees from the last (the atom picture), going round fast
+			var a := _orbit_t * 3.4 + TAU * k / 3.0
+			var tilt := PI * k / 3.0
+			var p := Vector2(cos(a) * s * 1.45, sin(a) * s * 0.42).rotated(tilt)
 			var orb: ElementIcon = _orbs[k]
-			orb.position = c + Vector2(cos(a) * s * 1.35, -s * 0.75 + sin(a) * s * 0.22) - orb.size / 2.0
-			orb.show_behind_parent = sin(a) < 0  # (behind him on the far side of the orbit)
+			orb.position = c + p - orb.size / 2.0
+			orb.show_behind_parent = sin(a) < 0  # (behind him on the far half of its ring)
+			orb.z_index = 2 if sin(a) >= 0 else 0  # (the near half: in front of his spell cards too)
+		queue_redraw()
 	if _enemy != null and _enemy.yin != "":
 		if _yin_last == "":
 			_yin_rot = 0.0 if _enemy.yin == "white" else PI
@@ -124,6 +140,7 @@ func _process(d: float) -> void:
 
 
 func _draw() -> void:
+	_draw_rings()  # (the Invoker's rings: drawn first, so he stands in front of them)
 	var c := Vector2(size.x / 2.0, size.y * 0.58 + sin(bob) * 4.0)
 	if _enemy != null and _enemy.yin != "":
 		tint = Color(0.92, 0.91, 0.88) if _enemy.yin == "white" else Color(0.13, 0.13, 0.15)  # black and white only
@@ -143,7 +160,8 @@ func _draw() -> void:
 		draw_set_transform(Vector2.ZERO)
 	if not _art.is_empty():
 		_draw_art(blink_on)
-		_draw_yinyang(c, s)
+		if not ART_FORMS.has(enemy_id):
+			_draw_yinyang(c, s)  # (two-form art paints its own yin-yang)
 		return
 	var eye_y := -s * 0.15
 	match shape:
@@ -217,6 +235,21 @@ func _draw() -> void:
 
 
 ## The Yin Yang Beast's symbol on its head: the white half up while it is white; it spins round each time it inverts.
+## The Invoker's rings: faint ellipses his orbiting Essence travel along.
+func _draw_rings() -> void:
+	if _orbs.is_empty():
+		return
+	var c := Vector2(size.x / 2.0, size.y * 0.5)
+	var s := minf(size.x, size.y) * 0.34 * big
+	for k in _orbs.size():
+		var pts := PackedVector2Array()
+		for i in 49:
+			var a := TAU * i / 48.0
+			pts.append(c + Vector2(cos(a) * s * 1.45, sin(a) * s * 0.42).rotated(PI * k / 3.0))
+		var col: Color = Elements.COLORS.get((_orbs[k] as ElementIcon).el, Color.WHITE)
+		draw_polyline(pts, Color(col, 0.35), 2.0, true)
+
+
 func _draw_yinyang(c: Vector2, s: float) -> void:
 	if _enemy == null or _enemy.yin == "":
 		return
@@ -268,9 +301,16 @@ func _draw_art(blink_on: bool) -> void:
 			face = "normal"
 	if hurt > 0.0 and not dead:
 		face = "hurt"
+	if ART_FORMS.has(enemy_id):
+		# form 1 in its starting colour, form 2 once it has flipped to the other one
+		var start: String = _enemy.def.get("yin", "white") if _enemy != null else "white"
+		face += "_1" if _enemy == null or _enemy.yin == "" or _enemy.yin == start else "_2"
 	var tex: Texture2D = _art.get(face, _art.values()[0])
 	var side := minf(size.x, size.y) * 0.88 * big
-	var c := Vector2(size.x / 2.0, size.y - side * 0.5 + sin(bob) * 4.0)
+	# square art fills a side x side box; wide art (the Yin Yang Beast) is drawn wider and less tall, same area
+	var aspect: float = float(tex.get_width()) / float(tex.get_height())
+	var box := Vector2(side * sqrt(aspect), side / sqrt(aspect))
+	var c := Vector2(size.x / 2.0, size.y - box.y * 0.5 + sin(bob) * 4.0)
 	if _shake > 0.0:
 		c += Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake) * 0.5)
 	var mod := Color.WHITE
@@ -279,4 +319,4 @@ func _draw_art(blink_on: bool) -> void:
 	elif blink_on or flash > 0.0:
 		var b := 1.0 + 0.9 * maxf(flash, 1.0 if blink_on else 0.0)
 		mod = Color(b, b, b)
-	draw_texture_rect(tex, Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side)), false, mod)
+	draw_texture_rect(tex, Rect2(c - box * 0.5, box), false, mod)

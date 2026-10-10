@@ -18,7 +18,13 @@ var lit: Array = []  # (legacy, kept in step with elements; unused)
 var acting_part := ""  # which part is acting right now ("L" / "R": one of her walls; "": the enemy itself)
 var yin := ""  # the Yin Yang Beast's colour: "white" or "black" ("" for everyone else)
 var charge_dmg := -1
-var knocked := false  # a Handyman hand at 0 Essence: skips its action, back whole next turn
+var knocked := false
+var lives := 2  # a Handyman hand: times it can be knocked down this phase (then it stays down until the next one)
+var revive_in := 0  # a knocked-down hand: turns until it gets back up (0: it stays down)
+var disarmed := 0  # Disarmed (your Deafening Blast): its attacks do nothing on its next turn
+var invoke_all := false
+var invoke_next := -1  # the Invoker: the spell he casts this turn, whatever you chant (one he hasn't cast yet, if he can)
+var cast_ids: Array = []  # the Invoker's spells cast so far this fight  # the Invoker casts every one of his spells on his next turn (gold dust)  # a Handyman hand at 0 Essence: skips its action, back whole next turn
 var opener: Array = []  # moves made once before its cycle starts (the Yin Yang Cubs' first flip)
 var conjured: Array = []  # the Invoker's 3 spells this turn (their patterns already stripped)
 var stripped: Array = []  # the Invoker's words so far: Essence gone from his spells' patterns  # a Charge in progress: the hit it will land (-1: not charging)
@@ -409,6 +415,7 @@ func reset_hp(hp: String) -> void:
 
 
 func end_turn() -> void:
+	disarmed = maxi(0, disarmed - 1)
 	weak_turns = maxi(0, weak_turns - 1)
 	freeze_turns = maxi(0, freeze_turns - 1)
 	phased = false
@@ -418,7 +425,9 @@ func end_turn() -> void:
 func describe_statuses() -> Array:
 	var out := []
 	if knocked:
-		out.append("Knocked out (back next turn)")
+		out.append(("Down: resurrected in %d turn%s" % [revive_in, "" if revive_in == 1 else "s"]) if revive_in > 0 else "Down: it gets up only when every other hand is down too")
+	if disarmed > 0:
+		out.append("Disarmed (its next attack does nothing)")
 	if power > 0:
 		out.append("Power %d (+%d damage per hit)" % [power, power])
 	if burn > 0:

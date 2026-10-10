@@ -9,7 +9,12 @@ const SEEDLINGS := {"fight": 3, "elite": 8, "boss": 20}
 const WIN_BONUS := 30
 const REST_HEAL := 0.3
 ## Normal fights: each card is common 70% of the time, rare 30%. Elites: 3 rares. Bosses: 3 legendaries.
-const RARE_CHANCE := 0.3
+## Spell reward odds, Slay the Spire's (their common / uncommon / rare = our Common / Rare / Legendary), per card:
+## [Common, Rare, Legendary]. A boss always gives Legendary.
+const ODDS := {"fight": [0.60, 0.37, 0.03], "elite": [0.50, 0.40, 0.10], "shop": [0.54, 0.37, 0.09]}
+## Their hidden pity counter: the Legendary chance starts 5% lower, rises 1% with every Common you're shown, and drops
+## back when a Legendary shows up.
+const LEGENDARY_OFFSET_START := -0.05
 ## Amber: the run's money, spent at merchants and in some events.
 const START_AMBER := 30
 const AMBER := {"fight": [14, 22], "elite": [28, 38], "boss": [60, 60]}
@@ -299,6 +304,27 @@ func is_boss_node() -> bool:
 
 ## Spells you don't own yet. Normal fights: each card common (70%) or rare (30%). Elites: rares. Bosses: legendaries.
 ## The Scholar's Quill adds a 4th card. Offers always mix at least two categories.
+var legendary_offset := LEGENDARY_OFFSET_START  # (the pity counter, see ODDS)
+
+
+## One card's rarity for a reward of this kind (fight, elite, shop, boss), moving the pity counter.
+func _roll_rarity(kind: String) -> String:
+	if kind == "boss":
+		return "legendary"
+	var o: Array = ODDS.get(kind, ODDS.fight)
+	var leg := maxf(0.0, o[2] + (legendary_offset if kind != "shop" else 0.0))
+	var r := rng.randf()
+	if r < leg:
+		if kind != "shop":
+			legendary_offset = LEGENDARY_OFFSET_START
+		return "legendary"
+	if r < leg + o[1]:
+		return "rare"
+	if kind != "shop":
+		legendary_offset += 0.01
+	return "common"
+
+
 func spell_offer(n := 3, kind := "fight") -> Array:
 	if "scholar_quill" in artifacts:
 		n += int(Artifacts.num("scholar_quill", "scholar_quill" in artifacts_plus)) - 3
@@ -307,18 +333,11 @@ func spell_offer(n := 3, kind := "fight") -> Array:
 		if id in spellbook:
 			continue
 		var s := db.get_spell(id)
-		if not s.is_empty() and not s.get("starter", false):  # the starting spells are never offered again
+		if not s.is_empty() and not s.get("starter", false) and by_rarity.has(s.rarity):  # (never the starters, nor Unique ones)
 			by_rarity[s.rarity].append(s)
 	var out := []
 	for i in n:
-		var r := "common"
-		match kind:
-			"elite":
-				r = "rare"
-			"boss":
-				r = "legendary"
-			_:
-				r = "rare" if rng.randf() < RARE_CHANCE else "common"
+		var r := _roll_rarity(kind)
 		var pool: Array = by_rarity[r]
 		if pool.is_empty():  # nothing of that rarity left: fall back to the next one down
 			for alt in ["rare", "common", "legendary"]:
@@ -753,12 +772,27 @@ func _do_event_option(opt: Dictionary) -> Dictionary:
 
 # ------------------------------------------------------------------ the merchant
 
+const CHAIR_FIX_PRICE := 100
+
+
+## The merchant fixes the Handyman's Deadly Chair: it becomes the Comfy Chair.
+func fix_chair() -> void:
+	var i := artifacts.find("deadly_chair")
+	if i >= 0:
+		artifacts[i] = "comfy_chair"
+
+
+## The shopkeeper asked for the Hair of the Fairest and you gave it: everything in his shop is free this visit.
+func give_hair(stock: Array) -> void:
+	artifacts.erase("hair_of_the_fairest")
+	for it in stock:
+		it.price = 0
+
+
 ## What the merchant sells: 3 spells, 2 artifacts, an upgrade and a meal.
 func shop_stock() -> Array:
 	var items := []
-	var spells := spell_offer(2, "fight") + spell_offer(1, "elite")
-	if rng.randf() < 0.3:
-		spells += spell_offer(1, "boss")
+	var spells := spell_offer(3, "shop")
 	var seen := {}
 	for s in spells:
 		if seen.has(s.id):
@@ -772,6 +806,10 @@ func shop_stock() -> Array:
 	items.append({"kind": "upgrade", "price": PRICES.upgrade})
 	if "broken_seed_of_life" in artifacts:
 		items.append({"kind": "mend_seed", "price": SEED_MEND_PRICE})
+	if "deadly_chair" in artifacts:
+		items.append({"kind": "fix_chair", "price": CHAIR_FIX_PRICE})
+	if "hair_of_the_fairest" in artifacts:
+		items.append({"kind": "give_hair", "price": 0})
 	items.append({"kind": "heal", "price": PRICES.heal})
 	return items
 

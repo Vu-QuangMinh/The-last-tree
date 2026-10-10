@@ -24,6 +24,7 @@ func _ready() -> void:
 	var t := UiTheme.heading("Codex  ·  %d / %d enemies recorded" % [known, EnemyDefs.E.size()], 34, Color.WHITE)
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(t)
+	top.add_child(UiTheme.button("Forbidden Knowledge", _forbidden_page, 20))
 	top.add_child(UiTheme.button(UiTheme.hk("Close", "Esc"), func(): closed.emit(), 20))
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(1840, 960)
@@ -92,6 +93,25 @@ func _entry(id: String) -> Control:
 	t.custom_minimum_size = Vector2(420, 0)
 	v.add_child(t)
 	return p
+
+
+## The Forbidden Knowledge page: all unreadable symbols at first. Each Forbidden Knowledge spell you cast (across
+## runs, see FightScreen) turns another third of its opening into words; the rest of the page stays symbols.
+func _forbidden_page() -> void:
+	var page := PanelContainer.new()
+	page.add_theme_stylebox_override("panel", UiTheme.panel_box(0.98, 14))
+	page.position = Vector2(260, 90)
+	page.custom_minimum_size = Vector2(1400, 900)
+	page.z_index = 10
+	add_child(page)
+	var v := VBoxContainer.new()
+	page.add_child(v)
+	v.add_child(UiTheme.heading("Forbidden Knowledge", 32, Color(0.85, 0.6, 1.0)))
+	var t := UiTheme.label(BossTalk.forbidden_text(SaveManager.setting("forbidden_cast", []).size()), 22, Color(0.9, 0.85, 0.75))
+	t.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	t.custom_minimum_size = Vector2(1360, 760)
+	v.add_child(t)
+	v.add_child(UiTheme.button("Close the page", page.queue_free, 18))
 
 
 func _unhandled_input(ev: InputEvent) -> void:

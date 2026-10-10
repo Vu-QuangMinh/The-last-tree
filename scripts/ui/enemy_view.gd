@@ -25,8 +25,10 @@ var pick_mode := false  # choosing an element to remove (Pluck)
 var keep_big := false  # a spell that picks several Essence is still being cast: keep the row enlarged between picks
 var paint_mode := false  # with pick_mode: Expose's brush (armoured Essence can be painted, Any ones can't)
 var pick_i := -1
-var _spell_row: HBoxContainer  # the Invoker's conjured spells
+var pick_el := ""  # with pick_mode: only Essence of this kind can be picked (the rest are dimmed)
+var _spell_row: Control  # the Invoker's conjured spells: one in front of him, the others to his sides
 var _spell_key := ""
+var _spell_ids := ""
 var _spell_cards: Array = []
 var _hp_icons: Array = []  # the orbs currently shown, left to right
 
@@ -38,16 +40,7 @@ func setup(e: EnemyState, f: Fight) -> void:
 	if enemy != null and enemy.has_passive("briar_walls"):
 		custom_minimum_size.x = 640.0  # room for her two hedges beside her own Essence
 	if enemy != null and enemy.def.get("invokes", false):
-		custom_minimum_size.x = 430.0  # room for his 3 spell cards above him
-		_spell_row = HBoxContainer.new()
-		_spell_row.alignment = BoxContainer.ALIGNMENT_CENTER
-		_spell_row.add_theme_constant_override("separation", 6)
-		_spell_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(_spell_row)
-		var gap := Control.new()
-		gap.custom_minimum_size = Vector2(0, 26)  # (clear of his crown)
-		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(gap)
+		custom_minimum_size.x = 860.0  # room for his spell cards on either side of him
 	alignment = BoxContainer.ALIGNMENT_END
 	add_theme_constant_override("separation", 4)
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -97,7 +90,14 @@ func setup(e: EnemyState, f: Fight) -> void:
 	creature.setup(e)
 	creature.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	creature.offset_top = 22  # models stay below the intent bubble
+	if e.def.get("invokes", false):
+		creature.offset_top -= INVOKER_LIFT  # (the Invoker floats up above his middle card)
+		creature.offset_bottom -= INVOKER_LIFT
 	holder.add_child(creature)
+	if e.def.get("invokes", false):
+		_spell_row = Control.new()
+		_spell_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(_spell_row)  # (in front of him; his intent bubble goes over them)
 	# the intent bubble sits low, just above the model's head (added after the model, so it's drawn over it)
 	if e.def.has("tool"):
 		# a Handyman hand: its tool, held up in front of it
@@ -106,7 +106,7 @@ func setup(e: EnemyState, f: Fight) -> void:
 		tool.rotation = -0.3
 		tool.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(tool)
-	_intent_slot.position = Vector2(0, INTENT_Y)
+	_intent_slot.position = Vector2(0, INTENT_Y - (INVOKER_LIFT + 60.0 if e.def.get("invokes", false) else 0.0))  # (the Invoker's: above his head)
 	_intent_slot.size = Vector2(300, 46)
 	holder.add_child(_intent_slot)
 	_name = UiTheme.label(e.name, 20, Color.WHITE)
@@ -152,6 +152,7 @@ func anchor_point() -> Vector2:
 ## preview: the dict from Fight.preview (or {} for none).
 func refresh(preview: Dictionary) -> void:
 	creature.modulate = Color(1, 1, 1, 0.4) if enemy.knocked else Color.WHITE
+	_hp_row.visible = not enemy.knocked  # (a fallen hand has no HP bar: it can't be targeted)
 	if _spell_row != null:
 		_refresh_invoked(preview.get("invoke", {}).get(enemy, []))
 	var e := enemy
@@ -202,7 +203,7 @@ func refresh(preview: Dictionary) -> void:
 			_make_clickable(icon, i)
 		elif pick_mode:
 			icon.highlight = i == pick_i
-			var can: bool = (e.elements[i] != "?") if paint_mode else not e.armor[i]
+			var can: bool = (e.elements[i] != "?") if paint_mode else (not e.armor[i] and (pick_el == "" or e.elements[i] == pick_el))
 			icon.dim = not can
 			if can:
 				_make_clickable(icon, i)
@@ -255,27 +256,31 @@ func _make_clickable(c: Control, index: int) -> void:
 
 
 ## The intent bubble (null if it has none this turn).
-## The Invoker's 3 spells as small cards; the ones the current chant would set off glow gold.
-const INVOKED_SCALE := 0.5
+## The Invoker's spells, as big as yours: the first in front of him (just above his Essence row), the others to his
+## sides, higher up. Plain cards (no conjured static): they appear, and fade away when cast or when the turn ends.
+## The ones that will go off this turn glow gold. Their numbers follow his Power.
+const INVOKER_LIFT := 150.0  # how far the Invoker's model sits above where models usually stand
+const INVOKED_SPOTS := [Vector2(25, 34), Vector2(-280, -80), Vector2(330, -80), Vector2(-280, 130), Vector2(330, 130)]
 
 
 func _refresh_invoked(picks: Array) -> void:
-	var key := ",".join(enemy.conjured.map(func(s): return s.id + ":" + s.pattern))
+	for sp in enemy.conjured:
+		sp.desc = Fight.invoker_desc(sp, enemy)
+	var key := ",".join(enemy.conjured.map(func(s): return s.id + ":" + s.pattern + ":" + s.desc))
 	if key != _spell_key:
+		var ids := ",".join(enemy.conjured.map(func(s): return s.id))
+		var fresh := ids != _spell_ids  # (new spells, not just new numbers or a shorter pattern)
+		_spell_ids = ids
 		_spell_key = key
-		for c in _spell_row.get_children():
-			c.queue_free()
+		for c in _spell_cards:
+			if is_instance_valid(c):
+				c.queue_free()
 		_spell_cards.clear()
-		for sp in enemy.conjured:
-			var holder := Control.new()
-			holder.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H) * INVOKED_SCALE
-			holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			var card := SpellCard.make(sp)
+		for k in enemy.conjured.size():
+			var card := SpellCard.make(enemy.conjured[k])
 			card.size = Vector2(SpellCard.W, SpellCard.H)
-			card.base_scale = INVOKED_SCALE
-			card.scale = Vector2.ONE * INVOKED_SCALE
-			holder.add_child(card)
-			_spell_row.add_child(holder)
+			card.position = INVOKED_SPOTS[mini(k, INVOKED_SPOTS.size() - 1)]
+			_spell_row.add_child(card)
 			_spell_cards.append(card)
 	for i in _spell_cards.size():
 		var card: SpellCard = _spell_cards[i]
@@ -283,14 +288,28 @@ func _refresh_invoked(picks: Array) -> void:
 		card.refresh()
 
 
-## The Invoker casts one of his spells: its card flashes.
+## The Invoker casts one of his spells: its card flares and fizzles away.
 func flash_invoked(i: int) -> void:
 	if i < 0 or i >= _spell_cards.size() or not is_instance_valid(_spell_cards[i]):
 		return
 	var card: SpellCard = _spell_cards[i]
 	var tw := card.create_tween()
 	tw.tween_property(card, "modulate", Color(2.0, 1.8, 1.2), 0.12)
-	tw.tween_property(card, "modulate", Color.WHITE, 0.4)
+	tw.tween_property(card, "modulate", Color(1, 1, 1, 0), 0.3)
+
+
+## Talking to a boss: only the creature shows (no intent, no Essence row, no statuses) until you Engage.
+func set_talk(on: bool, fade := 0.0, talk_name := "") -> void:
+	# its name: what you know of it so far ("???" until you've asked who it is), its real name once you Engage
+	if _name != null:
+		_name.text = talk_name if on and talk_name != "" else enemy.name
+	for n in [_intent_slot, _hp_row, _status, _link, _spell_row]:
+		if n == null or not is_instance_valid(n):
+			continue
+		if fade > 0.0:
+			n.create_tween().tween_property(n, "modulate:a", 0.0 if on else 1.0, fade)
+		else:
+			n.modulate.a = 0.0 if on else 1.0
 
 
 func intent_chip() -> Control:

@@ -34,7 +34,7 @@ const LOOK := {
 	"silence": ["🔇", PURPLE], "lock": ["🔒", PURPLE], "steal": ["✋", PURPLE], "confuse": ["🌀", PURPLE],
 	"blind": ["🙈", PURPLE], "bleed": ["🩸", PURPLE], "freeze": ["❄", PURPLE], "ethereal": ["👻", BLUE],
 	"empower": ["💪", BLUE], "summon": ["👤+", BLUE], "toll": ["⛓", PURPLE], "invert": ["🔄", PURPLE],
-	"hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE],
+	"hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "revive": ["🪽", Color(0.85, 0.75, 0.4)], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE],
 }
 
 
@@ -47,7 +47,8 @@ const INFO := {
 	"silence": ["Silence", "One of your spells can't fire for a few turns."],
 	"hammer_spell": ["Hammer", "Hits the spell you've cast most this fight, and sticks to it: 3 hits break it for the fight (a Fleeting spell breaks at once)."],
 	"stunned": ["Knocked out", "It skips its action, and comes back whole at the start of your next turn."],
-	"invoke": ["Invoke", "He casts his spells that your chant matched (glowing gold), or else the one it came closest to."],
+	"revive": ["Resurrecting", "It's down: it has no Essence and can't be targeted. It gets back up, whole, when the hourglass runs out."],
+	"invoke": ["Invoke", ""],
 	"cleanse_self": ["Cleanse", "Removes every debuff on it."],
 	"drain_essence": ["Drain", "Takes Essence out of your bag."],
 	"disarm": ["Disarm", "Your next Release does nothing."],
@@ -212,7 +213,17 @@ func _add_move(row: HBoxContainer, m: Dictionary, e: EnemyState) -> void:
 		"invoke":
 			row.add_child(_part(look[0], "", look[1], m.kind))
 			if m.has("word"):
-				row.add_child(_word(EnemyDefs.INVOKER_WORDS[m.word] + "!", Elements.COLORS[m.word].lightened(0.3)))
+				var w := _word(EnemyDefs.INVOKER_WORDS[m.word], Color(0.12, 0.08, 0.05))  # (dark on the pale bubble)
+				w.add_theme_font_size_override("font_size", 20)
+				w.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+				row.add_child(w)
+				var ic := ElementIcon.make(m.word, 26)
+				ic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+				row.add_child(ic)
+			return
+		"revive":
+			row.add_child(WingsIcon.make())  # angel wings, then the turns left in an hourglass
+			row.add_child(Hourglass.make(int(m.left), e))
 			return
 		"charge":
 			row.add_child(Hourglass.make(int(m.left), e))  # turns left, inside an hourglass that flips each turn

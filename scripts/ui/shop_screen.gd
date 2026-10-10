@@ -164,6 +164,29 @@ func _refresh() -> void:
 				p.size_flags_vertical = Control.SIZE_EXPAND_FILL  # the frames stretch to the tallest one
 				_panels.append(p)
 				box.add_child(p)
+			"give_hair":
+				var p := PanelContainer.new()
+				p.add_theme_stylebox_override("panel", UiTheme.panel_box(0.95, 12))
+				p.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H)
+				var l := RichTextLabel.new()
+				l.bbcode_enabled = true
+				l.fit_content = true
+				l.scroll_active = false
+				l.custom_minimum_size = Vector2(SpellCard.W - 20, 0)
+				l.add_theme_font_size_override("normal_font_size", 15)
+				l.add_theme_font_size_override("italics_font_size", 15)
+				l.text = "[i]The shopkeeper seems restless. You ask what's wrong.[/i]\n\"Nothing, my friend,\" says the shopkeeper, bowing low and stammering. \"Nothing... unless I may be so bold as to speak of the strand of hair in your bag. It outshines every coin in my till, every gem in my cases. I would never ask for such a gift. But you did ask what I wanted.\""
+				p.add_child(l)
+				box.add_child(p)
+			"fix_chair":
+				var p := PanelContainer.new()
+				p.add_theme_stylebox_override("panel", UiTheme.panel_box(0.95, 12))
+				p.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H)
+				var l := UiTheme.label("🪑 \"Hey, that is a deadly-looking chair. Would you like me to fix it?\"", 19, Color(1.0, 0.9, 0.7))
+				l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				p.add_child(l)
+				box.add_child(p)
 			"mend_seed":
 				var p := PanelContainer.new()
 				p.add_theme_stylebox_override("panel", UiTheme.panel_box(0.95, 12))
@@ -204,9 +227,16 @@ func _refresh() -> void:
 		var full: bool = it.kind == "bottle" and run.player.bottles.size() >= run.bottle_slots()
 		var none: bool = it.kind == "upgrade" and run.upgradable().is_empty()
 		var label := "Sold" if sold else ("Bottle slots full" if full else ("Nothing to seal" if none else "Buy · %d Leaves" % it.price))
+		if it.kind == "give_hair":
+			label = "Given" if sold else "Give him the Hair of the Fairest"
 		var btn := UiTheme.button(label, func(): _buy(i), 18)
 		btn.disabled = sold or full or none or run.amber < it.price
 		box.add_child(btn)
+		if it.kind == "give_hair" and not sold:
+			var refuse := UiTheme.button("Refuse", func():
+				stock.erase(it)
+				_refresh.call_deferred(), 18)
+			box.add_child(refuse)
 		_boxes.append(box)
 		_grid.add_child(box)
 	_equalize.call_deferred()
@@ -240,6 +270,16 @@ func _buy(i: int) -> void:
 			run.gain_bottle(it.bottle)
 			Audio.play("artifact_get")
 			Events.toast.emit("Got %s %s" % [UiSkin.icon_token(it.bottle, Bottles.get_def(it.bottle).icon), Bottles.get_def(it.bottle).name], UiTheme.ACCENT)
+			it.sold = true
+		"give_hair":
+			run.give_hair(stock)
+			Audio.play("artifact_get")
+			Events.toast.emit("\"For me? Then everything here is yours, free!\"", Color(1.0, 0.9, 0.7))
+			it.sold = true
+		"fix_chair":
+			run.fix_chair()
+			Audio.play("artifact_get")
+			Events.toast.emit("The chair is fixed: a Comfy Chair!", Color(1.0, 0.9, 0.7))
 			it.sold = true
 		"mend_seed":
 			run.mend_seed()

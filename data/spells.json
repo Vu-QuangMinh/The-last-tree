@@ -1438,12 +1438,14 @@
    "pattern": "AFA",
    "effects": [
     {
-     "op": "siphon",
-     "n": 3,
+     "op": "steal",
+     "n": 1,
+     "el": "any",
+     "when": "next",
      "target": "target"
     }
    ],
-   "flavor": "Pull its two leftmost Essence into your hand.",
+   "flavor": "Pull out a piece of its soul, and wear it tomorrow.",
    "rarity": "rare"
   },
   {
@@ -1502,12 +1504,17 @@
    "pattern": "FFFA",
    "effects": [
     {
-     "op": "passive",
-     "key": "strike_bonus",
-     "n": 1
+     "op": "each_turn",
+     "effects": [
+      {
+       "op": "burn",
+       "n": 1,
+       "target": "random"
+      }
+     ]
     }
    ],
-   "flavor": "Your spells tear out one Essence more.",
+   "flavor": "Every turn, something catches fire.",
    "power": true,
    "rarity": "rare"
   },
@@ -2076,7 +2083,7 @@
    "effects": [
     {
      "op": "heal",
-     "n": 4
+     "n": 3
     }
    ],
    "flavor": "Every spring starts somewhere.",
@@ -2492,7 +2499,7 @@
    "effects": [
     {
      "op": "expose",
-     "n": 2
+     "n": 1
     }
    ],
    "flavor": "Splash them, and see where they flinch.",
@@ -2576,7 +2583,7 @@
    ],
    "flavor": "It stops them, then it hurts.",
    "rarity": "rare",
-   "cooldown": 1
+   "cooldown": 2
   },
   {
    "id": "tempest_veil",
@@ -2671,11 +2678,13 @@
     },
     {
      "op": "shield",
-     "n": 4
+     "n": 10,
+     "lasting": true
     }
    ],
    "flavor": "Everything stops. Even the clock.",
-   "rarity": "legendary"
+   "rarity": "legendary",
+   "fleeting": true
   },
   {
    "id": "molten_core",
@@ -3413,6 +3422,95 @@
    ],
    "flavor": "Nothing hides from the hawk.",
    "rarity": "rare"
+  },
+  {
+   "id": "forbidden_f",
+   "name": "Forbidden Knowledge",
+   "pattern": "FFFFFF",
+   "rarity": "unique",
+   "fleeting": true,
+   "effects": [
+    {
+     "op": "forbidden"
+    }
+   ],
+   "flavor": "A gift from the Invoker."
+  },
+  {
+   "id": "forbidden_w",
+   "name": "Forbidden Knowledge",
+   "pattern": "WWWWWW",
+   "rarity": "unique",
+   "fleeting": true,
+   "effects": [
+    {
+     "op": "forbidden"
+    }
+   ],
+   "flavor": "A gift from the Invoker."
+  },
+  {
+   "id": "forbidden_a",
+   "name": "Forbidden Knowledge",
+   "pattern": "AAAAAA",
+   "rarity": "unique",
+   "fleeting": true,
+   "effects": [
+    {
+     "op": "forbidden"
+    }
+   ],
+   "flavor": "A gift from the Invoker."
+  },
+  {
+   "id": "inv_tornado",
+   "name": "Tornado",
+   "pattern": "AAWAA",
+   "rarity": "legendary",
+   "cooldown": 2,
+   "effects": [
+    {
+     "op": "freeze",
+     "turns": 1,
+     "target": "all"
+    }
+   ],
+   "flavor": "The Invoker's wisdom: lift them all off their feet."
+  },
+  {
+   "id": "inv_chaos_meteor",
+   "name": "Chaos Meteor",
+   "pattern": "FFAF",
+   "rarity": "legendary",
+   "cooldown": 2,
+   "effects": [
+    {
+     "op": "meteor_rain",
+     "n": 5
+    }
+   ],
+   "flavor": "The Invoker's wisdom: fire falls where it likes."
+  },
+  {
+   "id": "inv_deafening_blast",
+   "name": "Deafening Blast",
+   "pattern": "WAFW",
+   "rarity": "legendary",
+   "cooldown": 2,
+   "effects": [
+    {
+     "op": "disarm",
+     "turns": 1,
+     "target": "all"
+    },
+    {
+     "op": "strike",
+     "from": "left",
+     "n": 1,
+     "target": "all"
+    }
+   ],
+   "flavor": "The Invoker's wisdom: a word so loud it knocks the weapons out of their hands."
   }
  ]
 }

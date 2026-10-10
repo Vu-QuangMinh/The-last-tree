@@ -29,11 +29,11 @@ static func describe(s: Dictionary) -> String:
 	if int(s.get("cooldown", 0)) > 0:
 		text += " Cooldown %d." % s.cooldown
 	if s.get("anti", false) and s.has("patterns"):
-		text = "Anti-spell: it comes alive with every chant, unless the chant contains EITHER of its patterns: " + text
+		text = "Anti-spell (either pattern breaks it): " + text
 	elif s.get("anti", false):
-		text = "Anti-spell: it comes alive with every chant, unless the chant contains its pattern: " + text
+		text = "Anti-spell: " + text
 	elif s.get("power", false):
-		text = "Power: " + text + " (Once cast, it leaves your active row and lasts the whole fight.)"
+		text = "Power: " + text + " Lasts the whole fight."
 	elif s.get("fleeting", false):
 		text += " Fleeting."
 	if s.get("ephemeral", false):
@@ -73,24 +73,29 @@ static func describe_op(e: Dictionary) -> String:
 	var n: int = int(e.get("n", 0))
 	match e.op:
 		"strike":
-			var s := "remove %s" % _ends(t, n, e.from == "right")
+			var side := "rightmost" if e.from == "right" else "leftmost"
+			var s := "remove %s %s Essence" % [ts, side] if n == 1 else "remove %s %d %s Essence" % [ts, n, side]
+			if tg == "two":
+				s = "remove the %s Essence of 2 enemies" % side if n == 1 else "remove %d %s Essence of 2 enemies" % [n, side]
 			if e.has("min_hp"):
-				s += " (only if it has %d or more Essence)" % e.min_hp
+				s += " (if it has %d+)" % e.min_hp
 			if e.has("bonus_if"):
-				s += ". If it has Burn, remove 1 more"
+				s += ". +1 if it has Burn"
 			return s
 		"pluck":
 			return "snipe %d" % n  # (you pick the Essence with the crosshair: see the Snipe keyword)
 		"steal":
 			if e.get("el", "any") == "any":
-				return "Steal %d Essence of your choice from %s" % [n, t]
+				if e.get("when", "now") == "next":
+					return "Steal %d Essence from %s. Conjure %s next turn" % [n, t, "it" if n == 1 else "them"]
+				return "Steal %d Essence from %s" % [n, t]
 			return "Steal up to %d %s from %s" % [n, _el(e.el), t]
 		"burn":
 			return "Burn %d on %s" % [n, t]
 		"poison":
 			return "Poison %d on %s" % [n, t]
 		"stoke":
-			return "double the Burn on %s" % t
+			return "double %s Burn" % ts
 		"weak":
 			return "Weaken %d on %s" % [e.turns, t]
 		"freeze":
@@ -98,78 +103,78 @@ static func describe_op(e: Dictionary) -> String:
 		"expose":
 			return "Expose %d" % n
 		"ethereal":
-			return "you become Ethereal this turn" if tg == "self" else "make %s Phased this turn" % t
+			return "become Ethereal this turn" if tg == "self" else "make %s Phased this turn" % t
 		"shield":
-			return "gain %d Shield" % n
+			return "gain %d %sShield" % [n, "Lasting " if e.get("lasting", false) else ""]
 		"heal":
 			if e.get("if_kill", false):
-				return "if this defeats it, heal %d HP" % n
+				return "if it dies, heal %d HP" % n
 			return "heal %d HP" % n
 		"aegis":
 			return "gain %d Aegis" % n
 		"thorns":
-			return "gain %d Thorns this turn" % n
+			return "Thorns %d this turn" % n
 		"draw":
-			var what: String = ("%d random Essence" % n) if e.get("el", "random") == "random" else "%d %s" % [n, _el(e.el)]
+			var what: String = ("%d Random" % n) if e.get("el", "random") == "random" else "%d %s" % [n, _el(e.el)]
 			if e.get("temp", false) and e.when == "now":
 				return "conjure %s" % what  # temporary Essence, right now: "Conjure 2 Water"
 			return "gain %s%s%s" % [what, " (Conjured)" if e.get("temp", false) else "", "" if e.when == "now" else " next turn"]
 		"move":
-			if n == 1:
-				return "pick 1 of %s Essence and move it to any spot in that row" % ts
-			return "pick %d of %s Essence, one at a time, and move each to any spot in that row" % [n, ts]
+			return "move %d of %s Essence anywhere in its row" % [n, ts]
 		"rotate":
 			if e.get("dir", "left") == "left":
-				return "move the leftmost Essence of %s to the right end of its row" % t
-			return "move the rightmost Essence of %s to the left end of its row" % t
+				return "move %s leftmost Essence to its right end" % ts
+			return "move %s rightmost Essence to its left end" % ts
 		"swap":
-			return "swap the 2 leftmost Essence of %s" % t
+			return "swap %s 2 leftmost Essence" % ts
 		"convert":
 			if e.pos == "all":
 				if e.has("from"):
-					return "change every %s in %s Essence into %s" % [_el(e.from), ts, _el(e.to)]
-				return "change all of %s Essence into %s" % [ts, _el(e.to)]
-			var where: String = {"first": "the leftmost Essence", "first2": "the 2 leftmost Essence",
-				"last": "the rightmost Essence"}[e.pos]
-			return "change %s of %s into %s" % [where, t, _el(e.to)]
+					return "turn every %s of %s into %s" % [_el(e.from), t, _el(e.to)]
+				return "turn all %s Essence into %s" % [ts, _el(e.to)]
+			var where: String = {"first": "leftmost Essence", "first2": "2 leftmost Essence", "last": "rightmost Essence"}[e.pos]
+			return "turn %s %s into %s" % [ts, where, _el(e.to)]
 		"purge":
-			return "remove up to %d %s from %s Essence" % [n, _el(e.el), ts]
+			return "remove up to %d %s from %s" % [n, _el(e.el), t]
 		"shatter":
-			return "break all Armour on %s" % t
+			return "break %s Armour" % ts
 		"insert":
-			return "add %s at the leftmost end of %s Essence" % [_a(_el(e.el)), ts]
+			return "add %s to the left end of %s row" % [_a(_el(e.el)), ts]
 		"siphon":
-			return "remove %s. Next turn you gain the removed Essence (Conjured)" % _ends(t, n, false)
+			return "remove %s %s leftmost Essence; get %s next turn (Conjured)" % [ts, "" if n == 1 else str(n), "it" if n == 1 else "them"]
 		"execute":
-			return "Execute %s with %d Essence or less (not bosses)" % [t, e.max]
+			return "Execute %s with %d or less Essence" % [t, e.max]
 		"transmute":
-			return "change %d of your unused Essence into %s" % [n, _el(e.to)]
+			return "turn %d unused Essence into %s" % [n, _el(e.to)]
 		"sacrifice":
-			return "lose %d of your HP" % e.hp
+			return "lose %d HP" % e.hp
 		"vulnerable":
-			return "you get Vulnerable %d" % n
+			return "Vulnerable %d on you" % n
+		"meteor_rain":
+			return "Burn 1 on a random enemy, %d times" % n
+		"disarm":
+			return "Disarm %s" % t
+		"forbidden":
+			return "it does nothing"
 		"amplify":
 			return "Amplify %d" % n
 		"echo":
 			return "Echo"
 		"retain":
-			if n == 1:
-				return "after the Release, the rightmost Essence of your chant goes back to your bag, to use again"
-			return "after the Release, the %d rightmost Essence of your chant go back to your bag, to use again" % n
+			return "Refund your chant's rightmost Essence" if n == 1 else "Refund your chant's %d rightmost Essence" % n
 		"overload":
 			return "Overload %d" % n
 		"cleanse":
 			return {"all": "Cleanse all your debuffs", "blind": "Cure Blind", "bleed": "Cure Bleed", "confuse": "Cure Confuse",
-				"silence": "Cure Silence on all your spells", "frozen": "thaw your Frozen Essence",
-				"lock": "break one Lock on your spells"}[e.get("what", "all")]
+				"silence": "Cure Silence", "frozen": "thaw your Frozen Essence", "lock": "break 1 Lock"}[e.get("what", "all")]
 		"copy_last":
-			return "repeat the last spell you cast this turn"
+			return "repeat your last spell this turn"
 		"redirect":
-			return "Redirect the intent of %s" % t
+			return "Redirect %s intent" % ts
 		"infuse":
 			if e.el == "random":
-				return "Infuse %s into the chant" % ("a random Essence" if n <= 1 else "%d random Essence" % n)
-			return "Infuse %s into the chant" % (_a(_el(e.el)) if n <= 1 else "%d %s" % [n, _el(e.el)])
+				return "Infuse %d Random" % maxi(1, n)
+			return "Infuse %d %s" % [maxi(1, n), _el(e.el)]
 		"annihilate":
 			return "Annihilate 1 kind of Essence on %s" % t
 		"barrage":
@@ -177,33 +182,33 @@ static func describe_op(e: Dictionary) -> String:
 		"random_hit":
 			return "remove %d random Essence of %s" % [n, t]
 		"echo_next":
-			return "the next spell you cast this fight is cast twice"
+			return "your next spell this fight is cast twice"
 		"conjure":
 			return "conjure %d spell%s" % [n, "" if n == 1 else "s"]
 		"grimoire_pick":
-			return "choose a spell from your spellbook: it joins your active spells for this fight"
+			return "add a spell from your spellbook to this fight"
 		"rearrange":
 			return "Rearrange %d" % n
 		"duplicate":
 			return "Duplicate %d" % (e.times - 1)
 		"summon_spells":
-			return "add %d random spells from your spellbook to your active row for this fight" % n
+			return "add %d random spells from your spellbook to this fight" % n
 		"passive":
-			return {"burn_bonus": "whenever you apply Burn, apply %d more" % n,
-				"thorns": "gain %d Thorns for the rest of the fight" % n,
-				"strike_poison": "all enemies your Release hits get Poison %d" % n,
-				"strike_burn": "all enemies your Release hits get Burn %d" % n,
-				"refund_air": "refund %d Air each chant" % n,
-				"echo_first": "the first spell you cast each turn is cast twice",
+			return {"burn_bonus": "your Burn +%d" % n,
+				"thorns": "Thorns %d all fight" % n,
+				"strike_poison": "your Release puts Poison %d on what it hits" % n,
+				"strike_burn": "your Release puts Burn %d on what it hits" % n,
+				"refund_air": "Refund %d Air each chant" % n,
+				"echo_first": "your first spell each turn is cast twice",
 				"attune": "pick 1 Essence. Gain 1 of that Essence each turn",
 				"chant_slots": "+%d chant slot%s" % [n, "" if n == 1 else "s"],
 				"draw_bonus": "+%d Essence every turn" % n,
 				"strike_bonus": "your spells remove %d more Essence" % n}.get(e.key, e.key)
 		"curse":
 			var many := tg == "all"
-			return {"no_mend": "%s can never Mend" % t,
-				"exposed": "%s %s Exposed for the rest of the fight" % [t, "are" if many else "is"],
-				"weak25": "%s %s 25%% less damage for the rest of the fight" % [t, "deal" if many else "deals"]}.get(e.key, e.key)
+			return {"no_mend": "%s can't Mend" % t,
+				"exposed": "%s %s Exposed all fight" % [t, "are" if many else "is"],
+				"weak25": "%s %s 25%% less all fight" % [t, "deal" if many else "deals"]}.get(e.key, e.key)
 		"each_turn":
-			return "at the start of each of your turns: " + "; ".join(e.effects.map(func(x): return describe_op(x)))
+			return "each turn: " + "; ".join(e.effects.map(func(x): return describe_op(x)))
 	return e.op
