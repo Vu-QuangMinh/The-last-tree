@@ -43,7 +43,7 @@ func _ready() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 12)
 	panel.add_child(v)
-	var paused := UiTheme.heading("Paused", 28, Color.WHITE)
+	var paused := UiTheme.heading("Paused", 28, Color(0.24, 0.1, 0.16) if UiSkin.is_circus() else Color.WHITE)  # (the Cirus board is cream)
 	paused.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER  # centred on the board
 	v.add_child(paused)
 	_add_button(v, "Resume", func(): resumed.emit())

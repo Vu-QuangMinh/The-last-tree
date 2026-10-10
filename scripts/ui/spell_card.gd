@@ -44,6 +44,10 @@ var fit_orb := 0.0
 var fit_from := false
 var _state: Label
 var _lock_row: HBoxContainer
+var _state_col: VBoxContainer  # painted themes: the state's picture (padlock, lips, tick) with the lock's pattern under it
+var _state_pic: Control
+var _state_img: TextureRect
+var _state_num: Label
 var _box: StyleBoxFlat
 var _shade: ColorRect
 var _orbit: OrbitSpark  # pending: the chant you're building will wake this spell
@@ -248,7 +252,31 @@ func _ready() -> void:
 	_lock_row = HBoxContainer.new()
 	_lock_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_lock_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_lock_row)
+	_state_col = VBoxContainer.new()
+	_state_col.alignment = BoxContainer.ALIGNMENT_CENTER
+	_state_col.add_theme_constant_override("separation", _zi(2))
+	_state_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_state_pic = Control.new()
+	_state_pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_state_pic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_state_pic.visible = false
+	_state_img = TextureRect.new()
+	_state_img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_state_img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_state_img.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_state_img.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_state_pic.add_child(_state_img)
+	_state_num = UiTheme.label("", _zi(28), Color.WHITE)  # (how many turns are left)
+	_state_num.add_theme_constant_override("outline_size", _zi(7))
+	_state_num.add_theme_color_override("font_outline_color", Color(0.15, 0.06, 0.12))
+	_state_num.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_state_num.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_state_num.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_state_num.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_state_pic.add_child(_state_num)
+	_state_col.add_child(_state_pic)
+	_state_col.add_child(_lock_row)
+	add_child(_state_col)
 	refresh()
 
 
@@ -589,6 +617,19 @@ func refresh() -> void:
 		for ch in lock_pattern:
 			_lock_row.add_child(ElementIcon.make(ch, _z(28)))
 	_state.visible = state != ""
+	# painted themes: silenced / locked / used are a picture (the PDF's Card Overlay art), not words
+	var pic_name: String = {"silenced": "card_overlay_silenced", "locked": "card_overlay_locked", "used": "card_overlay_used"}.get(state, "")
+	var pic: Texture2D = UiSkin.tex(pic_name) if pic_name != "" else null
+	_state_pic.visible = pic != null
+	_state_num.text = ""
+	if pic != null:
+		var h := _z(70.0 if state == "locked" else 84.0)
+		_state_pic.custom_minimum_size = Vector2(pic.get_width(), pic.get_height()) * h / pic.get_height()
+		_state_img.texture = pic
+		_state.text = ""
+		_state.visible = false
+		if state == "silenced":
+			_state_num.text = state_text.get_slice("\n", 1).get_slice(" ", 0)
 	_shade.visible = state in ["silenced", "locked", "broken", "cooldown"]
 	_flame.visible = ignited and state != "used"
 	_cracks.set_level(cracks, String(spell.get("id", "")))

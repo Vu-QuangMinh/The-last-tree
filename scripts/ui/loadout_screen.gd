@@ -40,8 +40,8 @@ func _ready() -> void:
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(shade)
 	var root := VBoxContainer.new()
-	root.position = Vector2(40, 64)
-	root.size = Vector2(1840, 920)
+	root.position = Vector2(40, 100)  # (below the top bar, which used to hide the title)
+	root.size = Vector2(1840, 884)
 	root.add_theme_constant_override("separation", 10)
 	add_child(root)
 	var kind := run.current_kind()
@@ -119,7 +119,7 @@ func _enemy_panel(id: String, index: int, width := 440.0) -> Control:
 	var d := EnemyDefs.get_def(id)
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", UiTheme.panel_box(0.9, 10))
-	p.custom_minimum_size = Vector2(width, 250)
+	p.custom_minimum_size = Vector2(width, 220)
 	var h := HBoxContainer.new()
 	p.add_child(h)
 	# exactly the Essence it will start the fight with (extra Essence on deeper floors included)
@@ -129,10 +129,10 @@ func _enemy_panel(id: String, index: int, width := 440.0) -> Control:
 	e.dmg_bonus = EnemyDefs.attack_bonus(run.act)
 	var cr := Creature.new()
 	cr.setup(e)
-	cr.custom_minimum_size = Vector2(150, 170)
+	cr.custom_minimum_size = Vector2(135, 150)
 	h.add_child(cr)
 	var v := VBoxContainer.new()
-	var text_w := width - 170.0
+	var text_w := width - 155.0
 	v.custom_minimum_size = Vector2(text_w, 0)
 	h.add_child(v)
 	v.add_child(UiTheme.label(d.name, 22, Color.WHITE))

@@ -727,7 +727,7 @@ func _do_event_option(opt: Dictionary) -> Dictionary:
 				return {"text": "There was nothing left to learn. You keep your Leaves."}
 			var id: String = pool[rng.randi() % pool.size()]
 			learn_spell(id)
-			return {"text": "You learn %s." % db.get_spell(id).name}
+			return {"text": "You learn %s." % db.get_spell(id).name, "spell": id}  # ("spell": the screen shows its card)
 		"artifact":
 			var a := Artifacts.offer(unlocked_artifacts, artifacts, rng, 1, opt.get("pool", "normal"))
 			if a.is_empty():

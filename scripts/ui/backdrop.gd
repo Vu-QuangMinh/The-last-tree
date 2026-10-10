@@ -40,7 +40,7 @@ func _ready() -> void:
 		var trees: Texture2D = UiSkin.tex("room_" + room + "_trees") if room_art != null else null
 		var front: Texture2D = UiSkin.tex("room_" + room + "_front") if trees != null else null
 		_art_node = _art_rect(art)
-		if trees == null:  # (one picture: all of it sways)
+		if trees == null and not (UiSkin.is_circus() and room_art == null):  # (one picture: all of it sways; not the Cirus tent, whose curtains and stage stay still)
 			_art_node.material = _wind_material()
 		add_child(_art_node)
 		if trees != null:  # (a room picture in layers, drawn a little oversize: only the wood sways, over the still picture, under the rest)

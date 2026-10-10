@@ -430,7 +430,8 @@ func _show_event(ev: Dictionary) -> void:
 			return
 		if ev.get("id", "") == "apothecary" and i < 3:  # (what you chose is shown as a picture: pay, snatch, walk on)
 			_room_bg = ["apothecary_pay", "apothecary_snatch", "apothecary_walk"][i]
-		var after := _message(ev.title, res.text, ["Fight!" if res.get("fight", false) else "Continue"], Color(0.8, 0.7, 1))
+		var learned: Control = SpellCard.make(run.spell(res.spell)) if res.has("spell") else null  # the spell you just learned, shown as its card
+		var after := _message(ev.title, res.text, ["Fight!" if res.get("fight", false) else "Continue"], Color(0.8, 0.7, 1), learned)
 		after.pressed.connect(func(_k):
 			if res.get("fight", false):
 				run.current_node()["as"] = "fight"

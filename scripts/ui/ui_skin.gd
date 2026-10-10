@@ -95,7 +95,9 @@ static func has_slot_frame() -> bool:
 ## New theme: ONE frame behind all the children of `row` (a row of artifact or bottle slots), drawn from the first child's
 ## left edge to the last one's right edge and growing with them. Does nothing in Default or while the row is empty.
 static func frame_behind(row: Control, pad := Vector2(16, 11)) -> void:
-	var sb := box("slot_strip", [28, 0, 27, 0])
+	if is_circus():
+		pad = Vector2(6, 2)  # (the Cirus frame is a solid block: hug the slots, or it dwarfs them)
+	var sb := box("slot_strip", [32, 0, 47, 0] if is_circus() else [28, 0, 27, 0])
 	if sb == null:
 		return
 	row.sort_children.connect(row.queue_redraw)

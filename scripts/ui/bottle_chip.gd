@@ -35,8 +35,8 @@ func _ready() -> void:
 	# no box: just a soft, faint outline of the square it sits in (a touch brighter under the mouse)
 	_box = StyleBoxFlat.new()
 	_box.bg_color = Color(0, 0, 0, 0)
-	var idle := Color(1, 1, 1, 0.0) if UiSkin.has_slot_frame() else FAINT  # (the shared frame replaces the outline)
-	var hover := Color(1, 1, 1, 0.2) if UiSkin.has_slot_frame() else FAINT_HOVER
+	var idle := Color(1, 1, 1, 0.0) if UiSkin.is_new() else FAINT  # (painted themes: no outline at all)
+	var hover := Color(1, 1, 1, 0.0) if UiSkin.is_new() else FAINT_HOVER
 	_box.border_color = idle
 	_box.set_border_width_all(1)
 	_box.set_corner_radius_all(10)

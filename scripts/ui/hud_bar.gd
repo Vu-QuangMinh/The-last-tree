@@ -71,5 +71,5 @@ func refresh() -> void:
 	for id in run.artifacts:
 		_art_row.add_child(ArtifactBar.ArtifactChip.make(id, id in run.artifacts_plus, 56.0))
 	# your bottles (and empty bottle slots), after the artifacts
-	for i in run.bottle_slots():
+	for i in run.player.bottles.size() if UiSkin.is_new() else run.bottle_slots():  # (painted themes: only the bottles you carry)
 		_bottle_row.add_child(BottleChip.make(run.player.bottles[i] if i < run.player.bottles.size() else "", i, false, 56.0))

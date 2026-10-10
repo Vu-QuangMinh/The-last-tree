@@ -97,6 +97,8 @@ var _prompt: Label
 var _info: Label
 var _hp_bar: HpBar
 var _hp_label: Label
+var _shield_box: HBoxContainer  # the Shield (and Lasting) amount, beside your HP
+var _shield_label: Label
 var _pstatus: RichTextLabel
 var _status_row: HFlowContainer  # your statuses, as bright badges above the HP bar
 var _bottle_row: HBoxContainer  # your bottles, under the HP bar
@@ -184,7 +186,8 @@ func _ready() -> void:
 	_next_row = HBoxContainer.new()
 	_next_row.add_theme_constant_override("separation", 4)
 	nv.add_child(_next_row)
-	add_child(np)
+	if not _circus_strips():  # (Cirus: the Essence waiting in the launcher tube take its place)
+		add_child(np)
 	# enemies
 	_enemy_row = HBoxContainer.new()
 	_enemy_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -207,6 +210,124 @@ func _ready() -> void:
 	_spell_row.position = Vector2(0, 530)
 	_spell_row.size = Vector2(1920, 170)
 	add_child(_spell_row)
+	if _circus_strips():
+		_build_strips_circus()
+	else:
+		_build_strips_classic()
+	# player: name, your statuses (bright badges) on top of the HP bar, your bottles under it
+	_player_panel = PanelContainer.new()
+	_player_panel.add_theme_stylebox_override("panel", UiTheme.panel_box(0.9, 12))
+	_player_panel.position = Vector2(24, 742)
+	_player_panel.custom_minimum_size = Vector2(500, 0)
+	var pv := VBoxContainer.new()
+	pv.add_theme_constant_override("separation", 6)
+	_player_panel.add_child(pv)
+	var keeper := UiTheme.heading("The Keeper", 22, Color.WHITE)
+	var portrait := UiSkin.icon("portrait_keeper", 56)
+	if portrait != null:  # New theme: the Keeper's face beside the name
+		var who := HBoxContainer.new()
+		who.add_theme_constant_override("separation", 10)
+		keeper.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		who.add_child(portrait)
+		who.add_child(keeper)
+		pv.add_child(who)
+	else:
+		pv.add_child(keeper)
+	_status_row = HFlowContainer.new()
+	_status_row.add_theme_constant_override("h_separation", 6)
+	_status_row.add_theme_constant_override("v_separation", 4)
+	_status_row.custom_minimum_size = Vector2(460, 0)
+	pv.add_child(_status_row)
+	_hp_bar = HpBar.new()
+	_hp_bar.custom_minimum_size = Vector2(460, 26)
+	pv.add_child(_hp_bar)
+	var under := HBoxContainer.new()
+	under.custom_minimum_size = Vector2(0, 64)  # (the panel keeps its height whether or not you carry bottles)
+	under.add_theme_constant_override("separation", 8)
+	pv.add_child(under)
+	_hp_label = UiTheme.label("", 18)
+	var hp_font := UiTheme.cut("bold")  # "HP 50 / 50" in the bold cut of the chosen font
+	if hp_font != null:
+		_hp_label.add_theme_font_override("font", hp_font)
+	_hp_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_hp_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_hp_label.clip_text = true  # (its text must never stretch the panel)
+	var heart := UiSkin.icon("icon_heart", 28)
+	if heart != null:
+		heart.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		under.add_child(heart)
+	under.add_child(_hp_label)
+	_shield_box = HBoxContainer.new()
+	_shield_box.add_theme_constant_override("separation", 3)
+	_shield_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_shield_box.visible = false
+	var shield_pic := UiSkin.icon("icon_armor_shield", 24)
+	if shield_pic != null:
+		_shield_box.add_child(shield_pic)
+	_shield_label = UiTheme.label("", 18, Color(0.62, 0.86, 1.0))
+	if hp_font != null:
+		_shield_label.add_theme_font_override("font", hp_font)
+	_shield_box.add_child(_shield_label)
+	under.add_child(_shield_box)
+	_bottle_row = HBoxContainer.new()
+	_bottle_row.add_theme_constant_override("separation", 6)
+	UiSkin.frame_behind(_bottle_row)  # New theme: one painted frame around all the bottles
+	under.add_child(_bottle_row)
+	_pstatus = RichTextLabel.new()
+	_pstatus.bbcode_enabled = true
+	_pstatus.fit_content = true
+	_pstatus.scroll_active = false
+	_pstatus.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_pstatus.custom_minimum_size = Vector2(460, 0)
+	_pstatus.add_theme_font_size_override("normal_font_size", 15)
+	_pstatus.add_theme_font_size_override("bold_font_size", 15)
+	_pstatus.add_theme_color_override("default_color", Color(0.85, 0.8, 1))
+	_pstatus.visible = false  # (statuses are badges now)
+	pv.add_child(_pstatus)
+	add_child(_player_panel)
+	# the fight log, bottom right
+	_log = UiTheme.label("", 14, UiTheme.MUTED)
+	_log.position = Vector2(1660, 742)
+	_log.size = Vector2(245, 240)
+	_log.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_log.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	_log.clip_text = true  # (a long log is cut off at the top instead of growing down over the Menu button)
+	_log.custom_minimum_size = Vector2(245, 60)
+	_log.add_theme_color_override("font_color", Color.WHITE)
+	var log_art := UiSkin.box("panel_log_translucent", [24, 24, 24, 24], [18, 12, 18, 12])
+	if log_art != null:  # New theme: a wooden plaque behind the log
+		_log.add_theme_stylebox_override("normal", log_art)
+	add_child(_log)
+	_fx = Control.new()
+	_fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_fx)
+	_danger = DangerVignette.new()
+	_danger.z_index = 85
+	add_child(_danger)
+	_arrow = Control.new()
+	_arrow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_arrow.z_index = 50
+	_arrow.draw.connect(_draw_arrow)
+	add_child(_arrow)
+	var menu_btn := UiTheme.button("☰ Menu", _open_pause_menu, 18)
+	menu_btn.custom_minimum_size = Vector2(130, 44)
+	menu_btn.position = Vector2(1920 - 150, 1024)
+	UiTheme.use_menu_style(menu_btn)
+	UiTheme.use_heading_font(menu_btn)
+	add_child(menu_btn)
+	_build_spells()
+	_sync_views()
+	_refresh_all()
+	_fit_bottom.call_deferred()
+	tut.connect(func(_k, _d): note_progress())
+
+
+# ------------------------------------------------------------------ building
+
+## The Chant and Bag panels of the Default and New themes.
+func _build_strips_classic() -> void:
 	# chant area: the slots, and the Chant / Release button right beside them
 	var cp := PanelContainer.new()
 	cp.add_theme_stylebox_override("panel", UiTheme.panel_box(0.9, 14))
@@ -274,100 +395,418 @@ func _ready() -> void:
 	_stock_row.custom_minimum_size = Vector2(BAG_W, BAG_PX)
 	sv.add_child(_stock_row)
 	add_child(sp)
-	# player: name, your statuses (bright badges) on top of the HP bar, your bottles under it
-	_player_panel = PanelContainer.new()
-	_player_panel.add_theme_stylebox_override("panel", UiTheme.panel_box(0.9, 12))
-	_player_panel.position = Vector2(24, 742)
-	_player_panel.custom_minimum_size = Vector2(500, 0)
-	var pv := VBoxContainer.new()
-	pv.add_theme_constant_override("separation", 6)
-	_player_panel.add_child(pv)
-	var keeper := UiTheme.heading("The Keeper", 22, Color.WHITE)
-	var portrait := UiSkin.icon("portrait_keeper", 56)
-	if portrait != null:  # New theme: the Keeper's face beside the name
-		var who := HBoxContainer.new()
-		who.add_theme_constant_override("separation", 10)
-		keeper.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		who.add_child(portrait)
-		who.add_child(keeper)
-		pv.add_child(who)
-	else:
-		pv.add_child(keeper)
-	_status_row = HFlowContainer.new()
-	_status_row.add_theme_constant_override("h_separation", 6)
-	_status_row.add_theme_constant_override("v_separation", 4)
-	_status_row.custom_minimum_size = Vector2(460, 0)
-	pv.add_child(_status_row)
-	_hp_bar = HpBar.new()
-	_hp_bar.custom_minimum_size = Vector2(460, 26)
-	pv.add_child(_hp_bar)
-	var under := HBoxContainer.new()
-	under.add_theme_constant_override("separation", 8)
-	pv.add_child(under)
-	_hp_label = UiTheme.label("", 18)
-	var hp_font := UiTheme.cut("bold")  # "HP 50 / 50" in the bold cut of the chosen font
-	if hp_font != null:
-		_hp_label.add_theme_font_override("font", hp_font)
-	_hp_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_hp_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var heart := UiSkin.icon("icon_heart", 28)
-	if heart != null:
-		heart.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		under.add_child(heart)
-	under.add_child(_hp_label)
-	_bottle_row = HBoxContainer.new()
-	_bottle_row.add_theme_constant_override("separation", 6)
-	UiSkin.frame_behind(_bottle_row)  # New theme: one painted frame around all the bottles
-	under.add_child(_bottle_row)
-	_pstatus = RichTextLabel.new()
-	_pstatus.bbcode_enabled = true
-	_pstatus.fit_content = true
-	_pstatus.scroll_active = false
-	_pstatus.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_pstatus.custom_minimum_size = Vector2(460, 0)
-	_pstatus.add_theme_font_size_override("normal_font_size", 15)
-	_pstatus.add_theme_font_size_override("bold_font_size", 15)
-	_pstatus.add_theme_color_override("default_color", Color(0.85, 0.8, 1))
-	_pstatus.visible = false  # (statuses are badges now)
-	pv.add_child(_pstatus)
-	add_child(_player_panel)
-	# the fight log, bottom right
-	_log = UiTheme.label("", 14, UiTheme.MUTED)
-	_log.position = Vector2(1660, 742)
-	_log.size = Vector2(245, 240)
-	_log.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_log.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-	var log_art := UiSkin.box("panel_log_translucent", [24, 24, 24, 24], [18, 12, 18, 12])
-	if log_art != null:  # New theme: a wooden plaque behind the log
-		_log.add_theme_stylebox_override("normal", log_art)
-	add_child(_log)
-	_fx = Control.new()
-	_fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_fx)
-	_danger = DangerVignette.new()
-	_danger.z_index = 85
-	add_child(_danger)
-	_arrow = Control.new()
-	_arrow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_arrow.z_index = 50
-	_arrow.draw.connect(_draw_arrow)
-	add_child(_arrow)
-	var menu_btn := UiTheme.button("☰ Menu", _open_pause_menu, 18)
-	menu_btn.custom_minimum_size = Vector2(130, 44)
-	menu_btn.position = Vector2(1920 - 150, 1024)
-	UiTheme.use_menu_style(menu_btn)
-	UiTheme.use_heading_font(menu_btn)
-	add_child(menu_btn)
-	_build_spells()
-	_sync_views()
-	_refresh_all()
-	_fit_bottom.call_deferred()
-	tut.connect(func(_k, _d): note_progress())
 
 
-# ------------------------------------------------------------------ building
+## Cirus theme: the Chant strip and the Bag strip of "Chant UI for Circus.pdf" (cut by tools/export_circus_chant.py,
+## laid out by ChantLayout). The Bag strip ends in the launcher tube: the Essence ride in it under a sheet of glass, and
+## when a batch is released the crank turns once, the gear twice, and they roll out to their places (see _tube_launch).
+const TUBE_BALL_STEP := 54.0
+
+var _tube_gear: TextureRect
+var _tube_plate: TextureRect
+var _tube_handle: TextureRect
+var _crank_tween: Tween
+var _launching := 0  # Essence rolling out of the tube right now
+var _bag_seen := {}  # uid -> true: Essence that have been in the bag before (only the brand new ones roll out of the tube)
+var _cast_uids := {}  # uid -> true: the Essence of the chant being cast right now (still in the stock for a moment, but gone)
+var _tube_icons: Array = []  # the Essence in the tube (next turn's draw), or waiting hidden in the red block (sent by a spell)
+var _tube_hold_until := 0  # ticks: the tube rests, empty, until then (2 s after a launch)
+var _tube_sync_pending := false
+var _tube_prep := false  # a launch is being set up
+var _rolling_in := 0  # Essence rolling into the tube right now
+var _turn_batch_until := 0  # ticks: a new turn is starting, so the next new Essence come out of the tube
+
+
+func _circus_strips() -> bool:
+	return UiSkin.is_circus() and UiSkin.tex("chant_frame") != null and UiSkin.tex("bag_frame") != null and UiSkin.tex("tube_glass") != null \
+		and UiSkin.tex("tube_back") != null and UiSkin.tex("tube_gear") != null and UiSkin.tex("crank_plate") != null and UiSkin.tex("crank_handle") != null
+
+
+func _strip_art(tex_name: String, pos: Vector2) -> TextureRect:
+	var r := TextureRect.new()
+	r.texture = UiSkin.tex(tex_name)
+	r.position = pos
+	r.size = r.texture.get_size()
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return r
+
+
+func _build_strips_circus() -> void:
+	var cap := ChantLayout.CAP
+	var cp := PanelContainer.new()
+	cp.add_theme_stylebox_override("panel", UiSkin.box("chant_frame", [int(cap.x), 20, int(cap.y), 20], [22, 6, 26, 6]))
+	_chant_panel = cp
+	cp.position = Vector2(540, 742)
+	cp.custom_minimum_size = Vector2(1100, 118)
+	var chh := HBoxContainer.new()
+	chh.add_theme_constant_override("separation", 12)
+	cp.add_child(chh)
+	# the title block on the left: Chant, how much Essence is in it, and (once you have cast) Undo
+	var lc := VBoxContainer.new()
+	lc.custom_minimum_size = Vector2(72, 0)
+	lc.alignment = BoxContainer.ALIGNMENT_CENTER
+	lc.add_theme_constant_override("separation", 0)
+	chh.add_child(lc)
+	lc.add_child(UiTheme.heading("Chant", 24, Color.WHITE))
+	_chant_note = UiTheme.label("", 13, UiTheme.MUTED)
+	_chant_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_chant_note.max_lines_visible = 2  # (the whole text is in its tooltip)
+	_chant_note.mouse_filter = Control.MOUSE_FILTER_STOP
+	_chant_note.custom_minimum_size = Vector2(72, 0)
+	lc.add_child(_chant_note)
+	_undo_btn = UiTheme.button("↶ Undo", _undo_last, 13)
+	_undo_btn.custom_minimum_size = Vector2(72, 26)
+	_undo_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_undo_btn.tooltip_text = "Take back the last spell you cast this turn. (Ctrl+Z. Pressing Release cannot be undone.)"
+	_undo_btn.visible = false
+	lc.add_child(_undo_btn)
+	_chant_row = HBoxContainer.new()
+	_chant_row.add_theme_constant_override("separation", 6)
+	_chant_row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	chh.add_child(_chant_row)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chh.add_child(spacer)
+	_cast_btn = UiTheme.button(UiTheme.hk("Chant", "Enter"), _on_primary, 21)
+	UiTheme.use_heading_font(_cast_btn)
+	_cast_btn.custom_minimum_size = Vector2(170, 58)
+	_cast_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var chant_art := UiTheme.chant_button_styles()
+	for st in chant_art:
+		_cast_btn.add_theme_stylebox_override(st, chant_art[st])
+	chh.add_child(_cast_btn)
+	_clear_btn = UiTheme.button(UiTheme.hk("Clear", "⌫"), _clear_chant, 15)
+	UiTheme.use_heading_font(_clear_btn)
+	_clear_btn.custom_minimum_size = Vector2(104, 40)
+	_clear_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	chh.add_child(_clear_btn)
+	_end_btn = UiTheme.button(UiTheme.hk("Pass", "E"), _on_end_turn, 15)
+	UiTheme.use_heading_font(_end_btn)
+	_end_btn.custom_minimum_size = Vector2(104, 40)
+	_end_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_end_btn.tooltip_text = "End your turn without chanting (you keep your Essence)."
+	chh.add_child(_end_btn)
+	add_child(cp)
+	# the Bag strip, layered like the PDF: tube back, the Essence, tube glass, gear, plate, handle
+	var sp := PanelContainer.new()
+	_bag_panel = sp
+	sp.add_theme_stylebox_override("panel", UiSkin.box("bag_frame", [int(cap.x), 20, int(cap.y), 20]))
+	sp.position = Vector2(540, 872)
+	sp.custom_minimum_size = ChantLayout.FRAME_BAG
+	var inner := Control.new()
+	inner.custom_minimum_size = ChantLayout.FRAME_BAG
+	inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sp.add_child(inner)
+	inner.add_child(_strip_art("tube_back", ChantLayout.TUBE_BACK))
+	var bt := UiTheme.heading("Bag", 24, Color.WHITE)
+	bt.position = Vector2(23, 18)
+	inner.add_child(bt)
+	var hint := UiTheme.label("click or drag", 12, UiTheme.MUTED)
+	hint.position = Vector2(23, 58)
+	inner.add_child(hint)
+	# a plain Control: the Essence are placed (and rolled) by hand; it spans the strip AND the tube
+	_stock_row = Control.new()
+	_stock_row.mouse_filter = Control.MOUSE_FILTER_PASS
+	_stock_row.custom_minimum_size = Vector2(ChantLayout.TUBE_RIGHT, ChantLayout.FRAME_BAG.y)
+	_stock_row.size = _stock_row.custom_minimum_size
+	inner.add_child(_stock_row)
+	inner.add_child(_strip_art("tube_glass", ChantLayout.TUBE_GLASS))
+	_tube_gear = _strip_art("tube_gear", ChantLayout.GEAR)
+	_tube_gear.pivot_offset = _tube_gear.size / 2.0
+	inner.add_child(_tube_gear)
+	_tube_plate = _strip_art("crank_plate", ChantLayout.PLATE)
+	inner.add_child(_tube_plate)
+	_tube_handle = _strip_art("crank_handle", ChantLayout.HANDLE)
+	_tube_handle.pivot_offset = ChantLayout.HANDLE_PIVOT
+	inner.add_child(_tube_handle)
+	add_child(sp)
+
+
+## Where the k-th resting Essence of the bag sits (local to _stock_row) when there are n of them: Cirus lays them in one
+## row from the strip's left end, squeezing together (even overlapping) when there are more than fit before the crank.
+func _bag_slot(k: int, n: int) -> Vector2:
+	if not _circus_strips():
+		return Vector2(minf(_stock_row.size.x - BAG_PX, k * (BAG_PX + BAG_GAP)), 0)
+	var room := ChantLayout.REST_END - ChantLayout.REST_X - BAG_PX
+	var step := minf(BAG_PX + 4.0, room / maxf(1.0, n - 1))
+	return Vector2(ChantLayout.REST_X + minf(k * step, room), ChantLayout.AXIS_Y - BAG_PX / 2.0)
+
+
+## The crank turns once and the gear twice (the same 0.9 s).
+func _turn_crank(seconds := 0.9) -> void:
+	if _tube_handle == null or not is_instance_valid(_tube_handle) or (_crank_tween != null and _crank_tween.is_valid()):
+		return
+	_tube_handle.rotation = 0.0
+	_tube_gear.rotation = 0.0
+	Audio.play("sfx_crank_ratchet", -6.0)
+	_crank_tween = create_tween().set_parallel(true)
+	_crank_tween.tween_property(_tube_handle, "rotation", TAU, seconds).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_crank_tween.tween_property(_tube_gear, "rotation", TAU * 2.0, seconds).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_crank_tween.chain().tween_callback(func():
+		_tube_handle.rotation = 0.0
+		_tube_gear.rotation = 0.0)
+
+
+## Where the j-th of n Essence waiting in the tube sits (local to _stock_row): from the glass's left end, squeezing under
+## the red block when there are many.
+func _tube_pos(j: int, n: int) -> Vector2:
+	var x0: float = ChantLayout.TUBE_GLASS.x + 28.0
+	var step := minf(TUBE_BALL_STEP, (ChantLayout.TUBE_RIGHT - 8.0 - BAG_PX - x0) / maxf(1.0, n - 1))
+	return Vector2(x0 + j * step, ChantLayout.AXIS_Y - BAG_PX / 2.0)
+
+
+## Where an Essence enters the tube: wholly inside the red block (it must never poke out of the tube's right end), so it
+## is hidden there until it rolls out of it into the glass.
+func _tube_hidden() -> Vector2:
+	return Vector2(minf(ChantLayout.TUBE_HIDE_X + 8.0, ChantLayout.TUBE_RIGHT - BAG_PX - 10.0), ChantLayout.AXIS_Y - BAG_PX / 2.0)
+
+
+## A ball rolling left along the strip from where it is to to_x (spinning whole turns, so it ends upright); a soft tok at the
+## end. Used for the Essence rolling into the tube.
+func _roll_in(ic: ElementIcon, to_x: float, delay: float) -> void:
+	_rolling_in += 1
+	if delay > 0.0:
+		await get_tree().create_timer(delay).timeout
+	if not is_instance_valid(ic) or ic.is_queued_for_deletion():
+		_rolling_in -= 1
+		return
+	var d := ic.position.x - to_x
+	if d <= 1.0:
+		ic.position.x = to_x
+		_rolling_in -= 1
+		return
+	var t := 0.3 + d / 650.0
+	var turns := roundf(d / (PI * BAG_PX))
+	Audio.play("sfx_ball_roll", -11.0, randf_range(0.9, 1.1))
+	var tw := ic.create_tween().set_parallel(true)
+	tw.tween_property(ic, "position:x", to_x, t).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(ic, "rotation", -TAU * turns, t).from(0.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	await tw.finished
+	_rolling_in -= 1
+	if not is_instance_valid(ic) or ic.is_queued_for_deletion():
+		return
+	ic.rotation = 0.0
+	Audio.play("sfx_ball_clack", -9.0, randf_range(0.85, 1.0))
+
+
+## Cirus "coming next turn": the tube holds next turn's Essence (fight.player.next_draw), in the bag's order (fire, water,
+## wind). New ones are spawned inside the red block and roll out of it one by one; the others slide along to make room. A
+## ball a spell sent is already waiting in the red block and just rolls in. After a launch the tube stays empty for 2 s.
+func _sync_tube() -> void:
+	if not _circus_strips() or fight == null or _tube_prep:
+		return
+	if Time.get_ticks_msec() < _tube_hold_until:  # (the tube is resting after a launch)
+		if not _tube_sync_pending:
+			_tube_sync_pending = true
+			get_tree().create_timer((_tube_hold_until - Time.get_ticks_msec()) / 1000.0 + 0.05).timeout.connect(func():
+				_tube_sync_pending = false
+				_sync_tube())
+		return
+	var ranked: Array = []
+	for i in fight.player.next_draw.size():
+		var d: Dictionary = fight.player.next_draw[i]
+		ranked.append([maxi(0, "FWA".find(d.el) + 1), i, d])
+	ranked.sort_custom(func(a, b): return a[0] < b[0] or (a[0] == b[0] and a[1] < b[1]))
+	var pool: Array = _tube_icons.filter(func(c): return is_instance_valid(c) and not c.is_queued_for_deletion())
+	var now: Array = []
+	for r in ranked:
+		var d: Dictionary = r[2]
+		var found := -1
+		for k in pool.size():
+			if pool[k].el == d.el and pool[k].temp == d.temp:
+				found = k
+				break
+		if found >= 0:
+			now.append(pool[found])
+			pool.remove_at(found)
+			continue
+		var nb := ElementIcon.make(d.el, BAG_PX)
+		nb.size = Vector2(BAG_PX, BAG_PX)
+		nb.pivot_offset = nb.size / 2.0
+		nb.temp = d.temp
+		nb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		nb.position = _tube_hidden()
+		_stock_row.add_child(nb)
+		now.append(nb)
+	var keep: Array = []
+	for c in pool:
+		if c.has_meta("stash_until") and Time.get_ticks_msec() < int(c.get_meta("stash_until")):
+			keep.append(c)  # (a spell's Essence that is still on its way in: the effect has not landed yet)
+		else:
+			c.queue_free()
+	_tube_icons = now + keep
+	var order := 0
+	for j in now.size():
+		var ic: ElementIcon = now[j]
+		var to := _tube_pos(j, now.size())
+		if ic.has_meta("slide"):
+			var old: Tween = ic.get_meta("slide")
+			if old != null and old.is_valid():
+				old.kill()
+		if ic.position.x >= ChantLayout.TUBE_HIDE_X - 2.0:  # still inside the red block: it rolls out of it, one after another
+			_roll_in(ic, to.x, order * 0.15)
+			order += 1
+		elif absf(ic.position.x - to.x) > 1.0:
+			var tw := ic.create_tween()
+			tw.tween_property(ic, "position", to, 0.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			ic.set_meta("slide", tw)
+
+
+## Cirus: a spell that gives Essence for next turn. Each one flies from the card to the tube and slips in behind the red block
+## (it is drawn under the tube's glass layer); once the effect has landed, _sync_tube rolls it into the tube.
+func _stash_flight(ev: Dictionary, from: Vector2) -> float:
+	var els: Array = ev.get("drawn", [])
+	if els.is_empty():
+		var el: String = ev.eff.get("el", "random")
+		for i in int(ev.eff.get("n", 1)):
+			els.append(["F", "W", "A"].pick_random() if el == "random" else el)
+	var last := 0.0
+	for i in els.size():
+		var ic := ElementIcon.make(els[i], BAG_PX)
+		ic.size = Vector2(BAG_PX, BAG_PX)
+		ic.pivot_offset = ic.size / 2.0
+		ic.temp = ev.eff.get("temp", false)
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var a := from - _stock_row.global_position - ic.size / 2.0
+		var b := _tube_hidden()
+		ic.position = a
+		ic.scale = Vector2(0.4, 0.4)
+		ic.modulate = Color(1.6, 1.6, 1.6, 0.0)
+		ic.set_meta("stash_until", Time.get_ticks_msec() + 4000)
+		_stock_row.add_child(ic)
+		_tube_icons.append(ic)
+		var delay := i * 0.14
+		var tw := ic.create_tween()
+		tw.tween_interval(delay)
+		tw.tween_callback(func(): Audio.play("sfx_ball_clack", -14.0, 1.2))
+		tw.tween_method(_stash_step.bind(ic, a, b), 0.0, 1.0, 0.62)
+		tw.tween_callback(func():
+			ic.rotation = 0.0
+			ic.modulate = Color.WHITE
+			ic.position = b)
+		last = delay + 0.62
+	return last + 0.1
+
+
+func _stash_step(u: float, ic: ElementIcon, a: Vector2, b: Vector2) -> void:
+	if not is_instance_valid(ic):
+		return
+	var arc := Vector2(0, -150.0 * sin(u * PI))  # up and over, then down into the tube
+	ic.position = a.lerp(b, u * u * (3.0 - 2.0 * u)) + arc
+	ic.rotation = -u * TAU * 1.5
+	ic.scale = Vector2.ONE * lerpf(0.4, 1.0, minf(1.0, u * 2.0))
+	var al := minf(1.0, u * 14.0)
+	ic.modulate = Color(1, 1, 1, al).lerp(Color(1.6, 1.6, 1.6, al), 1.0 - u)
+
+
+## Wait until nothing is rolling any more (the Essence of a launch, or going into the tube): effects that land ON the Essence
+## (Freeze, Hex...) start after that.
+func _rolls_done() -> void:
+	var t0 := Time.get_ticks_msec()
+	while (_launching > 0 or _rolling_in > 0) and Time.get_ticks_msec() - t0 < 7000:
+		await get_tree().process_frame
+
+
+## A batch of new Essence rolls out of the tube. At the start of a turn these ARE the Essence that were waiting in the
+## tube (they take their places); any others (the first hand of a fight, Essence conjured "now") roll in from the red block
+## first. The crank turns once, the gear twice, and the balls roll out and left along the strip, like billiard balls, to
+## their places, the first one going furthest. Each stop is a "tok", and the ball it hit rocks a little. 2 s after the last
+## ball has left, the tube is loaded for the next turn. balls: [[icon, rest position (local to _stock_row), uid], ...].
+func _tube_launch(balls: Array) -> void:
+	if balls.is_empty():
+		return
+	_launching += 1
+	balls.sort_custom(func(a, b): return a[1].x < b[1].x)
+	var n := balls.size()
+	var from_tube := Time.get_ticks_msec() < _turn_batch_until
+	_turn_batch_until = 0
+	var pool: Array = _tube_icons.filter(func(c): return is_instance_valid(c) and not c.is_queued_for_deletion())
+	pool.sort_custom(func(a, b): return a.position.x < b.position.x)
+	var starts_x: Array = []
+	var dropped := 0
+	_tube_prep = true  # (the tube is not reloaded until we know when the last ball leaves)
+	for j in n:
+		var ic: ElementIcon = balls[j][0]
+		ic.set_meta("rolling", true)
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var taken := -1
+		if from_tube:
+			for k in pool.size():
+				if pool[k].el == ic.el and pool[k].temp == ic.temp:
+					taken = k
+					break
+		if taken >= 0:  # the ball that was waiting in the tube becomes this one
+			var waiting: ElementIcon = pool[taken]
+			pool.remove_at(taken)
+			ic.position = waiting.position
+			ic.modulate.a = 1.0
+			starts_x.append(waiting.position.x)
+			waiting.queue_free()
+		else:  # it rolls out of the red block into the glass first
+			var at := _tube_pos(dropped, n)
+			ic.modulate.a = 1.0
+			ic.position = _tube_hidden()
+			_roll_in(ic, at.x, dropped * 0.15)
+			dropped += 1
+			starts_x.append(at.x)
+	_tube_icons = pool  # (whatever was not taken stays waiting)
+	var load_wait := 0.1
+	if dropped > 0:
+		load_wait = 0.8 + (dropped - 1) * 0.15
+	await get_tree().create_timer(load_wait).timeout
+	_turn_crank()
+	await get_tree().create_timer(0.3).timeout
+	# when does each ball arrive? one after the other, 0.12 s apart, the first one furthest
+	var travel: Array = []
+	var starts: Array = []
+	var arrive := 0.0
+	var last_start := 0.0
+	for j in n:
+		var d: float = float(starts_x[j]) - balls[j][1].x
+		var t := 0.25 + maxf(0.0, d) / 820.0
+		travel.append(t)
+		arrive = t if j == 0 else maxf(t, arrive + 0.12)
+		starts.append(arrive - t)
+		last_start = maxf(last_start, arrive - t)
+	_tube_hold_until = Time.get_ticks_msec() + int((last_start + 2.0) * 1000.0)  # the tube reloads 2 s after the last ball is away
+	_tube_prep = false
+	for j in n:
+		_roll_ball(balls, j, float(starts_x[j]), float(travel[j]), float(starts[j]))
+	_launching -= 1
+	_sync_tube()  # (it waits for _tube_hold_until)
+
+
+func _roll_ball(balls: Array, j: int, from_x: float, t: float, delay: float) -> void:
+	var ic: ElementIcon = balls[j][0]
+	var uid: int = balls[j][2]
+	var turns := roundf(maxf(0.0, from_x - balls[j][1].x) / (PI * BAG_PX))  # whole turns, so it comes to rest the right way up
+	_launching += 1
+	await get_tree().create_timer(delay).timeout
+	if not is_instance_valid(ic) or ic.is_queued_for_deletion():
+		_launching -= 1
+		return
+	Audio.play("sfx_ball_roll", -9.0, randf_range(0.9, 1.1))
+	var goal_x: float = _bag_target.get(uid, balls[j][1]).x
+	var tw := ic.create_tween().set_parallel(true)
+	tw.tween_property(ic, "position:x", goal_x, t).from(from_x).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(ic, "rotation", -TAU * turns, t).from(0.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	await tw.finished
+	_launching -= 1
+	if not is_instance_valid(ic) or ic.is_queued_for_deletion():
+		return
+	ic.rotation = 0.0
+	ic.remove_meta("rolling")
+	ic.mouse_filter = Control.MOUSE_FILTER_STOP
+	ic.position = _bag_target.get(uid, ic.position)
+	Audio.play("sfx_ball_clack", -3.0 if j > 0 else -7.0, randf_range(0.93, 1.1))
+	if j > 0:  # the ball it hit rocks a little
+		var prev: ElementIcon = balls[j - 1][0]
+		if is_instance_valid(prev) and not prev.has_meta("rolling"):
+			var rock := prev.create_tween()
+			rock.tween_property(prev, "position:x", prev.position.x - 4.0, 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			rock.tween_property(prev, "position:x", prev.position.x, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+
 
 ## The spell row. With many spells the cards shrink to fit the screen; hovering one brings it back to full size.
 ## The lower block (spell row, chant, bag, Keeper, log) is laid out from the top; once the panels have their real sizes,
@@ -377,13 +816,20 @@ const BOTTOM_MARGIN := 20.0
 
 
 func _fit_bottom() -> void:
+	# (the panels are first laid out at their design spots and slid down once their real heights are known: keep them
+	# invisible until then, or the first frame shows them too high)
+	var movers := [_spell_row, _chant_panel, _bag_panel, _player_panel, _log]
+	for n in movers:
+		if n != null:
+			n.modulate.a = 0.0
 	await get_tree().process_frame
 	if not is_instance_valid(_bag_panel):
 		return
 	var dy := (size.y if size.y > 0.0 else 1080.0) - BOTTOM_MARGIN - (_bag_panel.position.y + _bag_panel.size.y)
-	for n in [_spell_row, _chant_panel, _bag_panel, _player_panel, _log]:
+	for n in movers:
 		if n != null:
 			n.position.y += dy
+			n.modulate.a = 1.0
 	_log.size.y = maxf(60.0, 1016.0 - _log.position.y)  # stop above the Menu button
 
 
@@ -461,22 +907,28 @@ func _refresh_all() -> void:
 	if _danger:
 		_danger.target = DangerVignette.strength(p.hp, p.max_hp)
 	_hp_label.text = "HP %d / %d" % [maxf(0, p.hp), p.max_hp]
-	# Shield isn't a status badge: it's the blue glass on the HP bar, and its amount goes beside your HP
+	# Shield isn't a status badge: it's the blue glass on the HP bar, and its amount goes beside your HP (its own small badge)
+	var has_pic := _shield_box.get_child_count() > 1
+	var shield_text := ""
 	if p.shield > 0.0:
-		_hp_label.text += "   Shield %d" % p.shield
+		shield_text = ("%d" if has_pic else "Shield %d") % p.shield
 	if p.lasting > 0.0:
-		_hp_label.text += "   Lasting %d" % p.lasting
+		shield_text += ("  Lasting %d" % p.lasting) if shield_text != "" else "Lasting %d" % p.lasting
+	_shield_label.text = shield_text
+	_shield_box.visible = shield_text != ""
 	_refresh_statuses()
 	_refresh_bottles()
 	_arts.update_charges(p)
-	for c in _next_row.get_children():
-		c.queue_free()
-	for d in p.next_draw:
-		var ic := ElementIcon.make(d.el, 44)
-		ic.temp = d.temp
-		_next_row.add_child(ic)
+	if not _circus_strips():
+		for c in _next_row.get_children():
+			c.queue_free()
+		for d in p.next_draw:
+			var ic := ElementIcon.make(d.el, 44)
+			ic.temp = d.temp
+			_next_row.add_child(ic)
 	_refresh_chant()
 	_refresh_stock()
+	_sync_tube()  # (after the stock: at a new turn the stock takes the waiting balls out first)
 	var chant := _chant_string()
 	var pv := {}
 	if p.confuse_turns <= 0:
@@ -627,6 +1079,7 @@ func _refresh_chant() -> void:
 	if p.confuse_turns > 0 and phase == "build":
 		note += "   ·   CONFUSED: this chant will be read backwards, and there is no preview"
 	_chant_note.text = note
+	_chant_note.tooltip_text = note
 
 
 ## The bag holds the elements that are not in the chant. Each element keeps its own icon (found by its uid), so
@@ -641,7 +1094,7 @@ func _refresh_stock() -> void:
 	var shown: Array = []
 	var live := {}
 	for i in order:
-		if i in chant_idx or p.stock[i].uid == held_uid:
+		if i in chant_idx or p.stock[i].uid == held_uid or _cast_uids.has(p.stock[i].uid):
 			continue
 		shown.append(i)
 		live[p.stock[i].uid] = true
@@ -650,15 +1103,18 @@ func _refresh_stock() -> void:
 			_bag_icons[uid].queue_free()
 			_bag_icons.erase(uid)
 			_bag_target.erase(uid)
+	var circus := _circus_strips()
 	var per_row := maxi(1, int((BAG_W + BAG_GAP) / (BAG_PX + BAG_GAP)))
 	var rows := maxi(1, ceili(float(shown.size()) / per_row))
-	_stock_row.custom_minimum_size.y = rows * (BAG_PX + BAG_GAP) - BAG_GAP
+	if not circus:
+		_stock_row.custom_minimum_size.y = rows * (BAG_PX + BAG_GAP) - BAG_GAP
+	var rolled: Array = []  # Cirus: the Essence that are new this time and roll out of the tube
 	var delay := _bag_delay
 	_bag_delay = 0.0
 	for k in shown.size():
 		var s: Dictionary = p.stock[shown[k]]
 		var uid: int = s.uid
-		var target := Vector2((k % per_row) * (BAG_PX + BAG_GAP), (k / per_row) * (BAG_PX + BAG_GAP))
+		var target := _bag_slot(k, shown.size()) if circus else Vector2((k % per_row) * (BAG_PX + BAG_GAP), (k / per_row) * (BAG_PX + BAG_GAP))
 		_bag_target[uid] = target
 		var ic: ElementIcon = _bag_icons.get(uid)
 		var fresh := ic == null
@@ -681,7 +1137,8 @@ func _refresh_stock() -> void:
 		ic.frozen = s.frozen
 		ic.hexed = s.hexed
 		ic.dim = phase != "build"
-		ic.modulate.a = 0.0 if _flying.has(uid) else 1.0
+		if not ic.has_meta("rolling"):
+			ic.modulate.a = 0.0 if _flying.has(uid) else 1.0
 		var tip: String = Elements.NAMES[s.el]
 		if s.temp:
 			tip += " (conjured: fades at the end of this turn)"
@@ -692,12 +1149,21 @@ func _refresh_stock() -> void:
 		ic.tooltip_text = tip
 		ic.queue_redraw()
 		if fresh:
+			var brand_new := not _bag_seen.has(uid)
 			if not _flying.has(uid):
-				ic.scale = Vector2(0.3, 0.3)
-				ic.create_tween().tween_property(ic, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+				if circus and brand_new:
+					ic.modulate.a = 0.0
+					ic.set_meta("rolling", true)  # (_tube_launch takes it from here)
+					rolled.append([ic, target, uid])
+				else:
+					ic.scale = Vector2(0.3, 0.3)
+					ic.create_tween().tween_property(ic, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			_bag_seen[uid] = true
 			ic.set_meta("goal", target)
 		elif ic.get_meta("goal", Vector2(-1, -1)) != target:
 			ic.set_meta("goal", target)
+			if ic.has_meta("rolling"):
+				continue  # (it is on its way: _roll_ball puts it on its final spot)
 			if ic.has_meta("slide"):
 				var old: Tween = ic.get_meta("slide")
 				if old != null and old.is_valid():
@@ -707,6 +1173,8 @@ func _refresh_stock() -> void:
 				tw.tween_interval(delay)
 			tw.tween_property(ic, "position", target, BAG_MOVE).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 			ic.set_meta("slide", tw)
+	if not rolled.is_empty():
+		_tube_launch(rolled)
 
 
 func _stock_index(uid: int) -> int:
@@ -731,6 +1199,7 @@ func _bag_target_center(uid: int) -> Vector2:
 
 const CHANT_RINGS := 8  # empty rings shown while the chant is short (the chant itself has no length limit)
 const CHANT_W := 700.0  # room for the chant: a longer chant squeezes its Essence together, even overlapping
+const CHANT_W_CIRCUS := 540.0  # (the Cirus strip puts the buttons on the same row)
 
 
 ## How many empty rings to show: 8, or fewer under a Toll (its cap).
@@ -745,7 +1214,7 @@ func _chant_layout(count := -1) -> Vector2:
 		count = chant_idx.size() if phase == "build" else fight.chant.size()
 	var n := maxi(_chant_rings(), count)
 	var px := 58.0 if n <= 10 else 50.0
-	var step := minf(px + 6.0, (CHANT_W - px) / maxf(1.0, n - 1))
+	var step := minf(px + 6.0, ((CHANT_W_CIRCUS if _circus_strips() else CHANT_W) - px) / maxf(1.0, n - 1))
 	return Vector2(px, step - px)
 
 
@@ -1190,7 +1659,8 @@ func _add_element(el: String) -> void:
 	var pick := -1
 	for i in fight.player.stock.size():
 		var s: Dictionary = fight.player.stock[i]
-		if s.el != el or s.frozen or i in chant_idx:
+		var rolling: Control = _bag_icons.get(s.uid)
+		if s.el != el or s.frozen or i in chant_idx or (rolling != null and is_instance_valid(rolling) and rolling.has_meta("rolling")):
 			continue
 		if pick == -1 or (s.temp and not fight.player.stock[pick].temp) or (fight.player.stock[pick].hexed and not s.hexed):
 			pick = i
@@ -1353,9 +1823,13 @@ func _on_cast() -> void:
 	end_confirm = false
 	var idx := chant_idx.duplicate()
 	chant_idx.clear()
+	_cast_uids.clear()
+	for i in idx:
+		_cast_uids[fight.player.stock[i].uid] = true
 	phase = "spells"
 	_refresh_all()
 	await fight.cast_chant(idx)
+	_cast_uids.clear()
 	_sync_views()
 	_refresh_all()
 	tut.emit("chanted", fight.chant_string())
@@ -1762,8 +2236,12 @@ func _refresh_bottles() -> void:
 	for c in _bottle_row.get_children():
 		c.queue_free()
 	var bs: Array = fight.player.bottles
-	for i in maxi(run.bottle_slots() if run else Bottles.BASE_SLOTS, bs.size()):
-		var chip := BottleChip.make(bs[i] if i < bs.size() else "", i, true)
+	# painted themes: only the bottles you carry (the frame behind them grows and shrinks with them); Default shows the empty slots too
+	var n_shown: int = bs.size() if UiSkin.is_new() else maxi(run.bottle_slots() if run else Bottles.BASE_SLOTS, bs.size())
+	var chip_px := 64.0 if n_shown <= 3 else (52.0 if n_shown == 4 else 44.0)  # (five bottles must not push the frame out of the panel, nor squeeze the HP text)
+	_bottle_row.add_theme_constant_override("separation", 6 if n_shown <= 3 else 0)
+	for i in n_shown:
+		var chip := BottleChip.make(bs[i] if i < bs.size() else "", i, true, chip_px)
 		chip.used.connect(_on_bottle)
 		_bottle_row.add_child(chip)
 
@@ -2312,7 +2790,7 @@ func _end_steal_drag(at: Vector2) -> void:
 	ghost.position = at - ghost.size / 2.0 - _fx.global_position
 	_fx.add_child(ghost)
 	if bag.has_point(at):
-		var to := _stock_row.global_position + Vector2(minf(_stock_row.size.x - 52.0, _bag_icons.size() * (BAG_PX + BAG_GAP)), 0) - _fx.global_position
+		var to := _stock_row.global_position + _bag_slot(_bag_icons.size(), _bag_icons.size() + 1) - _fx.global_position
 		var tw := ghost.create_tween()
 		tw.tween_property(ghost, "position", to, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.tween_callback(ghost.queue_free)
@@ -2836,6 +3314,7 @@ func _anim(ev: Dictionary) -> void:
 			_refresh_all()
 			await _wait(0.25)
 		"intents_shown":
+			_turn_batch_until = Time.get_ticks_msec() + 4000  # (Cirus: the Essence of the new turn come out of the tube)
 			Audio.play("enemy_intent_show")
 			_sync_views()
 			_refresh_all()
@@ -2853,6 +3332,7 @@ func _anim(ev: Dictionary) -> void:
 			_refresh_all()
 			await _wait(0.15)
 		"freeze_stock":
+			await _rolls_done()
 			Audio.play("sfx_freeze_apply")
 			_refresh_all()
 			await _wait(0.15)
@@ -3696,6 +4176,10 @@ func _spell_fly(ev: Dictionary) -> void:
 	elif op in SpellFx.CHANT_OPS:
 		dests.append(_area(_chant_row))
 	elif op == "draw":
+		if _circus_strips() and ev.eff.get("when", "next") != "now":
+			var stash_wait := _stash_flight(ev, from)  # (Cirus: the Essence slips in behind the tube)
+			await _wait(stash_wait)
+			return
 		dests = _draw_slots(ev)
 	var player := _player_panel.get_global_rect().get_center()
 	var wait := SpellFx.play(_fx, op, ev.eff, from, dests, col, player, _shake, _hitstop)
@@ -3719,11 +4203,15 @@ func _draw_slots(ev: Dictionary) -> Array:
 		if now:
 			px = BAG_PX
 			var k := fight.player.stock.size() + i
-			at = _stock_row.global_position + Vector2(minf(_stock_row.size.x - px, k * (BAG_PX + BAG_GAP)), 0) + Vector2(px, px) / 2.0
+			at = _stock_row.global_position + _bag_slot(k, k + 1) + Vector2(px, px) / 2.0
 		else:
 			px = 44.0
 			var k := fight.player.next_draw.size() + i
-			at = _next_row.global_position + Vector2(k * (px + 4.0), 0) + Vector2(px, px) / 2.0
+			if _circus_strips():
+				px = BAG_PX
+				at = _stock_row.global_position + _tube_pos(k, k + 1) + Vector2(px, px) / 2.0
+			else:
+				at = _next_row.global_position + Vector2(k * (px + 4.0), 0) + Vector2(px, px) / 2.0
 		out.append({"body": at, "row": at, "el": els[i], "px": px})
 	return out
 
@@ -3918,6 +4406,8 @@ func _enemy_attack(ev: Dictionary) -> void:
 func _enemy_move_fx(ev: Dictionary) -> void:
 	var v: EnemyView = _views.get(ev.enemy)
 	var kind: String = ev.kind
+	if kind in ["freeze", "hex", "invert", "steal", "drain_essence"]:
+		await _rolls_done()  # (it lands on your Essence: wait until they have stopped rolling)
 	var look: Array = IntentChip.LOOK.get(kind, ["✦", Color.WHITE])
 	var info: Array = IntentChip.INFO.get(kind, [kind.capitalize(), ""])
 	if kind in Fight.AT_PLAYER and v:
