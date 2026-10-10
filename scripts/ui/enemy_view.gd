@@ -114,7 +114,7 @@ func setup(e: EnemyState, f: Fight) -> void:
 func _status_bbcode(text: String) -> String:
 	var art: String = {"Burn": "intent_burn", "Poison": "intent_poison", "Frozen": "intent_freeze"}.get(text.get_slice(" ", 0), "")
 	if art != "" and UiSkin.tex(art) != null:
-		return "[img=22]%s%s.png[/img] %s" % [UiSkin.DIR, art, Keywords.colorize(text)]
+		return "[img=22]%s[/img] %s" % [UiSkin.path_of(art), Keywords.colorize(text)]
 	return Keywords.colorize(text)
 
 

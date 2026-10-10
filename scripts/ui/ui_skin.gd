@@ -6,8 +6,11 @@ extends RefCounted
 ## A piece of art that's missing just returns null, and the caller keeps drawing in code.
 
 const DIR := "res://assets/ui/new/"
-const OPTIONS := ["default", "new"]
-const LABELS := ["Default", "New"]
+## Cirus (circus tent) theme: the same file names as the New set, in their own folder. A picture that isn't there yet falls
+## back to the New one, so the theme can be filled in piece by piece.
+const CIRCUS_DIR := "res://assets/ui/circus/"
+const OPTIONS := ["default", "new", "circus"]
+const LABELS := ["Default", "New", "Cirus"]
 
 static var _tex := {}
 static var _paths := {}  # name -> res:// path ("" = there is none)
@@ -19,12 +22,19 @@ const FOLDERS := ["panels", "buttons", "essence", "intent", "status", "icons", "
 const ARTIFACT_ART := {"scholar_quill": "scholars_quill"}
 
 
+## True for every painted theme (New and Cirus): the code paths that ask for art all key off this.
 static func is_new() -> bool:
-	return SaveManager.setting("theme", "new") == "new"
+	return SaveManager.setting("theme", "new") != "default"
+
+
+static func is_circus() -> bool:
+	return SaveManager.setting("theme", "new") == "circus"
 
 
 static func set_theme(id: String) -> void:
 	SaveManager.set_setting("theme", id)
+	_tex.clear()  # the same name now means another picture
+	_paths.clear()
 	UiTheme.reset()  # the shared Theme is rebuilt for the next screen
 
 
@@ -32,11 +42,15 @@ static func set_theme(id: String) -> void:
 static func path_of(name: String) -> String:
 	if not _paths.has(name):
 		var found := ""
-		for folder in FOLDERS:
-			for ext in [".png", ".jpg"]:  # (the room backgrounds are jpg: big, flat-coloured pictures)
-				var p: String = DIR + folder + "/" + name + ext
-				if ResourceLoader.exists(p):
-					found = p
+		var roots: Array = [CIRCUS_DIR, DIR] if is_circus() else [DIR]
+		for root in roots:
+			for folder in FOLDERS:
+				for ext in [".png", ".jpg"]:  # (the room backgrounds are jpg: big, flat-coloured pictures)
+					var p: String = root + folder + "/" + name + ext
+					if ResourceLoader.exists(p):
+						found = p
+						break
+				if found != "":
 					break
 			if found != "":
 				break
