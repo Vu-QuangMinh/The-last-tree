@@ -25,6 +25,9 @@ var pick_mode := false  # choosing an element to remove (Pluck)
 var keep_big := false  # a spell that picks several Essence is still being cast: keep the row enlarged between picks
 var paint_mode := false  # with pick_mode: Expose's brush (armoured Essence can be painted, Any ones can't)
 var pick_i := -1
+var _spell_row: HBoxContainer  # the Invoker's conjured spells
+var _spell_key := ""
+var _spell_cards: Array = []
 var _hp_icons: Array = []  # the orbs currently shown, left to right
 
 
@@ -34,6 +37,17 @@ func setup(e: EnemyState, f: Fight) -> void:
 	custom_minimum_size = Vector2(300, 470)
 	if enemy != null and enemy.has_passive("briar_walls"):
 		custom_minimum_size.x = 640.0  # room for her two hedges beside her own Essence
+	if enemy != null and enemy.def.get("invokes", false):
+		custom_minimum_size.x = 430.0  # room for his 3 spell cards above him
+		_spell_row = HBoxContainer.new()
+		_spell_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		_spell_row.add_theme_constant_override("separation", 6)
+		_spell_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_spell_row)
+		var gap := Control.new()
+		gap.custom_minimum_size = Vector2(0, 26)  # (clear of his crown)
+		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(gap)
 	alignment = BoxContainer.ALIGNMENT_END
 	add_theme_constant_override("separation", 4)
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -85,6 +99,13 @@ func setup(e: EnemyState, f: Fight) -> void:
 	creature.offset_top = 22  # models stay below the intent bubble
 	holder.add_child(creature)
 	# the intent bubble sits low, just above the model's head (added after the model, so it's drawn over it)
+	if e.def.has("tool"):
+		# a Handyman hand: its tool, held up in front of it
+		var tool := UiTheme.label(e.def.tool, 54, Color.WHITE)
+		tool.position = Vector2(170, 95)
+		tool.rotation = -0.3
+		tool.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(tool)
 	_intent_slot.position = Vector2(0, INTENT_Y)
 	_intent_slot.size = Vector2(300, 46)
 	holder.add_child(_intent_slot)
@@ -130,6 +151,9 @@ func anchor_point() -> Vector2:
 
 ## preview: the dict from Fight.preview (or {} for none).
 func refresh(preview: Dictionary) -> void:
+	creature.modulate = Color(1, 1, 1, 0.4) if enemy.knocked else Color.WHITE
+	if _spell_row != null:
+		_refresh_invoked(preview.get("invoke", {}).get(enemy, []))
 	var e := enemy
 	for c in _intent_slot.get_children():
 		c.queue_free()
@@ -231,6 +255,44 @@ func _make_clickable(c: Control, index: int) -> void:
 
 
 ## The intent bubble (null if it has none this turn).
+## The Invoker's 3 spells as small cards; the ones the current chant would set off glow gold.
+const INVOKED_SCALE := 0.5
+
+
+func _refresh_invoked(picks: Array) -> void:
+	var key := ",".join(enemy.conjured.map(func(s): return s.id + ":" + s.pattern))
+	if key != _spell_key:
+		_spell_key = key
+		for c in _spell_row.get_children():
+			c.queue_free()
+		_spell_cards.clear()
+		for sp in enemy.conjured:
+			var holder := Control.new()
+			holder.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H) * INVOKED_SCALE
+			holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var card := SpellCard.make(sp)
+			card.size = Vector2(SpellCard.W, SpellCard.H)
+			card.base_scale = INVOKED_SCALE
+			card.scale = Vector2.ONE * INVOKED_SCALE
+			holder.add_child(card)
+			_spell_row.add_child(holder)
+			_spell_cards.append(card)
+	for i in _spell_cards.size():
+		var card: SpellCard = _spell_cards[i]
+		card.fires = 1 if i in picks else 0
+		card.refresh()
+
+
+## The Invoker casts one of his spells: its card flashes.
+func flash_invoked(i: int) -> void:
+	if i < 0 or i >= _spell_cards.size() or not is_instance_valid(_spell_cards[i]):
+		return
+	var card: SpellCard = _spell_cards[i]
+	var tw := card.create_tween()
+	tw.tween_property(card, "modulate", Color(2.0, 1.8, 1.2), 0.12)
+	tw.tween_property(card, "modulate", Color.WHITE, 0.4)
+
+
 func intent_chip() -> Control:
 	for c in _intent_slot.get_children():
 		if c is IntentChip and not c.is_queued_for_deletion():

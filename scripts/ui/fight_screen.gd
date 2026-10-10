@@ -117,6 +117,7 @@ var _cast_btn: Button
 var _end_btn: Button
 var _clear_btn: Button
 var _fx: Control
+var _danger: DangerVignette  # the red edge at low HP, and the red flash of a hit
 var _arrow: Control
 var _player_panel: PanelContainer
 var _pause_overlay: Control
@@ -344,6 +345,9 @@ func _ready() -> void:
 	_fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_fx)
+	_danger = DangerVignette.new()
+	_danger.z_index = 85
+	add_child(_danger)
 	_arrow = Control.new()
 	_arrow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -424,7 +428,7 @@ func _card_zoom(card: SpellCard, big: bool) -> void:
 
 
 func _sync_views() -> void:
-	var live := fight.enemies.filter(func(e): return not e.is_dead())
+	var live := fight.enemies.filter(func(e): return not e.is_dead() or e.knocked)  # (a knocked-out hand stays in view)
 	var same := live.size() == _views.size() and live.all(func(e): return _views.has(e))
 	if same:
 		for i in live.size():
@@ -453,8 +457,15 @@ func _chant_string() -> String:
 func _refresh_all() -> void:
 	var p := fight.player
 	_info.text = "Act %d · Floor %d · Turn %d" % [run.act, run.floor_no(), fight.turn]
-	_hp_bar.set_values(p.hp, p.max_hp, p.shield)
+	_hp_bar.set_values(p.hp, p.max_hp, p.shield + p.lasting)
+	if _danger:
+		_danger.target = DangerVignette.strength(p.hp, p.max_hp)
 	_hp_label.text = "HP %d / %d" % [maxf(0, p.hp), p.max_hp]
+	# Shield isn't a status badge: it's the blue glass on the HP bar, and its amount goes beside your HP
+	if p.shield > 0.0:
+		_hp_label.text += "   Shield %d" % p.shield
+	if p.lasting > 0.0:
+		_hp_label.text += "   Lasting %d" % p.lasting
 	_refresh_statuses()
 	_refresh_bottles()
 	_arts.update_charges(p)
@@ -473,6 +484,13 @@ func _refresh_all() -> void:
 			pv = fight.preview(chant)
 		elif phase == "spells" and _step_pos < 0 and not _released:
 			pv = fight.preview(fight.chant_string(), false)
+	if phase == "build" and not pv.has("invoke"):
+		# nothing chanted yet: the Invoker still shows which of his spells he'd cast (the closest)
+		var inv := {}
+		for e in fight.alive():
+			if e.def.get("invokes", false):
+				inv[e] = fight.invoke_picks(e, "")
+		pv["invoke"] = inv
 	for e in _views:
 		var v: EnemyView = _views[e]
 		var idx := fight.enemies.find(e)
@@ -484,9 +502,15 @@ func _refresh_all() -> void:
 		card.state = ""
 		card.state_text = ""
 		card.ignited = p.ignited.has(s.id)
+		card.cracks = fight.hammer_hits.get(s.id, 0)
 		if p.used_powers.has(s.id):
 			card.state = "used"
 			card.state_text = "Gone for this fight" if s.get("fleeting", false) else "Power in effect"
+		elif p.cooldowns.has(s.id) and p.cooldowns[s.id] > 0 and not fight.charges.has(s.id):
+			# (the turn after it's cast counts as 1; the turn it's cast in shows the full wait)
+			var wait: int = p.cooldowns[s.id] - (1 if fight.used.has(s.id) else 0)
+			card.state = "cooldown"
+			card.state_text = "COOLDOWN\n%d turn%s" % [maxi(1, wait), "" if maxi(1, wait) == 1 else "s"]
 		elif p.silenced.has(s.id):
 			card.state = "silenced"
 			card.state_text = "SILENCED\n%d turn%s" % [p.silenced[s.id], "" if p.silenced[s.id] == 1 else "s"]
@@ -495,6 +519,8 @@ func _refresh_all() -> void:
 			card.lock_pattern = p.locks[s.id]
 		card.fires = pv.get("spells", {}).get(s.id, 0) if phase == "build" else 0
 		card.charges = fight.charges.get(s.id, 0) if phase == "spells" else 0
+		if phase == "build" and fight.stored.has(s.id) and fight.usable_spells().has(s):
+			card.charges = 1  # stored: it looks awake (wobbling, shining), though it can only be cast once you've chanted
 		if s.get("anti", false):
 			# an anti-spell comes alive with the chant, unless the chant contains its pattern (that breaks it)
 			var broken: bool = card.fires > 0 if phase == "build" else fight.anti_broken.has(s.id)
@@ -519,7 +545,7 @@ func _refresh_all() -> void:
 		_cast_btn.text = UiTheme.hk("Chant", "Enter")
 		_cast_btn.disabled = busy or chant_idx.is_empty()
 	else:
-		_cast_btn.text = UiTheme.hk("Release" if not end_confirm else "Fizzle & Release", "E")
+		_cast_btn.text = UiTheme.hk("Release", "E")
 		_cast_btn.disabled = busy or aiming or move_view != null or pick_view != null or chant_mode != ""
 	var live_spells := fight.charges.size() > 0 and phase == "spells"
 	if not aiming and not busy and move_view == null and pick_view == null and chant_mode == "":
@@ -858,6 +884,7 @@ func note_progress() -> void:
 
 func _exit_tree() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE  # never leave the pointer hidden
+	Engine.time_scale = 1.0  # never leave the game frozen by a hit-stop
 
 
 func _input(ev: InputEvent) -> void:
@@ -1342,6 +1369,11 @@ func _on_cast() -> void:
 
 
 func _on_card_clicked(card: SpellCard) -> void:
+	if phase == "build" and card.charges > 0 and not busy:
+		# a stored spell: awake, but spells are cast after the chant
+		_float_text("Chant first", card.global_position + Vector2(card.size.x * card.scale.x / 2.0 - 60, -10), Color(1, 0.9, 0.55))
+		Audio.play("release_armour_block", -6.0)
+		return
 	if busy or aiming or phase != "spells" or card.charges <= 0 or not _allowed("cast", card.spell.id):
 		return
 	var spell: Dictionary = card.spell
@@ -1399,12 +1431,7 @@ func _on_end_turn() -> void:
 		return
 	if not _allowed("release" if phase == "spells" else "pass"):
 		return
-	if phase == "spells" and fight.has_valid_move() and not end_confirm:
-		end_confirm = true
-		_refresh_all()
-		_prompt.text = "%d spell charge%s still alive. Press Release again to let them fizzle." % [_charge_count(), "" if _charge_count() == 1 else "s"]
-		return
-	if phase == "spells":
+	if phase == "spells":  # (spells still alive aren't lost: they're stored for your next chant)
 		await _damage_step()
 		return
 	# before chanting: pass the turn and keep your elements
@@ -1528,8 +1555,6 @@ func _seed_revival() -> void:
 func _status_badges() -> Array:
 	var p := fight.player
 	var out := []
-	if p.shield > 0.0:
-		out.append(["🛡 Shield %d" % p.shield, Color(0.3, 0.65, 1.0), "shield"])
 	if p.aegis > 0:
 		out.append(["✨ Aegis %d" % p.aegis, Color(1.0, 0.8, 0.25), "aegis"])
 	var th := p.thorns_turn + p.passive("thorns")
@@ -1547,12 +1572,16 @@ func _status_badges() -> Array:
 		out.append(["🙈 Blind %d" % p.blind_turns, Color(0.7, 0.72, 0.78), "blind"])
 	if p.frail_turns > 0:
 		out.append(["💔 Frail %d" % p.frail_turns, Color(1.0, 0.4, 0.55), "frail"])
+	if p.vulnerable > 0:
+		out.append(["🎯 Vulnerable %d" % p.vulnerable, Color(1.0, 0.45, 0.35), "vulnerable"])
 	if p.brittle_turns > 0:
 		out.append(["🧊 Brittle %d" % p.brittle_turns, Color(0.55, 0.75, 0.95), "brittle"])
 	if p.toll > 0:
 		out.append(["🔔 Toll %d" % p.toll, Color(1.0, 0.6, 0.2), "lock"])
 	if p.overload > 0:
 		out.append(["⚡ Overload %d" % p.overload, Color(1.0, 0.45, 0.3), "overload"])
+	if p.disarmed_turns > 0:
+		out.append(["🚫 Disarmed", Color(1.0, 0.55, 0.45), "disarmed"])
 	if not p.silenced.is_empty():
 		out.append(["🤐 Silenced", Color(0.8, 0.45, 1.0), "silence"])
 	# every Power you've cast this fight: a badge for the rest of it (hover: what it does)
@@ -2226,18 +2255,33 @@ func _fire_shot(v: EnemyView, index: int) -> void:
 	var col: Color = Elements.COLORS.get(v.enemy.elements[index], Color.WHITE)
 	var fx := Vfx.make(_fx, 80)
 	fx.shaker = _shake
-	fx.glow(at, 90, Color(1, 0.95, 0.75, 1.0), 0.12)
-	fx.flare(at, 180, Color(1, 0.85, 0.4, 0.95), 0.14)
-	fx.burst(at, 16, Color(1, 0.8, 0.35), Vector2(250, 650), Vector2(0.1, 0.25), Vector2(3, 6))
-	fx.ring(at, 6, 40, Color(1, 0.9, 0.6), 0.18, 4.0)
-	var hole := fx.part(at, Vector2.ZERO, Color(0.05, 0.03, 0.03, 0.95), 0.7, 9.0, Vfx.SMOKE)
-	hole.size1 = 9.0
+	fx.stopper = _hitstop
+	# the tracer: a white-hot streak from below the screen straight into the Essence, gone in a blink
+	var from := at + Vector2(randf_range(-120, 120), 900)
+	var tracer := fx.beam(from, at, Color(1, 0.92, 0.7, 0.95), 0.09, 5.0)
+	tracer.w0 = 2.0
+	fx.beam(from, at, Color(col, 0.5), 0.14, 14.0)
+	# the hit: muzzle-bright flash, a cross-shaped glint, a crack of shockwave
+	fx.glow(at, 150, Color(1, 0.97, 0.85, 1.0), 0.1)
+	fx.glow(at, 230, Color(col, 0.75), 0.4)
+	fx.flare(at, 300, Color(1, 0.88, 0.5, 0.95), 0.16)
+	fx.ring(at, 6, 95, Color(1, 0.95, 0.75), 0.22, 6.0)
+	fx.ring(at, 10, 150, col, 0.38, 8.0, 0.03)
+	fx.burst(at, 24, Color(1, 0.85, 0.4), Vector2(350, 900), Vector2(0.1, 0.25), Vector2(3, 6))
+	var hole := fx.part(at, Vector2.ZERO, Color(0.05, 0.03, 0.03, 0.95), 0.7, 11.0, Vfx.SMOKE)
+	hole.size1 = 11.0
 	hole.hold = 0.6
-	for s in fx.burst(at, 10, col.darkened(0.2), Vector2(120, 320), Vector2(0.4, 0.7), Vector2(4, 8), Vfx.SHARD):
-		s.grav = Vector2(0, 900)
-		s.spin = randf_range(-12, 12)
+	# the Essence breaks apart in its own colour, blown out the far side
+	for s in fx.burst(at, 18, col, Vector2(200, 560), Vector2(0.5, 0.85), Vector2(6, 12), Vfx.SHARD, 0.0, PI * 0.9, -PI / 2.0):
+		s.grav = Vector2(0, 1100)
+		s.spin = randf_range(-14, 14)
 		s.size1 = s.size0
-	fx.shake(6.0)
+	for i in 5:
+		var sm := fx.part(at + Vector2(randf_range(-8, 8), 0), Vector2(randf_range(-40, 40), -randf_range(40, 110)), Color(0.12, 0.1, 0.1, 0.45), randf_range(0.6, 0.9), 8.0, Vfx.SMOKE)
+		sm.size1 = 30.0
+		sm.drag = 1.5
+	fx.hitstop(0.07)
+	fx.shake(9.0)
 	_shot_fired = true
 
 
@@ -2825,6 +2869,18 @@ func _anim(ev: Dictionary) -> void:
 		"charge_tick":
 			_refresh_all()
 			await _wait(0.3)
+		"hourglass_dust":
+			await _hourglass_dust(ev.enemy)
+		"hammer":
+			await _hammer_fx(ev)
+		"invoke":
+			var iv: EnemyView = _views.get(ev.enemy)
+			if iv:
+				iv.flash_invoked(ev.idx)
+			Audio.play("spell_glow")
+			await _wait(0.45)
+		"speech":
+			await _speech(ev.enemy, ev.text)
 		"ignite_spell":
 			Audio.play("sfx_burn_apply")
 			_refresh_all()
@@ -3131,6 +3187,171 @@ var _choosing_el := false
 
 ## The screen dims; Fire, Water and Air float softly out of the card and shine. Pick one (click, or F / W / A):
 ## the other two drift back into the card and vanish, and the chosen one shakes violently, cracks and shatters.
+## A charge goes off: its hourglass runs out and crumbles to dust (0.75 s), then the hit.
+func _hourglass_dust(e: EnemyState) -> void:
+	var v: EnemyView = _views.get(e)
+	var chip: Control = v.intent_chip() if v else null
+	if chip == null:
+		return
+	# a picture of the bubble (a copy, drawn on its own), which then turns to dust in its place (see DustCloud)
+	var pad := Vector2(4, 4)
+	var vp := SubViewport.new()
+	vp.size = Vector2i(chip.size + pad * 2.0)
+	vp.transparent_bg = true
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(vp)
+	var copy := IntentChip.make(e)
+	copy.position = pad
+	copy.size = chip.size
+	vp.add_child(copy)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var img := vp.get_texture().get_image()
+	vp.queue_free()
+	chip.modulate.a = 0.0
+	DustCloud.crumble(_fx, img, chip.global_position - pad * chip.get_global_transform().get_scale(), chip.get_global_transform().get_scale().x, 0.75)
+	Audio.play("sfx_dust")
+	await _wait(0.75)
+
+
+## The Hammer Hand strikes a spell: a thump, the card jolts and cracks. On the last hit it shatters like glass.
+func _hammer_fx(ev: Dictionary) -> void:
+	var card := _card_for(ev.id)
+	var v: EnemyView = _views.get(ev.enemy)
+	if card and v:
+		var from := v.creature.global_position + v.creature.size / 2.0
+		var to := card.global_position + card.size * card.scale / 2.0
+		Comet.launch(_fx, from, to, Color(0.75, 0.62, 0.5))
+		await _wait(0.4)
+	Audio.play("sfx_hammer_thump")
+	_shake(8.0)
+	if card == null:
+		return
+	if ev.broken:
+		await _shatter_card(card)
+		_build_spells()
+		_refresh_all()
+		return
+	card.cracks = ev.hits
+	card.refresh()
+	var home := card.position
+	var tw := card.create_tween()
+	tw.tween_property(card, "position", home + Vector2(0, 10), 0.05)
+	tw.tween_property(card, "position", home, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	Vfx.make(_fx, 70).burst(card.global_position + card.size * card.scale / 2.0, 10, Color(0.9, 0.95, 1.0), Vector2(60, 200), Vector2(0.2, 0.45), Vector2(2, 4), Vfx.SHARD)
+	await _wait(0.35)
+
+
+## A spell card breaks like glass: a picture of it is cut into shards (a Delaunay triangulation, denser around the
+## impact) that burst out, tumble and fall, then fade. The sound of breaking glass, then the pieces clinking down.
+func _shatter_card(card: SpellCard) -> void:
+	var size := Vector2(SpellCard.W, SpellCard.H)
+	var pad := Vector2(8, 8)
+	var vp := SubViewport.new()
+	vp.size = Vector2i(size + pad * 2.0)
+	vp.transparent_bg = true
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(vp)
+	var copy := SpellCard.make(card.spell)
+	copy.is_zoom_copy = true
+	copy.cracks = 2
+	copy.position = pad
+	vp.add_child(copy)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var tex := ImageTexture.create_from_image(vp.get_texture().get_image())
+	vp.queue_free()
+	var origin := card.global_position - pad * card.scale
+	var sc := card.scale
+	card.modulate.a = 0.0
+	Audio.play("sfx_glass_break")
+	# the cut: corners, edge points, and more points near the impact
+	var impact := pad + size * Vector2(randf_range(0.35, 0.65), randf_range(0.35, 0.6))
+	var pts := PackedVector2Array([pad, pad + Vector2(size.x, 0), pad + size, pad + Vector2(0, size.y)])
+	for i in 6:
+		pts.append(pad + Vector2(size.x * randf(), 0))
+		pts.append(pad + Vector2(size.x * randf(), size.y))
+	for i in 3:
+		pts.append(pad + Vector2(0, size.y * randf()))
+		pts.append(pad + Vector2(size.x, size.y * randf()))
+	for i in 10:
+		pts.append(pad + Vector2(randf() * size.x, randf() * size.y))
+	for i in 8:
+		pts.append(impact + Vector2.from_angle(randf() * TAU) * randf_range(8, 45))
+	var tris := Geometry2D.triangulate_delaunay(pts)
+	var shards := []
+	for t in range(0, tris.size(), 3):
+		var a := pts[tris[t]]
+		var b := pts[tris[t + 1]]
+		var c := pts[tris[t + 2]]
+		var mid := (a + b + c) / 3.0
+		var poly := Polygon2D.new()
+		poly.texture = tex
+		poly.polygon = PackedVector2Array([a - mid, b - mid, c - mid])
+		poly.uv = PackedVector2Array([a, b, c])
+		poly.position = origin + mid * sc
+		poly.scale = sc
+		poly.z_index = 60
+		_fx.add_child(poly)
+		var out := (mid - impact).normalized() if mid.distance_to(impact) > 1.0 else Vector2.UP
+		shards.append({"n": poly, "p0": poly.position, "v": out * randf_range(90, 260) + Vector2(0, randf_range(-220, -60)),
+			"w": randf_range(-9.0, 9.0)})
+	var dur := 1.1
+	var t0 := Time.get_ticks_msec() / 1000.0
+	var clinks := [0.32, 0.5, 0.7]
+	while true:
+		var t := Time.get_ticks_msec() / 1000.0 - t0
+		if not clinks.is_empty() and t >= clinks[0]:
+			clinks.pop_front()
+			Audio.play("sfx_glass_clank", -4.0, randf_range(0.85, 1.25))
+		for sh in shards:
+			var n: Polygon2D = sh.n
+			n.position = sh.p0 + sh.v * t + Vector2(0, 900.0) * t * t * 0.5
+			n.rotation = sh.w * t
+			n.modulate.a = clampf((dur - t) / 0.4, 0.0, 1.0)
+		if t >= dur:
+			break
+		await get_tree().process_frame
+	for sh in shards:
+		sh.n.queue_free()
+
+
+## An enemy says something: a speech bubble over its head for a moment (the Invoker's Quas / Wex / Exort).
+func _speech(e: EnemyState, text: String) -> void:
+	var v: EnemyView = _views.get(e)
+	if v == null or not is_instance_valid(v):
+		return
+	var bubble := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(1, 0.98, 0.92)
+	sb.border_color = Color(0.35, 0.2, 0.45)
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(18)
+	sb.content_margin_left = 16
+	sb.content_margin_right = 16
+	sb.content_margin_top = 6
+	sb.content_margin_bottom = 6
+	bubble.add_theme_stylebox_override("panel", sb)
+	bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bubble.z_index = 90
+	var l := UiTheme.label(text, 30, Color(0.3, 0.12, 0.4))
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bubble.add_child(l)
+	_fx.add_child(bubble)
+	await get_tree().process_frame
+	var head := v.creature.global_position + Vector2(v.creature.size.x * 0.75, 10.0)
+	bubble.global_position = head - Vector2(0, bubble.size.y)
+	bubble.pivot_offset = Vector2(0, bubble.size.y)
+	bubble.scale = Vector2(0.3, 0.3)
+	var tw := bubble.create_tween()
+	tw.tween_property(bubble, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(1.0)
+	tw.tween_property(bubble, "modulate:a", 0.0, 0.3)
+	tw.tween_callback(bubble.queue_free)
+	Audio.play("enemy_intent_show")
+	await _wait(1.2)
+
+
 ## Attunement: the screen dims, the card's Essence shine and fly to the middle; you click one, and it flies down to
 ## your statuses, where it becomes a badge (+1 of it each turn).
 func _attune_chooser(spell: Dictionary) -> String:
@@ -3475,11 +3696,36 @@ func _spell_fly(ev: Dictionary) -> void:
 	elif op in SpellFx.CHANT_OPS:
 		dests.append(_area(_chant_row))
 	elif op == "draw":
-		dests.append(_area(_next_row))
+		dests = _draw_slots(ev)
 	var player := _player_panel.get_global_rect().get_center()
-	var wait := SpellFx.play(_fx, op, ev.eff, from, dests, col, player, _shake)
+	var wait := SpellFx.play(_fx, op, ev.eff, from, dests, col, player, _shake, _hitstop)
 	if wait > 0.0:
 		await _wait(wait)
+
+
+## Gain Essence: one {body, el, px} per Essence gained, at the very slot it will appear in (the end of the
+## "Coming next turn" row, or the end of your bag for "now").
+func _draw_slots(ev: Dictionary) -> Array:
+	var els: Array = ev.get("drawn", [])
+	if els.is_empty():  # (no roll was passed along: show the element it names, or a random one)
+		var el: String = ev.eff.get("el", "random")
+		for i in int(ev.eff.get("n", 1)):
+			els.append(["F", "W", "A"].pick_random() if el == "random" else el)
+	var now: bool = ev.eff.get("when", "next") == "now"
+	var out := []
+	for i in els.size():
+		var at: Vector2
+		var px: float
+		if now:
+			px = BAG_PX
+			var k := fight.player.stock.size() + i
+			at = _stock_row.global_position + Vector2(minf(_stock_row.size.x - px, k * (BAG_PX + BAG_GAP)), 0) + Vector2(px, px) / 2.0
+		else:
+			px = 44.0
+			var k := fight.player.next_draw.size() + i
+			at = _next_row.global_position + Vector2(k * (px + 4.0), 0) + Vector2(px, px) / 2.0
+		out.append({"body": at, "row": at, "el": els[i], "px": px})
+	return out
 
 
 func _area(c: Control) -> Dictionary:
@@ -3492,6 +3738,13 @@ func _effect_landed(ev: Dictionary) -> void:
 	var eff: Dictionary = ev.get("eff", {})
 	if eff.is_empty():
 		return
+	if eff.op == "ethereal":  # it flickers out of step with the world, half there
+		for e in ev.targets:
+			var ev_view: EnemyView = _views.get(e)
+			if ev_view:
+				var tw := ev_view.creature.create_tween()
+				for a in [0.25, 0.8, 0.15, 0.7, 0.35, 1.0]:
+					tw.tween_property(ev_view.creature, "modulate:a", a, 0.07)
 	var text := _effect_words(eff)
 	if text == "":
 		return
@@ -3643,7 +3896,13 @@ func _enemy_attack(ev: Dictionary) -> void:
 	Audio.play("sfx_player_hit" if ev.n > 0 else "release_armour_block")
 	if blocked:
 		_hp_bar.crack()
-	_shake(10.0 if ev.n > 0 else 5.0)
+	# bigger hits feel bigger: more shake, a red flash, and a moment's hit-stop on heavy blows
+	var hurt: float = float(ev.n) / maxf(1.0, fight.player.max_hp)
+	_shake(clampf(7.0 + ev.n * 0.9, 7.0, 30.0) if ev.n > 0 else 5.0)
+	if ev.n > 0:
+		_danger.flash(0.35 + hurt * 3.0)
+		if ev.n >= 10:
+			_hitstop(0.05 + minf(ev.n, 40) / 500.0)
 	if ev.n > 0:
 		_float_text("-%d" % ev.n, target + Vector2(-20, -70), UiTheme.DANGER)
 		var tw2 := _player_panel.create_tween()
@@ -3697,6 +3956,27 @@ func _shake(amount: float) -> void:
 		var a := amount * (1.0 - i * 0.15)
 		_shake_tw.tween_property(self, "position", Vector2(randf_range(-a, a), randf_range(-a, a)), 0.035)
 	_shake_tw.tween_property(self, "position", Vector2.ZERO, 0.05)
+
+
+var _stop_until := 0  # (ticks msec) when the current hit-stop ends
+var _stop_id := 0  # the latest hit-stop: only its own timer may end it
+
+## Hit-stop: the game all but freezes for `sec` on a heavy impact. Overlapping stops don't add up: the later end wins.
+func _hitstop(sec: float) -> void:
+	if not is_inside_tree():
+		return
+	var until := Time.get_ticks_msec() + int(sec * 1000.0)
+	if until <= _stop_until:
+		return
+	_stop_until = until
+	_stop_id += 1
+	Engine.time_scale = 0.02  # (not 0: nothing ever divides by a zero frame time)
+	get_tree().create_timer(sec, true, false, true).timeout.connect(_end_hitstop.bind(_stop_id))
+
+
+func _end_hitstop(id: int) -> void:
+	if id == _stop_id:
+		Engine.time_scale = 1.0
 
 
 ## One chant element lifts off as a comet and flies into every HP element it hits (or fizzles upward).

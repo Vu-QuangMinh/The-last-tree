@@ -142,7 +142,8 @@
     }
    ],
    "flavor": "Something foul rides the breeze.",
-   "rarity": "common"
+   "rarity": "common",
+   "cooldown": 1
   },
   {
    "id": "fire_ball",
@@ -287,7 +288,8 @@
     }
    ],
    "flavor": "A choking cloud settles on it.",
-   "rarity": "common"
+   "rarity": "common",
+   "cooldown": 1
   },
   {
    "id": "gust",
@@ -515,7 +517,8 @@
     }
    ],
    "flavor": "Frozen mid-swing.",
-   "rarity": "rare"
+   "rarity": "rare",
+   "cooldown": 1
   },
   {
    "id": "tempest",
@@ -763,7 +766,8 @@
     }
    ],
    "flavor": "Sickness on the wind, for everyone.",
-   "rarity": "rare"
+   "rarity": "legendary",
+   "cooldown": 2
   },
   {
    "id": "backdraft",
@@ -1689,7 +1693,7 @@
   {
    "id": "sirens_call",
    "name": "Siren's Call",
-   "pattern": "WWF",
+   "pattern": "WA?W",
    "rarity": "rare",
    "effects": [
     {
@@ -2145,7 +2149,8 @@
     }
    ],
    "flavor": "Hot, wet and vile.",
-   "rarity": "rare"
+   "rarity": "rare",
+   "cooldown": 2
   },
   {
    "id": "searing_brand",
@@ -2213,7 +2218,8 @@
     }
    ],
    "flavor": "Salt in every wound.",
-   "rarity": "common"
+   "rarity": "common",
+   "cooldown": 1
   },
   {
    "id": "quiet_wind",
@@ -2362,7 +2368,8 @@
    ],
    "flavor": "Keep the lid on and it seeps out.",
    "rarity": "rare",
-   "anti": true
+   "anti": true,
+   "cooldown": 2
   },
   {
    "id": "sea_breeze",
@@ -2568,7 +2575,8 @@
     }
    ],
    "flavor": "It stops them, then it hurts.",
-   "rarity": "rare"
+   "rarity": "rare",
+   "cooldown": 1
   },
   {
    "id": "tempest_veil",
@@ -2882,6 +2890,11 @@
     {
      "op": "ethereal",
      "target": "self"
+    },
+    {
+     "op": "vulnerable",
+     "n": 2,
+     "target": "self"
     }
    ],
    "flavor": "Become smoke. Smoke can't be hit.",
@@ -3043,7 +3056,8 @@
     }
    ],
    "flavor": "Sealed in, picked apart.",
-   "rarity": "legendary"
+   "rarity": "legendary",
+   "cooldown": 2
   },
   {
    "id": "sky_sovereign",
@@ -3369,7 +3383,8 @@
    ],
    "flavor": "There is nothing after this. Use it well.",
    "rarity": "legendary",
-   "fleeting": true
+   "fleeting": true,
+   "cooldown": 2
   },
   {
    "id": "thorn_dart",

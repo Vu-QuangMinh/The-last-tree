@@ -19,6 +19,7 @@ const THORN := Color(0.55, 0.85, 0.3)
 const PURE := Color(0.85, 1.0, 1.0)
 const GHOST := Color(0.8, 0.85, 1.0)
 const CURSE := Color(0.6, 0.2, 0.8)
+const WEAK := Color(0.45, 0.52, 0.95)  # a cold, heavy indigo: Weaken presses down
 
 const CHANT_OPS := ["infuse", "rearrange", "duplicate", "retain", "amplify", "echo", "overload", "transmute", "copy_last"]
 const SWIRL_OPS := ["convert", "insert", "move", "rotate", "swap"]
@@ -38,9 +39,10 @@ static func fire_ramp() -> Gradient:
 ## dests: one {body, row, rect?} per thing the spell reaches: an enemy (its body and its row of HP
 ## elements), or you / the chant / the elements coming next turn (the middle of that panel, and its rect).
 ## player: where you are on screen (for what comes back to you).
-static func play(fx: Control, op: String, eff: Dictionary, from: Vector2, dests: Array, col: Color, player: Vector2, shake: Callable) -> float:
+static func play(fx: Control, op: String, eff: Dictionary, from: Vector2, dests: Array, col: Color, player: Vector2, shake: Callable, stop := Callable()) -> float:
 	var v := Vfx.make(fx)
 	v.shaker = shake
+	v.stopper = stop
 	var n: int = int(eff.get("n", 1))
 	match op:
 		"strike":
@@ -65,8 +67,10 @@ static func play(fx: Control, op: String, eff: Dictionary, from: Vector2, dests:
 			return _execute(v, from, dests)
 		"shatter":
 			return _shatter(v, from, dests)
-		"purge", "pluck":
+		"purge":
 			return _disintegrate(v, from, dests, Elements.COLORS.get(eff.get("el", ""), col))
+		"pluck":
+			return _snipe(v, from, dests, col)
 		"steal", "siphon":
 			return _siphon(v, from, dests, col, player)
 		"redirect":
@@ -84,7 +88,7 @@ static func play(fx: Control, op: String, eff: Dictionary, from: Vector2, dests:
 		"sacrifice":
 			return _sacrifice(v, dests)
 		"draw":
-			return _draw_fx(v, from, dests, Elements.COLORS.get(eff.get("el", ""), GOLD), n)
+			return _draw_fx(v, from, dests)
 		"annihilate":
 			return 0.0  # it has its own ceremony
 		"barrage":
@@ -186,6 +190,7 @@ static func _detonate(v: Vfx, at: Vector2, col: Color, k: float) -> void:
 	for e in v.burst(at, 10, col.lerp(Color.WHITE, 0.5), Vector2(40, 160), Vector2(0.6, 1.0), Vector2(2, 3.5), Vfx.DOT):
 		e.grav = Vector2(0, -60)
 		e.wobble = 30.0
+	v.hitstop(0.035 + 0.015 * k)
 	v.shake(4.0 + 3.0 * k)
 
 
@@ -250,6 +255,7 @@ static func _ignite(v: Vfx, at: Vector2, n: int) -> void:
 		for i in 3:
 			var f := _flame(vv, at + Vector2(randf_range(-80, 80), randf_range(10, 70)), Vector2(randf_range(-20, 20), -randf_range(140, 280)), randf_range(12, 26) * (0.4 + 0.6 * fade), randf_range(0.4, 0.65))
 			f.wobble = 60.0)
+	v.hitstop(0.06)
 	v.shake(6.0)
 
 
@@ -326,15 +332,16 @@ static func _freeze(v: Vfx, from: Vector2, dests: Array) -> float:
 
 
 static func _frost(v: Vfx, at: Vector2) -> void:
-	v.glow(at, 190, Color(1, 1, 1, 0.9), 0.18)
-	v.glow(at, 330, Color(ICE, 0.65), 0.75)
-	v.flare(at, 380, Color(0.8, 0.95, 1, 0.9), 0.35)
+	v.glow(at, 120, Color(0.85, 0.96, 1, 0.75), 0.14)
+	v.glow(at, 300, Color(ICE, 0.55), 0.75)
+	v.flare(at, 300, Color(ICE.lerp(Color.WHITE, 0.3), 0.8), 0.3)
+	v.hitstop(0.05)
 	v.ring(at, 10, 160, ICE, 0.5, 10.0)
 	v.ring(at, 10, 110, Color(1, 1, 1, 0.8), 0.35, 4.0, 0.05)
-	for i in 11:
-		var ang := i * TAU / 11.0 + randf_range(-0.2, 0.2)
-		var ln := randf_range(70, 135)
-		var c := v.part(at + Vector2.from_angle(ang) * 16, Vector2.ZERO, Color(0.72, 0.9, 1.0, 0.92), 1.0, ln, Vfx.CRYSTAL)
+	for i in 9:
+		var ang := i * TAU / 9.0 + randf_range(-0.2, 0.2)
+		var ln := randf_range(55, 110)
+		var c := v.part(at + Vector2.from_angle(ang) * 22, Vector2.ZERO, Color(0.48, 0.76, 1.0, 0.85), 1.0, ln, Vfx.CRYSTAL)
 		c.rot = ang
 		c.grow = 0.12
 		c.size1 = ln
@@ -362,27 +369,46 @@ static func _frost(v: Vfx, at: Vector2) -> void:
 	v.shake(5.0)
 
 
-## A curl of shadow, then a seal that closes on the target and presses it down.
+## A heavy weight presses the target down: a cold indigo bolt, then a great chevron slams onto it from above, dust
+## rings out at its feet, a flat seal settles under it and dark motes sink. (Curse is the purple one with runes.)
 static func _weak(v: Vfx, from: Vector2, dests: Array) -> float:
 	for d in dests:
-		v.move(from, d.body, 0.45, 80, SHADOW, 12.0, 0.04, _shadow_trail, func(vv: Vfx, at: Vector2) -> void:
-			vv.sigil(at, 95, SHADOW, 1.3, 5, 0.0, 1.0, -1.3)
-			vv.ring(at, 170, 30, SHADOW, 0.35, 6.0)
-			vv.glow(at, 200, Color(SHADOW, 0.5), 0.6)
-			vv.ring(at + Vector2(0, 100), 20, 180, SHADOW, 0.6, 8.0, 0.2, 0.3)
-			for wave in 3:
-				for i in 5:
-					var ch := vv.part(at + Vector2(randf_range(-90, 90), -120), Vector2(0, 280), SHADOW.lerp(Color.WHITE, 0.25), 0.55, randf_range(11, 16), Vfx.CHEVRON, wave * 0.15)
-					ch.rot = PI
-					ch.drag = 1.0
-					ch.size1 = ch.size0
-			for i in 22:
-				var m := vv.part(at + _jit(90), Vector2(randf_range(-30, 30), randf_range(60, 170)), SHADOW, randf_range(0.8, 1.2), randf_range(4, 7))
-				m.size1 = 1.0
-			for i in 6:
-				_smoke(vv, at + _jit(50), Vector2(randf_range(-40, 40), randf_range(10, 50)), Color(0.12, 0.04, 0.18, 0.5), 22.0, 1.2)
-			vv.shake(3.0))
-	return 0.5
+		v.move(from, d.body, 0.38, 60, WEAK, 12.0, 0.04,
+			func(vv: Vfx, m: Vfx.Item, _d: float) -> void:
+				for i in 2:
+					var g := vv.part(m.pos + _jit(6), -m.dir * randf_range(20, 80), Color(WEAK, 0.7), randf_range(0.3, 0.45), randf_range(8, 13))
+					g.size1 = 1.0
+				if randf() < 0.5:
+					_smoke(vv, m.pos, _jit(20), Color(0.08, 0.08, 0.16, 0.45), 9.0, 0.6),
+			func(vv: Vfx, at: Vector2) -> void:
+				var weight := vv.part(at + Vector2(0, -260), Vector2(0, 1500), WEAK.lerp(Color.WHITE, 0.35), 0.18, 58.0, Vfx.CHEVRON)
+				weight.rot = PI
+				weight.size1 = 58.0
+				var halo := vv.part(at + Vector2(0, -260), Vector2(0, 1500), Color(WEAK, 0.5), 0.18, 90.0)
+				halo.size1 = 70.0
+				vv.emit(at, 0.17, 0.0, Callable(), func(v3: Vfx, _a: Vector2) -> void:
+					var feet := at + Vector2(0, 85)
+					v3.glow(at, 150, Color(0.85, 0.88, 1, 0.8), 0.12)
+					v3.glow(at, 260, Color(WEAK, 0.55), 0.7)
+					v3.ring(feet, 20, 260, WEAK, 0.5, 12.0, 0.0, 0.28)
+					v3.ring(feet, 10, 170, Color(0.85, 0.9, 1, 0.8), 0.32, 5.0, 0.03, 0.28)
+					v3.sigil(feet, 120, WEAK, 1.2, 4, 0.05, 0.3, -0.6)
+					for i in 14:  # dust thrown out sideways along the ground
+						var side := -1.0 if i % 2 == 0 else 1.0
+						var dust := _smoke(v3, feet + Vector2(randf_range(-30, 30), randf_range(-6, 6)), Vector2(side * randf_range(200, 420), -randf_range(0, 40)), Color(0.32, 0.3, 0.38, 0.5), 14.0, randf_range(0.6, 0.9))
+						dust.drag = 4.0
+					for wave in 3:
+						for i in 5:
+							var ch := v3.part(at + Vector2(randf_range(-90, 90), -110), Vector2(0, 320), WEAK.lerp(Color.WHITE, 0.25), 0.5, randf_range(11, 16), Vfx.CHEVRON, wave * 0.14)
+							ch.rot = PI
+							ch.drag = 1.0
+							ch.size1 = ch.size0
+					for i in 18:
+						var m := v3.part(at + _jit(90), Vector2(randf_range(-30, 30), randf_range(80, 190)), Color(0.3, 0.32, 0.6), randf_range(0.7, 1.1), randf_range(4, 7))
+						m.size1 = 1.0
+					v3.hitstop(0.05)
+					v3.shake(7.0)))
+	return 0.6
 
 
 static func _shadow_trail(v: Vfx, it: Vfx.Item, _d: float) -> void:
@@ -479,6 +505,7 @@ static func _execute(v: Vfx, from: Vector2, dests: Array) -> float:
 				s.grav = Vector2(0, 1000)
 				s.spin = randf_range(-14, 14)
 				s.size1 = s.size0
+			vv.hitstop(0.12)
 			vv.shake(14.0))
 	v.shake(4.0, 0.12)
 	return 0.55
@@ -509,15 +536,17 @@ static func _shatter(v: Vfx, from: Vector2, dests: Array) -> float:
 		var it := v.move(from, d.body, 0.28, 90, steel, 15.0, t0,
 			func(vv: Vfx, m: Vfx.Item, _d: float) -> void: _spark_trail(vv, m, steel),
 			func(vv: Vfx, at: Vector2) -> void:
-				vv.flash(Color(1, 1, 1, 0.18), 0.2)
-				vv.glow(at, 200, Color(1, 1, 1, 0.95), 0.18)
-				vv.flare(at, 420, Color(0.85, 0.92, 1, 0.9), 0.3)
+				vv.flash(Color(0.8, 0.9, 1, 0.07), 0.16)
+				vv.glow(at, 130, Color(0.95, 0.97, 1, 0.8), 0.14)
+				vv.glow(at, 260, Color(steel, 0.45), 0.5)
+				vv.flare(at, 360, Color(0.8, 0.9, 1, 0.8), 0.26)
 				vv.ring(at, 10, 220, steel, 0.45, 14.0)
 				for s in vv.burst(at, 34, Color(0.7, 0.8, 0.95), Vector2(200, 700), Vector2(0.6, 1.0), Vector2(10, 22), Vfx.SHARD):
 					s.grav = Vector2(0, 1000)
 					s.spin = randf_range(-14, 14)
 					s.size1 = s.size0
 				vv.burst(at, 30, Color.WHITE, Vector2(400, 1000), Vector2(0.15, 0.35), Vector2(3, 6))
+				vv.hitstop(0.08)
 				vv.shake(10.0))
 		it.accel = true
 	return t0 + 0.3
@@ -527,41 +556,52 @@ static func _shatter(v: Vfx, from: Vector2, dests: Array) -> float:
 static func _disintegrate(v: Vfx, from: Vector2, dests: Array, col: Color) -> float:
 	var t0 := _charge(v, from, col)
 	for d in dests:
-		var it := v.move(from, d.row, 0.3, 110, col, 11.0, t0,
-			func(vv: Vfx, m: Vfx.Item, _d: float) -> void: _spark_trail(vv, m, col),
+		var it := v.move(from, d.row, 0.3, 110, col, 17.0, t0,
+			func(vv: Vfx, m: Vfx.Item, _d: float) -> void: _spark_trail(vv, m, col, 6),
 			func(vv: Vfx, at: Vector2) -> void:
-				vv.glow(at, 220, Color(col.lerp(Color.WHITE, 0.5), 0.9), 0.22)
-				vv.glow(at, 300, Color(col, 0.6), 0.5)
-				vv.flare(at, 300, Color(col.lerp(Color.WHITE, 0.4), 0.85), 0.28)
-				vv.ring(at, 10, 170, col, 0.45, 12.0)
-				for s in vv.burst(at, 30, col, Vector2(180, 520), Vector2(0.5, 0.85), Vector2(9, 16), Vfx.SHARD):
+				vv.glow(at, 240, Color(col.lerp(Color.WHITE, 0.5), 0.9), 0.2)
+				vv.glow(at, 380, Color(col, 0.65), 0.6)
+				vv.flare(at, 380, Color(col.lerp(Color.WHITE, 0.4), 0.85), 0.28)
+				vv.ring(at, 10, 220, col, 0.45, 14.0)
+				vv.ring(at, 6, 140, Color(1, 1, 1, 0.8), 0.28, 5.0, 0.03)
+				for s in vv.burst(at, 40, col, Vector2(220, 640), Vector2(0.55, 0.9), Vector2(11, 20), Vfx.SHARD):
 					s.grav = Vector2(0, 800)
 					s.spin = randf_range(-10, 10)
 					s.size1 = s.size0
 				vv.burst(at, 24, col.lerp(Color.WHITE, 0.3), Vector2(250, 700), Vector2(0.2, 0.4), Vector2(3, 6))
 				for i in 8:
 					_smoke(vv, at + _jit(20), Vector2(randf_range(-80, 80), -randf_range(30, 90)), Color(col.darkened(0.7), 0.45), 14.0, 1.0)
-				vv.shake(6.0))
+				vv.hitstop(0.05)
+				vv.shake(8.0))
 		it.accel = true
 	return t0 + 0.3
 
 
-## A writhing tendril latches on and drags glowing essence back to you.
+## A writhing tendril latches on and drags glowing essence back to you: a thick glowing tendril with a bright core,
+## a grip that clenches on the target, and a stream of motes that lands on you with a pulse.
 static func _siphon(v: Vfx, from: Vector2, dests: Array, col: Color, player: Vector2) -> float:
 	for d in dests:
 		var at: Vector2 = d.row
-		var b := v.beam(from, at, col, 0.8, 5.0, 0.0, 0.04)
-		b.wave = 22.0
-		v.glow(at, 150, Color(col, 0.6), 0.6, 0.2)
-		v.ring(at, 120, 10, col, 0.35, 5.0, 0.2)
-		for i in 12:
-			var it := v.move(at + _jit(30), player + _jit(60), 0.45, randf_range(-40, 160), col.lerp(Color.WHITE, 0.2), randf_range(4, 7), 0.3 + i * 0.03,
+		var b := v.beam(from, at, Color(col, 0.75), 0.85, 11.0, 0.0, 0.04)
+		b.wave = 24.0
+		var core := v.beam(from, at, Color(col.lerp(Color.WHITE, 0.6), 0.9), 0.8, 4.0, 0.0, 0.06)
+		core.wave = 24.0
+		v.glow(at, 220, Color(col, 0.7), 0.7, 0.18)
+		v.glow(at, 110, Color(1, 1, 1, 0.8), 0.16, 0.18)
+		v.ring(at, 150, 12, col, 0.3, 7.0, 0.18)
+		v.ring(at, 10, 120, Color(col.lerp(Color.WHITE, 0.4), 0.8), 0.3, 5.0, 0.48)
+		for i in 18:
+			var it := v.move(at + _jit(30), player + _jit(70), 0.5, randf_range(-60, 200), col.lerp(Color.WHITE, 0.25), randf_range(6, 9), 0.3 + i * 0.025,
 				func(vv: Vfx, m: Vfx.Item, _d: float) -> void:
-					var g := vv.part(m.pos, _jit(15), Color(col, 0.6), 0.3, 8.0)
+					var g := vv.part(m.pos, _jit(15), Color(col, 0.65), 0.35, 10.0)
 					g.size1 = 1.0,
-				func(vv: Vfx, p: Vector2) -> void: vv.glow(p, 40, Color(col, 0.7), 0.3))
+				func(vv: Vfx, p: Vector2) -> void:
+					vv.glow(p, 60, Color(col, 0.75), 0.3)
+					vv.burst(p, 3, col.lerp(Color.WHITE, 0.4), Vector2(60, 160), Vector2(0.2, 0.35), Vector2(3, 5), Vfx.STAR))
 			it.accel = true
-		v.shake(3.0, 0.2)
+		v.glow(player, 300, Color(col, 0.5), 0.6, 0.8)
+		v.ring(player, 30, 280, col, 0.5, 10.0, 0.8, 0.42)
+		v.shake(4.0, 0.2)
 	return 0.35
 
 
@@ -571,9 +611,19 @@ static func _redirect(v: Vfx, from: Vector2, dests: Array) -> float:
 		v.move(from, d.body, 0.5, 320, SHADOW, 11.0, 0.04,
 			func(vv: Vfx, m: Vfx.Item, _d: float) -> void: _spark_trail(vv, m, SHADOW, 2),
 			func(vv: Vfx, at: Vector2) -> void:
-				_orbit(vv, at, SHADOW, Color.WHITE, 0.5, 100.0)
-				vv.ring(at, 10, 150, SHADOW, 0.45, 8.0)
-				vv.shake(3.0))
+				_orbit(vv, at, SHADOW, Color.WHITE, 0.55, 170.0)
+				vv.sigil(at, 140, SHADOW, 1.0, 3, 0.0, 0.8, 2.6)
+				vv.glow(at, 260, Color(SHADOW, 0.5), 0.8)
+				# arrows chasing each other round it: its aim is being turned
+				vv.emit(at, 0.6, 0.0, func(v3: Vfx, it: Vfx.Item, _d: float) -> void:
+					for k in 3:
+						var ang := it.age * 9.0 + k * TAU / 3.0
+						var p := at + Vector2(cos(ang) * 175, sin(ang) * 90)
+						var ch := v3.part(p, Vector2.ZERO, SHADOW.lerp(Color.WHITE, 0.4), 0.14, 15.0, Vfx.CHEVRON)
+						ch.rot = ang + PI
+						ch.size1 = 8.0)
+				vv.ring(at, 10, 200, SHADOW, 0.5, 10.0, 0.55)
+				vv.shake(4.0, 0.55))
 	return 0.55
 
 
@@ -602,9 +652,34 @@ static func _swirl(v: Vfx, from: Vector2, dests: Array, col: Color) -> float:
 		v.move(from, d.row, 0.36, 130, col, 10.0, 0.04,
 			func(vv: Vfx, m: Vfx.Item, _d: float) -> void: _spark_trail(vv, m, col, 2),
 			func(vv: Vfx, at: Vector2) -> void:
-				_orbit(vv, at, col, Color.WHITE, 0.45, 150.0)
-				vv.ring(at, 10, 110, col, 0.4, 6.0))
+				_orbit(vv, at, col, Color.WHITE, 0.5, 200.0)
+				vv.glow(at, 260, Color(col, 0.55), 0.8)
+				vv.ring(at, 10, 180, col, 0.45, 9.0)
+				vv.ring(at, 10, 240, Color(col.lerp(Color.WHITE, 0.5), 0.8), 0.45, 5.0, 0.5, 0.45)
+				vv.burst(at, 22, col.lerp(Color.WHITE, 0.4), Vector2(150, 420), Vector2(0.4, 0.7), Vector2(7, 12), Vfx.STAR, 0.5))
 	return 0.4
+
+
+## Snipe (when it wasn't the player's own gunshot, e.g. a repeat): a white-hot tracer snaps into the Essence and it
+## breaks apart in its own colour.
+static func _snipe(v: Vfx, from: Vector2, dests: Array, col: Color) -> float:
+	for d in dests:
+		var at: Vector2 = d.row
+		var tr := v.beam(from, at, Color(1, 0.92, 0.7, 0.95), 0.1, 5.0, 0.0, 0.08)
+		tr.w0 = 2.0
+		v.beam(from, at, Color(col, 0.45), 0.16, 14.0, 0.0, 0.08)
+		v.emit(at, 0.1, 0.0, Callable(), func(vv: Vfx, _a: Vector2) -> void:
+			vv.glow(at, 150, Color(1, 0.97, 0.85, 1.0), 0.1)
+			vv.glow(at, 230, Color(col, 0.7), 0.4)
+			vv.flare(at, 300, Color(1, 0.88, 0.5, 0.95), 0.16)
+			vv.ring(at, 6, 95, Color(1, 0.95, 0.75), 0.22, 6.0)
+			for s in vv.burst(at, 18, col, Vector2(200, 560), Vector2(0.5, 0.85), Vector2(6, 12), Vfx.SHARD):
+				s.grav = Vector2(0, 1100)
+				s.spin = randf_range(-14, 14)
+				s.size1 = s.size0
+			vv.hitstop(0.06)
+			vv.shake(8.0))
+	return 0.12
 
 
 # ------------------------------------------------------------------ on you
@@ -658,15 +733,27 @@ static func _thorns(v: Vfx, from: Vector2, dests: Array) -> float:
 		var ang := i * TAU / 20.0 + randf_range(-0.08, 0.08)
 		var dir := Vector2(cos(ang), sin(ang) * 0.42)
 		var p := at + Vector2(cos(ang) * 235, sin(ang) * 95)
-		var th := v.part(p, Vector2.ZERO, Color(0.36, 0.5, 0.2), 1.0, 50.0, Vfx.THORN, t + i * 0.01)
+		var th := v.part(p, Vector2.ZERO, Color(0.55, 0.8, 0.28), 1.0, 70.0, Vfx.THORN, t + i * 0.01)
 		th.rot = dir.angle()
-		th.grow = 0.15
-		th.size1 = randf_range(38, 62)
+		th.grow = 0.12
+		th.size1 = randf_range(58, 86)
 		th.hold = 0.65
 		var s := v.part(p + dir.normalized() * th.size1, dir.normalized() * 120, THORN.lerp(Color.WHITE, 0.3), 0.35, 5.0, Vfx.SPARK, t + 0.1)
 		s.drag = 4.0
-	v.ring(at, 60, 300, THORN, 0.5, 8.0, t, 0.42)
-	v.shake(3.0, t)
+	for i in 14:  # a second, inner ring of shorter thorns, a beat later
+		var ang := (i + 0.5) * TAU / 14.0
+		var dir := Vector2(cos(ang), sin(ang) * 0.42)
+		var th := v.part(at + Vector2(cos(ang) * 150, sin(ang) * 60), Vector2.ZERO, Color(0.42, 0.66, 0.2), 0.9, 44.0, Vfx.THORN, t + 0.08 + i * 0.01)
+		th.rot = dir.angle()
+		th.grow = 0.14
+		th.size1 = randf_range(36, 52)
+		th.hold = 0.65
+	v.glow(at, 300, Color(THORN, 0.45), 0.6, t)
+	for l in v.burst(at, 16, Color(0.6, 0.9, 0.35), Vector2(200, 480), Vector2(0.5, 0.8), Vector2(6, 10), Vfx.DROP, t):
+		l.grav = Vector2(0, 500)  # leaves torn loose
+		l.spin = randf_range(-8, 8)
+	v.ring(at, 60, 320, THORN, 0.5, 10.0, t, 0.42)
+	v.shake(5.0, t)
 	return t
 
 
@@ -696,22 +783,40 @@ static func _heal(v: Vfx, from: Vector2, dests: Array) -> float:
 	return t
 
 
-## A wave of pure light washes over you; the darkness is flung off and dissolves.
+## A wave of pure light washes over you: shadows cling to you for a beat, then a burst of white light flings them
+## off; they burn away into sparkles as a curtain of light rises through you.
 static func _cleanse(v: Vfx, from: Vector2, dests: Array) -> float:
 	var d := _self(dests)
 	var at: Vector2 = d.body
 	var t := _stream(v, from, at, Vector2(150, 25), PURE, 8)
-	v.flash(Color(PURE, 0.12), 0.35, t)
-	v.ring(at, 30, 360, PURE, 0.6, 14.0, t, 0.42)
-	v.glow(at, 280, Color(PURE, 0.55), 0.6, t)
-	for i in 16:
+	for i in 12:  # the darkness clinging on, just before the light hits
+		var s := v.part(at + Vector2(randf_range(-200, 200), randf_range(-30, 30)), Vector2(0, -10), Color(0.06, 0.05, 0.1, 0.55), 0.3, 16.0, Vfx.SMOKE, maxf(0.0, t - 0.22))
+		s.size1 = 26.0
+	v.flash(Color(PURE, 0.14), 0.35, t)
+	v.glow(at, 170, Color(1, 1, 1, 0.85), 0.14, t)
+	var wash := v.glow(at, 460, Color(PURE, 0.6), 0.85, t)
+	wash.aspect = 0.5
+	v.flare(at, 560, Color(0.9, 1, 1, 0.9), 0.35, t)
+	v.ring(at, 30, 400, PURE, 0.55, 16.0, t, 0.42)
+	v.ring(at, 20, 280, Color(1, 1, 0.85, 0.9), 0.4, 6.0, t + 0.06, 0.42)
+	var curtain := v.part(at + Vector2(0, -130), Vector2.ZERO, Color(PURE, 0.55), 0.9, 90.0, Vfx.GLOW, t)
+	curtain.size1 = 170.0
+	curtain.aspect = 3.0
+	curtain.hold = 0.3
+	for i in 18:  # the shadows are flung off and burn away into sparkles where they vanish
 		var dir := Vector2.from_angle(randf() * TAU)
-		var s := v.part(at + dir * 30, dir * randf_range(200, 420), Color(0.08, 0.08, 0.1, 0.6), 0.7, 14.0, Vfx.SMOKE, t)
-		s.size1 = 44.0
-		s.drag = 3.0
-	for i in 20:
-		var s := v.part(at + Vector2(randf_range(-220, 220), randf_range(-50, 50)), Vector2(0, -randf_range(20, 70)), Color(0.9, 1, 1), randf_range(0.5, 0.9), randf_range(5, 10), Vfx.STAR, t + randf_range(0.0, 0.35))
-		s.spin = 3.0
+		dir.y *= 0.5
+		var s := v.part(at + dir * 40, dir.normalized() * randf_range(380, 620), Color(0.07, 0.06, 0.1, 0.65), 0.42, 16.0, Vfx.SMOKE, t)
+		s.size1 = 38.0
+		s.drag = 3.5
+		var sp := v.part(at + dir.normalized() * randf_range(170, 260), Vector2(0, -randf_range(30, 90)), Color(0.95, 1, 1), randf_range(0.5, 0.8), randf_range(7, 12), Vfx.STAR, t + 0.3)
+		sp.spin = 4.0
+	v.emit(at, 0.9, t, func(vv: Vfx, _it: Vfx.Item, _d: float) -> void:
+		for i in 2:
+			var m := vv.part(at + Vector2(randf_range(-230, 230), randf_range(-10, 45)), Vector2(0, -randf_range(120, 240)), Color(0.9, 1, 1), randf_range(0.7, 1.1), randf_range(6, 11), Vfx.STAR if randf() < 0.5 else Vfx.GLOW)
+			m.wobble = 25.0
+			m.size1 = m.size0 * 0.3)
+	v.shake(3.0, t)
 	return t
 
 
@@ -728,26 +833,84 @@ static func _sacrifice(v: Vfx, dests: Array) -> float:
 		var dr := v.part(at + _jit(60), Vector2(randf_range(-380, 380), -randf_range(250, 700)), Color(0.9, 0.08, 0.12), randf_range(0.6, 1.0), randf_range(6, 11), Vfx.DROP, 0.05)
 		dr.grav = Vector2(0, 1300)
 		dr.size1 = dr.size0 * 0.6
+	v.hitstop(0.06)
 	v.shake(8.0)
 	return 0.25
 
 
-## Motes of the new elements fly off to wait with the elements coming next turn.
-static func _draw_fx(v: Vfx, from: Vector2, dests: Array, col: Color, n: int) -> float:
-	var d := _self(dests)
-	var r := _rect(d)
-	var t := _stream(v, from, r.get_center(), Vector2(r.size.x * 0.35, r.size.y * 0.2), col, clampi(n * 5, 6, 14), 0.0, 0.42)
-	v.ring(r.get_center(), 20, r.size.x * 0.6, col, 0.55, 10.0, t, 0.35)
-	v.glow(r.get_center(), r.size.x * 0.6, Color(col, 0.55), 0.6, t)
-	v.flare(r.get_center(), r.size.x * 0.9, Color(col.lerp(Color.WHITE, 0.4), 0.8), 0.3, t)
-	v.burst(r.get_center(), 16, col.lerp(Color.WHITE, 0.4), Vector2(120, 320), Vector2(0.4, 0.7), Vector2(7, 11), Vfx.STAR, t)
-	return t
+## Gain Essence: for each Essence gained, an orb of light leaves the card and flies to the very slot where it will
+## appear (in "Coming next turn", or your bag), shedding comet dust in that element's colour; on arrival it flashes
+## and the Essence materializes, popping in. Returns when the last one has popped (the real Essence takes over there).
+static func _draw_fx(v: Vfx, from: Vector2, dests: Array) -> float:
+	var last := 0.0
+	var i := 0
+	for d in dests:
+		var el: String = d.get("el", "A")
+		var c: Color = Elements.COLORS.get(el, GOLD)
+		var to: Vector2 = d.body
+		var px: float = d.get("px", 44.0)
+		var delay := i * 0.13
+		v.glow(from, 90, Color(c.lerp(Color.WHITE, 0.4), 0.8), 0.25, delay)
+		var orb := v.move(from + _jit(10), to, 0.6, randf_range(140, 230), c.lerp(Color.WHITE, 0.3), 16.0, delay,
+			func(vv: Vfx, m: Vfx.Item, _d: float) -> void:
+				var halo := vv.part(m.pos, Vector2.ZERO, Color(c, 0.85), 0.1, 58.0)
+				halo.size1 = 30.0
+				var core := vv.part(m.pos, Vector2.ZERO, Color(1, 1, 1, 0.95), 0.08, 18.0)
+				core.size1 = 8.0
+				var tail := vv.part(m.pos, -m.dir * 30.0, Color(c, 0.6), 0.4, 26.0)
+				tail.size1 = 3.0
+				for k in 5:  # comet dust, falling away behind it in the element's colour
+					var dust := vv.part(m.pos + _jit(7), -m.dir * randf_range(40, 150) + _jit(40) + Vector2(0, 40), c.lerp(Color.WHITE, randf() * 0.3), randf_range(0.45, 0.85), randf_range(3.5, 6.5), Vfx.DOT if k < 3 else Vfx.GLOW)
+					dust.drag = 2.2
+					dust.grav = Vector2(0, 90)
+					dust.size1 = 0.6
+				if randf() < 0.5:
+					var sp := vv.part(m.pos + _jit(10), -m.dir * 50.0 + _jit(30), c.lerp(Color.WHITE, 0.6), randf_range(0.3, 0.5), randf_range(6, 10), Vfx.STAR)
+					sp.spin = 6.0
+					sp.drag = 2.0,
+			func(vv: Vfx, at: Vector2) -> void: _materialize(vv, at, el, c, px))
+		orb.accel = false
+		last = delay + 0.6
+		i += 1
+	return last + 0.28
+
+
+## An Essence materializes at `at`: a flash, a ring snapping inwards, then it pops in (overshoots, settles) with a
+## sparkle. The popped copy fades once the real Essence is showing underneath it.
+static func _materialize(v: Vfx, at: Vector2, el: String, c: Color, px: float) -> void:
+	v.glow(at, px * 1.8, Color(1, 1, 1, 0.95), 0.14)
+	v.glow(at, px * 3.2, Color(c, 0.65), 0.55)
+	v.flare(at, px * 4.0, Color(c.lerp(Color.WHITE, 0.5), 0.85), 0.25)
+	v.ring(at, px * 1.6, px * 0.45, Color(c.lerp(Color.WHITE, 0.4), 0.9), 0.16, 4.0)
+	v.ring(at, px * 0.5, px * 2.2, c, 0.4, 6.0, 0.14)
+	for s in v.burst(at, 12, c.lerp(Color.WHITE, 0.45), Vector2(90, 260), Vector2(0.35, 0.6), Vector2(5, 9), Vfx.STAR, 0.1):
+		s.spin = 5.0
+		s.drag = 3.0
+	var icon := ElementIcon.make(el, int(px))
+	icon.size = Vector2(px, px)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.position = at - icon.size / 2.0 - v.global_position
+	icon.pivot_offset = icon.size / 2.0
+	icon.scale = Vector2(0.15, 0.15)
+	icon.modulate = Color(2.2, 2.2, 2.2, 1.0)
+	v.add_child(icon)
+	var tw := icon.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(icon, "scale", Vector2(1.28, 1.28), 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(icon, "modulate", Color.WHITE, 0.3)
+	tw.chain().tween_property(icon, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_interval(0.35)
+	tw.chain().tween_property(icon, "modulate:a", 0.0, 0.2)
+	tw.chain().tween_callback(icon.queue_free)
 
 
 # ------------------------------------------------------------------ on the chant
 
 ## Runes pour into the chant and a band of light sweeps along it; each kind of chant magic adds its own flourish.
 static func _chant_magic(v: Vfx, op: String, from: Vector2, dests: Array, col: Color) -> float:
+	# each kind of chant magic has its own colour, so they can be told apart at a glance
+	col = {"amplify": GOLD, "echo": Color(0.45, 0.9, 1.0), "overload": Color(0.75, 0.55, 1.0), "duplicate": Color(0.4, 1.0, 0.65),
+		"copy_last": Color(0.4, 1.0, 0.65), "retain": Color(1.0, 0.6, 0.25)}.get(op, col)
 	var d := _self(dests)
 	var r := _rect(d)
 	var c := r.get_center()
@@ -770,16 +933,20 @@ static func _chant_magic(v: Vfx, op: String, from: Vector2, dests: Array, col: C
 	sweep.accel = false
 	match op:
 		"amplify":
-			v.glow(c, r.size.x * 0.55, Color(GOLD, 0.45), 0.7, t)
+			# everything in the chant swells: a golden surge and chevrons rising off every slot
+			v.glow(c, r.size.x * 0.55, Color(GOLD, 0.55), 0.7, t)
+			v.flare(c, r.size.x * 0.9, Color(1, 0.9, 0.5, 0.85), 0.3, t)
+			v.shake(4.0, t)
 			for wave in 3:
 				for i in 10:
 					var ch := v.part(Vector2(randf_range(r.position.x, r.end.x), c.y + 20), Vector2(0, -randf_range(320, 460)), GOLD, 0.7, randf_range(16, 24), Vfx.CHEVRON, t + wave * 0.12)
 					ch.drag = 1.5
 					ch.size1 = ch.size0 * 0.6
 		"echo":
-			for k in 3:
-				v.ring(c, 30, r.size.x * 0.65, Color(PURE, 0.9), 0.75, 10.0, t + k * 0.15, 0.3)
-			v.glow(c, r.size.x * 0.5, Color(PURE, 0.4), 0.8, t)
+			# it rings out again and again: sound-wave rings, each fainter than the last
+			for k in 4:
+				v.ring(c, 30, r.size.x * (0.5 + 0.12 * k), Color(col, 0.9 - 0.18 * k), 0.75, 12.0 - 2.0 * k, t + k * 0.16, 0.3)
+			v.glow(c, r.size.x * 0.5, Color(col, 0.45), 0.9, t)
 		"overload":
 			v.flash(Color(0.7, 0.5, 1, 0.18), 0.35, t)
 			v.glow(c, r.size.x * 0.55, Color(0.7, 0.5, 1, 0.5), 0.7, t)
@@ -791,15 +958,29 @@ static func _chant_magic(v: Vfx, op: String, from: Vector2, dests: Array, col: C
 				v.glow(b, 60, Color(0.85, 0.75, 1, 0.8), 0.2, dl)
 			v.shake(5.0, t)
 		"duplicate", "copy_last":
+			# a mirror image: a second sweep runs back the other way, and twin flashes split apart
+			v.move(Vector2(r.end.x, c.y), Vector2(r.position.x, c.y), 0.38, 0.0, col, 0.0, t, func(vv: Vfx, m: Vfx.Item, _d: float) -> void:
+				var bar := vv.part(m.pos, Vector2.ZERO, Color(col.lerp(Color.WHITE, 0.4), 0.7), 0.35, 34.0)
+				bar.aspect = 2.4
+				bar.size1 = 12.0)
 			for side in [-1.0, 1.0]:
 				var p := c + Vector2(side * r.size.x * 0.18, 0)
 				v.glow(p, 180, Color(col, 0.7), 0.55, t)
 				v.flare(p, 260, Color(col.lerp(Color.WHITE, 0.4), 0.8), 0.3, t)
 				v.burst(p, 16, col.lerp(Color.WHITE, 0.4), Vector2(120, 340), Vector2(0.4, 0.75), Vector2(7, 12), Vfx.STAR, t)
 		"retain":
-			v.ring(c, r.size.x * 0.65, r.size.x * 0.32, GOLD, 0.5, 12.0, t, 0.3)
-			v.flare(c, r.size.x * 0.8, Color(GOLD, 0.8), 0.35, t + 0.3)
-			v.glow(c, r.size.x * 0.35, Color(GOLD, 0.35), 0.6, t + 0.3)
+			# held in place: brackets clamp in from both ends, a ring closes and a seal locks it
+			v.ring(c, r.size.x * 0.65, r.size.x * 0.32, col, 0.5, 12.0, t, 0.3)
+			for side in [-1.0, 1.0]:
+				var br := v.part(c + Vector2(side * r.size.x * 0.62, 0), Vector2(-side * 900, 0), col.lerp(Color.WHITE, 0.3), 0.75, 26.0, Vfx.CHEVRON, t)
+				br.rot = -side * PI / 2.0
+				br.drag = 6.0
+				br.size1 = 26.0
+				br.hold = 0.6
+			v.sigil(c, r.size.y * 0.9, col, 0.9, 4, t + 0.25, 0.5, 0.0)
+			v.flare(c, r.size.x * 0.8, Color(col, 0.8), 0.35, t + 0.3)
+			v.glow(c, r.size.x * 0.35, Color(col, 0.4), 0.6, t + 0.3)
+			v.shake(3.0, t + 0.3)
 		"transmute":
 			_orbit(v, c, col, Color.WHITE, 0.5, r.size.x * 0.3)
 	return t

@@ -22,6 +22,7 @@ var _max_hp := 1  # Essence it started with (or the most it has had since)
 var _yin_rot := 0.0  # the Yin Yang Beast's symbol: turned upside down (PI) when it is black
 var _yin_target := 0.0
 var _yin_last := ""
+var _orbs: Array = []  # the Invoker's words so far: their Essence orbit him for the rest of the fight
 var _art := {}  # face name -> Texture2D, for enemies with drawn art (empty: drawn procedurally)
 
 ## Enemies with drawn art: one picture per face (angry: half its Essence or more; normal: low, under half; hurt: just hit).
@@ -34,7 +35,7 @@ const SHAPES := {
 	"bramble_back": 4, "winged_tortoise": 3, "yeti": 4, "rolling_bear": 4, "enraged_bear": 4, "mirror_fairy": 2, "tomato_knight": 2, "greenseer": 5,
 	"puddle_slime": 0, "splitter_ooze": 0, "tide_colossus": 0, "blightmother": 0, "last_gasp_spore": 0,
 	"gale_sprite": 1, "mirror_wisp": 1, "storm_imp": 1, "hush_moth": 1, "leech_bat": 1, "echo_wraith": 1, "storm_rider": 1,
-	"stone_knight": 2, "warded_golem": 2, "lockwarden": 2, "woodcutter": 2, "yin_yang_beast": 4, "yin_yang_clone": 4, "inverter": 2, "mimic_chest": 3,
+	"stone_knight": 2, "warded_golem": 2, "lockwarden": 2, "woodcutter": 2, "invoker": 2, "forge_spirit": 1, "yin_yang_beast": 4, "yin_yang_clone": 4, "inverter": 2, "mimic_chest": 3,
 	"cinder_hound": 4, "blinding_beetle": 4, "bramble_matron": 5, "mirror_knight": 2, "void_archon": 1, "pickpocket_imp": 4, "overgrowth_vine": 5, "shrine_maiden": 5,
 	"tidecaller": 5, "hexer": 5, "toll_keeper": 5, "frost_hex": 5, "ashling": 1, "last_winter": 1,
 }
@@ -66,7 +67,7 @@ func setup(e: EnemyState) -> void:
 	accent = Elements.COLORS[e.def.hp[0]]
 	big = 1.2 if e.is_boss else (1.1 if e.is_elite or e.id == "giant_slime" else 1.0)
 	big = e.def.get("size", big)
-	crown = e.is_boss
+	crown = e.is_boss and not e.has_passive("hand")
 	spikes = e.is_elite
 	bob = randf() * TAU
 	# hovering the portrait shows the enemy's moves (clicks still reach whatever holds it)
@@ -88,6 +89,24 @@ func hit(strength := 1.0) -> void:
 
 
 func _process(d: float) -> void:
+	if _enemy != null and _orbs.size() < _enemy.stripped.size():
+		# he said a word: its Essence appears and joins the orbit (it stays)
+		var orb := ElementIcon.make(_enemy.stripped[_orbs.size()], 34)
+		orb.size = Vector2(34, 34)
+		orb.pivot_offset = orb.size / 2.0
+		orb.highlight = true
+		orb.scale = Vector2.ZERO
+		add_child(orb)
+		orb.create_tween().tween_property(orb, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_orbs.append(orb)
+	if not _orbs.is_empty():
+		var c := Vector2(size.x / 2.0, size.y * 0.58)
+		var s := minf(size.x, size.y) * 0.34 * big
+		for k in _orbs.size():
+			var a := bob * 0.6 + TAU * k / _orbs.size()
+			var orb: ElementIcon = _orbs[k]
+			orb.position = c + Vector2(cos(a) * s * 1.35, -s * 0.75 + sin(a) * s * 0.22) - orb.size / 2.0
+			orb.show_behind_parent = sin(a) < 0  # (behind him on the far side of the orbit)
 	if _enemy != null and _enemy.yin != "":
 		if _yin_last == "":
 			_yin_rot = 0.0 if _enemy.yin == "white" else PI

@@ -136,9 +136,9 @@ func test_upgraded_artifact_uses_its_plus_number() -> void:
 	run.setup(db, [], [], 4)
 	run.gain_artifact("rain_chalice")
 	assert_true("rain_chalice" in run.upgradable_artifacts())
-	assert_eq(run.make_fight(["ashling"]).player.shield, 4.0)
+	assert_eq(run.make_fight(["ashling"]).player.lasting, 4.0)
 	run.upgrade_artifact("rain_chalice")
-	assert_eq(run.make_fight(["ashling"]).player.shield, 6.0, "Rain Chalice+ gives 6 Shield")
+	assert_eq(run.make_fight(["ashling"]).player.lasting, 6.0, "Rain Chalice+ gives 6 Lasting Shield")
 	assert_true(not ("rain_chalice" in run.upgradable_artifacts()), "only once")
 	assert_eq(Artifacts.view("rain_chalice", true).name, "Rain Chalice+")
 
@@ -644,9 +644,9 @@ func test_steal_any_puts_the_chosen_element_in_your_bag() -> void:
 
 
 func test_steal_a_specific_element() -> void:
-	var f := _fight(["ashling"], ["sirens_call"], "WWF")
+	var f := _fight(["ashling"], ["sirens_call"], "WAAW")  # (W A, anything, W)
 	_set_hp(f.enemies[0], "FWFAF")
-	f.cast_chant(_all(3))
+	f.cast_chant(_all(4))
 	f.resolve_spell("sirens_call", 0)
 	assert_eq(f.enemies[0].hp_text(), "WAF", "up to 2 Fire, from the front")
 	assert_eq(f.player.stock.filter(func(s): return s.el == "F").size(), 2)
@@ -841,7 +841,9 @@ func test_fused_anti_spell_breaks_on_either_pattern() -> void:
 	run.learn_spell("fog_of_war")  # FW
 	run.learn_spell("heat_haze")  # FA
 	assert_true(not run.can_fuse_pair("fog_of_war", "fire_ball"), "an anti-spell can't fuse with a spell")
-	assert_true(run.can_fuse_pair("fog_of_war", "heat_haze"))
+	assert_true(not run.can_fuse("fog_of_war") and not run.can_fuse_pair("fog_of_war", "heat_haze"), "anti-spells can't be fused at all")
+	assert_true(not ("fog_of_war" in run.fusable()))
+	# (an old fused anti-spell, made before that rule, still works)
 	var fz := run.fuse_preview("fog_of_war", "heat_haze", 0)
 	assert_true(fz.get("anti", false))
 	assert_eq(fz.patterns, ["FW", "FA"], "both patterns kept whole (nothing shot out)")
@@ -925,7 +927,7 @@ func test_loadout_drag_and_drop_switches_spells() -> void:
 		assert_true(not run.drop_spell(spare[0], true), "a full row has no empty space to drop into")
 
 
-func test_shield_builds_up_and_brittle_shrinks_it() -> void:
+func test_shield_is_gone_next_turn_and_brittle_shrinks_it() -> void:
 	var f := _fight(["ashling"], ["water_wall"], "WW")
 	f.player.hp = 99
 	f.enemies[0].def.moves = [{"kind": "mend", "el": "F", "n": 1, "who": "self"}]  # (it never attacks here)
@@ -933,17 +935,11 @@ func test_shield_builds_up_and_brittle_shrinks_it() -> void:
 	f._plan(f.enemies[0])
 	f.cast_chant(_all(2))
 	f.resolve_spell("water_wall")
+	assert_eq(f.player.shield, 4.0)
 	f.end_player_turn()
-	assert_eq(f.player.shield, 4.0, "Shield stays into your next turn")
-	f.player.stock.clear()
-	for ch in "WW":
-		f.player.add_element(ch)
-	f.cast_chant(_all(2))
-	f.resolve_spell("water_wall")
-	assert_eq(f.player.shield, 8.0, "and builds up")
+	assert_eq(f.player.shield, 0.0, "Shield is gone when your next turn starts")
 	f.player.brittle_turns = 2
 	assert_eq(f.player.gain_shield(4.0), 3.0, "Brittle: 25% less Shield (rounded down)")
-	assert_eq(f.player.shield, 11.0)
 
 
 func test_slot_artifacts_bring_their_curses() -> void:
@@ -1036,10 +1032,13 @@ func test_matron_regrows_one_wall_per_turn() -> void:
 func test_shield_of_silence_shields_a_silent_turn() -> void:
 	var f := _fight(["ashling"], [], "F")
 	f.artifacts = ["shield_of_silence"]
-	f.enemies[0].def.moves = [{"kind": "mend", "el": "F", "n": 1, "who": "self"}]  # (it doesn't attack here)
+	f.enemies[0].def.moves = [{"kind": "attack", "n": 4}]
+	f.enemies[0].dmg_bonus = 0
 	f._plan(f.enemies[0])
+	f.player.hp = 50
 	f.pass_turn()
-	assert_eq(f.player.shield, 5.0, "passed without chanting: +5 Shield")
+	assert_eq(f.player.hp, 50.0, "passed without chanting: +5 Shield, and it takes the 4")
+	assert_eq(f.player.shield, 0.0, "(gone again once your next turn starts)")
 
 
 func test_echo_chamber_casts_every_spell_twice_after_a_short_chant() -> void:
@@ -1183,15 +1182,12 @@ func test_yin_yang_beast() -> void:
 	f._plan(e)
 	assert_eq(e.intent.kind, "charge")
 	assert_eq(e.charge_dmg, 30)
+	f._charge_react({})
+	assert_eq(e.charge_dmg, 30, "the other colour (it's black, a spell is white): no change")
 	f._charge_react({"anti": true})
-	assert_eq(e.charge_dmg, 25, "its own colour: -5")
-	f._charge_react({})
-	f._charge_react({})
-	assert_eq(e.charge_dmg, 35, "the other colour: +5 each")
-	for k in 10:
-		f._charge_react({"anti": true})
-	assert_eq(e.charge_dmg, 0, "never below 0")
-	f._charge_react({})
+	f._charge_react({"anti": true})
+	assert_eq(e.charge_dmg, 40, "its own colour: +5 each")
+	e.charge_dmg = 5
 	f._do_move(e, e.intent)
 	f._plan(e)
 	assert_eq(e.intent.left, 2)
@@ -1212,5 +1208,330 @@ func test_yin_yang_beast() -> void:
 	assert_eq(cubs.size(), 2)
 	assert_eq(cubs.map(func(c): return c.yin), ["white", "black"])
 	assert_eq(cubs.map(func(c): return c.size()), [10, 10])
-	assert_eq(cubs.map(func(c): return c.intent.kind), ["invert_spells", "silence"])
+	assert_eq(cubs.map(func(c): return c.hp_text()), ["FFWWAAFFWW", "AWFAWFAWFA"], "two different rows")
+	assert_eq(Chant.prefix_match(cubs[1].elements, "FFWWAAFFWW"), 1, "a chant for the white one takes just 1 off the black one")
+	assert_eq(Chant.prefix_match(cubs[0].elements, "AWFAWFAWFA"), 1, "and the other way round, also just 1")
+	assert_eq(cubs.map(func(c): return c.intent.kind), ["invert_spells", "invert_spells"], "both flip first")
+	for c in cubs:
+		f._plan(c)
+	assert_eq(cubs.map(func(c): return c.intent.kind), ["charge", "silence"], "then the white one charges, the black one roars")
+	assert_eq(cubs[1].intent.n, 2, "silencing 2 spells")
+	assert_eq(cubs[1].intent.also.n, 2, "and hitting for 2")
+	for k in 3:
+		for c in cubs:
+			f._plan(c)
+	assert_eq(cubs.map(func(c): return c.intent.kind), ["silence", "charge"], "after the hit they swap")
 	assert_true(not f.won)
+
+
+func test_invoker() -> void:
+	var f := _fight(["invoker"], ["fire_ball"], "")
+	var e: EnemyState = f.enemies[0]
+	assert_eq(e.size(), 20)
+	assert_true("invoker" in EnemyDefs.BOSSES[1] and not ("woodcutter" in EnemyDefs.BOSSES[1]), "the Woodcutter is out for now")
+	# 3 spells, no repeats
+	assert_eq(e.conjured.size(), 3)
+	var ids := e.conjured.map(func(s): return s.id)
+	assert_true(ids[0] != ids[1] and ids[1] != ids[2] and ids[0] != ids[2])
+	# a chant that contains a pattern sets that spell off; otherwise the closest one
+	e.conjured = [EnemyDefs.INVOKER_SPELLS[6].duplicate(true), EnemyDefs.INVOKER_SPELLS[0].duplicate(true), EnemyDefs.INVOKER_SPELLS[3].duplicate(true)]
+	for i in 3:
+		e.conjured[i].rank = i
+		e.conjured[i].base = e.conjured[i].pattern
+	assert_eq(f.invoke_picks(e, "FFFWWW"), [0, 1], "Sun Strike and Cold Snap both matched")
+	assert_eq(f.invoke_picks(e, "AAF"), [2], "EMP: 2 of its 3 Air chanted, the closest")
+	assert_eq(f.invoke_picks(e, ""), [0], "nothing chanted: all equally far, the tie goes to its rank")
+	# his turn: Sun Strike hits for 10
+	f.heard = "FFF"
+	f.player.hp = 50
+	f.player.shield = 0
+	f._do_move(e, {"kind": "invoke"})
+	assert_eq(f.player.hp, 40.0 - e.dmg_bonus)
+	# second wind at 0 Essence: 20 more, then he chants a word that strips that Essence from his spells
+	e.elements.clear()
+	f._cleanup()
+	assert_eq(f.alive().size(), 1, "not dead yet")
+	assert_eq(e.phase, 2)
+	assert_eq(e.size(), 10, "phase 2: 10 Essence")
+	f._plan(e)
+	assert_true(e.intent.has("word"))
+	var w: String = e.intent.word
+	f.heard = "Q"
+	f._do_move(e, e.intent)
+	assert_true(w in e.stripped)
+	for sp in e.conjured:
+		assert_true(not String(sp.pattern).contains(w), "every %s is gone from %s" % [w, sp.name])
+
+
+func test_invoker_spell_effects() -> void:
+	var f := _fight(["invoker"], ["fire_ball", "water_wall", "tailwind"], "FFWWAA")
+	var e: EnemyState = f.enemies[0]
+	f.player.hp = 99
+	f._do_move(e, EnemyDefs.INVOKER_SPELLS[3].cast)  # EMP
+	assert_eq(f.player.stock.size(), 4, "2 Essence drained")
+	f._do_move(e, EnemyDefs.INVOKER_SPELLS[9].cast)  # Deafening Blast
+	assert_eq(f.player.disarmed_turns, 1)
+	f._do_move(e, EnemyDefs.INVOKER_SPELLS[8].cast)  # Chaos Meteor
+	assert_eq(f.player.ignited.size(), 3)
+	f._do_move(e, EnemyDefs.INVOKER_SPELLS[2].cast)  # Ice Wall
+	assert_eq(e.armor.count(true), 3)
+	e.burn = 3
+	e.poison = 2
+	f._do_move(e, EnemyDefs.INVOKER_SPELLS[1].cast)  # Ghost Walk
+	assert_eq([e.burn, e.poison], [0, 0])
+	f._do_move(e, EnemyDefs.INVOKER_SPELLS[7].cast)  # Forge Spirit
+	assert_eq(f.alive().size(), 2)
+
+
+func test_yin_yang_inversion_prefers_short_to_anti_and_long_to_spell() -> void:
+	# short spells (Fire Ball FF, Water Wall WW) turn anti far more often than long ones (Meteor FFFF)
+	var short_flips := 0
+	var long_flips := 0
+	for sd in 60:
+		var f := _fight(["yin_yang_beast"], ["fire_ball", "water_wall", "tailwind", "meteor"], "")
+		f.rng.seed = sd
+		var cands := f.shown_spells()
+		var i := f._invert_pick(cands)
+		if String(cands[i].pattern).length() >= 4:
+			long_flips += 1
+		elif String(cands[i].pattern).length() <= 2:
+			short_flips += 1
+	assert_true(short_flips > long_flips * 3, "short %d vs long %d" % [short_flips, long_flips])
+	# a long anti-spell gets turned back into a spell before a short one does
+	var g := _fight(["yin_yang_beast"], ["fire_ball", "meteor"], "")
+	var pool := [g.shown_spells()[0].duplicate(true), g.shown_spells()[1].duplicate(true)]
+	pool[0].anti = true
+	pool[1].anti = true
+	var back_long := 0
+	for sd in 40:
+		g.rng.seed = sd
+		if g._invert_pick(pool) == 1:
+			back_long += 1
+	assert_true(back_long > 30, "the long anti-spell goes back first: %d / 40" % back_long)
+
+
+func test_yin_yang_flips_change_the_pattern() -> void:
+	var f := _fight(["yin_yang_beast"], ["meteor"], "")
+	var e: EnemyState = f.enemies[0]
+	var meteor: Dictionary = f.loadout[0]
+	var size0 := e.size()
+	# a spell turned anti: the beast absorbs 1 Essence of its pattern
+	var anti := f._invert_spell(e, meteor)
+	assert_true(anti.anti)
+	assert_eq(String(anti.pattern).length(), String(meteor.pattern).length() - 1)
+	assert_eq(e.size(), size0 + 1, "the beast took it into its own row")
+	# turned back: natural form first, then 1 random Essence more
+	var back := f._invert_spell(e, anti)
+	assert_true(not back.get("anti", false))
+	assert_eq(String(back.pattern).length(), String(meteor.pattern).length() + 1)
+	# flipped anti again: from its natural form, minus 1 (not minus 1 from the longer one)
+	var again := f._invert_spell(e, back)
+	assert_eq(String(again.pattern).length(), String(meteor.pattern).length() - 1)
+	# a one-Essence spell gives nothing up
+	var one := meteor.duplicate(true)
+	one.pattern = "F"
+	assert_eq(String(f._invert_spell(e, one).pattern), "F")
+
+
+func test_poison_spells_have_a_cooldown() -> void:
+	for id in ["taint", "miasma", "brine", "frostbite", "blight_wind", "scalding_rain", "steam_vent", "frozen_tomb", "worlds_end"]:
+		assert_true(int(db.get_spell(id).get("cooldown", 0)) > 0, id + " has a cooldown")
+	assert_eq(db.get_spell("blight_wind").rarity, "legendary")
+	assert_true(SpellText.card_text(db.get_spell("taint")).contains("Cooldown 1"))
+	# Taint (Cooldown 1): cast this turn, not the next, then again
+	var f := _fight(["ashling"], ["taint"], "AAA")
+	f.cast_chant(_all(1))
+	f.resolve_spell("taint", 0)
+	assert_eq(f.enemies[0].poison, 1)
+	f.end_player_turn()
+	assert_true(f.player.cooldowns.has("taint"), "still cooling down on the next turn")
+	assert_true(not f.usable_spells().any(func(sp): return sp.id == "taint"))
+	f.end_player_turn()
+	assert_true(not f.player.cooldowns.has("taint"), "ready again the turn after")
+
+
+func test_unused_spells_are_stored_for_the_next_chant() -> void:
+	var f := _fight(["ashling"], ["water_wall", "fire_ball"], "WWFF")
+	_set_hp(f.enemies[0], "AAWAAWAA")  # (it survives the turn)
+	f.enemies[0].def.moves = [{"kind": "mend", "el": "F", "n": 1, "who": "self"}]  # (it never attacks here)
+	f.enemies[0].move_index = 0
+	f._plan(f.enemies[0])
+	f.player.hp = 99
+	f.cast_chant(_all(4))
+	f.resolve_spell("fire_ball", 0)
+	f.finish_turn()  # Released with Water Wall still alive
+	assert_true(f.stored.has("water_wall"), "stored")
+	assert_true(not f.stored.has("fire_ball"), "(it was cast)")
+	# next turn: any chant wakes it (even one without W W), with one charge
+	f.player.stock.clear()
+	for ch in "AA":
+		f.player.add_element(ch)
+	f.cast_chant(_all(2))
+	assert_eq(f.charges.get("water_wall", 0), 1)
+	f.resolve_spell("water_wall")
+	assert_eq(f.player.shield, 4.0)
+	assert_true(not f.stored.has("water_wall"), "used up once cast")
+
+
+func test_stored_spell_still_feels_statuses_and_waits_out_a_pass() -> void:
+	var f := _fight(["ashling"], ["water_wall"], "WW")
+	f.stored["water_wall"] = true
+	f.player.silenced["water_wall"] = 1
+	f.player.stock.clear()
+	f.player.add_element("A")
+	f.cast_chant(_all(1))
+	assert_eq(f.charges.get("water_wall", 0), 0, "silenced: it can't wake")
+	assert_true(f.stored.has("water_wall"), "but it stays stored")
+
+
+func test_tutorial_saving_a_spell_plays_out() -> void:
+	# the "Saving a spell" lesson, step by step: store Water Wall while the Yeti flexes, use it when it attacks
+	# (the same data as TutorialScreen.LESSONS[1]: keep them in step)
+	var lesson := {"enemies": [{"id": "yeti", "hp": "AFWAFW", "moves": [{"kind": "empower", "n": 2}, {"kind": "attack", "n": 6}]}],
+		"spells": ["fire_ball", "water_wall"], "stock": "WWFF", "draws": ["AFW", "AFA"]}
+	var f := _fight(["yeti"], lesson.spells, lesson.stock)
+	var e: EnemyState = f.enemies[0]
+	_set_hp(e, lesson.enemies[0].hp)
+	e.def.moves = lesson.enemies[0].moves
+	e.def.erase("passives")
+	e.move_index = 0
+	e.dmg_bonus = 0
+	f._plan(e)
+	f.player.hp = 60
+	f.player.next_draw.clear()
+	for ch in lesson.draws[0]:
+		f.player.next_draw.append({"el": ch, "temp": false})
+	f.script_draws = lesson.draws.slice(1)
+	assert_eq(e.intent.kind, "empower", "turn 1: it only flexes")
+	f.cast_chant(_all(4))  # W W F F
+	f.resolve_spell("fire_ball", 0)
+	f.finish_turn()
+	assert_true(f.stored.has("water_wall"))
+	assert_eq(f.player.hp, 60.0, "no hit on turn 1")
+	assert_eq(e.intent.kind, "attack", "turn 2: the attack")
+	assert_eq("".join(f.player.stock.map(func(x): return x.el)), "AFW")
+	f.cast_chant(_all(3))  # A F W
+	f.resolve_spell("water_wall")
+	assert_eq(f.player.shield, 4.0)
+	f.finish_turn()
+	assert_eq(f.player.hp, 56.0, "8 damage, 4 of it blocked")
+	f.cast_chant([0, 1])  # A F: finishes it
+	f.finish_turn()
+	assert_true(f.won, "the lesson ends in a win")
+
+
+func test_lasting_shield_stays_until_broken() -> void:
+	var f := _fight(["ashling"], ["water_wall"], "WW")
+	f.enemies[0].def.moves = [{"kind": "attack", "n": 5}]
+	f.enemies[0].dmg_bonus = 0
+	f._plan(f.enemies[0])
+	f.player.hp = 50
+	f.player.lasting = 6
+	f.cast_chant(_all(2))
+	f.resolve_spell("water_wall")  # 4 Shield
+	f.finish_turn()  # the 5 hit: 4 from the Shield, 1 from the Lasting Shield
+	assert_eq(f.player.hp, 50.0)
+	assert_eq(f.player.shield, 0.0, "ordinary Shield gone")
+	assert_eq(f.player.lasting, 5.0, "Lasting Shield stays, minus what it blocked")
+	assert_eq(f.player.gain_shield(4.0, true), 4.0)
+	assert_eq(f.player.lasting, 9.0)
+
+
+func _knock(f: Fight, e: EnemyState) -> void:
+	e.elements.clear()
+	f._cleanup()
+
+
+func test_handyman() -> void:
+	var f := _fight(["handyman"], ["fire_ball", "water_wall", "tailwind"], "")
+	assert_eq(f.enemies.map(func(e): return e.id), ["hand_sword", "hand_tweezer"], "he starts as two hands")
+	assert_true("handyman" in EnemyDefs.BOSSES[1])
+	var sword: EnemyState = f.enemies[0]
+	assert_eq(sword.size(), 5)
+	# a knocked-out hand isn't killed: no win, it skips its turn, and it's back whole next turn
+	_knock(f, sword)
+	assert_true(not f.over, "not won: the hand is only knocked out")
+	assert_true(sword in f.enemies and sword.knocked)
+	_knock(f, f.enemies[1])
+	assert_true(not f.over, "both down at once still isn't a win")
+	f._hands_back()
+	assert_eq(sword.size(), 5, "back whole")
+	assert_true(not sword.knocked)
+	# 4 knockouts: two more hands
+	_knock(f, f.enemies[0])
+	_knock(f, f.enemies[1])
+	assert_eq(f.hm.phase, 2)
+	assert_eq(f.enemies.size(), 4)
+	var ids := f.enemies.map(func(e): return e.id)
+	assert_true("hand_hammer" in ids and "hand_crossbow" in ids)
+	f._hands_back()
+	# the hammer goes for the most-cast spell, and sticks to it: 3 hits break it
+	f.cast_counts = {"water_wall": 3, "fire_ball": 1}
+	var hammer: EnemyState = f.enemies.filter(func(e): return e.id == "hand_hammer")[0]
+	f._do_move(hammer, {"kind": "hammer_spell"})
+	assert_eq(f.hammer_target, "water_wall")
+	f.cast_counts["fire_ball"] = 9
+	f._do_move(hammer, {"kind": "hammer_spell"})
+	assert_eq(f.hammer_target, "water_wall", "it sticks to its target")
+	f._do_move(hammer, {"kind": "hammer_spell"})
+	assert_true(f.broken.has("water_wall"), "3 hits: broken")
+	assert_true(not f.shown_spells().any(func(s): return s.id == "water_wall"), "gone for the fight")
+	# a Fleeting spell breaks at once
+	f.loadout[0] = f.loadout[0].duplicate(true)
+	f.loadout[0].fleeting = true
+	f._do_move(hammer, {"kind": "hammer_spell"})
+	assert_true(f.broken.has("fire_ball"), "Fleeting: first hit")
+	# the crossbow: 2, 1, then it fires (knocked out: it starts over)
+	var bow: EnemyState = f.enemies.filter(func(e): return e.id == "hand_crossbow")[0]
+	assert_eq(bow.intent.kind, "charge")
+	assert_eq(bow.intent.left, 2)
+	f._do_move(bow, bow.intent)
+	f._plan(bow)
+	assert_eq(bow.intent.left, 1)
+	_knock(f, bow)
+	f._hands_back()
+	assert_eq(bow.intent.left, 2, "knocked out: back to 2")
+	# 8 more knockouts: the last two hands, 3 Essence each
+	for k in 3:
+		_knock(f, f.enemies[0])
+		_knock(f, f.enemies[1])
+		f._hands_back()
+	assert_eq(f.hm.phase, 2, "7 so far")
+	_knock(f, f.enemies[0])
+	f._hands_back()
+	assert_eq(f.hm.phase, 3)
+	assert_eq(f.enemies.size(), 6)
+	var last := f.enemies.filter(func(e): return e.id in ["hand_spear", "hand_shield"])
+	assert_eq(last.map(func(e): return e.size()), [3, 3])
+	# last stand: a knocked-out hand stays down; with all of them down he shows himself (1 Essence, 999)
+	for e in f.enemies.duplicate():
+		_knock(f, e)
+	f._hands_back()
+	assert_eq(f.alive().size(), 1, "only him")
+	var body: EnemyState = f.alive()[0]
+	assert_eq(body.id, "handyman")
+	assert_eq(body.size(), 1)
+	assert_eq(body.intent.n, 999)
+	assert_true(body.fresh, "he shows his intent first: you get a turn to finish him")
+	body.elements.clear()
+	f._cleanup()
+	assert_true(f.won, "and that's the fight")
+
+
+func test_ashen_veil_leaves_you_vulnerable() -> void:
+	var f := _fight(["ashling"], ["ashen_veil"], "FAA")
+	_set_hp(f.enemies[0], "WWWWWW")  # (it survives)
+	f.enemies[0].def.moves = [{"kind": "attack", "n": 4}]
+	f.enemies[0].dmg_bonus = 0
+	f._plan(f.enemies[0])
+	f.player.hp = 50
+	assert_true(SpellText.card_text(db.get_spell("ashen_veil")).contains("Vulnerable 2"))
+	f.cast_chant(_all(3))
+	f.resolve_spell("ashen_veil")
+	assert_eq(f.player.vulnerable, 2)
+	f.finish_turn()  # smoke: the 4 can't touch you
+	assert_eq(f.player.hp, 50.0)
+	assert_eq(f.player.vulnerable, 1)
+	f.pass_turn()  # Vulnerable: 4 -> 6
+	assert_eq(f.player.hp, 44.0)
+	assert_eq(f.player.vulnerable, 0)

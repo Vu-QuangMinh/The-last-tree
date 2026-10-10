@@ -11,15 +11,23 @@ const WHOSE := {"target": "an enemy's", "two": "2 different enemies'", "all": "a
 
 ## One sentence per effect, each on its own line.
 static func card_text(s: Dictionary) -> String:
+	if s.has("desc"):
+		return s.desc  # (the Invoker's spells: written out)
 	var lines := []
 	for e in s.effects:
 		lines.append(sentence(e))
+	if int(s.get("cooldown", 0)) > 0:
+		lines.append("Cooldown %d." % s.cooldown)
 	return "\n".join(lines)
 
 
 ## The same rules as one paragraph (tooltips, reports).
 static func describe(s: Dictionary) -> String:
+	if s.has("desc"):
+		return s.desc
 	var text := " ".join(s.effects.map(func(e): return sentence(e)))
+	if int(s.get("cooldown", 0)) > 0:
+		text += " Cooldown %d." % s.cooldown
 	if s.get("anti", false) and s.has("patterns"):
 		text = "Anti-spell: it comes alive with every chant, unless the chant contains EITHER of its patterns: " + text
 	elif s.get("anti", false):
@@ -138,6 +146,8 @@ static func describe_op(e: Dictionary) -> String:
 			return "change %d of your unused Essence into %s" % [n, _el(e.to)]
 		"sacrifice":
 			return "lose %d of your HP" % e.hp
+		"vulnerable":
+			return "you get Vulnerable %d" % n
 		"amplify":
 			return "Amplify %d" % n
 		"echo":

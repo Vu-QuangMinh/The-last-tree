@@ -304,12 +304,11 @@ func _add_flame(by_id: Dictionary, resin: Control) -> void:
 	_flame = CampfireFlame.new()
 	_flame.setup(ts, Vector2(small.x, small.y), tb, Vector2(big.x, big.y))
 	_stage.add_child(_flame)
-	# the resin is only a hot spot when it is a choice (it is plain scenery now: the fire pit has no SEAL)
-	var hot := resin as CampfireHot
-	if hot == null:
-		return
-	var u := Rect2(Vector2(small.x, small.y), Vector2(small.w, small.h)).merge(Rect2(Vector2(big.x, big.y), Vector2(big.w, big.h)))
-	hot.extra_area = Rect2(u.position - resin.position, u.size)
+	# when the fire pit is a choice, the fire is part of it (hovering or clicking the fire is hovering or clicking the
+	# pit). It's only scenery now (Seal is gone), so there is nothing to join it to.
+	if resin is CampfireHot:
+		var u := Rect2(Vector2(small.x, small.y), Vector2(small.w, small.h)).merge(Rect2(Vector2(big.x, big.y), Vector2(big.w, big.h)))
+		(resin as CampfireHot).extra_area = Rect2(u.position - resin.position, u.size)
 
 
 func _add_sparks(by_id: Dictionary) -> void:

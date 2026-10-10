@@ -23,6 +23,7 @@ var _t := 0.0
 var state := ""  # "", "silenced", "locked", "used"
 var state_text := ""
 var lock_pattern := ""
+var cracks := 0  # Hammer Hand hits taken (1: a few cracks, 2: cracked all over)
 var ignited := false  # wrapped in a thin line of flame: casting it burns you (the Ember Sprite)
 var selected := false
 var compact := false
@@ -47,6 +48,7 @@ var _box: StyleBoxFlat
 var _shade: ColorRect
 var _orbit: OrbitSpark  # pending: the chant you're building will wake this spell
 var _flame: FlameOutline
+var _cracks: CrackOverlay
 
 
 func _z(x: float) -> float:
@@ -188,6 +190,12 @@ func _ready() -> void:
 	if spell.get("ephemeral", false):
 		tags.append("EPHEMERAL")
 	var tag_l := UiTheme.label(" · ".join(tags), _zi(13), RARITY_COLORS[spell.rarity])
+	# many tags (an inverted conjured spell: ANTI-SPELL · EPHEMERAL) would widen the card: the line shrinks to fit
+	var tag_font := tag_l.get_theme_font("font")
+	var tag_fs := _zi(13)
+	while tag_fs > _zi(8) and tag_font.get_string_size(tag_l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, tag_fs).x > _z(RULES_W):
+		tag_fs -= 1
+	tag_l.add_theme_font_size_override("font_size", tag_fs)
 	tag_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tag_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(tag_l)
@@ -225,6 +233,11 @@ func _ready() -> void:
 	_flame.margins = _orbit.margins
 	_flame.visible = false
 	add_child(_flame)
+	_cracks = CrackOverlay.new()
+	_cracks.zoom = zoom
+	_cracks.margins = _orbit.margins
+	_cracks.visible = false
+	add_child(_cracks)
 	_state = UiTheme.label("", _zi(20), Color.WHITE)
 	_state.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_state.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -343,6 +356,7 @@ func _sync_zoom() -> void:
 	z.state_text = state_text
 	z.lock_pattern = lock_pattern
 	z.ignited = ignited
+	z.cracks = cracks
 	z.selected = selected
 	z.refresh()
 
@@ -575,8 +589,9 @@ func refresh() -> void:
 		for ch in lock_pattern:
 			_lock_row.add_child(ElementIcon.make(ch, _z(28)))
 	_state.visible = state != ""
-	_shade.visible = state in ["silenced", "locked", "broken"]
+	_shade.visible = state in ["silenced", "locked", "broken", "cooldown"]
 	_flame.visible = ignited and state != "used"
+	_cracks.set_level(cracks, String(spell.get("id", "")))
 	if spell.get("anti", false):
 		# an anti-spell is always active: its spark keeps circling, unless the chant breaks it (state "broken")
 		_orbit.color = Color(1.0, 0.55, 0.95)
