@@ -452,14 +452,9 @@ func _build_strips_circus() -> void:
 	_chant_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_chant_note.max_lines_visible = 2  # (the whole text is in its tooltip)
 	_chant_note.mouse_filter = Control.MOUSE_FILTER_STOP
-	_chant_note.custom_minimum_size = Vector2(72, 0)
+	_chant_note.custom_minimum_size = Vector2(72, 34)
+	_chant_note.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	lc.add_child(_chant_note)
-	_undo_btn = UiTheme.button("↶ Undo", _undo_last, 13)
-	_undo_btn.custom_minimum_size = Vector2(72, 26)
-	_undo_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	_undo_btn.tooltip_text = "Take back the last spell you cast this turn. (Ctrl+Z. Pressing Release cannot be undone.)"
-	_undo_btn.visible = false
-	lc.add_child(_undo_btn)
 	_chant_row = HBoxContainer.new()
 	_chant_row.add_theme_constant_override("separation", 6)
 	_chant_row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -470,23 +465,37 @@ func _build_strips_circus() -> void:
 	chh.add_child(spacer)
 	_cast_btn = UiTheme.button(UiTheme.hk("Chant", "Enter"), _on_primary, 21)
 	UiTheme.use_heading_font(_cast_btn)
-	_cast_btn.custom_minimum_size = Vector2(170, 58)
+	_cast_btn.custom_minimum_size = Vector2(192, 58)
 	_cast_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var chant_art := UiTheme.chant_button_styles()
 	for st in chant_art:
 		_cast_btn.add_theme_stylebox_override(st, chant_art[st])
 	chh.add_child(_cast_btn)
+	# Clear and Pass each sit in a fixed slot, so the main button never moves: after the chant Undo takes Clear's place and
+	# Pass just goes (its slot stays empty)
+	var clear_slot := Control.new()
+	clear_slot.custom_minimum_size = Vector2(104, 40)
+	clear_slot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	chh.add_child(clear_slot)
 	_clear_btn = UiTheme.button(UiTheme.hk("Clear", "⌫"), _clear_chant, 15)
 	UiTheme.use_heading_font(_clear_btn)
-	_clear_btn.custom_minimum_size = Vector2(104, 40)
-	_clear_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	chh.add_child(_clear_btn)
+	_clear_btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	clear_slot.add_child(_clear_btn)
+	_undo_btn = UiTheme.button("↶ Undo", _undo_last, 15)
+	UiTheme.use_heading_font(_undo_btn)
+	_undo_btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_undo_btn.tooltip_text = "Take back the last spell you cast this turn. (Ctrl+Z. Pressing Release cannot be undone.)"
+	_undo_btn.visible = false
+	clear_slot.add_child(_undo_btn)
+	var pass_slot := Control.new()
+	pass_slot.custom_minimum_size = Vector2(104, 40)
+	pass_slot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	chh.add_child(pass_slot)
 	_end_btn = UiTheme.button(UiTheme.hk("Pass", "E"), _on_end_turn, 15)
 	UiTheme.use_heading_font(_end_btn)
-	_end_btn.custom_minimum_size = Vector2(104, 40)
-	_end_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_end_btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_end_btn.tooltip_text = "End your turn without chanting (you keep your Essence)."
-	chh.add_child(_end_btn)
+	pass_slot.add_child(_end_btn)
 	add_child(cp)
 	# the Bag strip, layered like the PDF: tube back, the Essence, tube glass, gear, plate, handle
 	var sp := PanelContainer.new()
