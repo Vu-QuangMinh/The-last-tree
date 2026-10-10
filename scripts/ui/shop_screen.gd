@@ -41,13 +41,16 @@ func _ready() -> void:
 	_grid.add_theme_constant_override("v_separation", 22)
 	_grid.custom_minimum_size = Vector2(1800, 0)
 	v.add_child(_grid)
-	var bottom := HBoxContainer.new()
-	bottom.add_theme_constant_override("separation", 16)
-	bottom.size_flags_horizontal = Control.SIZE_SHRINK_END
-	v.add_child(bottom)
+	# the Leave button is pinned to the bottom-right corner of the screen, NOT the last row of the list: a tall item (a long
+	# artifact text) makes the rows taller and used to push a button in the list off the bottom of the screen
 	var leave_btn := UiTheme.button("Leave the shop", func(): leave.emit(), 22)
 	leave_btn.custom_minimum_size = Vector2(260, 56)
-	bottom.add_child(leave_btn)
+	leave_btn.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	leave_btn.offset_left = -320.0
+	leave_btn.offset_right = -60.0
+	leave_btn.offset_top = -86.0
+	leave_btn.offset_bottom = -30.0
+	add_child(leave_btn)
 	var hud := HudBar.new()
 	hud.setup(run)
 	add_child(hud)

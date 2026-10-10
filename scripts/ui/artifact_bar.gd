@@ -17,6 +17,7 @@ func _ready() -> void:
 	add_theme_constant_override("h_separation", 6)
 	add_theme_constant_override("v_separation", 6)
 	custom_minimum_size = Vector2(620, 0)
+	UiSkin.frame_behind(self)  # New theme: one painted frame around all the artifacts
 	refresh()
 
 
@@ -72,15 +73,17 @@ class ArtifactChip extends PanelContainer:
 		# no box: just a soft, faint outline of the square it sits in (a touch brighter under the mouse)
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = Color(0, 0, 0, 0)
-		sb.border_color = FAINT
+		var idle := Color(1, 1, 1, 0.0) if UiSkin.has_slot_frame() else FAINT  # (the shared frame replaces the outline)
+		var hover := Color(1, 1, 1, 0.2) if UiSkin.has_slot_frame() else FAINT_HOVER
+		sb.border_color = idle
 		sb.set_border_width_all(1)
 		sb.set_corner_radius_all(10)
 		sb.anti_aliasing = true
 		sb.set_content_margin_all(5)
 		c.add_theme_stylebox_override("panel", sb)
 		c.custom_minimum_size = Vector2(px, px)
-		c.mouse_entered.connect(func(): if not c.charged: sb.border_color = FAINT_HOVER)
-		c.mouse_exited.connect(func(): if not c.charged: sb.border_color = FAINT)
+		c.mouse_entered.connect(func(): if not c.charged: sb.border_color = hover)
+		c.mouse_exited.connect(func(): if not c.charged: sb.border_color = idle)
 		c.mouse_filter = Control.MOUSE_FILTER_STOP
 		var art := UiSkin.artifact_icon(id, px * ICON / SIZE)  # New theme: the painted artifact; otherwise its symbol
 		if art != null:

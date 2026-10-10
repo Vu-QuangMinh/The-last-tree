@@ -489,6 +489,7 @@ func _play_fusion(a: Dictionary, b: Dictionary, from_a: Vector2, from_b: Vector2
 	card.scale = Vector2(0.15, 0.15)
 	card.modulate = Color(6, 6, 6, 0)
 	stage.add_child(card)
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE  # (after add_child: SpellCard._ready() resets it to STOP, which would swallow the wax-seal clicks)
 	await get_tree().process_frame
 	# centred on the screen. (Its plain position: setting global_position on a scaled card would place its scaled
 	# corner there, and it grows around its centre from the wrong spot.)

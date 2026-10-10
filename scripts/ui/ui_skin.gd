@@ -6,25 +6,35 @@ extends RefCounted
 ## A piece of art that's missing just returns null, and the caller keeps drawing in code.
 
 const DIR := "res://assets/ui/new/"
-const OPTIONS := ["default", "new"]
-const LABELS := ["Default", "New"]
+## Cirus (circus tent) theme: the same file names as the New set, in their own folder. A picture that isn't there yet falls
+## back to the New one, so the theme can be filled in piece by piece.
+const CIRCUS_DIR := "res://assets/ui/circus/"
+const OPTIONS := ["default", "new", "circus"]
+const LABELS := ["Default", "New", "Cirus"]
 
 static var _tex := {}
 static var _paths := {}  # name -> res:// path ("" = there is none)
 ## The art is sorted into folders under DIR (by what it is); a name is looked up in each, as a png and then a jpg.
 const FOLDERS := ["panels", "buttons", "essence", "intent", "status", "icons", "cards", "numbers", "treasure", "map", "fx",
-	"backgrounds", "leaves", "title", "characters", "artifacts", "bottles", "campfire", "misc"]
+	"backgrounds", "leaves", "title", "characters", "artifacts", "bottles", "campfire", "room", "misc"]
 
 ## artifact id -> picture name, where they differ
 const ARTIFACT_ART := {"scholar_quill": "scholars_quill"}
 
 
+## True for every painted theme (New and Cirus): the code paths that ask for art all key off this.
 static func is_new() -> bool:
-	return SaveManager.setting("theme", "new") == "new"
+	return SaveManager.setting("theme", "new") != "default"
+
+
+static func is_circus() -> bool:
+	return SaveManager.setting("theme", "new") == "circus"
 
 
 static func set_theme(id: String) -> void:
 	SaveManager.set_setting("theme", id)
+	_tex.clear()  # the same name now means another picture
+	_paths.clear()
 	UiTheme.reset()  # the shared Theme is rebuilt for the next screen
 
 
@@ -32,11 +42,15 @@ static func set_theme(id: String) -> void:
 static func path_of(name: String) -> String:
 	if not _paths.has(name):
 		var found := ""
-		for folder in FOLDERS:
-			for ext in [".png", ".jpg"]:  # (the room backgrounds are jpg: big, flat-coloured pictures)
-				var p: String = DIR + folder + "/" + name + ext
-				if ResourceLoader.exists(p):
-					found = p
+		var roots: Array = [CIRCUS_DIR, DIR] if is_circus() else [DIR]
+		for root in roots:
+			for folder in FOLDERS:
+				for ext in [".png", ".jpg"]:  # (the room backgrounds are jpg: big, flat-coloured pictures)
+					var p: String = root + folder + "/" + name + ext
+					if ResourceLoader.exists(p):
+						found = p
+						break
+				if found != "":
 					break
 			if found != "":
 				break
@@ -71,6 +85,32 @@ static func box(name: String, margins := [0, 0, 0, 0], content := [0, 0, 0, 0]) 
 	b.content_margin_right = content[2]
 	b.content_margin_bottom = content[3]
 	return b
+
+
+## New theme: the painted slot frame (3 slices: left cap | middle | right cap, assets/ui/new/panels/slot_strip.png).
+static func has_slot_frame() -> bool:
+	return tex("slot_strip") != null
+
+
+## New theme: ONE frame behind all the children of `row` (a row of artifact or bottle slots), drawn from the first child's
+## left edge to the last one's right edge and growing with them. Does nothing in Default or while the row is empty.
+static func frame_behind(row: Control, pad := Vector2(16, 11)) -> void:
+	if is_circus():
+		pad = Vector2(6, 2)  # (the Cirus frame is a solid block: hug the slots, or it dwarfs them)
+	var sb := box("slot_strip", [32, 0, 47, 0] if is_circus() else [28, 0, 27, 0])
+	if sb == null:
+		return
+	row.sort_children.connect(row.queue_redraw)
+	row.draw.connect(func():
+		var all := Rect2()
+		var any := false
+		for k in row.get_children():
+			if k is Control and k.visible and not k.is_queued_for_deletion():
+				var r := Rect2(k.position, k.size)  # (not its scale: a charged artifact pulses, the frame stays still)
+				all = r if not any else all.merge(r)
+				any = true
+		if any:
+			row.draw_style_box(sb, all.grow_individual(pad.x, pad.y, pad.x, pad.y)))
 
 
 ## A TextureRect showing `name` inside a square of `px`; null when there's no art.

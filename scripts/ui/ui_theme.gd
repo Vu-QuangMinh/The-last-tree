@@ -200,12 +200,12 @@ static func get_theme() -> Theme:
 
 ## New theme: the wooden scroll bar (track + grabber) and the volume slider (the same track on its side + a round knob).
 static func _skin_scrollbars(t: Theme) -> void:
-	var track := UiSkin.box("scroll_track", [0, 10, 0, 10], [10, 10, 10, 10])
+	var track := UiSkin.box("scroll_track", [0, 39, 0, 29] if UiSkin.is_circus() else [0, 10, 0, 10], [10, 10, 10, 10])
 	if track != null and UiSkin.tex("scroll_bar_grabber") != null:
 		t.set_stylebox("scroll", "VScrollBar", track)
 		for g in ["grabber", "grabber_highlight", "grabber_pressed"]:
 			t.set_stylebox(g, "VScrollBar", StyleBoxEmpty.new())  # the painted thumb is a ScrollThumb on top of the bar (it never stretches)
-	var slider_track := UiSkin.box("slider_track", [10, 0, 10, 0], [10, 10, 10, 10])
+	var slider_track := UiSkin.box("slider_track", [39, 0, 29, 0] if UiSkin.is_circus() else [10, 0, 10, 0], [10, 10, 10, 10])
 	var knob := UiSkin.tex("volume_bar_grabber")
 	if slider_track != null and knob != null:
 		t.set_stylebox("slider", "HSlider", slider_track)
@@ -255,6 +255,12 @@ static func chant_button_styles() -> Dictionary:
 	if not UiSkin.is_new():
 		return {}
 	var out := {}
+	if UiSkin.is_circus() and UiSkin.tex("button_chant_normal") != null and UiSkin.path_of("button_chant_normal").contains("/circus/"):
+		# Cirus: the whole painted pill (green, lime on hover, red pressed, grey disabled), its gold ring and base included.
+		# It is 130 x 58 and the button is 58 tall, so only the middle stretches (the ends are half circles of 29 px).
+		for state in ["normal", "hover", "pressed", "disabled"]:
+			out[state] = UiSkin.box("button_chant_" + state, [29, 0, 29, 0], [30, 4, 30, 10])
+		return out
 	for state in ["normal", "hover", "pressed", "disabled"]:
 		# only the amber face, as the user asked: the art's dark 3D base strip is left out. The face is its own image
 		# (button_chant_*_face.png: rows 0-47 of the art, the pressed one 2-49), not a window onto the full art: scaled to a
@@ -264,7 +270,7 @@ static func chant_button_styles() -> Dictionary:
 
 
 static func panel_box(alpha := 0.88, radius := 12) -> StyleBox:
-	var art := UiSkin.box("panel_wood_frame", [30, 30, 30, 30], [18, 14, 18, 14])
+	var art := UiSkin.box("panel_wood_frame", [46, 29, 46, 34] if UiSkin.is_circus() else [30, 30, 30, 30], [18, 14, 18, 14])  # (the Cirus panel is a shorter picture with bigger corners)
 	if art != null:
 		art.modulate_color = Color(1, 1, 1, clampf(alpha + 0.1, 0.0, 1.0))
 		return art

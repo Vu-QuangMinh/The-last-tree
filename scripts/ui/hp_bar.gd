@@ -12,6 +12,35 @@ var _crack := 0.0  # glass crack flash (0..1)
 var _flash := 0.0  # red flash on a hit
 var _t := 0.0
 var _shown := false  # set once: entering a fight with missing HP isn't damage
+var _layer: Control  # Cirus theme: the coloured fills, clipped to the painted fill shape (see _draw_full)
+
+## Cirus: the fills are drawn in a child control whose shader multiplies their alpha by the painted fill shape, so the
+## ends of the red / blue / grey are cut round to match the bar.
+const FILL_SHADER := """
+shader_type canvas_item;
+uniform sampler2D mask;
+uniform vec2 node_size = vec2(1.0);
+varying vec2 lp;
+void vertex() { lp = VERTEX; }
+void fragment() { COLOR.a *= texture(mask, lp / node_size).a; }
+"""
+
+
+func _ready() -> void:
+	var frame := UiSkin.tex("hp_bar_full")
+	var mask := UiSkin.tex("hp_fill_mask")
+	if frame == null or mask == null:
+		return
+	_layer = Control.new()
+	_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sh := Shader.new()
+	sh.code = FILL_SHADER
+	var mat := ShaderMaterial.new()
+	mat.shader = sh
+	mat.set_shader_parameter("mask", mask)
+	_layer.material = mat
+	_layer.draw.connect(_draw_fill)
+	add_child(_layer)
 
 
 
@@ -57,6 +86,8 @@ func _process(d: float) -> void:
 ## The caps change with the state: left = HP, Shield (the shield reaches the left end) or Blank (no HP left);
 ## right = HP (full, no shield), Shield (full, with shield) or Blank (not full). The just-lost chunk shows pale.
 func _draw_art() -> bool:
+	if _layer != null:
+		return _draw_full()
 	var parts := {}
 	for n in ["hp_body_hp", "hp_body_shield", "hp_body_blank", "hp_head_left_hp", "hp_head_left_shield", "hp_head_left_blank",
 			"hp_head_right_hp", "hp_head_right_shield", "hp_head_right_blank"]:
@@ -90,6 +121,41 @@ func _draw_art() -> bool:
 			var a := k * TAU / 5.0 + 0.4
 			draw_line(c, c + Vector2.from_angle(a) * h * 1.2, Color(1, 1, 1, _crack), 1.5)
 	return true
+
+
+## Cirus theme: the whole painted bar, then (in _layer) the red HP, the blue Shield over the end of it, and the grey of
+## the missing HP, all clipped to the painted fill shape, which sits centred in the bar.
+func _draw_full() -> bool:
+	var frame := UiSkin.tex("hp_bar_full")
+	var mask := UiSkin.tex("hp_fill_mask")
+	draw_texture_rect(frame, Rect2(Vector2.ZERO, size), false)
+	var fs := mask.get_size() * size / frame.get_size()
+	_layer.position = (size - fs) / 2.0
+	_layer.size = fs
+	(_layer.material as ShaderMaterial).set_shader_parameter("node_size", fs)
+	_layer.queue_redraw()
+	return true
+
+
+func _draw_fill() -> void:
+	var w := _layer.size.x
+	var h := _layer.size.y
+	var hw := w * clampf(hp / max_hp, 0, 1)
+	var sw := minf(hw, w * shield / max_hp)
+	var gw := w * clampf(_ghost / max_hp, 0, 1)
+	var tint := Color(1, 1, 1).lerp(Color(1.7, 1.5, 1.5), _flash * 0.6)
+	_layer.draw_texture_rect(UiSkin.tex("hp_fill_blank"), Rect2(0, 0, w, h), false)
+	if gw > hw:  # the part you just lost, pale
+		_layer.draw_rect(Rect2(hw, 0, gw - hw, h), Color(1.0, 0.85, 0.6))
+	if hw - sw > 0.0:
+		_layer.draw_texture_rect(UiSkin.tex("hp_fill_hp"), Rect2(0, 0, hw - sw, h), false, tint)
+	if sw > 0.0:
+		_layer.draw_texture_rect(UiSkin.tex("hp_fill_shield"), Rect2(hw - sw, 0, sw, h), false, tint)
+		if _crack > 0.0:
+			var c := Vector2(hw - sw / 2.0, h / 2.0)
+			for k in 5:
+				var a := k * TAU / 5.0 + 0.4
+				_layer.draw_line(c, c + Vector2.from_angle(a) * h * 1.2, Color(1, 1, 1, _crack), 1.5)
 
 
 ## One stretch of the body from x0 to x1, kept between the caps (cap .. w - cap). tex null = a pale plain block.
