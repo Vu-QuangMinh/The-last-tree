@@ -176,7 +176,7 @@ func _ready() -> void:
 		_stage = PuppetStage.new()
 		add_child(_stage)
 		_stage.add_default_props()
-		_stage.add_hanging_sign(960.0, 250.0)
+		_stage.add_hanging_sign(PuppetLayout.MENU.position.x + 250.0 * 900.0 / 842.0 / 2.0, 250.0)  # (in the top left corner, its left edge over the Menu button's)
 		_stage.fit(get_viewport_rect().size.x)
 		get_viewport().size_changed.connect(func() -> void: _stage.fit(get_viewport_rect().size.x))
 		var lights := StageLights.new()  # (a spotlight over every enemy)
@@ -196,7 +196,7 @@ func _ready() -> void:
 	if UiSkin.is_puppet():  # Puppet Stage: the Act / Floor / Turn line is written on the hanging sign; the HUD stays over the ceiling
 		_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_info.size = Vector2(260, 30)
-		_info.position = Vector2(960.0 - 130.0, 144.0)
+		_info.position = Vector2(PuppetLayout.MENU.position.x + 250.0 * 900.0 / 842.0 / 2.0 - 130.0, 152.0)  # (the sign went up 25 px and 40 px left; its words stay clear of the ceiling)
 		_info.add_theme_font_size_override("font_size", 19)
 		_info.add_theme_color_override("font_color", Color(0.28, 0.17, 0.08))
 		_info.z_index = PuppetStage.CEILING_Z + 1
@@ -468,20 +468,44 @@ const ENEMY_FEET_DY := 480.0  # (from the top of the row to the feet of a puppet
 const ENEMY_LIFT := 0.0  # (how much higher than the middle of the floor they stand)
 
 
+var _extra_lift := 0.0  # how much higher the enemies stand because their rows of Essence need more than one line above the spell cards
+
+
 func _place_enemies() -> void:
 	if _stage != null and _enemy_row != null:
-		_enemy_row.position.y = _stage.floor_center_y() - ENEMY_FEET_DY - ENEMY_LIFT
+		_enemy_row.position.y = _stage.floor_center_y() - ENEMY_FEET_DY - ENEMY_LIFT - _extra_lift
+
+
+## Puppet Stage: the Essence rows hang under the enemies' feet; when one needs two lines (or more) the whole row of enemies stands higher, so
+## the lowest line ends just above the spell cards.
+func _fit_enemy_lift() -> void:
+	if _stage == null or _enemy_row == null or _spell_row == null or _spell_row.get_child_count() == 0:
+		return
+	var bottom := 0.0
+	for e in _views:
+		var v: EnemyView = _views[e]
+		if is_instance_valid(v) and not e.is_dead():
+			bottom = maxf(bottom, v.below_feet_bottom())
+	if bottom <= 0.0:
+		return
+	var need := clampf(bottom + _extra_lift - (_spell_row.global_position.y - 6.0), 0.0, 130.0)
+	if absf(need - _extra_lift) > 0.5:
+		_extra_lift = need
+		_place_enemies()
 
 
 ## ---- Puppet Stage: the left of the HUD, as laid out in "Chant UI for puppet.pdf" ---------------------------------------------
 ## HP bar with the heart / HP and Shield under it, the bottles' frame (up to 5), the artifacts' frame (ten slots), the Leaves under them, and
 ## the statuses (small icons, up to 22 at once: 14 kinds + 8 Powers, two rows) above the HP bar. Everything stands on the screen itself;
 ## `_player_panel` is only a marker the effects that land on you fly to.
+const HP_DY := 40.0  # (the HP bar, its heart, HP, Shield and the statuses stand this much lower than the PDF has them: the Leaves are gone)
+
+
 func _rebuild_character_panel() -> void:
 	_puppet_hud = true
 	var old := _player_panel
 	_player_panel = Control.new()
-	_player_panel.position = Vector2(60, 866)
+	_player_panel.position = Vector2(60, 866.0 + HP_DY)
 	_player_panel.size = Vector2(430, 100)
 	_player_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_player_panel)
@@ -490,24 +514,24 @@ func _rebuild_character_panel() -> void:
 	_arts_frame = _hud_frame("artifacts_frame", PuppetLayout.ARTIFACTS, 28)
 	_hp_bar = HpBar.new()
 	_hp_bar.custom_minimum_size = PuppetLayout.HP_BAR.size
-	_hp_bar.position = PuppetLayout.HP_BAR.position
+	_hp_bar.position = PuppetLayout.HP_BAR.position + Vector2(0, HP_DY)
 	_hp_bar.size = PuppetLayout.HP_BAR.size
 	add_child(_hp_bar)
 	var heart := UiSkin.icon("icon_heart", 28)
 	if heart != null:
-		heart.position = PuppetLayout.HEART_AT
+		heart.position = PuppetLayout.HEART_AT + Vector2(0, HP_DY)
 		add_child(heart)
 	var hp_font := UiTheme.cut("bold")
 	_hp_label = UiTheme.label("", 17)
 	if hp_font != null:
 		_hp_label.add_theme_font_override("font", hp_font)
-	_hp_label.position = PuppetLayout.HP_TEXT_AT
+	_hp_label.position = PuppetLayout.HP_TEXT_AT + Vector2(0, HP_DY)
 	_hp_label.size = Vector2(120, 30)
 	_hp_label.clip_text = true
 	add_child(_hp_label)
 	_shield_box = HBoxContainer.new()
 	_shield_box.add_theme_constant_override("separation", 6)
-	_shield_box.position = PuppetLayout.SHIELD_AT
+	_shield_box.position = PuppetLayout.SHIELD_AT + Vector2(0, HP_DY)
 	_shield_box.visible = false
 	var shield_pic := UiSkin.icon("icon_armor_shield", 28)
 	if shield_pic != null:
@@ -525,24 +549,10 @@ func _rebuild_character_panel() -> void:
 	_status_row = HFlowContainer.new()
 	_status_row.add_theme_constant_override("h_separation", 4)
 	_status_row.add_theme_constant_override("v_separation", 4)
-	_status_row.position = Vector2(70, PuppetLayout.HP_BAR.position.y - STATUS_CHIP * 2.0 - 14.0)
+	_status_row.position = Vector2(70, PuppetLayout.HP_BAR.position.y + HP_DY - STATUS_CHIP * 2.0 - 14.0)
 	_status_row.custom_minimum_size = Vector2(STATUS_CHIP * 11.0 + 40.0, STATUS_CHIP * 2.0 + 4.0)
 	add_child(_status_row)
 	_pstatus = RichTextLabel.new()  # (not shown: statuses are icons)
-	var coin := HBoxContainer.new()
-	coin.add_theme_constant_override("separation", 6)
-	coin.position = Vector2(PuppetLayout.MENU.position.x + 4.0, PuppetLayout.MENU.position.y - 38.0)
-	coin.mouse_filter = Control.MOUSE_FILTER_STOP
-	coin.tooltip_text = "Leaves: your money for this run. Spend it at the merchant and in events; fights give more."
-	var leaf := UiSkin.icon("icon_amber", 28)
-	if leaf != null:
-		coin.add_child(leaf)
-	_coin_label = UiTheme.label("0", 24, Color(0.75, 1.0, 0.6))
-	_coin_label.add_theme_constant_override("outline_size", 5)
-	_coin_label.add_theme_color_override("font_outline_color", Color(0.05, 0.2, 0.04))
-	_coin_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	coin.add_child(_coin_label)
-	add_child(coin)
 
 
 ## A painted frame of the HUD (3 slices: caps at the two ends), put just above the stage so it is behind the pieces that stand on it.
@@ -733,6 +743,13 @@ func _strip_art(tex_name: String, pos: Vector2) -> TextureRect:
 	return r
 
 
+## The machine's glass sheets are see-through: 40 % opacity, so the balls behind them show.
+func _glass_art(tex_name: String, pos: Vector2) -> TextureRect:
+	var r := _strip_art(tex_name, pos)
+	r.modulate.a = 0.4
+	return r
+
+
 func _build_strips_circus() -> void:
 	var cap := ChantLayout.CAP
 	var cp := PanelContainer.new()
@@ -911,11 +928,11 @@ func _build_strips_puppet() -> void:
 	_stock_row.size = _stock_row.custom_minimum_size
 	inner.add_child(_stock_row)
 	inner.add_child(_strip_art("machine_box", PuppetMachine.BOX))
-	inner.add_child(_strip_art("machine_globe_glass", PuppetMachine.GLOBE_GLASS))
+	inner.add_child(_glass_art("machine_globe_glass", PuppetMachine.GLOBE_GLASS))
 	inner.add_child(_strip_art("machine_bevel", PuppetMachine.BEVEL))
-	inner.add_child(_strip_art("machine_pipe_glass", PuppetMachine.PIPE_GLASS))
+	inner.add_child(_glass_art("machine_pipe_glass", PuppetMachine.PIPE_GLASS))
 	inner.add_child(_strip_art("machine_pipe_front", PuppetMachine.PIPE_FRONT))
-	inner.add_child(_strip_art("machine_tube_glass", PuppetMachine.TUBE_GLASS))
+	inner.add_child(_glass_art("machine_tube_glass", PuppetMachine.TUBE_GLASS))
 	inner.add_child(_strip_art("machine_tube_front", PuppetMachine.TUBE_FRONT))
 	add_child(sp)
 
@@ -1403,7 +1420,6 @@ func _puppet_launch(balls: Array) -> void:
 	var from_globe := Time.get_ticks_msec() < _turn_batch_until
 	_turn_batch_until = 0
 	var pool: Array = _tube_icons.filter(func(c): return is_instance_valid(c) and not c.is_queued_for_deletion())
-	var waiting_in_tube := _tube_waiting().size()  # (the places in the tube already taken)
 	var hidden := _tube_hidden()
 	_tube_prep = true
 	var drops: Array = []  # [icon, its place in the tube]
@@ -1439,13 +1455,8 @@ func _puppet_launch(balls: Array) -> void:
 		for k in drops.size():
 			_drop_ball(drops[k][0], hidden, k * 0.13)
 		await get_tree().create_timer(0.54 + (drops.size() - 1) * 0.13).timeout
-		var total := waiting_in_tube + drops.size()
-		for k in drops.size():  # out of the box into the tube, behind the others
-			var sx := _tube_slot_x(waiting_in_tube + k, total)
-			starts_x[drops[k][1]] = sx
-			_roll_in(drops[k][0], sx, k * 0.12)
-		await get_tree().create_timer(0.2).timeout
-		await _rolls_done()
+		for k in drops.size():  # (out of the box they roll straight to their places in the Bag: no stop in the tube)
+			starts_x[drops[k][1]] = hidden.x
 	var travel: Array = []
 	var starts: Array = []
 	var arrive := 0.0
@@ -1547,6 +1558,10 @@ func _sync_views() -> void:
 		for i in live.size():
 			_enemy_row.move_child(_views[live[i]], i)
 		return
+	for e in _views:  # (Puppet Stage: a puppet that was defeated breaks into pieces)
+		var old: EnemyView = _views[e]
+		if e.is_dead() and not e.knocked and is_instance_valid(old) and is_instance_valid(old.creature):
+			PuppetShatter.spawn(self, old.creature)
 	for c in _enemy_row.get_children():
 		_enemy_row.remove_child(c)
 		c.queue_free()
@@ -2154,6 +2169,9 @@ func _show_help() -> void:
 	p.z_index = 99
 	p.position = Vector2(24, 112)
 	p.custom_minimum_size = Vector2(440, 0)
+	var slide := _puppet_strips()  # (Puppet Stage: it slides in from the left edge of the screen, level with the spell cards' tops, and slides back out)
+	if slide:
+		p.position = Vector2(-480.0, _spell_row.global_position.y if _spell_row.get_child_count() > 0 else 675.0)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 4)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2208,11 +2226,16 @@ func _show_help() -> void:
 	var bob := sprout.create_tween().set_loops(6)
 	bob.tween_property(sprout, "position:y", -5.0, 0.35).set_trans(Tween.TRANS_SINE)
 	bob.tween_property(sprout, "position:y", 0.0, 0.35).set_trans(Tween.TRANS_SINE)
-	p.modulate.a = 0.0
 	var tw := p.create_tween()
-	tw.tween_property(p, "modulate:a", 1.0, 0.2)
-	tw.tween_interval(25.0)  # it stays a good while (or until you close it)
-	tw.tween_property(p, "modulate:a", 0.0, 0.5)
+	if slide:
+		tw.tween_property(p, "position:x", 24.0, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_interval(25.0)
+		tw.tween_property(p, "position:x", -480.0, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	else:
+		p.modulate.a = 0.0
+		tw.tween_property(p, "modulate:a", 1.0, 0.2)
+		tw.tween_interval(25.0)  # it stays a good while (or until you close it)
+		tw.tween_property(p, "modulate:a", 0.0, 0.5)
 	tw.tween_callback(p.queue_free)
 	_pulse_next_thing()
 
@@ -3188,6 +3211,8 @@ func _process(_d: float) -> void:
 		_tumble_globe(_d)
 	_update_hover_info(_d)
 	_pulse_release()
+	if _puppet_strips():
+		_fit_enemy_lift()
 	# idle while it's your move: the Seedling pops up once to help (not in the tutorial, which has its coach)
 	if not busy and not fight.over and not help_override.is_valid() and _pause_overlay == null:
 		_idle += _d

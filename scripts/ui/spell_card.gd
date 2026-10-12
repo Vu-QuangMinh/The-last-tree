@@ -590,7 +590,7 @@ func refresh() -> void:
 	if _count == null:
 		return
 	var n := charges if charges > 0 else fires
-	_count.text = ("×%d" % n) if n > 0 and state == "" else ""
+	_count.text = ""  # (no ×N: a spell no longer fires more than once for a long chant)
 	# the frame is the spell's function colour; gold when the chant matches it or it's alive
 	var border: Color = KIND_COLORS[spell.kind].darkened(0.15)
 	var bw := 3

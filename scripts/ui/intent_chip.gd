@@ -143,7 +143,7 @@ func build(e: EnemyState, move := {}) -> void:
 		hs.content_margin_top = 0.0
 		hs.content_margin_bottom = 0.0
 		bubble = hs
-		custom_minimum_size = Vector2(hl.get_width() + hr.get_width() + 24.0, hl.get_height())
+		custom_minimum_size = Vector2(hl.get_width() + hr.get_width() + 24.0, minf(hl.get_height(), 54.0))  # (only as tall as its content needs)
 	elif not _bubble.is_empty():
 		var empty := StyleBoxEmpty.new()
 		var tail: Texture2D = _bubble["tail"]

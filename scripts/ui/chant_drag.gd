@@ -61,7 +61,8 @@ func external_result() -> Dictionary:
 
 func _update_external() -> void:
 	_mouse = _pointer - global_position
-	var zone := Rect2(Vector2(-px * 0.6, -px * 1.3), size + Vector2(px * 1.2, px * 2.6))
+	# (not much taller than the row: the Bag lies right under the chant, and letting go over it must send the Essence home)
+	var zone := Rect2(Vector2(-px * 0.6, -px * 0.7), size + Vector2(px * 1.2, px * 1.15))
 	if zone.has_point(_mouse):
 		_gap = _gap_at(_mouse.x - _grab_dx)
 	else:

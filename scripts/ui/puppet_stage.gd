@@ -37,8 +37,29 @@ const STAGE_H := 1080.0
 ## The whole stage (back wall, side walls, floor, front wall, scenery) stands SCENE_DY lower than the numbers above say, so that the bottom of
 ## the front wall touches the lower floor; the ceiling, the sign and the lower floor stay where they are.
 const SCENE_DY := 148.0
+const FLOOR_SHADOW_DEPTH := 0.3  # how long a floor shadow is, against the height of what throws it
+const FLOOR_SHADOW_SKEW := -0.6  # (it leans to the right: the key light is up on the left)
 const DESIGN_W := 1920.0
 const CEILING_Z := 100
+
+## The shadow a standing piece throws on the wooden floor: its own silhouette, lying flat on the floor in front of its feet, softened and fading
+## with the distance from the feet (the picture's bottom edge is where it touches the piece).
+const FLOOR_SHADOW := """
+shader_type canvas_item;
+uniform float strength = 0.45;
+uniform float radius = 0.03;
+void fragment() {
+	float a = texture(TEXTURE, UV).a;
+	for (int i = 0; i < 8; i++) {
+		float t = float(i) * 0.785398;
+		a += texture(TEXTURE, UV + vec2(cos(t), sin(t)) * radius).a;
+		a += texture(TEXTURE, UV + vec2(cos(t), sin(t)) * radius * 2.0).a;
+	}
+	a /= 17.0;
+	COLOR = vec4(0.0, 0.0, 0.0, a * strength * mix(0.6, 1.0, UV.y));
+}
+"""
+static var _floor_shadow_shader: Shader
 
 var _sprites: Array[Dictionary] = []
 var _anchored: Array[Dictionary] = []  # scenery placed by rule: {node, frac, dy, extra}
@@ -107,7 +128,7 @@ func _init() -> void:
 
 ## A wooden cut-out that stands at `pos` (its feet), `height` px tall, swaying on its base; `slide` is how far it travels left and
 ## right on its rail.
-func add_prop(file: String, pos: Vector2, height: float, slide: float, speed: float, phase := 0.0, sway := 0.02, lit := 0.86, shadow := 0.0) -> Sprite2D:
+func add_prop(file: String, pos: Vector2, height: float, slide: float, speed: float, phase := 0.0, sway := 0.02, lit := 0.86, shadow := 0.0, on_floor := false) -> Sprite2D:
 	var sp := Sprite2D.new()
 	sp.texture = _pic(file)
 	sp.centered = false
@@ -115,7 +136,23 @@ func add_prop(file: String, pos: Vector2, height: float, slide: float, speed: fl
 	sp.scale = Vector2.ONE * (height / float(sp.texture.get_height()))
 	sp.position = pos
 	sp.modulate = Color(lit, lit, lit * 0.96)
-	if shadow > 0.0:  # the shadow it throws on the backdrop behind it: its own silhouette, a little lower and to the right
+	if on_floor and shadow > 0.0:  # it stands on the floor: its shadow lies on the planks behind it, not on the backdrop
+		if _floor_shadow_shader == null:
+			_floor_shadow_shader = Shader.new()
+			_floor_shadow_shader.code = FLOOR_SHADOW
+		var fs := Sprite2D.new()
+		fs.texture = sp.texture
+		fs.centered = false
+		fs.offset = sp.offset
+		fs.show_behind_parent = true
+		fs.scale = Vector2(1.0, FLOOR_SHADOW_DEPTH)  # (squashed: lying on the floor, away from the viewer, behind it)
+		fs.skew = FLOOR_SHADOW_SKEW
+		var mat := ShaderMaterial.new()
+		mat.shader = _floor_shadow_shader
+		mat.set_shader_parameter("strength", shadow)
+		fs.material = mat
+		sp.add_child(fs)
+	elif shadow > 0.0:  # the shadow it throws on the backdrop behind it: its own silhouette, a little lower and to the right
 		var sh := Sprite2D.new()
 		sh.texture = sp.texture
 		sh.centered = false
@@ -145,34 +182,56 @@ func fit(width: float) -> void:
 
 
 ## The wooden scenery in front of the back wall: far mountains stand still, clouds, sun and trees slide on rails and rock a little.
-func add_default_props() -> void:
+## Every map (every stage that is built) lays it out anew: which mountains, trees and tufts come, and where.
+func add_default_props(rng_seed := 0) -> void:
 	# every piece is placed by rule (see _place_props): `frac` is how far across the back wall it stands (0 = its left edge, 1 = its right
 	# edge, the piece itself always staying inside the wall), `dy` how far below the seam between the back wall and the floor its feet are
 	# (negative: above it, for the sky)
-	for m in [["mountain_3", 0.12, 125.0], ["mountain_4", 0.32, 150.0], ["mountain_5", 0.55, 175.0], ["mountain_1", 0.86, 165.0]]:
-		_add_anchored("props/" + m[0], m[1], 0.0, m[2], 0.0, 1.0, 0.0, 0.0, 0.78, 0.0)
-	_add_anchored("props/cloud_1", 0.17, -237.0, 90.0, 45, 0.45, 0.0, 0.02, 0.9, 0.28)
-	_add_anchored("props/cloud_3", 0.62, -262.0, 100.0, 55, 0.35, 2.0, 0.02, 0.9, 0.28)
-	_add_anchored("props/cloud_2", 0.94, -277.0, 70.0, 40, 0.5, 4.0, 0.02, 0.9, 0.28)
-	_add_anchored("props/sun", 0.78, -190.0, 130.0, 20, 0.3, 1.0, 0.03, 1.0, 0.18)
+	var rng := RandomNumberGenerator.new()
+	if rng_seed == 0:
+		rng.randomize()
+	else:
+		rng.seed = rng_seed
+	var mountains := [1, 2, 3, 4, 5]
+	_shuffle(mountains, rng)
+	for k in 4:  # (four of the five, spread over the wall with some jitter)
+		_add_anchored("props/mountain_%d" % mountains[k], _spread(k, 4, rng), 0.0, rng.randf_range(115.0, 185.0), 0.0, 1.0, 0.0, 0.0, 0.78, 0.0)
+	# (the sun first: what is added later is drawn over it, so the clouds pass in front of it)
+	_add_anchored("props/sun", rng.randf_range(0.5, 0.95), -240.0, 130.0, 20, 0.3, 1.0, 0.03, 1.0, 0.18)
+	var clouds := [1, 2, 3]
+	_shuffle(clouds, rng)
+	for k in 3:
+		_add_anchored("props/cloud_%d" % clouds[k], _spread(k, 3, rng), -227.0 - rng.randf_range(0.0, 50.0), rng.randf_range(70.0, 105.0), rng.randf_range(35.0, 58.0), rng.randf_range(0.3, 0.55), rng.randf() * 5.0, 0.02, 0.9, 0.28)
 	# the trees stand on the seam between the floor and the backdrop and rock on their trunks, like the puppets
-	var trees := [["tree_1", 0.0, 270.0, 0.9, 0.0, 0.04], ["tree_2", 0.27, 230.0, 1.1, 1.0, 0.045], ["tree_3", 0.5, 210.0, 1.0, 5.0, 0.04],
-		["tree_4", 0.77, 260.0, 0.8, 3.0, 0.04], ["tree_5", 1.0, 220.0, 1.0, 2.0, 0.045]]
-	for t in trees:
-		_add_anchored("props/" + t[0], t[1], 6.0, t[2], 0.0, t[3], t[4], t[5], 0.84, 0.3)
+	var trees := [1, 2, 3, 4, 5]
+	_shuffle(trees, rng)
+	for k in 5:
+		_add_anchored("props/tree_%d" % trees[k], _spread(k, 5, rng), 6.0, rng.randf_range(205.0, 275.0), 0.0, rng.randf_range(0.8, 1.1), rng.randf() * 5.0, rng.randf_range(0.035, 0.045), 0.84, 0.95, true)
 	# tufts of grass on the ground along the same seam, swaying a little
-	var bushes := [[0.0, 1, 60.0], [0.14, 4, 54.0], [0.35, 2, 66.0], [0.55, 6, 52.0], [0.6, 3, 62.0], [0.79, 5, 56.0], [0.86, 1, 50.0], [1.0, 2, 64.0]]
-	for i in bushes.size():
-		var bu: Array = bushes[i]
-		_add_anchored("props/bush_%d" % bu[1], bu[0], 12.0 + (i % 3) * 5.0, bu[2], 0.0, 1.2 + (i % 4) * 0.2, i * 1.3, 0.05, 0.86, 0.22)
+	var nb := rng.randi_range(7, 9)
+	for i in nb:
+		_add_anchored("props/bush_%d" % rng.randi_range(1, 6), _spread(i, nb, rng), 12.0 + (i % 3) * 5.0, rng.randf_range(48.0, 68.0), 0.0, rng.randf_range(1.2, 1.9), i * 1.3, 0.05, 0.86, 0.9, true)
 	_place_props()
 
 
-func _add_anchored(file: String, frac: float, dy: float, height: float, slide: float, speed: float, phase: float, sway: float, lit: float, shadow: float) -> void:
-	var sp := add_prop(file, Vector2.ZERO, height, slide, speed, phase, sway, lit, shadow)
+func _shuffle(a: Array, rng: RandomNumberGenerator) -> void:
+	for i in range(a.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var t = a[i]
+		a[i] = a[j]
+		a[j] = t
+
+
+## The k-th of n places along the wall (0..1), with some jitter, so that n pieces never bunch up.
+func _spread(k: int, n: int, rng: RandomNumberGenerator) -> float:
+	return clampf((k + rng.randf_range(0.1, 0.9)) / float(n), 0.0, 1.0)
+
+
+func _add_anchored(file: String, frac: float, dy: float, height: float, slide: float, speed: float, phase: float, sway: float, lit: float, shadow: float, on_floor := false) -> void:
+	var sp := add_prop(file, Vector2.ZERO, height, slide, speed, phase, sway, lit, shadow, on_floor)
 	# the room this piece needs at its sides: its half width, how far it slides, its shadow (to the right), how far it leans
 	var half := sp.texture.get_width() * sp.scale.x / 2.0
-	var extra := slide + (18.0 if shadow > 0.0 else 0.0) + height * sway
+	var extra := slide + ((height * FLOOR_SHADOW_DEPTH * 0.6 if on_floor else 18.0) if shadow > 0.0 else 0.0) + height * sway
 	_anchored.append({"node": sp, "frac": frac, "dy": dy, "half": half, "extra": extra})
 
 
@@ -211,9 +270,17 @@ func add_hanging_sign(center_x: float, height: float) -> Sprite2D:
 	sp.centered = false
 	sp.offset = Vector2(-sp.texture.get_width() / 2.0, 0)
 	sp.scale = Vector2.ONE * (height / float(sp.texture.get_height()))
-	sp.position = Vector2(center_x, -6.0)
+	sp.position = Vector2(center_x, -31.0)  # (25 px higher than before: the ceiling covers its top)
 	sp.modulate = Color(0.92, 0.92, 0.92)
 	sp.z_index = 0  # (under the enemies' names, which can reach up to it)
+	var sh := Sprite2D.new()  # (it throws a shadow on the backdrop, like the clouds)
+	sh.texture = sp.texture
+	sh.centered = false
+	sh.offset = sp.offset
+	sh.show_behind_parent = true
+	sh.self_modulate = Color(0, 0, 0, 0.28)
+	sh.position = Vector2(18.0, 9.0) / sp.scale.x
+	sp.add_child(sh)
 	add_child(sp)
 	_sprites.append({"node": sp, "x": center_x, "slide": 0.0, "speed": 1.1, "phase": 0.7, "sway": 0.006})
 	return sp

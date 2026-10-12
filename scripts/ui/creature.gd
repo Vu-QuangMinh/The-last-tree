@@ -46,6 +46,7 @@ const SHAPES := {
 }
 
 
+const THICKNESS := Color(0.2, 0.11, 0.05)  # (Puppet Stage: the colour of a plank's edge)
 var _puppet := false  # Puppet Stage cut-out in use
 
 
@@ -67,9 +68,9 @@ func setup(e: EnemyState) -> void:
 	_puppet = false
 	if UiSkin.is_puppet():
 		var file: String = PUPPET_FILES.get(e.id, e.id)
-		if e.id == "yin_yang_clone":  # (one picture per colour; _draw_art picks by the clone's current colour)
+		if e.id in ["yin_yang_clone", "yin_yang_beast"]:  # (one picture per colour; _draw_art picks by its current colour)
 			for c in ["white", "black"]:
-				var tc := _puppet_tex("yin_yang_clone_" + c)
+				var tc := _puppet_tex(e.id + "_" + c)
 				if tc != null:
 					_art["yin_" + c] = tc
 		var t := _puppet_tex(file)
@@ -300,6 +301,8 @@ func _draw_art(blink_on: bool) -> void:
 	var c := Vector2(size.x / 2.0, size.y - side * 0.5 + sin(bob) * 4.0)
 	if _shake > 0.0:
 		c += Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake) * 0.5)
+	if _puppet and not dead:
+		_draw_puppet_shadow(tex, Vector2(c.x, size.y), side)
 	if _puppet:  # a puppet doesn't bob: it rocks on its base, and tips back when it is hit
 		var tip := 0.0 if dead else sin(bob * 0.5) * 0.04 - 0.16 * minf(hurt / 0.4, 1.0)
 		draw_set_transform(Vector2(c.x, size.y), tip)
@@ -310,6 +313,68 @@ func _draw_art(blink_on: bool) -> void:
 	elif blink_on or flash > 0.0:
 		var b := 1.0 + 0.9 * maxf(flash, 1.0 if blink_on else 0.0)
 		mod = Color(b, b, b)
+	if _puppet and not dead:  # the plank has a thickness: a dark brown edge shows behind it, to the right and below
+		for k in [4, 3, 2, 1]:
+			draw_texture_rect(tex, Rect2(c - Vector2(side, side) * 0.5 + Vector2(1.8, 0.9) * k, Vector2(side, side)), false, THICKNESS.lightened(0.03 * (4 - k)))
 	draw_texture_rect(tex, Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side)), false, mod)
 	if _puppet:
 		draw_set_transform(Vector2.ZERO)
+
+
+## Puppet Stage: the shadow the spotlight throws on the floor: its own silhouette lying flat BEHIND the puppet (up the screen from its
+## feet, squashed, leaning right), dark at the feet and fading away from them, with a soft edge (a few passes, each a little wider and fainter).
+func _draw_puppet_shadow(tex: Texture2D, feet: Vector2, side: float) -> void:
+	var depth := side * 0.5
+	var lean := side * 0.5
+	var passes := [[0.0, 0.62], [0.06, 0.38], [0.13, 0.2]]
+	for p in passes:
+		var grow: float = p[0]
+		var w := side * (1.0 + grow)
+		var d := depth * (1.0 + grow)
+		var near := Color(0, 0, 0, p[1])  # (at the feet)
+		var far := Color(0, 0, 0, p[1] * 0.3)  # (at the head)
+		var pts := PackedVector2Array([
+			feet + Vector2(-w / 2.0 + lean, -d), feet + Vector2(w / 2.0 + lean, -d),  # the head's two corners, on the floor behind
+			feet + Vector2(w / 2.0, 0.0), feet + Vector2(-w / 2.0, 0.0)])  # the feet
+		draw_polygon(pts, PackedColorArray([far, far, near, near]), PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]), tex)
+
+
+## Puppet Stage: the whole square the picture is drawn in, on the screen, and the picture itself (for the pieces it breaks into).
+func puppet_art_rect() -> Rect2:
+	var side := minf(size.x, size.y) * 0.88 * big
+	return Rect2(global_position + Vector2(size.x / 2.0 - side / 2.0, size.y - side), Vector2(side, side))
+
+
+func puppet_tex() -> Texture2D:
+	if not _puppet or _art.is_empty():
+		return null
+	if _enemy != null and _enemy.yin != "" and _art.has("yin_" + _enemy.yin):
+		return _art["yin_" + _enemy.yin]
+	return _art.values()[0]
+
+
+static var _bounds_cache := {}  # texture path -> Rect2 (the painted part of the picture, as fractions of its square)
+
+
+## Puppet Stage: where the painted part of the puppet is, in this control's own coordinates (the picture is a square, its feet at the
+## bottom edge: see _draw_art). Empty when it is not drawn as a puppet.
+func puppet_bounds() -> Rect2:
+	if not _puppet or _art.is_empty():
+		return Rect2()
+	var tex: Texture2D = _art.values()[0]
+	var key := tex.resource_path
+	if not _bounds_cache.has(key):
+		var img := tex.get_image()
+		if img.is_compressed():
+			img.decompress()
+		var r := img.get_used_rect()
+		_bounds_cache[key] = Rect2(Vector2(r.position) / Vector2(img.get_size()), Vector2(r.size) / Vector2(img.get_size()))
+	var f: Rect2 = _bounds_cache[key]
+	var side := minf(size.x, size.y) * 0.88 * big
+	var origin := Vector2(size.x / 2.0 - side / 2.0, size.y - side)
+	var r := Rect2(origin + f.position * side, f.size * side)
+	if _enemy != null and _enemy.yin != "":  # (the Yin Yang Beast carries its symbol over its head: it counts as its head)
+		var sym_top := size.y * 0.58 - minf(size.x, size.y) * 0.34 * big * 1.37 - 2.0
+		if sym_top < r.position.y:
+			r = Rect2(r.position.x, sym_top, r.size.x, r.end.y - sym_top)
+	return r

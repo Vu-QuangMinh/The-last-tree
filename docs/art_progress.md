@@ -72,7 +72,7 @@ Source of truth for art: `assets/ui/Fight UI.pdf`, cut into `assets/ui/new/<fold
 - Open: layout of enemies vs spell cards still being tuned by the user; strings (attachment points) to be added by code later; artifact popup removed (artifacts are a row of 10 slots).
 
 **Puppet Stage theme, still open**
-- Missing puppets: Yeti and the Yin Yang Beast (white / black) fall back to the procedural body; `briar_hedge.png` is cut but not wired to the Bramble Matron's hedges; no Act 2 / Act 3 art; no art for the stage base ("Stage Base": the front wall replaced it).
+- Act 1 puppets re-imported 2026-10-13 from `assets/enemies/Puppet/Act 1/` by `tools/import_puppet_enemies.py` (strips the timestamp from the names, trims, squares, 512 px max); Yeti and both Yin Yang Beast colours (`yin_yang_beast_white/black`) are wired now. `briar_hedge.png` is cut but not wired to the Bramble Matron's hedges; no Act 2 / Act 3 art; no art for the stage base ("Stage Base": the front wall replaced it).
 - Spell cards cover the enemies' name and Essence rows (floor y about 560..710, cards from about 644); the layout is being redone from the hand-over PDF.
 - Not wired: the other screens (map, shop, loadout...) only get the dark-wood backdrop in this theme; title text and menu are the Cirus / New ones.
 - To check by eye / by ear (only still pictures and logs were checked): the F4-tuned perspective at other window sizes (the stage stretches sideways, the ceiling repeats), the stash flight and the globe / chute / tube sequence in a real fight, hit tilt of the puppets, spotlight look while enemies die.

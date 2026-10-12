@@ -10,7 +10,7 @@ var enemy: EnemyState
 var fight: Fight
 var creature: Creature
 var _intent_slot: Control
-var _name: Label
+var _name: RichTextLabel  # (BBCode: "Enraged" is written in purple)
 var _hp_row: HFlowContainer
 var _status: RichTextLabel
 ## How far down the model's box the intent bubble's top sits (it used to float in a row of its own, high above).
@@ -30,6 +30,9 @@ var pick_i := -1
 var _spell_row: HBoxContainer  # the Invoker's conjured spells
 var _spell_key := ""
 var _spell_cards: Array = []
+var _holder: Control
+var _px := 30.0  # the size of one Essence orb now
+var _free_layout := false  # Puppet Stage: the name stands on the puppet's head and the Essence under its feet (see _layout_free)
 var _hp_icons: Array = []  # the orbs currently shown, left to right
 
 
@@ -62,6 +65,7 @@ func setup(e: EnemyState, f: Fight) -> void:
 		holder.custom_minimum_size = Vector2(300, 230.0 - PUPPET_TOP)
 	holder.size_flags_horizontal = Control.SIZE_SHRINK_CENTER  # (centred when the view is wider, e.g. the Matron's)
 	holder.mouse_filter = Control.MOUSE_FILTER_PASS
+	_holder = holder
 	holder.clip_contents = false
 	add_child(holder)
 	_ring = Panel.new()
@@ -113,11 +117,17 @@ func setup(e: EnemyState, f: Fight) -> void:
 	_intent_slot.position = Vector2(0, INTENT_Y)
 	_intent_slot.size = Vector2(300, 46)
 	if UiSkin.is_puppet():
-		_intent_slot.position = Vector2(0, 115.0 - 38.0 - PUPPET_TOP)  # (about the middle of the puppet's body)
+		_intent_slot.position = Vector2.ZERO  # (the bubble is put by hand: _place_chip)
 		_intent_slot.size = Vector2(300, 77)
 	holder.add_child(_intent_slot)
-	_name = UiTheme.label(e.name, 20, Color.WHITE)
-	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_name = RichTextLabel.new()
+	_name.bbcode_enabled = true
+	_name.fit_content = true
+	_name.scroll_active = false
+	_name.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_name.add_theme_font_size_override("normal_font_size", 20)
+	_name.text = "[center]" + e.name.replace("Enraged", "[color=#b57bff]Enraged[/color]") + "[/center]"
 	add_child(_name)
 	_hp_row = HFlowContainer.new()
 	_hp_row.alignment = FlowContainer.ALIGNMENT_CENTER
@@ -137,6 +147,16 @@ func setup(e: EnemyState, f: Fight) -> void:
 	add_child(_status)
 	if UiSkin.is_puppet():  # the name and the Essence stand ABOVE the puppet (where the bubble used to be), the puppet last, at the bottom
 		move_child(holder, get_child_count() - 1)
+		if not enemy.has_passive("briar_walls"):  # (her hedges keep the old stacked layout)
+			_free_layout = true
+			for c in [_name, _hp_row, _status]:
+				remove_child(c)
+				holder.add_child(c)
+			creature.resized.connect(func() -> void:
+				_layout_free()
+				_replace_chips())
+			_hp_row.resized.connect(_layout_free)
+			_status.resized.connect(_layout_free)
 	refresh({})
 
 
@@ -175,8 +195,8 @@ func refresh(preview: Dictionary) -> void:
 		chip.tooltip_text = ""
 		_intent_slot.add_child(chip)
 		if UiSkin.is_puppet():  # its right edge (the pointer) just touches the puppet, it grows to the left with its content
-			chip.resized.connect(_place_chip.bind(chip))
-			_place_chip.call_deferred(chip)
+			chip.resized.connect(_place_chip.bind(chip))  # (it moves itself whenever its size changes; the signal goes with the chip)
+			_place_chip(chip)
 	for ch in _hp_row.get_children():
 		ch.queue_free()
 	_hp_icons.clear()
@@ -198,6 +218,7 @@ func refresh(preview: Dictionary) -> void:
 		px = 48.0 if e.size() <= 6 else 40.0
 		if walled:
 			px = 34.0
+	_px = px
 	e._fix_lit()
 	# an enemy behind walls (Bramble Matron): each wall is a hedge with its own Essence under it, hers stack in a
 	# framed block in the middle. Still one row, in order: left wall, her, right wall.
@@ -244,7 +265,7 @@ func refresh(preview: Dictionary) -> void:
 		(_link.skull_cell if walled else _hp_row).add_child(sk)
 	var st := e.describe_statuses()
 	for p in e.def.get("passives", []):
-		if not (p in EnemyDefs.HIDDEN_PASSIVES):
+		if not (p in EnemyDefs.HIDDEN_PASSIVES) and p != "shield_rage":  # ("Enraged" is in its name, in purple)
 			st.append(EnemyDefs.PASSIVE_TEXT[p].get_slice(":", 0))
 	_status.text = "[center]" + " · ".join(st.map(func(s): return _status_bbcode(s.get_slice(" (", 0)))) + "[/center]"
 	tooltip_text = ""  # (in a fight only the intent bubble explains anything: see FightScreen._update_hover_info)
@@ -256,13 +277,55 @@ func refresh(preview: Dictionary) -> void:
 		_marker.visible = targetable or move_mode or pick_mode
 		_marker.modulate.a = 1.0 if lit else 0.4
 		_marker.scale = Vector2.ONE if lit else Vector2(0.85, 0.85)
-	_name.add_theme_color_override("font_color", Color(1, 0.9, 0.4) if targeted else Color.WHITE)
+	_name.add_theme_color_override("default_color", Color(1, 0.9, 0.4) if targeted else Color.WHITE)
+	if _free_layout:
+		_layout_free.call_deferred()
 
 
-## Puppet Stage: the intent bubble's pointer ends at the puppet; the bubble grows to the left. (It may be gone by the time this runs.)
+## Puppet Stage: where the painted puppet is, in the holder's coordinates (its whole box when it has no cut-out).
+func _puppet_rect() -> Rect2:
+	var b := creature.puppet_bounds()
+	if b.size == Vector2.ZERO:
+		b = Rect2(Vector2.ZERO, creature.size)
+	b.position += creature.position
+	return b
+
+
+## Puppet Stage: the name sits right on the puppet's head, its Essence 5 px under its feet, its statuses under them.
+func _layout_free() -> void:
+	if not _free_layout or creature == null or not is_instance_valid(_name):
+		return
+	var b := _puppet_rect()
+	var w := _holder.size.x
+	var nh := _name.get_combined_minimum_size().y
+	_name.size = Vector2(w, nh)
+	_name.position = Vector2(0.0, b.position.y - nh - 1.0)
+	var top := b.end.y + 5.0
+	var row_w := w  # (a long row of Essence, usually a boss's, is laid out wider so that it never takes more than two lines)
+	var step := _px + 2.0
+	var n := _hp_row.get_child_count()
+	if n * step > 2.0 * w:
+		row_w = ceilf(n / 2.0) * step + 4.0
+	var row_x := (w - row_w) / 2.0
+	if _hp_row.position != Vector2(row_x, top) or _hp_row.size.x != row_w:
+		_hp_row.position = Vector2(row_x, top)
+		_hp_row.size = Vector2(row_w, 0.0)
+	var below := top + _hp_row.get_combined_minimum_size().y + 2.0
+	_status.position = Vector2(5.0, below)
+	_status.size.x = w - 10.0
+
+
+## Puppet Stage: the intent bubble stands left of the puppet (its pointer 4 px off the painted part), centred on the puppet's height.
 func _place_chip(chip: Control) -> void:
 	if is_instance_valid(chip) and not chip.is_queued_for_deletion():
-		chip.position = Vector2(PUPPET_BUBBLE_RIGHT - chip.size.x, 0.0)
+		var b := _puppet_rect()
+		chip.position = Vector2(b.position.x - 4.0 - chip.size.x, b.get_center().y - chip.size.y / 2.0)
+
+
+func _replace_chips() -> void:
+	for c in _intent_slot.get_children():
+		if not c.is_queued_for_deletion():
+			_place_chip(c)
 
 
 func _make_clickable(c: Control, index: int) -> void:
@@ -311,6 +374,16 @@ func flash_invoked(i: int) -> void:
 	var tw := card.create_tween()
 	tw.tween_property(card, "modulate", Color(2.0, 1.8, 1.2), 0.12)
 	tw.tween_property(card, "modulate", Color.WHITE, 0.4)
+
+
+## Puppet Stage: the screen y of the bottom of what hangs under the feet (the Essence rows, then the statuses when it has any).
+func below_feet_bottom() -> float:
+	if not _free_layout or not is_instance_valid(_hp_row):
+		return 0.0
+	var b := _hp_row.global_position.y + _hp_row.get_combined_minimum_size().y
+	if _status.text.strip_edges() != "[center][/center]" and _status.get_content_height() > 0:
+		b = _status.global_position.y + _status.get_content_height()
+	return b
 
 
 func intent_chip() -> Control:
