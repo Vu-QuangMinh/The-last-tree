@@ -7,3 +7,6 @@ build/
 
 # 2048 px originals of the room backgrounds (the game uses the 16:9 jpgs in assets/ui/new/backgrounds)
 assets/Room Background/
+
+# the 121 MB source PDF of the Puppet HUD (GitHub refuses files over 100 MB); it stays on the artist machine
+assets/ui/puppet/Chant UI for puppet.pdf
