@@ -69,6 +69,7 @@ var _views := {}  # EnemyState -> EnemyView
 var _spell_row: HBoxContainer
 var _cards: Array = []
 var _chant_row: HBoxContainer
+var _stage: PuppetStage  # Puppet Stage theme: the theatre behind the fight
 var _drag: ChantDrag  # the live, draggable chant while you place or rearrange elements
 # building a chant by drag and drop: a press becomes a drag once the mouse moves a little, else it's a click
 const DRAG_START := 8.0
@@ -167,12 +168,30 @@ func _ready() -> void:
 	_backdrop.act = run.act
 	_backdrop.tree_glow = false
 	add_child(_backdrop)
+	if UiSkin.is_puppet():  # Puppet Stage: the theatre (five tilted flat pictures, sliding wooden cut-outs) behind everything
+		_stage = PuppetStage.new()
+		add_child(_stage)
+		_stage.add_default_props()
+		_stage.add_hanging_sign(960.0, 250.0)
+		_stage.fit(get_viewport_rect().size.x)
+		get_viewport().size_changed.connect(func() -> void: _stage.fit(get_viewport_rect().size.x))
+		var lights := StageLights.new()  # (a spotlight over every enemy)
+		lights.feet = _enemy_feet
+		add_child(lights)
 	_info = UiTheme.label("", 22, Color.WHITE)
 	_info.position = Vector2(30, 14)
 	add_child(_info)
 	_arts = ArtifactBar.make(fight.artifacts, fight.artifact_plus)
 	_arts.position = Vector2(28, 52)
 	add_child(_arts)
+	if UiSkin.is_puppet():  # Puppet Stage: the Act / Floor / Turn line is written on the hanging sign; the HUD stays over the ceiling
+		_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_info.size = Vector2(260, 30)
+		_info.position = Vector2(960.0 - 130.0, 144.0)
+		_info.add_theme_font_size_override("font_size", 19)
+		_info.add_theme_color_override("font_color", Color(0.28, 0.17, 0.08))
+		_info.z_index = PuppetStage.CEILING_Z + 1
+		_arts.z_index = PuppetStage.CEILING_Z + 1
 	# top-right: coming next
 	var np := PanelContainer.new()
 	np.add_theme_stylebox_override("panel", UiTheme.panel_box(0.85, 10))
@@ -195,6 +214,7 @@ func _ready() -> void:
 	_enemy_row.position = Vector2(0, 90)
 	_enemy_row.size = Vector2(1920, 480)
 	add_child(_enemy_row)
+	_place_enemies()  # (Puppet Stage: they stand in the middle of the floor)
 	_prompt = UiTheme.label("", 22, Color(1, 0.9, 0.5))
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_prompt.position = Vector2(0, 492)
@@ -210,7 +230,10 @@ func _ready() -> void:
 	_spell_row.position = Vector2(0, 530)
 	_spell_row.size = Vector2(1920, 170)
 	add_child(_spell_row)
-	if _circus_strips():
+	if _puppet_strips():
+		_spell_row.z_index = 1  # (cards over the globe if there are so many that they reach it)
+		_build_strips_puppet()
+	elif _circus_strips():
 		_build_strips_circus()
 	else:
 		_build_strips_classic()
@@ -298,6 +321,7 @@ func _ready() -> void:
 	if log_art != null:  # New theme: a wooden plaque behind the log
 		_log.add_theme_stylebox_override("normal", log_art)
 	add_child(_log)
+	_log.visible = not UiSkin.is_puppet()  # (Puppet Stage: no fight log)
 	_fx = Control.new()
 	_fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -412,12 +436,53 @@ var _cast_uids := {}  # uid -> true: the Essence of the chant being cast right n
 var _tube_icons: Array = []  # the Essence in the tube (next turn's draw), or waiting hidden in the red block (sent by a spell)
 var _tube_hold_until := 0  # ticks: the tube rests, empty, until then (2 s after a launch)
 var _tube_sync_pending := false
+var _globe_energy := 0.0  # Puppet Stage: how hard the globe shakes right now (decays)
+var _globe_t := 0.0
 var _tube_prep := false  # a launch is being set up
 var _rolling_in := 0  # Essence rolling into the tube right now
 var _turn_batch_until := 0  # ticks: a new turn is starting, so the next new Essence come out of the tube
 
 
+## Puppet Stage: the enemies' row, so that their feet are on the middle of the floor.
+const ENEMY_FEET_DY := 287.0  # (from the top of the row to the feet of a puppet)
+
+
+func _place_enemies() -> void:
+	if _stage != null and _enemy_row != null:
+		_enemy_row.position.y = _stage.floor_center_y() - ENEMY_FEET_DY
+
+
+## Where the enemies' feet are (the spotlights follow them).
+func _enemy_feet() -> Array:
+	var out: Array = []
+	for e in _views:
+		var v: EnemyView = _views[e]
+		if is_instance_valid(v) and is_instance_valid(v.creature) and not e.is_dead():
+			out.append(v.creature.global_position + Vector2(v.creature.size.x / 2.0, v.creature.size.y))
+	return out
+
+
+## Puppet Stage: the spell cards sit just above the line of text over the Chant strip.
+func _place_spell_row() -> void:
+	if not _puppet_strips() or _spell_row == null or _chant_panel == null or _spell_row.get_child_count() == 0:
+		return
+	var h := 0.0
+	for c in _spell_row.get_children():
+		h = maxf(h, c.custom_minimum_size.y)
+	_spell_row.position.y = _chant_panel.position.y - 32.0 - h
+
+
+## Puppet Stage: the strips and the lottery-ball machine of "Chant UI for puppet.pdf" (cut by tools/export_puppet_chant.py, laid out by
+## PuppetLayout). It shares everything else of the Cirus strips (the Essence roll along the Bag, the tube logic), so _circus_strips() is
+## true for it too; only the building and the tube / machine functions look at _puppet_strips().
+func _puppet_strips() -> bool:
+	return UiSkin.is_puppet() and UiSkin.tex("globe_front") != null and UiSkin.tex("box_front") != null and UiSkin.tex("tube_front") != null \
+		and UiSkin.tex("pipe_front") != null and UiSkin.tex("chant_frame") != null and UiSkin.tex("bag_frame") != null
+
+
 func _circus_strips() -> bool:
+	if UiSkin.is_puppet():
+		return _puppet_strips()
 	return UiSkin.is_circus() and UiSkin.tex("chant_frame") != null and UiSkin.tex("bag_frame") != null and UiSkin.tex("tube_glass") != null \
 		and UiSkin.tex("tube_back") != null and UiSkin.tex("tube_gear") != null and UiSkin.tex("crank_plate") != null and UiSkin.tex("crank_handle") != null
 
@@ -532,11 +597,100 @@ func _build_strips_circus() -> void:
 	add_child(sp)
 
 
+func _build_strips_puppet() -> void:
+	var cap := PuppetLayout.CAP
+	var margins := [int(cap.x), 0, int(cap.y), 0]  # (3 slices: a cap at each end, a plain middle, no stretch in height)
+	var cp := PanelContainer.new()
+	cp.add_theme_stylebox_override("panel", UiSkin.box("chant_frame", margins))
+	_chant_panel = cp
+	cp.position = Vector2(540, 742)
+	cp.custom_minimum_size = PuppetLayout.FRAME_CHANT
+	var cin := Control.new()
+	cin.custom_minimum_size = PuppetLayout.FRAME_CHANT
+	cin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cp.add_child(cin)
+	# what the chant row says ("3 Essence", Toll, Confused...): just above the strip
+	_chant_note = UiTheme.label("", 15, Color.WHITE)
+	_chant_note.position = Vector2(PuppetLayout.RING_X0, -26)
+	_chant_note.add_theme_constant_override("outline_size", 5)
+	_chant_note.add_theme_color_override("font_outline_color", Color(0.1, 0.05, 0.03))
+	_chant_note.mouse_filter = Control.MOUSE_FILTER_STOP
+	cin.add_child(_chant_note)
+	_chant_row = HBoxContainer.new()
+	_chant_row.add_theme_constant_override("separation", 6)
+	_chant_row.position = Vector2(PuppetLayout.RING_X0, PuppetLayout.RING_CY - PUPPET_RING_PX / 2.0)
+	cin.add_child(_chant_row)
+	_cast_btn = UiTheme.button(UiTheme.hk("Chant", "Enter"), _on_primary, 15)
+	UiTheme.use_heading_font(_cast_btn)
+	_place(_cast_btn, PuppetLayout.BTN_CHANT)
+	var chant_art := UiTheme.chant_button_styles()
+	for st in chant_art:
+		_cast_btn.add_theme_stylebox_override(st, chant_art[st])
+	cin.add_child(_cast_btn)
+	# Clear (Undo takes its place after the chant) and Pass each sit in a fixed slot
+	var clear_slot := Control.new()
+	_place(clear_slot, PuppetLayout.BTN_CLEAR)
+	cin.add_child(clear_slot)
+	_clear_btn = UiTheme.button(UiTheme.hk("Clear", "⌫"), _clear_chant, 13)
+	UiTheme.use_heading_font(_clear_btn)
+	_clear_btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	clear_slot.add_child(_clear_btn)
+	_undo_btn = UiTheme.button("↶ Undo", _undo_last, 13)
+	UiTheme.use_heading_font(_undo_btn)
+	_undo_btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_undo_btn.tooltip_text = "Take back the last spell you cast this turn. (Ctrl+Z. Pressing Release cannot be undone.)"
+	_undo_btn.visible = false
+	clear_slot.add_child(_undo_btn)
+	var pass_slot := Control.new()
+	_place(pass_slot, PuppetLayout.BTN_PASS)
+	cin.add_child(pass_slot)
+	_end_btn = UiTheme.button(UiTheme.hk("Pass", "E"), _on_end_turn, 13)
+	UiTheme.use_heading_font(_end_btn)
+	_end_btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_end_btn.tooltip_text = "End your turn without chanting (you keep your Essence)."
+	pass_slot.add_child(_end_btn)
+	add_child(cp)
+	# the Bag strip, then the machine on its right. Layers: the strip, every Essence (rolling in the strip, tumbling in the globe, hidden
+	# behind the box), then the box, the globe's glass, the tube's glass and the pipe on top of them.
+	var sp := PanelContainer.new()
+	_bag_panel = sp
+	sp.add_theme_stylebox_override("panel", UiSkin.box("bag_frame", margins))
+	sp.position = cp.position - PuppetLayout.CHANT_AT
+	sp.custom_minimum_size = PuppetLayout.FRAME_BAG
+	var inner := Control.new()
+	inner.custom_minimum_size = PuppetLayout.FRAME_BAG
+	inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sp.add_child(inner)
+	_stock_row = Control.new()
+	_stock_row.mouse_filter = Control.MOUSE_FILTER_PASS
+	_stock_row.custom_minimum_size = Vector2(PuppetLayout.TOTAL_W, PuppetLayout.FRAME_BAG.y)
+	_stock_row.size = _stock_row.custom_minimum_size
+	inner.add_child(_stock_row)
+	inner.add_child(_strip_art("box_front", PuppetLayout.BOX_FRONT))
+	inner.add_child(_strip_art("globe_front", PuppetLayout.GLOBE_FRONT))
+	inner.add_child(_strip_art("tube_front", PuppetLayout.TUBE_FRONT))
+	inner.add_child(_strip_art("pipe_front", PuppetLayout.PIPE_FRONT))
+	add_child(sp)
+
+
+func _place(c: Control, r: Rect2) -> void:
+	c.position = r.position
+	c.custom_minimum_size = r.size
+	c.size = r.size
+
+
+const PUPPET_RING_PX := 52.0
+
+
 ## Where the k-th resting Essence of the bag sits (local to _stock_row) when there are n of them: Cirus lays them in one
 ## row from the strip's left end, squeezing together (even overlapping) when there are more than fit before the crank.
 func _bag_slot(k: int, n: int) -> Vector2:
 	if not _circus_strips():
 		return Vector2(minf(_stock_row.size.x - BAG_PX, k * (BAG_PX + BAG_GAP)), 0)
+	if _puppet_strips():
+		var proom := PuppetLayout.REST_END - PuppetLayout.REST_X - BAG_PX
+		var pstep := minf(PuppetLayout.RING_STEP, proom / maxf(1.0, n - 1))
+		return Vector2(PuppetLayout.REST_X + minf(k * pstep, proom), PuppetLayout.AXIS_Y - BAG_PX / 2.0)
 	var room := ChantLayout.REST_END - ChantLayout.REST_X - BAG_PX
 	var step := minf(BAG_PX + 4.0, room / maxf(1.0, n - 1))
 	return Vector2(ChantLayout.REST_X + minf(k * step, room), ChantLayout.AXIS_Y - BAG_PX / 2.0)
@@ -544,6 +698,9 @@ func _bag_slot(k: int, n: int) -> Vector2:
 
 ## The crank turns once and the gear twice (the same 0.9 s).
 func _turn_crank(seconds := 0.9) -> void:
+	if _puppet_strips():
+		_shuffle_globe()
+		return
 	if _tube_handle == null or not is_instance_valid(_tube_handle) or (_crank_tween != null and _crank_tween.is_valid()):
 		return
 	_tube_handle.rotation = 0.0
@@ -560,6 +717,8 @@ func _turn_crank(seconds := 0.9) -> void:
 ## Where the j-th of n Essence waiting in the tube sits (local to _stock_row): from the glass's left end, squeezing under
 ## the red block when there are many.
 func _tube_pos(j: int, n: int) -> Vector2:
+	if _puppet_strips():
+		return _globe_slot(j, n)
 	var x0: float = ChantLayout.TUBE_GLASS.x + 28.0
 	var step := minf(TUBE_BALL_STEP, (ChantLayout.TUBE_RIGHT - 8.0 - BAG_PX - x0) / maxf(1.0, n - 1))
 	return Vector2(x0 + j * step, ChantLayout.AXIS_Y - BAG_PX / 2.0)
@@ -568,6 +727,8 @@ func _tube_pos(j: int, n: int) -> Vector2:
 ## Where an Essence enters the tube: wholly inside the red block (it must never poke out of the tube's right end), so it
 ## is hidden there until it rolls out of it into the glass.
 func _tube_hidden() -> Vector2:
+	if _puppet_strips():  # (inside the box, behind its front: on the row the Essence roll along)
+		return Vector2(PuppetLayout.BOX_LEFT + 30.0, PuppetLayout.AXIS_Y - BAG_PX / 2.0)
 	return Vector2(minf(ChantLayout.TUBE_HIDE_X + 8.0, ChantLayout.TUBE_RIGHT - BAG_PX - 10.0), ChantLayout.AXIS_Y - BAG_PX / 2.0)
 
 
@@ -611,6 +772,9 @@ func _sync_tube() -> void:
 			get_tree().create_timer((_tube_hold_until - Time.get_ticks_msec()) / 1000.0 + 0.05).timeout.connect(func():
 				_tube_sync_pending = false
 				_sync_tube())
+		return
+	if _puppet_strips():
+		_sync_globe()
 		return
 	var ranked: Array = []
 	for i in fight.player.next_draw.size():
@@ -679,6 +843,9 @@ func _stash_flight(ev: Dictionary, from: Vector2) -> float:
 		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var a := from - _stock_row.global_position - ic.size / 2.0
 		var b := _tube_hidden()
+		var mouth := b
+		if _puppet_strips():
+			mouth = PuppetLayout.PIPE_PATH[0] - ic.size / 2.0
 		ic.position = a
 		ic.scale = Vector2(0.4, 0.4)
 		ic.modulate = Color(1.6, 1.6, 1.6, 0.0)
@@ -689,6 +856,21 @@ func _stash_flight(ev: Dictionary, from: Vector2) -> float:
 		var tw := ic.create_tween()
 		tw.tween_interval(delay)
 		tw.tween_callback(func(): Audio.play("sfx_ball_clack", -14.0, 1.2))
+		if _puppet_strips():  # card -> the pipe's mouth, then it rolls down the pipe into the box
+			tw.tween_method(_stash_step.bind(ic, a, mouth), 0.0, 1.0, 0.55)
+			tw.tween_callback(func(): Audio.play("sfx_ball_roll", -11.0, randf_range(0.9, 1.1)))
+			tw.tween_method(_pipe_step.bind(ic, b), 0.0, 1.0, 0.75)
+			tw.tween_callback(func():
+				ic.rotation = 0.0
+				ic.modulate = Color.WHITE
+				ic.position = b
+				Audio.play("sfx_ball_clack", -12.0, 0.9)
+				# out of the box, into the tube at once, first in line (nearest the Bag); the others will queue behind it
+				var idx := _tube_waiting().size()
+				ic.set_meta("in_tube", true)
+				_roll_in(ic, _tube_slot_x(idx, idx + 1), 0.0))
+			last = delay + 1.3
+			continue
 		tw.tween_method(_stash_step.bind(ic, a, b), 0.0, 1.0, 0.62)
 		tw.tween_callback(func():
 			ic.rotation = 0.0
@@ -724,6 +906,9 @@ func _rolls_done() -> void:
 ## ball has left, the tube is loaded for the next turn. balls: [[icon, rest position (local to _stock_row), uid], ...].
 func _tube_launch(balls: Array) -> void:
 	if balls.is_empty():
+		return
+	if _puppet_strips():
+		_puppet_launch(balls)
 		return
 	_launching += 1
 	balls.sort_custom(func(a, b): return a[1].x < b[1].x)
@@ -817,6 +1002,219 @@ func _roll_ball(balls: Array, j: int, from_x: float, t: float, delay: float) -> 
 			rock.tween_property(prev, "position:x", prev.position.x, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 
 
+## ---- Puppet Stage: the lottery-ball machine ----------------------------------------------------------------------------
+## The globe holds next turn's draw and tumbles it; at a new turn the balls fall down the chute into the box and roll out of it, through
+## the tube, into the Bag. A spell's Essence for next turn rolls down the pipe into the box and waits there (hidden) for the same trip.
+
+## Where the j-th of n Essence rests in the globe (top-left, local to _stock_row).
+func _globe_slot(j: int, n: int) -> Vector2:
+	var half := Vector2(BAG_PX, BAG_PX) / 2.0
+	var slots: Array = PuppetLayout.GLOBE_SLOTS
+	if n <= 1:
+		return (slots[1] + slots[2]) / 2.0 - half
+	if n == 2:
+		return slots[1 + mini(j, 1)] - half
+	if n == 3:
+		return slots[mini(j, 2)] - half
+	var c: Vector2 = (slots[0] + slots[1] + slots[2]) / 3.0
+	var r := PuppetLayout.GLOBE_R - BAG_PX * 0.5 - 8.0
+	var a := -PI / 2.0 + TAU * j / n
+	return c + Vector2(cos(a), sin(a)) * r - half
+
+
+## The globe's balls drift and spin (more when `_globe_energy` is up: a launch is coming).
+func _tumble_globe(d: float) -> void:
+	_globe_t += d * (1.0 + _globe_energy * 3.5)
+	_globe_energy = maxf(0.0, _globe_energy - d * 0.9)
+	var amp := 5.0 + _globe_energy * 20.0
+	for ic in _tube_icons:
+		if not is_instance_valid(ic) or not ic.has_meta("globe") or ic.has_meta("dropping") or not ic.has_meta("base"):
+			continue
+		var base: Vector2 = ic.get_meta("base")
+		var cur: Vector2 = ic.get_meta("cur", base).lerp(base, 1.0 - exp(-d * 8.0))
+		ic.set_meta("cur", cur)
+		var ph: float = ic.get_meta("phase", 0.0)
+		ic.position = cur + Vector2(cos(_globe_t * 1.7 + ph), sin(_globe_t * 2.3 + ph * 1.3)) * amp
+		ic.rotation = sin(_globe_t * 1.3 + ph) * (0.4 + _globe_energy * 2.5)
+
+
+func _shuffle_globe() -> void:
+	_globe_energy = 1.0
+	Audio.play("sfx_crank_ratchet", -6.0)
+
+
+## Next turn's draw lives in the globe (the tube's role in Cirus): spawn the missing balls, keep the ones a spell sent waiting in the box.
+func _sync_globe() -> void:
+	var ranked: Array = []
+	for i in fight.player.next_draw.size():
+		var d: Dictionary = fight.player.next_draw[i]
+		ranked.append([maxi(0, "FWA".find(d.el) + 1), i, d])
+	ranked.sort_custom(func(a, b): return a[0] < b[0] or (a[0] == b[0] and a[1] < b[1]))
+	var pool: Array = _tube_icons.filter(func(c): return is_instance_valid(c) and not c.is_queued_for_deletion())
+	var now: Array = []
+	for r in ranked:
+		var d: Dictionary = r[2]
+		var found := -1
+		for k in pool.size():
+			if pool[k].el == d.el and pool[k].temp == d.temp:
+				found = k
+				break
+		if found >= 0:
+			now.append(pool[found])
+			pool.remove_at(found)
+			continue
+		var nb := ElementIcon.make(d.el, BAG_PX)
+		nb.size = Vector2(BAG_PX, BAG_PX)
+		nb.pivot_offset = nb.size / 2.0
+		nb.temp = d.temp
+		nb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		nb.set_meta("globe", true)
+		nb.set_meta("phase", randf() * TAU)
+		nb.scale = Vector2.ZERO
+		nb.position = PuppetLayout.GLOBE_C - nb.size / 2.0
+		nb.set_meta("cur", nb.position)
+		_stock_row.add_child(nb)
+		nb.create_tween().tween_property(nb, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_globe_energy = maxf(_globe_energy, 0.5)
+		now.append(nb)
+	var keep: Array = []
+	for c in pool:
+		if c.has_meta("stash_until") and Time.get_ticks_msec() < int(c.get_meta("stash_until")):
+			keep.append(c)  # (a spell's Essence that is still on its way: the effect has not landed yet)
+		else:
+			c.queue_free()
+	_tube_icons = now + keep
+	var in_globe: Array = now.filter(func(c): return c.has_meta("globe"))
+	for j in in_globe.size():
+		in_globe[j].set_meta("base", _globe_slot(j, in_globe.size()))
+
+
+## An Essence falls from the globe down the chute into the box.
+func _drop_ball(ic: ElementIcon, to: Vector2, delay: float) -> void:
+	if not is_instance_valid(ic):
+		return
+	ic.set_meta("dropping", true)
+	var over := Vector2(PuppetLayout.CHUTE_X - BAG_PX / 2.0, ic.position.y)
+	var tw := ic.create_tween()
+	tw.tween_interval(delay)
+	tw.tween_callback(func(): Audio.play("sfx_ball_clack", -12.0, randf_range(1.0, 1.25)))
+	tw.tween_property(ic, "position", over, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(ic, "rotation", 0.0, 0.14)
+	tw.tween_property(ic, "position", to, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func():
+		if is_instance_valid(ic):
+			ic.remove_meta("dropping"))
+
+
+## A ball rolling down the pipe (mouth, leg, bend, into the box) to `end` (the box's hidden spot, top-left).
+func _pipe_step(u: float, ic: ElementIcon, end: Vector2) -> void:
+	if not is_instance_valid(ic):
+		return
+	var half := ic.size / 2.0
+	var pts: Array = PuppetLayout.PIPE_PATH.duplicate()
+	pts.append(end + half)
+	var total := 0.0
+	for i in pts.size() - 1:
+		total += pts[i].distance_to(pts[i + 1])
+	var at := u * u * (3.0 - 2.0 * u) * total  # (eases in and out)
+	var acc := 0.0
+	for i in pts.size() - 1:
+		var seg: float = pts[i].distance_to(pts[i + 1])
+		if at <= acc + seg or i == pts.size() - 2:
+			ic.position = pts[i].lerp(pts[i + 1], clampf((at - acc) / maxf(seg, 0.001), 0.0, 1.0)) - half
+			break
+		acc += seg
+	ic.rotation = -u * TAU * maxf(1.0, roundf(total / (PI * BAG_PX)))
+	ic.scale = Vector2.ONE
+
+
+## x of the k-th (of n) places in the launcher tube, from its Bag end: the Essence waiting there (a spell's, sent through the pipe) queue up
+## from the left, and the globe's balls line up behind them at a new turn.
+func _tube_slot_x(k: int, n: int) -> float:
+	var x0: float = PuppetLayout.TUBE_FRONT.x + 22.0
+	var step := minf(TUBE_BALL_STEP, (PuppetLayout.BOX_LEFT - 10.0 - BAG_PX - x0) / maxf(1.0, n - 1))
+	return x0 + k * step
+
+
+## The Essence waiting in the launcher tube (valid icons that are in the tube), nearest the Bag first.
+func _tube_waiting() -> Array:
+	var out: Array = _tube_icons.filter(func(c): return is_instance_valid(c) and not c.is_queued_for_deletion() and c.has_meta("in_tube"))
+	out.sort_custom(func(a, b): return a.position.x < b.position.x)
+	return out
+
+
+## A new turn: the globe shakes and its balls fall one by one down the chute into the box and roll into the tube behind the Essence that
+## already wait there; then every ball of the batch rolls out of the tube to its place in the Bag (the first one furthest, a "tok" at each
+## stop). The globe stays empty 2 s, then fills again.
+func _puppet_launch(balls: Array) -> void:
+	_launching += 1
+	balls.sort_custom(func(a, b): return a[1].x < b[1].x)
+	var n := balls.size()
+	var from_globe := Time.get_ticks_msec() < _turn_batch_until
+	_turn_batch_until = 0
+	var pool: Array = _tube_icons.filter(func(c): return is_instance_valid(c) and not c.is_queued_for_deletion())
+	var waiting_in_tube := _tube_waiting().size()  # (the places in the tube already taken)
+	var hidden := _tube_hidden()
+	_tube_prep = true
+	var drops: Array = []  # [icon, its place in the tube]
+	var starts_x: Array = []
+	for j in n:
+		var ic: ElementIcon = balls[j][0]
+		ic.set_meta("rolling", true)
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ic.modulate.a = 1.0
+		var taken := -1
+		if from_globe:
+			for k in pool.size():
+				if pool[k].el == ic.el and pool[k].temp == ic.temp:
+					taken = k
+					break
+		ic.position = hidden
+		starts_x.append(hidden.x)
+		if taken >= 0:
+			var waiting: ElementIcon = pool[taken]
+			pool.remove_at(taken)
+			if waiting.has_meta("in_tube"):  # it was already waiting in the tube
+				ic.position = waiting.position
+				starts_x[j] = waiting.position.x
+			elif waiting.has_meta("globe"):  # it falls out of the globe first
+				ic.position = waiting.position
+				ic.rotation = waiting.rotation
+				drops.append([ic, j])
+			waiting.queue_free()
+	_tube_icons = pool  # (whatever was not taken stays waiting)
+	_shuffle_globe()
+	if not drops.is_empty():
+		await get_tree().create_timer(0.55).timeout
+		for k in drops.size():
+			_drop_ball(drops[k][0], hidden, k * 0.13)
+		await get_tree().create_timer(0.54 + (drops.size() - 1) * 0.13).timeout
+		var total := waiting_in_tube + drops.size()
+		for k in drops.size():  # out of the box into the tube, behind the others
+			var sx := _tube_slot_x(waiting_in_tube + k, total)
+			starts_x[drops[k][1]] = sx
+			_roll_in(drops[k][0], sx, k * 0.12)
+		await get_tree().create_timer(0.2).timeout
+		await _rolls_done()
+	var travel: Array = []
+	var starts: Array = []
+	var arrive := 0.0
+	var last_start := 0.0
+	for j in n:
+		var d: float = float(starts_x[j]) - balls[j][1].x
+		var t := 0.25 + maxf(0.0, d) / 820.0
+		travel.append(t)
+		arrive = t if j == 0 else maxf(t, arrive + 0.12)
+		starts.append(arrive - t)
+		last_start = maxf(last_start, arrive - t)
+	_tube_hold_until = Time.get_ticks_msec() + int((last_start + 2.0) * 1000.0)  # the globe refills 2 s after the last ball is away
+	_tube_prep = false
+	for j in n:
+		_roll_ball(balls, j, float(starts_x[j]), float(travel[j]), float(starts[j]))
+	_launching -= 1
+	_sync_tube()  # (it waits for _tube_hold_until)
+
+
 ## The spell row. With many spells the cards shrink to fit the screen; hovering one brings it back to full size.
 ## The lower block (spell row, chant, bag, Keeper, log) is laid out from the top; once the panels have their real sizes,
 ## slide the whole block down together (keeping the gaps between its parts) until the bag sits BOTTOM_MARGIN above the
@@ -835,10 +1233,16 @@ func _fit_bottom() -> void:
 	if not is_instance_valid(_bag_panel):
 		return
 	var dy := (size.y if size.y > 0.0 else 1080.0) - BOTTOM_MARGIN - (_bag_panel.position.y + _bag_panel.size.y)
+	var puppet := _puppet_strips()
+	if puppet:  # (the Puppet strips are low: the Keeper's panel is the tallest part of the block, it sets the limit)
+		dy = minf(dy, (size.y if size.y > 0.0 else 1080.0) - BOTTOM_MARGIN - (_player_panel.position.y + _player_panel.size.y))
 	for n in movers:
 		if n != null:
-			n.position.y += dy
+			if not (puppet and n == _spell_row):
+				n.position.y += dy
 			n.modulate.a = 1.0
+	if _stage != null and puppet:
+		_place_spell_row()  # the stage's front face reaches down to the top of the Chant strip
 	_log.size.y = maxf(60.0, 1016.0 - _log.position.y)  # stop above the Menu button
 
 
@@ -866,6 +1270,7 @@ func _build_spells() -> void:
 		holder.add_child(card)
 		_spell_row.add_child(holder)
 		_cards.append(card)
+	_place_spell_row()
 
 
 func _card_zoom(card: SpellCard, big: bool) -> void:
@@ -1207,13 +1612,14 @@ func _bag_target_center(uid: int) -> Vector2:
 
 
 const CHANT_RINGS := 8  # empty rings shown while the chant is short (the chant itself has no length limit)
+const CHANT_RINGS_PUPPET := 10  # (the Puppet Stage strip has room for ten)
 const CHANT_W := 700.0  # room for the chant: a longer chant squeezes its Essence together, even overlapping
 const CHANT_W_CIRCUS := 540.0  # (the Cirus strip puts the buttons on the same row)
 
 
 ## How many empty rings to show: 8, or fewer under a Toll (its cap).
 func _chant_rings() -> int:
-	return mini(CHANT_RINGS, fight.player.chant_slots())
+	return mini(CHANT_RINGS_PUPPET if _puppet_strips() else CHANT_RINGS, fight.player.chant_slots())
 
 
 ## [orb size, gap between orbs] for a chant of `count` Essence. The gap goes negative (orbs overlap) when the
@@ -1223,6 +1629,10 @@ func _chant_layout(count := -1) -> Vector2:
 		count = chant_idx.size() if phase == "build" else fight.chant.size()
 	var n := maxi(_chant_rings(), count)
 	var px := 58.0 if n <= 10 else 50.0
+	if _puppet_strips():
+		px = PUPPET_RING_PX if n <= 10 else 46.0
+		var pstep := minf(PuppetLayout.RING_STEP, (PuppetLayout.RING_STEP * 9.0 + PUPPET_RING_PX - px) / maxf(1.0, n - 1))
+		return Vector2(px, pstep - px)
 	var step := minf(px + 6.0, ((CHANT_W_CIRCUS if _circus_strips() else CHANT_W) - px) / maxf(1.0, n - 1))
 	return Vector2(px, step - px)
 
@@ -2489,6 +2899,8 @@ func _pulse_release() -> void:
 
 
 func _process(_d: float) -> void:
+	if _puppet_strips():
+		_tumble_globe(_d)
 	_update_hover_info(_d)
 	_pulse_release()
 	# idle while it's your move: the Seedling pops up once to help (not in the tutorial, which has its coach)

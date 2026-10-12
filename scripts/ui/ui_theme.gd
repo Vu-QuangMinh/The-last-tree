@@ -255,6 +255,11 @@ static func chant_button_styles() -> Dictionary:
 	if not UiSkin.is_new():
 		return {}
 	var out := {}
+	if UiSkin.is_puppet() and UiSkin.tex("button_chant_normal") != null and UiSkin.path_of("button_chant_normal").contains("/puppet/"):
+		# Puppet Stage: the same pill redrawn 44 px tall (ends are half circles of 22 px)
+		for state in ["normal", "hover", "pressed", "disabled"]:
+			out[state] = UiSkin.box("button_chant_" + state, [22, 0, 22, 0], [10, 2, 10, 6])
+		return out
 	if UiSkin.is_circus() and UiSkin.tex("button_chant_normal") != null and UiSkin.path_of("button_chant_normal").contains("/circus/"):
 		# Cirus: the whole painted pill (green, lime on hover, red pressed, grey disabled), its gold ring and base included.
 		# It is 130 x 58 and the button is 58 tall, so only the middle stretches (the ends are half circles of 29 px).

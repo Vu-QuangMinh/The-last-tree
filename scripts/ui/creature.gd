@@ -29,6 +29,11 @@ var _art := {}  # face name -> Texture2D, for enemies with drawn art (empty: dra
 const ART := {"ashling": "res://assets/enemies/ashling_%s.webp", "triplet_fire": "res://assets/enemies/ashling_%s.webp"}
 const ART_FACES := ["angry", "normal", "hurt"]
 
+## Puppet Stage: every enemy that has a cut-out in PUPPET_DIR (named after its id, or the PUPPET_FILES entry) is drawn from that
+## one picture instead of its procedural body; it rocks on its base instead of bobbing, and tips back when hit.
+const PUPPET_DIR := "res://assets/ui/puppet/enemies/"
+const PUPPET_FILES := {"triplet_fire": "triplet_fire", "triplet_water": "triplet_water", "triplet_air": "triplet_air"}
+
 const SHAPES := {
 	# act 1 (the Verdant Circle)
 	"iceling": 1, "zephling": 1, "triplet_fire": 1, "triplet_water": 1, "triplet_air": 1, "purple_slime": 0, "green_slime": 0, "yellow_slime": 0, "giant_slime": 0,
@@ -41,6 +46,14 @@ const SHAPES := {
 }
 
 
+var _puppet := false  # Puppet Stage cut-out in use
+
+
+static func _puppet_tex(file: String) -> Texture2D:
+	var path := PUPPET_DIR + file + ".png"
+	return load(path) as Texture2D if ResourceLoader.exists(path) else null
+
+
 func setup(e: EnemyState) -> void:
 	enemy_id = e.id
 	_enemy = e
@@ -51,6 +64,18 @@ func setup(e: EnemyState) -> void:
 			var path: String = ART[e.id] % face
 			if ResourceLoader.exists(path):
 				_art[face] = load(path)
+	_puppet = false
+	if UiSkin.is_puppet():
+		var file: String = PUPPET_FILES.get(e.id, e.id)
+		if e.id == "yin_yang_clone":  # (one picture per colour; _draw_art picks by the clone's current colour)
+			for c in ["white", "black"]:
+				var tc := _puppet_tex("yin_yang_clone_" + c)
+				if tc != null:
+					_art["yin_" + c] = tc
+		var t := _puppet_tex(file)
+		if t != null:
+			_art = {"angry": t, "normal": t, "hurt": t}
+		_puppet = not _art.is_empty()
 	shape = SHAPES.get(e.id, hash(e.id) % 6)
 	var counts := {"F": 0, "W": 0, "A": 0}
 	for c in e.def.hp:
@@ -269,10 +294,23 @@ func _draw_art(blink_on: bool) -> void:
 	if hurt > 0.0 and not dead:
 		face = "hurt"
 	var tex: Texture2D = _art.get(face, _art.values()[0])
+	if _puppet and _enemy != null and _enemy.yin != "" and _art.has("yin_" + _enemy.yin):
+		tex = _art["yin_" + _enemy.yin]
 	var side := minf(size.x, size.y) * 0.88 * big
+	if _puppet and not dead:  # the shadow the spotlight throws on the floor: the silhouette lying back and to the right, and a soft pool
+		var feet := Vector2(size.x / 2.0, size.y)
+		draw_set_transform(feet, 0.0, Vector2(1.0, 0.2))
+		draw_circle(Vector2.ZERO, side * 0.3, Color(0, 0, 0, 0.22))
+		draw_set_transform_matrix(Transform2D(Vector2(1.0, 0.0), Vector2(-0.55, 0.2), feet))
+		draw_texture_rect(tex, Rect2(Vector2(-side / 2.0, -side), Vector2(side, side)), false, Color(0, 0, 0, 0.36))
+		draw_set_transform(Vector2.ZERO)
 	var c := Vector2(size.x / 2.0, size.y - side * 0.5 + sin(bob) * 4.0)
 	if _shake > 0.0:
 		c += Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake) * 0.5)
+	if _puppet:  # a puppet doesn't bob: it rocks on its base, and tips back when it is hit
+		var tip := 0.0 if dead else sin(bob * 0.5) * 0.04 - 0.16 * minf(hurt / 0.4, 1.0)
+		draw_set_transform(Vector2(c.x, size.y), tip)
+		c = Vector2(0, -side * 0.5)
 	var mod := Color.WHITE
 	if dead:
 		mod = Color(0.05, 0.05, 0.05, 0.4)  # an unknown silhouette (codex), like the procedural grey
@@ -280,3 +318,5 @@ func _draw_art(blink_on: bool) -> void:
 		var b := 1.0 + 0.9 * maxf(flash, 1.0 if blink_on else 0.0)
 		mod = Color(b, b, b)
 	draw_texture_rect(tex, Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side)), false, mod)
+	if _puppet:
+		draw_set_transform(Vector2.ZERO)

@@ -9,8 +9,13 @@ const DIR := "res://assets/ui/new/"
 ## Cirus (circus tent) theme: the same file names as the New set, in their own folder. A picture that isn't there yet falls
 ## back to the New one, so the theme can be filled in piece by piece.
 const CIRCUS_DIR := "res://assets/ui/circus/"
-const OPTIONS := ["default", "new", "circus"]
-const LABELS := ["Default", "New", "Cirus"]
+## Puppet Stage art (the stage, and its own Chant / Bag strips, machine and buttons) comes first, then Cirus, then New.
+const PUPPET_DIR := "res://assets/ui/puppet/"
+const OPTIONS := ["default", "new", "circus", "puppet"]
+const LABELS := ["Default", "New", "Cirus", "Puppet Stage"]
+## Puppet Stage theme: the Cirus art for every control (is_circus() is true for it too), a wooden puppet theatre (PuppetStage) behind the fights. Pieces that
+## would clash with the stage (the painted stump under an enemy) are hidden.
+const PUPPET_HIDDEN := ["enemy_stand"]
 
 static var _tex := {}
 static var _paths := {}  # name -> res:// path ("" = there is none)
@@ -27,8 +32,13 @@ static func is_new() -> bool:
 	return SaveManager.setting("theme", "new") != "default"
 
 
+## Cirus art and layout (the launcher strips, panels, HP bar…): Puppet Stage reuses all of it and only changes the stage behind.
 static func is_circus() -> bool:
-	return SaveManager.setting("theme", "new") == "circus"
+	return SaveManager.setting("theme", "new") in ["circus", "puppet"]
+
+
+static func is_puppet() -> bool:
+	return SaveManager.setting("theme", "new") == "puppet"
 
 
 static func set_theme(id: String) -> void:
@@ -42,7 +52,7 @@ static func set_theme(id: String) -> void:
 static func path_of(name: String) -> String:
 	if not _paths.has(name):
 		var found := ""
-		var roots: Array = [CIRCUS_DIR, DIR] if is_circus() else [DIR]
+		var roots: Array = [PUPPET_DIR, CIRCUS_DIR, DIR] if is_puppet() else ([CIRCUS_DIR, DIR] if is_circus() else [DIR])
 		for root in roots:
 			for folder in FOLDERS:
 				for ext in [".png", ".jpg"]:  # (the room backgrounds are jpg: big, flat-coloured pictures)
@@ -60,7 +70,7 @@ static func path_of(name: String) -> String:
 
 ## A texture from the New set, or null when the theme is Default (or the file isn't there).
 static func tex(name: String) -> Texture2D:
-	if not is_new():
+	if not is_new() or (is_puppet() and name in PUPPET_HIDDEN):
 		return null
 	if not _tex.has(name):
 		var p := path_of(name)
