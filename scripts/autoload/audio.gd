@@ -94,7 +94,8 @@ func _load(path: String) -> AudioStream:
 
 
 ## One-shot SFX. Safe to call for a name that has no file yet (it just stays silent).
-func play(name: String, volume_db := 0.0, pitch := 1.0) -> void:
+## from: start this many seconds into the sound (to skip the silence some recordings begin with).
+func play(name: String, volume_db := 0.0, pitch := 1.0, from := 0.0) -> void:
 	var s := _load(SFX_DIR + name + ".wav")
 	if s == null:
 		return
@@ -103,7 +104,7 @@ func play(name: String, volume_db := 0.0, pitch := 1.0) -> void:
 	p.stream = s
 	p.volume_db = _db(sfx_level * overall_level) + volume_db
 	p.pitch_scale = pitch
-	p.play()
+	p.play(from)
 
 
 # ------------------------------------------------------------------ music

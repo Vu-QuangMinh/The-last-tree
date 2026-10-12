@@ -4,6 +4,10 @@ extends HFlowContainer
 
 var artifacts: Array = []
 var plus: Array = []  # upgraded ones
+## Puppet Stage: one row inside the artifacts' frame, `chip_px` squares `slot_step` apart (more of them than fit squeeze together)
+var chip_px := 0.0
+var row_width := 0.0
+var slot_step := 0.0
 
 
 static func make(p_artifacts: Array, p_plus: Array = []) -> ArtifactBar:
@@ -17,15 +21,22 @@ func _ready() -> void:
 	add_theme_constant_override("h_separation", 6)
 	add_theme_constant_override("v_separation", 6)
 	custom_minimum_size = Vector2(620, 0)
-	UiSkin.frame_behind(self)  # New theme: one painted frame around all the artifacts
+	if chip_px > 0.0:
+		custom_minimum_size = Vector2(row_width, chip_px)
+	else:
+		UiSkin.frame_behind(self)  # New theme: one painted frame around all the artifacts
 	refresh()
 
 
 func refresh() -> void:
 	for c in get_children():
 		c.queue_free()
+	if chip_px > 0.0:
+		var n := maxi(1, artifacts.size())
+		var step := minf(slot_step, (row_width - chip_px) / maxf(1.0, n - 1.0))
+		add_theme_constant_override("h_separation", int(floor(step - chip_px)))
 	for id in artifacts:
-		add_child(ArtifactChip.make(id, id in plus))
+		add_child(ArtifactChip.make(id, id in plus, chip_px if chip_px > 0.0 else ArtifactChip.SIZE))
 
 
 ## Artifacts that charge up (Kindling Stone, Echo Shell) shine and pulse while charged; their tooltip shows

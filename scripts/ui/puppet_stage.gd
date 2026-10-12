@@ -213,7 +213,7 @@ func add_hanging_sign(center_x: float, height: float) -> Sprite2D:
 	sp.scale = Vector2.ONE * (height / float(sp.texture.get_height()))
 	sp.position = Vector2(center_x, -6.0)
 	sp.modulate = Color(0.92, 0.92, 0.92)
-	sp.z_index = 5
+	sp.z_index = 0  # (under the enemies' names, which can reach up to it)
 	add_child(sp)
 	_sprites.append({"node": sp, "x": center_x, "slide": 0.0, "speed": 1.1, "phase": 0.7, "sway": 0.006})
 	return sp

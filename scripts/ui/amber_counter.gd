@@ -11,6 +11,7 @@ var _t := 0.0
 
 
 func _ready() -> void:
+	add_to_group("amber_counter")  # (the Puppet Stage fight hides it: the Leaves are in its Character panel)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.07, 0.06, 0.04, 0.9)
 	sb.border_color = Color(0.45, 0.8, 0.3)

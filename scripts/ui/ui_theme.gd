@@ -231,7 +231,10 @@ static func menu_button_styles() -> Dictionary:
 		return {}
 	var out := {}
 	for state in ["normal", "hover", "pressed"]:
-		out[state] = UiSkin.box("button_menu_" + state, [14, 14, 14, 15], [14, 3, 14, 9])
+		if UiSkin.is_puppet() and UiSkin.path_of("button_menu_" + state).contains("/puppet/"):  # (its own plate: 131 x 46)
+			out[state] = UiSkin.box("button_menu_" + state, [20, 16, 20, 20], [16, 2, 16, 8])
+		else:
+			out[state] = UiSkin.box("button_menu_" + state, [14, 14, 14, 15], [14, 3, 14, 9])
 	out["disabled"] = out["normal"]
 	return out
 
@@ -250,16 +253,35 @@ static func use_play_style(b: Button) -> void:
 	b.add_theme_stylebox_override("hover", UiSkin.box("button_play_hover", [20, 16, 20, 18], [20, 6, 20, 12]))
 
 
+## Puppet Stage: the wooden button of the Chant strip (kind "chant", "clear" or "pass"; Undo uses "clear"), blank: the word is the button's text.
+static func puppet_button_styles(kind: String) -> Dictionary:
+	var out := {}
+	var m := [14, 12, 14, 12] if kind == "chant" else [10, 8, 10, 8]
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		out[state] = UiSkin.box("button_%s_%s" % [kind, state], m, [4, 2, 4, 4])
+	return out
+
+
+## Puppet Stage: dress a button as one of those wooden buttons, its word stamped in the art's orange.
+static func style_puppet_button(b: Button, kind: String, size: int) -> void:
+	var st := puppet_button_styles(kind)
+	for k in st:
+		b.add_theme_stylebox_override(k, st[k])
+	b.add_theme_font_size_override("font_size", size)
+	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		b.add_theme_color_override(c, Color(0.96, 0.72, 0.42))
+	b.add_theme_color_override("font_disabled_color", Color(0.62, 0.55, 0.48))
+	b.add_theme_color_override("font_outline_color", Color(0.17, 0.09, 0.05))
+	b.add_theme_constant_override("outline_size", 3)
+
+
 ## A big amber button (the Chant / Release button): New theme only; null in Default.
 static func chant_button_styles() -> Dictionary:
 	if not UiSkin.is_new():
 		return {}
 	var out := {}
 	if UiSkin.is_puppet() and UiSkin.tex("button_chant_normal") != null and UiSkin.path_of("button_chant_normal").contains("/puppet/"):
-		# Puppet Stage: the same pill redrawn 44 px tall (ends are half circles of 22 px)
-		for state in ["normal", "hover", "pressed", "disabled"]:
-			out[state] = UiSkin.box("button_chant_" + state, [22, 0, 22, 0], [10, 2, 10, 6])
-		return out
+		return puppet_button_styles("chant")
 	if UiSkin.is_circus() and UiSkin.tex("button_chant_normal") != null and UiSkin.path_of("button_chant_normal").contains("/circus/"):
 		# Cirus: the whole painted pill (green, lime on hover, red pressed, grey disabled), its gold ring and base included.
 		# It is 130 x 58 and the button is 58 tall, so only the middle stretches (the ends are half circles of 29 px).

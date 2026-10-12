@@ -187,7 +187,8 @@ func _gui_input(ev: InputEvent) -> void:
 				_grab_dx = ev.position.x - _x[i]
 				_mouse = ev.position
 				_gap = i
-				Audio.play("elem_pickup")
+				if not UiSkin.is_puppet():
+					Audio.play("elem_pickup")
 				accept_event()
 		elif not ev.pressed and _held >= 0 and not _keyboard:
 			_drop()
@@ -226,7 +227,7 @@ func _drop() -> void:
 	live.insert(to, lv)
 	_held = -1
 	_gap = -1
-	Audio.play("elem_remove")
+	Audio.play("wooden_ball_hole" if UiSkin.is_puppet() else "elem_remove", -4.0 if UiSkin.is_puppet() else 0.0)
 	dropped.emit(from, to)
 
 

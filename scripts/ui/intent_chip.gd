@@ -9,6 +9,14 @@ const PURPLE := Color(0.55, 0.3, 0.8)
 const GREY := Color(0.45, 0.47, 0.52)
 
 func _draw() -> void:
+	if not _hb.is_empty():  # Puppet Stage: a cap, a stretchy middle, a cap with the pointer (it points right, at its enemy)
+		var l: Texture2D = _hb["left"]
+		var r: Texture2D = _hb["right"]
+		var m: Texture2D = _hb["mid"]
+		draw_texture_rect(l, Rect2(0, 0, l.get_width(), size.y), false)
+		draw_texture_rect(r, Rect2(size.x - r.get_width(), 0, r.get_width(), size.y), false)
+		draw_texture_rect(m, Rect2(l.get_width(), 0, size.x - l.get_width() - r.get_width(), size.y), false)
+		return
 	if _bubble.is_empty():
 		return
 	var w := size.x
@@ -91,6 +99,7 @@ const ART := {"attack": "intent_attack", "armor": "intent_armor", "freeze": "int
 ## New theme: the bubble is five fixed-ratio pieces: two end caps, the arrow in the middle, and a stretchy piece on each
 ## side of the arrow (those two grow with the content).
 var _bubble := {}
+var _hb := {}  # Puppet Stage: the three pieces of the horizontal bubble
 static var _body_h := -1.0  # how tall the cap pieces really are (the pieces share a canvas as tall as the arrow's)
 
 
@@ -106,11 +115,36 @@ static func _bubble_parts() -> Dictionary:
 	return parts
 
 
+## Puppet Stage: the horizontal bubble's pieces (empty in the other themes).
+static func _hbubble_parts() -> Dictionary:
+	if not UiSkin.is_puppet():
+		return {}
+	var parts := {}
+	for k in ["left", "mid", "right"]:
+		var t := UiSkin.tex("intent_bubble_h_" + k)
+		if t == null:
+			return {}
+		parts[k] = t
+	return parts
+
+
 ## move: show this move instead of the enemy's own intent (a Bramble Matron wall's).
 func build(e: EnemyState, move := {}) -> void:
 	_bubble = _bubble_parts()
+	_hb = _hbubble_parts()
 	var bubble: StyleBox = null
-	if not _bubble.is_empty():
+	if not _hb.is_empty():
+		_bubble = {}
+		var hl: Texture2D = _hb["left"]
+		var hr: Texture2D = _hb["right"]
+		var hs := StyleBoxEmpty.new()
+		hs.content_margin_left = hl.get_width() + 4.0
+		hs.content_margin_right = hr.get_width() + 2.0  # (the right piece holds the pointer: the content ends before it)
+		hs.content_margin_top = 0.0
+		hs.content_margin_bottom = 0.0
+		bubble = hs
+		custom_minimum_size = Vector2(hl.get_width() + hr.get_width() + 24.0, hl.get_height())
+	elif not _bubble.is_empty():
 		var empty := StyleBoxEmpty.new()
 		var tail: Texture2D = _bubble["tail"]
 		empty.content_margin_left = _bubble["cap_l"].get_width() + 4.0
@@ -134,6 +168,8 @@ func build(e: EnemyState, move := {}) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if not _hb.is_empty():
+		row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	add_child(row)
 	if e.freeze_turns > 0:
 		row.add_child(_part("❄", "", Color(0.5, 0.8, 1.0), "freeze"))

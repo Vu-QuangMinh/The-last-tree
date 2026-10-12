@@ -1,0 +1,52 @@
+Chant Frame: A long wide horizontal rectangular wooden panel about 10 to 1 shaped like a theatre ticket-counter plaque, the whole inside face is solid filled with deep wine-red painted wood with faint grain, a thin gold painted line runs along the inside of the border, the outer border is dark carved walnut with small brass studs, nothing placed on it, left and right ends identical and top and bottom edges plain and straight so it can be stretched wider
+Chant Slot Empty: One single round wooden socket, a circular ring of dark carved walnut with a thin worn brass rim and a shallow dark recessed round hollow in the middle, the outline of the object is a perfect circle, no square plate or tile behind it, nothing inside the hollow
+Chant Slot Highlight: One single round wooden socket, a circular ring of dark carved walnut with a thin worn brass rim and a shallow recessed round hollow in the middle, a warm golden glow around the rim, the outline of the object is a perfect circle, no square plate or tile behind it, nothing inside the hollow
+Bag Frame: A long wide horizontal rectangular wooden panel about 7 to 1, the whole inside face is solid filled with deep wine-red painted wood with faint grain, a thin gold painted line runs along the inside of the border, the outer border is dark carved walnut with small brass studs, plainer than the chant frame, nothing placed on it, left and right ends identical and top and bottom edges plain and straight so it can be stretched wider
+Card Frame Normal: A tall upright rectangular wooden playing card about 2 to 3, thick carved walnut border with brass corner caps, the whole face inside the border is solid filled with cream painted wood and not hollow, with a darker recessed rectangle in the upper part where artwork will go, a carved ribbon-shaped plate across the top edge for a name, a lighter parchment-coloured panel in the lower half for rules text, and a small round brass-rimmed socket in each top corner, all areas are blank with no pictures and no writing
+Card Frame Hover: The same tall upright wooden card with solid filled cream face, but brighter, with a warm golden glow around the whole border and the brass slightly cleaner, all areas blank
+Card Frame Disabled: The same tall upright wooden card with solid filled face, but washed out, greyed and darker, the brass dull and tarnished, all areas blank
+Card Frame Selected: The same tall upright wooden card with solid filled face, with a bright glowing gold outline and soft rays of light around the border, all areas blank
+Card Pip Empty: One tiny round brass ring with a hollow centre, the outline of the object is a perfect circle, no square plate behind it
+Card Pip Filled: One tiny round solid brass bead, the outline of the object is a perfect circle, no square plate behind it
+Essence Fire: One single round painted wooden ball like a lottery ball, orange-red, with a simple carved flame symbol on its face, the outline of the object is a perfect circle, no square plate or tile behind it, no stand
+Essence Water: One single round painted wooden ball like a lottery ball, blue, with a simple carved water-drop symbol on its face, the outline of the object is a perfect circle, no square plate or tile behind it, no stand
+Essence Wind: One single round painted wooden ball like a lottery ball, fresh green, with a simple carved swirl-of-wind symbol on its face, the outline of the object is a perfect circle, no square plate or tile behind it, no stand
+Essence Any: One single round painted wooden ball like a lottery ball, soft grey-lilac, with a simple carved four-pointed star symbol on its face, the outline of the object is a perfect circle, no square plate or tile behind it, no stand
+Machine Globe: A big round clear glass globe like a bingo cage sitting on a small carved wooden base, with a brass crank handle on the right side and a small round opening at the bottom, nothing inside the globe, front view, the globe outline is a perfect circle
+Machine Globe Front Glass: Only the thin front glass dome of a big round lottery globe with a narrow brass ring around its rim, transparent with soft reflections, nothing inside, the outline is a perfect circle
+Machine Box: A small carved wooden collection box with a hinged lid, a round brass-rimmed hole on the top and a round opening in the front, nothing inside, front view, wide shape about 2 to 1
+Machine Tube: A short curved clear glass tube with brass collars at both ends, running from upper left down to lower right, nothing inside, long wide horizontal shape about 4 to 1
+Machine Pipe: A tall narrow vertical brass pipe with riveted joints and a funnel-shaped mouth at the top, nothing inside, shape about 1 to 4
+Machine Chute: A short sloped carved wooden chute with low side rails and a brass lip at the lower end, nothing on it, wide horizontal shape about 3 to 1
+Machine Crank: One small brass crank handle with a round wooden grip, seen from the front
+Avatar Frame: An ornate carved walnut picture frame with brass corners and a thin gold inner line, the whole inside area is solid filled with plain dark wine-red painted wood where a portrait will be placed, nothing else on it, slightly taller than wide
+Avatar Frame Panel: A long wide horizontal rectangular wooden panel about 3 to 1, the whole face is solid filled with deep wine-red painted wood, dark carved walnut border with small brass studs, nothing placed on it, left and right ends identical and top and bottom edges plain and straight so it can be stretched wider
+HP Bar Blank: A long horizontal rounded bar about 8 to 1, a dark recessed wooden trough with a thin brass rim, the inside is solid dark brown and nothing fills it, left and right ends identical so it can be stretched
+HP Bar Fill: A long horizontal rounded bar about 8 to 1 completely filled with rich red paint, no frame around it, left and right ends identical so it can be stretched
+HP Bar Shield Fill: A long horizontal rounded bar about 8 to 1 completely filled with pale steel-blue painted tin, no frame around it, left and right ends identical so it can be stretched
+HP Heart Icon: One small plump heart carved from wood and painted red, with a thin brass edge, the outline of the object is a heart shape with no square plate behind it
+Shield Icon: One small heater-shaped shield made of riveted tin plates with a thin brass rim, the outline of the object is a shield shape with no square plate behind it
+Coin Frame: A small wide horizontal rectangular wooden plaque about 3 to 1 with brass corner studs, the whole face is solid filled with dark wine-red painted wood, nothing placed on it, left and right ends identical and top and bottom edges plain and straight so it can be stretched wider
+Coin: One round chunky gold-painted wooden coin seen straight from the front with a raised rim and a plain embossed star in the middle, no letters or numbers, the outline of the object is a perfect circle, no square plate behind it
+Coin Stack: A small stack of three round gold-painted wooden coins slightly offset, seen from the front and a little above, no square plate behind it
+Button Chant Normal: One big chunky rounded wooden button painted warm gold-yellow, a lighter edge along the top and a darker edge along the bottom, the face is blank so text can be placed on it, wide horizontal shape about 3 to 1
+Button Chant Hover: The same big gold wooden button but brighter with a soft warm glow around it, face blank
+Button Chant Pressed: The same big gold wooden button but darker and pushed down slightly, face blank
+Button Chant Disabled: The same big wooden button but washed-out grey-beige and dull, face blank
+Button Small Normal: One small rounded wooden button painted deep teal-green, lighter edge along the top, face blank so text can be placed on it, wide horizontal shape about 2.5 to 1
+Button Small Hover: The same small teal wooden button but brighter with a soft glow around it, face blank
+Button Small Pressed: The same small teal wooden button but darker and pushed down slightly, face blank
+Button Small Disabled: The same small wooden button but washed-out grey-green and dull, face blank
+Button Pass Normal: One medium rounded wooden button painted rusty red-orange, lighter edge along the top, face blank so text can be placed on it, wide horizontal shape about 2.5 to 1
+Button Pass Hover: The same red-orange wooden button but brighter with a soft glow around it, face blank
+Button Pass Pressed: The same red-orange wooden button but darker and pushed down slightly, face blank
+Button Pass Disabled: The same wooden button but washed-out grey-beige and dull, face blank
+Button Menu Normal: One small quiet rounded wooden button painted chipped ivory with a thin faded brown edge, face blank so text can be placed on it, wide horizontal shape about 2.5 to 1
+Button Menu Hover: The same small ivory wooden button with a bright red edge stripe and a soft glow, face blank
+Button Menu Pressed: The same small ivory wooden button but darker, greyer and pushed down slightly, face blank
+Button Close X Normal: One small round wooden button painted chipped ivory with a thin red ring near the edge, face blank so an X can be placed on it, the outline of the object is a perfect circle, no square plate behind it
+Button Close X Hover: The same small round ivory wooden button with a bright red ring and a soft glow, face blank, perfect circle outline, no square plate behind it
+Button Close X Pressed: The same small round ivory wooden button but darker and pushed down slightly, face blank, perfect circle outline, no square plate behind it
+Button Arrow Right: One small round brass button with a plain chunky triangle pointing right embossed in the middle, the outline of the object is a perfect circle, no square plate behind it
+Button Arrow Left: One small round brass button with a plain chunky triangle pointing left embossed in the middle, the outline of the object is a perfect circle, no square plate behind it
+Button Sound Toggle: One small round wooden button with a simple speaker shape embossed in the middle, no letters, the outline of the object is a perfect circle, no square plate behind it

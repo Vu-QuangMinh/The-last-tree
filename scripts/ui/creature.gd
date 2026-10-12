@@ -162,7 +162,7 @@ func _draw() -> void:
 	if dead:
 		body = Color(0.2, 0.2, 0.2, 0.4)
 	# shadow (the New theme stands it on a painted stump instead)
-	if UiSkin.tex("enemy_stand") == null:
+	if UiSkin.tex("enemy_stand") == null and not UiSkin.is_puppet():
 		draw_set_transform(Vector2(c.x, size.y * 0.93), 0, Vector2(1, 0.25))
 		draw_circle(Vector2.ZERO, s * 0.9, Color(0, 0, 0, 0.35))
 		draw_set_transform(Vector2.ZERO)
@@ -297,13 +297,6 @@ func _draw_art(blink_on: bool) -> void:
 	if _puppet and _enemy != null and _enemy.yin != "" and _art.has("yin_" + _enemy.yin):
 		tex = _art["yin_" + _enemy.yin]
 	var side := minf(size.x, size.y) * 0.88 * big
-	if _puppet and not dead:  # the shadow the spotlight throws on the floor: the silhouette lying back and to the right, and a soft pool
-		var feet := Vector2(size.x / 2.0, size.y)
-		draw_set_transform(feet, 0.0, Vector2(1.0, 0.2))
-		draw_circle(Vector2.ZERO, side * 0.3, Color(0, 0, 0, 0.22))
-		draw_set_transform_matrix(Transform2D(Vector2(1.0, 0.0), Vector2(-0.55, 0.2), feet))
-		draw_texture_rect(tex, Rect2(Vector2(-side / 2.0, -side), Vector2(side, side)), false, Color(0, 0, 0, 0.36))
-		draw_set_transform(Vector2.ZERO)
 	var c := Vector2(size.x / 2.0, size.y - side * 0.5 + sin(bob) * 4.0)
 	if _shake > 0.0:
 		c += Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake) * 0.5)

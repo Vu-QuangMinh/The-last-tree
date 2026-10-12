@@ -15,6 +15,8 @@ var _hp_row: HFlowContainer
 var _status: RichTextLabel
 ## How far down the model's box the intent bubble's top sits (it used to float in a row of its own, high above).
 const INTENT_Y := 6.0
+const PUPPET_TOP := 50.0  # (Puppet Stage: how far the puppet's box rises above its holder, so the name and the Essence are not far above its head)
+const PUPPET_BUBBLE_RIGHT := 70.0  # (Puppet Stage: x, in the puppet's box, where the intent bubble's pointer ends)
 var _ring: Panel
 var _marker: TextureRect  # New theme: the target reticle that replaces the ring
 var targetable := false
@@ -51,11 +53,13 @@ func setup(e: EnemyState, f: Fight) -> void:
 	alignment = BoxContainer.ALIGNMENT_END
 	add_theme_constant_override("separation", 4)
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	_intent_slot = CenterContainer.new()
+	_intent_slot = Control.new() if UiSkin.is_puppet() else CenterContainer.new()  # (Puppet Stage: the bubble is placed by hand, left of the puppet)
 	_intent_slot.z_index = 10  # never hidden behind a model
 	_intent_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var holder := Control.new()
 	holder.custom_minimum_size = Vector2(300, 230)
+	if UiSkin.is_puppet():  # (the puppet's box reaches PUPPET_TOP px above this one: its name and Essence stand that much lower, close above its head)
+		holder.custom_minimum_size = Vector2(300, 230.0 - PUPPET_TOP)
 	holder.size_flags_horizontal = Control.SIZE_SHRINK_CENTER  # (centred when the view is wider, e.g. the Matron's)
 	holder.mouse_filter = Control.MOUSE_FILTER_PASS
 	holder.clip_contents = false
@@ -88,7 +92,7 @@ func setup(e: EnemyState, f: Fight) -> void:
 		_marker.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		_marker.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		_marker.size = Vector2(160, 160)
-		_marker.position = Vector2(70, 62)
+		_marker.position = Vector2(70, 62.0 - (PUPPET_TOP if UiSkin.is_puppet() else 0.0))
 		_marker.pivot_offset = Vector2(80, 80)
 		_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_marker.visible = false
@@ -96,7 +100,7 @@ func setup(e: EnemyState, f: Fight) -> void:
 	creature = Creature.new()
 	creature.setup(e)
 	creature.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	creature.offset_top = 22  # models stay below the intent bubble
+	creature.offset_top = -PUPPET_TOP if UiSkin.is_puppet() else 22  # models stay below the intent bubble (Puppet Stage: the bubble is at its side)
 	holder.add_child(creature)
 	# the intent bubble sits low, just above the model's head (added after the model, so it's drawn over it)
 	if e.def.has("tool"):
@@ -108,6 +112,9 @@ func setup(e: EnemyState, f: Fight) -> void:
 		holder.add_child(tool)
 	_intent_slot.position = Vector2(0, INTENT_Y)
 	_intent_slot.size = Vector2(300, 46)
+	if UiSkin.is_puppet():
+		_intent_slot.position = Vector2(0, 115.0 - 38.0 - PUPPET_TOP)  # (about the middle of the puppet's body)
+		_intent_slot.size = Vector2(300, 77)
 	holder.add_child(_intent_slot)
 	_name = UiTheme.label(e.name, 20, Color.WHITE)
 	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -128,6 +135,8 @@ func setup(e: EnemyState, f: Fight) -> void:
 	_status.add_theme_font_size_override("bold_font_size", 14)
 	_status.add_theme_color_override("default_color", Color(0.85, 0.8, 1))
 	add_child(_status)
+	if UiSkin.is_puppet():  # the name and the Essence stand ABOVE the puppet (where the bubble used to be), the puppet last, at the bottom
+		move_child(holder, get_child_count() - 1)
 	refresh({})
 
 
@@ -146,6 +155,8 @@ func _gui_input(ev: InputEvent) -> void:
 
 ## Where the arrow should point / start for this enemy (global coordinates).
 func anchor_point() -> Vector2:
+	if UiSkin.is_puppet() and creature != null:
+		return creature.global_position + creature.size / 2.0
 	return global_position + Vector2(size.x / 2.0, 170)
 
 
@@ -163,6 +174,9 @@ func refresh(preview: Dictionary) -> void:
 		chip.set_meta("info", chip.tooltip_text)
 		chip.tooltip_text = ""
 		_intent_slot.add_child(chip)
+		if UiSkin.is_puppet():  # its right edge (the pointer) just touches the puppet, it grows to the left with its content
+			chip.resized.connect(_place_chip.bind(chip))
+			_place_chip.call_deferred(chip)
 	for ch in _hp_row.get_children():
 		ch.queue_free()
 	_hp_icons.clear()
@@ -243,6 +257,12 @@ func refresh(preview: Dictionary) -> void:
 		_marker.modulate.a = 1.0 if lit else 0.4
 		_marker.scale = Vector2.ONE if lit else Vector2(0.85, 0.85)
 	_name.add_theme_color_override("font_color", Color(1, 0.9, 0.4) if targeted else Color.WHITE)
+
+
+## Puppet Stage: the intent bubble's pointer ends at the puppet; the bubble grows to the left. (It may be gone by the time this runs.)
+func _place_chip(chip: Control) -> void:
+	if is_instance_valid(chip) and not chip.is_queued_for_deletion():
+		chip.position = Vector2(PUPPET_BUBBLE_RIGHT - chip.size.x, 0.0)
 
 
 func _make_clickable(c: Control, index: int) -> void:
