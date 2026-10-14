@@ -124,6 +124,8 @@ const BAG_MOVE := 0.22  # the bag's icons closing up or making room
 var _next_row: HBoxContainer
 var _prompt: Label
 var _info: Label
+var _info_row: Control  # Puppet Stage: the same line written in the wooden alphabet (UiSkin.letters)
+var _info_text := ""
 var _hp_bar: HpBar
 var _hp_label: Label
 var _shield_box: HBoxContainer  # the Shield (and Lasting) amount, beside your HP
@@ -233,6 +235,7 @@ func _ready() -> void:
 		_info.add_theme_font_size_override("font_size", 19)
 		_info.add_theme_color_override("font_color", Color(0.28, 0.17, 0.08))
 		_info.z_index = PuppetStage.CEILING_Z + 1
+		_info.visible = false
 	# top-right: coming next
 	var np := PanelContainer.new()
 	np.add_theme_stylebox_override("panel", UiTheme.panel_box(0.85, 10))
@@ -444,10 +447,33 @@ func _start_down() -> void:
 		_arrive()
 
 
+## The Act / Floor / Turn line: a Label, or (Puppet Stage) the wooden letters on the hanging sign, centred on the Label's old spot; the Label stays hidden
+## unless the theme has no such art.
+func _set_info(text: String) -> void:
+	_info.text = text
+	if not UiSkin.is_puppet() or text == _info_text and _info_row != null:
+		return
+	_info_text = text
+	if _info_row != null:
+		_info_row.queue_free()
+		_info_row = null
+	_info_row = UiSkin.letters(text, INFO_CAP, Color(0.5, 0.3, 0.14))
+	_info.visible = _info_row == null
+	if _info_row == null:
+		return
+	_info_row.position = _info.position + Vector2((_info.size.x - _info_row.size.x) / 2.0, (_info.size.y - INFO_CAP) / 2.0 - INFO_CAP * 0.05)
+	_info_row.z_index = _info.z_index
+	add_child(_info_row)
+
+
+## The Act / Floor / Turn line is as tall as the 19 px text it replaced (capital letters of that font are about 14 px).
+const INFO_CAP := 14.0
+
+
 ## The HUD sinks, the Spellbook button comes up in the place of the HP bar.
 func _hud_down(secs := 0.9) -> void:
 	busy = true
-	_info.text = "Act %d · Floor %d" % [run.act, run.floor_no()]
+	_set_info("Act %d · Floor %d" % [run.act, run.floor_no()])
 	if _book_btn == null:
 		_build_spellbook_button()
 	var tw := create_tween()
@@ -455,17 +481,61 @@ func _hud_down(secs := 0.9) -> void:
 	await tw.finished
 
 
-func _hud_up(secs := 0.8) -> void:
-	var tw := create_tween()
+var _hud_tw: Tween
+
+
+## The HUD comes up from below the screen. `free_input`: the fight can be played once it is up (false when it is raised early, while the stage is still being set).
+func _hud_up(secs := 0.8, free_input := true) -> void:
+	if _hud_tw != null and _hud_tw.is_valid():
+		_hud_tw.kill()
+	_hud_tw = create_tween()
+	var tw := _hud_tw
 	tw.tween_method(_set_hud_shift, _hud_shift, 0.0, secs).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	await tw.finished
-	busy = false
-	_fit_enemy_lift()
+	if free_input:
+		busy = false
+		_fit_enemy_lift()
+
+
+## Loudness of the scene-preparation sounds, dB to add so that every one sits at about the same level (measured: RMS of each file brought to -26 dB).
+const PREPARE_DB := {"sfx_scene_prepare": -6.6, "sfx_scene_prepare_short_1": 10.0, "sfx_scene_prepare_short_2": 0.9, "sfx_scene_prepare_short_3": 3.6, "sfx_scene_prepare_short_4": 6.6}
+var _prepare_on := false
+var _prepare_players: Array = []
+
+
+func _play_prepare(name: String) -> void:
+	var p := Audio.play_held(name, PREPARE_DB.get(name, 0.0), randf_range(0.97, 1.03))
+	if p != null:
+		_prepare_players.append(p)
+
+
+## While the stage is made ready: the long sound once, then, for as long as that goes on, short ones picked at random, sometimes two overlapping.
+func _prepare_sounds() -> void:
+	_prepare_on = true
+	_play_prepare("sfx_scene_prepare")
+	var main_len := 6.0
+	var s := Audio.get_sfx_length("sfx_scene_prepare")
+	if s > 0.0:
+		main_len = s
+	await get_tree().create_timer(main_len).timeout
+	var last := 0
+	while _prepare_on and is_inside_tree():
+		var k := randi_range(1, 4)
+		if k == last:
+			k = k % 4 + 1
+		last = k
+		_play_prepare("sfx_scene_prepare_short_%d" % k)
+		if randf() < 0.4:  # (a second one overlapping the first)
+			await get_tree().create_timer(randf_range(0.4, 1.1)).timeout
+			if _prepare_on:
+				_play_prepare("sfx_scene_prepare_short_%d" % (k % 4 + 1))
+		await get_tree().create_timer(randf_range(1.2, 2.4)).timeout
 
 
 ## Walking on: the old props are cleared away first (that began at the encounter board; if the fight was begun early, it is waited for), then the
 ## new room's props and enemies come in from the right, and the HUD comes back up as the last of them settle.
 func _arrive() -> void:
+	_prepare_sounds()  # (the stage is being made ready: old props away, new ones and the enemies in)
 	var far := 2600.0
 	_enemy_row.position.x = far  # (they wait off the screen on the right while the old props are cleared)
 	if _stage.is_clearing():
@@ -475,6 +545,10 @@ func _arrive() -> void:
 	var et := create_tween()
 	et.tween_property(_enemy_row, "position:x", 0.0, PuppetStage.BRING_TIME - 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await get_tree().create_timer(PuppetStage.BRING_TIME - 1.2 - 1.0).timeout
+	_prepare_on = false
+	for p in _prepare_players:
+		Audio.stop_held(p, 0.4)
+	_prepare_players.clear()
 	if hold_hud:  # (the encounter board is still up: the HUD waits for "Begin the fight")
 		_arrival_ready = true
 		arrival_ready.emit()
@@ -525,10 +599,12 @@ func begin_with_spells(spells: Array, spellbook: Array, from: Array) -> void:
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE  # (no hover while it travels)
 		ghosts.append({"ghost": ghost, "card": card, "from": ghost.global_position, "scale": float(card.base_scale)})
 	busy = true
-	await wait_arrival()  # (the props and the enemies are still coming in: the cards wait where they lay)
-	if not is_inside_tree():
-		return
+	# "Begin the fight" pressed before the stage is ready (the old props still being cleared, the new ones and the enemies still coming in): the HUD and the cards
+	# go to their places at once, and the fight waits for the stage (_arrive frees it when the set has come in).
+	var early := not _arrival_ready
 	release_hud()
+	if early:
+		_hud_up(0.8, false)
 	var i := 0
 	for g in ghosts:
 		var gh: SpellCard = g.ghost
@@ -1910,7 +1986,7 @@ func _sync_views() -> void:
 			_hm_stage.add_hand(e, v, not (e in had))
 		_views[e] = v
 	if hm:
-		_hm_stage.set_real(body_out)
+		_hm_stage.set_real(body_out or fight.enemies.any(func(e): return e.id == "handyman" and e.is_dead()))  # (he is down for good: his plain picture must not stand there again after he has shattered)
 		_hm_stage.sync_ghosts(live.map(func(e): return e.id), int(fight.hm.phase), fight)
 
 
@@ -1952,7 +2028,7 @@ func _place_hp_texts() -> void:
 
 func _refresh_all() -> void:
 	var p := fight.player
-	_info.text = ("Act %d · Floor %d" % [run.act, run.floor_no()]) if map_mode else ("Act %d · Floor %d · Turn %d" % [run.act, run.floor_no(), fight.turn])
+	_set_info(("Act %d · Floor %d" % [run.act, run.floor_no()]) if map_mode else ("Act %d · Floor %d · Turn %d" % [run.act, run.floor_no(), fight.turn]))
 	_hp_bar.set_values(p.hp, p.max_hp, p.shield + p.lasting)
 	if _danger:
 		_danger.target = DangerVignette.strength(p.hp, p.max_hp)
@@ -3177,9 +3253,12 @@ func _finish() -> void:
 	if fight.won and stage_flow and _stage != null:  # Puppet Stage: the Victory sign drops from behind the ceiling, the HUD sinks
 		await get_tree().create_timer(0.5).timeout
 		var perfect_run: bool = fight.player.damage_taken <= 0.0
-		if not fight.enemies.any(func(e): return e.def.get("boss", false)):  # (a boss fight already played its own "boss_defeat": two victory sounds on top of each other were too much)
+		var boss_win := fight.enemies.any(func(e): return e.def.get("boss", false))
+		if not boss_win:  # (a boss fight already played its own "boss_defeat": two victory sounds on top of each other were too much)
 			Audio.play("victory_fanfare")
-		await _stage.drop_sign("Perfect Victory!" if perfect_run else "Victory!", Color(0.30, 0.17, 0.07), "perfect_victory" if perfect_run else "victory").finished
+		var sign_kind := "boss_defeated" if boss_win else ("perfect_victory" if perfect_run else "victory")  # (a boss always gets its own red board)
+		var sign_text := "Boss Defeated!" if boss_win else ("Perfect Victory!" if perfect_run else "Victory!")
+		await _stage.drop_sign(sign_text, Color(0.55, 0.08, 0.06) if boss_win else Color(0.30, 0.17, 0.07), sign_kind).finished
 		await get_tree().create_timer(1.0).timeout
 		await _hud_down()
 		_stage.lift_sign()
@@ -5059,7 +5138,7 @@ func _split_card(card: SpellCard, hits: int, thump: bool) -> void:
 	var pic: Array = await _card_picture(card)
 	if not is_instance_valid(card):
 		return
-	var old: Node = card.get_meta("split_node", null)
+	var old: Node = card.get_meta("split_node") if card.has_meta("split_node") else null  # (get_meta with a null default prints an error in Godot 4)
 	if is_instance_valid(old):
 		old.queue_free()
 	var sp := CardSplit.make(pic[0], pic[1], Vector2(SpellCard.W, SpellCard.H), hits)
@@ -5078,7 +5157,7 @@ func _break_card_wood(card: SpellCard) -> void:
 	var sc := card.scale
 	var rect := Rect2(card.global_position - pad * sc, tex.get_size() * sc)
 	card.modulate.a = 0.0
-	var old: Node = card.get_meta("split_node", null)
+	var old: Node = card.get_meta("split_node") if card.has_meta("split_node") else null  # (get_meta with a null default prints an error in Godot 4)
 	if is_instance_valid(old):
 		old.queue_free()
 	PuppetShatter.spawn_picture(self, tex, rect, card.global_position.y + SpellCard.H * sc.y + 30.0, "sfx_card_break")

@@ -20,7 +20,7 @@ static var _paths := {}  # name -> res:// path ("" = there is none)
 const FOLDERS := ["UI/Panels", "UI/Hp", "UI/Machine", "UI/Hint", "UI/Buttons", "UI/Essence", "Icon/Intent", "Icon/Effect", "UI/Icons",
 	"Card", "UI/Numbers", "Card/Treasure", "Map", "UI/Fx", "Stage/Act1/Backdrop", "Stage/Act2/Backdrop", "Stage/Act3/Backdrop",
 	"Map/Rooms/Backgrounds", "Stage/Act1/Fx", "Stage/Act2/Fx", "Stage/Act3/Fx", "UI/Banners", "UI/Characters", "Icon/Artifact", "Icon/Bottle",
-	"Map/Rooms/Campfire", "Map/Rooms/Apothecary", "UI/Misc", "UI"]
+	"Map/Rooms/Campfire", "Map/Rooms/Apothecary", "UI/Misc", "Fonts/Letters", "Stage/Shared", "UI"]
 
 ## artifact id -> picture name, where they differ
 const ARTIFACT_ART := {"scholar_quill": "scholars_quill"}
@@ -197,6 +197,64 @@ static func fill_number(row: Container, text: String, h: float, white := false, 
 		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(r)
 	return true
+
+
+## Puppet Stage: `text` written in the wooden alphabet (Fonts/Letters, full-size pictures scaled here; UI/Numbers for the digits, Letter Dot for . and the
+## middle dot), a capital letter `cap` px tall (`tint` multiplies the gold paint: a dark one makes it readable on a light sign). Returns a Control sized to the written line (its top = the top of a capital, its bottom = below the descenders),
+## or null when the theme has no such art or `text` holds a character it has none for - the caller keeps its plain Label then.
+static func letters(text: String, cap: float, tint := Color.WHITE) -> Control:
+	var row := Control.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var x := 0.0
+	var baseline := cap * 1.05
+	for ch in text:
+		if ch == " ":
+			x += cap * 0.4
+			continue
+		var glyph: Dictionary = _glyph_box(ch, cap, baseline)
+		if glyph.is_empty():
+			row.free()
+			return null
+		var r := TextureRect.new()
+		r.texture = glyph.tex
+		r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		r.stretch_mode = TextureRect.STRETCH_SCALE
+		r.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		r.modulate = tint
+		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		r.size = glyph.size
+		r.position = Vector2(x, glyph.y)
+		row.add_child(r)
+		x += glyph.size.x + cap * 0.07
+	row.custom_minimum_size = Vector2(maxf(x - cap * 0.07, 0.0), cap * 1.35)
+	row.size = row.custom_minimum_size
+	return row
+
+
+## One character of letters(): {tex, size, y} (y = top edge, px), or {} when there is no art for it.
+static func _glyph_box(ch: String, cap: float, baseline: float) -> Dictionary:
+	if ch == "." or ch == "·":
+		var d := tex("Letter Dot")
+		if d == null:
+			return {}
+		var w := cap * 0.3
+		var sz := Vector2(w, w * d.get_height() / d.get_width())
+		return {"tex": d, "size": sz, "y": baseline - sz.y if ch == "." else baseline - cap * 0.5 - sz.y / 2.0}
+	if ch >= "0" and ch <= "9" or ch in GLYPHS:
+		var n := tex("num_" + ch if ch >= "0" and ch <= "9" else GLYPHS[ch])
+		if n == null:
+			return {}
+		var k := cap / 128.0
+		var sz := Vector2(n.get_width(), n.get_height()) * k
+		return {"tex": n, "size": sz, "y": baseline - sz.y}
+	var name := ("upper_" if ch >= "A" and ch <= "Z" else "lower_") + ch
+	var m: Array = LetterMetrics.GLYPHS.get(name, [])
+	var t := tex(name) if not m.is_empty() else null
+	if t == null:
+		return {}
+	var s: float = m[0] * cap
+	var sz2 := Vector2(t.get_width(), t.get_height()) * s
+	return {"tex": t, "size": sz2, "y": baseline + cap * float(m[1]) - sz2.y}
 
 
 ## A picture to put INSIDE rich text ([img] in a RichTextLabel / tooltip): the painted one in the New theme, `fallback` (the

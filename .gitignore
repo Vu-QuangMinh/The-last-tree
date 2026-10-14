@@ -14,3 +14,6 @@ assets/Puppet/Stage/*/_Source/
 assets/Puppet/_Source/Chant UI for puppet.pdf
 # the raw 2048 px pictures ImageSet made for the Puppet UI (tools/import_puppet_ui.py cuts the small game pieces from them)
 assets/Puppet/UI/_Source/*/*.png
+
+# raw full-size ImageSet pictures (Name_YYYYMMDD_HHMMSS.png) that sit beside the cut-out files in the Puppet folders: kept on the artist machine for hand repair, only the cut files are committed
+assets/Puppet/**/*_20[0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]*.png

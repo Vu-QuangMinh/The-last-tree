@@ -67,7 +67,7 @@ func _arm(p: Control) -> void:
 func _hold(p: Control) -> void:
 	if not is_instance_valid(p):
 		return
-	var old = p.get_meta("life", null)
+	var old = p.get_meta("life") if p.has_meta("life") else null  # (a null default for get_meta prints an error)
 	if old != null and old is Tween and (old as Tween).is_valid():
 		(old as Tween).kill()
 	p.modulate.a = 1.0

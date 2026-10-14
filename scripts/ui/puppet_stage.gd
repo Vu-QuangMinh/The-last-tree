@@ -83,6 +83,7 @@ var _anchored: Array[Dictionary] = []  # scenery placed by rule: {node, frac, dy
 var _t := 0.0
 var _scene: Control  # everything that was shifted down by SCENE_DY
 var _ceiling: TextureRect  # the valance over the top of the screen
+var curtains: StageCurtains  # the red drapes that close over the backdrop and the floor (the map's time)
 var _xs := 1.0  # sideways stretch of the props stations (set by fit)
 var verts := {}  # point name -> Vector2 (see default_verts)
 var _quads: Array[_Quad] = []
@@ -140,6 +141,9 @@ func _init(p_act := 1) -> void:
 			add_child(layer)  # (it does not move: it is below the scene, absolute)
 		else:
 			_scene.add_child(layer)
+	curtains = StageCurtains.new()  # (under the ceiling, over the backdrop and the floor; masked to their shape so the walls stay in front)
+	curtains.setup(_curtain_outline())
+	add_child(curtains)
 	_ceiling = TextureRect.new()  # the ceiling: its own picture, as it is, over everything (the HUD text is raised above it)
 	_ceiling.texture = _pic("ceiling_overlay")
 	_ceiling.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -151,6 +155,14 @@ func _init(p_act := 1) -> void:
 	_ceiling.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_ceiling)
 	_refresh_quads()
+
+
+## The outline of the back wall and the floor together, in the stage's own pixels (what the curtains may cover).
+func _curtain_outline() -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for n in ["back_top_l", "back_top_r", "back_bot_r", "front_r", "front_l", "back_bot_l"]:
+		pts.append(verts[n] + Vector2(0.0, SCENE_DY))
+	return pts
 
 
 ## A wooden cut-out that stands at `pos` (its feet), `height` px tall, swaying on its base; `slide` is how far it travels left and
@@ -199,6 +211,7 @@ func fit(width: float) -> void:
 	_xs = width / DESIGN_W
 	if _ceiling != null:
 		_ceiling.size.x = width  # (a wider screen just repeats the picture)
+		curtains.set_x_scale(_xs)
 	size = Vector2(width, STAGE_H)
 	_scene.size.x = width
 	for q in _quads:
@@ -306,7 +319,7 @@ func add_hanging_sign(center_x: float, height: float) -> Sprite2D:
 	sp.scale = Vector2.ONE * (height / float(sp.texture.get_height()))
 	sp.position = Vector2(center_x, -31.0)  # (25 px higher than before: the ceiling covers its top)
 	sp.modulate = Color(0.92, 0.92, 0.92)
-	sp.z_index = 0  # (under the enemies' names, which can reach up to it)
+	sp.z_index = StageCurtains.Z + 1  # (over the drapes; they hang on the stage, not on the cloth)
 	var sh := Sprite2D.new()  # (it throws a shadow on the backdrop, like the clouds)
 	sh.texture = sp.texture
 	sh.centered = false
@@ -667,12 +680,13 @@ func drop_sign(text: String, col := Color(0.30, 0.17, 0.07), kind := "") -> Twee
 	holder.add_child(lb)
 	add_child(holder)
 	_sign = holder
+	var rest := -31.0 + (62.0 if kind == "boss_defeated" else 0.0)  # (the Boss Defeated board is taller: it hangs lower, so its words clear the valance)
 	var tw := create_tween()
-	tw.tween_property(holder, "position:y", -31.0, 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.tween_property(holder, "position:y", -31.0 - 38.0, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)  # (the chains stretch, it bounces)
-	tw.tween_property(holder, "position:y", -31.0, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.tween_property(holder, "position:y", -31.0 - 12.0, 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_property(holder, "position:y", -31.0, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(holder, "position:y", rest, 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(holder, "position:y", rest - 38.0, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)  # (the chains stretch, it bounces)
+	tw.tween_property(holder, "position:y", rest, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(holder, "position:y", rest - 12.0, 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(holder, "position:y", rest, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	return tw
 
 

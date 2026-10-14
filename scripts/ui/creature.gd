@@ -435,10 +435,14 @@ func _draw_arm(blink_on: bool) -> void:
 		a1 = a1 * (1.0 - _fold_t) + fold1
 		a2 = a2 * (1.0 - _fold_t) + angle_difference(th2 + fold1, pose.l)
 		r = pose.len  # (the sticks pull in as it folds)
-		if folding and not calm:
-			var stuck := 1.0 - _drive
-			a1 += sin(_gear_t * 47.0) * 0.012 * stuck
-			a2 += sin(_gear_t * 41.0 + 1.0) * 0.02 * stuck + sin(_gear_t * 1.3) * 0.03 * _fold_t
+		if folding:
+			if not calm:  # (a hurt arm: its broken gears tremble while it is stuck)
+				var stuck := 1.0 - _drive
+				a1 += sin(_gear_t * 47.0) * 0.012 * stuck
+				a2 += sin(_gear_t * 41.0 + 1.0) * 0.02 * stuck
+			# a folded arm always drifts a little, slowly (a calm one, never hurt, only this: no trembling)
+			a1 += sin(_gear_t * 0.9 + _rig_phase) * 0.012 * _fold_t
+			a2 += sin(_gear_t * 1.3) * 0.03 * _fold_t
 	# a stick cannot be shorter than its stretch allows: the elbow pin of the upper stick and the lower stick's must stay on one another
 	var slab_u: Vector2 = _rig.upper_slab
 	var slab_l: Vector2 = _rig.lower_slab

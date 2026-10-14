@@ -396,8 +396,17 @@ func _show_stage_map() -> void:
 	var m := MapScreen.new()
 	m.on_stage = true
 	m.setup(run)
+	var st: PuppetStage = current.get_stage() if is_instance_valid(current) and current is FightScreen else null
+	if st != null and st.curtains.has_art():  # the red drapes are drawn together over the stage, and the map is let down in front of them
+		st.curtains.close()
+		m.drop_delay = 2.4  # (as long as the drapes take to close)
 	m.node_chosen.connect(func(col: int):
+		if st != null and is_instance_valid(st):
+			st.curtains.open()  # (pulled apart while the map is pulled up)
 		await m.lower()
+		if st != null and is_instance_valid(st) and st.curtains.has_art():
+			while st.curtains.is_moving():
+				await get_tree().process_frame
 		_on_node(col))
 	m.codex_pressed.connect(open_codex)
 	m.menu_requested.connect(func(): run = null; show_menu())

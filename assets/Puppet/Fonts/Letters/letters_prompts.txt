@@ -1,0 +1,52 @@
+Letter Upper A: The capital letter A (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper B: The capital letter B (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper C: The capital letter C (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper D: The capital letter D (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper E: The capital letter E (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper F: The capital letter F (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper G: The capital letter G (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper H: The capital letter H (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper I: The capital letter I (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper J: The capital letter J (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper K: The capital letter K (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper L: The capital letter L (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper M: The capital letter M (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper N: The capital letter N (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper O: The capital letter O (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper P: The capital letter P (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper Q: The capital letter Q (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper R: The capital letter R (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper S: The capital letter S (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper T: The capital letter T (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper U: The capital letter U (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper V: The capital letter V (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper W: The capital letter W (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper X: The capital letter X (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper Y: The capital letter Y (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Upper Z: The capital letter Z (upper case) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower a: The small letter a (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower b: The small letter b (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower c: The small letter c (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower d: The small letter d (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower e: The small letter e (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower f: The small letter f (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower g: The small letter g (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower h: The small letter h (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower i: The small letter i (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower j: The small letter j (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower k: The small letter k (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower l: The small letter l (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower m: The small letter m (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower n: The small letter n (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower o: The small letter o (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower p: The small letter p (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower q: The small letter q (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower r: The small letter r (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower s: The small letter s (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower t: The small letter t (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower u: The small letter u (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower v: The small letter v (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower w: The small letter w (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower x: The small letter x (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower y: The small letter y (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Letter Lower z: The small letter z (lower case, not a capital) carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
