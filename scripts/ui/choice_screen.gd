@@ -10,16 +10,18 @@ var spells: Array = []
 var artifacts: Array = []
 var can_skip := true
 var act := 1
+var on_stage := false  # Puppet Stage: laid over the stage (no backdrop of its own), the shade a little lighter
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UiTheme.get_theme()
-	var bd := Backdrop.new()
-	bd.act = act
-	add_child(bd)
+	if not on_stage:
+		var bd := Backdrop.new()
+		bd.act = act
+		add_child(bd)
 	var shade := ColorRect.new()
-	shade.color = Color(0, 0, 0, 0.5)
+	shade.color = Color(0, 0, 0, 0.42 if on_stage else 0.5)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(shade)

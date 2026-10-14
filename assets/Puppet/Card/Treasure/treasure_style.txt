@@ -1,0 +1,7 @@
+Style: a real physical object genuinely hand-carved from solid wood and hand-painted, a prize plaque from an antique Czech marionette puppet theatre. Thick carved frame with rounded bevelled edges, visible chisel and knife marks, strong wood grain and tiny cracks showing through the matte milk-paint finish, paint worn thin at the edges so raw wood shows, tiny chips, small aged brass studs and fittings. Folk-art fairytale craftsmanship, slightly imperfect like handmade work. Warm rustic palette: dark walnut brown, ochre, faded rust red, cream, aged brass.
+
+Lighting: soft even diffuse light from the upper left, gentle natural shading that shows the depth of the carving, no strong highlights, no glossy shine.
+
+Composition: this one object only, centred, seen straight from the front with no perspective, filling the image with only a small even margin. Isolated on a pure white seamless background (#FFFFFF): no cast shadow, no reflection, no gradient, no other objects, no hands. The frames are completely empty inside (a flat plain fill) so the game can place an artifact picture and text in them; frames are built so they can be stretched: identical decorated corners, plain straight edges.
+
+Must look like a tangible wooden craft object with real material texture. Not vector art, not clean outlines, not cartoon, not a sticker, not plastic, not glossy, not a 3D game render. No text, letters, numbers, logos or watermark.

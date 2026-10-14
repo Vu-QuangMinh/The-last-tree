@@ -1,4 +1,4 @@
-"""Synthesize the Hammer Hand's sounds into assets/sfx/:
+"""Synthesize the Hammer Hand's sounds into assets/Global/SFX/:
 - sfx_hammer_thump: a fist-on-a-door thump (low body resonance + a short wooden knock)
 - sfx_glass_break:  a pane breaking (a bright noise crash + a spray of high glassy pings)
 - sfx_glass_clank:  shards clinking down (a few small glass pings + a tiny low clank)
@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 
 SR = 44100
-OUT = Path(__file__).resolve().parent.parent / "assets" / "sfx"
+OUT = Path(__file__).resolve().parent.parent / "assets" / "Global" / "SFX"
 rng = np.random.default_rng(7)
 
 

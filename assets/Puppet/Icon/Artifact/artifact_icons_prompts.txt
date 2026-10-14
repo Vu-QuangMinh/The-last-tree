@@ -1,0 +1,42 @@
+Artifact Ember Charm: A small round wooden charm carved with a flame and painted orange-red with a glowing yellow centre, hanging from a short twisted red cord with a brass ring
+Artifact Wind Chime: A little wind chime of five hollow wooden tubes of different lengths painted teal and cream hanging from a carved round top disc by thin strings, a small wooden clapper in the middle
+Artifact Fire Emblem: A round carved wooden badge painted deep red with a raised brass flame symbol in the middle and a thin brass rim
+Artifact Water Emblem: A round carved wooden badge painted deep blue with a raised brass water-drop symbol in the middle and a thin brass rim
+Artifact Air Emblem: A round carved wooden badge painted pale green with a raised brass swirl-of-wind symbol in the middle and a thin brass rim
+Artifact Lucky Acorn: One plump carved wooden acorn with a rough brown cap and a smooth warm tan nut, a tiny four-leaf clover painted on the nut, a small string loop at the top
+Artifact Second Wind: A carved wooden bellows with a leather-brown folded middle and a brass nozzle, two small curling puffs of wind carved and painted pale green beside the nozzle
+Artifact Flame Lens: A round magnifying lens with a thick carved wooden handle, the glass painted translucent orange with a small flame inside it, a brass rim
+Artifact Tide Lens: A round magnifying lens with a thick carved wooden handle, the glass painted translucent blue with a small water drop inside it, a brass rim
+Artifact Gale Lens: A round magnifying lens with a thick carved wooden handle, the glass painted translucent pale green with a small wind swirl inside it, a brass rim
+Artifact Prism Shard: One carved wooden crystal shard with a pointed top and faceted sides, each facet painted a different pastel colour of the rainbow, a small brass cap at the bottom
+Artifact Spell Pouch: A small round drawstring cloth pouch in faded teal with a carved wooden toggle bead on the cord and a tiny gold star stitched on the front
+Artifact Hungry Satchel: A lumpy leather satchel with a big buckle, a toothy wooden mouth carved across the flap with two small crooked eyes, a torn page sticking out of one corner, painted dark brown and rust red
+Artifact Chant Bell: A small brass hand bell with a carved wooden handle painted barn red, a clapper inside, two short curved sound lines carved beside it
+Artifact Echo Shell: A big spiral seashell carved from wood and painted cream and pink, a mouth opening that shows a darker inside, two thin curved echo lines carved beside it
+Artifact Bandolier: A sash belt of dark brown leather with six small corked glass vials in loops and a brass buckle, laid in a gentle diagonal
+Artifact Kindling Stone: A rough rounded grey flint stone carved from wood with a few orange spark shapes and one small flame on top, a cord wrapped around its middle
+Artifact Venom Gland: A plump carved wooden sac painted sickly green with a little yellow spot pattern, a short curved fang at the tip with one green drop falling from it
+Artifact Lock Pick: A pair of thin brass lock picks with carved wooden handles crossed in an X, a small round brass padlock open behind them
+Artifact Keen Eye: A single large carved wooden eye painted cream with a bright green iris and a black pupil, a thin brass eyelid rim, no face around it
+Artifact Calm Stone: A smooth rounded teal pebble carved from wood with three thin curved lines like ripples on its face, resting on a tiny carved wooden base ring
+Artifact Rain Chalice: A tall carved wooden goblet painted deep blue with a brass rim and foot, a few small water drops falling into it from above
+Artifact Echo Chamber: A round carved wooden drum-like chamber with a brass band and a round open hole in the front, three nested curved echo rings carved around the hole
+Artifact Shield of Silence: A small round wooden buckler painted pale grey-blue with a brass rim and boss, a large carved finger-to-lips shushing hand shape in the middle
+Artifact Ward Stone: A standing upright carved stone slab painted grey with a bright glowing ochre rune-like circle shape in the middle and a few brass studs
+Artifact Thornbark: A short piece of tree bark carved from wood with long sharp brown thorns sticking out of it and a tiny green sprout at the top
+Artifact Iron Bark: A short piece of tree bark carved from wood and painted dark grey like iron, with two riveted iron bands around it and a few small green leaves
+Artifact Seed of Life: One large glowing seed carved from wood, painted warm gold-green with a bright cream light shining from a small crack in the middle, two tiny leaves at the top
+Artifact Broken Seed of Life: The same large carved wooden seed but split in two cracked halves held loosely together, dull grey-brown with no light, a thin brass wire wrapped around it
+Artifact Healing Sap: A small carved wooden jar painted warm amber with a cork lid, a thick drop of golden sap running down one side, one tiny green leaf attached to the cork
+Artifact Mending Moss: A soft tuft of moss on a small carved wooden stone, painted several shades of fresh green, a few tiny white flowers and one small cross-shaped bandage strip tied around it
+Artifact Scholar's Quill: A tall carved wooden feather quill painted cream and teal with a brass nib, a small round ink pot beside it
+Artifact Seedling Pouch: A small round drawstring pouch in sage green cloth with a carved wooden toggle, a little green seedling with two leaves sprouting out of its opening
+Artifact Heartwood Seed: A round carved wooden seed pod split open to show a tiny glowing green sprout inside, thick bark-brown outside with a few swirling wood-ring lines
+Artifact Ember Heart: A plump heart carved from wood and painted deep red, orange flame shapes licking up from its top, glowing cracks of yellow across its face
+Artifact Tide Heart: A plump heart carved from wood and painted deep blue, a curling wave shape across its top, small white foam dots along the wave
+Artifact Gale Heart: A plump heart carved from wood and painted pale green, two swirling wind curls wrapping around it, a few small cream feathers
+Artifact Blood Pact: A rolled parchment scroll tied with a red ribbon and sealed with a big dark red wax seal, one drop of red painted wax falling from the seal, a small brass pen laid across it
+Artifact Broken Crown: A small carved wooden crown painted tarnished gold with a big crack through it and two missing points, a few sharp splinters, one dull red jewel
+Artifact Tangled Grimoire: A thick carved wooden spellbook painted dark purple with brass corners, thick brown vines and twisted cords wrapped and knotted around it, a single glowing eye symbol on the cover
+Artifact Glass Heart: A plump heart-shaped glass bottle painted translucent pink with a hairline crack running across it, a brass cap, a few tiny bubbles inside
+Artifact Withered Idol: A small carved wooden idol figure with a round head and closed eyes, grey and withered with deep cracks, a dead brown twig crown, dry curled leaves at its feet

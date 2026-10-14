@@ -1,0 +1,20 @@
+Bottle Fire Flask: A round-bellied flask with a short neck filled with bright orange-red liquid, a small wooden tag with a carved flame symbol tied around the neck
+Bottle Water Flask: A round-bellied flask with a short neck filled with bright cornflower blue liquid, a small wooden tag with a carved water-drop symbol tied around the neck
+Bottle Air Flask: A round-bellied flask with a short neck filled with pale fresh green liquid with a few tiny bubbles, a small wooden tag with a carved wind-swirl symbol tied around the neck
+Bottle Prism Draught: A tall slim bottle filled with shimmering liquid that fades from pink through yellow to blue like a rainbow, a small wooden tag with a carved star symbol tied around the neck
+Bottle Healing Tonic: A squat rounded bottle filled with warm pink-red liquid, a small carved wooden cross-shaped tag tied around the neck, a gold painted rim
+Bottle Iron Tonic: A sturdy square-shouldered bottle filled with steel grey-blue liquid, a small wooden tag with a carved shield symbol tied around the neck, two brass bands around the glass
+Bottle Aegis Elixir: A tall bottle with a faceted shape filled with glowing pale gold liquid, a small wooden tag with a carved shining-circle symbol tied around the neck, a gold wax-sealed cork
+Bottle Thorn Oil: A small round bottle filled with thick olive green oil, a few real-looking carved wooden thorns tied to the neck by string, a small wooden tag with a carved thorn symbol
+Bottle Purifying Water: A tall clear bottle filled with transparent pale aqua water with a few rising bubbles, a small wooden tag with a carved sparkle symbol tied around the neck
+Bottle Liquid Fire: A short thick bottle filled with glowing molten orange liquid with a small flame flickering above the cork, a small wooden tag with a carved fuse symbol, scorch marks painted on the glass
+Bottle Venom Vial: A narrow tall vial filled with toxic lime-green liquid, a small wooden tag with a carved snake symbol tied around the neck, a few green drips running down the outside
+Bottle Thief's Brew: A round dark bottle filled with murky lilac liquid, a small wooden tag with a carved open hand symbol tied around the neck, a loose cork sitting askew
+Bottle Frost Phial: A small angular crystal-shaped phial filled with pale icy blue liquid, tiny white frost crystals carved on its surface, a small wooden tag with a carved snowflake symbol
+Bottle Smoke Bomb: A round black-grey bottle like a bomb with a short fuse in the cork, soft puffs of cream smoke leaking from the neck, a small wooden tag with a carved cloud symbol
+Bottle Acid Flask: A conical flask filled with bubbling acid-yellow liquid, small bubbles popping at the top, a small wooden tag with a carved drop symbol, eaten pits painted on the neck
+Bottle Shatter Salts: A wide short jar of cream-coloured glass filled with coarse pale pink crystals, a cracked-looking glass and a small wooden tag with a carved cracked-shield symbol on the cork
+Bottle Blast Flask: A round fat flask filled with glowing red-orange liquid with a tiny spark inside, a short rope fuse in the cork, a small wooden tag with a carved starburst symbol
+Bottle Echo Draught: A tall bottle filled with liquid in three nested rings of pale violet, a small wooden tag with a carved double-wave symbol tied around the neck
+Bottle Hourglass Sand: A small bottle shaped like a tiny hourglass filled with fine glowing golden sand, a brass cap at each end, a small carved wooden frame holding it
+Bottle Grimoire Ink: A squat round ink bottle filled with deep violet ink with a tall carved wooden feather quill standing in the cork, a small wooden tag with a carved open-book symbol

@@ -3,6 +3,9 @@ extends PanelContainer
 ## Your Leaves (the run's money), always in the top-right corner during a run: a little leaf and the amount. When it changes,
 ## the counter pops and the difference floats up (+30 / -40).
 
+## The Puppet Stage fight sets this: the counter is not shown while it is on (the Menu button stands there).
+static var off_in_fight := false
+
 var get_run: Callable  # () -> RunState, or null when no run is going on
 var _shown := -1
 var _label: Label
@@ -11,6 +14,7 @@ var _t := 0.0
 
 
 func _ready() -> void:
+	add_to_group("amber_counter")  # (the Puppet Stage fight hides it: the Leaves are in its Character panel)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.07, 0.06, 0.04, 0.9)
 	sb.border_color = Color(0.45, 0.8, 0.3)
@@ -88,7 +92,7 @@ func _process(d: float) -> void:
 	if not _gem is TextureRect:
 		_gem.queue_redraw()
 	var run: RunState = get_run.call() if get_run.is_valid() else null
-	visible = run != null
+	visible = run != null and not off_in_fight
 	if run == null:
 		_shown = -1
 		return

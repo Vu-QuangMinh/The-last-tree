@@ -1,0 +1,6 @@
+Missing icons (to be gathered, sorted and made later). One line each: where it is wanted, what it is, where it is used.
+
+[DONE 2026-10-14: Icon/Bottle/shop_wax_seal.png] [Puppet] Wax seal icon: the purple wax seal as a small picture (the merchant's "Wax seal" item, ShopScreen, UiSkin name "wax_seal"; the Puppet theme has none, so the shop shows the emoji)
+[Puppet] Hot meal icon: the merchant's "A hot meal" item (ShopScreen, UiSkin name "hot_meal"; no Puppet picture)
+[DONE 2026-10-14: UI/Characters/merchant_full.png] [Puppet] Merchant, full body: the whole merchant standing (ShopScreen puts "merchant_portrait" above the Leave button; the Puppet portrait is a bust/half figure; a full-length figure is wanted)
+[Puppet] Intent icons without art (not boss intents): brittle, regrow, cleanse_self, drain_essence, disarm

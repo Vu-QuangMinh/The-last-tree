@@ -39,7 +39,7 @@ func _setup() -> void:
 	_pic.size = Vector2(_img.get_size()) * _scale
 	_pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_mat = ShaderMaterial.new()
-	_mat.shader = load("res://assets/card/power_dissolve.gdshader")
+	_mat.shader = load("res://assets/Global/Card/Shaders/power_dissolve.gdshader")
 	_mat.set_shader_parameter("from", Vector2(-1, 0))  # (it goes from the left: the wind blows the dust right)
 	_mat.set_shader_parameter("edge_color", Color(1.0, 0.86, 0.55))
 	_mat.set_shader_parameter("raggedness", 0.45)

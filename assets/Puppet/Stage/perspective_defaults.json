@@ -1,0 +1,153 @@
+{
+ "_about": "The stage's perspective points as they were when the F4 editor's R key was pressed: what R puts back, per act. (Act 1's are the points tuned by hand on the running game = PuppetStage.default_verts(); Act 2 and 3 start from the same ones until they are tuned: press P in the F4 editor to print a set and paste it here.) What F4 changes is kept per act in user://puppet_stage_verts_act<N>.json.",
+ "act1": {
+  "top_l": [
+   -92.0,
+   -72.0
+  ],
+  "top_r": [
+   2012.0,
+   -72.0
+  ],
+  "back_top_l": [
+   130.0,
+   -126.0
+  ],
+  "back_top_r": [
+   1790.0,
+   -126.0
+  ],
+  "back_bot_l": [
+   130.0,
+   410.0
+  ],
+  "back_bot_r": [
+   1790.0,
+   410.0
+  ],
+  "front_l": [
+   -92.0,
+   562.0
+  ],
+  "front_r": [
+   2012.0,
+   562.0
+  ],
+  "low_top_l": [
+   4.0,
+   876.0
+  ],
+  "low_top_r": [
+   1916.0,
+   876.0
+  ],
+  "low_bot_l": [
+   -190.0,
+   1080.0
+  ],
+  "low_bot_r": [
+   2110.0,
+   1080.0
+  ]
+ },
+ "act2": {
+  "top_l": [
+   -92.0,
+   -72.0
+  ],
+  "top_r": [
+   2012.0,
+   -72.0
+  ],
+  "back_top_l": [
+   130.0,
+   -126.0
+  ],
+  "back_top_r": [
+   1790.0,
+   -126.0
+  ],
+  "back_bot_l": [
+   130.0,
+   410.0
+  ],
+  "back_bot_r": [
+   1790.0,
+   410.0
+  ],
+  "front_l": [
+   -92.0,
+   562.0
+  ],
+  "front_r": [
+   2012.0,
+   562.0
+  ],
+  "low_top_l": [
+   4.0,
+   876.0
+  ],
+  "low_top_r": [
+   1916.0,
+   876.0
+  ],
+  "low_bot_l": [
+   -190.0,
+   1080.0
+  ],
+  "low_bot_r": [
+   2110.0,
+   1080.0
+  ]
+ },
+ "act3": {
+  "top_l": [
+   -92.0,
+   -72.0
+  ],
+  "top_r": [
+   2012.0,
+   -72.0
+  ],
+  "back_top_l": [
+   130.0,
+   -126.0
+  ],
+  "back_top_r": [
+   1790.0,
+   -126.0
+  ],
+  "back_bot_l": [
+   130.0,
+   410.0
+  ],
+  "back_bot_r": [
+   1790.0,
+   410.0
+  ],
+  "front_l": [
+   -92.0,
+   562.0
+  ],
+  "front_r": [
+   2012.0,
+   562.0
+  ],
+  "low_top_l": [
+   4.0,
+   876.0
+  ],
+  "low_top_r": [
+   1916.0,
+   876.0
+  ],
+  "low_bot_l": [
+   -190.0,
+   1080.0
+  ],
+  "low_bot_r": [
+   2110.0,
+   1080.0
+  ]
+ }
+}

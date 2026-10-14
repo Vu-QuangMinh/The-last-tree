@@ -18,7 +18,7 @@ const LOOK := {
 	"event": ["❓", "Unknown", Color(0.45, 0.3, 0.65), "Usually a strange encounter with choices; sometimes a fight, a merchant or treasure."],
 	"boss": ["👑", "Boss", Color(0.55, 0.1, 0.35), "The guardian of this act."],
 }
-## New theme: room type -> the painted ring / icon names (assets/ui/new/map_ring_<x>.png, map_icon_<x>.png)
+## New theme: room type -> the painted ring / icon names (assets/New/Map/map_ring_<x>.png, map_icon_<x>.png)
 const ART := {"fight": "normal", "elite": "elite", "rest": "campfire", "treasure": "treasure", "shop": "merchant", "event": "unknown", "boss": "boss"}
 const ROW_H := 168.0  # (96 * 1.75: the map was stretched taller)
 const COL_W := 138.0
@@ -37,6 +37,11 @@ var _col_w := COL_W
 var _buttons := {}  # Vector2i(floor, col) -> the room's button
 var _eaten := {}  # path dots the hero has walked over: "floor_col_nextcol_i" -> true
 var _moving := false  # the hero is walking to the room you chose
+## Puppet Stage: the map is a wooden board (drawn in code, there is no art yet) that rises over the stage; the nodes and paths are the same.
+var on_stage := false
+const BOARD_POS := Vector2(430, 86)
+const BOARD_SIZE := Vector2(1060, 930)
+const CHALK := Color(0.96, 0.92, 0.78)
 
 
 func setup(p_run: RunState) -> void:
@@ -46,14 +51,17 @@ func setup(p_run: RunState) -> void:
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UiTheme.get_theme()
-	var bd := Backdrop.new()
-	bd.act = 1 if not test_rooms.is_empty() else run.act
-	add_child(bd)
-	var shade := ColorRect.new()
-	shade.color = Color(0, 0, 0, 0.45)
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(shade)
+	if on_stage:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE  # (the stage's own buttons stay clickable around the board)
+	else:
+		var bd := Backdrop.new()
+		bd.act = 1 if not test_rooms.is_empty() else run.act
+		add_child(bd)
+		var shade := ColorRect.new()
+		shade.color = Color(0, 0, 0, 0.45)
+		shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(shade)
 	# the parchment scroll
 	sheet = PanelContainer.new()
 	var sb := StyleBoxFlat.new()
@@ -64,7 +72,20 @@ func _ready() -> void:
 	sb.shadow_color = Color(0, 0, 0, 0.5)
 	sb.shadow_size = 12
 	var scroll_art := UiSkin.box("map_scroll", [0, 122, 0, 122], [40, 132, 40, 128])  # New theme: the painted scroll (rollers top and bottom)
-	if scroll_art != null:
+	if on_stage:
+		var wood := StyleBoxFlat.new()
+		wood.bg_color = Color(0.36, 0.22, 0.12)
+		wood.border_color = Color(0.17, 0.09, 0.05)
+		wood.set_border_width_all(10)
+		wood.set_corner_radius_all(14)
+		wood.set_content_margin_all(26)
+		wood.shadow_color = Color(0, 0, 0, 0.55)
+		wood.shadow_size = 16
+		sheet.add_theme_stylebox_override("panel", wood)
+		_cx = 495.0
+		_col_w = 124.0
+		_map_w = 990.0
+	elif scroll_art != null:
 		sheet.add_theme_stylebox_override("panel", scroll_art)
 		_cx = 500.0
 		_col_w = 124.0  # the painted paper is narrower: keep the rooms off its torn edges
@@ -73,6 +94,13 @@ func _ready() -> void:
 		sheet.add_theme_stylebox_override("panel", sb)
 	sheet.position = Vector2(420, 66)
 	sheet.size = Vector2(1080, 1000)
+	if on_stage:
+		sheet.position = BOARD_POS
+		sheet.size = BOARD_SIZE
+		sheet.mouse_filter = Control.MOUSE_FILTER_STOP
+		var planks := WoodBoard.new()
+		planks.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		sheet.add_child(planks)
 	add_child(sheet)
 	_scroll = ScrollContainer.new()
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -99,6 +127,8 @@ func _ready() -> void:
 	# left: title and legend
 	var left := VBoxContainer.new()
 	legend = left
+	if on_stage:
+		left.visible = false  # (the board has its own heading)
 	left.position = Vector2(30, 80)
 	left.size = Vector2(370, 900)
 	left.add_theme_constant_override("separation", 10)
@@ -125,6 +155,14 @@ func _ready() -> void:
 	add_child(hud)
 	var tip := UiTheme.label("Choose a glowing room. Scroll to look ahead.", 18, UiTheme.MUTED)
 	tip.position = Vector2(30, 1030)
+	if on_stage:
+		tip = UiTheme.label("Act %s · %s · floor %d of %d: choose a glowing room, scroll to look ahead" % [["", "I", "II", "III"][run.act], ["", "The Edge of the Wood", "The Rotting Hollow", "The Last Winter"][run.act], maxi(0, run.floor_no()), MapGen.FLOORS], 20, CHALK)
+		tip.add_theme_constant_override("outline_size", 5)
+		tip.add_theme_color_override("font_outline_color", Color(0.12, 0.06, 0.03))
+		tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		tip.size = Vector2(BOARD_SIZE.x, 30)
+		tip.position = Vector2(BOARD_POS.x, BOARD_POS.y + BOARD_SIZE.y - 46.0)
+		tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(tip)
 	# start with your position in view (the bottom of the map at the start of an act)
 	await get_tree().process_frame
@@ -134,6 +172,9 @@ func _ready() -> void:
 	var view_h := _scroll.size.y
 	_scroll.scroll_vertical = int(clampf(py - view_h * 0.58, 0.0, maxf(0.0, _content.custom_minimum_size.y - view_h)))
 	# ☰ Menu (bottom right, as in fights): Resume, Settings, Main Menu, Quit. The run is saved on the map.
+	if on_stage:
+		rise()  # (the stage's own Menu button is there already)
+		return
 	var menu_btn := UiTheme.button("☰ Menu", _open_pause_menu, 18)
 	menu_btn.custom_minimum_size = Vector2(130, 44)
 	menu_btn.position = Vector2(1920 - 150, 1024)
@@ -141,6 +182,51 @@ func _ready() -> void:
 	UiTheme.use_heading_font(menu_btn)
 	add_child(menu_btn)
 
+
+## Puppet Stage: the board rises from below the screen with a little overshoot ...
+func rise() -> void:
+	var tw := create_tween()
+	for n in [sheet]:
+		n.position.y = 1100.0
+	tw.tween_property(sheet, "position:y", BOARD_POS.y, 0.75).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## ... and sinks again once a room is chosen.
+func lower() -> void:
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(sheet, "position:y", 1120.0, 0.55).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	for c in get_children():
+		if c is Label and c != null:
+			tw.tween_property(c, "modulate:a", 0.0, 0.3)
+	await tw.finished
+
+
+## The board's wood, drawn in code: upright planks with a grain, seams, and nails in the corners.
+class WoodBoard extends Control:
+	const TONES := [Color(0.40, 0.25, 0.13), Color(0.36, 0.22, 0.12), Color(0.43, 0.27, 0.15), Color(0.33, 0.20, 0.11)]
+
+	func _draw() -> void:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 7
+		var plank_w := 124.0
+		var n := int(ceil(size.x / plank_w))
+		for i in n:
+			var x := i * plank_w
+			var w := minf(plank_w, size.x - x)
+			var base: Color = TONES[i % TONES.size()]
+			draw_rect(Rect2(x, 0, w, size.y), base, true)
+			for k in 26:  # the grain: long thin streaks, a little darker or lighter
+				var gx := x + rng.randf_range(6.0, w - 6.0)
+				var gy := rng.randf_range(0.0, size.y)
+				var gl := rng.randf_range(60.0, 360.0)
+				var col := base.darkened(rng.randf_range(0.1, 0.3)) if rng.randf() < 0.65 else base.lightened(rng.randf_range(0.06, 0.16))
+				draw_line(Vector2(gx, gy), Vector2(gx + rng.randf_range(-4.0, 4.0), minf(size.y, gy + gl)), Color(col, 0.55), rng.randf_range(1.0, 2.4))
+			draw_line(Vector2(x, 0), Vector2(x, size.y), Color(0.12, 0.06, 0.03, 0.9), 3.0)  # the seam
+			draw_line(Vector2(x + 2.5, 0), Vector2(x + 2.5, size.y), Color(1, 0.85, 0.6, 0.07), 2.0)
+		for c in [Vector2(22, 22), Vector2(size.x - 22, 22), Vector2(22, size.y - 22), Vector2(size.x - 22, size.y - 22)]:
+			draw_circle(c, 7.5, Color(0.1, 0.06, 0.04))
+			draw_circle(c + Vector2(-1.5, -1.5), 4.5, Color(0.55, 0.5, 0.45))
+		draw_rect(Rect2(0, 0, size.x, 60), Color(0, 0, 0, 0.12), true)  # (a darker rail at the top, under the heading)
 
 func _open_pause_menu() -> void:
 	if _pause != null:
@@ -291,7 +377,7 @@ func _node_button(f: int, n: Dictionary, choices: Array) -> Control:
 		if not can and not visited:
 			b.modulate = Color(0.88, 0.86, 0.8)
 		elif visited and not here:
-			b.modulate = Color(1, 1, 1, 0.85)
+			b.modulate = Color.WHITE  # (a visited ring is solid)
 	else:
 		for state in ["normal", "hover", "pressed", "disabled"]:
 			var st := StyleBoxFlat.new()
@@ -388,7 +474,9 @@ func _draw_paths() -> void:
 					if _eaten.has("%d_%d_%d_%d" % [f, n.col, c, i]):
 						continue  # the hero ate this one
 					var p := a.lerp(b, i / float(steps))
-					if dot != null:  # New theme: the painted ink dot (greener and bigger on the way out of your room)
+					if on_stage:  # (chalk dots on the wood)
+						_content.draw_circle(p, 4.2 if from_here else 3.2, Color(0.75, 1.0, 0.6, 0.95) if from_here else Color(CHALK, 0.75))
+					elif dot != null:  # New theme: the painted ink dot (greener and bigger on the way out of your room)
 						var ds := 11.0 if from_here else 8.5
 						_content.draw_texture_rect(dot, Rect2(p - Vector2(ds, ds) / 2.0, Vector2(ds, ds)), false, Color(0.55, 1.0, 0.45, 0.95) if from_here else Color(1, 1, 1, 0.7))
 					else:

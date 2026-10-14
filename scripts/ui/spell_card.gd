@@ -51,6 +51,7 @@ var _state_pic: Control
 var _state_img: TextureRect
 var _state_num: Label
 var _box: StyleBoxFlat
+var _art: StyleBoxTexture  # Puppet theme: the brown wooden card frame (UI art "spell_card_frame"); null = the flat parchment box above
 var _shade: ColorRect
 var _orbit: OrbitSpark  # pending: the chant you're building will wake this spell
 var _flame: FlameOutline
@@ -90,6 +91,13 @@ func _ready() -> void:
 	_box.shadow_color = Color(0, 0, 0, 0.45)
 	_box.shadow_size = _zi(4)
 	add_theme_stylebox_override("panel", _box)
+	_art = _frame_art()
+	if _art != null:
+		add_theme_stylebox_override("panel", _art)
+		_box.content_margin_left = _art.content_margin_left  # (the code below that lays things out reads the margins from _box)
+		_box.content_margin_top = _art.content_margin_top
+		_box.content_margin_right = _art.content_margin_right
+		_box.content_margin_bottom = _art.content_margin_bottom
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", _zi(SEP))
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -145,7 +153,7 @@ func _ready() -> void:
 		count = 0
 		for a in alts:
 			count = maxi(count, String(a).length())
-	var orb := minf(40.0 if alts.size() <= 1 else 32.0, (RULES_W - 3.0 * (count - 1)) / maxf(1.0, count))
+	var orb := minf(40.0 if alts.size() <= 1 else 32.0, (_rw() - 3.0 * (count - 1)) / maxf(1.0, count))
 	if alts.size() > 1:
 		var rows := VBoxContainer.new()
 		rows.add_theme_constant_override("separation", _zi(3))
@@ -173,7 +181,7 @@ func _ready() -> void:
 		d.fit_content = true
 		d.scroll_active = false
 		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		d.custom_minimum_size = Vector2(_z(RULES_W), 0)
+		d.custom_minimum_size = Vector2(_z(_rw()), 0)
 		d.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		d.add_theme_color_override("default_color", INK)
 		# plain sentences; the size is picked once the rest of the card is built (see _fit_text)
@@ -198,7 +206,7 @@ func _ready() -> void:
 	# many tags (an inverted conjured spell: ANTI-SPELL · EPHEMERAL) would widen the card: the line shrinks to fit
 	var tag_font := tag_l.get_theme_font("font")
 	var tag_fs := _zi(13)
-	while tag_fs > _zi(8) and tag_font.get_string_size(tag_l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, tag_fs).x > _z(RULES_W):
+	while tag_fs > _zi(8) and tag_font.get_string_size(tag_l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, tag_fs).x > _z(_rw()):
 		tag_fs -= 1
 	tag_l.add_theme_font_size_override("font_size", tag_fs)
 	tag_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -286,6 +294,55 @@ func _ready() -> void:
 ## (21 down to 11) that fits the space the name, orbs and tags leave, so a wordy card (a fused one) is never
 ## cut off and a short one doesn't sit in a big empty gap.
 const RULES_W := 234.0
+
+
+## The width of the rules text: narrower when the wooden frame (Puppet) takes more of the card's edge than the flat box does.
+## The Puppet card frame as a 9-slice sized to this card. The picture is big (the artist's own 1491 x 998 file, a thin frame about FRAME_SRC px wide);
+## a 9-slice draws its corners at their picture size, so it is first shrunk to the card (W x H, times the zoom), and the margins follow.
+const FRAME_SRC := 64.0  # px of the frame's width in the artist's picture (at its full size)
+static var _frame_cache := {}  # zoom -> [texture, margin]
+
+
+func _frame_art() -> StyleBoxTexture:
+	var t: Texture2D = UiSkin.tex("spell_card_frame")
+	if t == null:
+		return null
+	var m := 44.0 * zoom  # (an old small picture, drawn 1:1)
+	if t.get_width() > 2.0 * W:
+		var key := snappedf(zoom, 0.01)
+		if not _frame_cache.has(key):
+			var img := t.get_image()
+			if img.is_compressed():
+				img.decompress()
+			var k := W * zoom / float(img.get_width())
+			img.resize(maxi(8, roundi(W * zoom)), maxi(8, roundi(H * zoom)), Image.INTERPOLATE_LANCZOS)
+			_frame_cache[key] = [ImageTexture.create_from_image(img), ceilf(FRAME_SRC * k) + 1.0]
+		t = _frame_cache[key][0]
+		m = _frame_cache[key][1]
+	var b := StyleBoxTexture.new()
+	b.texture = t
+	b.texture_margin_left = m
+	b.texture_margin_top = m
+	b.texture_margin_right = m
+	b.texture_margin_bottom = m
+	b.content_margin_left = _z(14)
+	b.content_margin_top = _z(14)
+	b.content_margin_right = _z(14)
+	b.content_margin_bottom = _z(12)
+	return b
+
+
+func _rw() -> float:
+	return RULES_W - (_art_pad_x() if _art != null else 0.0)
+
+
+## How much more room the wooden frame takes, over the flat box's 6/7/6/5 margins (unzoomed units).
+func _art_pad_x() -> float:
+	return 28.0 - 12.0
+
+
+func _art_pad_y() -> float:
+	return 26.0 - 12.0
 const SEP := 5.0
 
 
@@ -293,17 +350,17 @@ func _fit_text() -> void:
 	# the name: fits the card's width, leaving a little room in the corners for the ×N counter
 	var font := _name_l.get_theme_font("font")
 	var name_fs := 22
-	while name_fs > 15 and font.get_string_size(spell.name, HORIZONTAL_ALIGNMENT_LEFT, -1, _zi(name_fs)).x > _z(W - 12 - 16 - 2 * 20):
+	while name_fs > 15 and font.get_string_size(spell.name, HORIZONTAL_ALIGNMENT_LEFT, -1, _zi(name_fs)).x > _z(W - 12 - 16 - 2 * 20 - (_art_pad_x() if _art != null else 0.0)):
 		name_fs -= 1
 	_name_l.add_theme_font_size_override("font_size", _zi(name_fs))
 	if _rules == null:
 		return
 	# the rules: the height left once the card's frame, name, orbs and tag line are counted
-	var used := _z(7 + 5) + _name_l.get_combined_minimum_size().y + _z(2) + _pat.get_combined_minimum_size().y \
+	var used := _z(7 + 5 + (_art_pad_y() if _art != null else 0.0)) + _name_l.get_combined_minimum_size().y + _z(2) + _pat.get_combined_minimum_size().y \
 		+ _tag_l.get_combined_minimum_size().y + _z(SEP) * 3
 	var room := _z(H) - used
 	# measured on the real text box (coloured keywords and line spacing included), at the card's text width
-	_rules.size = Vector2(_z(RULES_W), 0)
+	_rules.size = Vector2(_z(_rw()), 0)
 	var fs := 21
 	var need := 0.0
 	while true:
@@ -409,7 +466,7 @@ static var _holo_shader: Shader
 
 func _add_holo() -> void:
 	if _holo_shader == null:
-		_holo_shader = load("res://assets/card/anti_holo.gdshader")
+		_holo_shader = load("res://assets/Global/Card/Shaders/anti_holo.gdshader")
 	_add_overlay(_holo_shader)
 	# the pattern orbs stay above the negative, in their true colours: the player must see which Essence breaks it
 	for o in _pat.get_children():
@@ -425,7 +482,7 @@ var _static_mat: ShaderMaterial
 
 static func _static_shader() -> Shader:
 	if _static_shader_res == null:
-		_static_shader_res = load("res://assets/card/ephemeral_static.gdshader")
+		_static_shader_res = load("res://assets/Global/Card/Shaders/ephemeral_static.gdshader")
 	return _static_shader_res
 
 
@@ -600,7 +657,7 @@ func refresh() -> void:
 			_rules.text = t
 			_fit_text()
 	var n := charges if charges > 0 else fires
-	_count.text = ("×%d" % n) if n > 0 and state == "" else ""
+	_count.text = ""  # (no ×N: a spell no longer fires more than once for a long chant)
 	# the frame is the spell's function colour; gold when the chant matches it or it's alive
 	var border: Color = KIND_COLORS[spell.kind].darkened(0.15)
 	var bw := 3
@@ -613,6 +670,8 @@ func refresh() -> void:
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if charges > 0 else Control.CURSOR_ARROW
 	_box.border_color = border
 	_box.set_border_width_all(_zi(bw))
+if _art != null:  # the wooden frame glows golden when the chant would wake the spell, brighter once it is charged
+	_art.modulate_color = Color(1.4, 1.2, 0.7) if charges > 0 else (Color(1.25, 1.1, 0.78) if fires > 0 and state == "" else Color.WHITE)
 	modulate = Color(1, 1, 1, 0.45) if state == "used" else (Color(0.55, 0.55, 0.55, 0.8) if state == "spent" else Color.WHITE)
 	if state == "broken":
 		modulate = Color(0.5, 0.5, 0.52, 0.9)  # (broken: greyed out further than a spent one, under its cracks)
@@ -647,9 +706,9 @@ func refresh() -> void:
 		for o in _pat.get_children():
 			o.z_index = 0 if _shade.visible else 1  # (an anti-spell's orbs sit above its negative, but not above a silence)
 	_flame.visible = ignited and state != "used"
-	if _base_tip != "":
-		tooltip_text = _base_tip + ("\n[color=#ff9a4a][b]Ignited:[/b] casting it this turn burns you for %d HP.[/color]" % Fight.IGNITE_DAMAGE if ignited else "")
-	_cracks.set_level(cracks, String(spell.get("id", "")))
+if _base_tip != "":
+	tooltip_text = _base_tip + ("\n[color=#ff9a4a][b]Ignited:[/b] casting it this turn burns you for %d HP.[/color]" % Fight.IGNITE_DAMAGE if ignited else "")
+	_cracks.set_level(0 if UiSkin.is_puppet() else cracks, String(spell.get("id", "")))  # (Puppet: the card is cut into planks instead: CardSplit)
 	if spell.get("anti", false):
 		# an anti-spell is always active: its spark keeps circling, unless the chant breaks it (state "broken")
 		_orbit.color = Color(1.0, 0.55, 0.95)

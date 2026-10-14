@@ -4,7 +4,7 @@ extends Control
 ## act changes the mood (1 dusk green, 2 rot purple, 3 winter blue).
 
 var act := 1
-## A room's own picture (assets/ui/new/room_<id>.jpg) instead of the act's: main.gd sets it before it shows a room's screens
+## A room's own picture (assets/New/Map/Rooms/Backgrounds/room_<id>.jpg) instead of the act's: main.gd sets it before it shows a room's screens
 ## (and clears it on the map), so every screen of one room shares it. Empty, or a room without a picture: the act's.
 static var room := ""
 var tree_glow := true
@@ -34,6 +34,8 @@ void fragment() {
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if UiSkin.is_puppet():
+		return  # (Puppet Stage: plain dark wood behind the theatre, drawn in _draw)
 	var room_art: Texture2D = UiSkin.tex("room_" + room) if room != "" else null
 	var art: Texture2D = room_art if room_art != null else UiSkin.tex(ART.get(act, ""))
 	if art != null:
@@ -85,6 +87,11 @@ const ART := {1: "bg_act1_dusk_forest", 2: "bg_act2_rot_swamp", 3: "bg_act3_wint
 func _draw() -> void:
 	var w := size.x
 	var h := size.y
+	if UiSkin.is_puppet():
+		draw_rect(Rect2(0, 0, w, h), Color(0.16, 0.1, 0.07))
+		for i in 14:  # (flat boards)
+			draw_line(Vector2(0, h * i / 14.0), Vector2(w, h * i / 14.0), Color(0.1, 0.06, 0.04), 3.0)
+		return
 	if _art_node != null:
 		return  # the painted picture is its own node
 	var sky: Array = SKY.get(act, SKY[1])

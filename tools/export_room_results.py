@@ -1,11 +1,11 @@
-"""Page 2 of assets/ui/Room Background.pdf: the pictures shown after a room's choice (so far the Wandering Apothecary: Snatch,
+"""Page 2 of assets/New/Map/Rooms/_Source/Room Background.pdf: the pictures shown after a room's choice (so far the Wandering Apothecary: Snatch,
 Walk on, Pay). Each is cut out of the page (the labels beside them removed) in two layers, both drawn 1930 px wide and cropped
 to the middle 1920 x 1080 (so the swaying wood never shows a picture edge):
   room_<room>_<name>.png        the whole picture, still (it also fills any gap the swaying wood opens up)
   room_<room>_<name>_trees.png  the wood: the drawings the picture shares with page 1's loose "Rừng cây" forest (found by
                                 their drawing signature). The game sways this layer in the wind.
   room_<room>_<name>_front.png  everything else (ground, roots, characters...), still, drawn over the wood.
-Both go to assets/ui/new/room/ and Backdrop.room picks them up by name.
+Both go to assets/New/Map/Rooms/Apothecary/ and Backdrop.room picks them up by name.
 
 Run:  python tools/export_room_results.py     (needs pymupdf, pillow)
 """
@@ -21,8 +21,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from export_room_background import align, stream_ops, sig, centre  # noqa: E402  (the same page-stream helpers)
 
-SRC = os.path.join(HERE, "..", "assets", "ui", "Room Background.pdf")
-OUT = os.path.join(HERE, "..", "assets", "ui", "new", "room")
+import asset_paths as AP
+SRC = os.path.join(AP.NEW, "Map", "Rooms", "_Source", "Room Background.pdf")
+OUT = os.path.join(AP.NEW, "Map", "Rooms", "Apothecary")
 ROOM = "apothecary"
 LABELS = {"Snatch": "snatch", "Walk": "walk", "Pay": "pay"}  # the label word beside each picture -> its name
 W_BIG = 1930  # drawn a little larger than the stage, then cropped

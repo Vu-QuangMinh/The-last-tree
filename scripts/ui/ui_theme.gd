@@ -15,18 +15,30 @@ static var _theme: Theme
 ## Forget the cached Theme (the Theme setting changed): the next screen builds it again.
 static func reset() -> void:
 	_theme = null
+	_fonts.clear()
+	_fallbacks.clear()
+	_acherus_bold = null
 	_title_font = null
 	_title_font_looked = false
 
 
 static var _fonts := {}
+const GLOBAL_FONTS := "res://assets/Global/Fonts/"
 
 
-## One cut of the game's font family (SFU Futura, in assets/fonts); null when the file isn't there.
+## A font file (with its extension): the chosen theme's own Fonts folder first, then Global/Fonts. "" when there is none.
+static func font_path(file: String) -> String:
+	for dir in [UiSkin.theme_dir() + "Fonts/", GLOBAL_FONTS]:
+		if ResourceLoader.exists(dir + file):
+			return dir + file
+	return ""
+
+
+## One cut of the game's font family (SFU Futura, in a Fonts folder); null when the file isn't there.
 static func family(file: String) -> Font:
 	if not _fonts.has(file):
-		var path := "res://assets/fonts/%s.TTF" % file
-		_fonts[file] = with_fallbacks(load(path)) if ResourceLoader.exists(path) else null
+		var path := font_path(file + ".TTF")
+		_fonts[file] = with_fallbacks(load(path)) if path != "" else null
 	return _fonts[file]
 
 
@@ -41,8 +53,8 @@ static func with_fallbacks(f: Font) -> Font:
 		return f
 	if _fallbacks.is_empty():
 		for file in FALLBACK_FONTS:
-			var path: String = "res://assets/fonts/" + file
-			if ResourceLoader.exists(path):
+			var path := font_path(file)
+			if path != "":
 				_fallbacks.append(load(path))
 	f.fallbacks = _fallbacks
 	return f
@@ -69,17 +81,18 @@ static var _title_font: Font
 static var _title_font_looked := false
 
 
-## New theme: the display font for headings ("iCiel Cadena": any file in assets/fonts with "ciel" in its name).
-## Null in Default, or while the font file isn't there: headings then use the normal font.
+## The display font for headings ("iCiel Cadena": any file with "ciel" in its name, in the theme's Fonts folder or Global/Fonts).
+## Null while the font file isn't there: headings then use the normal font.
 static func title_font() -> Font:
-	if not UiSkin.is_new():
-		return null
 	if not _title_font_looked:
 		_title_font_looked = true
-		for f in DirAccess.get_files_at("res://assets/fonts"):
-			var path := "res://assets/fonts/" + f.trim_suffix(".import")
-			if "ciel" in f.to_lower() and ResourceLoader.exists(path):
-				_title_font = with_fallbacks(load(path))
+		for dir in [UiSkin.theme_dir() + "Fonts/", GLOBAL_FONTS]:
+			for f in DirAccess.get_files_at(dir):
+				var name := f.trim_suffix(".import")
+				if "ciel" in name.to_lower() and ResourceLoader.exists(dir + name):
+					_title_font = with_fallbacks(load(dir + name))
+					break
+			if _title_font != null:
 				break
 	return _title_font
 
@@ -107,7 +120,8 @@ static func font_choice() -> String:
 ## single italic face, so its bold is that face emboldened. Null when the files aren't there (the caller keeps its font).
 static func cut(kind: String) -> Font:
 	if font_choice() == "acherus":
-		var base: Font = with_fallbacks(load("res://assets/fonts/SVN-Acherus-Italic.otf")) if ResourceLoader.exists("res://assets/fonts/SVN-Acherus-Italic.otf") else null
+		var acherus := font_path("SVN-Acherus-Italic.otf")
+		var base: Font = with_fallbacks(load(acherus)) if acherus != "" else null
 		if base == null or kind == "regular" or kind == "oblique":
 			return base
 		if _acherus_bold == null:
@@ -200,12 +214,12 @@ static func get_theme() -> Theme:
 
 ## New theme: the wooden scroll bar (track + grabber) and the volume slider (the same track on its side + a round knob).
 static func _skin_scrollbars(t: Theme) -> void:
-	var track := UiSkin.box("scroll_track", [0, 39, 0, 29] if UiSkin.is_circus() else [0, 10, 0, 10], [10, 10, 10, 10])
+	var track := UiSkin.box("scroll_track", [0, 10, 0, 10], [10, 10, 10, 10])
 	if track != null and UiSkin.tex("scroll_bar_grabber") != null:
 		t.set_stylebox("scroll", "VScrollBar", track)
 		for g in ["grabber", "grabber_highlight", "grabber_pressed"]:
 			t.set_stylebox(g, "VScrollBar", StyleBoxEmpty.new())  # the painted thumb is a ScrollThumb on top of the bar (it never stretches)
-	var slider_track := UiSkin.box("slider_track", [39, 0, 29, 0] if UiSkin.is_circus() else [10, 0, 10, 0], [10, 10, 10, 10])
+	var slider_track := UiSkin.box("slider_track", [10, 0, 10, 0], [10, 10, 10, 10])
 	var knob := UiSkin.tex("volume_bar_grabber")
 	if slider_track != null and knob != null:
 		t.set_stylebox("slider", "HSlider", slider_track)
@@ -231,7 +245,10 @@ static func menu_button_styles() -> Dictionary:
 		return {}
 	var out := {}
 	for state in ["normal", "hover", "pressed"]:
-		out[state] = UiSkin.box("button_menu_" + state, [14, 14, 14, 15], [14, 3, 14, 9])
+		if UiSkin.is_puppet() and UiSkin.path_of("button_menu_" + state).contains("/Puppet/"):  # (its own plate: 131 x 46)
+			out[state] = UiSkin.box("button_menu_" + state, [20, 16, 20, 20], [16, 2, 16, 8])
+		else:
+			out[state] = UiSkin.box("button_menu_" + state, [14, 14, 14, 15], [14, 3, 14, 9])
 	out["disabled"] = out["normal"]
 	return out
 
@@ -244,10 +261,39 @@ static func use_menu_style(b: Button) -> void:
 
 
 ## The Play button on the main menu: a normal button, turning orange (Button Play Hover) when hovered (New theme only).
-static func use_play_style(b: Button) -> void:
+static func use_play_style(b: Button, always := false) -> void:
 	if not UiSkin.is_new():
 		return
-	b.add_theme_stylebox_override("hover", UiSkin.box("button_play_hover", [20, 16, 20, 18], [20, 6, 20, 12]))
+	var orange := UiSkin.box("button_play_hover", [20, 16, 20, 18], [20, 6, 20, 12])
+	b.add_theme_stylebox_override("hover", orange)
+	if always and orange != null:  # (the orange plank is the button's face all the time, not only under the mouse)
+		for k in ["normal", "pressed", "focus"]:
+			b.add_theme_stylebox_override(k, orange)
+		b.add_theme_color_override("font_color", Color(0.2, 0.1, 0.04))
+		b.add_theme_color_override("font_hover_color", Color(0.1, 0.05, 0.02))
+		b.add_theme_color_override("font_pressed_color", Color(0.1, 0.05, 0.02))
+
+
+## Puppet Stage: the wooden button of the Chant strip (kind "chant", "clear" or "pass"; Undo uses "clear"), blank: the word is the button's text.
+static func puppet_button_styles(kind: String) -> Dictionary:
+	var out := {}
+	var m := [14, 12, 14, 12] if kind == "chant" else [10, 8, 10, 8]
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		out[state] = UiSkin.box("button_%s_%s" % [kind, state], m, [4, 2, 4, 4])
+	return out
+
+
+## Puppet Stage: dress a button as one of those wooden buttons, its word stamped in the art's orange.
+static func style_puppet_button(b: Button, kind: String, size: int) -> void:
+	var st := puppet_button_styles(kind)
+	for k in st:
+		b.add_theme_stylebox_override(k, st[k])
+	b.add_theme_font_size_override("font_size", size)
+	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		b.add_theme_color_override(c, Color(0.96, 0.72, 0.42))
+	b.add_theme_color_override("font_disabled_color", Color(0.62, 0.55, 0.48))
+	b.add_theme_color_override("font_outline_color", Color(0.17, 0.09, 0.05))
+	b.add_theme_constant_override("outline_size", 3)
 
 
 ## A big amber button (the Chant / Release button): New theme only; null in Default.
@@ -255,12 +301,8 @@ static func chant_button_styles() -> Dictionary:
 	if not UiSkin.is_new():
 		return {}
 	var out := {}
-	if UiSkin.is_circus() and UiSkin.tex("button_chant_normal") != null and UiSkin.path_of("button_chant_normal").contains("/circus/"):
-		# Cirus: the whole painted pill (green, lime on hover, red pressed, grey disabled), its gold ring and base included.
-		# It is 130 x 58 and the button is 58 tall, so only the middle stretches (the ends are half circles of 29 px).
-		for state in ["normal", "hover", "pressed", "disabled"]:
-			out[state] = UiSkin.box("button_chant_" + state, [29, 0, 29, 0], [30, 4, 30, 10])
-		return out
+	if UiSkin.is_puppet() and UiSkin.tex("button_chant_normal") != null and UiSkin.path_of("button_chant_normal").contains("/Puppet/"):
+		return puppet_button_styles("chant")
 	for state in ["normal", "hover", "pressed", "disabled"]:
 		# only the amber face, as the user asked: the art's dark 3D base strip is left out. The face is its own image
 		# (button_chant_*_face.png: rows 0-47 of the art, the pressed one 2-49), not a window onto the full art: scaled to a
@@ -270,7 +312,7 @@ static func chant_button_styles() -> Dictionary:
 
 
 static func panel_box(alpha := 0.88, radius := 12) -> StyleBox:
-	var art := UiSkin.box("panel_wood_frame", [46, 29, 46, 34] if UiSkin.is_circus() else [30, 30, 30, 30], [18, 14, 18, 14])  # (the Cirus panel is a shorter picture with bigger corners)
+	var art := UiSkin.box("panel_wood_frame", [34, 34, 34, 34] if UiSkin.is_puppet() else [30, 30, 30, 30], [26, 22, 26, 22] if UiSkin.is_puppet() else [18, 14, 18, 14])  # (the Puppet panel has a carved rim and corner pieces)
 	if art != null:
 		art.modulate_color = Color(1, 1, 1, clampf(alpha + 0.1, 0.0, 1.0))
 		return art

@@ -55,7 +55,7 @@ func _build() -> void:
 		Audio.preview_changed.connect(_on_preview_changed)
 
 
-## Theme: Default (everything drawn in code) or New (the hand-drawn art). Picking one rebuilds this screen in it;
+## Theme: New (the hand-drawn art) or Puppet Stage (the wooden puppet theatre). Picking one rebuilds this screen in it;
 ## screens opened afterwards use it too.
 func _theme_row() -> Control:
 	var row := HBoxContainer.new()
@@ -65,7 +65,7 @@ func _theme_row() -> Control:
 	row.add_child(l)
 	var opt := OptionButton.new()
 	opt.custom_minimum_size = Vector2(280, 0)
-	var current: String = SaveManager.setting("theme", "new")
+	var current: String = UiSkin.theme_id()
 	for i in UiSkin.OPTIONS.size():
 		opt.add_item(UiSkin.LABELS[i])
 		if UiSkin.OPTIONS[i] == current:
@@ -185,7 +185,7 @@ func _volume_row(label_text: String, start: float, on_change: Callable) -> Contr
 	return row
 
 
-## A label, a dropdown of every track file found in assets/music/<category>/, and a Play
+## A label, a dropdown of every track file found in assets/Global/Music/<category>/, and a Play
 ## button to preview whichever one is selected.
 func _track_row(label_text: String, category: String) -> Control:
 	var row := HBoxContainer.new()
@@ -198,7 +198,7 @@ func _track_row(label_text: String, category: String) -> Control:
 	var tracks := Audio.list_tracks(category)
 	var current := Audio.get_track(category)
 	if tracks.is_empty():
-		opt.add_item("(no tracks in assets/music/%s/)" % category)
+		opt.add_item("(no tracks in assets/Global/Music/%s/)" % category)
 		opt.disabled = true
 	else:
 		for i in tracks.size():

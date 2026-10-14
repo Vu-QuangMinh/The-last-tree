@@ -1,9 +1,16 @@
 .godot/
 *.import
 
-# full-size spell art masters (game uses the 256px copies in assets/card/art)
+# full-size spell art masters (game uses the 256px copies in assets/Global/Card/Art)
 art_source/
 build/
 
-# 2048 px originals of the room backgrounds (the game uses the 16:9 jpgs in assets/ui/new/backgrounds)
-assets/Room Background/
+# 2048 px originals of the room backgrounds (the game uses the 16:9 jpgs in assets/New/Map/Rooms/Backgrounds)
+assets/New/Map/Rooms/_Source/*.png
+# the big raw pictures of each Puppet act's stage (the game uses the pieces cut by tools/import_puppet_stage.py)
+assets/Puppet/Stage/*/_Source/
+
+# the 121 MB source PDF of the Puppet HUD (GitHub refuses files over 100 MB); it stays on the artist machine
+assets/Puppet/_Source/Chant UI for puppet.pdf
+# the raw 2048 px pictures ImageSet made for the Puppet UI (tools/import_puppet_ui.py cuts the small game pieces from them)
+assets/Puppet/UI/_Source/*/*.png

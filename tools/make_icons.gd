@@ -1,5 +1,5 @@
 extends SceneTree
-## Renders the element orbs (and the generic ? element) to PNGs for rich text: assets/icons/el_*.png
+## Renders the element orbs (and the generic ? element) to PNGs for rich text: assets/Global/Icon/Element/el_*.png
 ## Usage (windowed): godot --path . -s tools/make_icons.gd
 
 
@@ -21,6 +21,6 @@ func _init() -> void:
 			await process_frame
 		var img := vp.get_texture().get_image()
 		var name: String = {"F": "fire", "W": "water", "A": "wind", "?": "any"}[el]
-		img.save_png("res://assets/icons/el_%s.png" % name)
+		img.save_png("res://assets/Global/Icon/Element/el_%s.png" % name)
 		print("saved ", name)
 	quit()

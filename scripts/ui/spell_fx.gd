@@ -13,6 +13,7 @@ const POISON := Color(0.5, 0.95, 0.25)
 const SHADOW := Color(0.7, 0.4, 1.0)
 const GOLD := Color(1.0, 0.82, 0.35)
 const HEAL := Color(0.45, 1.0, 0.55)
+const SEA_BLUE := Color(0.08, 0.38, 0.95)  # (the Shield effect's little shields)
 const SHIELD := Color(0.4, 0.75, 1.0)
 const BLOOD := Color(1.0, 0.16, 0.2)
 const THORN := Color(0.55, 0.85, 0.3)
@@ -693,15 +694,7 @@ static func _shield(v: Vfx, from: Vector2, dests: Array) -> float:
 	var d := _self(dests)
 	var at: Vector2 = d.body
 	var t := _stream(v, from, at, Vector2(160, 30), SHIELD, 10)
-	v.dome(at, 290, 0.42, SHIELD, 1.3, t)
-	v.ring(at, 40, 320, SHIELD, 0.55, 10.0, t, 0.42)
-	var g := v.glow(at, 300, Color(SHIELD, 0.35), 0.8, t)
-	g.aspect = 0.45
-	for i in 16:
-		var ang := randf() * TAU
-		var s := v.part(at + Vector2(cos(ang) * 290, sin(ang) * 122), Vector2.ZERO, Color(0.8, 0.95, 1), randf_range(0.4, 0.8), randf_range(6, 11), Vfx.STAR, t + randf_range(0.05, 0.4))
-		s.spin = 3.0
-	v.shake(2.5, t)
+	_rising(v, at, t, SEA_BLUE, Vfx.SHIELD)  # (the same as Heal, with little sea-blue shields drawn in code)
 	return t
 
 
@@ -757,29 +750,22 @@ static func _thorns(v: Vfx, from: Vector2, dests: Array) -> float:
 	return t
 
 
-## A column of green-gold light, and motes and little crosses rising all around you.
+## Heal and Shield: small shapes (green crosses / blue shields) drifting up all round you for about a second.
+static func _rising(v: Vfx, at: Vector2, t: float, col: Color, shape: int) -> void:
+	v.emit(at, 1.1, t, func(vv: Vfx, _it: Vfx.Item, d: float) -> void:
+		if randf() > 30.0 * d:  # (called every frame: about 30 shapes a second whatever the frame rate, or they pile up into white)
+			return
+		var m := vv.part(at + Vector2(randf_range(-230, 230), randf_range(-10, 45)), Vector2(0, -randf_range(100, 230)), col.lerp(col.darkened(0.2), randf()), randf_range(0.8, 1.3), randf_range(12, 20), shape)
+		m.wobble = 30.0
+		m.size1 = m.size0 * 0.4)
+
+
+## Green plus signs rising all around you.
 static func _heal(v: Vfx, from: Vector2, dests: Array) -> float:
 	var d := _self(dests)
 	var at: Vector2 = d.body
 	var t := _stream(v, from, at, Vector2(150, 25), HEAL, 10)
-	var col := v.part(at + Vector2(0, -150), Vector2.ZERO, Color(HEAL, 0.7), 1.1, 80.0, Vfx.GLOW, t)
-	col.size1 = 150.0
-	col.aspect = 2.6
-	col.hold = 0.4
-	var core := v.part(at + Vector2(0, -150), Vector2.ZERO, Color(0.9, 1, 0.85, 0.55), 0.9, 30.0, Vfx.GLOW, t)
-	core.size1 = 50.0
-	core.aspect = 5.0
-	var g := v.glow(at, 360, Color(HEAL, 0.6), 0.9, t)
-	g.aspect = 0.5
-	v.flare(at, 420, Color(0.8, 1, 0.75, 0.8), 0.35, t)
-	v.ring(at, 40, 320, HEAL, 0.6, 14.0, t, 0.42)
-	v.ring(at, 20, 220, Color(1, 1, 0.8, 0.8), 0.45, 6.0, t + 0.08, 0.42)
-	v.emit(at, 1.1, t, func(vv: Vfx, _it: Vfx.Item, _d: float) -> void:
-		for i in 4:
-			var shape := Vfx.CROSS if randf() < 0.4 else (Vfx.STAR if randf() < 0.3 else Vfx.GLOW)
-			var m := vv.part(at + Vector2(randf_range(-230, 230), randf_range(-10, 45)), Vector2(0, -randf_range(100, 230)), HEAL.lerp(Color(1, 1, 0.7), randf() * 0.5), randf_range(0.8, 1.3), randf_range(8, 15), shape)
-			m.wobble = 30.0
-			m.size1 = m.size0 * 0.4)
+	_rising(v, at, t, HEAL, Vfx.CROSS)  # (only green plus signs rising round you: no column, glow or ring)
 	return t
 
 
@@ -812,7 +798,9 @@ static func _cleanse(v: Vfx, from: Vector2, dests: Array) -> float:
 		var sp := v.part(at + dir.normalized() * randf_range(170, 260), Vector2(0, -randf_range(30, 90)), Color(0.95, 1, 1), randf_range(0.5, 0.8), randf_range(7, 12), Vfx.STAR, t + 0.3)
 		sp.spin = 4.0
 	v.emit(at, 0.9, t, func(vv: Vfx, _it: Vfx.Item, _d: float) -> void:
-		for i in 2:
+		if randf() > 0.45:  # (this runs every frame: about 30 shapes in all, or they pile up into white)
+			return
+		for i in 1:
 			var m := vv.part(at + Vector2(randf_range(-230, 230), randf_range(-10, 45)), Vector2(0, -randf_range(120, 240)), Color(0.9, 1, 1), randf_range(0.7, 1.1), randf_range(6, 11), Vfx.STAR if randf() < 0.5 else Vfx.GLOW)
 			m.wobble = 25.0
 			m.size1 = m.size0 * 0.3)

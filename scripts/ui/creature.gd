@@ -22,16 +22,18 @@ var _max_hp := 1  # Essence it started with (or the most it has had since)
 var _yin_rot := 0.0  # the Yin Yang Beast's symbol: turned upside down (PI) when it is black
 var _yin_target := 0.0
 var _yin_last := ""
-var _orbit_t := 0.0
 var _orbs: Array = []  # the Invoker's words so far: their Essence orbit him for the rest of the fight
 var _art := {}  # face name -> Texture2D, for enemies with drawn art (empty: drawn procedurally)
 
-## Enemies with drawn art: one picture per face (angry: half its Essence or more; normal: low, under half; hurt: just hit).
-const ART := {"ashling": "res://assets/enemies/ashling_%s.webp", "triplet_fire": "res://assets/enemies/ashling_%s.webp"}
+## Enemies with drawn art (New theme): one picture per face (angry: half its Essence or more; normal: low, under half; hurt: just hit).
+## They live in New/Enemies/Act<n>/ (the file name has a %s for the face).
+const ART := {"ashling": "ashling_%s.webp", "triplet_fire": "ashling_%s.webp"}
 const ART_FACES := ["angry", "normal", "hurt"]
-## Drawn art with two forms (the Yin Yang Beast and its Cubs): form 1 in its starting colour, form 2 once it has
-## flipped (a black Cub is form 2 from the start). Each form has the three faces: path % [face, form].
-const ART_FORMS := {"yin_yang_beast": "res://assets/enemies/yin_yang_%s_%d.webp", "yin_yang_clone": "res://assets/enemies/yin_yang_%s_%d.webp"}
+
+## Puppet Stage: every enemy that has a cut-out in Puppet/Enemies/Act1..3/ (named after its id, or the PUPPET_FILES entry) is drawn from that
+## one picture instead of its procedural body; it rocks on its base instead of bobbing, and tips back when hit.
+const ENEMY_ACTS := [1, 2, 3]
+const PUPPET_FILES := {"triplet_fire": "triplet_fire", "triplet_water": "triplet_water", "triplet_air": "triplet_air"}
 
 const SHAPES := {
 	# act 1 (the Verdant Circle)
@@ -45,22 +47,70 @@ const SHAPES := {
 }
 
 
+const THICKNESS := Color(0.2, 0.11, 0.05)  # (Puppet Stage: the colour of a plank's edge)
+var _puppet := false  # Puppet Stage cut-out in use
+## A Handyman hand in the Puppet Stage is not a picture but a two-bone wooden arm (HandymanRig.ARMS): it turns a little about its shoulder and
+## its elbow all the time, swings hard when it attacks, and goes limp when it is knocked out. Its shoulder hangs on the Handyman's body (HandymanStage).
+var _rig := {}  # the arm's entry of HandymanRig.ARMS ({} for everything else)
+var _rig_tex: Array = []  # [upper, lower]
+var swing := 0.0  # the attack, set by the fight screen: -0.4 wound up ... 1 struck
+var intro := 0.0  # 1 -> 0: the arm reaches out from the body when it first appears
+var _fold_t := 0.0  # 0 -> 1 while the hand is knocked out (it folds away behind the Handyman's back), 1 -> 0 when it comes back
+var _gear_t := 0.0  # the clock of the arm's jammed machinery (a knocked-out arm)
+var _drive := 1.0  # 0..1: how much the broken gears pull right now (0 = stuck, it only trembles)
+var _rig_phase := 0.0
+
+
+## The picture of an enemy in the chosen theme's Enemies folder: its own act's folder first, then the others (null when there is none).
+static func enemy_path(file: String, act := 1) -> String:
+	var order: Array = [act] + ENEMY_ACTS.filter(func(a): return a != act)
+	for a in order:
+		var path: String = UiSkin.theme_dir() + "Enemies/Act%d/%s" % [a, file]
+		if ResourceLoader.exists(path):
+			return path
+	return ""
+
+
+static func _puppet_tex(file: String, act := 1) -> Texture2D:
+	var path := enemy_path(file + ".png", act)
+	return load(path) as Texture2D if path != "" else null
+
+
 func setup(e: EnemyState) -> void:
 	enemy_id = e.id
 	_enemy = e
 	_max_hp = maxi(1, maxi(e.size(), str(e.def.get("hp", "")).length()))
 	_art.clear()
-	if ART_FORMS.has(e.id):
-		for form in [1, 2]:
-			for face in ART_FACES:
-				var fpath: String = ART_FORMS[e.id] % [face, form]
-				if ResourceLoader.exists(fpath):
-					_art["%s_%d" % [face, form]] = load(fpath)
-	elif ART.has(e.id):
+	if ART.has(e.id):
 		for face in ART_FACES:
-			var path: String = ART[e.id] % face
-			if ResourceLoader.exists(path):
+			var path := enemy_path(ART[e.id] % face, int(e.def.get("act", 1)))
+			if path != "":
 				_art[face] = load(path)
+	_puppet = false
+	if UiSkin.is_puppet():
+		var file: String = PUPPET_FILES.get(e.id, e.id)
+		if e.id in ["yin_yang_clone", "yin_yang_beast"]:  # (one picture per colour; _draw_art picks by its current colour)
+			for c in ["white", "black"]:
+				var tc := _puppet_tex(e.id + "_" + c, int(e.def.get("act", 1)))
+				if tc != null:
+					_art["yin_" + c] = tc
+		var t := _puppet_tex(file, int(e.def.get("act", 1)))
+		if t != null:
+			_art = {"angry": t, "normal": t, "hurt": t}
+		if e.id == "handyman":  # (his two faces: the smiling body above, and the crying one when a hand of his takes damage)
+			_sad_tex = _puppet_tex("handyman_sad", 1)
+			add_to_group("handyman_body")
+		_puppet = not _art.is_empty()
+		_rig = {}
+		_rig_tex = []
+		if HandymanRig.ARMS.has(e.id):
+			var arm: Dictionary = HandymanRig.ARMS[e.id]
+			var up := enemy_path(arm.upper, 1)
+			var lo := enemy_path(arm.lower, 1)
+			if up != "" and lo != "":
+				_rig = arm
+				_rig_tex = [load(up), load(lo)]
+				_rig_phase = float(hash(e.id) % 628) / 100.0
 	shape = SHAPES.get(e.id, hash(e.id) % 6)
 	var counts := {"F": 0, "W": 0, "A": 0}
 	for c in e.def.hp:
@@ -92,7 +142,14 @@ func _make_custom_tooltip(for_text: String) -> Object:
 
 
 ## Hit for `strength` (1 = a full hit, less for a single Essence knocked off).
+## The Handyman's face cries for a moment (one of his hands was hurt).
+func cry(sec: float) -> void:
+	_sad_t = maxf(_sad_t, sec)
+
+
 func hit(strength := 1.0) -> void:
+	if not _rig.is_empty() and is_inside_tree():  # (a hand of the Handyman took damage: his body cries)
+		get_tree().call_group("handyman_body", "cry", 1.4)
 	hurt = HURT_TIME
 	_shake = maxf(_shake, 7.0 * strength + 3.0)
 	_blink = maxf(_blink, 0.18 + 0.22 * strength)
@@ -110,19 +167,13 @@ func _process(d: float) -> void:
 		orb.create_tween().tween_property(orb, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		_orbs.append(orb)
 	if not _orbs.is_empty():
-		_orbit_t += d
-		var c := Vector2(size.x / 2.0, size.y * 0.5)
+		var c := Vector2(size.x / 2.0, size.y * 0.58)
 		var s := minf(size.x, size.y) * 0.34 * big
 		for k in _orbs.size():
-			# each on its own ring, tilted 60 degrees from the last (the atom picture), going round fast
-			var a := _orbit_t * 3.4 + TAU * k / 3.0
-			var tilt := PI * k / 3.0
-			var p := Vector2(cos(a) * s * 1.45, sin(a) * s * 0.42).rotated(tilt)
+			var a := bob * 0.6 + TAU * k / _orbs.size()
 			var orb: ElementIcon = _orbs[k]
-			orb.position = c + p - orb.size / 2.0
-			orb.show_behind_parent = sin(a) < 0  # (behind him on the far half of its ring)
-			orb.z_index = 2 if sin(a) >= 0 else 0  # (the near half: in front of his spell cards too)
-		queue_redraw()
+			orb.position = c + Vector2(cos(a) * s * 1.35, -s * 0.75 + sin(a) * s * 0.22) - orb.size / 2.0
+			orb.show_behind_parent = sin(a) < 0  # (behind him on the far side of the orbit)
 	if _enemy != null and _enemy.yin != "":
 		if _yin_last == "":
 			_yin_rot = 0.0 if _enemy.yin == "white" else PI
@@ -132,15 +183,24 @@ func _process(d: float) -> void:
 		_yin_last = _enemy.yin
 		_yin_rot = move_toward(_yin_rot, _yin_target, d * TAU)
 	bob += d * 2.0
+	if not _rig.is_empty():
+		var folded := _enemy != null and _enemy.knocked
+		_gear_t += d
+		# knocked out: the arm creeps away behind the Handyman, but the gears inside are broken: it moves a little, jams, trembles, moves again
+		_drive = clampf(sin(_gear_t * 2.1) + 0.6 * sin(_gear_t * 3.4 + 1.3) + 0.25, 0.0, 1.0)
+		if folded:
+			_fold_t = move_toward(_fold_t, 1.0, d * 0.5 * _drive)
+		else:
+			_fold_t = move_toward(_fold_t, 0.0, d * 1.8)  # (it reaches out again, smoothly)
 	flash = maxf(0.0, flash - d * 3.0)
 	hurt = maxf(0.0, hurt - d)
+	_sad_t = maxf(0.0, _sad_t - d)
 	_shake = maxf(0.0, _shake - d * 30.0)
 	_blink = maxf(0.0, _blink - d)
 	queue_redraw()
 
 
 func _draw() -> void:
-	_draw_rings()  # (the Invoker's rings: drawn first, so he stands in front of them)
 	var c := Vector2(size.x / 2.0, size.y * 0.58 + sin(bob) * 4.0)
 	if _enemy != null and _enemy.yin != "":
 		tint = Color(0.92, 0.91, 0.88) if _enemy.yin == "white" else Color(0.13, 0.13, 0.15)  # black and white only
@@ -154,14 +214,16 @@ func _draw() -> void:
 	if dead:
 		body = Color(0.2, 0.2, 0.2, 0.4)
 	# shadow (the New theme stands it on a painted stump instead)
-	if UiSkin.tex("enemy_stand") == null:
+	if UiSkin.tex("enemy_stand") == null and not UiSkin.is_puppet():
 		draw_set_transform(Vector2(c.x, size.y * 0.93), 0, Vector2(1, 0.25))
 		draw_circle(Vector2.ZERO, s * 0.9, Color(0, 0, 0, 0.35))
 		draw_set_transform(Vector2.ZERO)
+	if not _rig.is_empty():
+		_draw_arm(blink_on)
+		return
 	if not _art.is_empty():
 		_draw_art(blink_on)
-		if not ART_FORMS.has(enemy_id):
-			_draw_yinyang(c, s)  # (two-form art paints its own yin-yang)
+		_draw_yinyang(c, s)
 		return
 	var eye_y := -s * 0.15
 	match shape:
@@ -235,21 +297,6 @@ func _draw() -> void:
 
 
 ## The Yin Yang Beast's symbol on its head: the white half up while it is white; it spins round each time it inverts.
-## The Invoker's rings: faint ellipses his orbiting Essence travel along.
-func _draw_rings() -> void:
-	if _orbs.is_empty():
-		return
-	var c := Vector2(size.x / 2.0, size.y * 0.5)
-	var s := minf(size.x, size.y) * 0.34 * big
-	for k in _orbs.size():
-		var pts := PackedVector2Array()
-		for i in 49:
-			var a := TAU * i / 48.0
-			pts.append(c + Vector2(cos(a) * s * 1.45, sin(a) * s * 0.42).rotated(PI * k / 3.0))
-		var col: Color = Elements.COLORS.get((_orbs[k] as ElementIcon).el, Color.WHITE)
-		draw_polyline(pts, Color(col, 0.35), 2.0, true)
-
-
 func _draw_yinyang(c: Vector2, s: float) -> void:
 	if _enemy == null or _enemy.yin == "":
 		return
@@ -291,6 +338,131 @@ func _draw_pained_face(c: Vector2, s: float, eye_y: float) -> void:
 	draw_colored_polygon(PackedVector2Array([sd + Vector2(-s * 0.06, -s * 0.02), sd + Vector2(0, -s * 0.16), sd + Vector2(s * 0.06, -s * 0.02)]), Color(0.6, 0.85, 1.0, 0.9))
 
 
+## Puppet Stage: the side of the square the puppet's picture is drawn in. The Handyman's body is drawn at the size his arms were cut for.
+func _art_side() -> float:
+	if enemy_id == "handyman" and _puppet:
+		return HandymanRig.BODY_PX * HandymanRig.SCALE
+	return minf(size.x, size.y) * 0.88 * big
+
+
+func has_rig() -> bool:
+	return not _rig.is_empty()
+
+
+## The two sticks of a hand's arm are drawn longer or shorter than they were cut: `reach` = (upper, lower) length in px of the art. HandymanStage
+## sets it so that the hand lands where its name stands. (0, 0) = as cut.
+var reach := Vector2.ZERO
+var sad_forever := false  # the Handyman's body, once every hand is down: he keeps the crying face (Face.pdf)
+var _sad_tex: Texture2D
+var _sad_t := 0.0  # seconds of crying left (a hand of his was hurt)
+var calm := false  # a folded arm that was never hurt (a hand not summoned yet): it lies still, no creaking
+var reach_angle := INF  # the lower stick's direction when it is not the rest one (INF: the rest one)
+
+
+## The hand marker, from the shoulder, in px of the art, with the sticks at `r` (upper, lower) length.
+static func arm_hand(arm: Dictionary, r: Vector2, th2: float) -> Vector2:
+	return Vector2.from_angle(arm.theta1) * r.x + Vector2.from_angle(th2) * r.y
+
+
+## Draw one stick of an arm (its picture lies along +x, the joint it turns about at `pivot`): the stretch `slab` is made `extra` px longer.
+func _draw_stick(tex: Texture2D, pivot: Vector2, slab: Vector2, extra: float, mod: Color) -> void:
+	var h := float(tex.get_height())
+	var w := float(tex.get_width())
+	extra = maxf(extra, -(slab.y - slab.x) * 0.9)
+	draw_texture_rect_region(tex, Rect2(-pivot.x, -pivot.y, slab.x + 1.0, h), Rect2(0.0, 0.0, slab.x + 1.0, h), mod)
+	draw_texture_rect_region(tex, Rect2(slab.y - pivot.x + extra - 1.0, -pivot.y, w - slab.y + 1.0, h), Rect2(slab.y - 1.0, 0.0, w - slab.y + 1.0, h), mod)
+	draw_texture_rect_region(tex, Rect2(slab.x - pivot.x - 0.5, -pivot.y, slab.y - slab.x + extra + 1.0, h), Rect2(slab.x, 0.0, slab.y - slab.x, h), mod)
+
+
+## The pose of a knocked-out arm at `f` (0 = as it hangs, 1 = away): {u: upper direction, l: lower direction, len: stick lengths, px of the art}.
+## First half: the arm is lifted and pulled in behind the Handyman's back (written for a LEFT arm, angles clockwise from +x with y down; a right arm
+## is its mirror image): the upper stick points inward, the lower one is doubled back along it. Second half: it goes to the pose drawn on page 4 of
+## Handyman.pdf for that arm (rig: fold1 / fold2, the sticks at their cut length), turning the way that does not sweep past the ground.
+const FOLD_TUCK_UPPER := deg_to_rad(345.0)
+const FOLD_TUCK_LOWER := deg_to_rad(165.0)
+
+
+## The signed turn from `from` to `to` that does not go through "pointing down".
+static func _sweep(from: float, to: float) -> float:
+	var d := angle_difference(from, to)
+	for way in 2:
+		var ok := true
+		for i in 9:
+			if absf(angle_difference(from + d * i / 8.0, PI / 2.0)) < 0.5:
+				ok = false
+		if ok:
+			return d
+		d -= signf(d) * TAU
+	return angle_difference(from, to)
+
+
+func _fold_pose(f: float, th1: float, th2: float, sd: float, rest: Vector2) -> Dictionary:
+	var mirror := sd > 0.0
+	var p1 := fposmod(PI - th1 if mirror else th1, TAU)
+	var p2 := fposmod(PI - th2 if mirror else th2, TAU)
+	var tuck_len := rest * 0.55
+	if f < 0.5:
+		var s := smoothstep(0.0, 1.0, f / 0.5)
+		var u := lerpf(p1, FOLD_TUCK_UPPER, s)
+		var l := lerpf(p2, FOLD_TUCK_LOWER, s)
+		return {"u": PI - u if mirror else u, "l": PI - l if mirror else l, "len": rest.lerp(tuck_len, s)}
+	var s := smoothstep(0.0, 1.0, (f - 0.5) / 0.5)
+	var tu: float = PI - FOLD_TUCK_UPPER if mirror else FOLD_TUCK_UPPER
+	var tl: float = PI - FOLD_TUCK_LOWER if mirror else FOLD_TUCK_LOWER
+	var fu: float = _rig.fold1
+	var fl: float = _rig.fold2
+	return {"u": tu + _sweep(tu, fu) * s, "l": tl + _sweep(tl, fl) * s, "len": tuck_len.lerp(Vector2(_rig.l1, _rig.l2), s)}
+
+
+## A Handyman hand: the upper arm turns about the shoulder, the lower arm (elbow, hand, tool) about the elbow, riding on the upper one. All the
+## motion is angles, taken DOWN for a left arm with a negative turn and for a right arm with a positive one (`sd` carries that sign).
+func _draw_arm(blink_on: bool) -> void:
+	var sc: float = HandymanRig.SCALE
+	var sd: float = _rig.side
+	var h := 0.0 if dead else minf(hurt / 0.4, 1.0)  # (a hit throws it back up)
+	# knocked out: see _fold_pose. The broken gears: while the arm is stuck it trembles a little, and a folded arm creaks
+	var folding := _enemy != null and _enemy.knocked
+	var th2: float = _rig.theta2 if is_inf(reach_angle) else reach_angle
+	var a1 := sin(bob * 0.45 + _rig_phase) * 0.045  # idle: it hangs and drifts a little
+	var a2 := sin(bob * 0.62 + _rig_phase * 1.7) * 0.075
+	a1 += sd * (swing * 0.14 - h * 0.15 - intro * 1.1)
+	a2 += sd * (swing * 0.26 - h * 0.25 - intro * 0.6)
+	var rest := reach if reach != Vector2.ZERO else Vector2(_rig.l1, _rig.l2)
+	var r := rest
+	if _fold_t > 0.0:
+		var pose := _fold_pose(_fold_t, float(_rig.theta1), th2, sd, rest)
+		var fold1 := angle_difference(float(_rig.theta1), pose.u)
+		a1 = a1 * (1.0 - _fold_t) + fold1
+		a2 = a2 * (1.0 - _fold_t) + angle_difference(th2 + fold1, pose.l)
+		r = pose.len  # (the sticks pull in as it folds)
+		if folding and not calm:
+			var stuck := 1.0 - _drive
+			a1 += sin(_gear_t * 47.0) * 0.012 * stuck
+			a2 += sin(_gear_t * 41.0 + 1.0) * 0.02 * stuck + sin(_gear_t * 1.3) * 0.03 * _fold_t
+	# a stick cannot be shorter than its stretch allows: the elbow pin of the upper stick and the lower stick's must stay on one another
+	var slab_u: Vector2 = _rig.upper_slab
+	var slab_l: Vector2 = _rig.lower_slab
+	r = Vector2(maxf(r.x, float(_rig.l1) - 0.9 * (slab_u.y - slab_u.x)), maxf(r.y, float(_rig.l2) - 0.9 * (slab_l.y - slab_l.x)))
+	var elbow := Vector2.from_angle(_rig.theta1) * r.x
+	var origin := size / 2.0 - arm_hand(_rig, rest, th2) * sc  # (the shoulder: the middle of the box is the hand marker at rest)
+	if _shake > 0.0:
+		origin += Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake) * 0.5)
+	var mod := Color.WHITE
+	if dead:
+		mod = Color(0.05, 0.05, 0.05, 0.4)
+	elif blink_on or flash > 0.0:
+		var b := 1.0 + 0.9 * maxf(flash, 1.0 if blink_on else 0.0)
+		mod = Color(b, b, b)
+	mod.a *= 1.0 - 0.6 * intro
+	var m1 := Transform2D(a1, origin) * Transform2D(Vector2(sc, 0.0), Vector2(0.0, sc), Vector2.ZERO)
+	var m2 := m1 * Transform2D(a2, elbow)
+	draw_set_transform_matrix(m1 * Transform2D(_rig.theta1, Vector2.ZERO))
+	_draw_stick(_rig_tex[0], _rig.upper_pivot, _rig.upper_slab, r.x - float(_rig.l1), mod)
+	draw_set_transform_matrix(m2 * Transform2D(th2, Vector2.ZERO))
+	_draw_stick(_rig_tex[1], _rig.lower_pivot, _rig.lower_slab, r.y - float(_rig.l2), mod)
+	draw_set_transform_matrix(Transform2D.IDENTITY)
+
+
 ## Drawn art instead of the procedural body: hurt for a moment after a hit, angry while it has at least half its
 ## Essence, the normal (worn-out) face below half. It bobs and jolts like the procedural ones and blinks bright when hit.
 func _draw_art(blink_on: bool) -> void:
@@ -301,22 +473,88 @@ func _draw_art(blink_on: bool) -> void:
 			face = "normal"
 	if hurt > 0.0 and not dead:
 		face = "hurt"
-	if ART_FORMS.has(enemy_id):
-		# form 1 in its starting colour, form 2 once it has flipped to the other one
-		var start: String = _enemy.def.get("yin", "white") if _enemy != null else "white"
-		face += "_1" if _enemy == null or _enemy.yin == "" or _enemy.yin == start else "_2"
 	var tex: Texture2D = _art.get(face, _art.values()[0])
-	var side := minf(size.x, size.y) * 0.88 * big
-	# square art fills a side x side box; wide art (the Yin Yang Beast) is drawn wider and less tall, same area
-	var aspect: float = float(tex.get_width()) / float(tex.get_height())
-	var box := Vector2(side * sqrt(aspect), side / sqrt(aspect))
-	var c := Vector2(size.x / 2.0, size.y - box.y * 0.5 + sin(bob) * 4.0)
+	if _puppet and _enemy != null and _enemy.yin != "" and _art.has("yin_" + _enemy.yin):
+		tex = _art["yin_" + _enemy.yin]
+	if _sad_tex != null and (sad_forever or _sad_t > 0.0):
+		tex = _sad_tex
+	var side := _art_side()
+	var c := Vector2(size.x / 2.0, size.y - side * 0.5 + sin(bob) * 4.0)
 	if _shake > 0.0:
 		c += Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake) * 0.5)
+	if _puppet and not dead:
+		_draw_puppet_shadow(tex, Vector2(c.x, size.y), side)
+	if _puppet:  # a puppet doesn't bob: it rocks on its base, and tips back when it is hit
+		var tip := 0.0 if dead else (0.0 if enemy_id == "handyman" else sin(bob * 0.5) * 0.04) - 0.16 * minf(hurt / 0.4, 1.0)  # (the Handyman's body does not rock: six arms hang on its shoulders)
+		draw_set_transform(Vector2(c.x, size.y), tip)
+		c = Vector2(0, -side * 0.5)
 	var mod := Color.WHITE
 	if dead:
 		mod = Color(0.05, 0.05, 0.05, 0.4)  # an unknown silhouette (codex), like the procedural grey
 	elif blink_on or flash > 0.0:
 		var b := 1.0 + 0.9 * maxf(flash, 1.0 if blink_on else 0.0)
 		mod = Color(b, b, b)
-	draw_texture_rect(tex, Rect2(c - box * 0.5, box), false, mod)
+	draw_texture_rect(tex, Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side)), false, mod)
+	if _puppet:
+		draw_set_transform(Vector2.ZERO)
+
+
+## Puppet Stage: the shadow the spotlight throws on the floor: its own silhouette lying flat BEHIND the puppet (up the screen from its
+## feet, squashed, leaning right), dark at the feet and fading away from them, with a soft edge (a few passes, each a little wider and fainter).
+func _draw_puppet_shadow(tex: Texture2D, feet: Vector2, side: float) -> void:
+	var depth := side * 0.5
+	var lean := side * 0.5
+	var passes := [[0.0, 0.62], [0.06, 0.38], [0.13, 0.2]]
+	for p in passes:
+		var grow: float = p[0]
+		var w := side * (1.0 + grow)
+		var d := depth * (1.0 + grow)
+		var near := Color(0, 0, 0, p[1])  # (at the feet)
+		var far := Color(0, 0, 0, p[1] * 0.3)  # (at the head)
+		var pts := PackedVector2Array([
+			feet + Vector2(-w / 2.0 + lean, -d), feet + Vector2(w / 2.0 + lean, -d),  # the head's two corners, on the floor behind
+			feet + Vector2(w / 2.0, 0.0), feet + Vector2(-w / 2.0, 0.0)])  # the feet
+		draw_polygon(pts, PackedColorArray([far, far, near, near]), PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]), tex)
+
+
+## Puppet Stage: the whole square the picture is drawn in, on the screen, and the picture itself (for the pieces it breaks into).
+func puppet_art_rect() -> Rect2:
+	var side := _art_side()
+	return Rect2(global_position + Vector2(size.x / 2.0 - side / 2.0, size.y - side), Vector2(side, side))
+
+
+func puppet_tex() -> Texture2D:
+	if not _puppet or _art.is_empty():
+		return null
+	if _enemy != null and _enemy.yin != "" and _art.has("yin_" + _enemy.yin):
+		return _art["yin_" + _enemy.yin]
+	return _art.values()[0]
+
+
+static var _bounds_cache := {}  # texture path -> Rect2 (the painted part of the picture, as fractions of its square)
+
+
+## Puppet Stage: where the painted part of the puppet is, in this control's own coordinates (the picture is a square, its feet at the
+## bottom edge: see _draw_art). Empty when it is not drawn as a puppet.
+func puppet_bounds() -> Rect2:
+	if not _rig.is_empty():  # (a hand: a small box on the hand marker of the art, the name stands right over it and the Essence right under it;)
+		return Rect2(size / 2.0 + Vector2(0.0, 50.0) - Vector2(60.0, 6.0), Vector2(120.0, 12.0))  # (50 px lower than the hand: over the spell cards)
+	if not _puppet or _art.is_empty():
+		return Rect2()
+	var tex: Texture2D = _art.values()[0]
+	var key := tex.resource_path
+	if not _bounds_cache.has(key):
+		var img := tex.get_image()
+		if img.is_compressed():
+			img.decompress()
+		var r := img.get_used_rect()
+		_bounds_cache[key] = Rect2(Vector2(r.position) / Vector2(img.get_size()), Vector2(r.size) / Vector2(img.get_size()))
+	var f: Rect2 = _bounds_cache[key]
+	var side := _art_side()
+	var origin := Vector2(size.x / 2.0 - side / 2.0, size.y - side)
+	var r := Rect2(origin + f.position * side, f.size * side)
+	if _enemy != null and _enemy.yin != "":  # (the Yin Yang Beast carries its symbol over its head: it counts as its head)
+		var sym_top := size.y * 0.58 - minf(size.x, size.y) * 0.34 * big * 1.37 - 2.0
+		if sym_top < r.position.y:
+			r = Rect2(r.position.x, sym_top, r.size.x, r.end.y - sym_top)
+	return r

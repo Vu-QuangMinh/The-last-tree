@@ -320,17 +320,24 @@ func _draw_element() -> String:
 ## Lenses: every chanted element of a lens's colour has a 25% chance to come back after the Release.
 func _lens_refunds(chanted: Array) -> Array:
 	var back := []
+	refund_slots.clear()
 	for lens in LENSES:
 		if not has_artifact(lens):
 			continue
-		for el in chanted:
+		for i in chanted.size():
+			var el: String = chanted[i]
 			if el == LENSES[lens] and rng.randf() < _an(lens):
 				back.append(el)
-	if has_artifact("hair_of_the_fairest"):
-		for el in chanted:
+if has_artifact("hair_of_the_fairest"):
+		for i in range(chant.size()):
+			var el: String = chanted[i]
 			if rng.randf() < 0.01:  # (1%: tiny on purpose; its worth is the shopkeeper's offer)
 				back.append(el)
+				refund_slots.append(i)  # (which slot of the chant it leaves, for the animation)
 	return back
+
+
+var refund_slots: Array = []  # the chant slot each Essence of the last _lens_refunds came from
 
 
 ## Rolls the draw you receive at the start of turn `upcoming` (shown in "Coming next").
@@ -746,10 +753,14 @@ func finish_turn() -> void:
 		var back := _lens_refunds(chant)
 		for k in player.passive("refund_air"):
 			back.append("A")  # Storm Crown: Air comes back after every Release
+			refund_slots.append(maxi(0, chant.size() - 1))
+		var back_uids := []
 		for el in back:
-			player.add_element(el if el != "?" else _random_element())
+player.add_element(el if el != "?" else _random_element())
+			back_uids.append(player.stock.back().uid)
 		if not back.is_empty():
 			_log("Refunded to your bag: %s." % " ".join(back))
+			await anim.call({"type": "refund", "els": back.duplicate(), "uids": back_uids, "slots": refund_slots.duplicate()})
 		_cleanup()
 	if not spoken:
 		if has_artifact("shield_of_silence"):
@@ -2270,6 +2281,7 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 		if m.has("also") and not over and not e.is_dead():
 			await _do_move(e, m.also)
 		return
+	var taken_items: Array = []  # a steal: [{uid, el}] of the Essence it took from your bag (for the animation)
 	match m.kind:
 		"attack":
 			if e.disarmed > 0:
@@ -2430,6 +2442,7 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				var s: Dictionary = owned[i]
 				player.stock.erase(s)
 				e.append(s.el, false)
+				taken_items.append({"uid": s.uid, "el": s.el})
 			_log("%s steals your Essence onto its hide." % e.name)
 		"confuse":
 			if not has_artifact("calm_stone"):
@@ -2506,7 +2519,7 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				e.armor.fill(false)
 				e.lit.clear()
 	if m.kind != "attack":
-		await anim.call({"type": "enemy_move", "enemy": e, "kind": m.kind, "move": m})
+		await anim.call({"type": "enemy_move", "enemy": e, "kind": m.kind, "move": m, "items": taken_items})
 	if m.has("also") and not over and not e.is_dead():
 		await _do_move(e, m.also)
 

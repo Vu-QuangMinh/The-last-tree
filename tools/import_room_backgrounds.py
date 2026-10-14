@@ -1,5 +1,5 @@
-"""Turns the square 2048 px room backgrounds in assets/Room Background/ into 16:9 game backgrounds
-assets/ui/new/room_<id>.jpg (1920 x 1080). A square picture is cropped to a 16:9 band: Y0 says where the band starts
+"""Turns the square 2048 px room backgrounds in assets/New/Map/Rooms/_Source/ into 16:9 game backgrounds
+assets/New/Map/Rooms/Backgrounds/room_<id>.jpg (1920 x 1080). A square picture is cropped to a 16:9 band: Y0 says where the band starts
 (in source px, band height 1152) so the subject and the log along the bottom both stay in. Run: python tools/import_room_backgrounds.py"""
 import glob
 import os
@@ -10,9 +10,11 @@ from PIL import Image
 
 sys.stdout.reconfigure(encoding="utf-8")
 HERE = os.path.dirname(os.path.abspath(__file__))
-os.makedirs(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "ui", "new", "backgrounds"), exist_ok=True)
-SRC = os.path.join(HERE, "..", "assets", "Room Background")
-OUT = os.path.join(HERE, "..", "assets", "ui", "new", "backgrounds")
+sys.path.insert(0, HERE)
+import asset_paths as AP
+SRC = os.path.join(AP.NEW, "Map", "Rooms", "_Source")
+OUT = os.path.join(AP.NEW, "Map", "Rooms", "Backgrounds")
+os.makedirs(OUT, exist_ok=True)
 DEFAULT_Y0 = 230
 Y0 = {}  # room id -> band start, where the default does not suit the picture
 

@@ -11,7 +11,7 @@ const ICON_FIT := 0.86
 static var _tex := {}
 
 
-## A texture from res://assets/card/, loaded once; null when the file isn't there.
+## A texture from res://assets/Global/Card/, loaded once; null when the file isn't there.
 static func tex(path: String) -> Texture2D:
 	if not _tex.has(path):
 		_tex[path] = load(path) if ResourceLoader.exists(path) else null
@@ -24,7 +24,7 @@ static func draw_pip(ci: CanvasItem, c: Vector2, r: float, p_el: String, alpha :
 	var rim := maxf(1.0, r * 0.1)
 	ci.draw_circle(c, r, Color(1, 1, 1, alpha), true, -1.0, true)
 	ci.draw_arc(c, r - rim / 2.0, 0.0, TAU, 48, Color(RIM[p_el], alpha), rim, true)
-	var t := tex("res://assets/card/icons/%s.png" % ICON[p_el])
+	var t := tex("res://assets/Global/Card/Icons/%s.png" % ICON[p_el])
 	if t == null:
 		return
 	var box := r * 2.0 * ICON_FIT

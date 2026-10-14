@@ -10,11 +10,13 @@ var enemy: EnemyState
 var fight: Fight
 var creature: Creature
 var _intent_slot: Control
-var _name: Label
+var _name: RichTextLabel  # (BBCode: "Enraged" is written in purple)
 var _hp_row: HFlowContainer
 var _status: RichTextLabel
 ## How far down the model's box the intent bubble's top sits (it used to float in a row of its own, high above).
 const INTENT_Y := 6.0
+const PUPPET_TOP := 50.0  # (Puppet Stage: how far the puppet's box rises above its holder, so the name and the Essence are not far above its head)
+const PUPPET_BUBBLE_RIGHT := 70.0  # (Puppet Stage: x, in the puppet's box, where the intent bubble's pointer ends)
 var _ring: Panel
 var _marker: TextureRect  # New theme: the target reticle that replaces the ring
 var targetable := false
@@ -23,14 +25,16 @@ var move_mode := false
 var move_pick := -1  # the element picked up in move mode
 var pick_mode := false  # choosing an element to remove (Pluck)
 var keep_big := false  # a spell that picks several Essence is still being cast: keep the row enlarged between picks
-var paint_mode := false  # with pick_mode: Repaint's brush (armoured Essence can be painted, ones already its colour can't)
-var paint_to := "?"
+var paint_mode := false  # with pick_mode: Expose's brush (armoured Essence can be painted, Any ones can't)
 var pick_i := -1
-var pick_el := ""  # with pick_mode: only Essence of this kind can be picked (the rest are dimmed)
-var _spell_row: Control  # the Invoker's conjured spells: one in front of him, the others to his sides
+var _spell_row: HBoxContainer  # the Invoker's conjured spells
 var _spell_key := ""
-var _spell_ids := ""
 var _spell_cards: Array = []
+var _holder: Control
+var _px := 30.0  # the size of one Essence orb now
+var _ghost := false  # a hand of the Handyman that is not in the fight yet: only its folded arm shows (HandymanStage)
+var _rig_view := false  # a Handyman hand or his body (see _raise_text)
+var _free_layout := false  # Puppet Stage: the name stands on the puppet's head and the Essence under its feet (see _layout_free)
 var _hp_icons: Array = []  # the orbs currently shown, left to right
 
 
@@ -41,17 +45,29 @@ func setup(e: EnemyState, f: Fight) -> void:
 	if enemy != null and enemy.has_passive("briar_walls"):
 		custom_minimum_size.x = 640.0  # room for her two hedges beside her own Essence
 	if enemy != null and enemy.def.get("invokes", false):
-		custom_minimum_size.x = 860.0  # room for his spell cards on either side of him
+		custom_minimum_size.x = 430.0  # room for his 3 spell cards above him
+		_spell_row = HBoxContainer.new()
+		_spell_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		_spell_row.add_theme_constant_override("separation", 6)
+		_spell_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_spell_row)
+		var gap := Control.new()
+		gap.custom_minimum_size = Vector2(0, 26)  # (clear of his crown)
+		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(gap)
 	alignment = BoxContainer.ALIGNMENT_END
 	add_theme_constant_override("separation", 4)
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	_intent_slot = CenterContainer.new()
+	_intent_slot = Control.new() if UiSkin.is_puppet() else CenterContainer.new()  # (Puppet Stage: the bubble is placed by hand, left of the puppet)
 	_intent_slot.z_index = 10  # never hidden behind a model
 	_intent_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var holder := Control.new()
 	holder.custom_minimum_size = Vector2(300, 230)
+	if UiSkin.is_puppet():  # (the puppet's box reaches PUPPET_TOP px above this one: its name and Essence stand that much lower, close above its head)
+		holder.custom_minimum_size = Vector2(300, 230.0 - PUPPET_TOP)
 	holder.size_flags_horizontal = Control.SIZE_SHRINK_CENTER  # (centred when the view is wider, e.g. the Matron's)
 	holder.mouse_filter = Control.MOUSE_FILTER_PASS
+	_holder = holder
 	holder.clip_contents = false
 	add_child(holder)
 	_ring = Panel.new()
@@ -82,7 +98,7 @@ func setup(e: EnemyState, f: Fight) -> void:
 		_marker.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		_marker.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		_marker.size = Vector2(160, 160)
-		_marker.position = Vector2(70, 62)
+		_marker.position = Vector2(70, 62.0 - (PUPPET_TOP if UiSkin.is_puppet() else 0.0))
 		_marker.pivot_offset = Vector2(80, 80)
 		_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_marker.visible = false
@@ -90,28 +106,30 @@ func setup(e: EnemyState, f: Fight) -> void:
 	creature = Creature.new()
 	creature.setup(e)
 	creature.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	creature.offset_top = 22  # models stay below the intent bubble
-	if e.def.get("invokes", false):
-		creature.offset_top -= INVOKER_LIFT  # (the Invoker floats up above his middle card)
-		creature.offset_bottom -= INVOKER_LIFT
+	creature.offset_top = -PUPPET_TOP if UiSkin.is_puppet() else 22  # models stay below the intent bubble (Puppet Stage: the bubble is at its side)
 	holder.add_child(creature)
-	if e.def.get("invokes", false):
-		_spell_row = Control.new()
-		_spell_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		holder.add_child(_spell_row)  # (in front of him; his intent bubble goes over them)
 	# the intent bubble sits low, just above the model's head (added after the model, so it's drawn over it)
-	if e.def.has("tool"):
+	if e.def.has("tool") and not UiSkin.is_puppet():  # (the Puppet Stage art already holds its tool)
 		# a Handyman hand: its tool, held up in front of it
 		var tool := UiTheme.label(e.def.tool, 54, Color.WHITE)
 		tool.position = Vector2(170, 95)
 		tool.rotation = -0.3
 		tool.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(tool)
-	_intent_slot.position = Vector2(0, INTENT_Y - (INVOKER_LIFT + 60.0 if e.def.get("invokes", false) else 0.0))  # (the Invoker's: above his head)
+	_intent_slot.position = Vector2(0, INTENT_Y)
 	_intent_slot.size = Vector2(300, 46)
+	if UiSkin.is_puppet():
+		_intent_slot.position = Vector2.ZERO  # (the bubble is put by hand: _place_chip)
+		_intent_slot.size = Vector2(300, 77)
 	holder.add_child(_intent_slot)
-	_name = UiTheme.label(e.name, 20, Color.WHITE)
-	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_name = RichTextLabel.new()
+	_name.bbcode_enabled = true
+	_name.fit_content = true
+	_name.scroll_active = false
+	_name.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_name.add_theme_font_size_override("normal_font_size", 20)
+	_name.text = "[center]" + e.name.replace("Enraged", "[color=#b57bff]Enraged[/color]") + "[/center]"
 	add_child(_name)
 	_hp_row = HFlowContainer.new()
 	_hp_row.alignment = FlowContainer.ALIGNMENT_CENTER
@@ -129,14 +147,68 @@ func setup(e: EnemyState, f: Fight) -> void:
 	_status.add_theme_font_size_override("bold_font_size", 14)
 	_status.add_theme_color_override("default_color", Color(0.85, 0.8, 1))
 	add_child(_status)
+	if UiSkin.is_puppet():  # the name and the Essence stand ABOVE the puppet (where the bubble used to be), the puppet last, at the bottom
+		move_child(holder, get_child_count() - 1)
+		if not enemy.has_passive("briar_walls"):  # (her hedges keep the old stacked layout)
+			_free_layout = true
+			for c in [_name, _hp_row, _status]:
+				remove_child(c)
+				holder.add_child(c)
+			creature.resized.connect(func() -> void:
+				_layout_free()
+				_replace_chips())
+			_hp_row.resized.connect(_layout_free)
+			_status.resized.connect(_layout_free)
+	if UiSkin.is_puppet() and (creature.has_rig() or e.id == "handyman"):
+		_raise_text()  # (the Handyman's body and arms are layered over one another: what is written stands above all of them)
 	refresh({})
+
+
+## The Handyman fight: his arms and body overlap each other and their neighbours' views, so a hand's name, Essence and target marker are drawn
+## above every layer (the intent bubble already is), and only the part of the view round them takes clicks (see _has_point).
+func _raise_text() -> void:
+	_rig_view = true
+	_name.add_theme_font_size_override("normal_font_size", 17)
+	for c in [_name, _hp_row, _status, _ring, _marker]:
+		if c != null:
+			c.z_index = 6
+	_place_marker()
+
+
+## A hand's target reticle: half the size, right on the hand marker (the middle of the Creature's box). Needs the box's real size: it is run again
+## whenever the box changes (_layout_free).
+func _place_marker() -> void:
+	if _marker == null or creature == null or not UiSkin.is_puppet():
+		return
+	_marker.size = Vector2(42.0, 42.0)  # (small, as on the Handyman's hands, and on the enemy itself)
+	_marker.z_index = 6  # (over the puppet)
+	_marker.pivot_offset = _marker.size / 2.0
+	if creature.has_rig():
+		_marker.position = Vector2(creature.size.x / 2.0, creature.size.y / 2.0 - PUPPET_TOP) - _marker.size / 2.0
+	else:
+		_marker.position = _puppet_rect().get_center() - _marker.size / 2.0
+
+
+func _has_point(p: Vector2) -> bool:
+	if _ghost:
+		return false
+	if _rig_view and creature.has_rig():  # the arm's own middle, and the block of name, Essence and intent beside it
+		var mid := _holder.position + creature.position + creature.size / 2.0
+		var text := _puppet_rect()
+		text.position += _holder.position
+		return Rect2(mid - Vector2(70.0, 60.0), Vector2(140.0, 120.0)).has_point(p) or text.grow_individual(60.0, 34.0, 60.0, 110.0).has_point(p)
+	return Rect2(Vector2.ZERO, size).has_point(p)
 
 
 ## "Burn 2" / "Poison 3" / "Frozen": in the New theme the painted icon goes in front of the word.
 func _status_bbcode(text: String) -> String:
-	var art: String = {"Burn": "intent_burn", "Poison": "intent_poison", "Frozen": "intent_freeze"}.get(text.get_slice(" ", 0), "")
-	if art != "" and UiSkin.tex(art) != null:
-		return "[img=22]%s[/img] %s" % [UiSkin.path_of(art), Keywords.colorize(text)]
+	# the picture for the status named first in `text` (Puppet art first, the older intent pictures as a fallback)
+	var names: Array = {"Burn": ["status_burn", "intent_burn"], "Poison": ["status_poison", "intent_poison"],
+		"Frozen": ["status_freeze", "intent_freeze"], "Weakened": ["status_weak"], "Stillness": ["status_weak"],
+		"Ethereal": ["status_ethereal", "intent_ethereal"], "Power": ["intent_empower"]}.get(text.get_slice(" ", 0), [])
+	for art in names:
+		if UiSkin.tex(art) != null:
+			return "[img=22]%s[/img] %s" % [UiSkin.path_of(art), Keywords.colorize(text)]
 	return Keywords.colorize(text)
 
 
@@ -145,40 +217,18 @@ func _gui_input(ev: InputEvent) -> void:
 		clicked.emit(self)
 
 
-## Rearrange: a draggable copy of its row is laid over the real one (which hides meanwhile). Hidden (Blind) Essence
-## stay hidden. The caller frees the copy and calls end_row_drag().
-func begin_row_drag(screen: Control) -> ChantDrag:
-	var d := ChantDrag.new()
-	var mask := fight.hidden_mask(enemy)
-	for i in enemy.size():
-		d.els.append("hidden" if i < mask.size() and mask[i] else enemy.elements[i])
-		d.live.append(true)
-	d.slots = 0
-	d.px = _hp_icons[0].size.x if not _hp_icons.is_empty() else 48.0
-	d.sep = 2.0
-	d.same_spot_is_no_move = true
-	d.z_index = 60
-	screen.add_child(d)
-	var w := enemy.size() * (d.px + d.sep) - d.sep
-	var row := _hp_row.get_global_rect()
-	d.global_position = Vector2(row.get_center().x - w / 2.0, row.position.y - 8.0)
-	_hp_row.modulate.a = 0.0
-	return d
-
-
-func end_row_drag() -> void:
-	_hp_row.modulate.a = 1.0
-
-
 ## Where the arrow should point / start for this enemy (global coordinates).
 func anchor_point() -> Vector2:
+	if UiSkin.is_puppet() and creature != null:
+		return creature.global_position + creature.size / 2.0
 	return global_position + Vector2(size.x / 2.0, 170)
 
 
 ## preview: the dict from Fight.preview (or {} for none).
 func refresh(preview: Dictionary) -> void:
-	creature.modulate = Color(1, 1, 1, 0.4) if enemy.knocked else Color.WHITE
-	_hp_row.visible = not enemy.knocked  # (a fallen hand has no HP bar: it can't be targeted)
+	if _ghost:
+		return
+	creature.modulate = Color(1, 1, 1, 0.4) if enemy.knocked and not creature.has_rig() else Color.WHITE  # (a hand's arm fades and folds by itself: Creature._draw_arm)
 	if _spell_row != null:
 		_refresh_invoked(preview.get("invoke", {}).get(enemy, []))
 	var e := enemy
@@ -190,6 +240,9 @@ func refresh(preview: Dictionary) -> void:
 		chip.set_meta("info", chip.tooltip_text)
 		chip.tooltip_text = ""
 		_intent_slot.add_child(chip)
+		if UiSkin.is_puppet():  # its right edge (the pointer) just touches the puppet, it grows to the left with its content
+			chip.resized.connect(_place_chip.bind(chip))  # (it moves itself whenever its size changes; the signal goes with the chip)
+			_place_chip(chip)
 	for ch in _hp_row.get_children():
 		ch.queue_free()
 	_hp_icons.clear()
@@ -204,13 +257,18 @@ func refresh(preview: Dictionary) -> void:
 		seen += 1
 	var mask := fight.hidden_mask(e)
 	var px := 38.0 if e.size() <= 7 else 30.0
+	if _rig_view and creature.has_rig():
+		px = 30.0  # (the hands hang close to each other: their name and Essence are smaller)
 	var walled := e.has_passive("briar_walls")
 	if walled:
 		px = 30.0
 	if move_mode or pick_mode or keep_big:
 		px = 48.0 if e.size() <= 6 else 40.0
+		if _rig_view and creature.has_rig():
+			px = 38.0
 		if walled:
 			px = 34.0
+	_px = px
 	e._fix_lit()
 	# an enemy behind walls (Bramble Matron): each wall is a hedge with its own Essence under it, hers stack in a
 	# framed block in the middle. Still one row, in order: left wall, her, right wall.
@@ -229,7 +287,7 @@ func refresh(preview: Dictionary) -> void:
 			_make_clickable(icon, i)
 		elif pick_mode:
 			icon.highlight = i == pick_i
-			var can: bool = (e.elements[i] != paint_to) if paint_mode else (not e.armor[i] and (pick_el == "" or e.elements[i] == pick_el))
+			var can: bool = (e.elements[i] != "?") if paint_mode else not e.armor[i]
 			icon.dim = not can
 			if can:
 				_make_clickable(icon, i)
@@ -247,17 +305,21 @@ func refresh(preview: Dictionary) -> void:
 		_hp_row.add_child(end)
 		# the chant would finish it: a skull, the size of an Essence, at the end of its row of Essence
 	if e in preview.get("dies", []):
-		var sk := UiTheme.label("💀", int(px * 0.9), Color.WHITE)  # white: the emoji keeps its own bright colors
-		sk.custom_minimum_size = Vector2(px, px)
-		sk.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		sk.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		sk.add_theme_constant_override("outline_size", maxi(3, int(px * 0.12)))
-		sk.add_theme_color_override("font_outline_color", Color.BLACK)
+		var sk: Control = UiSkin.icon("icon_skull", px)  # (Puppet: the carved wooden skull)
+		if sk != null:
+			sk.mouse_filter = Control.MOUSE_FILTER_PASS  # (so the tooltip shows)
+		else:
+			sk = UiTheme.label("💀", int(px * 0.9), Color.WHITE)  # white: the emoji keeps its own bright colors
+			sk.custom_minimum_size = Vector2(px, px)
+			sk.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			sk.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			sk.add_theme_constant_override("outline_size", maxi(3, int(px * 0.12)))
+			sk.add_theme_color_override("font_outline_color", Color.BLACK)
 		sk.tooltip_text = "Your chant would defeat it."
 		(_link.skull_cell if walled else _hp_row).add_child(sk)
 	var st := e.describe_statuses()
 	for p in e.def.get("passives", []):
-		if not (p in EnemyDefs.HIDDEN_PASSIVES):
+		if not (p in EnemyDefs.HIDDEN_PASSIVES) and p != "shield_rage" and not (p == "hand" and _rig_view):  # ("Enraged" is in its name, in purple; a hand's "A hand" line would only take room: hover its Essence)
 			st.append(EnemyDefs.PASSIVE_TEXT[p].get_slice(":", 0))
 	_status.text = "[center]" + " · ".join(st.map(func(s): return _status_bbcode(s.get_slice(" (", 0)))) + "[/center]"
 	tooltip_text = ""  # (in a fight only the intent bubble explains anything: see FightScreen._update_hover_info)
@@ -269,7 +331,62 @@ func refresh(preview: Dictionary) -> void:
 		_marker.visible = targetable or move_mode or pick_mode
 		_marker.modulate.a = 1.0 if lit else 0.4
 		_marker.scale = Vector2.ONE if lit else Vector2(0.85, 0.85)
-	_name.add_theme_color_override("font_color", Color(1, 0.9, 0.4) if targeted else Color.WHITE)
+	_name.add_theme_color_override("default_color", Color(1, 0.9, 0.4) if targeted else Color.WHITE)
+	_place_marker()
+	if _free_layout:
+		_layout_free.call_deferred()
+
+
+## Puppet Stage: where the painted puppet is, in the holder's coordinates (its whole box when it has no cut-out).
+func _puppet_rect() -> Rect2:
+	var b := creature.puppet_bounds()
+	if b.size == Vector2.ZERO:
+		b = Rect2(Vector2.ZERO, creature.size)
+	b.position += Vector2(0.0, -PUPPET_TOP)  # (where it stands at rest: not where an attack has thrown it for a moment, which moves creature.position)
+	return b
+
+
+## Puppet Stage: the name sits right on the puppet's head, its Essence 5 px under its feet, its statuses under them.
+func _layout_free() -> void:
+	if not _free_layout or creature == null or not is_instance_valid(_name):
+		return
+	_place_marker()
+	var b := _puppet_rect()
+	var w := _holder.size.x
+	var dx := b.get_center().x - w / 2.0 if creature.has_rig() else 0.0  # (a Handyman hand's text stands beside its arm: see the rig's `info`)
+	var nh := _name.get_combined_minimum_size().y
+	_name.size = Vector2(w, nh)
+	_name.position = Vector2(dx, b.position.y - nh - 1.0)
+	var top := b.end.y + 5.0
+	var row_w := w  # (a long row of Essence, usually a boss's, is laid out wider so that it never takes more than two lines)
+	var step := _px + 2.0
+	var n := _hp_row.get_child_count()
+	if n * step > 2.0 * w:
+		row_w = ceilf(n / 2.0) * step + 4.0
+	var row_x := (w - row_w) / 2.0 + dx
+	if _hp_row.position != Vector2(row_x, top) or _hp_row.size.x != row_w:
+		_hp_row.position = Vector2(row_x, top)
+		_hp_row.size = Vector2(row_w, 0.0)
+	var below := top + _hp_row.get_combined_minimum_size().y + 2.0
+	_status.position = Vector2(5.0 + dx, below)
+	_status.size.x = w - 10.0
+
+
+## Puppet Stage: the intent bubble stands left of the puppet (its pointer 4 px off the painted part), centred on the puppet's height.
+func _place_chip(chip: Control) -> void:
+	if is_instance_valid(chip) and not chip.is_queued_for_deletion():
+		var b := _puppet_rect()
+		if _rig_view and creature.has_rig():  # (a hand: the names stand in a row, so the bubble goes above its hand, not beside it)
+			var hand_y := creature.size.y / 2.0 - PUPPET_TOP  # (the hand marker: the bubble stands above it, clear of the reticle)
+			chip.position = Vector2(b.get_center().x - chip.size.x / 2.0, hand_y - 28.0 - chip.size.y)
+			return
+		chip.position = Vector2(b.position.x - 4.0 - chip.size.x, b.get_center().y - chip.size.y / 2.0)
+
+
+func _replace_chips() -> void:
+	for c in _intent_slot.get_children():
+		if not c.is_queued_for_deletion():
+			_place_chip(c)
 
 
 func _make_clickable(c: Control, index: int) -> void:
@@ -282,31 +399,27 @@ func _make_clickable(c: Control, index: int) -> void:
 
 
 ## The intent bubble (null if it has none this turn).
-## The Invoker's spells, as big as yours: the first in front of him (just above his Essence row), the others to his
-## sides, higher up. Plain cards (no conjured static): they appear, and fade away when cast or when the turn ends.
-## The ones that will go off this turn glow gold. Their numbers follow his Power.
-const INVOKER_LIFT := 150.0  # how far the Invoker's model sits above where models usually stand
-const INVOKED_SPOTS := [Vector2(25, 34), Vector2(-280, -80), Vector2(330, -80), Vector2(-280, 130), Vector2(330, 130)]
+## The Invoker's 3 spells as small cards; the ones the current chant would set off glow gold.
+const INVOKED_SCALE := 0.5
 
 
 func _refresh_invoked(picks: Array) -> void:
-	for sp in enemy.conjured:
-		sp.desc = Fight.invoker_desc(sp, enemy)
-	var key := ",".join(enemy.conjured.map(func(s): return s.id + ":" + s.pattern + ":" + s.desc))
+	var key := ",".join(enemy.conjured.map(func(s): return s.id + ":" + s.pattern))
 	if key != _spell_key:
-		var ids := ",".join(enemy.conjured.map(func(s): return s.id))
-		var fresh := ids != _spell_ids  # (new spells, not just new numbers or a shorter pattern)
-		_spell_ids = ids
 		_spell_key = key
-		for c in _spell_cards:
-			if is_instance_valid(c):
-				c.queue_free()
+		for c in _spell_row.get_children():
+			c.queue_free()
 		_spell_cards.clear()
-		for k in enemy.conjured.size():
-			var card := SpellCard.make(enemy.conjured[k])
+		for sp in enemy.conjured:
+			var holder := Control.new()
+			holder.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H) * INVOKED_SCALE
+			holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var card := SpellCard.make(sp)
 			card.size = Vector2(SpellCard.W, SpellCard.H)
-			card.position = INVOKED_SPOTS[mini(k, INVOKED_SPOTS.size() - 1)]
-			_spell_row.add_child(card)
+			card.base_scale = INVOKED_SCALE
+			card.scale = Vector2.ONE * INVOKED_SCALE
+			holder.add_child(card)
+			_spell_row.add_child(holder)
 			_spell_cards.append(card)
 	for i in _spell_cards.size():
 		var card: SpellCard = _spell_cards[i]
@@ -314,28 +427,24 @@ func _refresh_invoked(picks: Array) -> void:
 		card.refresh()
 
 
-## The Invoker casts one of his spells: its card flares and fizzles away.
+## The Invoker casts one of his spells: its card flashes.
 func flash_invoked(i: int) -> void:
 	if i < 0 or i >= _spell_cards.size() or not is_instance_valid(_spell_cards[i]):
 		return
 	var card: SpellCard = _spell_cards[i]
 	var tw := card.create_tween()
 	tw.tween_property(card, "modulate", Color(2.0, 1.8, 1.2), 0.12)
-	tw.tween_property(card, "modulate", Color(1, 1, 1, 0), 0.3)
+	tw.tween_property(card, "modulate", Color.WHITE, 0.4)
 
 
-## Talking to a boss: only the creature shows (no intent, no Essence row, no statuses) until you Engage.
-func set_talk(on: bool, fade := 0.0, talk_name := "") -> void:
-	# its name: what you know of it so far ("???" until you've asked who it is), its real name once you Engage
-	if _name != null:
-		_name.text = talk_name if on and talk_name != "" else enemy.name
-	for n in [_intent_slot, _hp_row, _status, _link, _spell_row]:
-		if n == null or not is_instance_valid(n):
-			continue
-		if fade > 0.0:
-			n.create_tween().tween_property(n, "modulate:a", 0.0 if on else 1.0, fade)
-		else:
-			n.modulate.a = 0.0 if on else 1.0
+## Puppet Stage: the screen y of the bottom of what hangs under the feet (the Essence rows, then the statuses when it has any).
+func below_feet_bottom() -> float:
+	if not _free_layout or not is_instance_valid(_hp_row):
+		return 0.0
+	var b := _hp_row.global_position.y + _hp_row.get_combined_minimum_size().y
+	if _status.text.strip_edges() != "[center][/center]" and _status.get_content_height() > 0:
+		b = _status.global_position.y + _status.get_content_height()
+	return b
 
 
 func intent_chip() -> Control:

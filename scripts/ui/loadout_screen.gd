@@ -4,6 +4,11 @@ extends Control
 
 signal confirmed
 signal codex_pressed
+signal closed  # (the spellbook alone: Close)
+
+## Puppet Stage: laid over the stage (no backdrop). `book_only`: just the active row and the spellbook, with a Close button, no enemies.
+var on_stage := false
+var book_only := false
 
 var run: RunState
 var enemy_ids: Array = []
@@ -30,12 +35,13 @@ func setup(p_run: RunState, ids: Array) -> void:
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UiTheme.get_theme()
-	var bd := Backdrop.new()
-	bd.act = run.act
-	bd.tree_glow = false
-	add_child(bd)
+	if not on_stage:
+		var bd := Backdrop.new()
+		bd.act = run.act
+		bd.tree_glow = false
+		add_child(bd)
 	var shade := ColorRect.new()
-	shade.color = Color(0, 0, 0, 0.45)
+	shade.color = Color(0, 0, 0, 0.25 if on_stage else 0.45)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(shade)
@@ -45,11 +51,12 @@ func _ready() -> void:
 	root.add_theme_constant_override("separation", 10)
 	add_child(root)
 	var kind := run.current_kind()
-	root.add_child(UiTheme.label({"fight": "An encounter", "elite": "An elite blocks the path", "boss": "The boss of this act"}.get(kind, "Encounter"), 28, Color.WHITE))
+	root.add_child(UiTheme.label("Your spellbook" if book_only else {"fight": "An encounter", "elite": "An elite blocks the path", "boss": "The boss of this act"}.get(kind, "Encounter"), 28, Color.WHITE))
 	# enemies
 	var er := HBoxContainer.new()
 	er.add_theme_constant_override("separation", 16)
-	root.add_child(er)
+	if not book_only:
+		root.add_child(er)
 	# up to 5 enemies: the panels share the width (440 each when there's room)
 	var pw := minf(440.0, (1840.0 - 16.0 * (enemy_ids.size() - 1)) / maxf(1.0, enemy_ids.size()))
 	for i in enemy_ids.size():
@@ -104,8 +111,9 @@ func _ready() -> void:
 	bh.position = Vector2(1300, 996)
 	bh.size = Vector2(580, 60)
 	add_child(bh)
-	bh.add_child(UiTheme.button("Codex", func(): codex_pressed.emit()))
-	_go = UiTheme.button("Begin the fight", func(): confirmed.emit(), 24)
+	if not on_stage:  # (on the stage the Codex button is in the bar at the top)
+		bh.add_child(UiTheme.button("Codex", func(): codex_pressed.emit()))
+	_go = UiTheme.button("Close" if book_only else "Begin the fight", func(): (closed if book_only else confirmed).emit(), 24)
 	_go.custom_minimum_size = Vector2(300, 56)
 	bh.add_child(_go)
 	var hud := HudBar.new()
@@ -113,6 +121,15 @@ func _ready() -> void:
 	hud.codex_pressed.connect(func(): codex_pressed.emit())
 	add_child(hud)
 	_refresh()
+
+
+## Where the active cards lie on the board now: [{id, rect (global)}] (the Begin button hands them to the fight screen, where they fly to their places).
+func active_rects() -> Array:
+	var out: Array = []
+	for c in _active_row.get_children():
+		if c is SpellCard and not c.is_queued_for_deletion():
+			out.append({"id": String(c.get_meta("spell_id", "")), "rect": c.get_global_rect()})
+	return out
 
 
 func _enemy_panel(id: String, index: int, width := 440.0) -> Control:
@@ -188,7 +205,7 @@ func _refresh() -> void:
 		if not (id in run.loadout):
 			_book.add_child(_card(id, false))
 	_count.text = "   %d / %d" % [run.loadout.size(), run.active_slots()]
-	_go.disabled = run.loadout.is_empty()
+	_go.disabled = run.loadout.is_empty() and not book_only
 
 
 ## A card in either zone: press it to drag it; let go without moving and it's a click (in or out of the row).

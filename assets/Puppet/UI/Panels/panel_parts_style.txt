@@ -1,0 +1,7 @@
+Style: a small control part for a game UI that is a real physical object genuinely hand-carved from solid wood and hand-painted, from an antique Czech marionette puppet theatre. Chunky rounded carved edges, visible chisel and knife marks, soft wood grain and tiny cracks showing through the matte milk-paint, paint worn thin at the edges so raw wood shows, tiny chips and scuffs, thin aged brass rims. Folk-art fairytale craftsmanship, slightly imperfect like handmade work. Warm rustic palette: cream, dark walnut brown, faded red, aged brass.
+
+Lighting: soft even diffuse light from the upper left, gentle natural shading that shows the depth of the carving, no strong highlights, no glossy shine.
+
+Composition: this one part only, centred, seen straight from the front with no perspective, filling most of the image with an even margin. Any strip, track or pill is built so it can be stretched: its two ends are identical, its long edges are plain and straight, and its middle is one flat uniform area with nothing placed on it. Isolated on a pure white seamless background (#FFFFFF), as if cut out: no table, no surface, no cast shadow, no reflection, no gradient, no other objects, no hands.
+
+Must look like a tangible wooden craft object with real material texture. Not vector art, not flat colours, not clean outlines, not cartoon, not a sticker, not plastic, not glossy, not a 3D game render. No text, letters, numbers, logos or watermark.

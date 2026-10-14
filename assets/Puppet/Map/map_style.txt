@@ -1,0 +1,9 @@
+Style: one small map marker that is a real physical object genuinely hand-carved from solid wood and hand-painted, a charm from an antique Czech marionette puppet theatre. Chunky toy-like shape with thick rounded carved edges, visible chisel and knife marks, soft wood grain showing through the matte milk-paint finish, paint worn thin at the edges so raw wood shows, tiny chips and scuffs, small aged brass details only where the object needs them. Folk-art fairytale craftsmanship, slightly imperfect like handmade work, never machine-perfect. Warm rustic palette: barn red, cream, ochre gold, aged brass, steel blue-grey, muted teal, dark walnut brown, with one strong accent colour as the description says.
+
+Lighting: soft even diffuse light from the upper left, gentle natural shading that shows the depth of the carving, no strong highlights, no glossy shine.
+
+Composition: this one pictogram only, centred, seen straight from the front with no perspective, filling most of the square image with an even margin, a bold simple silhouette that still reads when shrunk to 48 pixels. Isolated on a pure white seamless background (#FFFFFF), as if cut out: no table, no surface, no cast shadow, no reflection, no gradient, no other objects, no hands, no square plate behind it.
+
+Must look like a tangible wooden craft object with real material texture. Not vector art, not flat colours, not clean outlines, not cartoon, not a sticker, not plastic, not glossy, not a 3D game render. No text, letters, numbers, logos or watermark.
+
+The pieces are for the run's map, a wooden notice board: room markers (a ring plus an icon on it) and the board itself.

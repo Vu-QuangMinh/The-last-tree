@@ -65,10 +65,39 @@ var pick_view: EnemyView  # choosing which element a Pluck removes
 
 var _backdrop: Backdrop
 var _enemy_row: HBoxContainer
+static var _puppet_live := 0  # Puppet fight screens in the tree (a new one is made before the old one leaves: the counter must stay hidden)
+var _counted := false
+var test_mode := false  # Test mode: two more buttons, Auto-fill and Auto-ball (set by Main before the screen is added)
+var _test_btns: Array = []
+var _auto_busy := false
+var _hm_stage: HandymanStage  # the Handyman fight (Puppet Stage): his body and the hands on his shoulders stand in this, inside _enemy_row
 var _views := {}  # EnemyState -> EnemyView
 var _spell_row: HBoxContainer
 var _cards: Array = []
 var _chant_row: HBoxContainer
+var _stage: PuppetStage  # Puppet Stage theme: the theatre behind the fight
+## Puppet Stage: the run stays on the stage between fights. `stage_in` is the theatre of the fight before (taken over, so its scenery can
+## slide away); `stage_flow` makes a won fight end with the Victory sign and the HUD sinking below the screen; `map_mode` is the stage
+## with no fight at all (the HUD is down, the map board is raised over it); `arrive` plays the walk to the next room.
+var stage_in: PuppetStage
+var stage_flow := false
+var map_mode := false
+var arrive := false
+## Puppet Stage: the fight is built while the encounter board is still up (the new set of props and the enemies come in behind it). `hold_hud`: the
+## HUD stays down after the arrival until `release_hud()` (the player pressed "Begin the fight"). `wait_arrival()` waits for that moment.
+var hold_hud := false
+var _arrival_ready := false
+signal arrival_ready
+signal hud_released
+const HUD_DOWN := 660.0  # how far the HUD sinks (the spell row stands highest, at about y 560)
+var _hud_shift := 0.0
+var _book_btn: Button
+var _heart: TextureRect
+signal spellbook_pressed
+var _coin_label: Label  # Puppet Stage: the Leaves in the Character panel
+var _bottles_frame: NinePatchRect  # Puppet Stage: the painted frames of the bottles and of the artifacts (they follow their contents)
+var _arts_frame: NinePatchRect
+var _puppet_hud := false  # Puppet Stage: the HUD of the Chant UI PDF (statuses as icons, artifacts in a row)
 var _drag: ChantDrag  # the live, draggable chant while you place or rearrange elements
 # building a chant by drag and drop: a press becomes a drag once the mouse moves a little, else it's a click
 const DRAG_START := 8.0
@@ -93,8 +122,6 @@ const BAG_W := 1060.0  # (the bag panel is as wide as the chant panel: 1100, min
 const FLY_TIME := 0.26  # an element jumping between the bag and the chant
 const BAG_MOVE := 0.22  # the bag's icons closing up or making room
 var _next_row: HBoxContainer
-var _next_panel: PanelContainer
-var _talking := false  # talking to a boss before the fight (BossTalk): only the boss, the backdrop and your bag
 var _prompt: Label
 var _info: Label
 var _hp_bar: HpBar
@@ -111,9 +138,6 @@ var _picking_any_cancellable := true
 var _prepicked := {}  # EnemyState -> the Essence already chosen for it (the picker hands it straight back)
 var _pick_style := "shoot"  # "shoot": remove spells (a crosshair, you shoot the Essence off) · "hand": steal (drag it to your bag) · "brush": Expose (paint it Any)
 var _pick_only: EnemyState = null  # picking again on the same enemy (a spell that takes several)
-var _pick_el := ""  # only Essence of this kind can be picked right now (the rest are dimmed)
-var _steal_into_chant := false  # Instant Steal: the stolen Essence is dropped into the chant, not the bag
-var _infuse_at := -1  # Instant Steal: where in the chant it was dropped (the placer hands it straight back)
 var _steal_drag := {}  # while dragging a stolen Essence: {enemy, index, el, from, icon}
 var _aim_cursor: AimCursor
 var _shot_fired := false  # the shot already showed the hit, so the spell's own fly-in is skipped
@@ -126,7 +150,7 @@ var _clear_btn: Button
 var _fx: Control
 var _danger: DangerVignette  # the red edge at low HP, and the red flash of a hit
 var _arrow: Control
-var _player_panel: PanelContainer
+var _player_panel: Control
 var _pause_overlay: Control
 
 ## op -> sfx name, for the generic {"type": "effect", "op": ...} events fired by every spell effect.
@@ -142,6 +166,7 @@ const EFFECT_SFX := {
 	"transmute": "sfx_convert", "sacrifice": "sfx_player_hit", "amplify": "sfx_amplify",
 	"overload": "sfx_overload", "cleanse": "sfx_cleanse", "redirect": "sfx_redirect", "passive": "spell_glow",
 	"curse": "sfx_weaken_apply",
+	"barrage": "sfx_magic_hit",  # (a volley of arcane bolts: Arcane Barrage, Elemental Fury, ...)
 }
 ## Element letter -> sfx name, comet leaving the chant (a whoosh) and comet landing on an enemy (an impact).
 const LAUNCH_SFX := {"F": "element_fire", "W": "element_water", "A": "element_wind"}
@@ -157,8 +182,6 @@ func setup(p_run: RunState, p_fight: Fight) -> void:
 	fight.painter = _painter
 	fight.placer = _placer
 	fight.chant_picker = _chant_picker
-	fight.wild_arranger = _wild_arranger
-	fight.wild_painter = _wild_painter
 	fight.element_chooser = _element_chooser
 	fight.attune_chooser = _attune_chooser
 	fight.arranger = _arranger
@@ -168,18 +191,48 @@ func setup(p_run: RunState, p_fight: Fight) -> void:
 
 
 func _ready() -> void:
+	add_to_group("fight_screen")  # (the bars of the screens laid over it leave the artifacts to this one)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UiTheme.get_theme()
 	_backdrop = Backdrop.new()
 	_backdrop.act = run.act
 	_backdrop.tree_glow = false
 	add_child(_backdrop)
+	if UiSkin.is_puppet():  # Puppet Stage: the theatre (five tilted flat pictures, sliding wooden cut-outs) behind everything
+		if stage_in != null and is_instance_valid(stage_in) and stage_in.act_no == run.act:  # (a new act has a stage of its own pictures)
+			_stage = stage_in
+			if _stage.get_parent() != null:
+				_stage.get_parent().remove_child(_stage)
+			add_child(_stage)
+		else:
+			_stage = PuppetStage.new(run.act)
+			add_child(_stage)
+			_stage.add_default_props()
+			_stage.add_hanging_sign(PuppetLayout.MENU.position.x + 250.0 * 900.0 / 842.0 / 2.0, 250.0)  # (in the top left corner, its left edge over the Menu button's)
+		_stage.fit(get_viewport_rect().size.x)
+		get_viewport().size_changed.connect(func() -> void: _stage.fit(get_viewport_rect().size.x))
+		var lights := StageLights.new()  # (a spotlight over every enemy)
+		lights.feet = _enemy_feet
+		add_child(lights)
 	_info = UiTheme.label("", 22, Color.WHITE)
 	_info.position = Vector2(30, 14)
 	add_child(_info)
 	_arts = ArtifactBar.make(fight.artifacts, fight.artifact_plus)
 	_arts.position = Vector2(28, 52)
+	if UiSkin.is_puppet():  # (a row of ten slots inside the artifacts' frame)
+		_arts.chip_px = PuppetLayout.ART_PX
+		_arts.row_width = PuppetLayout.ARTIFACTS.size.x - 2.0 * PuppetLayout.ART_X0
+		_arts.slot_step = PuppetLayout.ART_STEP
+		_arts.position = ARTS_AT + Vector2(PuppetLayout.ART_X0, (PuppetLayout.ARTIFACTS.size.y - PuppetLayout.ART_PX) / 2.0)
+		_arts.z_index = PuppetStage.CEILING_Z + 2
 	add_child(_arts)
+	if UiSkin.is_puppet():  # Puppet Stage: the Act / Floor / Turn line is written on the hanging sign; the HUD stays over the ceiling
+		_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_info.size = Vector2(260, 30)
+		_info.position = Vector2(PuppetLayout.MENU.position.x + 250.0 * 900.0 / 842.0 / 2.0 - 130.0, 152.0)  # (the sign went up 25 px and 40 px left; its words stay clear of the ceiling)
+		_info.add_theme_font_size_override("font_size", 19)
+		_info.add_theme_color_override("font_color", Color(0.28, 0.17, 0.08))
+		_info.z_index = PuppetStage.CEILING_Z + 1
 	# top-right: coming next
 	var np := PanelContainer.new()
 	np.add_theme_stylebox_override("panel", UiTheme.panel_box(0.85, 10))
@@ -190,7 +243,6 @@ func _ready() -> void:
 	var nv := VBoxContainer.new()
 	np.add_child(nv)
 	nv.add_child(UiTheme.heading("Coming next turn", 16, UiTheme.MUTED))
-	_next_panel = np
 	_next_row = HBoxContainer.new()
 	_next_row.add_theme_constant_override("separation", 4)
 	nv.add_child(_next_row)
@@ -203,6 +255,7 @@ func _ready() -> void:
 	_enemy_row.position = Vector2(0, 90)
 	_enemy_row.size = Vector2(1920, 480)
 	add_child(_enemy_row)
+	_place_enemies()  # (Puppet Stage: they stand in the middle of the floor)
 	_prompt = UiTheme.label("", 22, Color(1, 0.9, 0.5))
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_prompt.position = Vector2(0, 492)
@@ -218,10 +271,13 @@ func _ready() -> void:
 	_spell_row.position = Vector2(0, 530)
 	_spell_row.size = Vector2(1920, 170)
 	add_child(_spell_row)
-	if _circus_strips():
-		_build_strips_circus()
+	if _puppet_strips():
+		_spell_row.z_index = 1  # (cards over the globe if there are so many that they reach it)
+		_build_strips_puppet()
 	else:
 		_build_strips_classic()
+	if test_mode and _chant_panel != null:
+		_build_test_buttons()
 	# player: name, your statuses (bright badges) on top of the HP bar, your bottles under it
 	_player_panel = PanelContainer.new()
 	_player_panel.add_theme_stylebox_override("panel", UiTheme.panel_box(0.9, 12))
@@ -293,6 +349,13 @@ func _ready() -> void:
 	_pstatus.visible = false  # (statuses are badges now)
 	pv.add_child(_pstatus)
 	add_child(_player_panel)
+	if UiSkin.is_puppet():
+		_rebuild_character_panel()
+		AmberCounter.off_in_fight = true  # (the Menu button stands where the counter is)
+		_puppet_live += 1
+		_counted = true
+		for n in get_tree().get_nodes_in_group("amber_counter"):
+			n.visible = false
 	# the fight log, bottom right
 	_log = UiTheme.label("", 14, UiTheme.MUTED)
 	_log.position = Vector2(1660, 742)
@@ -306,6 +369,7 @@ func _ready() -> void:
 	if log_art != null:  # New theme: a wooden plaque behind the log
 		_log.add_theme_stylebox_override("normal", log_art)
 	add_child(_log)
+	_log.visible = not UiSkin.is_puppet()  # (Puppet Stage: no fight log)
 	_fx = Control.new()
 	_fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -322,6 +386,12 @@ func _ready() -> void:
 	var menu_btn := UiTheme.button("☰ Menu", _open_pause_menu, 18)
 	menu_btn.custom_minimum_size = Vector2(130, 44)
 	menu_btn.position = Vector2(1920 - 150, 1024)
+	if UiSkin.is_puppet():  # (its plate, at the place the HUD layout gives it)
+		menu_btn.text = "Menu"
+		menu_btn.custom_minimum_size = PuppetLayout.MENU.size
+		menu_btn.size = PuppetLayout.MENU.size
+		menu_btn.position = Vector2(1920.0 - 24.0 - 140.0 + 40.0 - 20.0, 112.0 - 25.0 - 20.0 - 10.0)  # (where the Leaves' frame used to stand on the other screens, 25 px higher)
+		menu_btn.z_index = PuppetStage.CEILING_Z + 1  # (over the curtain at the top of the stage)
 	UiTheme.use_menu_style(menu_btn)
 	UiTheme.use_heading_font(menu_btn)
 	add_child(menu_btn)
@@ -329,9 +399,196 @@ func _ready() -> void:
 	_sync_views()
 	_refresh_all()
 	_fit_bottom.call_deferred()
-	if fight.talk_id != "" and not help_override.is_valid():
-		_talk.call_deferred()  # (a boss to talk to first; not in the tutorial)
 	tut.connect(func(_k, _d): note_progress())
+	if _stage != null and (map_mode or arrive):
+		_build_spellbook_button()
+		_start_down.call_deferred()
+
+
+# ------------------------------------------------------------------ Puppet Stage, between fights
+
+## Everything of the HUD that sinks below the edge of the screen (the spell cards, the Chant and the Bag with the machine, HP and what hangs on
+## it, the bottles, the artifacts).
+func _hud_nodes() -> Array:
+	var out: Array = []
+	for n in [_spell_row, _chant_panel, _bag_panel, _hp_bar, _hp_label, _heart, _shield_box, _bottle_row, _status_row, _bottles_frame, _player_panel]:  # (the artifacts' frame stays up in the corner)
+		if n != null and is_instance_valid(n):
+			out.append(n)
+	return out
+
+
+func _set_hud_shift(v: float) -> void:
+	var d := v - _hud_shift
+	_hud_shift = v
+	for n in _hud_nodes():
+		n.position.y += d
+	if _book_btn != null:
+		var k := clampf(v / HUD_DOWN, 0.0, 1.0)
+		_book_btn.visible = k > 0.02 and not hold_hud
+		_book_btn.modulate.a = clampf((k - 0.4) / 0.6, 0.0, 1.0)  # (it appears as the cards sink into it)
+		_book_btn.mouse_filter = Control.MOUSE_FILTER_STOP if k > 0.95 else Control.MOUSE_FILTER_IGNORE
+
+
+func get_stage() -> PuppetStage:
+	return _stage
+
+
+func _hud_hidden() -> bool:
+	return map_mode or _hud_shift > 1.0
+
+
+func _start_down() -> void:
+	busy = true
+	_set_hud_shift(HUD_DOWN)
+	if arrive:
+		_arrive()
+
+
+## The HUD sinks, the Spellbook button comes up in the place of the HP bar.
+func _hud_down(secs := 0.9) -> void:
+	busy = true
+	_info.text = "Act %d · Floor %d" % [run.act, run.floor_no()]
+	if _book_btn == null:
+		_build_spellbook_button()
+	var tw := create_tween()
+	tw.tween_method(_set_hud_shift, _hud_shift, HUD_DOWN, secs).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	await tw.finished
+
+
+func _hud_up(secs := 0.8) -> void:
+	var tw := create_tween()
+	tw.tween_method(_set_hud_shift, _hud_shift, 0.0, secs).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	await tw.finished
+	busy = false
+	_fit_enemy_lift()
+
+
+## Walking on: the old props are cleared away first (that began at the encounter board; if the fight was begun early, it is waited for), then the
+## new room's props and enemies come in from the right, and the HUD comes back up as the last of them settle.
+func _arrive() -> void:
+	var far := 2600.0
+	_enemy_row.position.x = far  # (they wait off the screen on the right while the old props are cleared)
+	if _stage.is_clearing():
+		await _stage.cleared
+	var tw := _stage.bring_props()
+	await get_tree().create_timer(1.2).timeout  # (the enemies walk on after the first props)
+	var et := create_tween()
+	et.tween_property(_enemy_row, "position:x", 0.0, PuppetStage.BRING_TIME - 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	await get_tree().create_timer(PuppetStage.BRING_TIME - 1.2 - 1.0).timeout
+	if hold_hud:  # (the encounter board is still up: the HUD waits for "Begin the fight")
+		_arrival_ready = true
+		arrival_ready.emit()
+		if hold_hud:
+			await hud_released
+	_hud_up()
+	if tw.is_running():
+		await tw.finished
+
+
+## The new set has come in (the props and the enemies stand on the stage): true once the HUD only waits to be released.
+func wait_arrival() -> void:
+	if not _arrival_ready:
+		await arrival_ready
+
+
+func release_hud() -> void:
+	hold_hud = false
+	if _puppet_hud:
+		_fit_hud_frames()
+	hud_released.emit()
+
+
+## "Begin the fight": the spells chosen on the encounter board are the fight's spells now (they are rebuilt), and each card flies from where it lay on the board
+## to its place in the fight's row, while the HUD comes up under it. `from`: [{id, rect (global)}] the active cards of the board.
+func begin_with_spells(spells: Array, spellbook: Array, from: Array) -> void:
+	fight.loadout = spells
+	fight.spellbook = spellbook
+	_build_spells()
+	_refresh_all()
+	var ghosts: Array = []
+	for card in _cards:
+		var src: Dictionary = {}
+		for f in from:
+			if f.id == card.spell.id:
+				src = f
+		if src.is_empty():
+			continue
+		var ghost := SpellCard.make(card.spell)
+		ghost.is_zoom_copy = true
+		ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ghost.z_index = PuppetStage.CEILING_Z + 6
+		ghost.size = Vector2(SpellCard.W, SpellCard.H)
+		ghost.pivot_offset = Vector2.ZERO
+		add_child(ghost)
+		ghost.global_position = (src.rect as Rect2).position
+		card.modulate.a = 0.0  # (the real card shows once the picture has landed on it)
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE  # (no hover while it travels)
+		ghosts.append({"ghost": ghost, "card": card, "from": ghost.global_position, "scale": float(card.base_scale)})
+	busy = true
+	await wait_arrival()  # (the props and the enemies are still coming in: the cards wait where they lay)
+	if not is_inside_tree():
+		return
+	release_hud()
+	var i := 0
+	for g in ghosts:
+		var gh: SpellCard = g.ghost
+		var card: SpellCard = g.card
+		var tw := create_tween()
+		tw.tween_interval(0.05 * i)
+		tw.tween_method(func(u: float) -> void:
+			if is_instance_valid(gh) and is_instance_valid(card):
+				var e := u * u * (3.0 - 2.0 * u)
+				gh.global_position = (g.from as Vector2).lerp(card.global_position, e)  # (the target moves with the HUD that is coming up)
+				gh.scale = Vector2.ONE * lerpf(1.0, float(g.scale), e), 0.0, 1.0, 0.85).set_ease(Tween.EASE_OUT)
+		tw.tween_callback(func() -> void:
+			if is_instance_valid(card):
+				card.modulate.a = 1.0
+				card.mouse_filter = Control.MOUSE_FILTER_STOP  # (it can be hovered again once it has landed)
+			if is_instance_valid(gh):
+				gh.queue_free())
+		i += 1
+		Audio.play("loadout_swap", -8.0, randf_range(0.95, 1.1))
+
+
+## The Spellbook button (no art for it yet: a wooden plate with a book drawn on it) stands where the HP bar is while the HUD is down.
+func _build_spellbook_button() -> void:
+	if true:  # (no Spellbook button any more: the spells are arranged on the encounter board)
+		return
+	var r := PuppetLayout.HP_BAR
+	_book_btn = Button.new()
+	_book_btn.text = "Spellbook"
+	_book_btn.focus_mode = Control.FOCUS_NONE
+	_book_btn.position = Vector2(r.position.x, r.position.y - 6.0)
+	_book_btn.size = Vector2(290, 64)
+	_book_btn.custom_minimum_size = _book_btn.size
+	UiTheme.use_heading_font(_book_btn)
+	UiTheme.style_puppet_button(_book_btn, "chant", 22)
+	_book_btn.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_book_btn.text = "   Spellbook"  # (room for the book on the left)
+	_book_btn.tooltip_text = "Your spells: the active row and the rest of the book."
+	var book := SpellbookIcon.new()
+	book.size = Vector2(46, 40)
+	book.position = Vector2(16, 12)
+	book.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_book_btn.add_child(book)
+	_book_btn.pressed.connect(func(): spellbook_pressed.emit())
+	_book_btn.z_index = 3
+	_book_btn.visible = false
+	add_child(_book_btn)
+
+
+## A closed book drawn in code: brown cover, paper edge, a gold emblem.
+class SpellbookIcon extends Control:
+	func _draw() -> void:
+		var w := size.x
+		var h := size.y
+		draw_rect(Rect2(4, 5, w - 6, h - 6), Color(0.15, 0.08, 0.04), true)  # shadow
+		draw_rect(Rect2(2, 2, w - 6, h - 6), Color(0.94, 0.88, 0.7), true)  # the pages
+		draw_rect(Rect2(0, 0, w - 8, h - 8), Color(0.45, 0.2, 0.12), true)  # the cover
+		draw_rect(Rect2(0, 0, w - 8, h - 8), Color(0.98, 0.78, 0.4), false, 2.0)
+		draw_rect(Rect2(0, 0, 8, h - 8), Color(0.32, 0.13, 0.08), true)  # the spine
+		draw_circle(Vector2((w - 8) / 2.0 + 4, (h - 8) / 2.0), 6.5, Color(0.98, 0.78, 0.4))  # the emblem
+		draw_circle(Vector2((w - 8) / 2.0 + 4, (h - 8) / 2.0), 3.0, Color(0.45, 0.2, 0.12))
 
 
 # ------------------------------------------------------------------ building
@@ -422,12 +679,317 @@ var _cast_uids := {}  # uid -> true: the Essence of the chant being cast right n
 var _tube_icons: Array = []  # the Essence in the tube (next turn's draw), or waiting hidden in the red block (sent by a spell)
 var _tube_hold_until := 0  # ticks: the tube rests, empty, until then (2 s after a launch)
 var _tube_sync_pending := false
+var _bag_order: Array = []  # Puppet Stage: the uids of the Bag's balls in the order they stand now (new balls stack after them; a re-sort follows)
+var _resort := false  # (set while the sorted order is being walked into: its balls swap with a lift and one sound)
+var _resort_wait := false  # a launch just ended: the balls wait a moment before they swap into their types
+var _globe_energy := 0.0  # Puppet Stage: how hard the globe shakes right now (decays)
+var _globe_t := 0.0
 var _tube_prep := false  # a launch is being set up
 var _rolling_in := 0  # Essence rolling into the tube right now
 var _turn_batch_until := 0  # ticks: a new turn is starting, so the next new Essence come out of the tube
 
 
+## Puppet Stage: the enemies' row, so that their feet are on the middle of the floor.
+const ENEMY_FEET_DY := 480.0  # (from the top of the row to the feet of a puppet: it stands at the bottom of its box, name and Essence above it)
+const ENEMY_LIFT := 0.0  # (how much higher than the middle of the floor they stand)
+
+
+var _lift_turn := -1  # (the turn the lift was last allowed to shrink in)
+var _lift_tween: Tween
+var _extra_lift := 0.0  # how much higher the enemies stand because their rows of Essence need more than one line above the spell cards
+
+
+func _place_enemies() -> void:
+	if _stage != null and _enemy_row != null:
+		_enemy_row.position.y = _stage.floor_center_y() - ENEMY_FEET_DY - ENEMY_LIFT - _extra_lift
+
+
+## Puppet Stage: the Essence rows hang under the enemies' feet; when one needs two lines (or more) the whole row of enemies stands higher, so
+## the lowest line ends just above the spell cards.
+## The screen y of the feet of the lowest standing enemy (0 when none).
+func _feet_y() -> float:
+	var y := 0.0
+	for e in _views:
+		var v: EnemyView = _views[e]
+		if is_instance_valid(v) and is_instance_valid(v.creature) and not e.is_dead() and not v.creature.has_rig():
+			y = maxf(y, v.creature.global_position.y + v.creature.size.y)
+	return y
+
+
+func _fit_enemy_lift() -> void:
+	if _stage == null or _enemy_row == null or _spell_row == null or _spell_row.get_child_count() == 0:
+		return
+	var bottom := 0.0
+	for e in _views:
+		var v: EnemyView = _views[e]
+		if is_instance_valid(v) and not e.is_dead() and not v.creature.has_rig():  # (a Handyman hand's text stands where its rig puts it)
+			bottom = maxf(bottom, v.below_feet_bottom())
+	if bottom <= 0.0:
+		return
+	# (they never stand higher than the far edge of the floor, 20 px in: a puppet pushed up by its own rows of Essence would leave the floor)
+	var top_room := 130.0
+	var feet := _feet_y()
+	if feet > 0.0:
+		top_room = clampf(feet + _extra_lift - (_stage.floor_range().x + 20.0), 0.0, 130.0)
+	var need := clampf(bottom + _extra_lift - (_spell_row.global_position.y - 6.0), 0.0, top_room)
+	# Within one turn the lift only ever grows: clicking an orb changes the preview (a skull wraps an Essence row onto a second line and takes
+	# it off again), and the whole row of enemies used to jump up and down with every click.
+	var turn: int = fight.turn if fight != null else 0
+	if turn == _lift_turn:
+		need = maxf(need, _extra_lift)
+	else:
+		_lift_turn = turn
+	need = minf(need, top_room)  # (the floor's far edge is a hard limit: a lift kept from earlier in the turn must obey it too)
+	if absf(need - _extra_lift) > 0.5:
+		_extra_lift = need
+		if _enemy_row != null and _stage != null:  # (glide there instead of jumping)
+			var y := _stage.floor_center_y() - ENEMY_FEET_DY - ENEMY_LIFT - _extra_lift
+			if _lift_tween != null and _lift_tween.is_valid():
+				_lift_tween.kill()
+			_lift_tween = create_tween()
+			_lift_tween.tween_property(_enemy_row, "position:y", y, 0.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+
+## ---- Puppet Stage: the left of the HUD, as laid out in "Chant UI for puppet.pdf" ---------------------------------------------
+## HP bar with the heart / HP and Shield under it, the bottles' frame (up to 5), the artifacts' frame (ten slots), the Leaves under them, and
+## the statuses (small icons, up to 22 at once: 14 kinds + 8 Powers, two rows) above the HP bar. Everything stands on the screen itself;
+## `_player_panel` is only a marker the effects that land on you fly to.
+const HP_TRAY := Rect2(484.0, 983.0, 274.0, 58.1)  # the tray of HP blocks (see BlockHpBar): under the bottles, its right edge against the Bag strip (x 767)
+const ARTS_AT := Vector2(24.0, 14.0)  # the artifacts' frame: the top left corner, over the curtain
+const HP_DY := 40.0  # (the HP bar, its heart, HP, Shield and the statuses stand this much lower than the PDF has them: the Leaves are gone)
+
+
+func _rebuild_character_panel() -> void:
+	_puppet_hud = true
+	var old := _player_panel
+	_player_panel = Control.new()
+	_player_panel.position = HP_TRAY.position  # (the marker the heal / shield effects fly to is the HP tray itself)
+	_player_panel.size = HP_TRAY.size
+	_player_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_player_panel)
+	old.queue_free()
+	_bottles_frame = _hud_frame("bottles_frame", PuppetLayout.BOTTLES, 28)
+	_arts_frame = _hud_frame("artifacts_frame", Rect2(ARTS_AT, PuppetLayout.ARTIFACTS.size), 28)
+	_arts_frame.z_index = PuppetStage.CEILING_Z + 1
+	_hp_bar = BlockHpBar.new()  # (20 square blocks in a tray; the numbers stand to the right of it)
+	_hp_bar.custom_minimum_size = HP_TRAY.size
+	_hp_bar.position = HP_TRAY.position
+	_hp_bar.size = HP_TRAY.size
+	add_child(_hp_bar)
+	var heart := UiSkin.icon("icon_heart", 24)
+	if heart != null:
+		add_child(heart)
+		_heart = heart
+	var hp_font := UiTheme.cut("bold")
+	_hp_label = UiTheme.label("", 15)
+	if hp_font != null:
+		_hp_label.add_theme_font_override("font", hp_font)
+	_hp_label.size = Vector2(100, 24)
+	_hp_label.clip_text = true
+	add_child(_hp_label)
+	_shield_box = HBoxContainer.new()
+	_shield_box.add_theme_constant_override("separation", 6)
+	_shield_box.visible = false
+	var shield_pic := UiSkin.icon("icon_armor_shield", 24)
+	if shield_pic != null:
+		_shield_box.add_child(shield_pic)
+	_shield_label = UiTheme.label("", 17, Color(0.62, 0.86, 1.0))
+	if hp_font != null:
+		_shield_label.add_theme_font_override("font", hp_font)
+	_shield_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_shield_box.add_child(_shield_label)
+	add_child(_shield_box)
+	_bottle_row = HBoxContainer.new()
+	_bottle_row.add_theme_constant_override("separation", 0)
+	_bottle_row.position = PuppetLayout.BOTTLES.position + Vector2(8, (PuppetLayout.BOTTLES.size.y - 52.0) / 2.0)
+	add_child(_bottle_row)
+	_status_row = HFlowContainer.new()
+	_status_row.add_theme_constant_override("h_separation", 4)
+	_status_row.add_theme_constant_override("v_separation", 4)
+	_status_row.position = Vector2(60, 905.0)  # (bottom left, over the HP numbers)
+	_status_row.custom_minimum_size = Vector2(STATUS_CHIP * 11.0 + 40.0, STATUS_CHIP * 2.0 + 4.0)
+	add_child(_status_row)
+	_pstatus = RichTextLabel.new()  # (not shown: statuses are icons)
+
+
+## A painted frame of the HUD (3 slices: caps at the two ends), put just above the stage so it is behind the pieces that stand on it.
+func _hud_frame(tex_name: String, r: Rect2, cap: int) -> NinePatchRect:
+	var f := NinePatchRect.new()
+	f.texture = UiSkin.tex(tex_name)
+	f.patch_margin_left = cap
+	f.patch_margin_right = cap
+	f.position = r.position
+	f.size = r.size
+	f.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(f)
+	move_child(f, _stage.get_index() + 1)
+	return f
+
+
+## The bottles' and the artifacts' frames hold exactly what you carry: no item, no frame; with items they close up round them.
+func _fit_hud_frames() -> void:
+	if not _puppet_hud or _bottles_frame == null or _arts_frame == null:
+		return
+	var nb: int = fight.player.bottles.size()
+	_bottles_frame.visible = nb > 0
+	_bottle_row.visible = nb > 0
+	_bottles_frame.size.x = maxf(56.0, 16.0 + nb * 52.0)
+	var b_right := PuppetLayout.BOTTLES.position.x + PuppetLayout.BOTTLES.size.x  # (they start at the right edge and grow leftwards)
+	_bottles_frame.position.x = b_right - _bottles_frame.size.x
+	_bottle_row.position.x = _bottles_frame.position.x + 8.0
+	var na: int = _arts.artifacts.size()
+	_arts_frame.visible = na > 0
+	_arts.visible = na > 0
+	var inner := 0.0
+	if na > 0:
+		var step := minf(PuppetLayout.ART_STEP, (PuppetLayout.ARTIFACTS.size.x - 2.0 * PuppetLayout.ART_X0 - PuppetLayout.ART_PX) / maxf(1.0, na - 1.0))
+		inner = (na - 1) * step + PuppetLayout.ART_PX
+	_arts_frame.size.x = maxf(56.0, 2.0 * PuppetLayout.ART_X0 + inner)
+	_arts_frame.position.x = ARTS_AT.x  # (it starts at the left edge and grows rightwards)
+	_arts.position.x = _arts_frame.position.x + PuppetLayout.ART_X0
+
+
+const STATUS_CHIP := 34.0
+
+
+func _refresh_coin() -> void:
+	if _coin_label != null and run != null:
+		_coin_label.text = str(run.amber)
+
+
+## Statuses as small icons: a coloured frame, the picture (or its emoji), the amount in the corner; hover for the words.
+func _refresh_statuses_compact() -> void:
+	for c in _status_row.get_children():
+		c.queue_free()
+	for b in _status_badges():
+		var id := String(b[2])
+		var good := id in ["aegis", "thorns", "ethereal", "echo"] or id == "" or id.begins_with("attune_")  # (buffs and Powers; the rest hurt)
+		var col: Color = b[1]
+		var chip := TipPanel.new()
+		chip.custom_minimum_size = Vector2(STATUS_CHIP, STATUS_CHIP)
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = col.darkened(0.6)
+		sb.border_color = Color(0.45, 0.9, 0.4) if good else Color(1.0, 0.3, 0.3)
+		sb.set_border_width_all(2)
+		sb.set_corner_radius_all(8)
+		chip.add_theme_stylebox_override("panel", sb)
+		var holder := Control.new()
+		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		chip.add_child(holder)
+		var icon: Control = UiSkin.icon(_badge_art_name(b), STATUS_CHIP - 10.0)
+		if id.begins_with("attune_"):
+			icon = ElementIcon.make(id.substr(7), STATUS_CHIP - 10.0)
+		if icon == null:  # (no picture: the emoji that leads its words)
+			var em := UiTheme.label(String(b[0]).get_slice(" ", 0), 20, Color.WHITE)
+			em.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			em.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			icon = em
+		icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		icon.offset_left = 3
+		icon.offset_top = 1
+		icon.offset_right = -3
+		icon.offset_bottom = -3
+		holder.add_child(icon)
+		var digits := ""
+		for ch in String(b[0]):
+			if ch >= "0" and ch <= "9":
+				digits += ch
+			elif digits != "":
+				break
+		if digits != "":
+			var n := UiTheme.label(digits, 14, Color.WHITE)
+			n.add_theme_constant_override("outline_size", 4)
+			n.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+			n.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			n.position = Vector2(STATUS_CHIP - 16.0, STATUS_CHIP - 22.0)
+			holder.add_child(n)
+		var tip: String = Keywords.K.get(id, [0, 0, ""])[2]
+		chip.tooltip_text = b[3] if b.size() > 3 else (Keywords.tooltip(b[0], tip) if tip != "" else String(b[0]))
+		if b.size() > 4:
+			chip.set_meta("power_id", b[4])
+		chip.mouse_filter = Control.MOUSE_FILTER_STOP
+		_status_row.add_child(chip)
+
+
+## Where the enemies' feet are (the spotlights follow them).
+func _enemy_feet() -> Array:
+	var out: Array = []
+	for e in _views:
+		var v: EnemyView = _views[e]
+		if is_instance_valid(v) and is_instance_valid(v.creature) and not e.is_dead() and not v.creature.has_rig():  # (a hand hangs on his shoulder: no light at its feet)
+			out.append(v.creature.global_position + Vector2(v.creature.size.x / 2.0, v.creature.size.y))
+	if _hm_stage != null and is_instance_valid(_hm_stage):
+		var body_feet = _hm_stage.body_feet()  # (his body, while it is only a picture)
+		if body_feet != null:
+			out.append(body_feet)
+	return out
+
+
+## Puppet Stage: the spell cards sit just above the line of text over the Chant strip.
+func _place_spell_row() -> void:
+	if not _puppet_strips() or _spell_row == null or _chant_panel == null or _spell_row.get_child_count() == 0:
+		return
+	var h := 0.0
+	for c in _spell_row.get_children():
+		h = maxf(h, maxf(c.custom_minimum_size.y, c.get_combined_minimum_size().y))  # (a wordy card is taller than its nominal height: it must not reach down over the chant)
+	_spell_row.position.y = _chant_panel.position.y - 5.0 - h
+
+
+## The sound of an Essence you move: "grab" (it leaves the bag / is picked up), "place" (it drops into the chant), "remove" (it goes back).
+## The Puppet Stage plays only its wooden sounds (a grab is silent: the "hole" sounds when it lands in the chant, a return is the low "colide").
+func _elem_sound(kind: String) -> void:
+	if _puppet_strips():
+		if kind == "place" or kind == "grab":  # (the recordings start with a little silence: skipped, so the sound is at the click)
+			Audio.play("wooden_ball_hole", 0.0, 1.0, 0.06)
+		elif kind == "remove":
+			Audio.play("wooden_ball_colide", 0.0, 0.8, 0.1)  # (the same knock, 20% lower)
+		return
+	Audio.play("elem_remove" if kind == "remove" else "elem_pickup")
+
+
+## The sounds of the balls: the Puppet Stage has wooden ones (wooden_ball_*), the other themes keep the old pair.
+func _ball_sound(kind: String, volume_db := 0.0, pitch := 1.0) -> void:
+	var names := {"roll": "sfx_ball_roll", "hit": "sfx_ball_clack", "hole": "sfx_ball_clack"}
+	if _puppet_strips():
+		names = {"roll": "wooden_ball_roll", "hit": "wooden_ball_colide", "hole": "wooden_ball_hole", "swap": "wooden_ball_swap"}
+	if names.has(kind):
+		Audio.play(names[kind], volume_db, pitch)
+
+
+## Puppet Stage: the Bag's balls swap into their types (fire, water, wind) once a launch is over: first the new balls stack after the old
+## ones, a moment later everybody slides to the right place, with a small lift and one wooden "swap".
+func _resort_bag() -> void:
+	if not _puppet_strips() or _resort_wait:
+		return
+	_resort_wait = true
+	await get_tree().create_timer(0.45).timeout
+	_resort_wait = false
+	if fight == null or not is_inside_tree() or _launching > 0 or _tube_prep:
+		return  # (another launch has begun: it calls this again when it is over)
+	_resort = true
+	_refresh_stock()
+	_resort = false
+
+
+## Puppet Stage: the strips and the lottery-ball machine of "Chant UI for puppet.pdf" (cut by tools/export_puppet_chant.py, laid out by
+## PuppetLayout). It shares everything else of the Cirus strips (the Essence roll along the Bag, the tube logic), so _circus_strips() is
+## true for it too; only the building and the tube / machine functions look at _puppet_strips().
+const MACHINE_LAYERS := ["machine_pipe_back", "machine_pipe_glass", "machine_pipe_front", "machine_tube_back", "machine_tube_glass",
+	"machine_tube_front", "machine_box", "machine_globe_glass", "machine_bevel"]
+
+
+func _puppet_strips() -> bool:
+	if not UiSkin.is_puppet() or UiSkin.tex("chant_frame") == null or UiSkin.tex("bag_frame") == null:
+		return false
+	for n in MACHINE_LAYERS:
+		if UiSkin.tex(n) == null:
+			return false
+	return true
+
+
 func _circus_strips() -> bool:
+	if UiSkin.is_puppet():
+		return _puppet_strips()
 	return UiSkin.is_circus() and UiSkin.tex("chant_frame") != null and UiSkin.tex("bag_frame") != null and UiSkin.tex("tube_glass") != null \
 		and UiSkin.tex("tube_back") != null and UiSkin.tex("tube_gear") != null and UiSkin.tex("crank_plate") != null and UiSkin.tex("crank_handle") != null
 
@@ -441,105 +1003,114 @@ func _strip_art(tex_name: String, pos: Vector2) -> TextureRect:
 	return r
 
 
-func _build_strips_circus() -> void:
-	var cap := ChantLayout.CAP
+## The machine's glass sheets are blended with "Screen" (screen_blend.gdshader): they only lighten what is behind them, so the balls show
+## through them. Without the shader file they fall back to plain 40 % opacity.
+func _glass_art(tex_name: String, pos: Vector2) -> TextureRect:
+	var r := _strip_art(tex_name, pos)
+	var sh := load("res://assets/Global/Card/Shaders/screen_blend.gdshader") as Shader
+	if sh != null:
+		var m := ShaderMaterial.new()
+		m.shader = sh
+		m.set_shader_parameter("strength", 0.85)
+		r.material = m
+	else:
+		r.modulate.a = 0.4
+	return r
+
+
+func _build_strips_puppet() -> void:
+	var cap := PuppetLayout.CAP
+	var margins := [int(cap.x), 0, int(cap.y), 0]  # (3 slices: a cap at each end, a plain middle, no stretch in height)
 	var cp := PanelContainer.new()
-	cp.add_theme_stylebox_override("panel", UiSkin.box("chant_frame", [int(cap.x), 20, int(cap.y), 20], [22, 6, 26, 6]))
+	cp.add_theme_stylebox_override("panel", UiSkin.box("chant_frame", margins))
 	_chant_panel = cp
-	cp.position = Vector2(540, 742)
-	cp.custom_minimum_size = Vector2(1100, 118)
-	var chh := HBoxContainer.new()
-	chh.add_theme_constant_override("separation", 12)
-	cp.add_child(chh)
-	# the title block on the left: Chant, how much Essence is in it, and (once you have cast) Undo
-	var lc := VBoxContainer.new()
-	lc.custom_minimum_size = Vector2(72, 0)
-	lc.alignment = BoxContainer.ALIGNMENT_CENTER
-	lc.add_theme_constant_override("separation", 0)
-	chh.add_child(lc)
-	lc.add_child(UiTheme.heading("Chant", 24, Color.WHITE))
-	_chant_note = UiTheme.label("", 13, UiTheme.MUTED)
-	_chant_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_chant_note.max_lines_visible = 2  # (the whole text is in its tooltip)
+	cp.position = PuppetLayout.BAG_AT + PuppetLayout.CHANT_AT
+	cp.custom_minimum_size = PuppetLayout.FRAME_CHANT
+	var cin := Control.new()
+	cin.custom_minimum_size = PuppetLayout.FRAME_CHANT
+	cin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cp.add_child(cin)
+	# what the chant row says ("3 Essence", Toll, Confused...): just above the strip
+	_chant_note = UiTheme.label("", 15, Color.WHITE)
+	_chant_note.position = Vector2(PuppetLayout.RING_X0, -26)
+	_chant_note.z_index = 5  # (over the spell cards that now stand right on the strip)
+	_chant_note.add_theme_constant_override("outline_size", 5)
+	_chant_note.add_theme_color_override("font_outline_color", Color(0.1, 0.05, 0.03))
 	_chant_note.mouse_filter = Control.MOUSE_FILTER_STOP
-	_chant_note.custom_minimum_size = Vector2(72, 34)
-	_chant_note.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	lc.add_child(_chant_note)
+	cin.add_child(_chant_note)
 	_chant_row = HBoxContainer.new()
 	_chant_row.add_theme_constant_override("separation", 6)
-	_chant_row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	chh.add_child(_chant_row)
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	chh.add_child(spacer)
-	_cast_btn = UiTheme.button(UiTheme.hk("Chant", "Enter"), _on_primary, 21)
+	_chant_row.position = Vector2(PuppetLayout.RING_X0, PuppetLayout.RING_CY - PUPPET_RING_PX / 2.0)
+	cin.add_child(_chant_row)
+	_cast_btn = UiTheme.button("Chant", _on_primary, 15)
 	UiTheme.use_heading_font(_cast_btn)
-	_cast_btn.custom_minimum_size = Vector2(192, 58)
-	_cast_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var chant_art := UiTheme.chant_button_styles()
-	for st in chant_art:
-		_cast_btn.add_theme_stylebox_override(st, chant_art[st])
-	chh.add_child(_cast_btn)
-	# Clear and Pass each sit in a fixed slot, so the main button never moves: after the chant Undo takes Clear's place and
-	# Pass just goes (its slot stays empty)
+	_place(_cast_btn, PuppetLayout.BTN_CHANT)
+	UiTheme.style_puppet_button(_cast_btn, "chant", 18)
+	_cast_btn.tooltip_text = "Chant (Enter) / Release (E)"
+	cin.add_child(_cast_btn)
+	# Clear (Undo takes its place after the chant) and Pass each sit in a fixed slot
 	var clear_slot := Control.new()
-	clear_slot.custom_minimum_size = Vector2(104, 40)
-	clear_slot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	chh.add_child(clear_slot)
-	_clear_btn = UiTheme.button(UiTheme.hk("Clear", "⌫"), _clear_chant, 15)
+	_place(clear_slot, PuppetLayout.BTN_CLEAR)
+	cin.add_child(clear_slot)
+	_clear_btn = UiTheme.button("Clear", _clear_chant, 13)
 	UiTheme.use_heading_font(_clear_btn)
+	UiTheme.style_puppet_button(_clear_btn, "clear", 14)
+	_clear_btn.tooltip_text = "Clear the chant (Backspace)."
 	_clear_btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	clear_slot.add_child(_clear_btn)
-	_undo_btn = UiTheme.button("↶ Undo", _undo_last, 15)
+	_undo_btn = UiTheme.button("Undo", _undo_last, 13)
 	UiTheme.use_heading_font(_undo_btn)
+	UiTheme.style_puppet_button(_undo_btn, "clear", 14)
 	_undo_btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_undo_btn.tooltip_text = "Take back the last spell you cast this turn. (Ctrl+Z. Pressing Release cannot be undone.)"
 	_undo_btn.visible = false
 	clear_slot.add_child(_undo_btn)
 	var pass_slot := Control.new()
-	pass_slot.custom_minimum_size = Vector2(104, 40)
-	pass_slot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	chh.add_child(pass_slot)
-	_end_btn = UiTheme.button(UiTheme.hk("Pass", "E"), _on_end_turn, 15)
+	_place(pass_slot, PuppetLayout.BTN_PASS)
+	cin.add_child(pass_slot)
+	_end_btn = UiTheme.button("Pass", _on_end_turn, 13)
 	UiTheme.use_heading_font(_end_btn)
+	UiTheme.style_puppet_button(_end_btn, "pass", 14)
 	_end_btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_end_btn.tooltip_text = "End your turn without chanting (you keep your Essence)."
+	_end_btn.tooltip_text = "End your turn without chanting (you keep your Essence). (E)"
 	pass_slot.add_child(_end_btn)
 	add_child(cp)
-	# the Bag strip, layered like the PDF: tube back, the Essence, tube glass, gear, plate, handle
+	# the Bag strip, then the machine (Essence Machine.psd) on its right. Layers: the strip, the back of the Pipe and of the Tube, every
+	# Essence (rolling in the strip and the Pipe, tumbling in the globe, dropping into the Tube, hidden behind the box), then the box, the
+	# globe's glass and bevel, and the glass and front of the Pipe and of the Tube on top of them.
 	var sp := PanelContainer.new()
 	_bag_panel = sp
-	sp.add_theme_stylebox_override("panel", UiSkin.box("bag_frame", [int(cap.x), 20, int(cap.y), 20]))
-	sp.position = Vector2(540, 872)
-	sp.custom_minimum_size = ChantLayout.FRAME_BAG
+	sp.add_theme_stylebox_override("panel", UiSkin.box("bag_frame", margins))
+	sp.position = cp.position - PuppetLayout.CHANT_AT
+	sp.custom_minimum_size = PuppetLayout.FRAME_BAG
 	var inner := Control.new()
-	inner.custom_minimum_size = ChantLayout.FRAME_BAG
+	inner.custom_minimum_size = PuppetLayout.FRAME_BAG
 	inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sp.add_child(inner)
-	inner.add_child(_strip_art("tube_back", ChantLayout.TUBE_BACK))
-	var bt := UiTheme.heading("Bag", 24, Color.WHITE)
-	bt.position = Vector2(23, 18)
-	inner.add_child(bt)
-	var hint := UiTheme.label("click or drag", 12, UiTheme.MUTED)
-	hint.position = Vector2(23, 58)
-	inner.add_child(hint)
-	# a plain Control: the Essence are placed (and rolled) by hand; it spans the strip AND the tube
+	inner.add_child(_strip_art("machine_pipe_back", PuppetMachine.PIPE_BACK))
+	inner.add_child(_strip_art("machine_tube_back", PuppetMachine.TUBE_BACK))
 	_stock_row = Control.new()
 	_stock_row.mouse_filter = Control.MOUSE_FILTER_PASS
-	_stock_row.custom_minimum_size = Vector2(ChantLayout.TUBE_RIGHT, ChantLayout.FRAME_BAG.y)
+	_stock_row.custom_minimum_size = Vector2(PuppetMachine.TOTAL_W, PuppetLayout.FRAME_BAG.y)
 	_stock_row.size = _stock_row.custom_minimum_size
 	inner.add_child(_stock_row)
-	inner.add_child(_strip_art("tube_glass", ChantLayout.TUBE_GLASS))
-	_tube_gear = _strip_art("tube_gear", ChantLayout.GEAR)
-	_tube_gear.pivot_offset = _tube_gear.size / 2.0
-	inner.add_child(_tube_gear)
-	_tube_plate = _strip_art("crank_plate", ChantLayout.PLATE)
-	inner.add_child(_tube_plate)
-	_tube_handle = _strip_art("crank_handle", ChantLayout.HANDLE)
-	_tube_handle.pivot_offset = ChantLayout.HANDLE_PIVOT
-	inner.add_child(_tube_handle)
+	inner.add_child(_strip_art("machine_box", PuppetMachine.BOX))
+	inner.add_child(_glass_art("machine_globe_glass", PuppetMachine.GLOBE_GLASS))
+	inner.add_child(_strip_art("machine_bevel", PuppetMachine.BEVEL))
+	inner.add_child(_glass_art("machine_pipe_glass", PuppetMachine.PIPE_GLASS))
+	inner.add_child(_strip_art("machine_pipe_front", PuppetMachine.PIPE_FRONT))
+	inner.add_child(_glass_art("machine_tube_glass", PuppetMachine.TUBE_GLASS))
+	inner.add_child(_strip_art("machine_tube_front", PuppetMachine.TUBE_FRONT))
 	add_child(sp)
+
+
+func _place(c: Control, r: Rect2) -> void:
+	c.position = r.position
+	c.custom_minimum_size = r.size
+	c.size = r.size
+
+
+const PUPPET_RING_PX := 52.0
 
 
 ## Where the k-th resting Essence of the bag sits (local to _stock_row) when there are n of them: Cirus lays them in one
@@ -547,6 +1118,10 @@ func _build_strips_circus() -> void:
 func _bag_slot(k: int, n: int) -> Vector2:
 	if not _circus_strips():
 		return Vector2(minf(_stock_row.size.x - BAG_PX, k * (BAG_PX + BAG_GAP)), 0)
+	if _puppet_strips():
+		var proom := PuppetLayout.REST_END - PuppetLayout.REST_X - BAG_PX
+		var pstep := minf(PuppetLayout.RING_STEP, proom / maxf(1.0, n - 1))
+		return Vector2(PuppetLayout.REST_X + minf(k * pstep, proom), PuppetLayout.AXIS_Y - BAG_PX / 2.0)
 	var room := ChantLayout.REST_END - ChantLayout.REST_X - BAG_PX
 	var step := minf(BAG_PX + 4.0, room / maxf(1.0, n - 1))
 	return Vector2(ChantLayout.REST_X + minf(k * step, room), ChantLayout.AXIS_Y - BAG_PX / 2.0)
@@ -554,6 +1129,9 @@ func _bag_slot(k: int, n: int) -> Vector2:
 
 ## The crank turns once and the gear twice (the same 0.9 s).
 func _turn_crank(seconds := 0.9) -> void:
+	if _puppet_strips():
+		_shuffle_globe()
+		return
 	if _tube_handle == null or not is_instance_valid(_tube_handle) or (_crank_tween != null and _crank_tween.is_valid()):
 		return
 	_tube_handle.rotation = 0.0
@@ -570,6 +1148,8 @@ func _turn_crank(seconds := 0.9) -> void:
 ## Where the j-th of n Essence waiting in the tube sits (local to _stock_row): from the glass's left end, squeezing under
 ## the red block when there are many.
 func _tube_pos(j: int, n: int) -> Vector2:
+	if _puppet_strips():
+		return _globe_slot(j, n)
 	var x0: float = ChantLayout.TUBE_GLASS.x + 28.0
 	var step := minf(TUBE_BALL_STEP, (ChantLayout.TUBE_RIGHT - 8.0 - BAG_PX - x0) / maxf(1.0, n - 1))
 	return Vector2(x0 + j * step, ChantLayout.AXIS_Y - BAG_PX / 2.0)
@@ -578,6 +1158,8 @@ func _tube_pos(j: int, n: int) -> Vector2:
 ## Where an Essence enters the tube: wholly inside the red block (it must never poke out of the tube's right end), so it
 ## is hidden there until it rolls out of it into the glass.
 func _tube_hidden() -> Vector2:
+	if _puppet_strips():  # (inside the box, behind its front: on the row the Essence roll along)
+		return Vector2(PuppetMachine.BOX_LEFT + 30.0, PuppetLayout.AXIS_Y - BAG_PX / 2.0)
 	return Vector2(minf(ChantLayout.TUBE_HIDE_X + 8.0, ChantLayout.TUBE_RIGHT - BAG_PX - 10.0), ChantLayout.AXIS_Y - BAG_PX / 2.0)
 
 
@@ -597,16 +1179,31 @@ func _roll_in(ic: ElementIcon, to_x: float, delay: float) -> void:
 		return
 	var t := 0.3 + d / 650.0
 	var turns := roundf(d / (PI * BAG_PX))
-	Audio.play("sfx_ball_roll", -11.0, randf_range(0.9, 1.1))
+	_ball_sound("roll", -7.0, randf_range(0.9, 1.1))
+	ic.set_meta("tube_to", to_x)
+	var from_x := ic.position.x
 	var tw := ic.create_tween().set_parallel(true)
-	tw.tween_property(ic, "position:x", to_x, t).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_method(func(u: float) -> void:
+		if is_instance_valid(ic):
+			var e := 1.0 - (1.0 - u) * (1.0 - u)
+			ic.position.x = _no_overlap(ic, lerpf(from_x, to_x, e), _tube_icons.filter(func(c): return c != ic and is_instance_valid(c) and c.has_meta("tube_to") and float(c.get_meta("tube_to")) < to_x)), 0.0, 1.0, t)
 	tw.tween_property(ic, "rotation", -TAU * turns, t).from(0.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	await tw.finished
 	_rolling_in -= 1
 	if not is_instance_valid(ic) or ic.is_queued_for_deletion():
 		return
 	ic.rotation = 0.0
-	Audio.play("sfx_ball_clack", -9.0, randf_range(0.85, 1.0))
+	_ball_sound("hit", -5.0, randf_range(0.85, 1.0))
+
+
+## A rolling ball may not go through the ones in front of it (smaller x, on the same row): it stays one ball's width behind the nearest.
+func _no_overlap(ic: Control, x: float, ahead: Array, gap := -1.0) -> float:
+	if gap < 0.0:
+		gap = BAG_PX + 3.0
+	for o in ahead:
+		if is_instance_valid(o) and o.position.x < ic.position.x - 1.0:  # (strictly in front: balls that wait at the same spot do not count)
+			x = maxf(x, o.position.x + gap)
+	return x
 
 
 ## Cirus "coming next turn": the tube holds next turn's Essence (fight.player.next_draw), in the bag's order (fire, water,
@@ -621,6 +1218,9 @@ func _sync_tube() -> void:
 			get_tree().create_timer((_tube_hold_until - Time.get_ticks_msec()) / 1000.0 + 0.05).timeout.connect(func():
 				_tube_sync_pending = false
 				_sync_tube())
+		return
+	if _puppet_strips():
+		_sync_globe()
 		return
 	var ranked: Array = []
 	for i in fight.player.next_draw.size():
@@ -689,16 +1289,39 @@ func _stash_flight(ev: Dictionary, from: Vector2) -> float:
 		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var a := from - _stock_row.global_position - ic.size / 2.0
 		var b := _tube_hidden()
+		var mouth := b
+		if _puppet_strips():
+			mouth = PuppetMachine.TUBE_PATH[0] - ic.size / 2.0
 		ic.position = a
 		ic.scale = Vector2(0.4, 0.4)
 		ic.modulate = Color(1.6, 1.6, 1.6, 0.0)
 		ic.set_meta("stash_until", Time.get_ticks_msec() + 4000)
 		_stock_row.add_child(ic)
 		_tube_icons.append(ic)
-		var delay := i * 0.14
+		var delay := i * (_pipe_gap() if _puppet_strips() else 0.14)
 		var tw := ic.create_tween()
 		tw.tween_interval(delay)
-		tw.tween_callback(func(): Audio.play("sfx_ball_clack", -14.0, 1.2))
+		tw.tween_callback(func():
+			Audio.play("spell_glow", -7.0, randf_range(1.15, 1.35))  # (it leaves the card: a bright whoosh)
+			_ball_sound("hit", -6.0, 1.2))
+		if _puppet_strips():  # card -> the pipe's mouth, then it rolls down the pipe into the box
+			tw.tween_method(_stash_step.bind(ic, a, mouth), 0.0, 1.0, 0.55)
+			tw.tween_callback(func():
+				_ball_sound("hole", -4.0, randf_range(0.95, 1.1))  # (it drops into the pipe's mouth)
+				_ball_sound("roll", -6.0, randf_range(0.9, 1.1)))
+			tw.tween_method(_pipe_step.bind(ic, b), 0.0, 1.0, PIPE_TIME)
+			tw.tween_callback(func():
+				ic.rotation = 0.0
+				ic.scale = Vector2.ONE
+				ic.modulate = Color.WHITE
+				ic.position = b
+				_ball_sound("hit", -5.0, 0.9)
+				# out of the box, into the tube at once, first in line (nearest the Bag); the others will queue behind it
+				var idx := _tube_waiting().size()
+				ic.set_meta("in_tube", true)
+				_roll_in(ic, _tube_slot_x(idx, idx + 1), 0.0))
+			last = delay + 1.3
+			continue
 		tw.tween_method(_stash_step.bind(ic, a, b), 0.0, 1.0, 0.62)
 		tw.tween_callback(func():
 			ic.rotation = 0.0
@@ -706,6 +1329,54 @@ func _stash_flight(ev: Dictionary, from: Vector2) -> float:
 			ic.position = b)
 		last = delay + 0.62
 	return last + 0.1
+
+
+## Puppet Stage: Essence a Lens (or the Storm Crown) gives back leave their chant slot, fly to the mouth of the pipe, roll down the pipe into the
+## box and come out of the tube into the Bag like a new turn's balls. (Their real icons wait, unseen, in the Bag until then.)
+func _refund_flight(ev: Dictionary) -> void:
+	if not _puppet_strips() or _stock_row == null:
+		return
+	var uids: Array = ev.uids
+	for u in uids:
+		_flying[u] = true
+	_refresh_stock()
+	var b := _tube_hidden()
+	var mouth: Vector2 = PuppetMachine.TUBE_PATH[0] - Vector2(BAG_PX, BAG_PX) / 2.0
+	# the one whose home is furthest left goes into the pipe first (the balls cannot pass each other on the way out, so the first out must be the one that rolls furthest)
+	var rank_of := {}
+	var by_home: Array = range(ev.els.size())
+	by_home.sort_custom(func(a: int, b: int) -> bool: return float(_bag_target.get(uids[a], Vector2.ZERO).x) < float(_bag_target.get(uids[b], Vector2.ZERO).x))
+	for rk in by_home.size():
+		rank_of[by_home[rk]] = rk
+	for i in ev.els.size():
+		var uid: int = uids[i]
+		var slot: int = clampi(int(ev.slots[i]), 0, maxi(0, fight.chant.size() - 1))
+		var ic := ElementIcon.make(ev.els[i], BAG_PX)
+		ic.size = Vector2(BAG_PX, BAG_PX)
+		ic.pivot_offset = ic.size / 2.0
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var a := _chant_slot_center(slot) - _stock_row.global_position - ic.size / 2.0
+		ic.position = a
+		_stock_row.add_child(ic)
+		var tw := ic.create_tween()
+		tw.tween_interval(int(rank_of[i]) * _pipe_gap())
+		tw.tween_method(_stash_step.bind(ic, a, mouth), 0.0, 1.0, 0.5)
+		tw.tween_callback(func():
+			_ball_sound("hole", -4.0, randf_range(0.95, 1.1))
+			_ball_sound("roll", -6.0, randf_range(0.9, 1.1)))
+		tw.tween_method(_pipe_step.bind(ic, b), 0.0, 1.0, PIPE_TIME)
+		tw.tween_callback(func():
+			if is_instance_valid(ic):
+				ic.queue_free()
+			_flying.erase(uid)
+			var real: ElementIcon = _bag_icons.get(uid)
+			if real != null and is_instance_valid(real):
+				real.set_meta("rolling", true)  # (it comes out of the box and rolls to its place, as at a new turn)
+				real.modulate.a = 0.0
+				_tube_launch([[real, _bag_target.get(uid, real.position), uid]])
+			else:
+				_refresh_stock())
+	await _wait(0.5 + ev.els.size() * _pipe_gap())
 
 
 func _stash_step(u: float, ic: ElementIcon, a: Vector2, b: Vector2) -> void:
@@ -734,6 +1405,9 @@ func _rolls_done() -> void:
 ## ball has left, the tube is loaded for the next turn. balls: [[icon, rest position (local to _stock_row), uid], ...].
 func _tube_launch(balls: Array) -> void:
 	if balls.is_empty():
+		return
+	if _puppet_strips():
+		_puppet_launch(balls)
 		return
 	_launching += 1
 	balls.sort_custom(func(a, b): return a[1].x < b[1].x)
@@ -796,6 +1470,17 @@ func _tube_launch(balls: Array) -> void:
 	_sync_tube()  # (it waits for _tube_hold_until)
 
 
+## A ball rolling to its place: a steady speed, and only the last quarter of the trip slows to a stop. (The old quadratic ease-out slowed every ball
+## down from the start; the ones behind were held back by the one in front, so the whole line seemed to stall on the way before it settled.)
+func _roll_ease(u: float) -> float:
+	var f := 0.25
+	var c := 1.0 / (1.0 - f / 2.0)
+	if u <= 1.0 - f:
+		return c * u
+	var w := 1.0 - u
+	return c * (1.0 - f) + c * (f / 2.0 - w * w / (2.0 * f))
+
+
 func _roll_ball(balls: Array, j: int, from_x: float, t: float, delay: float) -> void:
 	var ic: ElementIcon = balls[j][0]
 	var uid: int = balls[j][2]
@@ -805,11 +1490,24 @@ func _roll_ball(balls: Array, j: int, from_x: float, t: float, delay: float) -> 
 	if not is_instance_valid(ic) or ic.is_queued_for_deletion():
 		_launching -= 1
 		return
-	Audio.play("sfx_ball_roll", -9.0, randf_range(0.9, 1.1))
+	_ball_sound("roll", -8.0, randf_range(0.95, 1.05))
 	var goal_x: float = _bag_target.get(uid, balls[j][1]).x
-	var tw := ic.create_tween().set_parallel(true)
-	tw.tween_property(ic, "position:x", goal_x, t).from(from_x).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_property(ic, "rotation", -TAU * turns, t).from(0.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	# (with many balls in the Bag the places are closer than a ball is wide: the gap that ball keeps is never more than the distance between two places)
+	var slot_gap := minf(BAG_PX + 3.0, absf(_bag_slot(1, maxi(2, _bag_order.size())).x - _bag_slot(0, maxi(2, _bag_order.size())).x))
+	var others: Array = []
+	for k in balls.size():
+		if k != j:
+			others.append(balls[k][0])
+	if _stock_row != null:  # (the balls of another launch that are still rolling count too: a refund sends its balls one at a time)
+		for c in _stock_row.get_children():
+			if c is ElementIcon and c != ic and c.has_meta("rolling") and not others.has(c):
+				others.append(c)
+	var tw := ic.create_tween()
+	tw.tween_method(func(u: float) -> void:
+		if is_instance_valid(ic):
+			var e := _roll_ease(u)  # (the same curve for the slide and the spin, so the ball really rolls instead of skidding)
+			ic.position.x = _no_overlap(ic, lerpf(from_x, goal_x, e), others, slot_gap)
+			ic.rotation = -TAU * turns * e, 0.0, 1.0, t)
 	await tw.finished
 	_launching -= 1
 	if not is_instance_valid(ic) or ic.is_queued_for_deletion():
@@ -818,13 +1516,261 @@ func _roll_ball(balls: Array, j: int, from_x: float, t: float, delay: float) -> 
 	ic.remove_meta("rolling")
 	ic.mouse_filter = Control.MOUSE_FILTER_STOP
 	ic.position = _bag_target.get(uid, ic.position)
-	Audio.play("sfx_ball_clack", -3.0 if j > 0 else -7.0, randf_range(0.93, 1.1))
+	_ball_sound("hit", -3.0 if j > 0 else -8.0, randf_range(0.95, 1.08))
 	if j > 0:  # the ball it hit rocks a little
 		var prev: ElementIcon = balls[j - 1][0]
 		if is_instance_valid(prev) and not prev.has_meta("rolling"):
 			var rock := prev.create_tween()
 			rock.tween_property(prev, "position:x", prev.position.x - 4.0, 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 			rock.tween_property(prev, "position:x", prev.position.x, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	if _launching == 0:
+		_resort_bag()  # (Puppet Stage: the shooting is over, now the balls swap into their types)
+
+
+## ---- Puppet Stage: the lottery-ball machine ----------------------------------------------------------------------------
+## The globe holds next turn's draw and tumbles it; at a new turn the balls fall down the chute into the box and roll out of it, through
+## the tube, into the Bag. A spell's Essence for next turn rolls down the pipe into the box and waits there (hidden) for the same trip.
+
+## Where the j-th of n Essence rests in the globe (top-left, local to _stock_row).
+func _globe_slot(j: int, n: int) -> Vector2:
+	var half := Vector2(BAG_PX, BAG_PX) / 2.0
+	var slots: Array = PuppetMachine.GLOBE_SLOTS
+	if n <= 1:
+		return (slots[1] + slots[2]) / 2.0 - half
+	if n == 2:
+		return slots[1 + mini(j, 1)] - half
+	if n == 3:
+		return slots[mini(j, 2)] - half
+	var c: Vector2 = (slots[0] + slots[1] + slots[2]) / 3.0
+	var r := PuppetMachine.GLOBE_R - BAG_PX * 0.5 - 8.0
+	var a := -PI / 2.0 + TAU * j / n
+	return c + Vector2(cos(a), sin(a)) * r - half
+
+
+## The globe's balls drift and spin (more when `_globe_energy` is up: a launch is coming).
+func _tumble_globe(d: float) -> void:
+	_globe_t += d * (1.0 + _globe_energy * 3.5)
+	_globe_energy = maxf(0.0, _globe_energy - d * 0.9)
+	var amp := 5.0 + _globe_energy * 20.0
+	for ic in _tube_icons:
+		if not is_instance_valid(ic) or not ic.has_meta("globe") or ic.has_meta("dropping") or not ic.has_meta("base"):
+			continue
+		var base: Vector2 = ic.get_meta("base")
+		var cur: Vector2 = ic.get_meta("cur", base).lerp(base, 1.0 - exp(-d * 8.0))
+		ic.set_meta("cur", cur)
+		var ph: float = ic.get_meta("phase", 0.0)
+		ic.position = cur + Vector2(cos(_globe_t * 1.7 + ph), sin(_globe_t * 2.3 + ph * 1.3)) * amp
+		ic.rotation = sin(_globe_t * 1.3 + ph) * (0.4 + _globe_energy * 2.5)
+
+
+func _shuffle_globe() -> void:
+	_globe_energy = 1.0
+	Audio.play("sfx_crank_ratchet", -6.0)
+
+
+## Next turn's draw lives in the globe (the tube's role in Cirus): spawn the missing balls, keep the ones a spell sent waiting in the box.
+func _sync_globe() -> void:
+	var ranked: Array = []
+	for i in fight.player.next_draw.size():
+		var d: Dictionary = fight.player.next_draw[i]
+		ranked.append([maxi(0, "FWA".find(d.el) + 1), i, d])
+	ranked.sort_custom(func(a, b): return a[0] < b[0] or (a[0] == b[0] and a[1] < b[1]))
+	var pool: Array = _tube_icons.filter(func(c): return is_instance_valid(c) and not c.is_queued_for_deletion())
+	var now: Array = []
+	for r in ranked:
+		var d: Dictionary = r[2]
+		var found := -1
+		for k in pool.size():
+			if pool[k].el == d.el and pool[k].temp == d.temp:
+				found = k
+				break
+		if found >= 0:
+			now.append(pool[found])
+			pool.remove_at(found)
+			continue
+		var nb := ElementIcon.make(d.el, BAG_PX)
+		nb.size = Vector2(BAG_PX, BAG_PX)
+		nb.pivot_offset = nb.size / 2.0
+		nb.temp = d.temp
+		nb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		nb.set_meta("globe", true)
+		nb.set_meta("phase", randf() * TAU)
+		nb.scale = Vector2.ZERO
+		nb.position = PuppetMachine.GLOBE_C - nb.size / 2.0
+		nb.set_meta("cur", nb.position)
+		_stock_row.add_child(nb)
+		nb.create_tween().tween_property(nb, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_globe_energy = maxf(_globe_energy, 0.5)
+		now.append(nb)
+	var keep: Array = []
+	for c in pool:
+		if c.has_meta("stash_until") and Time.get_ticks_msec() < int(c.get_meta("stash_until")):
+			keep.append(c)  # (a spell's Essence that is still on its way: the effect has not landed yet)
+		else:
+			c.queue_free()
+	_tube_icons = now + keep
+	var in_globe: Array = now.filter(func(c): return c.has_meta("globe"))
+	for j in in_globe.size():
+		in_globe[j].set_meta("base", _globe_slot(j, in_globe.size()))
+
+
+## An Essence falls from the globe down the chute into the box.
+func _drop_ball(ic: ElementIcon, to: Vector2, delay: float) -> void:
+	if not is_instance_valid(ic):
+		return
+	ic.set_meta("dropping", true)
+	var over := Vector2(PuppetMachine.CHUTE_X - BAG_PX / 2.0, ic.position.y)
+	var tw := ic.create_tween()
+	tw.tween_interval(delay)
+	tw.tween_callback(func(): _ball_sound("hit", -12.0, randf_range(0.95, 1.1)))
+	tw.tween_property(ic, "position", over, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(ic, "rotation", 0.0, 0.14)
+	tw.tween_property(ic, "position", to, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func():
+		if is_instance_valid(ic):
+			ic.remove_meta("dropping"))
+
+
+const PIPE_TIME := 0.75  # seconds a ball takes down the pipe (stash / refund flights)
+
+
+## How long after one ball enters the pipe the next one may: they go at the same speed, so this keeps a ball's width between them.
+func _pipe_gap() -> float:
+	var pts: Array = PuppetMachine.TUBE_PATH.duplicate()
+	pts.append(_tube_hidden() + Vector2(BAG_PX, BAG_PX) / 2.0)
+	var total := 0.0
+	for i in pts.size() - 1:
+		total += pts[i].distance_to(pts[i + 1])
+	return maxf(0.2, (BAG_PX * PuppetMachine.TUBE_BALL_SCALE + 8.0) / maxf(total, 1.0) * PIPE_TIME)
+
+
+## A ball rolling down the pipe (mouth, leg, bend, into the box) to `end` (the box's hidden spot, top-left).
+func _pipe_step(u: float, ic: ElementIcon, end: Vector2) -> void:
+	if not is_instance_valid(ic):
+		return
+	var half := ic.size / 2.0
+	var pts: Array = PuppetMachine.TUBE_PATH.duplicate()
+	pts.append(end + half)
+	var total := 0.0
+	for i in pts.size() - 1:
+		total += pts[i].distance_to(pts[i + 1])
+	var at := u * total  # (constant speed: with an ease the balls that follow each other bunch up and overlap where it is slow)
+	var acc := 0.0
+	for i in pts.size() - 1:
+		var seg: float = pts[i].distance_to(pts[i + 1])
+		if at <= acc + seg or i == pts.size() - 2:
+			ic.position = pts[i].lerp(pts[i + 1], clampf((at - acc) / maxf(seg, 0.001), 0.0, 1.0)) - half
+			break
+		acc += seg
+	ic.rotation = -u * TAU * maxf(1.0, roundf(total / (PI * BAG_PX)))
+	ic.scale = Vector2.ONE * PuppetMachine.TUBE_BALL_SCALE  # (the elbow's glass is a little narrower than a ball)
+
+
+## x of the k-th (of n) places in the launcher tube, from its Bag end: the Essence waiting there (a spell's, sent through the pipe) queue up
+## from the left, and the globe's balls line up behind them at a new turn.
+func _tube_slot_x(k: int, n: int) -> float:
+	var x0: float = PuppetMachine.PIPE_X0
+	var step := minf(TUBE_BALL_STEP, (PuppetMachine.BOX_LEFT - 10.0 - BAG_PX - x0) / maxf(1.0, n - 1))
+	return x0 + k * step
+
+
+## The Essence waiting in the launcher tube (valid icons that are in the tube), nearest the Bag first.
+func _tube_waiting() -> Array:
+	var out: Array = _tube_icons.filter(func(c): return is_instance_valid(c) and not c.is_queued_for_deletion() and c.has_meta("in_tube"))
+	out.sort_custom(func(a, b): return a.position.x < b.position.x)
+	return out
+
+
+## A new turn: the globe shakes and its balls fall one by one down the chute into the box and roll into the tube behind the Essence that
+## already wait there; then every ball of the batch rolls out of the tube to its place in the Bag (the first one furthest, a "tok" at each
+## stop). The globe stays empty 2 s, then fills again.
+func _puppet_launch(balls: Array) -> void:
+	_launching += 1
+	balls.sort_custom(func(a, b): return a[1].x < b[1].x)
+	var n := balls.size()
+	var from_globe := Time.get_ticks_msec() < _turn_batch_until
+	_turn_batch_until = 0
+	var pool: Array = _tube_icons.filter(func(c): return is_instance_valid(c) and not c.is_queued_for_deletion())
+	var hidden := _tube_hidden()
+	_tube_prep = true
+	var drops: Array = []  # [icon, its place in the tube]
+	var starts_x: Array = []
+	for j in n:
+		var ic: ElementIcon = balls[j][0]
+		ic.set_meta("rolling", true)
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ic.modulate.a = 1.0
+		var taken := -1
+		if from_globe:
+			for k in pool.size():
+				if pool[k].el == ic.el and pool[k].temp == ic.temp:
+					taken = k
+					break
+		ic.position = hidden
+		starts_x.append(hidden.x)
+		if taken >= 0:
+			var waiting: ElementIcon = pool[taken]
+			pool.remove_at(taken)
+			if waiting.has_meta("in_tube"):  # it was already waiting in the tube
+				ic.position = waiting.position
+				starts_x[j] = waiting.position.x
+			elif waiting.has_meta("globe"):  # it falls out of the globe first
+				ic.position = waiting.position
+				ic.rotation = waiting.rotation
+				drops.append([ic, j])
+			waiting.queue_free()
+	_tube_icons = pool  # (whatever was not taken stays waiting)
+	_shuffle_globe()
+	if not drops.is_empty():
+		await get_tree().create_timer(0.55).timeout
+		for k in drops.size():
+			_drop_ball(drops[k][0], hidden, k * 0.13)
+		await get_tree().create_timer(0.54 + (drops.size() - 1) * 0.13).timeout
+		for k in drops.size():  # (out of the box they roll straight to their places in the Bag: no stop in the tube)
+			starts_x[drops[k][1]] = hidden.x
+	var travel: Array = []
+	var starts: Array = []
+	travel.resize(n)
+	starts.resize(n)
+	var arrive := 0.0
+	var last_start := 0.0
+	# the ball that is furthest along the tube (smallest x) leaves first, so that nobody has to roll through a ball that has not left yet;
+	# from the box, the one with the furthest place in the Bag goes first
+	var order: Array = range(n)
+	order.sort_custom(func(a, b): return float(starts_x[a]) < float(starts_x[b]) - 0.5 or (absf(float(starts_x[a]) - float(starts_x[b])) <= 0.5 and a < b))
+	# The balls queue in the tube / box in the order they leave, and none can pass another: so the first to leave gets the home furthest left, the
+	# next the next one, and so on (a ball in front of the queue whose home was on the right used to block the ones behind it, which needed a home
+	# on its left: they stopped dead in the Bag). Which Essence is which does not change; the ones that swapped homes slide into their types after.
+	var homes: Array = balls.map(func(b): return b[1])
+	homes.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
+	var slots_in_order: Array = []  # the places in _bag_order the batch holds
+	var batch_uids: Array = balls.map(func(b): return b[2])
+	for k in _bag_order.size():
+		if _bag_order[k] in batch_uids:
+			slots_in_order.append(k)
+	for oi in n:
+		var jj: int = order[oi]
+		var uid_j: int = balls[jj][2]
+		balls[jj][1] = homes[oi]
+		_bag_target[uid_j] = homes[oi]
+		if is_instance_valid(balls[jj][0]):
+			(balls[jj][0] as Control).set_meta("goal", homes[oi])
+		if oi < slots_in_order.size():
+			_bag_order[slots_in_order[oi]] = uid_j
+	for oi in n:
+		var j: int = order[oi]
+		var d: float = float(starts_x[j]) - balls[j][1].x
+		var t := 0.25 + maxf(0.0, d) / 820.0
+		travel[j] = t
+		arrive = t if oi == 0 else maxf(t, arrive + 0.12)
+		starts[j] = arrive - t
+		last_start = maxf(last_start, arrive - t)
+	_tube_hold_until = Time.get_ticks_msec() + int((last_start + 2.0) * 1000.0)  # the globe refills 2 s after the last ball is away
+	_tube_prep = false
+	for j in n:
+		_roll_ball(balls, j, float(starts_x[j]), float(travel[j]), float(starts[j]))
+	_launching -= 1
+	_sync_tube()  # (it waits for _tube_hold_until)
 
 
 ## The spell row. With many spells the cards shrink to fit the screen; hovering one brings it back to full size.
@@ -835,6 +1781,9 @@ const BOTTOM_MARGIN := 20.0
 
 
 func _fit_bottom() -> void:
+	if _puppet_strips():  # (the Puppet HUD is placed exactly as the PDF has it: nothing slides)
+		_place_spell_row()
+		return
 	# (the panels are first laid out at their design spots and slid down once their real heights are known: keep them
 	# invisible until then, or the first frame shows them too high)
 	var movers := [_spell_row, _chant_panel, _bag_panel, _player_panel, _log]
@@ -845,10 +1794,16 @@ func _fit_bottom() -> void:
 	if not is_instance_valid(_bag_panel):
 		return
 	var dy := (size.y if size.y > 0.0 else 1080.0) - BOTTOM_MARGIN - (_bag_panel.position.y + _bag_panel.size.y)
+	var puppet := _puppet_strips()
+	if puppet:  # (the Puppet strips are low: the Keeper's panel is the tallest part of the block, it sets the limit)
+		dy = minf(dy, (size.y if size.y > 0.0 else 1080.0) - BOTTOM_MARGIN - (_player_panel.position.y + _player_panel.size.y))
 	for n in movers:
 		if n != null:
-			n.position.y += dy
+			if not (puppet and n == _spell_row):
+				n.position.y += dy
 			n.modulate.a = 1.0
+	if _stage != null and puppet:
+		_place_spell_row()  # the stage's front face reaches down to the top of the Chant strip
 	_log.size.y = maxf(60.0, 1016.0 - _log.position.y)  # stop above the Menu button
 
 
@@ -856,12 +1811,18 @@ const ROW_WIDTH := 1860.0
 
 
 func _build_spells() -> void:
-	for c in _spell_row.get_children():
+	for c in _spell_row.get_children():  # (taken out at once: while the old holders still stand beside the new ones the row's minimum width doubles, the row grows and stays
+		_spell_row.remove_child(c)  # wider, and its centred cards slide to the right: that was the bug after the second fight)
 		c.queue_free()
+	_spell_row.size.x = 1920.0
+	_spell_row.position.x = 0.0
 	_cards.clear()
 	var n := fight.shown_spells().size()
 	var gap := 10.0
-	var fit := minf(1.0, (ROW_WIDTH - gap * maxf(0, n - 1)) / maxf(1.0, n * SpellCard.W))
+	var row_w := ROW_WIDTH
+	if _puppet_strips():  # (Puppet: the row is centred, and its right end stops at the Chant strip's: the cards must not cover the lottery machine)
+		row_w = minf(row_w, 2.0 * (PuppetLayout.BAG_AT.x + PuppetLayout.FRAME_CHANT.x - 960.0))
+	var fit := minf(1.0, (row_w - gap * maxf(0, n - 1)) / maxf(1.0, n * SpellCard.W))
 	_spell_row.add_theme_constant_override("separation", int(gap))
 	for s in fight.shown_spells():
 		var card := SpellCard.make(s)
@@ -876,6 +1837,7 @@ func _build_spells() -> void:
 		holder.add_child(card)
 		_spell_row.add_child(holder)
 		_cards.append(card)
+	_place_spell_row()
 
 
 func _card_zoom(card: SpellCard, big: bool) -> void:
@@ -892,24 +1854,64 @@ func _card_zoom(card: SpellCard, big: bool) -> void:
 	tw.tween_property(card, "position", off, 0.12)
 
 
+## A Handyman hand that has just been brought down but is not yet marked knocked out (that happens a moment later, in Fight._handyman_step):
+## its view must not go away (and be built again, reaching out, a moment after).
+func _hand_going_down(e: EnemyState) -> bool:
+	return e.has_passive("hand") and fight != null and not fight.hm.is_empty() and int(fight.hm.phase) < 3 and fight.enemies.has(e)
+
+
 func _sync_views() -> void:
-	var live := fight.enemies.filter(func(e): return not e.is_dead() or e.knocked)  # (a knocked-out hand stays in view)
+	var live := fight.enemies.filter(func(e): return not e.is_dead() or e.knocked or _hand_going_down(e))  # (a knocked-out hand stays in view)
+	var hm := not fight.hm.is_empty() and HandymanStage.available()  # (the Handyman fight with its art: hands on the body's shoulders)
 	var same := live.size() == _views.size() and live.all(func(e): return _views.has(e))
 	if same:
-		for i in live.size():
-			_enemy_row.move_child(_views[live[i]], i)
+		if not hm:
+			for i in live.size():
+				_enemy_row.move_child(_views[live[i]], i)
 		return
-	for c in _enemy_row.get_children():
-		_enemy_row.remove_child(c)
-		c.queue_free()
+	for e in _views:  # (Puppet Stage: a puppet that was defeated breaks into pieces)
+		var old: EnemyView = _views[e]
+		if e.is_dead() and not e.knocked and not _hand_going_down(e) and is_instance_valid(old) and is_instance_valid(old.creature):
+			if old.creature.has_rig():
+				_shatter_arm(old.creature)
+			else:
+				PuppetShatter.spawn(self, old.creature)
+	var had := _views.keys()
+	if hm:
+		if _hm_stage == null or not is_instance_valid(_hm_stage):
+			for c in _enemy_row.get_children():
+				_enemy_row.remove_child(c)
+				c.queue_free()
+			_hm_stage = HandymanStage.new()
+			_hm_stage.setup()
+			_enemy_row.add_child(_hm_stage)
+		for c in _hm_stage.get_children():
+			if c is EnemyView:
+				_hm_stage.remove_child(c)
+				c.queue_free()
+		_hm_stage._ghosts.clear()
+	else:
+		for c in _enemy_row.get_children():
+			_enemy_row.remove_child(c)
+			c.queue_free()
 	_views.clear()
+	var body_out := false
 	for e in live:
 		var v := EnemyView.new()
 		v.setup(e, fight)
 		v.clicked.connect(_on_enemy_clicked)
 		v.hp_clicked.connect(_on_hp_clicked)
-		_enemy_row.add_child(v)
+		if not hm:
+			_enemy_row.add_child(v)
+		elif e.id == "handyman":
+			_hm_stage.add_body(v)
+			body_out = true
+		else:
+			_hm_stage.add_hand(e, v, not (e in had))
 		_views[e] = v
+	if hm:
+		_hm_stage.set_real(body_out)
+		_hm_stage.sync_ghosts(live.map(func(e): return e.id), int(fight.hm.phase), fight)
 
 
 func _chant_string() -> String:
@@ -919,9 +1921,38 @@ func _chant_string() -> String:
 	return s
 
 
+## Puppet Stage: the heart + "HP 28 / 28" and the shield + its amount stand to the LEFT of the HP tray, their right edges against it.
+## Which Essence the pointer is over, for the wooden arrow pointer: "bag" (one that lies in the Bag), "chant" (one in the chant), or "".
+func cursor_zone(p: Vector2) -> String:
+	if phase != "build" or busy:
+		return ""
+	for uid in _bag_icons:
+		var ic: Control = _bag_icons[uid]
+		if is_instance_valid(ic) and ic.is_visible_in_tree() and ic.modulate.a > 0.5 and ic.get_global_rect().grow(2.0).has_point(p):
+			return "bag"
+	if _chant_row != null:
+		for slot in _chant_row.get_children():
+			if slot is Panel and slot.get_child_count() > 0 and slot.get_global_rect().has_point(p):
+				return "chant"
+	return ""
+
+
+func _place_hp_texts() -> void:
+	if not _puppet_hud or _heart == null:
+		return
+	var right := HP_TRAY.position.x - 10.0
+	var font := _hp_label.get_theme_font("font")
+	var w := font.get_string_size(_hp_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x + 6.0
+	_hp_label.size = Vector2(w, 24)
+	var dy := _hud_shift  # (the whole HUD may be sunk below the screen: these are put by hand, so they follow it)
+	_hp_label.position = Vector2(right - w, HP_TRAY.position.y + 4.0 + dy)
+	_heart.position = Vector2(_hp_label.position.x - 30.0, HP_TRAY.position.y + 3.0 + dy)
+	_shield_box.position = Vector2(right - _shield_box.get_combined_minimum_size().x, HP_TRAY.position.y + 31.0 + dy)
+
+
 func _refresh_all() -> void:
 	var p := fight.player
-	_info.text = "Act %d · Floor %d · Turn %d" % [run.act, run.floor_no(), fight.turn]
+	_info.text = ("Act %d · Floor %d" % [run.act, run.floor_no()]) if map_mode else ("Act %d · Floor %d · Turn %d" % [run.act, run.floor_no(), fight.turn])
 	_hp_bar.set_values(p.hp, p.max_hp, p.shield + p.lasting)
 	if _danger:
 		_danger.target = DangerVignette.strength(p.hp, p.max_hp)
@@ -935,8 +1966,11 @@ func _refresh_all() -> void:
 		shield_text += ("  Lasting %d" % p.lasting) if shield_text != "" else "Lasting %d" % p.lasting
 	_shield_label.text = shield_text
 	_shield_box.visible = shield_text != ""
+	_place_hp_texts()
 	_refresh_statuses()
 	_refresh_bottles()
+	_fit_hud_frames()
+	_refresh_coin()
 	_arts.update_charges(p)
 	if not _circus_strips():
 		for c in _next_row.get_children():
@@ -970,20 +2004,15 @@ func _refresh_all() -> void:
 		v.refresh(pv)
 	for card in _cards:
 		var s: Dictionary = card.spell
-		var dl := fight.durability_left(s)
-		card.durability_left = maxi(0, dl) if dl >= 0 or Fight.base_durability(s) > 0 else -1  # (the card shows what's left)
 		card.state = ""
 		card.state_text = ""
 		card.ignited = p.ignited.has(s.id)
-		card.cracks = 3 if fight.broken.has(s.id) else fight.hammer_hits.get(s.id, 0)
-		if phase == "spells" and fight.used.has(s.id) and fight.charges.get(s.id, 0) <= 0 and not p.used_powers.has(s.id):
-			card.state = "spent"  # cast this turn: dimmed until the turn is over
-		if fight.broken.has(s.id):
-			card.state = "broken"
-			card.state_text = "BROKEN"
-		elif p.used_powers.has(s.id):
+		card.cracks = fight.hammer_hits.get(s.id, 0)
+		if UiSkin.is_puppet() and card.cracks > 0 and card.get_meta("split_level", 0) != card.cracks:
+			_split_card(card, card.cracks, false)
+		if p.used_powers.has(s.id):
 			card.state = "used"
-			card.state_text = "Gone for this fight" if not s.get("power", false) else "Power in effect"
+			card.state_text = "Gone for this fight" if s.get("fleeting", false) else "Power in effect"
 		elif p.cooldowns.has(s.id) and p.cooldowns[s.id] > 0 and not fight.charges.has(s.id):
 			# (the turn after it's cast counts as 1; the turn it's cast in shows the full wait)
 			var wait: int = p.cooldowns[s.id] - (1 if fight.used.has(s.id) else 0)
@@ -997,8 +2026,6 @@ func _refresh_all() -> void:
 			card.lock_pattern = p.locks[s.id]
 		card.fires = pv.get("spells", {}).get(s.id, 0) if phase == "build" else 0
 		card.charges = fight.charges.get(s.id, 0) if phase == "spells" else 0
-		if phase != "spells" and fight.stored.has(s.id) and fight.usable_spells().has(s):
-			card.charges = 1  # stored: it always looks awake (wobbling, shining), even between turns; cast it after a Chant
 		if s.get("anti", false):
 			# an anti-spell comes alive with the chant, unless the chant contains its pattern (that breaks it)
 			var broken: bool = card.fires > 0 if phase == "build" else fight.anti_broken.has(s.id)
@@ -1017,14 +2044,16 @@ func _refresh_all() -> void:
 	_clear_btn.visible = phase == "build"
 	_end_btn.visible = phase == "build"
 	_end_btn.disabled = busy
-	_clear_btn.text = UiTheme.hk("Clear", "⌫")
-	_end_btn.text = UiTheme.hk("Pass", "E")
+	_clear_btn.text = "Clear" if _puppet_strips() else UiTheme.hk("Clear", "⌫")  # (the Puppet buttons are small: no "(key)")
+	_end_btn.text = "Pass" if _puppet_strips() else UiTheme.hk("Pass", "E")
 	if phase == "build":
-		_cast_btn.text = UiTheme.hk("Chant", "Enter")
+		_cast_btn.text = "Chant" if _puppet_strips() else UiTheme.hk("Chant", "Enter")
 		_cast_btn.disabled = busy or chant_idx.is_empty()
 	else:
-		_cast_btn.text = UiTheme.hk("Release", "E")
+		_cast_btn.text = "Release" if _puppet_strips() else UiTheme.hk("Release", "E")
 		_cast_btn.disabled = busy or aiming or move_view != null or pick_view != null or chant_mode != ""
+	for b in _test_btns:
+		b.disabled = busy or _auto_busy or phase != "build" or aiming or move_view != null or pick_view != null or chant_mode != "" or fight.over
 	var live_spells := fight.charges.size() > 0 and phase == "spells"
 	if not aiming and not busy and move_view == null and pick_view == null and chant_mode == "":
 		if phase == "build":
@@ -1098,12 +2127,14 @@ func _refresh_chant() -> void:
 			slot.add_child(ic)
 		_chant_row.add_child(slot)
 	var note := "%d Essence" % chant_idx.size()
+	if _puppet_strips():
+		note = ""  # (Puppet Stage: no plain count; only what needs saying: a Toll, the chant is spoken, Confused)
 	if p.toll > 0:
 		note = "%d / %d Essence (Toll)" % [chant_idx.size(), slots]
 	if phase == "spells":
 		note = "Chanted (%d). It is Released when your spells are done." % shown.size()
 	if p.confuse_turns > 0 and phase == "build":
-		note += "   ·   CONFUSED: this chant will be read backwards, and there is no preview"
+		note += ("" if note == "" else "   ·   ") + "CONFUSED: this chant will be read backwards, and there is no preview"
 	_chant_note.text = note
 	_chant_note.tooltip_text = note
 
@@ -1135,12 +2166,22 @@ func _refresh_stock() -> void:
 	if not circus:
 		_stock_row.custom_minimum_size.y = rows * (BAG_PX + BAG_GAP) - BAG_GAP
 	var rolled: Array = []  # Cirus: the Essence that are new this time and roll out of the tube
+	var arrange: Array = shown.map(func(i): return p.stock[i].uid)  # (left to right)
+	if _puppet_strips():
+		var newcomers := arrange.filter(func(u): return not _bag_icons.has(u) and not _bag_seen.has(u) and not _flying.has(u))
+		if not newcomers.is_empty() or _launching > 0 or _tube_prep or _resort_wait:
+			# while balls are being fired the ones already there keep their places and the new ones stack after them (they swap into
+			# their types only when the shooting is over: _resort_bag)
+			var keep := _bag_order.filter(func(u): return arrange.has(u))
+			arrange = keep + arrange.filter(func(u): return not keep.has(u))
+		_bag_order = arrange
+	var swapped := false
 	var delay := _bag_delay
 	_bag_delay = 0.0
 	for k in shown.size():
 		var s: Dictionary = p.stock[shown[k]]
 		var uid: int = s.uid
-		var target := _bag_slot(k, shown.size()) if circus else Vector2((k % per_row) * (BAG_PX + BAG_GAP), (k / per_row) * (BAG_PX + BAG_GAP))
+		var target := _bag_slot(arrange.find(uid) if _puppet_strips() else k, shown.size()) if circus else Vector2((k % per_row) * (BAG_PX + BAG_GAP), (k / per_row) * (BAG_PX + BAG_GAP))
 		_bag_target[uid] = target
 		var ic: ElementIcon = _bag_icons.get(uid)
 		var fresh := ic == null
@@ -1197,8 +2238,16 @@ func _refresh_stock() -> void:
 			var tw := ic.create_tween()
 			if delay > 0.0:
 				tw.tween_interval(delay)
-			tw.tween_property(ic, "position", target, BAG_MOVE).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			if _resort and absf(ic.position.x - target.x) > 1.0:  # (swapping into its type: up, across, down)
+				swapped = true
+				tw.tween_property(ic, "position", Vector2(ic.position.x, target.y - 12.0), 0.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+				tw.tween_property(ic, "position", Vector2(target.x, target.y - 12.0), BAG_MOVE).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+				tw.tween_property(ic, "position", target, 0.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+			else:
+				tw.tween_property(ic, "position", target, BAG_MOVE).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 			ic.set_meta("slide", tw)
+	if swapped:
+		_ball_sound("swap", -3.0)
 	if not rolled.is_empty():
 		_tube_launch(rolled)
 
@@ -1224,13 +2273,14 @@ func _bag_target_center(uid: int) -> Vector2:
 
 
 const CHANT_RINGS := 8  # empty rings shown while the chant is short (the chant itself has no length limit)
+const CHANT_RINGS_PUPPET := 10  # (the Puppet Stage strip has room for ten)
 const CHANT_W := 700.0  # room for the chant: a longer chant squeezes its Essence together, even overlapping
 const CHANT_W_CIRCUS := 540.0  # (the Cirus strip puts the buttons on the same row)
 
 
 ## How many empty rings to show: 8, or fewer under a Toll (its cap).
 func _chant_rings() -> int:
-	return mini(CHANT_RINGS, fight.player.chant_slots())
+	return mini(CHANT_RINGS_PUPPET if _puppet_strips() else CHANT_RINGS, fight.player.chant_slots())
 
 
 ## [orb size, gap between orbs] for a chant of `count` Essence. The gap goes negative (orbs overlap) when the
@@ -1240,6 +2290,10 @@ func _chant_layout(count := -1) -> Vector2:
 		count = chant_idx.size() if phase == "build" else fight.chant.size()
 	var n := maxi(_chant_rings(), count)
 	var px := 58.0 if n <= 10 else 50.0
+	if _puppet_strips():
+		px = PUPPET_RING_PX if n <= 10 else 46.0
+		var pstep := minf(PuppetLayout.RING_STEP, (PuppetLayout.RING_STEP * 9.0 + PUPPET_RING_PX - px) / maxf(1.0, n - 1))
+		return Vector2(px, pstep - px)
 	var step := minf(px + 6.0, ((CHANT_W_CIRCUS if _circus_strips() else CHANT_W) - px) / maxf(1.0, n - 1))
 	return Vector2(px, step - px)
 
@@ -1305,8 +2359,7 @@ func _light_patterns() -> void:
 		var orbs: Array = card.live_orbs()
 		var sp: Dictionary = card.spell
 		var k := 0
-		var gone: bool = card.state in ["silenced", "cooldown", "used"] or fight.broken.has(sp.id)  # (silenced etc.: as if it weren't there)
-		if phase == "build" and c != "" and not sp.has("patterns") and not gone:
+		if phase == "build" and c != "" and not sp.has("patterns"):
 			k = _pattern_progress(String(sp.pattern), c)
 		k = mini(k, orbs.size())
 		var before: int = _lit.get(sp.id, 0)
@@ -1381,6 +2434,14 @@ func note_progress() -> void:
 func _exit_tree() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE  # never leave the pointer hidden
 	Engine.time_scale = 1.0  # never leave the game frozen by a hit-stop
+	if _counted:
+		_counted = false
+		_puppet_live = maxi(0, _puppet_live - 1)
+		if _puppet_live == 0:
+			AmberCounter.off_in_fight = false
+			if is_inside_tree():
+				for n in get_tree().get_nodes_in_group("amber_counter"):  # (hidden during the fight)
+					n.visible = true
 
 
 func _input(ev: InputEvent) -> void:
@@ -1438,11 +2499,11 @@ func situation_help() -> String:
 	if pick_view != null:
 		return "Choose which of %s's Essence to knock off: click one of its orbs (or Tab to switch, Enter to confirm)." % pick_view.enemy.name
 	if move_view != null:
-		return "Rearranging %s: grab one of its Essence and drag it to another spot in its row. Right-click skips." % move_view.enemy.name
+		return "Moving an Essence of %s: click one of its orbs to pick it up, then click where it should go. Right-click skips." % move_view.enemy.name
 	if chant_mode == "insert":
 		return "Place the new Essence: it's the glowing one in your chant. Drag it to where it should go (or Left / Right, then Enter)."
 	if chant_mode == "arrange":
-		return "Self-Rearrange: every Essence of your chant is glowing. Drag one to another spot to make new patterns; right-click keeps the chant as it is."
+		return "Rearrange: every Essence of your chant is glowing. Drag one to another spot to make new patterns; right-click keeps the chant as it is."
 	if chant_mode == "pick":
 		return "Pick an Essence of your chant to copy: click it (or Tab + Enter)."
 	if phase == "build":
@@ -1478,12 +2539,17 @@ func _show_help() -> void:
 	sb.shadow_color = Color(0, 0, 0, 0.35)
 	sb.shadow_size = 6
 	sb.shadow_offset = Vector2(4, 5)
-	var paper := UiSkin.box("panel_paper_frame", [24, 24, 24, 24], [24, 14, 22, 22])
+	var paper := UiSkin.box("panel_paper_frame", [46, 46, 46, 46] if UiSkin.is_puppet() else [24, 24, 24, 24], [36, 28, 34, 34] if UiSkin.is_puppet() else [24, 14, 22, 22])
 	p.add_theme_stylebox_override("panel", paper if paper != null else sb)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.z_index = 99
 	p.position = Vector2(24, 112)
 	p.custom_minimum_size = Vector2(440, 0)
+	var slide := _puppet_strips()  # (Puppet Stage: it slides in from the right edge of the screen, just under the Leaves' frame, and slides back out)
+	var shown_x := 1920.0 - 24.0 - 440.0
+	var hidden_x := 1920.0 + 40.0
+	if slide:
+		p.position = Vector2(hidden_x, 170.0)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 4)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1535,14 +2601,21 @@ func _show_help() -> void:
 	v.add_child(r)
 	add_child(p)
 	_help_panel = p
+	if slide:
+		shown_x = 1920.0 - maxf(440.0, p.get_combined_minimum_size().x) + 6.0  # (flush with the right edge: the wooden rim hugs the screen)
 	var bob := sprout.create_tween().set_loops(6)
 	bob.tween_property(sprout, "position:y", -5.0, 0.35).set_trans(Tween.TRANS_SINE)
 	bob.tween_property(sprout, "position:y", 0.0, 0.35).set_trans(Tween.TRANS_SINE)
-	p.modulate.a = 0.0
 	var tw := p.create_tween()
-	tw.tween_property(p, "modulate:a", 1.0, 0.2)
-	tw.tween_interval(25.0)  # it stays a good while (or until you close it)
-	tw.tween_property(p, "modulate:a", 0.0, 0.5)
+	if slide:
+		tw.tween_property(p, "position:x", shown_x, 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)  # (no overshoot: it must not slide deeper into the screen)
+		tw.tween_interval(25.0)
+		tw.tween_property(p, "position:x", hidden_x, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	else:
+		p.modulate.a = 0.0
+		tw.tween_property(p, "modulate:a", 1.0, 0.2)
+		tw.tween_interval(25.0)  # it stays a good while (or until you close it)
+		tw.tween_property(p, "modulate:a", 0.0, 0.5)
 	tw.tween_callback(p.queue_free)
 	_pulse_next_thing()
 
@@ -1608,7 +2681,8 @@ func _begin_build_drag(pointer: Vector2) -> void:
 	d.begin_external(held, pointer)
 	_bdrag = d
 	_bdrag_src = src
-	Audio.play("elem_pickup")
+	if not _puppet_strips():
+		_elem_sound("grab")
 	_refresh_stock()
 
 
@@ -1627,17 +2701,17 @@ func _end_build_drag() -> void:
 			# (the tutorial's scripted chant is built left to right, so there it always goes on the end)
 			var at: int = res.to if gate.call("insert", null) else chant_idx.size()
 			chant_idx.insert(clampi(at, 0, chant_idx.size()), src.i)
-			Audio.play("elem_pickup")
+			_elem_sound("place")
 	elif res.inside:
 		if res.to != src.i and _allowed("rearrange"):
 			var k: int = chant_idx[src.i]
 			chant_idx.remove_at(src.i)
 			chant_idx.insert(clampi(res.to, 0, chant_idx.size()), k)
-			Audio.play("elem_pickup")
+			_elem_sound("place")
 	elif _allowed("remove"):
 		back = p.stock[chant_idx[src.i]]
 		chant_idx.remove_at(src.i)
-		Audio.play("elem_remove")
+		_elem_sound("remove")
 		_flying[back.uid] = true
 	_chant_changed()
 	if not back.is_empty():
@@ -1660,7 +2734,7 @@ func _add_stock_index(i: int) -> void:
 	var s: Dictionary = fight.player.stock[i]
 	var from := _bag_center(s.uid)
 	chant_idx.append(i)
-	Audio.play("elem_pickup")
+	_elem_sound("grab")
 	_flying[s.uid] = true
 	_bag_delay = FLY_TIME * 0.4
 	_chant_changed()
@@ -1674,7 +2748,7 @@ func _remove_from_chant(pos: int) -> void:
 	var from := _chant_slot_center(pos)
 	var px := _chant_px()
 	chant_idx.remove_at(pos)
-	Audio.play("elem_remove")
+	_elem_sound("remove")
 	_flying[s.uid] = true
 	_chant_changed()  # the bag makes room for it; its icon waits there, unseen, until this one lands
 	_fly(s, from, _bag_target_center(s.uid), px, BAG_PX)
@@ -1695,6 +2769,123 @@ func _add_element(el: String) -> void:
 		_add_stock_index(pick)
 
 
+## ---- Test mode: Auto-fill and Auto-ball ------------------------------------------------------------------------------------
+## Left of the Chant strip (Puppet: in the dark wood beside it).
+func _build_test_buttons() -> void:
+	var specs := [
+		["Auto-fill", _auto_fill, "Test mode: builds the chant that wakes as many of your spells as the Essence in your bag can."],
+		["Auto-ball", _auto_ball, "Test mode: shoots new Essence out of the machine until the bag holds 10."]]
+	for k in specs.size():
+		var b := UiTheme.button(specs[k][0], specs[k][1], 15)
+		if _puppet_strips():
+			UiTheme.use_heading_font(b)
+			UiTheme.style_puppet_button(b, "clear", 15)
+		b.tooltip_text = specs[k][2]
+		b.custom_minimum_size = Vector2(112.0, 34.0)
+		b.size = Vector2(112.0, 34.0)
+		b.position = _chant_panel.position + Vector2(-124.0, 8.0 + 42.0 * k)
+		add_child(b)
+		_test_btns.append(b)
+
+
+## The Essence in the bag that can go into the chant now: their stock indices.
+func _usable_stock() -> Array:
+	var out: Array = []
+	var st: Array = fight.player.stock
+	for i in st.size():
+		if not st[i].frozen and not st[i].hexed:
+			out.append(i)
+	return out
+
+
+## The best chant the bag can make: of every ordering of the bag's letters (at most 3^10, `max_len` long) the one that wakes the most spells
+## (a spell wakes once per turn, so the score is how many different spells have their pattern in the chant), cut back afterwards from both
+## ends while it still wakes as many. `score_of` is a Callable(chant) -> int. Gives up looking after 2.5 s.
+func _best_chant(counts: Dictionary, max_len: int, score_of: Callable) -> String:
+	var found := ["", -1]  # [the best chant so far, its score]
+	_dfs_step("", counts.duplicate(), counts.keys(), max_len, score_of, Time.get_ticks_msec(), found)
+	var c: String = found[0]
+	var sc: int = found[1]
+	while c.length() > 1 and int(score_of.call(c.left(c.length() - 1))) >= sc:
+		c = c.left(c.length() - 1)  # (the last letter is not needed)
+	while c.length() > 1 and int(score_of.call(c.substr(1))) >= sc:
+		c = c.substr(1)
+	return c
+
+
+func _dfs_step(cur: String, left: Dictionary, letters: Array, max_len: int, score_of: Callable, t0: int, found: Array) -> void:
+	if Time.get_ticks_msec() - t0 > 2500:
+		return
+	if cur.length() == max_len:
+		var sc: int = score_of.call(cur)
+		if sc > int(found[1]):
+			found[0] = cur
+			found[1] = sc
+		return
+	for el in letters:
+		if int(left[el]) > 0:
+			left[el] = int(left[el]) - 1
+			_dfs_step(cur + el, left, letters, max_len, score_of, t0, found)
+			left[el] = int(left[el]) + 1
+
+
+## Test mode: take the chant apart and rebuild it so that as many spells as possible are awake.
+func _auto_fill() -> void:
+	if busy or _auto_busy or phase != "build":
+		return
+	_auto_busy = true
+	if not chant_idx.is_empty():
+		_clear_chant()
+		await _wait(0.45)
+	var usable := _usable_stock()
+	var counts := {}
+	for i in usable:
+		var el: String = fight.player.stock[i].el
+		counts[el] = int(counts.get(el, 0)) + 1
+	var spells: Array = fight.usable_spells()
+	var max_len := mini(usable.size(), mini(fight.player.chant_slots(), 10))
+	if max_len <= 0 or spells.is_empty():
+		_auto_busy = false
+		Events.toast.emit("Nothing to fill: no Essence in the bag or no spell that can fire.", UiTheme.DANGER)
+		return
+	var score_of := func(c: String) -> int:
+		var n := 0
+		for sp in spells:
+			if not fight._occ(sp, c).is_empty():
+				n += 1
+		return n
+	var chant := _best_chant(counts, max_len, score_of)
+	var woken := 0
+	for sp in spells:
+		if not fight._occ(sp, chant).is_empty():
+			woken += 1
+	var taken: Array = []
+	for k in chant.length():
+		for i in usable:
+			if not taken.has(i) and fight.player.stock[i].el == chant[k]:
+				taken.append(i)
+				_add_stock_index(i)
+				break
+		await _wait(0.13)
+	_auto_busy = false
+	_refresh_all()
+	Events.toast.emit("Auto-fill: %d of %d spells wake with %s" % [woken, spells.size(), " ".join(Array(chant.split("")))], Color(0.7, 0.95, 0.7))
+
+
+## Test mode: new Essence come out of the machine until the bag holds 10.
+func _auto_ball() -> void:
+	if busy or _auto_busy or phase != "build":
+		return
+	var p := fight.player
+	var need := 10 - p.stock.size()
+	if need <= 0:
+		Events.toast.emit("The bag already holds %d Essence." % p.stock.size(), UiTheme.MUTED)
+		return
+	for i in need:
+		p.add_element(fight._random_element())
+	_refresh_all()  # (the newcomers roll out of the tube into the bag)
+
+
 func _clear_chant() -> void:
 	if busy or phase != "build" or not _allowed("clear"):
 		return
@@ -1703,7 +2894,7 @@ func _clear_chant() -> void:
 	for k in chant_idx.size():
 		going.append([fight.player.stock[chant_idx[k]], _chant_slot_center(k)])
 	chant_idx.clear()
-	Audio.play("elem_remove")
+	_elem_sound("remove")
 	for g in going:
 		_flying[g[0].uid] = true
 	_chant_changed()
@@ -1712,6 +2903,8 @@ func _clear_chant() -> void:
 
 
 func _unhandled_input(ev: InputEvent) -> void:
+	if _hud_hidden():
+		return
 	if _choosing_el:
 		if ev is InputEventKey and ev.pressed and not ev.echo:
 			var el: String = {KEY_F: "F", KEY_W: "W", KEY_A: "A"}.get(ev.keycode, "")
@@ -1732,10 +2925,6 @@ func _unhandled_input(ev: InputEvent) -> void:
 		return
 	if not (ev is InputEventKey) or not ev.pressed or ev.echo:
 		return
-	if _picking_any and ev.keycode == KEY_ESCAPE:
-		_cancel()  # (a selected spell goes back, as with right-click)
-		get_viewport().set_input_as_handled()
-		return
 	if aiming:
 		match ev.keycode:
 			KEY_TAB:
@@ -1752,16 +2941,6 @@ func _unhandled_input(ev: InputEvent) -> void:
 	if move_view != null:
 		if ev.keycode == KEY_ESCAPE:
 			_cancel()
-		elif is_instance_valid(_edrag):
-			match ev.keycode:
-				KEY_TAB:
-					_edrag.key_cycle(-1 if ev.shift_pressed else 1)
-				KEY_LEFT:
-					_edrag.key_move(-1)
-				KEY_RIGHT:
-					_edrag.key_move(1)
-				KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
-					_edrag.key_drop()
 		get_viewport().set_input_as_handled()
 		return
 	if is_instance_valid(_drag):
@@ -1884,7 +3063,7 @@ func _on_cast() -> void:
 
 
 func _on_card_clicked(card: SpellCard) -> void:
-	if phase != "spells" and card.charges > 0 and not busy:
+	if phase == "build" and card.charges > 0 and not busy:
 		# a stored spell: awake, but spells are cast after the chant
 		_float_text("Chant first", card.global_position + Vector2(card.size.x * card.scale.x / 2.0 - 60, -10), Color(1, 0.9, 0.55))
 		Audio.play("release_armour_block", -6.0)
@@ -1916,8 +3095,6 @@ func _on_card_clicked(card: SpellCard) -> void:
 	_casting = true
 	await fight.resolve_spell(spell.id, target)
 	_end_casting()
-	if spell.get("power", false):
-		_build_spells()  # (the Power left the row: the others close up)
 	_sync_views()
 	_refresh_all()
 	tut.emit("cast", spell.id)
@@ -1997,7 +3174,17 @@ func _charge_count() -> int:
 
 func _finish() -> void:
 	busy = true
-	if fight.won:
+	if fight.won and stage_flow and _stage != null:  # Puppet Stage: the Victory sign drops from behind the ceiling, the HUD sinks
+		await get_tree().create_timer(0.5).timeout
+		var perfect_run: bool = fight.player.damage_taken <= 0.0
+		if not fight.enemies.any(func(e): return e.def.get("boss", false)):  # (a boss fight already played its own "boss_defeat": two victory sounds on top of each other were too much)
+			Audio.play("victory_fanfare")
+		await _stage.drop_sign("Perfect Victory!" if perfect_run else "Victory!", Color(0.30, 0.17, 0.07), "perfect_victory" if perfect_run else "victory").finished
+		await get_tree().create_timer(1.0).timeout
+		await _hud_down()
+		_stage.lift_sign()
+		await get_tree().create_timer(0.5).timeout
+	elif fight.won:
 		await get_tree().create_timer(0.3).timeout
 		var perfect: bool = fight.player.damage_taken <= 0.0
 		if not await _result_banner("perfect" if perfect else "victory"):
@@ -2009,7 +3196,11 @@ func _finish() -> void:
 	elif run != null and run.can_revive():
 		await _seed_revival()
 	else:
-		if not await _result_banner("defeat"):
+		if stage_flow and _stage != null and ResourceLoader.exists(UiSkin.theme_dir() + "Stage/Shared/sign_defeat.png"):  # Puppet Stage: the Defeat board drops in
+			Audio.play("defeat_stinger")
+			await _stage.drop_sign("Defeat", Color(0.3, 0.1, 0.08), "defeat").finished
+			await get_tree().create_timer(1.8).timeout
+		elif not await _result_banner("defeat"):
 			_banner("The last tree falls…", UiTheme.DANGER, 1.6)
 			await get_tree().create_timer(1.6).timeout
 	finished.emit(fight.won)
@@ -2069,11 +3260,38 @@ func _seed_revival() -> void:
 # ------------------------------------------------------------------ your statuses and bottles
 
 ## [text, colour, keyword] for each status you have: shown as bright badges above your HP bar.
+## The picture names to try for each of your statuses (the first that exists is used; Puppet art first, the older intent pictures as a fallback).
+const STATUS_ART_NAMES := {"shield": ["icon_armor_shield"], "thorns": ["status_thorns"], "silence": ["status_silenced"], "aegis": ["status_aegis"],
+	"echo": ["status_echo_ready"], "overload": ["status_overload"], "ethereal": ["status_ethereal", "intent_ethereal"],
+	"bleed": ["status_bleed", "intent_bleed"], "confuse": ["status_confuse", "intent_confuse"], "blind": ["status_blind", "intent_blind"],
+	"frail": ["status_frail", "intent_frail"], "lock": ["status_toll", "intent_toll"], "vulnerable": ["status_vulnerable"],
+	"brittle": ["status_brittle"], "disarmed": ["status_disarmed"]}
+## A Power's badge picture, by the theme of its dissolve (fire / water / wind use the Essence balls).
+const POWER_ART_NAMES := {"fire": ["essence_fire"], "water": ["essence_water"], "wind": ["essence_wind"], "thorn": ["status_thorns"],
+	"venom": ["status_poison", "intent_poison"], "leaf": ["icon_seedling"], "shadow": ["status_silenced"], "page": ["icon_spellbook"]}
+
+
+## The name of the picture for a status badge (`b` is one entry of _status_badges), or "" when there is none.
+func _badge_art_name(b: Array) -> String:
+	var names: Array = []
+	var id := String(b[2])
+	if id == "" and b.size() > 4:  # a Power: by what it is made of
+		var sp := fight._find_spell(String(b[4]))
+		var key: String = String(power_theme(sp).key)
+		names = POWER_ART_NAMES.get(key, [])
+	else:
+		names = STATUS_ART_NAMES.get(id, [])
+	for n in names:
+		if UiSkin.tex(n) != null:
+			return n
+	return ""
+
+
 func _status_badges() -> Array:
 	var p := fight.player
 	var out := []
 	if p.aegis > 0:
-		out.append(["✨ Evasion %d" % p.aegis, Color(1.0, 0.8, 0.25), "evasion"])
+		out.append(["✨ Aegis %d" % p.aegis, Color(1.0, 0.8, 0.25), "aegis"])
 	var th := p.thorns_turn + p.passive("thorns")
 	if th > 0:
 		out.append(["🌵 Thorns %d" % th, Color(0.5, 0.85, 0.25), "thorns"])
@@ -2109,7 +3327,7 @@ func _status_badges() -> Array:
 			var el: String = p.passives.attune_el
 			out.append(["+%d each turn" % p.passive("attune"), Elements.COLORS[el], "attune_" + el,
 				Keywords.tooltip(sp.name, "Gain %d %s each turn." % [p.passive("attune"), Elements.NAMES[el]], "[color=#9aa89a]Power: it lasts the whole fight.[/color]"), id])
-		elif sp.get("power", false) and Fight.lasting_power(sp):  # (a one-off Power, like Open Grimoire: no badge)
+		elif sp.get("power", false):
 			var pth := power_theme(sp)
 			out.append(["%s %s" % [pth.icon, sp.name], pth.col, "", Keywords.tooltip(sp.name, SpellText.describe(sp), "[color=#9aa89a]Power: it lasts the whole fight.[/color]"), id])
 	return out
@@ -2118,14 +3336,14 @@ func _status_badges() -> Array:
 ## How each Power dissolves into its status: the side it vanishes from first, its glowing edge and particles, and its
 ## badge icon. By spell id; anything else by its main element.
 const POWER_THEMES := {
-	"fire": {"from": Vector2(0, 1), "col": Color(1.0, 0.55, 0.2), "shape": Vfx.SPARK, "icon": "🔥", "rise": -260.0},
-	"water": {"from": Vector2(0, -1), "col": Color(0.35, 0.65, 1.0), "shape": Vfx.DROP, "icon": "💧", "rise": 40.0},
-	"wind": {"from": Vector2(-1, 0), "col": Color(0.6, 1.0, 0.8), "shape": Vfx.GLOW, "icon": "🌪", "rise": 120.0},
-	"thorn": {"from": Vector2(0, 1), "col": Color(0.55, 0.8, 0.3), "shape": Vfx.THORN, "icon": "🌵", "rise": 60.0},
-	"venom": {"from": Vector2(0, 1), "col": Color(0.55, 0.95, 0.3), "shape": Vfx.BUBBLE, "icon": "🐍", "rise": -120.0},
-	"leaf": {"from": Vector2(0, -1), "col": Color(0.45, 0.85, 0.35), "shape": Vfx.FLAKE, "icon": "🍃", "rise": 160.0},
-	"shadow": {"from": Vector2(1, 0), "col": Color(0.75, 0.45, 1.0), "shape": Vfx.SMOKE, "icon": "🕯", "rise": 60.0},
-	"page": {"from": Vector2(1, 0), "col": Color(1.0, 0.95, 0.8), "shape": Vfx.SHARD, "icon": "📜", "rise": 200.0},
+	"fire": {"key": "fire", "from": Vector2(0, 1), "col": Color(1.0, 0.55, 0.2), "shape": Vfx.SPARK, "icon": "🔥", "rise": -260.0},
+	"water": {"key": "water", "from": Vector2(0, -1), "col": Color(0.35, 0.65, 1.0), "shape": Vfx.DROP, "icon": "💧", "rise": 40.0},
+	"wind": {"key": "wind", "from": Vector2(-1, 0), "col": Color(0.6, 1.0, 0.8), "shape": Vfx.GLOW, "icon": "🌪", "rise": 120.0},
+	"thorn": {"key": "thorn", "from": Vector2(0, 1), "col": Color(0.55, 0.8, 0.3), "shape": Vfx.THORN, "icon": "🌵", "rise": 60.0},
+	"venom": {"key": "venom", "from": Vector2(0, 1), "col": Color(0.55, 0.95, 0.3), "shape": Vfx.BUBBLE, "icon": "🐍", "rise": -120.0},
+	"leaf": {"key": "leaf", "from": Vector2(0, -1), "col": Color(0.45, 0.85, 0.35), "shape": Vfx.FLAKE, "icon": "🍃", "rise": 160.0},
+	"shadow": {"key": "shadow", "from": Vector2(1, 0), "col": Color(0.75, 0.45, 1.0), "shape": Vfx.SMOKE, "icon": "🕯", "rise": 60.0},
+	"page": {"key": "page", "from": Vector2(1, 0), "col": Color(1.0, 0.95, 0.8), "shape": Vfx.SHARD, "icon": "📜", "rise": 200.0},
 }
 const POWER_THEME_OF := {"kindle": "fire", "ember_crown": "fire", "pyromancy": "fire", "avatar_of_flame": "fire",
 	"rising_tide": "water", "trade_winds": "wind", "storm_crown": "wind", "echo_chamber": "wind", "attunement": "wind",
@@ -2171,7 +3389,7 @@ func _power_fly(sp: Dictionary) -> void:
 	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pic.z_index = 60
 	var mat := ShaderMaterial.new()
-	mat.shader = load("res://assets/card/power_dissolve.gdshader")
+	mat.shader = load("res://assets/Global/Card/Shaders/power_dissolve.gdshader")
 	mat.set_shader_parameter("from", th.from)
 	mat.set_shader_parameter("edge_color", th.col)
 	pic.material = mat
@@ -2219,20 +3437,23 @@ func _power_fly(sp: Dictionary) -> void:
 	Audio.play("artifact_get", -6.0)
 
 
-## status keyword -> art in assets/ui/new/ (New theme only)
-const STATUS_ART := {"shield": "icon_armor_shield", "thorns": "status_thorns", "silence": "status_silenced", "aegis": "status_aegis", "evasion": "status_aegis",
+## status keyword -> art by name (UiSkin looks in assets/New/ ...)
+const STATUS_ART := {"shield": "icon_armor_shield", "thorns": "status_thorns", "silence": "status_silenced", "aegis": "status_aegis",
 	"echo": "status_echo_ready", "overload": "status_overload", "ethereal": "intent_ethereal", "bleed": "intent_bleed",
 	"confuse": "intent_confuse", "blind": "intent_blind", "frail": "intent_frail", "lock": "intent_toll"}
 
 
 func _refresh_statuses() -> void:
+	if _puppet_hud:
+		_refresh_statuses_compact()
+		return
 	for c in _status_row.get_children():
 		c.queue_free()
 	for b in _status_badges():
 		var chip := TipPanel.new()  # its tooltip is rich text
 		var col: Color = b[1]
 		var pill := UiSkin.box("status_badge_pill", [17, 16, 17, 16], [14, 3, 14, 5])
-		var icon: Control = UiSkin.icon(STATUS_ART.get(b[2], ""), 24) if pill != null else null
+		var icon: Control = UiSkin.icon(_badge_art_name(b), 24) if pill != null else null
 		var text: String = b[0]
 		if icon != null:
 			text = text.substr(text.find(" ") + 1)  # the art replaces the leading emoji
@@ -2283,6 +3504,9 @@ func _refresh_bottles() -> void:
 	var n_shown: int = bs.size() if UiSkin.is_new() else maxi(run.bottle_slots() if run else Bottles.BASE_SLOTS, bs.size())
 	var chip_px := 64.0 if n_shown <= 3 else (52.0 if n_shown == 4 else 44.0)  # (five bottles must not push the frame out of the panel, nor squeeze the HP text)
 	_bottle_row.add_theme_constant_override("separation", 6 if n_shown <= 3 else 0)
+	if _puppet_hud:  # (the frame holds five 52 px squares)
+		chip_px = 52.0
+		_bottle_row.add_theme_constant_override("separation", 0)
 	for i in n_shown:
 		var chip := BottleChip.make(bs[i] if i < bs.size() else "", i, true, chip_px)
 		chip.used.connect(_on_bottle)
@@ -2523,8 +3747,12 @@ func _pulse_release() -> void:
 
 
 func _process(_d: float) -> void:
+	if _puppet_strips():
+		_tumble_globe(_d)
 	_update_hover_info(_d)
 	_pulse_release()
+	if _puppet_strips():
+		_fit_enemy_lift()
 	# idle while it's your move: the Seedling pops up once to help (not in the tutorial, which has its coach)
 	if not busy and not fight.over and not help_override.is_valid() and _pause_overlay == null:
 		_idle += _d
@@ -2605,12 +3833,7 @@ func _choose_target(spell: Dictionary, cands: Array) -> int:
 	return await _aim(card, from, cands, "%s: %s  ·  click, or Tab + Enter" % [spell.name, what], false)
 
 
-## Rearrange: grab an Essence of this enemy's row and drag it to another spot, the way you rearrange your chant
-## (the others slide aside). Tab + Left / Right + Enter works too; Esc / right-click skips.
-## (Behind walls, the Bramble Matron's row is split up: there it's click one, then click where it goes.)
-var _edrag: ChantDrag  # the enemy row being rearranged
-
-
+## Move one element of this enemy's HP: click it, then click where it goes. Esc / right-click skips.
 func _mover(spell: Dictionary, e: EnemyState) -> Array:
 	var v: EnemyView = _views.get(e)
 	if v == null:
@@ -2618,20 +3841,9 @@ func _mover(spell: Dictionary, e: EnemyState) -> Array:
 	move_view = v
 	v.move_mode = true
 	v.move_pick = -1
-	var walled := e.has_passive("briar_walls")
-	_prompt.text = ("%s: click an Essence of %s to pick it up  ·  right-click to skip" if walled else
-		"%s: grab an Essence of %s and drag it to another spot  ·  Tab + Left / Right + Enter  ·  right-click to skip") % [spell.name, e.name]
+	_prompt.text = "%s: click an Essence of %s to pick it up  ·  right-click to skip" % [spell.name, e.name]
 	_refresh_all()
-	if not walled:
-		await get_tree().process_frame  # (the row grows for the move: lay it out first)
-		_edrag = v.begin_row_drag(self)
-		_edrag.dropped.connect(func(from, to): _move_done.emit([from, to]))
 	var pair: Array = await _move_done
-	if is_instance_valid(_edrag):
-		await _wait(0.25)  # (let the dropped one settle)
-		_edrag.queue_free()
-		v.end_row_drag()
-	_edrag = null
 	v.move_mode = false
 	v.move_pick = -1
 	move_view = null
@@ -2653,7 +3865,7 @@ func _picker(spell: Dictionary, e: EnemyState) -> int:
 	var verb := "steal" if spell.effects.any(func(x): return x.op == "steal") else "knock off"
 	var free := []
 	for i in e.size():
-		if not e.armor[i] and (fight.pick_el == "" or e.elements[i] == fight.pick_el):
+		if not e.armor[i]:
 			free.append(i)
 	if free.size() <= 1:
 		# no real choice (e.g. its very last element): take it without asking
@@ -2669,8 +3881,7 @@ func _picker(spell: Dictionary, e: EnemyState) -> int:
 	pick_view = v
 	tut.emit("picking", null)
 	v.pick_mode = true
-	v.pick_el = fight.pick_el
-	v.pick_i = free[0]
+	v.pick_i = e.armor.find(false)
 	_prompt.text = "%s: choose an Essence of %s to %s  ·  click it, or Tab + Enter" % [spell.name, e.name, verb]
 	_callout("Choose an Essence of [b]%s[/b] to %s" % [e.name, verb], v.global_position + Vector2(v.size.x / 2.0, 120), Color(1, 0.85, 0.4), 2.5)
 	_refresh_all()
@@ -2678,7 +3889,6 @@ func _picker(spell: Dictionary, e: EnemyState) -> int:
 	tut.emit("picked", idx)
 	v.keep_big = v.keep_big or _casting
 	v.pick_mode = false
-	v.pick_el = ""
 	v.pick_i = -1
 	pick_view = null
 	_refresh_all()
@@ -2690,7 +3900,7 @@ func _cycle_pick(step: int) -> void:
 	var i := pick_view.pick_i
 	for k in e.size():
 		i = (i + step + e.size()) % e.size()
-		if not e.armor[i] and (pick_view.pick_el == "" or e.elements[i] == pick_view.pick_el):
+		if not e.armor[i]:
 			break
 	pick_view.pick_i = i
 	pick_view.refresh({})
@@ -2731,14 +3941,7 @@ func _undo_last() -> void:
 
 ## Spells that take "an Essence of your choice" (Pluck, Steal any): the choice is the Essence itself, anywhere.
 func _picks_any_essence(eff: Dictionary) -> bool:
-	return eff.get("op", "") in ["pluck", "steal"] or (eff.get("op", "") == "purge" and eff.get("target", "") in ["target", "two"])
-
-
-## A spell that takes only one kind of Essence ("remove up to 3 Fire", "steal up to 2 Water"): that kind, else "".
-func _pick_kind(eff: Dictionary) -> String:
-	if eff.get("op", "") == "purge" or (eff.get("op", "") == "steal" and eff.get("el", "any") != "any"):
-		return String(eff.get("el", ""))
-	return ""
+	return eff.get("op", "") == "pluck" or (eff.get("op", "") == "steal" and eff.get("el", "any") == "any")
 
 
 ## Every enemy's Essence becomes pickable at once; the one under the cursor lights up. Returns
@@ -2752,38 +3955,25 @@ func _pick_any_essence(spell: Dictionary, cancellable: bool, only: EnemyState = 
 				break
 	_pick_style = style if style != "" else ("hand" if eff.get("op", "") == "steal" else "shoot")
 	_pick_only = only
-	_pick_el = fight.pick_el if fight.pick_el != "" else _pick_kind(eff)
-	_steal_into_chant = eff.get("into", "") == "chant"
-	var greyed: Control = null
-	if _pick_style == "hand":
-		greyed = _chant_row if not _steal_into_chant else _stock_row
-		greyed.modulate = Color(0.55, 0.55, 0.55, 0.6)
 	_picking_any = true
 	_picking_any_cancellable = cancellable
 	tut.emit("picking", null)
 	for v in _views.values():
-		v.pick_mode = (only == null or v.enemy == only) and not v.enemy.is_dead()  # (not a fallen hand)
+		v.pick_mode = only == null or v.enemy == only
 		v.paint_mode = _pick_style == "brush"
-		v.paint_to = fight.paint_to
-		v.pick_el = _pick_el
 		v.pick_i = -1
 	# the pointer becomes a crosshair (remove), an open hand (steal) or a paint brush (Expose)
 	_aim_cursor = AimCursor.new()
 	_aim_cursor.mode = _pick_style
 	add_child(_aim_cursor)
 	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
-	var what: String = Elements.NAMES.get(_pick_el, "Essence")  # (a spell that takes one kind names it: "an enemy's Fire")
-	var paint: String = "an Any Essence" if fight.paint_to == "?" else Elements.NAMES[fight.paint_to]
-	var how: String = {"hand": ("drag an enemy's %s down into your chant" if _steal_into_chant else "drag an enemy's %s down into your bag") % what, "brush": "paint an enemy's Essence: it becomes %s" % paint}.get(_pick_style, "shoot an enemy's %s off" % what)
+	var how: String = {"hand": "drag an enemy's Essence down into your bag", "brush": "paint an enemy's Essence: it becomes an Any Essence"}.get(_pick_style, "shoot an enemy's Essence off")
 	_prompt.text = "%s: %s%s" % [spell.name, how, "  ·  right-click to put it back" if cancellable else ""]
 	_callout("[b]%s[/b]: %s" % [spell.name, how], Vector2(960, 150), Color(1, 0.85, 0.4), 2.0)
 	_refresh_all()
 	var got: Array = await _any_picked
-	if greyed != null:
-		greyed.modulate = Color.WHITE
 	_picking_any = false
 	_pick_only = null
-	_pick_el = ""
 	_steal_drag = {}
 	if is_instance_valid(_aim_cursor):
 		_aim_cursor.queue_free()
@@ -2794,7 +3984,6 @@ func _pick_any_essence(spell: Dictionary, cancellable: bool, only: EnemyState = 
 			v.keep_big = v.keep_big or (_casting and v.pick_mode)
 			v.pick_mode = false
 			v.paint_mode = false
-			v.pick_el = ""
 			v.pick_i = -1
 	_refresh_all()
 	return got
@@ -2865,8 +4054,6 @@ func _end_steal_drag(at: Vector2) -> void:
 	if is_instance_valid(_aim_cursor):
 		_aim_cursor.holding = ""
 	var bag := _stock_row.get_global_rect().grow(BAG_DROP_MARGIN)
-	if _steal_into_chant:
-		bag = _chant_row.get_global_rect().grow(BAG_DROP_MARGIN * 0.6)  # (Instant Steal: it goes into the chant)
 	var ghost := ElementIcon.make(d.el, 52)
 	ghost.size = Vector2(52, 52)
 	ghost.z_index = 150
@@ -2875,12 +4062,6 @@ func _end_steal_drag(at: Vector2) -> void:
 	_fx.add_child(ghost)
 	if bag.has_point(at):
 		var to := _stock_row.global_position + _bag_slot(_bag_icons.size(), _bag_icons.size() + 1) - _fx.global_position
-		if _steal_into_chant:
-			# Instant Steal: like a Steal into the bag, it flies to the chant's next free spot
-			var n := fight.chant.size()
-			var slot: Control = _chant_row.get_child(n) if n < _chant_row.get_child_count() else null
-			var end := (slot.get_global_rect().get_center() if slot != null else _chant_row.get_global_rect().end - Vector2(30, _chant_row.size.y / 2.0))
-			to = end - ghost.size / 2.0 - _fx.global_position
 		var tw := ghost.create_tween()
 		tw.tween_property(ghost, "position", to, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.tween_callback(ghost.queue_free)
@@ -2900,13 +4081,11 @@ func _on_hp_clicked(v: EnemyView, index: int) -> void:
 		if _pick_only != null and v.enemy != _pick_only:
 			return
 		if _pick_style == "brush":
-			if index < v.enemy.size() and v.enemy.elements[index] != fight.paint_to and _allowed("pick", index):
+			if index < v.enemy.size() and v.enemy.elements[index] != "?" and _allowed("pick", index):
 				if is_instance_valid(_aim_cursor):
 					_aim_cursor.kick()  # the brush presses down
 				_any_picked.emit([fight.enemies.find(v.enemy), index])
 			return
-		if index < v.enemy.size() and _pick_el != "" and v.enemy.elements[index] != _pick_el:
-			return  # (dimmed: not the kind this spell takes)
 		if index < v.enemy.size() and not v.enemy.armor[index] and _allowed("pick", index) and _steal_drag.is_empty():
 			if _pick_style == "hand":
 				_begin_steal_drag(v, index)  # the pick happens when it's dropped on the bag
@@ -2915,7 +4094,7 @@ func _on_hp_clicked(v: EnemyView, index: int) -> void:
 				_any_picked.emit([fight.enemies.find(v.enemy), index])
 		return
 	if v == pick_view:
-		if index < v.enemy.size() and _allowed("pick", index) and not v.enemy.armor[index] and (v.pick_el == "" or v.enemy.elements[index] == v.pick_el):
+		if index < v.enemy.size() and _allowed("pick", index):
 			_pick_done.emit(index)
 		return
 	if v != move_view:
@@ -2942,11 +4121,6 @@ func _emit_chant_done(i: int) -> void:
 ## Infuse: the new element appears at the end of the chant, shining; drag it where it should go
 ## (or Left / Right + Enter).
 func _placer(spell: Dictionary, el: String) -> int:
-	if _infuse_at >= 0:
-		# Instant Steal: it was dropped straight onto its spot in the chant
-		var at := clampi(_infuse_at, 0, fight.chant.size())
-		_infuse_at = -1
-		return at
 	chant_mode = "insert"
 	tut.emit("placing", null)
 	chant_i = fight.chant.size()
@@ -3094,80 +4268,6 @@ func _infuse_drop() -> void:
 		_infuse_orb.create_tween().tween_property(_infuse_orb, "scale", Vector2.ONE, 0.15)
 
 
-## Wild Rearrange: your chant and every enemy row come alive at once; drag one Essence to another spot in its own
-## row (chant or enemy). Returns [from, to] for the chant, [from, to, enemy index] for an enemy, [] to skip.
-func _wild_arranger(spell: Dictionary) -> Array:
-	chant_mode = "arrange"
-	var in_chant: bool = fight.spoken and fight.chant.size() > 1
-	if in_chant:
-		var live := []
-		for c in fight.chant:
-			live.append(true)
-		_show_drag(fight.chant.duplicate(), live, true)
-		_drag.dropped.connect(func(from, to): _arrange_done.emit([from, to]))
-	var rows := []
-	for e in fight.alive():
-		var v: EnemyView = _views.get(e)
-		if v != null and e.size() > 1 and not e.has_passive("briar_walls"):
-			v.move_mode = true
-			rows.append(v)
-	_prompt.text = "%s: drag an Essence to another spot, in your chant or in an enemy's row  ·  right-click: keep them" % spell.name
-	_refresh_all()
-	await get_tree().process_frame
-	var drags := []
-	for v in rows:
-		var d: ChantDrag = v.begin_row_drag(self)
-		var idx: int = fight.enemies.find(v.enemy)
-		d.dropped.connect(func(from, to): _arrange_done.emit([from, to, idx]))
-		drags.append(d)
-	var mv: Array = await _arrange_done
-	await _wait(0.25)
-	for d in drags:
-		d.queue_free()
-	for v in rows:
-		v.end_row_drag()
-		v.move_mode = false
-	if in_chant:
-		await _hide_drag()
-	chant_mode = ""
-	_refresh_all()
-	return mv
-
-
-## Wild Repaint: the brush comes out over the enemies, and your chant's Essence can be clicked too. Returns
-## ["chant", i], ["enemy", enemy index, i], or [] if nothing could be painted.
-signal _wild_painted(got: Array)
-
-
-func _wild_painter(spell: Dictionary) -> Array:
-	var st := {"done": false}  # (shared by both handlers: the first pick wins)
-	var on_chant := func(i: int) -> void:
-		if not st.done:
-			st.done = true
-			_wild_painted.emit(["chant", i])
-	var on_enemy := func(got: Array) -> void:
-		if not st.done:
-			st.done = true
-			_wild_painted.emit(["enemy", got[0], got[1]] if got.size() == 2 else [])
-	_chant_done.connect(on_chant)
-	_any_picked.connect(on_enemy)
-	if fight.spoken and not fight.chant.is_empty():
-		chant_mode = "pick"
-		chant_i = 0
-	_pick_any_essence(spell, false, null, "brush")  # (it waits for an enemy pick on its own; a chant pick ends it)
-	if chant_mode == "pick":
-		_prompt.text = "%s: paint an enemy's Essence, or click one of your chant" % spell.name
-		_refresh_chant()
-	var got: Array = await _wild_painted
-	_chant_done.disconnect(on_chant)
-	_any_picked.disconnect(on_enemy)
-	if got.size() == 2 and _picking_any:
-		_any_picked.emit([])  # put the brush away
-	chant_mode = ""
-	_refresh_all()
-	return got
-
-
 ## Rearrange: every chant element comes alive; drag one to another spot (right-click keeps the chant as it is).
 func _arranger(spell: Dictionary) -> Array:
 	chant_mode = "arrange"
@@ -3212,19 +4312,7 @@ func _hide_drag() -> void:
 func _chant_picker(spell: Dictionary) -> int:
 	chant_mode = "pick"
 	chant_i = 0
-	if fight.current_eff.get("op", "") == "retain":
-		_prompt.text = "%s: which Essence of the chant comes back to your bag after the Release?  ·  click it, or Tab + Enter" % spell.name
-		chant_mode = "pick"
-		chant_i = 0
-		_refresh_all()
-		var r: int = await _chant_done
-		chant_mode = ""
-		_refresh_all()
-		return r
-	var self_paint: bool = fight.current_eff.get("op", "") == "self_repaint"
-	var to: String = fight.current_eff.get("to", "?")
-	_prompt.text = ("%s: which Essence of the chant should be repainted %s?  ·  click it, or Tab + Enter" % [spell.name, "Any" if to == "?" else Elements.NAMES[to]]) if self_paint else \
-		"%s: which Essence of the chant should be duplicated?  ·  click it, or Tab + Enter" % spell.name
+	_prompt.text = "%s: which Essence of the chant should be duplicated?  ·  click it, or Tab + Enter" % spell.name
 	_refresh_all()
 	var i: int = await _chant_done
 	chant_mode = ""
@@ -3240,7 +4328,31 @@ func _redirector(spell: Dictionary, src: EnemyState, cands: Array) -> int:
 
 
 ## Animation hook from the fight.
+## Every event of the fight, then: an enemy that has no Essence left breaks at once (not at the end of the turn).
 func _anim(ev: Dictionary) -> void:
+	await _anim_event(ev)
+	_cull_dead()
+
+
+## Puppet Stage: the views of enemies that were defeated break into pieces and leave; the others stay as they are.
+func _cull_dead() -> void:
+	if _enemy_row == null:
+		return
+	for e in _views.keys():
+		if e.is_dead() and not e.knocked and not _hand_going_down(e):
+			var old: EnemyView = _views[e]
+			_views.erase(e)
+			if is_instance_valid(old):
+				if is_instance_valid(old.creature):
+					if old.creature.has_rig():
+						_shatter_arm(old.creature)
+					else:
+						PuppetShatter.spawn(self, old.creature)
+				old.get_parent().remove_child(old)
+				old.queue_free()
+
+
+func _anim_event(ev: Dictionary) -> void:
 	match ev.type:
 		"conjure_split":
 			# the conjuring spell glitches into static, then splits into its conjured spells, which slide into place
@@ -3306,6 +4418,8 @@ func _anim(ev: Dictionary) -> void:
 			v.burst(_bottle_from, 18, Color(0.75, 1.0, 1.0), Vector2(120, 380), Vector2(0.3, 0.6), Vector2(4, 8), Vfx.STAR)
 			_refresh_all()
 			await _wait(0.3)
+		"refund":
+			await _refund_flight(ev)
 		"artifact_used":
 			_arts.flash(ev.id)
 			Audio.play("spell_glow")
@@ -3408,22 +4522,6 @@ func _anim(ev: Dictionary) -> void:
 			await _wait(0.4)
 		"spell_effect":
 			await _spell_fly(ev)
-		"power_proc":
-			# a Power does something: its badge pops and shines, with a chime
-			var pb := _power_badge(String(ev.id))
-			if pb:
-				pb.pivot_offset = pb.size / 2.0
-				var tw := pb.create_tween()
-				tw.tween_property(pb, "modulate", Color(2.0, 1.8, 1.3), 0.08)
-				tw.parallel().tween_property(pb, "scale", Vector2(1.25, 1.25), 0.08)
-				tw.tween_property(pb, "modulate", Color.WHITE, 0.35)
-				tw.parallel().tween_property(pb, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK)
-				var fx := Vfx.make(_fx, 75)
-				var at := pb.global_position + pb.size / 2.0 - _fx.global_position + _fx.global_position
-				fx.glow(at, 90, Color(1.0, 0.9, 0.5, 0.8), 0.35)
-				fx.ring(at, 8, 60, Color(1.0, 0.9, 0.55), 0.3, 4.0)
-			Audio.play("spell_glow")
-			await _wait(0.3)
 		"echo_voice":
 			# Echoed Voice: its badge flashes, and a beat later the effect fires again from it
 			var badge := _power_badge("echo_chamber")
@@ -3438,6 +4536,8 @@ func _anim(ev: Dictionary) -> void:
 			await _wait(0.25)
 		"effect":
 			var snd: String = EFFECT_SFX.get(ev.op, "")
+			if snd == "sfx_magic_hit" and not UiSkin.is_puppet():
+				snd = "sfx_damage_hit"  # (the magic hit sound is Puppet art)
 			if snd != "":
 				Audio.play(snd)
 			_effect_landed(ev)
@@ -3512,34 +4612,6 @@ func _anim(ev: Dictionary) -> void:
 			_sync_views()
 			_refresh_all()
 			await _wait(0.25)
-		"meteor":
-			# Chaos Meteor: a fireball falls from the sky onto this enemy
-			var mv: EnemyView = _views.get(ev.enemy)
-			if mv != null:
-				var to := mv.anchor_point() + Vector2(randf_range(-30, 30), -40)
-				var from := to + Vector2(randf_range(-420, -260), -900)
-				var fx := Vfx.make(_fx, 80)
-				fx.move(from, to, 0.42, 0.0, Color(1.0, 0.55, 0.15), 16.0, 0.0,
-					func(vx: Vfx, it, _dt):
-						vx.part(it.pos, Vector2(randf_range(-30, 30), randf_range(-60, -10)), Color(1.0, randf_range(0.3, 0.7), 0.1), randf_range(0.25, 0.45), randf_range(8, 14)),
-					func(vx: Vfx, at: Vector2):
-						vx.glow(at, 160, Color(1.0, 0.6, 0.2), 0.3)
-						vx.ring(at, 8, 110, Color(1.0, 0.5, 0.15), 0.3, 6.0)
-						vx.burst(at, 18, Color(1.0, 0.65, 0.2), Vector2(150, 420), Vector2(0.3, 0.55), Vector2(4, 8))
-						vx.shake(6.0))
-				Audio.play("sfx_burn_apply")
-				await _wait(0.45)
-		"meteor_hit":
-			_refresh_all()
-		"revive":
-			# a fallen hand gets back up: a golden flash as it rises
-			var rv: EnemyView = _views.get(ev.enemy)
-			_sync_views()
-			_refresh_all()
-			if rv != null:
-				rv.modulate = Color(2.0, 1.8, 1.0)
-				rv.create_tween().tween_property(rv, "modulate", Color.WHITE, 0.6)
-			Audio.play("enemy_spawn")
 		"intents_shown":
 			_turn_batch_until = Time.get_ticks_msec() + 4000  # (Cirus: the Essence of the new turn come out of the tube)
 			Audio.play("enemy_intent_show")
@@ -3580,8 +4652,6 @@ func _anim(ev: Dictionary) -> void:
 			await _hourglass_dust(ev.enemy)
 		"hammer":
 			await _hammer_fx(ev)
-		"forbidden":
-			await _forbidden_cast(ev.id)
 		"invoke":
 			var iv: EnemyView = _views.get(ev.enemy)
 			if iv:
@@ -3590,10 +4660,6 @@ func _anim(ev: Dictionary) -> void:
 			await _wait(0.45)
 		"speech":
 			await _speech(ev.enemy, ev.text)
-		"speech_lines":
-			# a few sentences, one bubble each, held long enough to read (about 3 words a second, plus a moment)
-			for line in ev.lines:
-				await _speech(ev.enemy, line, 1.0 + String(line).split(" ").size() / 3.0)
 		"ignite_spell":
 			Audio.play("sfx_burn_apply")
 			_refresh_all()
@@ -3931,28 +4997,92 @@ func _hourglass_dust(e: EnemyState) -> void:
 func _hammer_fx(ev: Dictionary) -> void:
 	var card := _card_for(ev.id)
 	var v: EnemyView = _views.get(ev.enemy)
+	if v and v.creature.has_rig():  # (the Hammer Hand swings its hammer at the card)
+		_arm_swing(v.creature, 1.0)
+		await _wait(0.23)
 	if card and v:
 		var from := v.creature.global_position + v.creature.size / 2.0
 		var to := card.global_position + card.size * card.scale / 2.0
 		Comet.launch(_fx, from, to, Color(0.75, 0.62, 0.5))
 		await _wait(0.4)
-	Audio.play("sfx_hammer_thump")
+	if not UiSkin.is_puppet():  # (Puppet: sfx_card_hit / sfx_card_break play with the planks)
+		Audio.play("sfx_hammer_thump")
 	_shake(8.0)
 	if card == null:
 		return
 	if ev.broken:
-		await _shatter_card(card)
+		if UiSkin.is_puppet():
+			await _break_card_wood(card)
+		else:
+			await _shatter_card(card)
 		_build_spells()
 		_refresh_all()
 		return
 	card.cracks = ev.hits
 	card.refresh()
+	if UiSkin.is_puppet():  # (the card is cut into planks that stay together: 1 hit 5, 2 hits 10)
+		await _split_card(card, int(ev.hits), true)
+		await _wait(0.2)
+		return
 	var home := card.position
 	var tw := card.create_tween()
 	tw.tween_property(card, "position", home + Vector2(0, 10), 0.05)
 	tw.tween_property(card, "position", home, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	Vfx.make(_fx, 70).burst(card.global_position + card.size * card.scale / 2.0, 10, Color(0.9, 0.95, 1.0), Vector2(60, 200), Vector2(0.2, 0.45), Vector2(2, 4), Vfx.SHARD)
 	await _wait(0.35)
+
+
+## A picture of a spell card (as it is, without cracks), with 8 px of margin: (texture, margin).
+func _card_picture(card: SpellCard) -> Array:
+	var pad := Vector2(8, 8)
+	var vp := SubViewport.new()
+	vp.size = Vector2i(Vector2(SpellCard.W, SpellCard.H) + pad * 2.0)
+	vp.transparent_bg = true
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(vp)
+	var copy := SpellCard.make(card.spell)
+	copy.is_zoom_copy = true
+	copy.position = pad
+	vp.add_child(copy)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var tex := ImageTexture.create_from_image(vp.get_texture().get_image())
+	vp.queue_free()
+	return [tex, pad]
+
+
+## Puppet Stage: a card the Hammer Hand has hit `hits` times is cut into planks (CardSplit) that stay in place; `thump` plays the blow.
+func _split_card(card: SpellCard, hits: int, thump: bool) -> void:
+	if not is_instance_valid(card) or card.get_meta("split_level", 0) == hits:
+		return
+	card.set_meta("split_level", hits)
+	var pic: Array = await _card_picture(card)
+	if not is_instance_valid(card):
+		return
+	var old: Node = card.get_meta("split_node", null)
+	if is_instance_valid(old):
+		old.queue_free()
+	var sp := CardSplit.make(pic[0], pic[1], Vector2(SpellCard.W, SpellCard.H), hits)
+	card.add_child(sp)
+	card.set_meta("split_node", sp)
+	if thump:
+		sp.thump()
+		Audio.play("sfx_card_hit")
+
+
+## Puppet Stage: the third blow. The card breaks like a puppet that dies (PuppetShatter): ten planks, but they only fall where they are.
+func _break_card_wood(card: SpellCard) -> void:
+	var pic: Array = await _card_picture(card)
+	var pad: Vector2 = pic[1]
+	var tex: Texture2D = pic[0]
+	var sc := card.scale
+	var rect := Rect2(card.global_position - pad * sc, tex.get_size() * sc)
+	card.modulate.a = 0.0
+	var old: Node = card.get_meta("split_node", null)
+	if is_instance_valid(old):
+		old.queue_free()
+	PuppetShatter.spawn_picture(self, tex, rect, card.global_position.y + SpellCard.H * sc.y + 30.0, "sfx_card_break")
+	await _wait(1.0)
 
 
 ## A spell card breaks like glass: a picture of it is cut into shards (a Delaunay triangulation, denser around the
@@ -4029,275 +5159,15 @@ func _shatter_card(card: SpellCard) -> void:
 		sh.n.queue_free()
 
 
-## Talking to a boss before the fight (BossTalk). Everything but the boss, the backdrop and your bag slides away;
-## a box shows what was said and the options (each with the Essence it costs, and a green tick at its right end once
-## its whole branch has been explored, in any run). Engage! is always there. Then the fight's UI slides back in.
-func _talk() -> void:
-	var tree := BossTalk.tree_for(fight.talk_id)
-	if tree.is_empty():
-		return
-	_talking = true
-	var old_gate := gate
-	gate = func(_a, _b): return false  # (nothing in the fight can be touched while you talk)
-	var away := {_player_panel: Vector2(-720, 0), _chant_panel: Vector2(0, 520), _next_panel: Vector2(520, 0),
-		_log: Vector2(420, 0), _spell_row: Vector2(0, 640), _info: Vector2(0, -140), _arts: Vector2(0, -160)}
-	var homes := {}
-	for n in away:
-		homes[n] = n.position
-		n.position += away[n]
-	for v in _views.values():
-		v.set_talk(true, 0.0, BossTalk.speaker(tree) if v.enemy.is_boss and not v.enemy.has_passive("hand") else "")
-	var box := PanelContainer.new()
-	box.add_theme_stylebox_override("panel", UiTheme.panel_box(0.95, 14))
-	box.custom_minimum_size = Vector2(1120, 0)
-	box.position = Vector2(400, 545)
-	box.z_index = 30
-	add_child(box)
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 8)
-	box.add_child(col)
-	var node: Dictionary = tree
-	var said := ""
-	var prefix := ""  # (something he says before his answer: "You are a master of this element as well, I see.")
-	var chosen := [null]
-	while true:
-		for c in col.get_children():
-			col.remove_child(c)  # (gone right away, so the box measures only what's new)
-			c.queue_free()
-		# what was said
-		var text := RichTextLabel.new()
-		text.bbcode_enabled = true
-		text.fit_content = true
-		text.scroll_active = false
-		text.custom_minimum_size = Vector2(1080, 0)
-		text.add_theme_font_size_override("normal_font_size", 21)
-		text.add_theme_font_size_override("italics_font_size", 21)
-		text.add_theme_font_size_override("bold_font_size", 21)
-		var lines := []
-		if node.has("opening"):
-			lines.append("[i][color=#c8bfa8]%s[/color][/i]" % node.opening)
-		if said != "":
-			lines.append("[color=#9ec9ff]You:[/color] %s" % said)
-		if node.has("reply"):
-			lines.append("[color=#ffcf7a][b]%s:[/b][/color] \"%s%s\"%s" % [BossTalk.speaker(tree), prefix, node.reply, (" [i][color=#c8bfa8]%s[/color][/i]" % node.note) if node.has("note") else ""])
-		elif node.has("note"):
-			lines.append("[i][color=#c8bfa8]%s[/color][/i]" % node.note)
-		text.text = "\n".join(lines)
-		col.add_child(text)
-		if node.has("show"):
-			# an artifact he's offering: hover it to read it
-			var a := Artifacts.view(String(node.show))
-			var chip := TipPanel.new()
-			chip.add_theme_stylebox_override("panel", UiTheme.panel_box(0.8, 10))
-			chip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-			chip.tooltip_text = Keywords.tooltip(a.name, a.desc)
-			var al := UiTheme.label("%s %s" % [a.icon, a.name], 19, Color(1.0, 0.9, 0.7))
-			al.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			chip.add_child(al)
-			col.add_child(chip)
-		# the options (none left after the last level), and Engage!
-		var forced: bool = "engage" in node.get("effects", [])
-		var seen_ids := BossTalk.seen()
-		if not forced:
-			for o in node.get("options", []):
-				if o.has("requires") and not (o.requires in seen_ids):
-					continue  # (it only comes up once you've heard what it refers to)
-				col.add_child(_talk_option(o, seen_ids, chosen))
-		var go := UiTheme.button("Engage!", func(): chosen[0] = {"engage": true}, 22)
-		go.custom_minimum_size = Vector2(1080, 50)
-		UiTheme.use_heading_font(go)
-		var amber := UiTheme.chant_button_styles()  # (the Chant button's amber face: it stands out from the talk)
-		for st in amber:
-			go.add_theme_stylebox_override(st, amber[st])
-		col.add_child(go)
-		await get_tree().process_frame
-		box.size = Vector2.ZERO
-		box.reset_size()
-		box.position.y = minf(545.0, 920.0 - box.size.y)  # (it stays clear of your bag)
-		chosen[0] = null
-		if forced:
-			await _wait(1.8)
-			if "choose2" in node.get("effects", []):
-				await _choose_extra_spells(2)
-			break
-		while chosen[0] == null:
-			await get_tree().process_frame
-		if chosen[0].has("engage"):
-			break
-		# you said it: pay, remember, apply, and on to its answer
-		var o: Dictionary = chosen[0]
-		if o.cost != "":
-			fight.talk_pay(o.cost)
-			Audio.play("elem_pickup", -4.0)
-		BossTalk.mark_seen(o.id)
-		prefix = ""
-		var new_bar := func() -> void:
-			var old_bar := _arts
-			_arts = ArtifactBar.make(fight.artifacts, fight.artifact_plus)
-			_arts.position = old_bar.position  # (still out of sight: it slides in with the rest)
-			add_child(_arts)
-			away[_arts] = away[old_bar]
-			homes[_arts] = homes[old_bar]
-			away.erase(old_bar)
-			homes.erase(old_bar)
-			old_bar.queue_free()
-		for fx in o.get("effects", []):
-			var f := String(fx)
-			if f.begins_with("artifact:"):
-				var aid := f.get_slice(":", 1)
-				run.gain_artifact(aid)
-				Audio.play("artifact_get")
-				Events.toast.emit("Got %s" % Artifacts.view(aid).name, UiTheme.ACCENT)
-				new_bar.call()
-			elif f.begins_with("lens:"):
-				# the Invoker's proof: that element's Lens, or its upgrade; already upgraded, your Essence back
-				var lens: String = {"F": "flame_lens", "W": "tide_lens", "A": "gale_lens"}[f.get_slice(":", 1)]
-				if not (lens in run.artifacts):
-					run.gain_artifact(lens)
-					Events.toast.emit("Got %s" % Artifacts.view(lens).name, UiTheme.ACCENT)
-				elif not (lens in run.artifacts_plus):
-					run.upgrade_artifact(lens)
-					Events.toast.emit("%s upgraded" % Artifacts.view(lens).name, UiTheme.ACCENT)
-				else:
-					prefix = "You are a master of this element as well, I see. "
-					fight.talk_effect("refund2")
-				Audio.play("artifact_get")
-				new_bar.call()
-			elif f == "forbidden_spells":
-				var gone: Array = SaveManager.setting("forbidden_cast", [])
-				_talk_learn(["forbidden_f", "forbidden_w", "forbidden_a"].filter(func(id): return not (id in gone)))
-			elif f == "invoker_spells":
-				_talk_learn(["inv_tornado", "inv_chaos_meteor", "inv_deafening_blast"])
-			elif f in ["engage", "choose2"]:
-				pass
-			else:
-				fight.talk_effect(f)
-		said = o.say
-		node = o
-		_refresh_all()
-		for v in _views.values():
-			if v.enemy.is_boss and not v.enemy.has_passive("hand"):
-				v.set_talk(true, 0.0, BossTalk.speaker(tree))
-	# Engage!
-	box.queue_free()
-	Audio.play("enemy_intent_show")
-	var i := 0
-	for n in away:
-		var back: Tween = (n as Node).create_tween()
-		back.tween_interval(i * 0.06)
-		back.tween_property(n, "position", homes[n], 0.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		i += 1
-	for v in _views.values():
-		v.set_talk(false, 0.5)
-	await _wait(0.6)
-	gate = old_gate
-	_talking = false
-	_refresh_all()
-
-
-## A talk gives you spells: they're learned for the run and join this fight.
-func _talk_learn(ids: Array) -> void:
-	for id in ids:
-		run.learn_spell(id)
-		if not fight.loadout.any(func(s): return s.id == id):
-			fight.loadout.append(run.spell(id))
-		Events.toast.emit("Learned %s" % run.spell(id).name, UiTheme.ACCENT)
-	Audio.play("discovery_unlock")
-	_build_spells()
-
-
-## The Invoker expands your mind: pick spells from your spellbook to join this fight.
-func _choose_extra_spells(n: int) -> void:
-	var pool: Array = fight.spellbook.filter(func(s): return not fight.loadout.any(func(x): return x.id == s.id))
-	for k in n:
-		if pool.is_empty():
-			break
-		var i: int = await _spell_chooser(pool)
-		if i < 0:
-			break
-		fight.loadout.append(pool[i])
-		pool.remove_at(i)
-	_build_spells()
-
-
-## Forbidden Knowledge: it does nothing, says so (a different line each time, counted across runs), and is gone for
-## good. Each cast also makes more of the Codex's Forbidden Knowledge page readable.
-const FORBIDDEN_LINES := ["Nothing happened. You have been fooled.", "Nothing happened again. Have you not learned, mortal?",
-	"Fool you thrice: shame on whom?"]
-
-
-func _forbidden_cast(id: String) -> void:
-	var cast: Array = SaveManager.setting("forbidden_cast", []).duplicate()
-	if not (id in cast):
-		cast.append(id)
-		SaveManager.set_setting("forbidden_cast", cast)
-	run.spellbook.erase(id)
-	run.loadout.erase(id)
-	var line: String = FORBIDDEN_LINES[clampi(cast.size() - 1, 0, 2)]
-	fight._log(line)
-	var l := UiTheme.label(line, 40, Color(0.85, 0.6, 1.0))
-	l.add_theme_constant_override("outline_size", 10)
-	l.add_theme_color_override("font_outline_color", Color.BLACK)
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l.size = Vector2(1920, 60)
-	l.position = Vector2(0, 420)
-	l.z_index = 95
-	l.modulate.a = 0.0
-	_fx.add_child(l)
-	var tw := l.create_tween()
-	tw.tween_property(l, "modulate:a", 1.0, 0.3)
-	tw.tween_interval(2.0)
-	tw.tween_property(l, "modulate:a", 0.0, 0.6)
-	tw.tween_callback(l.queue_free)
-	Audio.play("sfx_silence_apply")
-	await _wait(1.2)
-
-
-## One thing you can say: its Essence cost on the left, the words, and a green tick at the right end once its whole
-## branch has been explored. Greyed out when you don't have the Essence it costs.
-func _talk_option(o: Dictionary, seen_ids: Array, chosen: Array) -> Button:
-	var b := Button.new()
-	b.custom_minimum_size = Vector2(1080, 46)
-	b.disabled = not fight.can_talk_pay(o.cost)
-	b.pressed.connect(func(): chosen[0] = o)
-	var row := HBoxContainer.new()
-	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	row.offset_left = 14
-	row.offset_right = -14
-	row.add_theme_constant_override("separation", 10)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	b.add_child(row)
-	var cost := HBoxContainer.new()  # (one icon per Essence it costs: "FF" is two Fire)
-	cost.add_theme_constant_override("separation", 2)
-	for ch in ("" if fight.talk_free else String(o.cost)):  # (test mode: free, so no price shown)
-		cost.add_child(ElementIcon.make(ch, 30))
-	cost.custom_minimum_size = Vector2(30 * maxi(1, String(o.cost).length()), 30)
-	cost.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	cost.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(cost)
-	var words := UiTheme.label(String(o.say), 20, Color(0.08, 0.06, 0.04) if not b.disabled else Color(0.45, 0.45, 0.45))  # (dark on the bright green: easy to read)
-	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	words.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(words)
-	var tick := UiTheme.label("✔" if BossTalk.exhausted(o, seen_ids) else "", 24, Color(0.35, 0.9, 0.4))
-	tick.custom_minimum_size = Vector2(30, 0)
-	tick.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	tick.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	tick.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(tick)
-	return b
-
-
 ## An enemy says something: a speech bubble over its head for a moment (the Invoker's Quas / Wex / Exort).
-func _speech(e: EnemyState, text: String, hold := 1.0) -> void:
+func _speech(e: EnemyState, text: String) -> void:
 	var v: EnemyView = _views.get(e)
 	if v == null or not is_instance_valid(v):
 		return
 	var bubble := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.07, 0.06, 0.08, 0.96)  # (enemies speak in black bubbles)
-	sb.border_color = Color(0.75, 0.7, 0.85)
+	sb.bg_color = Color(1, 0.98, 0.92)
+	sb.border_color = Color(0.35, 0.2, 0.45)
 	sb.set_border_width_all(3)
 	sb.set_corner_radius_all(18)
 	sb.content_margin_left = 16
@@ -4307,7 +5177,7 @@ func _speech(e: EnemyState, text: String, hold := 1.0) -> void:
 	bubble.add_theme_stylebox_override("panel", sb)
 	bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bubble.z_index = 90
-	var l := UiTheme.label(text, 30, Color(0.96, 0.94, 0.9))
+	var l := UiTheme.label(text, 30, Color(0.3, 0.12, 0.4))
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bubble.add_child(l)
 	_fx.add_child(bubble)
@@ -4318,11 +5188,11 @@ func _speech(e: EnemyState, text: String, hold := 1.0) -> void:
 	bubble.scale = Vector2(0.3, 0.3)
 	var tw := bubble.create_tween()
 	tw.tween_property(bubble, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_interval(hold)
+	tw.tween_interval(1.0)
 	tw.tween_property(bubble, "modulate:a", 0.0, 0.3)
 	tw.tween_callback(bubble.queue_free)
 	Audio.play("enemy_intent_show")
-	await _wait(hold + 0.35)
+	await _wait(1.2)
 
 
 ## Attunement: the screen dims, the card's Essence shine and fly to the middle; you click one, and it flies down to
@@ -4738,7 +5608,14 @@ func _effect_landed(ev: Dictionary) -> void:
 				if not (text.begins_with("-") and text.substr(1).is_valid_int()):  # no "-N" on enemies: they react instead
 					_float_text(text, v.global_position + Vector2(110, 180), Color(1, 0.85, 0.5))
 	else:
-		_float_text(text, _player_panel.global_position + Vector2(200, 10), Color(0.6, 0.9, 1))
+		_float_text(text, _player_point() + Vector2(-40, -40), Color(0.6, 0.9, 1))
+
+
+## Where what lands on you lands: the middle of the HP tray (Puppet), the Keeper's panel otherwise.
+func _player_point() -> Vector2:
+	if _puppet_hud:
+		return _player_panel.get_global_rect().get_center()
+	return _player_panel.global_position + Vector2(240, 50)
 
 
 func _effect_words(e: Dictionary) -> String:
@@ -4763,7 +5640,7 @@ func _effect_words(e: Dictionary) -> String:
 		"heal":
 			return "+%d HP" % n
 		"aegis":
-			return "+Evasion"
+			return "+Aegis"
 		"thorns":
 			return "+%d Thorns" % n
 		"draw":
@@ -4858,6 +5735,10 @@ func _enemy_attack(ev: Dictionary) -> void:
 		tw.tween_property(hedge, "offset", Vector2.ZERO, 0.2)
 		tw.parallel().tween_property(hedge, "squash", 1.0, 0.2)
 		await _wait(0.2)
+	elif v and v.creature.has_rig():
+		# a Handyman hand: the arm winds back and swings down at you (about its shoulder and its elbow)
+		_arm_swing(v.creature, 1.0)
+		await _wait(0.23)
 	elif v:
 		var c := v.creature
 		var home := c.position
@@ -4895,17 +5776,124 @@ func _enemy_attack(ev: Dictionary) -> void:
 	await _wait(0.6)
 
 
+## A Handyman hand that is down for good breaks like the other puppets. Its arm is not one picture, so the arm is drawn once, as it stands,
+## into a picture of its own first (a SubViewport, like the spell cards that shatter), and that picture is broken into pieces.
+func _shatter_arm(c: Creature) -> void:
+	if not c.is_inside_tree() or c._enemy == null:
+		return
+	var vp_size := Vector2i(1500, 1000)
+	var mid := c.global_position + c.size / 2.0  # (the hand marker)
+	var enemy: EnemyState = c._enemy
+	var reach := c.reach
+	var reach_angle := c.reach_angle
+	var csize := c.size
+	var vp := SubViewport.new()
+	vp.size = vp_size
+	vp.transparent_bg = true
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(vp)
+	var copy := Creature.new()
+	copy.setup(enemy)
+	copy.size = csize
+	copy.reach = reach
+	copy.reach_angle = reach_angle
+	copy.position = Vector2(vp_size) / 2.0 - csize / 2.0
+	vp.add_child(copy)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var tex := ImageTexture.create_from_image(vp.get_texture().get_image())
+	vp.queue_free()
+	PuppetShatter.spawn_picture(self, tex, Rect2(mid - Vector2(vp_size) / 2.0, Vector2(vp_size)), mid.y + 90.0)
+
+
+## A Handyman hand's swing: it winds up (a little the other way), strikes, holds a moment and settles back. `power` 1 is a full blow.
+func _arm_swing(c: Creature, power: float) -> void:
+	var tw := c.create_tween()
+	tw.tween_property(c, "swing", -0.4 * power, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(c, "swing", power, 0.09).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_interval(0.14)
+	tw.tween_property(c, "swing", 0.0, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## An enemy steals Essence from your bag (the Tweezer Hand): its arm pinches, the stolen Essence lift out of the bag one after another (a pick-up
+## sound), fly over to the thief and drop onto its row of Essence (a clack), and a line says what was taken.
+func _steal_fx(ev: Dictionary, v: EnemyView) -> void:
+	var items: Array = ev.get("items", [])
+	var thief := ev.enemy.name as String
+	var to := (v.creature.global_position + v.creature.size / 2.0) if v else Vector2(960, 300)
+	if v and v.creature.has_rig():
+		_arm_swing(v.creature, 0.6)
+	if items.is_empty():
+		_float_text("%s finds nothing to steal" % thief, _stock_row.global_position + Vector2(300, -30), Color(0.8, 0.8, 0.85))
+		await _wait(0.6)
+		_sync_views()
+		_refresh_all()
+		return
+	await _wait(0.22)
+	var names: Array = []
+	for k in items.size():
+		var it: Dictionary = items[k]
+		names.append(Elements.NAMES.get(it.el, it.el))
+		var from := _bag_center(it.uid)
+		var bag_icon: Control = _bag_icons.get(it.uid)
+		if bag_icon != null and is_instance_valid(bag_icon):
+			bag_icon.modulate.a = 0.0  # (it has left the bag)
+		_steal_orb(String(it.el), from, to, k * 0.2, v)
+	_float_text("%s steals %s" % [thief, ", ".join(names)], _stock_row.global_position + Vector2(260, -40), Color(1, 0.55, 0.45))
+	await _wait(0.2 * items.size() + 0.75)
+	_sync_views()
+	_refresh_all()
+
+
+## One stolen Essence: pops out of the bag, flies in an arc to `to` and lands on the thief (which flashes).
+func _steal_orb(el: String, from: Vector2, to: Vector2, delay: float, v: EnemyView) -> void:
+	var ic := ElementIcon.make(el, BAG_PX)
+	ic.size = Vector2(BAG_PX, BAG_PX)
+	ic.pivot_offset = ic.size / 2.0
+	ic.z_index = 60
+	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ic.modulate = Color(1.5, 1.4, 1.3, 0.0)
+	_fx.add_child(ic)
+	ic.position = from - _fx.global_position - ic.size / 2.0
+	var mid := (from + to) / 2.0 + Vector2(0, -120.0)
+	var tw := create_tween()
+	tw.tween_interval(delay)
+	tw.tween_callback(func():
+		Audio.play("sfx_steal" if UiSkin.is_puppet() else "elem_pickup", -3.0, randf_range(0.95, 1.05))
+		if is_instance_valid(ic):
+			ic.modulate.a = 1.0)
+	tw.tween_method(func(t: float) -> void:
+		if is_instance_valid(ic):
+			var pt := from.lerp(mid, t).lerp(mid.lerp(to, t), t)
+			ic.position = pt - _fx.global_position - ic.size / 2.0
+			ic.rotation = -t * TAU
+			ic.scale = Vector2.ONE * lerpf(1.0, 0.7, t), 0.0, 1.0, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_callback(func():
+		if not UiSkin.is_puppet():
+			Audio.play("sfx_ball_clack", -4.0, randf_range(0.95, 1.1))
+		if is_instance_valid(ic):
+			ic.queue_free()
+		if v != null and is_instance_valid(v):
+			v.creature.flash = 0.7)
+
+
 ## Anything else an enemy does: debuffs fly at you, buffs glow on the enemy.
 func _enemy_move_fx(ev: Dictionary) -> void:
 	var v: EnemyView = _views.get(ev.enemy)
 	var kind: String = ev.kind
 	if kind in ["freeze", "hex", "invert", "steal", "drain_essence"]:
 		await _rolls_done()  # (it lands on your Essence: wait until they have stopped rolling)
+	if kind == "steal":
+		await _steal_fx(ev, v)
+		return
 	var look: Array = IntentChip.LOOK.get(kind, ["✦", Color.WHITE])
 	var info: Array = IntentChip.INFO.get(kind, [kind.capitalize(), ""])
+	if v and v.creature.has_rig():  # (a Handyman hand: its arm acts it out, a little gentler than a blow)
+		_arm_swing(v.creature, 0.6)
+		await _wait(0.23)
 	if kind in Fight.AT_PLAYER and v:
 		var from := v.creature.global_position + v.creature.size / 2.0
-		var to := _player_panel.global_position + Vector2(240, 50)
+		var to := _player_point()
 		var comet := Comet.launch(_fx, from, to, (look[1] as Color).lightened(0.3))
 		comet.rise = 60.0
 		await _wait(0.45)

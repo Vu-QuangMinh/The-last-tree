@@ -1,10 +1,10 @@
 extends Node
-## Plays one-shot SFX (res://assets/sfx/<name>.wav) and looping music picked per category from
-## res://assets/music/<category>/*.{wav,ogg,mp3}. Call Audio.play("sfx_name") from anywhere;
+## Plays one-shot SFX (<theme>/SFX/<name>.wav, else Global/SFX/<name>.wav, under res://assets/) and looping music picked per category from
+## res://assets/Global/Music/<category>/*.{wav,ogg,mp3}. Call Audio.play("sfx_name") from anywhere;
 ## missing files just warn once and stay silent.
 
-const SFX_DIR := "res://assets/sfx/"
-const MUSIC_DIR := "res://assets/music/"
+const GLOBAL_SFX_DIR := "res://assets/Global/SFX/"
+const MUSIC_DIR := "res://assets/Global/Music/"
 const MUSIC_CATEGORIES := ["menu", "map", "fight", "boss"]
 const POOL_SIZE := 12
 ## The Music slider only ever reaches this much of a track's own volume (headroom, since
@@ -32,6 +32,10 @@ var _preview_path := ""
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	# A tool or test script (godot -s tools/x.gd / --script) must never be heard: the user is working while it runs.
+	var args := OS.get_cmdline_args()
+	if "-s" in args or "--script" in args:
+		AudioServer.set_bus_mute(AudioServer.get_bus_index("Master"), true)
 	sfx_level = SaveManager.setting("sfx_volume", 1.0)
 	music_level = SaveManager.setting("music_volume", 0.7)
 	overall_level = SaveManager.setting("overall_volume", 1.0)
@@ -81,11 +85,12 @@ func set_overall_level(v: float) -> void:
 		_preview.volume_db = _db(_music_gain())
 
 
-func _load(path: String) -> AudioStream:
+func _load(path: String, quiet := false) -> AudioStream:
 	if _cache.has(path):
 		return _cache[path]
 	if not ResourceLoader.exists(path):
-		push_warning("Audio: missing file %s" % path)
+		if not quiet:
+			push_warning("Audio: missing file %s" % path)
 		_cache[path] = null
 		return null
 	var s: AudioStream = load(path)
@@ -94,8 +99,11 @@ func _load(path: String) -> AudioStream:
 
 
 ## One-shot SFX. Safe to call for a name that has no file yet (it just stays silent).
-func play(name: String, volume_db := 0.0, pitch := 1.0) -> void:
-	var s := _load(SFX_DIR + name + ".wav")
+## from: start this many seconds into the sound (to skip the silence some recordings begin with).
+func play(name: String, volume_db := 0.0, pitch := 1.0, from := 0.0) -> void:
+	var s := _load(UiSkin.theme_dir() + "SFX/" + name + ".wav", true)  # (the theme's own sound, if it has one)
+	if s == null:
+		s = _load(GLOBAL_SFX_DIR + name + ".wav")
 	if s == null:
 		return
 	var p: AudioStreamPlayer = _pool[_pool_i]
@@ -103,12 +111,12 @@ func play(name: String, volume_db := 0.0, pitch := 1.0) -> void:
 	p.stream = s
 	p.volume_db = _db(sfx_level * overall_level) + volume_db
 	p.pitch_scale = pitch
-	p.play()
+	p.play(from)
 
 
 # ------------------------------------------------------------------ music
 
-## Every track file (with extension) sitting in assets/music/<category>/, sorted by name.
+## Every track file (with extension) sitting in assets/Global/Music/<category>/, sorted by name.
 ## An exported game (e.g. the web build) only keeps "<track>.mp3.import" stubs, so those count as the track too.
 func list_tracks(category: String) -> Array:
 	var out := []

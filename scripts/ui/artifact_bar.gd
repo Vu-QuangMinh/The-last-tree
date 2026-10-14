@@ -4,6 +4,10 @@ extends HFlowContainer
 
 var artifacts: Array = []
 var plus: Array = []  # upgraded ones
+## Puppet Stage: one row inside the artifacts' frame, `chip_px` squares `slot_step` apart (more of them than fit squeeze together)
+var chip_px := 0.0
+var row_width := 0.0
+var slot_step := 0.0
 
 
 static func make(p_artifacts: Array, p_plus: Array = []) -> ArtifactBar:
@@ -17,15 +21,22 @@ func _ready() -> void:
 	add_theme_constant_override("h_separation", 6)
 	add_theme_constant_override("v_separation", 6)
 	custom_minimum_size = Vector2(620, 0)
-	UiSkin.frame_behind(self)  # New theme: one painted frame around all the artifacts
+	if chip_px > 0.0:
+		custom_minimum_size = Vector2(row_width, chip_px)
+	else:
+		UiSkin.frame_behind(self)  # New theme: one painted frame around all the artifacts
 	refresh()
 
 
 func refresh() -> void:
 	for c in get_children():
 		c.queue_free()
+	if chip_px > 0.0:
+		var n := maxi(1, artifacts.size())
+		var step := minf(slot_step, (row_width - chip_px) / maxf(1.0, n - 1.0))
+		add_theme_constant_override("h_separation", int(floor(step - chip_px)))
 	for id in artifacts:
-		add_child(ArtifactChip.make(id, id in plus))
+		add_child(ArtifactChip.make(id, id in plus, chip_px if chip_px > 0.0 else ArtifactChip.SIZE))
 
 
 ## Artifacts that charge up (Kindling Stone, Echo Shell) shine and pulse while charged; their tooltip shows
@@ -74,7 +85,6 @@ class ArtifactChip extends PanelContainer:
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = Color(0, 0, 0, 0)
 		var idle := Color(1, 1, 1, 0.0) if UiSkin.has_slot_frame() else FAINT  # (the shared frame replaces the outline)
-		var hover := Color(1, 1, 1, 0.2) if UiSkin.has_slot_frame() else FAINT_HOVER
 		sb.border_color = idle
 		sb.set_border_width_all(1)
 		sb.set_corner_radius_all(10)
@@ -82,8 +92,15 @@ class ArtifactChip extends PanelContainer:
 		sb.set_content_margin_all(5)
 		c.add_theme_stylebox_override("panel", sb)
 		c.custom_minimum_size = Vector2(px, px)
-		c.mouse_entered.connect(func(): if not c.charged: sb.border_color = hover)
-		c.mouse_exited.connect(func(): if not c.charged: sb.border_color = idle)
+		# under the mouse: no glowing outline, a tiny click and the icon grows a little (the info panel still shows)
+		c.mouse_entered.connect(func():
+			Audio.play("ui_click", -14.0, 1.35)
+			if not c.charged:
+				c.pivot_offset = c.size / 2.0
+				c.create_tween().tween_property(c, "scale", Vector2(1.14, 1.14), 0.08))
+		c.mouse_exited.connect(func():
+			if not c.charged:
+				c.create_tween().tween_property(c, "scale", Vector2.ONE, 0.08))
 		c.mouse_filter = Control.MOUSE_FILTER_STOP
 		var art := UiSkin.artifact_icon(id, px * ICON / SIZE)  # New theme: the painted artifact; otherwise its symbol
 		if art != null:

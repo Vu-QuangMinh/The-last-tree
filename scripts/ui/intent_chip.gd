@@ -9,6 +9,14 @@ const PURPLE := Color(0.55, 0.3, 0.8)
 const GREY := Color(0.45, 0.47, 0.52)
 
 func _draw() -> void:
+	if not _hb.is_empty():  # Puppet Stage: a cap, a stretchy middle, a cap with the pointer (it points right, at its enemy)
+		var l: Texture2D = _hb["left"]
+		var r: Texture2D = _hb["right"]
+		var m: Texture2D = _hb["mid"]
+		draw_texture_rect(l, Rect2(0, 0, l.get_width(), size.y), false)
+		draw_texture_rect(r, Rect2(size.x - r.get_width(), 0, r.get_width(), size.y), false)
+		draw_texture_rect(m, Rect2(l.get_width(), 0, size.x - l.get_width() - r.get_width(), size.y), false)
+		return
 	if _bubble.is_empty():
 		return
 	var w := size.x
@@ -81,17 +89,19 @@ static func make(e: EnemyState, move := {}) -> IntentChip:
 	return c
 
 
-## New theme: the painted icon of each intent kind (assets/ui/new/intent_<kind>.png). Burn / Poison / Unknown are painted too,
+## New theme: the painted icon of each intent kind (assets/New/Icon/Intent/intent_<kind>.png). Burn / Poison / Unknown are painted too,
 ## but no enemy intent uses them (burn and poison are statuses).
 const ART := {"attack": "intent_attack", "armor": "intent_armor", "freeze": "intent_freeze", "steal": "intent_steal", "summon": "intent_summon",
 	"bleed": "intent_bleed", "blind": "intent_blind", "confuse": "intent_confuse", "mend": "intent_mend", "shuffle": "intent_shuffle",
 	"silence": "intent_silence", "lock": "intent_lock", "ethereal": "intent_ethereal", "empower": "intent_empower", "toll": "intent_toll",
-	"invert": "intent_invert", "hex": "intent_hex", "mimic": "intent_mimic", "frail": "intent_frail"}
+	"invert": "intent_invert", "hex": "intent_hex", "mimic": "intent_mimic", "frail": "intent_frail", "hammer_spell": "intent_hammer_spell",
+	"invert_spells": "intent_invert_spells", "invoke": "intent_invoke", "stunned": "intent_stunned", "sing": "intent_sing", "ignite_spell": "intent_ignite_spell", "charge": "intent_charge"}
 
 
 ## New theme: the bubble is five fixed-ratio pieces: two end caps, the arrow in the middle, and a stretchy piece on each
 ## side of the arrow (those two grow with the content).
 var _bubble := {}
+var _hb := {}  # Puppet Stage: the three pieces of the horizontal bubble
 static var _body_h := -1.0  # how tall the cap pieces really are (the pieces share a canvas as tall as the arrow's)
 
 
@@ -107,11 +117,36 @@ static func _bubble_parts() -> Dictionary:
 	return parts
 
 
+## Puppet Stage: the horizontal bubble's pieces (empty in the other themes).
+static func _hbubble_parts() -> Dictionary:
+	if not UiSkin.is_puppet():
+		return {}
+	var parts := {}
+	for k in ["left", "mid", "right"]:
+		var t := UiSkin.tex("intent_bubble_h_" + k)
+		if t == null:
+			return {}
+		parts[k] = t
+	return parts
+
+
 ## move: show this move instead of the enemy's own intent (a Bramble Matron wall's).
 func build(e: EnemyState, move := {}) -> void:
 	_bubble = _bubble_parts()
+	_hb = _hbubble_parts()
 	var bubble: StyleBox = null
-	if not _bubble.is_empty():
+	if not _hb.is_empty():
+		_bubble = {}
+		var hl: Texture2D = _hb["left"]
+		var hr: Texture2D = _hb["right"]
+		var hs := StyleBoxEmpty.new()
+		hs.content_margin_left = hl.get_width() + 4.0
+		hs.content_margin_right = hr.get_width() + 2.0  # (the right piece holds the pointer: the content ends before it)
+		hs.content_margin_top = 0.0
+		hs.content_margin_bottom = 0.0
+		bubble = hs
+		custom_minimum_size = Vector2(hl.get_width() + hr.get_width() + 24.0, minf(hl.get_height(), 54.0))  # (only as tall as its content needs)
+	elif not _bubble.is_empty():
 		var empty := StyleBoxEmpty.new()
 		var tail: Texture2D = _bubble["tail"]
 		empty.content_margin_left = _bubble["cap_l"].get_width() + 4.0
@@ -135,6 +170,8 @@ func build(e: EnemyState, move := {}) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if not _hb.is_empty():
+		row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	add_child(row)
 	if e.freeze_turns > 0:
 		row.add_child(_part("❄", "", Color(0.5, 0.8, 1.0), "freeze"))
@@ -202,7 +239,8 @@ func _add_move(row: HBoxContainer, m: Dictionary, e: EnemyState) -> void:
 		"mend":
 			# a red heart with a green up-arrow, then how many (only when more than one), then which Essence
 			# (a random one shows the wildcard bead). No "+".
-			row.add_child(MendIcon.make(34))  # a red heart with a green up-arrow (the user's design: no "+")
+			var mend_art: Control = UiSkin.icon("intent_mend", 34) if UiSkin.is_puppet() else null  # (Puppet: its carved wooden Mend)
+			row.add_child(mend_art if mend_art != null else MendIcon.make(34))  # a red heart with a green up-arrow (the user's design: no "+")
 			if m.n > 1:
 				var digits := UiSkin.number(str(m.n), 34, false, 0.7)
 				row.add_child(digits if digits != null else _word(str(m.n), Color.WHITE))

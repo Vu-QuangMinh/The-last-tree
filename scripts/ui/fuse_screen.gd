@@ -429,7 +429,7 @@ func _play_fusion(a: Dictionary, b: Dictionary, from_a: Vector2, from_b: Vector2
 	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var hole_mat := ShaderMaterial.new()
-	hole_mat.shader = load("res://assets/card/black_hole.gdshader")
+	hole_mat.shader = load("res://assets/Global/Card/Shaders/black_hole.gdshader")
 	hole_mat.set_shader_parameter("center", mid)
 	hole_mat.set_shader_parameter("size", view_size)
 	view.material = hole_mat
@@ -485,7 +485,7 @@ func _play_fusion(a: Dictionary, b: Dictionary, from_a: Vector2, from_b: Vector2
 	await get_tree().create_timer(0.35).timeout
 	# 4. the ball cools into the new spell
 	var card := SpellCard.make(result)
-	card.is_zoom_copy = true  # (only for show: no hover magnifier, and it never catches the mouse)
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.scale = Vector2(0.15, 0.15)
 	card.modulate = Color(6, 6, 6, 0)
 	stage.add_child(card)
@@ -518,97 +518,60 @@ func _play_fusion(a: Dictionary, b: Dictionary, from_a: Vector2, from_b: Vector2
 	await get_tree().create_timer(0.2).timeout
 
 
-## The fusion's drop of purple wax: it hangs above the new card; you drag it onto one of its Essence (it snaps to
-## the nearest one; let go too far from any and it floats back), and it seals it: that Essence isn't needed any more.
-## Returns the new card.
-const WAX_SNAP := 90.0  # px: how close to an Essence the wax must be let go to stick to it
-
-
+## The fusion's drop of purple wax: it hangs above the new card, swelling, until you click one of its Essence; then
+## it falls onto that Essence, splashes, and seals it (that Essence isn't needed any more). Returns the new card.
 func _wax_seal(stage: Control, card: SpellCard, id: String, mid: Vector2) -> SpellCard:
 	var top := card.get_global_rect().position.y
-	var home := Vector2(mid.x, top - 80.0) - stage.global_position
-	var wax := TextureRect.new()
-	wax.texture = UiSkin.tex("wax_seal")
-	wax.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	wax.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	wax.size = Vector2(54, 64)
-	wax.pivot_offset = wax.size / 2.0
-	wax.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	wax.mouse_default_cursor_shape = Control.CURSOR_DRAG
-	wax.position = home - wax.size / 2.0
-	wax.scale = Vector2.ZERO
-	stage.add_child(wax)
-	wax.create_tween().tween_property(wax, "scale", Vector2.ONE, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	# it bobs gently while it waits
-	var bob := wax.create_tween().set_loops()
-	bob.tween_property(wax, "rotation", 0.08, 0.7).set_trans(Tween.TRANS_SINE)
-	bob.tween_property(wax, "rotation", -0.08, 0.7).set_trans(Tween.TRANS_SINE)
-	var hint := UiTheme.label("A drop of purple wax! It can shorten your spell.", 24, Color(0.9, 0.75, 1.0))
+	var drop := WaxDrop.new()
+	drop.position = Vector2(mid.x, top - 70.0) - stage.global_position
+	stage.add_child(drop)
+	create_tween().tween_property(drop, "swell", 1.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	var hint := UiTheme.label("A drop of purple wax! Click an Essence of the new spell to seal it: it won't be needed any more.", 22, Color(0.9, 0.75, 1.0))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.size = Vector2(900, 40)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.size = Vector2(900, 60)
 	hint.position = Vector2(mid.x - 450, card.get_global_rect().end.y + 30.0) - stage.global_position
 	stage.add_child(hint)
-	var nearest := func(at: Vector2) -> int:
+	# pick an Essence: the one under the mouse lights up, a click seals it
+	var picked := [-1]
+	var orb_at := func(at: Vector2) -> int:
 		var orbs := card.live_orbs()
-		var best := -1
-		var best_d := WAX_SNAP
 		for k in orbs.size():
-			var d := (orbs[k] as Control).get_global_rect().get_center().distance_to(at)
-			if d < best_d:
-				best_d = d
-				best = k
-		return best
-	var light := func(k: int) -> void:
-		var orbs := card.live_orbs()
-		for i in orbs.size():
-			orbs[i].highlight = i == k
-			orbs[i].queue_redraw()
-	# drag it: grab the wax, carry it over the card (the nearest Essence lights up), let go
-	var st := {"drag": false, "picked": -1, "grab": Vector2.ZERO}
+			if (orbs[k] as Control).get_global_rect().grow(4.0).has_point(at):
+				return k
+		return -1
 	var on_input := func(ev: InputEvent):
-		if st.picked >= 0:
+		if picked[0] >= 0:
 			return
-		if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT:
-			if ev.pressed and wax.get_global_rect().grow(18.0).has_point(ev.global_position):
-				st.drag = true
-				st.grab = wax.global_position - ev.global_position
-				bob.pause()
-				wax.rotation = 0.0
-				wax.create_tween().tween_property(wax, "scale", Vector2(1.15, 1.15), 0.1)
-			elif not ev.pressed and st.drag:
-				st.drag = false
-				var k: int = nearest.call(wax.global_position + wax.size / 2.0)
-				if k >= 0:
-					st.picked = k
-				else:
-					light.call(-1)
-					var back := wax.create_tween().set_parallel()
-					back.tween_property(wax, "position", home - wax.size / 2.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-					back.tween_property(wax, "scale", Vector2.ONE, 0.2)
-					bob.play()
-		elif ev is InputEventMouseMotion:
-			if st.drag:
-				wax.global_position = ev.global_position + st.grab
-				light.call(nearest.call(wax.global_position + wax.size / 2.0))
-			stage.mouse_default_cursor_shape = Control.CURSOR_DRAG if st.drag or wax.get_global_rect().grow(18.0).has_point(ev.global_position) else Control.CURSOR_ARROW
+		if ev is InputEventMouseMotion:
+			var over: int = orb_at.call(ev.global_position)
+			var orbs := card.live_orbs()
+			for k in orbs.size():
+				orbs[k].highlight = k == over
+				orbs[k].queue_redraw()
+			drop.position.x = (orbs[over].get_global_rect().get_center().x if over >= 0 else mid.x) - stage.global_position.x
+			stage.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if over >= 0 else Control.CURSOR_ARROW
+		elif ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			picked[0] = orb_at.call(ev.global_position)
 	stage.gui_input.connect(on_input)
-	while st.picked < 0:
+	while picked[0] < 0:
 		await get_tree().process_frame
 	stage.gui_input.disconnect(on_input)
 	stage.mouse_default_cursor_shape = Control.CURSOR_ARROW
 	hint.queue_free()
-	bob.kill()
-	# it snaps to that Essence's centre...
-	var orb: Control = card.live_orbs()[st.picked]
+	# it falls onto that Essence...
+	var orb: Control = card.live_orbs()[picked[0]]
 	var at := orb.get_global_rect().get_center()
-	var snap := wax.create_tween().set_parallel()
-	snap.tween_property(wax, "global_position", at - wax.size / 2.0, 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	snap.tween_property(wax, "scale", Vector2(0.8, 0.8), 0.1)
-	await snap.finished
-	wax.queue_free()
-	var picked := [st.picked]
+	drop.position.x = at.x - stage.global_position.x
+	if UiSkin.is_puppet():  # (the wax sound starts with the fall: its splash lands as the drop does; the file has 1.55 s of near silence first)
+		Audio.play("Wax_drop", 0.0, 1.0, 1.55)
+	var ft := create_tween()
+	ft.tween_property(drop, "position:y", at.y - 26.0 - stage.global_position.y, 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await ft.finished
+	drop.queue_free()
 	# ...splash, and the seal is pressed in
-	Audio.play("sfx_lock_break")
+	if not UiSkin.is_puppet():
+		Audio.play("sfx_lock_break")  # (Puppet: Wax_drop, played as the drop falls)
 	var fx := _vfx(stage)
 	fx.glow(at, 160, Color(0.8, 0.45, 1.0, 0.8), 0.45)
 	fx.ring(at, 20, 120, Color(0.8, 0.5, 1.0), 0.4, 8.0)
@@ -617,8 +580,8 @@ func _wax_seal(stage: Control, card: SpellCard, id: String, mid: Vector2) -> Spe
 		d.size1 = d.size0 * 0.6
 	run.seal_spell(id, run.sealable(id)[picked[0]])
 	var sealed := SpellCard.make(run.spell(id))
-	sealed.is_zoom_copy = true
 	stage.add_child(sealed)
+	sealed.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sealed.pivot_offset = card.pivot_offset
 	sealed.position = card.position
 	sealed.scale = card.scale

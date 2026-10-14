@@ -12,7 +12,12 @@ var _back_layer := CanvasLayer.new()  # the "Back to room map" button of a test 
 
 
 func _ready() -> void:
+	# the game starts full screen (F11 toggles it); a test or tool run keeps its own small window
+	var args := OS.get_cmdline_args()
+	if not ("-s" in args or "--script" in args or "--headless" in args or DisplayServer.get_name() == "headless"):
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 	overlay_layer.layer = 5
+	UiSkin.apply_clear_color()
 	add_child(screen_layer)
 	add_child(overlay_layer)
 	# your Amber, top-right on every screen while a run is going on
@@ -23,6 +28,12 @@ func _ready() -> void:
 	amber.position = Vector2(1920 - 24 - 140, 112)
 	al.add_child(amber)
 	add_child(al)
+	var cur := CanvasLayer.new()  # the Puppet Stage's wooden arrow pointer, over everything
+	cur.layer = 128
+	var wood_cursor := WoodCursor.new()
+	wood_cursor.get_screen = func(): return current
+	cur.add_child(wood_cursor)
+	add_child(cur)
 	var tl := CanvasLayer.new()
 	tl.layer = 10
 	var toasts: VBoxContainer = load("res://scripts/ui/toasts.gd").new()
@@ -188,6 +199,10 @@ func _pin_tooltip(content: Control) -> void:
 
 
 func _unhandled_input(ev: InputEvent) -> void:
+	if ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_F11:
+		var full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)
+		get_viewport().set_input_as_handled()
 	if ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_F1:
 		open_wiki()
 		get_viewport().set_input_as_handled()
@@ -200,6 +215,58 @@ func open_codex() -> void:
 	overlay_layer.add_child(c)
 
 
+## Puppet Stage: the run stays on the stage between fights. While the stage is up with its HUD sunk (after a fight, or in a map-mode screen) the
+## rewards, the map board, the encounter and the spellbook are laid over it instead of replacing it.
+var _overlay: Control
+var _book_overlay: Control
+
+
+func _stage_flow() -> bool:
+	return UiSkin.is_puppet() and not _test_mode
+
+
+func _on_stage() -> bool:
+	return _stage_flow() and is_instance_valid(current) and current is FightScreen and (current.map_mode or current._hud_hidden())
+
+
+func _set_overlay(c: Control) -> void:
+	if is_instance_valid(_overlay):
+		_overlay.queue_free()
+	_overlay = c
+	c.z_index = PuppetStage.CEILING_Z + 2  # (over the ceiling's valance)
+	current.add_child(c)
+
+
+## A screen of the run: on the stage if it is up, else a plain swap.
+func _put(c: Control) -> void:
+	if _on_stage():
+		if "on_stage" in c:
+			c.on_stage = true
+		_set_overlay(c)
+	else:
+		_swap(c)
+
+
+func _open_spellbook() -> void:
+	if not (is_instance_valid(current) and current is FightScreen) or is_instance_valid(_book_overlay):
+		return
+	var l := LoadoutScreen.new()
+	l.setup(run, [])
+	l.on_stage = true
+	l.book_only = true
+	var under := _overlay  # (the map board or the rewards under it step aside while the book is open)
+	if is_instance_valid(under):
+		under.visible = false
+	l.closed.connect(func():
+		l.queue_free()
+		if is_instance_valid(under):
+			under.visible = true)
+	l.codex_pressed.connect(open_codex)
+	l.z_index = PuppetStage.CEILING_Z + 3
+	current.add_child(l)
+	_book_overlay = l
+
+
 func _message(title: String, body: String, buttons: Array, col := Color.WHITE, extra: Control = null) -> MessageScreen:
 	var s := MessageScreen.new()
 	s.extra = extra
@@ -208,7 +275,7 @@ func _message(title: String, body: String, buttons: Array, col := Color.WHITE, e
 	s.buttons = buttons
 	s.title_color = col
 	s.act = run.act if run else 1
-	_swap(s)
+	_put(s)
 	return s
 
 
@@ -249,6 +316,7 @@ func _test_fight(ids: Array, spells: Array) -> void:
 	f.talk_free = true  # (test mode: a boss's talk costs no Essence)
 	var fs := FightScreen.new()
 	fs.setup(r, f)
+	fs.test_mode = true  # (Auto-fill and Auto-ball buttons)
 	fs.finished.connect(func(_won): open_test_mode())
 	fs.menu_requested.connect(open_test_mode)
 	Audio.play_music("boss" if ids.any(func(id): return EnemyDefs.E[id].get("boss", false)) else "fight")
@@ -309,12 +377,42 @@ func show_map() -> void:
 	_room_bg = ""
 	_checkpoint("map")
 	Audio.play_music("map")
+	if _stage_flow():
+		_show_stage_map()
+		return
 	var m := MapScreen.new()
 	m.setup(run)
 	m.node_chosen.connect(_on_node)
 	m.codex_pressed.connect(open_codex)
 	m.menu_requested.connect(func(): run = null; show_menu())
 	_swap(m)
+
+
+## Puppet Stage: the map is a wooden board that rises over the stage (over the one of the fight that was just won, or over a fresh stage).
+func _show_stage_map() -> void:
+	if not _on_stage():
+		var fs := _new_fight_screen(run.make_fight([]))
+		fs.map_mode = true
+		_swap(fs)
+	var m := MapScreen.new()
+	m.on_stage = true
+	m.setup(run)
+	m.node_chosen.connect(func(col: int):
+		await m.lower()
+		_on_node(col))
+	m.codex_pressed.connect(open_codex)
+	m.menu_requested.connect(func(): run = null; show_menu())
+	_set_overlay(m)
+
+
+func _new_fight_screen(f: Fight) -> FightScreen:
+	var fs := FightScreen.new()
+	fs.setup(run, f)
+	fs.run_saved = true
+	fs.stage_flow = _stage_flow()
+	fs.menu_requested.connect(func(): run = null; show_menu())
+	fs.spellbook_pressed.connect(_open_spellbook)
+	return fs
 
 
 # ------------------------------------------------------------------ Dev Mode: Room Test
@@ -341,7 +439,6 @@ func start_room_test() -> void:
 	run.artifact_gained.connect(_on_artifact_found)
 	run.setup(GameData.db, SaveManager.unlocked_spells(), SaveManager.unlocked_artifacts())
 	run.amber = 999  # (so shops and events can be tried)
-	run.resin = 2
 	show_room_test()
 
 
@@ -541,9 +638,48 @@ func _show_loadout(ids: Array) -> void:
 	_checkpoint("fight", ids)
 	var l := LoadoutScreen.new()
 	l.setup(run, ids)
-	l.confirmed.connect(func(): _start_fight(ids))
 	l.codex_pressed.connect(open_codex)
-	_swap(l)
+	if _on_stage() and current.get_stage() != null:
+		_stage_encounter(ids, l)
+		return
+	l.confirmed.connect(func(): _start_fight(ids))
+	_put(l)
+
+
+## Puppet Stage: the fight is built as soon as the encounter board comes up. The old set of props is cleared away and the new one brought in, and the
+## enemies walk on, behind the board while you choose your spells; "Begin the fight" only sends the chosen cards to their places and lifts the HUD.
+func _stage_encounter(ids: Array, l: LoadoutScreen) -> void:
+	var fight_kind := run.current_kind()
+	_room_bg = "elite_arena" if fight_kind == "elite" else (BOSS_BG[clampi(run.act, 1, 3)] if fight_kind == "boss" else "")
+	_last_ids = ids.duplicate()
+	var f := run.make_fight(ids)
+	var fs := _new_fight_screen(f)
+	fs.finished.connect(func(_won): _after_fight(f))
+	var stage: PuppetStage = current.get_stage()
+	fs.stage_in = stage
+	fs.arrive = true
+	fs.hold_hud = true
+	stage.clear_props()
+	_swap(fs)
+	l.on_stage = true
+	l.confirmed.connect(func(): _begin_stage_fight(fs, f, ids, l))
+	_set_overlay(l)
+
+
+func _begin_stage_fight(fs: FightScreen, f: Fight, ids: Array, l: LoadoutScreen) -> void:
+	if l.has_meta("begun"):
+		return
+	l.set_meta("begun", true)
+	# The board goes at once, whatever the stage is doing: the chosen cards stay where they lay, the props and the enemies keep coming in, and when
+	# they are in place the HUD comes up and the cards fly to their places (FightScreen.begin_with_spells waits for that itself).
+	_checkpoint("fight", ids)  # (with the spells you just chose)
+	var from := l.active_rects()
+	var spells: Array = run.loadout.map(func(id): return run.spell(id))
+	var book: Array = run.spellbook.map(func(id): return run.spell(id))
+	Audio.play_music("boss" if run.current_kind() == "boss" else "fight")
+	l.queue_free()
+	_overlay = null
+	fs.begin_with_spells(spells, book, from)
 
 
 var _last_ids: Array = []  # the current fight's enemies (the Seed of Life starts it over)
@@ -555,11 +691,11 @@ func _start_fight(ids: Array) -> void:
 	_last_ids = ids.duplicate()
 	_checkpoint("fight", ids)  # (with the spells you just chose)
 	var f := run.make_fight(ids)
-	var fs := FightScreen.new()
-	fs.setup(run, f)
-	fs.run_saved = true
+	var fs := _new_fight_screen(f)
 	fs.finished.connect(func(_won): _after_fight(f))
-	fs.menu_requested.connect(func(): run = null; show_menu())
+	if _stage_flow() and is_instance_valid(current) and current is FightScreen and current.get_stage() != null:
+		fs.stage_in = current.get_stage()  # (the same theatre: its scenery slides away, the new room's slides in)
+		fs.arrive = true
 	Audio.play_music("boss" if run.current_kind() == "boss" else "fight")
 	_swap(fs)
 
@@ -753,7 +889,7 @@ func _choice(title: String, sub: String, spells: Array, arts: Array, can_skip: b
 	c.chosen.connect(func(i):
 		if i >= 0:
 			Audio.play("artifact_get" if not arts.is_empty() else "discovery_unlock"))
-	_swap(c)
+	_put(c)
 	return c
 
 

@@ -44,9 +44,11 @@ func _ready() -> void:
 	_box.content_margin_bottom = 20
 	_box.shadow_color = Color(0, 0, 0, 0.5)
 	_box.shadow_size = 6
-	_frame = UiSkin.box("treasure_card_frame", [12, 12, 12, 12], [26, 22, 26, 24])
+	var fm := [32, 32, 32, 32] if UiSkin.is_puppet() else [12, 12, 12, 12]  # (the Puppet frame is carved: bigger corners and rim)
+	var fc := [40, 34, 40, 36] if UiSkin.is_puppet() else [26, 22, 26, 24]
+	_frame = UiSkin.box("treasure_card_frame", fm, fc)
 	if _frame != null:
-		_frame_hover = UiSkin.box("treasure_card_frame_hover", [12, 12, 12, 12], [26, 22, 26, 24])
+		_frame_hover = UiSkin.box("treasure_card_frame_hover", fm, fc)
 		_ring = UiSkin.tex("medal_ring_cursed" if cursed else "medal_ring_" + str(a.get("tier", "common")))
 		add_theme_stylebox_override("panel", _frame)
 	else:
