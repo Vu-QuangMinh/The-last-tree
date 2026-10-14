@@ -1,5 +1,5 @@
-"""Puppet Stage theme: the Chant bar, the Bag bar, their buttons and the three Essence balls of assets/ui/puppet/Chant UI for puppet.pdf.
-Cuts, at the game's scale (S: the PDF's 62.3 pt balls become 52 px), into assets/ui/puppet/:
+"""Puppet Stage theme: the Chant bar, the Bag bar, their buttons and the three Essence balls of assets/Puppet/_Source/Chant UI for puppet.pdf.
+Cuts, at the game's scale (S: the PDF's 62.3 pt balls become 52 px), into assets/Puppet/UI/ (Panels, Buttons, Essence):
   panels/chant_frame.png  panels/bag_frame.png   the two bars (3-slice: a cap at each end, a plain middle; no stretch in height)
   panels/chant_slot_empty.png                    one empty ring of the chant (2x: it is scaled down in the game)
   buttons/button_{chant,clear,pass}_{normal,hover,pressed,disabled}.png   the wooden buttons WITHOUT their stamped word (the game writes
@@ -22,13 +22,16 @@ from PIL import Image, ImageEnhance
 
 sys.stdout.reconfigure(encoding="utf-8")
 HERE = os.path.dirname(os.path.abspath(__file__))
-UI = os.path.join(HERE, "..", "assets", "ui", "puppet")
-SRC = os.path.join(UI, "Chant UI for puppet.pdf")
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import asset_paths as AP
+UI = AP.PUPPET
+SRC = os.path.join(AP.PUPPET, "_Source", "Chant UI for puppet.pdf")
 LAYOUT = os.path.join(HERE, "..", "scripts", "ui", "puppet_layout.gd")
 S = 52.0 / 62.3  # px per pt
 ZOOM = 6
-for d in ("panels", "buttons", "essence"):
-    os.makedirs(os.path.join(UI, d), exist_ok=True)
+for d in ("UI/Panels", "UI/Buttons", "UI/Essence"):
+    os.makedirs(os.path.join(UI, *d.split("/")), exist_ok=True)
 
 doc = pymupdf.open(SRC)
 pg = doc[0]
@@ -103,7 +106,7 @@ def cut_bar(tag, out):
     box = bbox_of(im)
     im = im.crop(box)
     sm = small(im, S / ZOOM)
-    sm.save(os.path.join(UI, "panels", out))
+    sm.save(AP.panel_path(UI, out[:-4]))
     print("  %-22s %s" % (out, sm.size))
     return sm.size
 
@@ -124,7 +127,7 @@ ring_r = rect_of["Im0"]
 im, box = cut_piece([by_name["Im0"]], ring_r)
 ring_pt = pymupdf.Rect(ring_r.x0 + box[0] / ZOOM, ring_r.y0 + box[1] / ZOOM, ring_r.x0 + box[2] / ZOOM, ring_r.y0 + box[3] / ZOOM)
 ring_im = im.crop(box)
-small(ring_im, 2 * S / ZOOM).save(os.path.join(UI, "panels", "chant_slot_empty.png"))
+small(ring_im, 2 * S / ZOOM).save(AP.panel_path(UI, "chant_slot_empty"))
 ring_step_pt = (rect_of["Im9"].x0 - rect_of["Im0"].x0) / 9.0
 print("  ring %.1f x %.1f pt, step %.2f pt" % (ring_pt.width, ring_pt.height, ring_step_pt))
 BALLS = {"fire": "Im16", "water": "Im27", "wind": "Im28"}
@@ -136,7 +139,7 @@ for el, nm in BALLS.items():
     sq = Image.new("RGBA", (side, side), (0, 0, 0, 0))
     sq.paste(im, ((side - im.width) // 2, (side - im.height) // 2))
     sq = sq.convert("RGBa").resize((128, 128), Image.LANCZOS).convert("RGBA")
-    sq.save(os.path.join(UI, "essence", "essence_%s.png" % el))
+    sq.save(os.path.join(UI, "UI", "Essence", "essence_%s.png" % el))
     print("  essence_%-12s %.1f x %.1f pt" % (el, (box[2] - box[0]) / ZOOM, (box[3] - box[1]) / ZOOM))
 bag_ball = rect_of["Im17"]  # the first ball laid on the bag bar
 im, box = cut_piece([by_name["Im17"]], bag_ball)
@@ -174,7 +177,7 @@ for kind in ("chant", "clear", "pass"):
     shots["disabled"] = dis
     for st, img in shots.items():
         sm = small(img, S / ZOOM)
-        sm.save(os.path.join(UI, "buttons", "button_%s_%s.png" % (kind, st)))
+        sm.save(os.path.join(UI, "UI", "Buttons", "button_%s_%s.png" % (kind, st)))
     cx, cy = n[1].x0 + (n[2][0] + n[2][2]) / 2 / ZOOM, n[1].y0 + (n[2][1] + n[2][3]) / 2 / ZOOM  # (the normal picture's centre on the page)
     btn[(kind, "rect")] = pymupdf.Rect(cx - cw / ZOOM / 2, cy - ch / ZOOM / 2, cx + cw / ZOOM / 2, cy + ch / ZOOM / 2)
     print("  button_%-6s %s px, at pt %s" % (kind, sm.size, btn[(kind, "rect")]))

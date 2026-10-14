@@ -1,4 +1,4 @@
-"""Synthesize the Cirus bag launcher's sounds into assets/sfx/:
+"""Synthesize the Cirus bag launcher's sounds into assets/Global/SFX/:
 - sfx_ball_clack:  two billiard balls knocking (a very short, bright, hard "tok": glassy partials + a tiny low thud)
 - sfx_ball_roll:   a ball rolling over a table (a low, soft rumble with a slow wobble as the ball turns)
 - sfx_crank_ratchet: the crank and gear turning once (a fast run of small ratchet clicks that slows a little at the end)
@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 
 SR = 44100
-OUT = Path(__file__).resolve().parent.parent / "assets" / "sfx"
+OUT = Path(__file__).resolve().parent.parent / "assets" / "Global" / "SFX"
 rng = np.random.default_rng(11)
 
 

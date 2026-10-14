@@ -32,6 +32,11 @@ func _ready() -> void:
 
 func _draw() -> void:
 	var w := SIZE
+	var art := UiSkin.tex("intent_charge")  # (Puppet / New: the painted hourglass, with the number over its middle)
+	if art != null:
+		draw_texture_rect(art, Rect2(0, 0, w, w), false)
+		_draw_number(w)
+		return
 	var frame := Color(0.55, 0.35, 0.18)
 	var glass := Color(0.85, 0.95, 1.0, 0.35)
 	# the two bulbs
@@ -50,7 +55,10 @@ func _draw() -> void:
 	draw_rect(Rect2(w * 0.1, w * 0.87, w * 0.8, w * 0.09), frame)
 	draw_polyline(PackedVector2Array([top[0], top[2], bot[1]]), frame, 2.0)
 	draw_polyline(PackedVector2Array([top[1], top[2], bot[2]]), frame, 2.0)
-	# the number, in the middle
+	_draw_number(w)
+
+
+func _draw_number(w: float) -> void:
 	var font := get_theme_default_font()
 	var fs := 22
 	var txt := str(left)

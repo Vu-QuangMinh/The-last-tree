@@ -6,7 +6,7 @@ extends Control
 ## has faded. Light is drawn additively on top, so overlapping glows burn towards white; smoke, shards,
 ## crystals and thorns are drawn normally underneath it.
 
-enum { GLOW, SPARK, DOT, SHARD, SMOKE, FLAKE, CRYSTAL, BUBBLE, CROSS, STAR, RUNE, CHEVRON, THORN, DROP }
+enum { GLOW, SPARK, DOT, SHARD, SMOKE, FLAKE, CRYSTAL, BUBBLE, CROSS, STAR, RUNE, CHEVRON, THORN, DROP, SHIELD }
 const SOLID := [SHARD, SMOKE, CRYSTAL, THORN]
 
 
@@ -441,6 +441,18 @@ func _draw_particle(L: Control, it: Item) -> void:
 			_soft(L, p, s * 1.8, Color(c, c.a * 0.45))
 			L.draw_rect(Rect2(p - Vector2(s * 0.2, s * 0.65), Vector2(s * 0.4, s * 1.3)), c)
 			L.draw_rect(Rect2(p - Vector2(s * 0.65, s * 0.2), Vector2(s * 1.3, s * 0.4)), c)
+		SHIELD:  # a little heater shield drawn in code: a body, a lighter inner face and a dark edge
+			_soft(L, p, s * 1.5, Color(c, c.a * 0.15))
+			var body := PackedVector2Array([p + Vector2(-0.72, -0.8) * s, p + Vector2(0.72, -0.8) * s, p + Vector2(0.72, 0.02) * s,
+				p + Vector2(0.5, 0.52) * s, p + Vector2(0.0, 0.98) * s, p + Vector2(-0.5, 0.52) * s, p + Vector2(-0.72, 0.02) * s])
+			L.draw_colored_polygon(body, c)
+			var face := PackedVector2Array()
+			for q in body:
+				face.append(p + (q - p) * 0.68 + Vector2(0, -0.04) * s)
+			L.draw_colored_polygon(face, Color(c.lightened(0.12), c.a))
+			var edge := body.duplicate()
+			edge.append(body[0])
+			L.draw_polyline(edge, Color(c.darkened(0.5), c.a), maxf(1.5, s * 0.14), true)
 		STAR:
 			_soft(L, p, s * 1.6, Color(c, c.a * 0.5))
 			var pts := PackedVector2Array()

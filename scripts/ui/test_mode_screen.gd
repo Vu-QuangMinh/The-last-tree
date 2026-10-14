@@ -1,7 +1,7 @@
 class_name TestModeScreen
 extends Control
 ## Test mode: pick any enemies (1 to 5, from every act) and any active spells, then fight. After the fight you come
-## back here with the same picks. You always start with the 3 basic spells; drag spells from the list (or the random
+## back here with the same picks. You start with the 8 strongest spells (STRONGEST); drag spells from the list (or the random
 ## spell slot) into your active row, drag them out to take them away, drop one on another to switch them.
 
 signal fight_requested(enemy_ids: Array, spells: Array)
@@ -11,6 +11,8 @@ const MAX_ENEMIES := 5
 const MAX_SPELLS := 8
 const DRAG_START := 10.0
 const ZOOM := 0.72  # the cards on this screen are drawn at this size
+## The 8 spells a fresh Test mode starts with: the hardest hitters (and one big defence) that can be cast every turn (no Fleeting spell like Annihilate / World's End, no cooldown), so a test fight is about the enemy, not the loadout.
+const STRONGEST := ["supernova", "solar_flare", "meteor", "hurricane", "tidal_wave", "deluge", "steam_titan", "elemental_fury"]
 const SORTS := ["Rarity", "Type", "Length"]
 const RARITY_ORDER := {"common": 0, "rare": 1, "legendary": 2}
 const KIND_ORDER := {"damage": 0, "defense": 1, "utility": 2}
@@ -40,7 +42,7 @@ func _ready() -> void:
 	theme = UiTheme.get_theme()
 	_db = GameData.db
 	if not state.has("spells"):
-		state.spells = _db.starters().map(func(s): return s.id)
+		state.spells = STRONGEST.filter(func(id): return not _db.get_spell(id).is_empty()).slice(0, MAX_SPELLS)
 	if not state.has("enemies"):
 		state.enemies = []
 	if not state.has("sort"):
@@ -192,7 +194,7 @@ func _enemy_groups() -> Array:
 		out.append(["Act %d" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and not EnemyDefs.E[k].get("elite", false) and not EnemyDefs.E[k].get("boss", false) and not EnemyDefs.E[k].get("member", false))])
 		out.append(["Act %d mini bosses" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and EnemyDefs.E[k].get("elite", false) and not EnemyDefs.E[k].get("member", false))
 			+ EnemyDefs.ELITE_GROUPS.keys().filter(func(k): return EnemyDefs.ELITE_GROUPS[k].act == act)])
-		out.append(["Act %d bosses" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and EnemyDefs.E[k].get("boss", false))])
+		out.append(["Act %d bosses" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and EnemyDefs.E[k].get("boss", false) and not EnemyDefs.E[k].get("member", false))])  # (the Handyman brings his own hands)
 	out.append(["In reserve", EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == 0)])
 	return out.filter(func(g): return not g[1].is_empty())
 

@@ -10,6 +10,8 @@ func run(t: SceneTree) -> void:
 	var gd = root.get_node("GameData")
 	var run := RunState.new()
 	run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
+	if OS.get_environment("SHOT_ACT") != "":
+		run.act = int(OS.get_environment("SHOT_ACT"))
 	var ids: Array = Array(OS.get_environment("SHOT_ENEMIES").split(",")) if OS.get_environment("SHOT_ENEMIES") != "" else ["greenseer", "yin_yang_clone", "rolling_bear"]
 	var f := run.make_fight(ids)
 	var fs := FightScreen.new()

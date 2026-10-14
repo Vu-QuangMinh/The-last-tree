@@ -88,12 +88,13 @@ static func make(e: EnemyState, move := {}) -> IntentChip:
 	return c
 
 
-## New theme: the painted icon of each intent kind (assets/ui/new/intent_<kind>.png). Burn / Poison / Unknown are painted too,
+## New theme: the painted icon of each intent kind (assets/New/Icon/Intent/intent_<kind>.png). Burn / Poison / Unknown are painted too,
 ## but no enemy intent uses them (burn and poison are statuses).
 const ART := {"attack": "intent_attack", "armor": "intent_armor", "freeze": "intent_freeze", "steal": "intent_steal", "summon": "intent_summon",
 	"bleed": "intent_bleed", "blind": "intent_blind", "confuse": "intent_confuse", "mend": "intent_mend", "shuffle": "intent_shuffle",
 	"silence": "intent_silence", "lock": "intent_lock", "ethereal": "intent_ethereal", "empower": "intent_empower", "toll": "intent_toll",
-	"invert": "intent_invert", "hex": "intent_hex", "mimic": "intent_mimic", "frail": "intent_frail"}
+	"invert": "intent_invert", "hex": "intent_hex", "mimic": "intent_mimic", "frail": "intent_frail", "hammer_spell": "intent_hammer_spell",
+	"invert_spells": "intent_invert_spells", "invoke": "intent_invoke", "stunned": "intent_stunned", "sing": "intent_sing", "ignite_spell": "intent_ignite_spell", "charge": "intent_charge"}
 
 
 ## New theme: the bubble is five fixed-ratio pieces: two end caps, the arrow in the middle, and a stretchy piece on each
@@ -237,7 +238,8 @@ func _add_move(row: HBoxContainer, m: Dictionary, e: EnemyState) -> void:
 		"mend":
 			# a red heart with a green up-arrow, then how many (only when more than one), then which Essence
 			# (a random one shows the wildcard bead). No "+".
-			row.add_child(MendIcon.make(34))  # a red heart with a green up-arrow (the user's design: no "+")
+			var mend_art: Control = UiSkin.icon("intent_mend", 34) if UiSkin.is_puppet() else null  # (Puppet: its carved wooden Mend)
+			row.add_child(mend_art if mend_art != null else MendIcon.make(34))  # a red heart with a green up-arrow (the user's design: no "+")
 			if m.n > 1:
 				var digits := UiSkin.number(str(m.n), 34, false, 0.7)
 				row.add_child(digits if digits != null else _word(str(m.n), Color.WHITE))

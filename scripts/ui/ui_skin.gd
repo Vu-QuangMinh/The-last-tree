@@ -1,59 +1,79 @@
 class_name UiSkin
 extends RefCounted
-## The "New" look: hand-drawn art from assets/ui/new/ (cut from assets/ui/Fight UI.pdf by tools/export_fight_ui.py).
-## Settings → Theme picks it ("new" = the art wherever there is some, and it's the default; "default" = everything
-## drawn in code).
+## The two looks of the game: "new" (hand-drawn art, assets/New/) and "puppet" (the wooden puppet theatre, assets/Puppet/). Art that both share
+## sits in assets/Global/. Settings -> Theme picks one. (The old Default and Cirus looks are gone: a save that still says so opens in New.)
 ## A piece of art that's missing just returns null, and the caller keeps drawing in code.
+##
+## Every theme folder has the same shape (see assets/README.md): Card, Enemies/Act1..3, Fonts, Icon/{Artifact,Bottle,Effect,Intent},
+## UI/..., Map/..., Stage/Act1..3/{Props,Backdrop,Wall,Floor,Ceiling,Fx}, SFX. Art is found BY NAME: the first folder of FOLDERS (in each
+## root, in ROOTS' order) that holds <name>.png or <name>.jpg wins, so a picture can be moved between those folders freely.
 
-const DIR := "res://assets/ui/new/"
-## Cirus (circus tent) theme: the same file names as the New set, in their own folder. A picture that isn't there yet falls
-## back to the New one, so the theme can be filled in piece by piece.
-const CIRCUS_DIR := "res://assets/ui/circus/"
-## Puppet Stage art (the stage, and its own Chant / Bag strips, machine and buttons) comes first, then Cirus, then New.
-const PUPPET_DIR := "res://assets/ui/puppet/"
-const OPTIONS := ["default", "new", "circus", "puppet"]
-const LABELS := ["Default", "New", "Cirus", "Puppet Stage"]
-## Puppet Stage theme: the Cirus art for every control (is_circus() is true for it too), a wooden puppet theatre (PuppetStage) behind the fights. Pieces that
-## would clash with the stage (the painted stump under an enemy) are hidden.
+const ASSETS := "res://assets/"
+const OPTIONS := ["new", "puppet"]
+const LABELS := ["New", "Puppet Stage"]
+## Puppet Stage theme: pieces that would clash with the stage (the painted stump under an enemy) are hidden.
 const PUPPET_HIDDEN := ["enemy_stand"]
 
 static var _tex := {}
 static var _paths := {}  # name -> res:// path ("" = there is none)
-## The art is sorted into folders under DIR (by what it is); a name is looked up in each, as a png and then a jpg.
-const FOLDERS := ["panels", "buttons", "essence", "intent", "status", "icons", "cards", "numbers", "treasure", "map", "fx",
-	"backgrounds", "leaves", "title", "characters", "artifacts", "bottles", "campfire", "room", "misc"]
+## Where a name is looked for, inside a theme folder (in this order).
+const FOLDERS := ["UI/Panels", "UI/Hp", "UI/Machine", "UI/Hint", "UI/Buttons", "UI/Essence", "Icon/Intent", "Icon/Effect", "UI/Icons",
+	"Card", "UI/Numbers", "Card/Treasure", "Map", "UI/Fx", "Stage/Act1/Backdrop", "Stage/Act2/Backdrop", "Stage/Act3/Backdrop",
+	"Map/Rooms/Backgrounds", "Stage/Act1/Fx", "Stage/Act2/Fx", "Stage/Act3/Fx", "UI/Banners", "UI/Characters", "Icon/Artifact", "Icon/Bottle",
+	"Map/Rooms/Campfire", "Map/Rooms/Apothecary", "UI/Misc", "UI"]
 
 ## artifact id -> picture name, where they differ
 const ARTIFACT_ART := {"scholar_quill": "scholars_quill"}
 
 
-## True for every painted theme (New and Cirus): the code paths that ask for art all key off this.
+## "new" or "puppet".
+static func theme_id() -> String:
+	var t: String = SaveManager.setting("theme", "new")
+	return t if t in OPTIONS else "new"
+
+
+## The theme folders to look in, the chosen theme first (Puppet falls back to New for what it has no art of its own for yet, then Global).
+static func roots() -> Array:
+	return [ASSETS + "Puppet/", ASSETS + "New/", ASSETS + "Global/"] if is_puppet() else [ASSETS + "New/", ASSETS + "Global/"]
+
+
+## The folder of the chosen theme ("res://assets/New/" or ".../Puppet/").
+static func theme_dir() -> String:
+	return ASSETS + ("Puppet/" if is_puppet() else "New/")
+
+
+## True: the painted art is always on (there is no code-drawn Default look any more); the code paths that ask for art key off this.
 static func is_new() -> bool:
-	return SaveManager.setting("theme", "new") != "default"
+	return true
 
 
-## Cirus art and layout (the launcher strips, panels, HP bar…): Puppet Stage reuses all of it and only changes the stage behind.
+## Puppet Stage reuses the layout that was first made for the Cirus tent (launcher strips, panel and toast sizes...): the name stayed.
 static func is_circus() -> bool:
-	return SaveManager.setting("theme", "new") in ["circus", "puppet"]
+	return is_puppet()
 
 
 static func is_puppet() -> bool:
-	return SaveManager.setting("theme", "new") == "puppet"
+	return theme_id() == "puppet"
 
 
 static func set_theme(id: String) -> void:
-	SaveManager.set_setting("theme", id)
+	SaveManager.set_setting("theme", id if id in OPTIONS else "new")
 	_tex.clear()  # the same name now means another picture
 	_paths.clear()
 	UiTheme.reset()  # the shared Theme is rebuilt for the next screen
+	apply_clear_color()
 
 
-## Where a picture of the New set is (res:// path), or "" when there is no such picture.
+## The colour of the bars shown beside the 16:9 picture on a screen of another shape (the game is laid out for 1920 x 1080 and kept in that shape).
+static func apply_clear_color() -> void:
+	RenderingServer.set_default_clear_color(Color(0.07, 0.045, 0.03) if is_puppet() else Color(0.05, 0.07, 0.06))
+
+
+## Where a picture is (res:// path), or "" when there is no such picture.
 static func path_of(name: String) -> String:
 	if not _paths.has(name):
 		var found := ""
-		var roots: Array = [PUPPET_DIR, CIRCUS_DIR, DIR] if is_puppet() else ([CIRCUS_DIR, DIR] if is_circus() else [DIR])
-		for root in roots:
+		for root in roots():
 			for folder in FOLDERS:
 				for ext in [".png", ".jpg"]:  # (the room backgrounds are jpg: big, flat-coloured pictures)
 					var p: String = root + folder + "/" + name + ext
@@ -68,7 +88,7 @@ static func path_of(name: String) -> String:
 	return _paths[name]
 
 
-## A texture from the New set, or null when the theme is Default (or the file isn't there).
+## A texture by name, or null when the file isn't there.
 static func tex(name: String) -> Texture2D:
 	if not is_new() or (is_puppet() and name in PUPPET_HIDDEN):
 		return null
@@ -97,17 +117,19 @@ static func box(name: String, margins := [0, 0, 0, 0], content := [0, 0, 0, 0]) 
 	return b
 
 
-## New theme: the painted slot frame (3 slices: left cap | middle | right cap, assets/ui/new/panels/slot_strip.png).
+## New theme: the painted slot frame (3 slices: left cap | middle | right cap, UI/Panels/slot_strip.png).
 static func has_slot_frame() -> bool:
 	return tex("slot_strip") != null
 
 
 ## New theme: ONE frame behind all the children of `row` (a row of artifact or bottle slots), drawn from the first child's
 ## left edge to the last one's right edge and growing with them. Does nothing in Default or while the row is empty.
-static func frame_behind(row: Control, pad := Vector2(16, 11)) -> void:
-	if is_circus():
-		pad = Vector2(6, 2)  # (the Cirus frame is a solid block: hug the slots, or it dwarfs them)
-	var sb := box("slot_strip", [32, 0, 47, 0] if is_circus() else [28, 0, 27, 0])
+static func frame_behind(row: Control, pad := Vector2(16, 11), frame := "slot_strip") -> void:
+	if is_puppet():
+		pad = Vector2(12, 8)  # (the Puppet plaque has a thick carved rim: hug the slots, or it dwarfs them)
+	var sb := box(frame, [22, 16, 22, 16] if is_puppet() else [28, 0, 27, 0])
+	if sb == null and frame != "slot_strip":
+		sb = box("slot_strip", [22, 16, 22, 16] if is_puppet() else [28, 0, 27, 0])
 	if sb == null:
 		return
 	row.sort_children.connect(row.queue_redraw)
@@ -203,7 +225,37 @@ static func seedling_button(b: Button, text: String, plain: String, px := 24) ->
 	b.add_theme_constant_override("icon_max_width", px)
 
 
-## An artifact's painted icon (assets/ui/new/<id>.png) in a square of `px`; null in Default or if that artifact has none yet.
+## The main menu's "Unlocks (7 <seedling>)": the painted seedling stands inside the bracket, right of the number, which makes room for it (the
+## bracket moves back), a little lower (2 px) than the middle of the button.
+static func seedling_count_button(b: Button, label: String, count: int, px := 26) -> void:
+	var t := tex("icon_seedling")
+	if t == null:
+		b.text = "%s  (%d)" % [label, count]
+		return
+	var font := b.get_theme_font("font")
+	var fs := b.get_theme_font_size("font_size")
+	var head := "%s  (%d" % [label, count]
+	var gap := float(px) + 6.0
+	var space := font.get_string_size(" ", HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var pad := " ".repeat(maxi(1, ceili(gap / maxf(space, 1.0))))
+	b.text = head + pad + ")"
+	var icon := TextureRect.new()
+	icon.texture = t
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.size = Vector2(px, px)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(icon)
+	var place := func() -> void:
+		var full := font.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var x0 := (b.size.x - full) / 2.0
+		var head_w := font.get_string_size(head, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		icon.position = Vector2(x0 + head_w + 3.0, (b.size.y - px) / 2.0 + 2.0)
+	b.resized.connect(place)
+	place.call_deferred()
+
+
+## An artifact's painted icon (Icon/Artifact/<id>.png) in a square of `px`; null if that artifact has none yet.
 static func artifact_icon(id: String, px: float) -> TextureRect:
 	return icon(ARTIFACT_ART.get(id, id), px)
 

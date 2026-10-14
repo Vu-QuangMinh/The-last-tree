@@ -429,7 +429,7 @@ func _play_fusion(a: Dictionary, b: Dictionary, from_a: Vector2, from_b: Vector2
 	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var hole_mat := ShaderMaterial.new()
-	hole_mat.shader = load("res://assets/card/black_hole.gdshader")
+	hole_mat.shader = load("res://assets/Global/Card/Shaders/black_hole.gdshader")
 	hole_mat.set_shader_parameter("center", mid)
 	hole_mat.set_shader_parameter("size", view_size)
 	view.material = hole_mat
@@ -563,12 +563,15 @@ func _wax_seal(stage: Control, card: SpellCard, id: String, mid: Vector2) -> Spe
 	var orb: Control = card.live_orbs()[picked[0]]
 	var at := orb.get_global_rect().get_center()
 	drop.position.x = at.x - stage.global_position.x
+	if UiSkin.is_puppet():  # (the wax sound starts with the fall: its splash lands as the drop does; the file has 1.55 s of near silence first)
+		Audio.play("Wax_drop", 0.0, 1.0, 1.55)
 	var ft := create_tween()
 	ft.tween_property(drop, "position:y", at.y - 26.0 - stage.global_position.y, 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	await ft.finished
 	drop.queue_free()
 	# ...splash, and the seal is pressed in
-	Audio.play("sfx_lock_break")
+	if not UiSkin.is_puppet():
+		Audio.play("sfx_lock_break")  # (Puppet: Wax_drop, played as the drop falls)
 	var fx := _vfx(stage)
 	fx.glow(at, 160, Color(0.8, 0.45, 1.0, 0.8), 0.45)
 	fx.ring(at, 20, 120, Color(0.8, 0.5, 1.0), 0.4, 8.0)

@@ -1,6 +1,6 @@
 class_name KindGlyph
 extends Control
-## Stand-in for a spell category icon that has no picture yet (assets/card/icons/kind_<kind>.png):
+## Stand-in for a spell category icon that has no picture yet (assets/<theme>/Card/kind_<kind>.png):
 ## a shield for Defensive, a sparkle for Utility.
 
 var kind := "defense"

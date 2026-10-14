@@ -57,7 +57,7 @@ func _ready() -> void:
 
 func _art_name() -> String:
 	if UiSkin.tex(id) != null:
-		return id  # its own painted bottle (assets/ui/new/<id>.png)
+		return id  # its own painted bottle (assets/New/Icon/Bottle/<id>.png)
 	var col: Color = Bottles.get_def(id).get("color", Color.WHITE)
 	var best := "bottle_gray"
 	var best_d := 9.0

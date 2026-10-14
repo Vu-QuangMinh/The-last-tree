@@ -32,7 +32,16 @@ func _ready() -> void:
 	v.size = Vector2(1800, 980)
 	v.add_theme_constant_override("separation", 16)
 	add_child(v)
-	v.add_child(UiTheme.heading("🛒 The Merchant", 40, Color.WHITE))
+	var portrait: TextureRect = UiSkin.icon("merchant_portrait", 64) if UiSkin.is_puppet() else null
+	if portrait != null:  # Puppet: his round portrait instead of the cart
+		var title_row := HBoxContainer.new()
+		title_row.add_theme_constant_override("separation", 14)
+		portrait.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		title_row.add_child(portrait)
+		title_row.add_child(UiTheme.heading("The Merchant", 40, Color.WHITE))
+		v.add_child(title_row)
+	else:
+		v.add_child(UiTheme.heading("🛒 The Merchant", 40, Color.WHITE))
 	v.add_child(UiTheme.label("A badger with a very large backpack. \"Everything's for sale, friend. Even the backpack. Not the badger.\"", 20, UiTheme.MUTED))
 	_amber = UiTheme.label("", 26, Color(1, 0.8, 0.35))
 	v.add_child(_amber)
@@ -45,6 +54,12 @@ func _ready() -> void:
 	# artifact text) makes the rows taller and used to push a button in the list off the bottom of the screen
 	var leave_btn := UiTheme.button("Leave the shop", func(): leave.emit(), 22)
 	leave_btn.custom_minimum_size = Vector2(260, 56)
+	if UiSkin.is_puppet():
+		UiTheme.use_play_style(leave_btn, true)  # (the orange one, like Continue on the main menu)
+		for k in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+			leave_btn.add_theme_color_override(k, Color.WHITE)
+		leave_btn.add_theme_color_override("font_outline_color", Color(0.35, 0.16, 0.05))
+		leave_btn.add_theme_constant_override("outline_size", 4)
 	leave_btn.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	leave_btn.offset_left = -320.0
 	leave_btn.offset_right = -60.0
@@ -60,7 +75,7 @@ func _ready() -> void:
 
 ## New theme: the merchant himself stands above the Leave button (behind the goods, so they never get covered).
 func _place_merchant(leave_btn: Control, behind: Control) -> void:
-	var t := UiSkin.tex("merchant_portrait")
+	var t := UiSkin.tex("merchant_full") if UiSkin.tex("merchant_full") != null else UiSkin.tex("merchant_portrait")  # (Puppet: the whole merchant)
 	if t == null or not is_instance_valid(leave_btn):
 		return
 	await get_tree().process_frame
@@ -69,12 +84,11 @@ func _place_merchant(leave_btn: Control, behind: Control) -> void:
 	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	r.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
 	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var h := 340.0
+	var h := 400.0 if UiSkin.tex("merchant_full") != null else 300.0
 	r.size = Vector2(h * t.get_width() / t.get_height(), h)
 	var lb := leave_btn.get_global_rect()
-	r.position = Vector2(lb.end.x - r.size.x, lb.position.y - r.size.y - 4.0) - global_position
-	add_child(r)
-	move_child(r, behind.get_index())  # just under the goods
+	r.position = Vector2(lb.get_center().x - r.size.x / 2.0, lb.position.y - r.size.y - 6.0) - global_position  # (centred over the Leave button)
+	add_child(r)  # (over the goods: nothing hides him; he stands in the free corner)
 
 var _panels: Array = []  # the stretchable frames (everything but the spell cards)
 var _boxes: Array = []  # each item: its picture or card, then its Buy button
@@ -105,10 +119,10 @@ func _refresh() -> void:
 		box.add_theme_constant_override("separation", 6)
 		match it.kind:
 			"spell":
-				box.add_child(SpellCard.make(it.spell))
-				var gap := Control.new()  # a card can't stretch: this soaks up the extra height so the Buy button stays level
+				var gap := Control.new()  # a card can't stretch: this soaks up the extra height ABOVE it, so its bottom is level with the frames' and the Buy button stays level
 				gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
 				box.add_child(gap)
+				box.add_child(SpellCard.make(it.spell))
 			"artifact":
 				var a: Dictionary = it.artifact
 				var p := PanelContainer.new()
@@ -180,7 +194,7 @@ func _refresh() -> void:
 				var p := PanelContainer.new()
 				p.add_theme_stylebox_override("panel", UiTheme.panel_box(0.95, 12))
 				p.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H)
-				var art := UiSkin.icon("wax_seal" if it.kind == "upgrade" else "hot_meal", 72)  # New theme: painted art, once it exists
+				var art := UiSkin.icon("shop_wax_seal" if it.kind == "upgrade" else "hot_meal", 72)  # New theme: painted art, once it exists
 				if art != null:
 					var uv := VBoxContainer.new()
 					uv.alignment = BoxContainer.ALIGNMENT_CENTER

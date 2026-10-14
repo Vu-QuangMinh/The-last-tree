@@ -1,0 +1,28 @@
+Number 0: The numeral 0 carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Number 1: The numeral 1 carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Number 2: The numeral 2 carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Number 3: The numeral 3 carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Number 4: The numeral 4 carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Number 5: The numeral 5 carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Number 6: The numeral 6 carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Number 7: The numeral 7 carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Number 8: The numeral 8 carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Number 9: The numeral 9 carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Number Plus: A plus sign carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Number Minus: A minus sign, one thick short bar carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Number Times: A multiplication sign, two thick crossed bars carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Number Divide: A division sign, a thick bar with a dot above and a dot below carved from wood and painted warm ochre gold with a darker amber shading on the carved edges
+Number White 0: The numeral 0 carved from wood and painted plain warm white cream with only a faint grey wood shading, so that the game can tint it any colour
+Number White 1: The numeral 1 carved from wood and painted plain warm white cream with only a faint grey wood shading, so that the game can tint it any colour
+Number White 2: The numeral 2 carved from wood and painted plain warm white cream with only a faint grey wood shading, so that the game can tint it any colour
+Number White 3: The numeral 3 carved from wood and painted plain warm white cream with only a faint grey wood shading, so that the game can tint it any colour
+Number White 4: The numeral 4 carved from wood and painted plain warm white cream with only a faint grey wood shading, so that the game can tint it any colour
+Number White 5: The numeral 5 carved from wood and painted plain warm white cream with only a faint grey wood shading, so that the game can tint it any colour
+Number White 6: The numeral 6 carved from wood and painted plain warm white cream with only a faint grey wood shading, so that the game can tint it any colour
+Number White 7: The numeral 7 carved from wood and painted plain warm white cream with only a faint grey wood shading, so that the game can tint it any colour
+Number White 8: The numeral 8 carved from wood and painted plain warm white cream with only a faint grey wood shading, so that the game can tint it any colour
+Number White 9: The numeral 9 carved from wood and painted plain warm white cream with only a faint grey wood shading, so that the game can tint it any colour
+Number White Plus: A plus sign carved from wood and painted plain warm white cream with only a faint grey wood shading, so that the game can tint it any colour
+Number White Minus: A minus sign made of ONE single flat horizontal bar only, wide and short like a hyphen with no vertical bar and no second bar, carved from wood and painted plain warm white cream with only a faint grey wood shading, so that the game can tint it any colour
+Number White Times: A multiplication sign, two thick crossed bars carved from wood and painted plain warm white cream with only a faint grey wood shading, so that the game can tint it any colour
+Number White Divide: A division sign, a thick bar with a dot above and a dot below carved from wood and painted plain warm white cream with only a faint grey wood shading, so that the game can tint it any colour

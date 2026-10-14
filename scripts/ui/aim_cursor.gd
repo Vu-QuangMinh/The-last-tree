@@ -56,6 +56,11 @@ func _draw() -> void:
 
 
 func _draw_crosshair(m: Vector2) -> void:
+	var marker: Texture2D = UiSkin.tex("target_marker") if UiSkin.is_puppet() else null
+	if marker != null:  # Puppet: the wooden bullseye, breathing in and out like the crosshair does (and bigger after a shot)
+		var side := 64.0 * (1.0 + 0.07 * sin(_t * 6.0) + 0.5 * _kick)
+		draw_texture_rect(marker, Rect2(m - Vector2(side, side) / 2.0, Vector2(side, side)), false)
+		return
 	var r := 20.0 + 3.0 * sin(_t * 6.0) + 10.0 * _kick
 	var red := Color(1.0, 0.15, 0.12)
 	var dark := Color(0.15, 0.0, 0.0, 0.8)

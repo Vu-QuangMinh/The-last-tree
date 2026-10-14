@@ -4,7 +4,7 @@ extends Control
 ## act changes the mood (1 dusk green, 2 rot purple, 3 winter blue).
 
 var act := 1
-## A room's own picture (assets/ui/new/room_<id>.jpg) instead of the act's: main.gd sets it before it shows a room's screens
+## A room's own picture (assets/New/Map/Rooms/Backgrounds/room_<id>.jpg) instead of the act's: main.gd sets it before it shows a room's screens
 ## (and clears it on the map), so every screen of one room shares it. Empty, or a room without a picture: the act's.
 static var room := ""
 var tree_glow := true

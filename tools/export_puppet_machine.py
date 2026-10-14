@@ -1,5 +1,5 @@
-"""Puppet Stage theme: the Essence (lottery-ball) machine of assets/ui/puppet/Essence Machine.psd.
-Cuts every layer to its own PNG in assets/ui/puppet/panels/ (named by FILES below, scaled by SCALE) and writes
+"""Puppet Stage theme: the Essence (lottery-ball) machine of assets/Puppet/_Source/Essence Machine.psd.
+Cuts every layer to its own PNG in assets/Puppet/UI/Machine/ (named by FILES below, scaled by SCALE) and writes
 scripts/ui/puppet_machine.gd (PuppetMachine): where each layer goes (px from the top-left of the Bag strip) and the ball geometry.
 Layer order in the game, bottom to top:
   machine_pipe_back, machine_tube_back, [every Essence], machine_box, machine_globe_glass, machine_bevel,
@@ -18,8 +18,11 @@ from psd_tools import PSDImage
 
 sys.stdout.reconfigure(encoding="utf-8")
 HERE = os.path.dirname(os.path.abspath(__file__))
-SRC = os.path.join(HERE, "..", "assets", "ui", "puppet", "Essence Machine.psd")
-OUT = os.path.join(HERE, "..", "assets", "ui", "puppet", "panels")
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import asset_paths as AP
+SRC = os.path.join(AP.PUPPET, "_Source", "Essence Machine.psd")
+OUT = os.path.join(AP.PUPPET, "UI", "Machine")
 LAYOUT = os.path.join(HERE, "..", "scripts", "ui", "puppet_machine.gd")
 
 SCALE = 0.26  # game px per PSD px (the glass of the pipe is then 54 px: a 52 px Essence just fits)
@@ -80,7 +83,7 @@ for key, layer in layers.items():
     x, y = layer.bbox[0] + box[0], layer.bbox[1] + box[1]
     out = FILES[key]
     small = shrink(im)
-    small.save(os.path.join(OUT, out + ".png"))
+    small.save(AP.panel_path(AP.PUPPET, out))
     names[key] = (out, gx(x, GROUP_DX[group]), gy(y), small.size)
     print("  %-26s %-14s at (%.1f, %.1f)  %s" % (key, out, names[key][1], names[key][2], small.size))
 

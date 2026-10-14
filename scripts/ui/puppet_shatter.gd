@@ -22,7 +22,16 @@ static func spawn(host: Node, creature: Creature) -> void:
 	fx.z_index = 2  # (over the floor and the enemies' Essence, under the spell cards)
 	host.add_child(fx)
 	fx.setup(tex, creature.puppet_art_rect(), creature.global_position.y + creature.size.y)
-	Audio.play("wooden_ball_colide", -2.0, 0.7)
+	Audio.play("wooden_ball_colide", 0.0, 0.7)
+
+
+## Break a picture that is drawn on the screen in `art` (a Handyman arm: it is drawn into a picture of its own for this).
+static func spawn_picture(host: Node, tex: Texture2D, art: Rect2, feet_y: float, sound := "wooden_ball_colide") -> void:
+	var fx := PuppetShatter.new()
+	fx.z_index = 2
+	host.add_child(fx)
+	fx.setup(tex, art, feet_y)
+	Audio.play(sound, 0.0, 0.7 if sound == "wooden_ball_colide" else 1.0)
 
 
 func setup(tex: Texture2D, art: Rect2, feet_y: float) -> void:
@@ -66,7 +75,7 @@ func _cells(box: Rect2, img: Image, art: Rect2, k: float) -> Array:
 	return out.slice(0, PIECES)
 
 
-func _clip(poly: PackedVector2Array, n: Vector2, c: float) -> PackedVector2Array:
+static func _clip(poly: PackedVector2Array, n: Vector2, c: float) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	for i in poly.size():
 		var a := poly[i]
@@ -154,7 +163,7 @@ func _process(d: float) -> void:
 				else:
 					pc.v = Vector2(pc.v.x * 0.55, -pc.v.y * 0.35)
 					pc.w *= 0.5
-					Audio.play("wooden_ball_colide", -9.0, randf_range(0.6, 0.9))
+					Audio.play("wooden_ball_colide", -4.0, randf_range(0.6, 0.9))
 		else:
 			pc.age += d
 			if pc.age > pc.rest:
@@ -162,3 +171,25 @@ func _process(d: float) -> void:
 		alive = alive or n.modulate.a > 0.0
 	if not alive:
 		queue_free()
+
+
+## Random convex cells that tile `box` (a power diagram round `count` seeds of different weights), in the box's own coordinates.
+static func tile(box: Rect2, count: int) -> Array:
+	var seeds: Array = []
+	var weights: Array = []
+	var diag2 := box.size.length_squared()
+	for i in count:
+		seeds.append(box.position + Vector2(randf(), randf()) * box.size)
+		weights.append(randf_range(-0.04, 0.08) * diag2)
+	var out: Array = []
+	for i in count:
+		var poly := PackedVector2Array([box.position, Vector2(box.end.x, box.position.y), box.end, Vector2(box.position.x, box.end.y)])
+		for j in count:
+			if i == j or poly.size() < 3:
+				continue
+			var n: Vector2 = seeds[j] - seeds[i]
+			var c: float = (seeds[j].length_squared() - seeds[i].length_squared() - float(weights[j]) + float(weights[i])) / 2.0
+			poly = _clip(poly, n, c)
+		if poly.size() >= 3:
+			out.append(poly)
+	return out

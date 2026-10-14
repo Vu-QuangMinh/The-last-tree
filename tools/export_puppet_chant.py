@@ -1,5 +1,5 @@
-"""Puppet Stage theme: the Chant strip, the Bag strip and the lottery-ball machine of assets/ui/puppet/Chant UI for puppet.pdf.
-Cuts, at the game's scale (S = 1100 / 576 px per PDF point), into assets/ui/puppet/panels/:
+"""Puppet Stage theme: the Chant strip, the Bag strip and the lottery-ball machine of assets/Puppet/_Source/Chant UI for puppet.pdf.
+Cuts, at the game's scale (S = 1100 / 576 px per PDF point), into assets/Puppet/UI/Panels/ (and UI/Hp, UI/Machine):
   chant_frame.png  bag_frame.png   the two strips (3-slice: a cap at each end, a plain middle; no stretch in height)
   chant_slot_empty.png             one empty ring of the chant
   globe_front.png                  the glass globe's bowl, bands, hinge and highlights (the 3 Essence tumble behind it)
@@ -22,8 +22,11 @@ from PIL import Image
 
 sys.stdout.reconfigure(encoding="utf-8")
 HERE = os.path.dirname(os.path.abspath(__file__))
-SRC = os.path.join(HERE, "..", "assets", "ui", "puppet", "Chant UI for puppet.pdf")
-OUT = os.path.join(HERE, "..", "assets", "ui", "puppet", "panels")
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import asset_paths as AP
+SRC = os.path.join(AP.PUPPET, "_Source", "Chant UI for puppet.pdf")
+OUT = os.path.join(AP.PUPPET, "UI", "Panels")
 LAYOUT = os.path.join(HERE, "..", "scripts", "ui", "puppet_layout.gd")
 S = 1100.0 / 576.0
 ZOOM = 8
@@ -117,7 +120,7 @@ def cut(name, shift=(0.0, 0.0), pad=1.5):
     x0 = clip.x0 + box[0] / ZOOM + shift[0]
     y0 = clip.y0 + box[1] / ZOOM + shift[1]
     size = (max(1, round(im.width / ZOOM * S)), max(1, round(im.height / ZOOM * S)))
-    im.resize(size, Image.LANCZOS).save(os.path.join(OUT, name + ".png"))
+    im.resize(size, Image.LANCZOS).save(AP.panel_path(AP.PUPPET, name))
     print("  %-18s %s at pt (%.2f, %.2f)" % (name, size, x0, y0))
     return x0, y0, size
 
@@ -204,10 +207,10 @@ out = ["class_name PuppetLayout", "extends RefCounted",
        "const PIPE_PATH := [%s]  # centres: the pipe's mouth, down its leg, round the bend, into the box" % ", ".join(pxv(*p) for p in pipe_path),
        "const TOTAL_W := %.1f  # the whole machine ends here" % (px(pipe[0], 0)[0] + pipe[2][0])]
 # the Chant button: the Cirus pill, redrawn 44 px tall (the strip's Chant button is 110 x 44)
-BTN_DIR = os.path.join(HERE, "..", "assets", "ui", "puppet", "buttons")
+BTN_DIR = os.path.join(AP.PUPPET, "UI", "Buttons")
 os.makedirs(BTN_DIR, exist_ok=True)
 for state in ("normal", "hover", "pressed", "disabled"):
-    src = Image.open(os.path.join(HERE, "..", "assets", "ui", "circus", "buttons", "button_chant_%s.png" % state)).convert("RGBA")
+    src = Image.open(os.path.join(AP.ASSETS, "_Archive", "Circus", "buttons", "button_chant_%s.png" % state)).convert("RGBA")
     w = round(src.width * 44 / src.height)
     src.resize((w, 44), Image.LANCZOS).save(os.path.join(BTN_DIR, "button_chant_%s.png" % state))
 with open(LAYOUT, "w", encoding="utf-8", newline="\n") as f:

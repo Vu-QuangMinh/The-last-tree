@@ -1,0 +1,30 @@
+Intent Attack: Two small carved wooden swords crossed in an X, steel-grey blades with brown carved hilts and brass guards
+Intent Armor: A small carved wooden heater shield painted steel blue-grey with a brass rim and two rivets, a plain face
+Intent Bleed: One big carved wooden blood drop painted deep red with a lighter highlight and a smaller drop beside it
+Intent Blind: A carved wooden eye painted cream with a heavy half-closed lid and a dark cloud puff over it
+Intent Burn: A carved wooden flame painted orange with a lighter yellow flame inside it
+Intent Confuse: A carved wooden spiral swirl painted violet and lilac with three small carved stars circling it
+Intent Empower: A carved wooden upward arrow painted warm gold with a small bright star at its tip and two short power lines beside it
+Intent Ethereal: A small carved wooden ghost shape like a sheet with two round empty eyes, painted pale lilac and cream
+Intent Freeze: A carved wooden six-pointed snowflake painted icy blue and cream with thick rounded arms
+Intent Frail: A carved wooden heart painted pink-red with a jagged crack down the middle
+Intent Hex: A small carved wooden voodoo doll painted bruise purple with two pins stuck in it and a green glowing eye symbol on its chest
+Intent Invert: Two carved wooden curved arrows chasing each other in a circle, one pointing up and one down, painted teal and orange
+Intent Lock: A carved wooden padlock painted brass with a dark keyhole, a short chain loop hanging from the shackle
+Intent Mend: A carved wooden heart painted red with a green arrow pointing up out of it
+Intent Mimic: A small carved wooden mask split in two halves, one half cream and smiling, one half dark and frowning, a purple trim
+Intent Poison: A small round bottle with a cork painted toxic green, one thick green drop falling from it
+Intent Redirect: A carved wooden arrow bending in a U-turn, painted bright orange with a small brass pivot dot at the bend
+Intent Shuffle: Two carved wooden curved arrows crossing each other like a shuffle symbol, painted cream and teal
+Intent Silence: A carved wooden open mouth painted lilac with a small brass padlock closed across it
+Intent Steal: A carved wooden open hand with long thin fingers painted pale cream, a small gold coin pinched between two fingers
+Intent Summon: A carved wooden small round bell painted orange with a tiny puppet head popping out of the top, three short call lines
+Intent Toll: A carved wooden toll bell hanging from a brass hook, painted warm orange with a brass rim, one gold coin beside it
+Intent Unknown: A big carved wooden question mark painted deep violet with a thin brass edge and a small dot as its point
+Intent Charge: A small carved wooden hourglass painted warm brown with two round brass caps, thick glass-blue bulbs and golden sand, the sand mostly in the top bulb
+Intent Hammer Spell: A carved wooden claw hammer with a big flat iron-grey head and a short brown wooden handle, a small crack line across the head
+Intent Invert Spells: A small carved wooden spell card flipping over in mid air: its upper half cream parchment with a faint flame mark, its lower half showing the dark violet back, two short curved arrows around it, painted cream and dark violet
+Intent Invoke: A carved wooden magic wand painted deep blue with a bright gold five-point star at its tip and three small carved sparkle stars floating around the tip
+Intent Stunned: A ring of three carved wooden gold stars circling a small carved wooden spiral swirl, painted warm gold and dusty grey-blue, like the dizzy stars above a knocked out puppet
+Intent Sing: Two carved wooden musical eighth notes joined by a thick beam, painted bright sky blue with a gold highlight, three short curved sound arcs beside them
+Intent Ignite Spell: A small carved wooden spell card burning at one corner: a cream parchment card with a big orange and red carved flame licking up from its upper corner and a darker scorched edge

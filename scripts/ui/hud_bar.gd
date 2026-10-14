@@ -20,7 +20,10 @@ func setup(p_run: RunState) -> void:
 
 
 func _ready() -> void:
-	add_theme_stylebox_override("panel", UiTheme.panel_box(0.9, 0))
+	if UiSkin.is_puppet():  # (no long bar behind: only its parts, the frames of the artifacts and the bottles, the numbers, the buttons)
+		add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	else:
+		add_theme_stylebox_override("panel", UiTheme.panel_box(0.9, 0))
 	set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	custom_minimum_size = Vector2(1920, 56)
 	var h := HBoxContainer.new()
@@ -35,8 +38,14 @@ func _ready() -> void:
 	_bottle_row = HBoxContainer.new()
 	_bottle_row.add_theme_constant_override("separation", 4)
 	_arts.add_child(_bottle_row)
-	UiSkin.frame_behind(_art_row, Vector2(16, 6))
-	UiSkin.frame_behind(_bottle_row, Vector2(16, 6))
+	UiSkin.frame_behind(_art_row, Vector2(16, 6), "slot_strip_brass")  # (Puppet: the artifacts' frame has a brass rim, the bottles' is plain wood)
+	UiSkin.frame_behind(_bottle_row, Vector2(16, 6), "slot_strip_wood")
+	if UiSkin.is_puppet() and not get_tree().get_nodes_in_group("fight_screen").is_empty():
+		_art_row.visible = false  # (laid over the stage: the stage's own artifacts frame, top left, shows them: two frames on top of each other looked wrong)
+		var gap := Control.new()  # (the room of that frame, so the bottles and the numbers stand clear of it)
+		gap.custom_minimum_size = Vector2(maxf(60.0, 20.0 + 56.0 * run.artifacts.size()), 1)
+		_arts.add_child(gap)
+		_arts.move_child(gap, 0)
 	_label = UiTheme.label("", 20, Color.WHITE)
 	_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var info := HBoxContainer.new()

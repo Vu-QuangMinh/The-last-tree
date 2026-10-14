@@ -1,18 +1,22 @@
-"""Puppet Stage enemies: assets/enemies/Puppet/Act 1/Puppet <Name>.png -> assets/ui/puppet/enemies/<enemy id>.png
+"""Puppet Stage enemies: assets/Puppet/Enemies/_Source/Act<n>/Puppet <Name>.png -> assets/Puppet/Enemies/Act<n>/<enemy id>.png (n = the first argument, 1 by default)
 (trimmed, on a square canvas with the feet on the bottom edge, at most 512 px; the same shape export_puppet_art.py makes).
 The generator's "_YYYYMMDD_HHMMSS" tail is removed from the source names first; when two files end up with one name the newest keeps it.
-Run: python tools/import_puppet_enemies.py   (then Godot --headless --editor --quit once so it imports the new files)"""
+Run: python tools/import_puppet_enemies.py [act]   (then Godot --headless --editor --quit once so it imports the new files)"""
 import glob
 import os
 import re
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import asset_paths as AP
 
 from PIL import Image
 
-ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-SRC = os.path.join(ROOT, "assets", "enemies", "Puppet", "Act 1")
-OUT = os.path.join(ROOT, "assets", "ui", "puppet", "enemies")
+ACT = int(sys.argv[1]) if len(sys.argv) > 1 else 1
+SRC = os.path.join(AP.PUPPET, "Enemies", "_Source", "Act%d" % ACT)
+OUT = os.path.join(AP.PUPPET, "Enemies", "Act%d" % ACT)
 MAX_PX = 512
 IDS = {  # the name after "Puppet " -> file name in OUT (enemy id; some enemies share a pattern with a different file)
+    "The Blightmother": "blightmother", "The Last Winter": "last_winter",
     "Ember Sprite": "triplet_fire", "Ripple Sprite": "triplet_water", "Zephyr Sprite": "triplet_air",
     "Enraged Rolling Bear": "enraged_bear", "The Handyman": "handyman", "The Invoker": "invoker",
     "Crossbow Hand": "hand_crossbow", "Hammer Hand": "hand_hammer", "Shield Hand": "hand_shield", "Spear Hand": "hand_spear",

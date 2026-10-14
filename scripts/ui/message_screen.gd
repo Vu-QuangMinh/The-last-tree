@@ -9,6 +9,7 @@ var body := ""
 var buttons: Array = ["Continue"]
 var disabled: Array = []  # per button: true = greyed out
 var act := 1
+var on_stage := false  # Puppet Stage: laid over the stage (no backdrop of its own), the shade a little lighter
 var title_color := Color.WHITE
 var extra: Control = null  # shown between the text and the buttons (the campfire's HP bar)
 
@@ -16,11 +17,12 @@ var extra: Control = null  # shown between the text and the buttons (the campfir
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UiTheme.get_theme()
-	var bd := Backdrop.new()
-	bd.act = act
-	add_child(bd)
+	if not on_stage:
+		var bd := Backdrop.new()
+		bd.act = act
+		add_child(bd)
 	var shade := ColorRect.new()
-	shade.color = Color(0, 0, 0, 0.45)
+	shade.color = Color(0, 0, 0, 0.42 if on_stage else 0.45)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(shade)

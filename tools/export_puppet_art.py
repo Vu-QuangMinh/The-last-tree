@@ -1,5 +1,5 @@
-"""Puppet Stage puppets -> game files: assets/ui/puppet/asset.pdf (vector sheet of the Act 1 puppets; its sun, clouds, trees and mountains
-are not used any more: those come from tools/import_puppet_stage.py) -> assets/ui/puppet/enemies/<enemy id>.png (square canvas, feet on
+"""Puppet Stage puppets -> game files: assets/Puppet/_Source/asset.pdf (vector sheet of the Act 1 puppets; its sun, clouds, trees and mountains
+are not used any more: those come from tools/import_puppet_stage.py) -> assets/Puppet/Enemies/Act1/<enemy id>.png (square canvas, feet on
 the bottom edge).
 Run: python tools/export_puppet_art.py   (then Godot --headless --editor --quit once so it imports the new files)
 """
@@ -10,9 +10,11 @@ import pymupdf
 from PIL import Image
 from scipy import ndimage as ndi
 
-ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-OUT = os.path.join(ROOT, "assets", "ui", "puppet")
-SHEET = os.path.join(OUT, "asset.pdf")
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import asset_paths as AP
+OUT = AP.PUPPET
+SHEET = os.path.join(AP.PUPPET, "_Source", "asset.pdf")
 SCALE = 1.5
 
 # reading order of the puppets on the sheet (rows, left to right); None = a piece the sheet does not have yet
@@ -23,6 +25,9 @@ ENEMY_ROWS = [
     ["mirror_fairy", "leech_bat", "iceling", "hush_moth", "greenseer", "hand_crossbow"],
     ["green_slime", "cinder_hound", "giant_slime", "bramble_back", "forge_spirit", "triplet_air"],
 ]
+
+# the Handyman and his hands are not cut from the sheet any more: tools/export_handyman_rig.py makes the body and the six arms from Handyman.pdf
+RIG_IDS = {"handyman", "hand_sword", "hand_tweezer", "hand_hammer", "hand_crossbow", "hand_spear", "hand_shield"}
 
 
 def render():
@@ -73,13 +78,15 @@ def square(im, pad=0.04):
 def export_sheet():
     img = render()
     s = SCALE
-    os.makedirs(os.path.join(OUT, "enemies"), exist_ok=True)
+    os.makedirs(os.path.join(OUT, "Enemies", "Act1"), exist_ok=True)
     en = pieces(img, int(14 * s), int(900 * s))  # (the puppets start below the sheet's props)
     erows = rows_of(en, 100 * s)
     assert [len(r) for r in erows] == [len(r) for r in ENEMY_ROWS], [len(r) for r in erows]
     for r, ids in zip(erows, ENEMY_ROWS):
         for (_, _, im), eid in zip(r, ids):
-            square(im).save(os.path.join(OUT, "enemies", eid + ".png"))
+            if eid in RIG_IDS:
+                continue
+            square(im).save(os.path.join(OUT, "Enemies", "Act1", eid + ".png"))
     print("sheet:", sum(len(r) for r in erows), "puppets")
 
 

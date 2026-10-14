@@ -166,7 +166,9 @@ func _draw() -> void:
 		for k in 5:
 			var t := float(k) / 4.0
 			draw_circle(c, r * (1.7 - 0.62 * t), Color(gc, (0.12 + 0.34 * t) * (0.75 + 0.25 * pulse)), true, -1.0, true)
-	if el == "hidden":
+	if el == "hidden" and UiSkin.draw_fit(self, "essence_unknown", c, r * 2.0 + 2.0, Color(1, 1, 1, a)):
+		pass  # (Puppet: the grey wooden ball with the brass question mark)
+	elif el == "hidden":
 		# Blind: you can't see what it is. A grey mystery disc (not the rainbow Any bead, which a painted Essence uses)
 		draw_circle(c, r, Color(0.42, 0.44, 0.5, a), true, -1.0, true)
 		draw_arc(c, r - 1.0, 0.0, TAU, 40, Color(0.22, 0.23, 0.28, a), maxf(1.5, r * 0.1), true)

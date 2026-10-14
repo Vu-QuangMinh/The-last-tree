@@ -62,7 +62,8 @@ func external_result() -> Dictionary:
 func _update_external() -> void:
 	_mouse = _pointer - global_position
 	# (not much taller than the row: the Bag lies right under the chant, and letting go over it must send the Essence home)
-	var zone := Rect2(Vector2(-px * 0.6, -px * 0.7), size + Vector2(px * 1.2, px * 1.15))
+	# (a ball let go just under the rings, over the strip's lower edge or the Bag, goes home: the zone ends a hair under the row)
+	var zone := Rect2(Vector2(-px * 0.6, -px * 0.7), Vector2(size.x + px * 1.2, px * 1.75))
 	if zone.has_point(_mouse):
 		_gap = _gap_at(_mouse.x - _grab_dx)
 	else:
@@ -150,11 +151,15 @@ func _place_icons(d: float) -> void:
 
 func _draw() -> void:
 	# empty rings for the unused chant slots
+	var slot_tex: Texture2D = UiSkin.tex("chant_slot_empty") if UiSkin.is_puppet() else null  # (Puppet: the carved wooden socket, not a drawn ring)
 	for s in range(els.size(), maxi(slots, els.size())):
-		draw_arc(Vector2(_slot_x(s) + px / 2.0, 8.0 + px / 2.0), px / 2.0 - 2.0, 0, TAU, 32, Color(0.4, 0.5, 0.4, 0.8), 2.0)
+		if slot_tex != null:
+			draw_texture_rect(slot_tex, Rect2(Vector2(_slot_x(s), 8.0), Vector2(px, px)), false)
+		else:
+			draw_arc(Vector2(_slot_x(s) + px / 2.0, 8.0 + px / 2.0), px / 2.0 - 2.0, 0, TAU, 32, Color(0.4, 0.5, 0.4, 0.8), 2.0)
 	# a shining glow behind each element you may move
 	for i in els.size():
-		if not live[i]:
+		if not live[i] or slot_tex != null:
 			continue
 		var c: Vector2 = _icons[i].position + Vector2(px, px) / 2.0
 		var pulse := 0.5 + 0.5 * sin(_t * 4.0 + i)
@@ -228,7 +233,7 @@ func _drop() -> void:
 	live.insert(to, lv)
 	_held = -1
 	_gap = -1
-	Audio.play("wooden_ball_hole" if UiSkin.is_puppet() else "elem_remove", -4.0 if UiSkin.is_puppet() else 0.0)
+	Audio.play("wooden_ball_hole" if UiSkin.is_puppet() else "elem_remove", 0.0)
 	dropped.emit(from, to)
 
 

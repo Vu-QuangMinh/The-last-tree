@@ -18,7 +18,7 @@ func show_toast(text: String, color: Color) -> void:
 	if get_child_count() >= MAX:
 		get_child(0).queue_free()
 	var p := PanelContainer.new()
-	var strip := UiSkin.box("toast_strip", [57, 0, 61, 0] if UiSkin.is_circus() else [38, 0, 38, 0], [64, 6, 68, 9] if UiSkin.is_circus() else [40, 6, 30, 9])  # (Cirus: a ticket with bigger ends)
+	var strip := UiSkin.box("toast_strip", [30, 0, 30, 0] if UiSkin.is_puppet() else [38, 0, 38, 0], [34, 6, 34, 9] if UiSkin.is_puppet() else [40, 6, 30, 9])  # (Puppet: a wooden plaque with identical ends)
 	p.add_theme_stylebox_override("panel", strip if strip != null else UiTheme.panel_box(0.85, 10))
 	p.mouse_filter = MOUSE_FILTER_STOP
 	p.mouse_entered.connect(func(): _hold(p))

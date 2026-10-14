@@ -2,7 +2,7 @@ class_name BackdropFx
 extends Control
 ## New theme: the little things that drift in front of a painted background. Act 1: a few leaves tumbling gently.
 ## Act 2: fireflies that wander and flicker. Act 3: snow-dusted leaves sinking slowly. Acts 1 and 3 draw the painted leaf
-## sets (assets/ui/new/leaf_a1_NN.png / leaf_a3_NN.png); without them the old code-drawn leaf / snow dot is used.
+## sets (assets/New/Stage/Act1/Fx/leaf_a1_NN.png / Act3/Fx/leaf_a3_NN.png); without them the old code-drawn leaf / snow dot is used.
 ## Everything is deterministic from a fixed seed (no two runs differ), slow and soft so the cards on top stay easy to read.
 
 var act := 1

@@ -218,7 +218,7 @@ static func _keep_on_screen(c: Control) -> void:
 		w.position = Vector2i(pos)
 
 
-const ICON_PATH := {"{F}": "res://assets/icons/el_fire.png", "{W}": "res://assets/icons/el_water.png", "{A}": "res://assets/icons/el_wind.png", "{?}": "res://assets/icons/el_any.png"}
+const ICON_PATH := {"{F}": "res://assets/Global/Icon/Element/el_fire.png", "{W}": "res://assets/Global/Icon/Element/el_water.png", "{A}": "res://assets/Global/Icon/Element/el_wind.png", "{?}": "res://assets/Global/Icon/Element/el_any.png"}
 
 
 ## Colour the text, then swap {F} {W} {A} {?} tokens for element orb images.

@@ -1,5 +1,5 @@
-"""Puppet Stage theme: the whole bottom HUD of assets/ui/puppet/Chant UI for puppet.pdf (a 1920 x 1080 page, 1 pt = 1 design px).
-Cuts into assets/ui/puppet/panels, buttons and writes scripts/ui/puppet_layout.gd (PuppetLayout):
+"""Puppet Stage theme: the whole bottom HUD of assets/Puppet/_Source/Chant UI for puppet.pdf (a 1920 x 1080 page, 1 pt = 1 design px).
+Cuts into assets/Puppet/UI/Panels, Buttons and writes scripts/ui/puppet_layout.gd (PuppetLayout):
   panels/chant_frame, bag_frame, bottles_frame, artifacts_frame   3-slice frames (a cap at each end, a plain middle)
   panels/chant_slot_empty                                          one empty ring of the chant
   panels/hp_bar_full + hp_fill_mask                                the HP bar frame and the shape the fills are clipped to
@@ -21,9 +21,12 @@ from scipy import ndimage
 
 sys.stdout.reconfigure(encoding="utf-8")
 HERE = os.path.dirname(os.path.abspath(__file__))
-SRC = os.path.join(HERE, "..", "assets", "ui", "puppet", "Chant UI for puppet.pdf")
-PANELS = os.path.join(HERE, "..", "assets", "ui", "puppet", "panels")
-BUTTONS = os.path.join(HERE, "..", "assets", "ui", "puppet", "buttons")
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import asset_paths as AP
+SRC = os.path.join(AP.PUPPET, "_Source", "Chant UI for puppet.pdf")
+PANELS = os.path.join(AP.PUPPET, "UI", "Panels")  # (a piece goes to Panels / Hp / Machine / Hint by its name: AP.panel_path)
+BUTTONS = os.path.join(AP.PUPPET, "UI", "Buttons")
 LAYOUT = os.path.join(HERE, "..", "scripts", "ui", "puppet_layout.gd")
 Z = 1  # export scale: 1 px per pt = the game's design px (a StyleBoxTexture draws its margins at texture size, so no 2x)
 os.makedirs(PANELS, exist_ok=True)
@@ -92,7 +95,7 @@ def cut(im, clip, name, folder=PANELS, scale=Z, trim=True):
     rect = (clip.x0 + box[0] / scale, clip.y0 + box[1] / scale, im.width / scale, im.height / scale)
     if scale != 1:
         im = im.resize((max(1, round(im.width / scale)), max(1, round(im.height / scale))), Image.LANCZOS)
-    im.save(os.path.join(folder, name + ".png"))
+    im.save(AP.panel_path(AP.PUPPET, name) if folder == PANELS else os.path.join(folder, name + ".png"))
     print("  %-26s %4d x %-4d at pt (%.1f, %.1f, %.1f x %.1f)" % (name, im.width, im.height, *rect))
     return rect
 
@@ -121,11 +124,11 @@ mask = render([28], clip=clip)  # (operator 28 is the dark track)
 a = np.asarray(mask.getchannel("A"))
 a = (ndimage.binary_fill_holes(a > 8) * 255).astype(np.uint8)  # (operator 28 is a ring: the mask is the pill it encloses)
 m = Image.fromarray(np.dstack([np.full_like(a, 255)] * 3 + [a]), "RGBA")
-box = Image.open(os.path.join(PANELS, "hp_bar_full.png")).size
+box = Image.open(AP.panel_path(AP.PUPPET, "hp_bar_full")).size
 full = Image.new("RGBA", (round(R["hp_bar_full"][2] * Z), round(R["hp_bar_full"][3] * Z)), (0, 0, 0, 0))
 ox, oy = round((R["hp_bar_full"][0] - clip.x0) * Z), round((R["hp_bar_full"][1] - clip.y0) * Z)
 full.paste(m.crop((ox, oy, ox + full.width, oy + full.height)), (0, 0))
-full.save(os.path.join(PANELS, "hp_fill_mask.png"))
+full.save(AP.panel_path(AP.PUPPET, "hp_fill_mask"))
 
 # the Menu plate (vector): the button without lettering, normal / hover / pressed
 menu_ids = inside((50, 995, 200, 1050))
