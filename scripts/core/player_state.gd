@@ -16,6 +16,8 @@ var max_hp := 50.0
 var shield := 0.0
 var aegis := 0
 var thorns_turn := 0  # thorns that last until your next turn
+var poison_retort := 0  # Venom Coat: each time you're hit until your next turn, Poison this much on all enemies
+var thorn_guard := false  # Bandage: enemy thorns (and burning hides) don't hurt you until your next turn
 var ethereal := false  # this enemy turn: no attack damage
 var bleed := 0
 var confuse_turns := 0
@@ -29,6 +31,7 @@ var overload := 0
 var stock: Array = []
 var next_draw: Array = []  # [{el, temp}] shown in "Coming next"
 var passives := {}  # key -> n (from Powers and artifacts)
+var passive_src := {}  # key -> the id of the Power that gave it (its badge shines when it does something)
 var each_turn: Array = []  # [{spell, effects}]
 var silenced := {}  # spell id -> turns
 var cooldowns := {}  # spell id -> turns before it can be cast again (Cooldown N)
@@ -36,6 +39,7 @@ var disarmed_turns := 0  # Disarmed (the Invoker's Deafening Blast): your Releas
 var ignited := {}  # spell id -> turns: casting it burns you (the Ember Sprite)
 var locks := {}  # spell id -> pattern
 var used_powers := {}  # spell id -> true
+var durability := {}  # spell id -> Durability left this fight (only spells with Durability, once first worn)
 # ---- per run (artifact counters that carry between fights)
 var kindling_chants := 0  # Kindling Stone: spells cast since it last set an enemy alight
 var kindling_charged := false
@@ -52,6 +56,8 @@ var echo_next := false  # Echo Draught: your next spell is cast twice (this figh
 func gain_shield(n: float, p_lasting := false) -> float:
 	if brittle_turns > 0:
 		n = floorf(n * 0.75)
+	if passive("all_lasting") > 0:
+		p_lasting = true  # Braum's Resolve: all your Shield is Lasting
 	if p_lasting:
 		lasting += n
 	else:
@@ -77,6 +83,7 @@ func reset_fight() -> void:
 	stock.clear()
 	next_draw.clear()
 	passives.clear()
+	passive_src.clear()
 	each_turn.clear()
 	silenced.clear()
 	cooldowns.clear()
@@ -84,6 +91,7 @@ func reset_fight() -> void:
 	disarmed_turns = 0
 	locks.clear()
 	used_powers.clear()
+	durability.clear()
 	echo_next = false
 
 
@@ -94,7 +102,10 @@ func passive(key: String) -> int:
 ## The chant has no length limit (only your bag limits it), except under a Toll: then the next chant holds at
 ## most TOLL_CAP Essence.
 func chant_slots() -> int:
-	return toll if toll > 0 else UNLIMITED
+	var cap := toll if toll > 0 else UNLIMITED
+	if passive("chant_max") > 0:
+		cap = mini(cap, passive("chant_max"))  # Water Prison: your chant holds at most this many
+	return cap
 
 
 ## Every element in the stock has its own uid, so the screen can follow one element as the stock changes.
@@ -155,7 +166,7 @@ func describe_statuses() -> Array:
 	if lasting > 0.0:
 		out.append("Lasting Shield %d (stays until it's broken)" % lasting)
 	if aegis > 0:
-		out.append("Aegis %d (blocks a whole hit)" % aegis)
+		out.append("Evasion %d (dodges a whole hit)" % aegis)
 	if thorns_turn + passive("thorns") > 0:
 		out.append("Thorns %d" % (thorns_turn + passive("thorns")))
 	if ethereal:

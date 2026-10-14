@@ -40,12 +40,12 @@ const LOOK := {
 
 ## kind -> [name, explanation]
 const INFO := {
-	"attack": ["Attack", "Deals this much damage to you (per hit). Shield and Aegis block it."],
+	"attack": ["Attack", "Deals this much damage to you (per hit). Shield blocks it, and Evasion dodges it."],
 	"armor": ["Armour", "Armours one of its Essence: it still counts for matching, but isn't removed this turn."],
 	"mend": ["Mend", "Regrows Essence at the right end of its row."],
 	"shuffle": ["Shuffle", "Moves its first Essence to the end."],
 	"silence": ["Silence", "One of your spells can't fire for a few turns."],
-	"hammer_spell": ["Hammer", "Hits the spell you've cast most this fight, and sticks to it: 3 hits break it for the fight (a Fleeting spell breaks at once)."],
+	"hammer_spell": ["Hammer", "Hits the spell you've cast most this fight, and sticks to it: 3 hits break it for the fight (a spell with Durability loses 1 Durability per hit instead)."],
 	"stunned": ["Knocked out", "It skips its action, and comes back whole at the start of your next turn."],
 	"revive": ["Resurrecting", "It's down: it has no Essence and can't be targeted. It gets back up, whole, when the hourglass runs out."],
 	"invoke": ["Invoke", ""],

@@ -12,6 +12,8 @@ extends RefCounted
 ##   attune_chooser:(spell) -> String                             Attunement: which Essence to gain every turn
 ##   arranger:    (spell) -> [from, to]                          Rearrange: move one chant element ([] = keep)
 ##   spell_chooser:(spells: Array) -> int                         Grimoire Ink: which spellbook spell joins (-1: none)
+##   wild_arranger:(spell) -> [from, to] (the chant) / [from, to, enemy] / []   Wild Rearrange: one move, anywhere
+##   wild_painter: (spell) -> ["chant", i] / ["enemy", enemy, i] / []          Wild Repaint: one Essence, anywhere
 ##   anim:        (event: Dictionary) -> void                    animation hook
 ##
 ## Your turn:
@@ -72,8 +74,10 @@ var cast_counts := {}  # spell id -> casts this fight (the Hammer goes for the m
 var hammer_target := ""
 var hammer_hits := {}  # spell id -> Hammer hits taken (3 break it)
 var broken := {}  # spell id -> true: smashed by the Hammer, gone for the fight
+var exhausted: Array = []  # spell ids Exhausted this fight: gone for the rest of the run
 var stored := {}  # spell id -> true: alive but not cast when you Released; it wakes again on your next Chant
 var turn_ctx := {}  # {entries, amplify, echo, retain, last, cast_any}
+var paint_to := "?"  # Repaint: what the brush paints right now (the painter skips Essence already that)
 var pick_el := ""  # the picker may only take Essence of this kind ("": any): "remove up to 3 Fire" lets you choose which Fire
 
 var chooser: Callable
@@ -87,6 +91,8 @@ var element_chooser: Callable
 var attune_chooser: Callable
 var arranger: Callable
 var spell_chooser: Callable
+var wild_arranger: Callable
+var wild_painter: Callable
 var anim: Callable
 
 
@@ -100,9 +106,9 @@ func _init(p_db: SpellDB, p_player: PlayerState) -> void:
 			if not e.armor[i] and (pick_el == "" or e.elements[i] == pick_el):
 				return i
 		return -1
-	painter = func(_s):  # by default: the first Essence that isn't Any yet
+	painter = func(_s):  # by default: the first Essence that isn't the paint's colour yet
 		for e in alive():
-			var i: int = e.elements.find_custom(func(x): return x != "?")
+			var i: int = e.elements.find_custom(func(x): return x != paint_to)
 			if i >= 0:
 				return [enemies.find(e), i]
 		return []
@@ -118,6 +124,10 @@ func _init(p_db: SpellDB, p_player: PlayerState) -> void:
 		return best
 	arranger = func(_s): return []
 	spell_chooser = func(spells): return 0 if not spells.is_empty() else -1
+	wild_arranger = func(_s): return []
+	wild_painter = func(s):  # by default: an enemy Essence, as the painter would choose
+		var got: Array = await painter.call(s)
+		return ["enemy", got[0], got[1]] if got.size() == 2 else []
 	anim = func(_e): pass
 
 
@@ -239,12 +249,13 @@ func alive() -> Array:
 
 
 func active_spells() -> Array:
-	return shown_spells().filter(func(s): return not player.used_powers.has(s.id))
+	return shown_spells().filter(func(s): return not player.used_powers.has(s.id) and not broken.has(s.id))
 
 
 ## The active row as you see it: a Conjure spell whose conjured spells are out isn't in it (they stand in its place).
 func shown_spells() -> Array:
-	return loadout.filter(func(s): return not conjuring.has(s.id) and not broken.has(s.id))
+	# (broken ones too: they stay, cracked and grey; a Power you've cast leaves the row: it's a badge now, if it lasts)
+	return loadout.filter(func(s): return not conjuring.has(s.id) and not (s.get("power", false) and player.used_powers.has(s.id)))
 
 
 ## Spells that can fire this turn (not silenced, not locked, not a spent Power).
@@ -365,6 +376,8 @@ func begin_player_turn() -> void:
 	if has_artifact("mending_moss"):
 		player.heal(_an("mending_moss"))
 	player.thorns_turn = 0
+	player.thorn_guard = false
+	player.poison_retort = 0
 	_hands_back()
 	if has_artifact("iron_bark"):
 		player.lasting += _an("iron_bark")  # Iron Bark: Lasting Shield every turn
@@ -373,6 +386,7 @@ func begin_player_turn() -> void:
 		player.add_element(d.el, d.temp)
 	_roll_next_draw(turn + 1)
 	for pw in player.each_turn:
+		await _proc(pw.spell.id)
 		for eff in pw.effects:
 			await _apply(eff, pw.spell, {}, {})
 	_check_end()
@@ -459,6 +473,17 @@ func cast_chant(stock_indices: Array) -> void:
 	var woke: Array = await _recount()
 	# always: the chant is read out note by note, even when it wakes no spell
 	await anim.call({"type": "charged", "hits": woke})
+	for k in player.passive("steal_each_chant"):
+		if over or alive().is_empty():
+			break
+		await _proc("steal_each_chant")
+		var knife := _find_spell("storm_crown")
+		if knife.is_empty():
+			knife = {"id": "storm_crown", "name": "Jaeler's Knife", "effects": []}
+		await _apply({"op": "steal", "n": 1, "el": "any", "into": "chant", "target": "target"}, knife, {})
+		var more: Array = await _recount()
+		if not more.is_empty():
+			await anim.call({"type": "extension", "hits": more})
 
 
 ## Re-read the chant: locks it now contains break, and every spell's charges are counted again.
@@ -577,6 +602,7 @@ func resolve_spell(id: String, target_idx := -1) -> void:
 				player.echo_casts = 0
 				player.echo_charged = true
 				_log("Echo Shell is charged: your next spell is cast twice.")
+	_wear(spell)  # (Durability: one cast, one point, however many times it's echoed)
 	for t in times:
 		if over:
 			break
@@ -590,6 +616,62 @@ func resolve_spell(id: String, target_idx := -1) -> void:
 	var woke: Array = await _recount()
 	if not woke.is_empty():
 		await anim.call({"type": "extension", "hits": woke})
+		for eff in spell.effects:
+			if eff.op == "heal_per_extension":
+				player.heal(int(eff.n) * woke.size())
+				_log("%s: %d Extension%s, heal %d." % [spell.name, woke.size(), "" if woke.size() == 1 else "s", int(eff.n) * woke.size()])
+
+
+## Does this Power keep doing something for the rest of the fight (so it gets a badge)? Open Grimoire doesn't.
+static func lasting_power(spell: Dictionary) -> bool:
+	return spell.effects.any(func(e): return e.op in ["passive", "each_turn", "curse"])
+
+
+## Durability N: a spell that wears out. Each cast takes 1; at 0 it's gone for the fight (the Handyman Power gives
+## every such spell 1 more). Spells without Durability never wear out.
+static func base_durability(spell: Dictionary) -> int:
+	return int(spell.get("durability", 1 if spell.get("fleeting", false) else 0))  # ("fleeting": spells fused before)
+
+
+func durability_left(spell: Dictionary) -> int:
+	if player.durability.has(spell.id):
+		return int(player.durability[spell.id])  # (worn, or set: Desperate Measure gives every spell Durability 1)
+	var base := base_durability(spell)
+	if base <= 0:
+		return -1
+	return int(player.durability.get(spell.id, base + player.passive("durability_bonus")))
+
+
+## One point of Durability off (a cast, or a Hammer hit). Returns true if that broke it.
+func _wear(spell: Dictionary) -> bool:
+	if (base_durability(spell) <= 0 and not player.durability.has(spell.id)) or spell.has("bottle"):
+		return false
+	var left := durability_left(spell) - 1
+	player.durability[spell.id] = left
+	if left <= 0:
+		_break(spell.id)
+		_log("%s is worn out: broken for the rest of this fight." % spell.name)
+		return true
+	return false
+
+
+## A spell broken for the fight (worn out, or smashed by the Hammer): it stays in the row, cracked and grey.
+func _break(id: String) -> void:
+	broken[id] = true
+	stored.erase(id)
+	charges.erase(id)
+
+
+## Glue: one more point of Durability for a spell; a broken spell is mended (with 1 Durability).
+func mend_spell(id: String) -> void:
+	var sp := _find_spell(id)
+	if broken.has(id):
+		broken.erase(id)
+		hammer_hits.erase(id)
+		player.durability[id] = 1
+	else:
+		player.durability[id] = maxi(0, durability_left(sp)) + 1
+	_log("%s is mended: %d Durability." % [sp.get("name", id), player.durability[id]])
 
 
 ## Kindling Stone: every 3rd spell you cast (every 2nd for the + version) puts 1 Burn on a random enemy.
@@ -657,14 +739,15 @@ func finish_turn() -> void:
 				break
 			_log("Echo! The chant is Released again.")
 			await _strike(chant_string())
-		var keep: int = turn_ctx.get("retain", 0)
-		for el in chant.slice(maxi(0, chant.size() - keep)):
-			player.add_element(el)
+		for i in turn_ctx.get("refund_at", []):
+			if i < chant.size():
+				var el: String = chant[i]
+				player.add_element(el if el != "?" else _random_element())
 		var back := _lens_refunds(chant)
 		for k in player.passive("refund_air"):
 			back.append("A")  # Storm Crown: Air comes back after every Release
 		for el in back:
-			player.add_element(el)
+			player.add_element(el if el != "?" else _random_element())
 		if not back.is_empty():
 			_log("Refunded to your bag: %s." % " ".join(back))
 		_cleanup()
@@ -687,6 +770,7 @@ func _fire_anti_spells() -> void:
 		if sp.get("anti", false) and not anti_broken.has(sp.id):
 			_log("%s takes effect: you didn't chant it." % sp.name)
 			_start_cooldown(sp)
+			_wear(sp)
 			_charge_react(sp)
 			await _fire(sp, {}, {})
 
@@ -745,12 +829,15 @@ func _strike(c: String) -> Array:
 		hit.append(e)
 		if player.passive("strike_poison") > 0:
 			e.poison += player.passive("strike_poison") + player.passive("poison_bonus")
+			await _proc("strike_poison")
 		if player.passive("strike_burn") > 0:
+			await _proc("strike_burn")
+			await _burned(1)
 			e.ignite(_burn_amount(player.passive("strike_burn") + player.passive("burn_bonus")), rng)
-		if e.has_passive("burning_hide"):
+		if e.has_passive("burning_hide") and not player.thorn_guard:
 			player.take_effect(1.0)
 			_log("%s's burning hide scorches you." % e.name)
-		if e.has_passive("thorns"):
+		if e.has_passive("thorns") and not player.thorn_guard:
 			player.take_effect(2.0)
 			_log("%s's thorns prick you." % e.name)
 		_log("Your Release hits %s for %d." % [e.name, removed.size()])
@@ -821,9 +908,12 @@ func _fire(spell: Dictionary, ctx: Dictionary, tctx: Dictionary) -> void:
 	elif spell.power:
 		player.used_powers[spell.id] = true
 		_log("%s takes hold for the rest of the fight." % spell.name)
-	elif spell.get("fleeting", false):
-		player.used_powers[spell.id] = true  # Fleeting: gone for the rest of the fight
-		_log("%s fades away for the rest of this fight." % spell.name)
+	if spell.get("exhaust", false) and not spell.get("ephemeral", false):
+		# Exhaust: gone from this fight, and from your spellbook for the rest of the run
+		exhausted.append(String(spell.get("base_id", spell.id)))
+		loadout = loadout.filter(func(s): return s.id != spell.id)
+		_log("%s is Exhausted: gone for the rest of the run." % spell.name)
+		await anim.call({"type": "loadout_changed"})
 	ctx.last = spell
 	_cleanup()
 
@@ -860,9 +950,16 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 				else:
 					e.remove_left(n)
 		"burn":
-			var amount := _burn_amount(eff.n + player.passive("burn_bonus")) if not targets.is_empty() else 0
+			var base: int = eff.n
+			if eff.has("per_chant"):
+				# Flare: Burn 1 for every 2 Fire in this turn's chant
+				base = int(eff.n) * (chant.count(eff.per_chant) / maxi(1, int(eff.get("per", 1))))
+				if base <= 0:
+					targets = []
+			var amount := _burn_amount(base + player.passive("burn_bonus")) if not targets.is_empty() else 0
 			for e in targets:
 				e.ignite(amount, rng)
+			await _burned(targets.size())
 		"poison":
 			for e in targets:
 				e.poison += eff.n + player.passive("poison_bonus")
@@ -871,26 +968,89 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 				e.ignite(e.burn, rng)
 		"weak":
 			for e in targets:
+				if eff.get("if_attacking", false) and e.intent.get("kind", "") != "attack":
+					continue  # (Against the Tide: only if it means to attack)
 				e.weak_turns = maxi(e.weak_turns, eff.turns)
 		"freeze":
 			for e in targets:
-				if not e.is_boss:
-					e.freeze_turns = maxi(e.freeze_turns, eff.turns)
+				if eff.has("if_burn") and e.burn < int(eff.if_burn):
+					continue  # (Frost Burn: only if it's burning that much)
+				e.freeze_turns = maxi(e.freeze_turns, eff.turns)  # (bosses too)
 		"expose":
-			# paint n Essence of your choice, on any enemies: each becomes an Any Essence ("?") for the rest of the fight
+			# Repaint: paint n Essence of your choice, on any enemies, into one colour (Any by default: "?") for good
+			var to: String = eff.get("to", "?")
 			for i in eff.n:
-				if not alive().any(func(x): return x.elements.any(func(el): return el != "?")):
+				if not alive().any(func(x): return x.elements.any(func(el): return el != to)):
 					break
+				paint_to = to
 				var got: Array = await painter.call(spell)
+				paint_to = "?"
 				if got.size() < 2 or got[0] < 0 or got[0] >= enemies.size():
 					break
 				var e: EnemyState = enemies[got[0]]
-				if e.is_dead() or got[1] >= e.size() or e.elements[got[1]] == "?":
+				if e.is_dead() or got[1] >= e.size() or e.elements[got[1]] == to:
 					continue
 				var was: String = e.elements[got[1]]
-				e.elements[got[1]] = "?"
-				_log("%s paints %s's %s: it's an Any Essence now." % [spell.name, e.name, Elements.NAMES.get(was, "Essence")])
-				await anim.call({"type": "paint", "enemy": e, "index": got[1], "was": was})
+				e.elements[got[1]] = to
+				_log("%s repaints %s's %s: it's %s now." % [spell.name, e.name, Elements.NAMES.get(was, "Essence"), "an Any Essence" if to == "?" else Elements.NAMES[to]])
+				await anim.call({"type": "paint", "enemy": e, "index": got[1], "was": was, "to": to})
+		"wild_move":
+			# Wild Rearrange: each move is either within an enemy's row or within this turn's chant (your pick)
+			for k in int(eff.get("n", 1)):
+				if over:
+					break
+				var mv: Array = await wild_arranger.call(spell)
+				if mv.size() == 2 and spoken and chant.size() > 1:
+					var from := clampi(int(mv[0]), 0, chant.size() - 1)
+					var el: String = chant[from]
+					chant.remove_at(from)
+					chant.insert(clampi(int(mv[1]), 0, chant.size()), el)
+					_log("%s moves a %s in the chant." % [spell.name, Elements.NAMES[el]])
+					await anim.call({"type": "chant_changed"})
+				elif mv.size() == 3 and int(mv[2]) >= 0 and int(mv[2]) < enemies.size():
+					var e: EnemyState = enemies[int(mv[2])]
+					e.move_element(int(mv[0]), int(mv[1]))
+					_log("%s moves an Essence of %s." % [spell.name, e.name])
+					await anim.call({"type": "effect", "op": "move", "targets": [e]})
+				else:
+					break
+		"wild_repaint":
+			# Wild Repaint: each paint is an enemy Essence or a chant Essence (your pick), into that colour
+			var to: String = eff.get("to", "?")
+			for k in int(eff.get("n", 1)):
+				if over:
+					break
+				paint_to = to
+				var got: Array = await wild_painter.call(spell)
+				paint_to = "?"
+				if got.size() == 2 and got[0] == "chant" and spoken and int(got[1]) >= 0 and int(got[1]) < chant.size():
+					var i := int(got[1])
+					if chant[i] != to:
+						_log("%s repaints a %s in the chant: %s." % [spell.name, Elements.NAMES[chant[i]], Elements.NAMES[to]])
+						chant[i] = to
+						await anim.call({"type": "chant_changed"})
+				elif got.size() == 3 and got[0] == "enemy" and int(got[1]) >= 0 and int(got[1]) < enemies.size():
+					var e: EnemyState = enemies[int(got[1])]
+					var i := int(got[2])
+					if not e.is_dead() and i < e.size() and e.elements[i] != to:
+						var was: String = e.elements[i]
+						e.elements[i] = to
+						_log("%s repaints %s's %s: it's %s now." % [spell.name, e.name, Elements.NAMES.get(was, "Essence"), "an Any Essence" if to == "?" else Elements.NAMES[to]])
+						await anim.call({"type": "paint", "enemy": e, "index": i, "was": was, "to": to})
+				else:
+					break
+		"self_repaint":
+			# Self-Repaint: n Essence of this turn's chant, of your choice, become that colour (Any fits every pattern)
+			var to: String = eff.get("to", "?")
+			for k in int(eff.get("n", 1)):
+				if not spoken or over or chant.is_empty() or not chant.any(func(x): return x != to):
+					break
+				var i: int = clampi(await chant_picker.call(spell), 0, chant.size() - 1)
+				if chant[i] == to:
+					continue
+				_log("%s repaints a %s in the chant: %s." % [spell.name, Elements.NAMES[chant[i]], Elements.NAMES[to]])
+				chant[i] = to
+				await anim.call({"type": "chant_changed"})
 		"ethereal":
 			if eff.target == "self":
 				player.ethereal = true
@@ -901,6 +1061,9 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 			_shield_gained(player.gain_shield(eff.n, eff.get("lasting", false)))
 		"heal":
 			var ok := true
+			if eff.has("per_chant"):
+				player.heal(int(eff.n) * chant.count(eff.per_chant))  # (Jaeler's Backup Plan: 1 per Water in the chant)
+				ok = false
 			if eff.get("if_kill", false):
 				ok = tctx.get("_alive_before", []).any(func(x): return x.is_dead())
 			if ok:
@@ -935,9 +1098,16 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 					if idx < 0:
 						break
 					e.pluck(idx)
+		"purge_all":
+			for e in targets:
+				var gone: Array = e.purge(eff.el, 999)
+				_log("%s washes away %d %s from %s." % [spell.name, gone.size(), Elements.NAMES[eff.el], e.name])
 		"shatter":
 			for e in targets:
+				var broke: int = e.armor.count(true)
 				e.shatter()
+				if int(eff.get("shield_per", 0)) > 0 and broke > 0:
+					_shield_gained(player.gain_shield(broke * int(eff.shield_per)))  # Chill: Shield for each Armour broken
 		"insert":
 			for e in targets:
 				e.insert_front(eff.el)
@@ -968,6 +1138,7 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 				var t: EnemyState = pool[rng.randi() % pool.size()]
 				await anim.call({"type": "meteor", "enemy": t})  # (one fireball at a time)
 				t.ignite(1, rng)
+				await _burned(1)
 				anim.call({"type": "meteor_hit", "enemy": t})
 			_log("%s rains fire: Burn 1, %d times." % [spell.name, eff.n])
 		"disarm":
@@ -1005,7 +1176,7 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 		"echo_next":
 			player.echo_next = true
 		"conjure":
-			await _conjure(eff.n, spell)
+			await _conjure(eff.n, spell, eff.get("kind", ""))
 		"grimoire_pick":
 			var ids := loadout.map(func(s): return s.id)
 			var pool := spellbook.filter(func(s): return not (s.id in ids))
@@ -1023,11 +1194,107 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 		"echo":
 			ctx.echo = ctx.get("echo", 0) + eff.n
 		"retain":
-			ctx.retain = ctx.get("retain", 0) + eff.n
+			# Refund N: pick N Essence of the chant; after the Release they go back to your bag
+			if not ctx.has("refund_at"):
+				ctx.refund_at = []
+			for k in int(eff.n):
+				if not spoken or ctx.refund_at.size() >= chant.size():
+					break
+				var i: int = clampi(await chant_picker.call(spell), 0, chant.size() - 1)
+				if i in ctx.refund_at:
+					for j in chant.size():  # (that one's taken already: the next free one)
+						if not (j in ctx.refund_at):
+							i = j
+							break
+				ctx.refund_at.append(i)
+				_log("%s: the %s comes back after the Release." % [spell.name, Elements.NAMES[chant[i]]])
+				await anim.call({"type": "chant_changed"})
+		"mend_spell":
+			var pool := shown_spells().filter(func(s): return broken.has(s.id) or base_durability(s) > 0)
+			var k: int = await spell_chooser.call(pool)
+			if k >= 0 and k < pool.size():
+				mend_spell(pool[k].id)
+				await anim.call({"type": "loadout_changed"})
 		"overload":
 			player.overload += eff.n
 		"cleanse":
+			var had := _debuff_kinds()
 			_cleanse(eff.get("what", "all"))
+			if int(eff.get("lasting_per", 0)) > 0 and had > 0:
+				_shield_gained(player.gain_shield(had * int(eff.lasting_per), true))  # Purify: Lasting Shield per debuff
+		"thorn_guard":
+			player.thorn_guard = true
+		"max_hp":
+			player.max_hp += int(eff.n)
+			player.hp += int(eff.n)
+			_log("%s: +%d max HP." % [spell.name, eff.n])
+		"all_fragile":
+			# Desperate Measure: every spell's Durability is 1 for the rest of this fight (even ones that had none)
+			for s in shown_spells():
+				if not s.get("power", false) and not broken.has(s.id):
+					player.durability[s.id] = 1
+			_log("%s: every spell is down to 1 Durability." % spell.name)
+			await anim.call({"type": "loadout_changed"})
+		"daze":
+			for e in targets:
+				e.dazed += int(eff.n)
+		"poison_retort":
+			player.poison_retort += int(eff.n)
+		"heal_per_extension":
+			pass  # (resolve_spell heals once the chant's been re-read)
+		"infuse_upcoming":
+			# All In: next turn's Essence come now, into this turn's chant, wherever you put them (and not next turn)
+			var coming: Array = player.next_draw.duplicate()
+			player.next_draw.clear()
+			for d in coming:
+				if not spoken or over:
+					player.next_draw.append(d)
+					continue
+				var pos: int = await placer.call(spell, d.el)
+				chant.insert(clampi(pos, 0, chant.size()), d.el)
+				_log("%s: %s goes into the chant now." % [spell.name, Elements.NAMES[d.el]])
+				await anim.call({"type": "chant_changed"})
+				await _disturb(d.el)
+		"temp_seal":
+			# Reforge: a purple seal on another spell for this fight (a random Essence of its pattern isn't needed)
+			var pool := active_spells().filter(func(s): return s.id != spell.id and String(s.pattern).length() >= 2)
+			var k: int = await spell_chooser.call(pool)
+			if k >= 0 and k < pool.size():
+				var sp: Dictionary = pool[k].duplicate(true)
+				var full := String(sp.get("full_pattern", sp.pattern))
+				var sl: Array = sp.get("seals", []).duplicate()
+				var free := []
+				for i in full.length():
+					if not (i in sl):
+						free.append(i)
+				sl.append(free[rng.randi() % free.size()])
+				var pat := ""
+				for i in full.length():
+					if not (i in sl):
+						pat += full[i]
+				sp.full_pattern = full
+				sp.seals = sl
+				sp.pattern = pat
+				sp.size = pat.length()
+				loadout[loadout.find(pool[k])] = sp
+				_log("%s seals an Essence of %s for this fight." % [spell.name, sp.name])
+				await anim.call({"type": "loadout_changed"})
+		"unbind":
+			# Unbind: cure Silence, Frozen and Ignited; heal for each of them you had
+			var had := 0
+			if not player.silenced.is_empty():
+				had += 1
+			if player.stock.any(func(s): return s.frozen):
+				had += 1
+			if not player.ignited.is_empty():
+				had += 1
+			player.silenced.clear()
+			player.ignited.clear()
+			for s in player.stock:
+				s.frozen = false
+			if had > 0 and int(eff.get("heal_per", 0)) > 0:
+				player.heal(had * int(eff.heal_per))
+			_log("%s cures %d debuff%s." % [spell.name, had, "" if had == 1 else "s"])
 		"infuse":
 			# put n Essence into the chant, one at a time, each where you like ("random": a random element each)
 			for k in int(eff.get("n", 1)):
@@ -1038,6 +1305,7 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 				chant.insert(clampi(pos, 0, chant.size()), el)
 				_log("%s adds %s to the chant." % [spell.name, Elements.NAMES[el]])
 				await anim.call({"type": "chant_changed"})
+				await _disturb(el)
 		"rearrange":
 			if spoken and chant.size() > 1:
 				for k in eff.n:
@@ -1059,6 +1327,8 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 					chant.insert(i, chant[i])
 				_log("%s: %s ×%d in the chant." % [spell.name, Elements.NAMES[chant[i]], eff.times])
 				await anim.call({"type": "chant_changed"})
+				for k in eff.times - 1:
+					await _disturb(chant[i])
 		"summon_spells":
 			var ids := loadout.map(func(s): return s.id)
 			var pool := spellbook.filter(func(s): return not (s.id in ids))
@@ -1077,9 +1347,29 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 						e.move_element(mv[0], mv[1])
 						await anim.call({"type": "effect", "op": "move", "targets": [e]})
 		"steal":
-			# take elements out of the enemy's HP and into your elements (not into this chant)
+			# take elements out of the enemy's HP and into your elements (Instant Steal: into this turn's chant)
 			for e in targets:
 				var taken := []
+				if eff.get("into", "") == "chant" and spoken:
+					# Instant Steal: each one grabbed goes straight onto the end of the chant (an Any stays Any there)
+					for i in eff.n:
+						if e.is_dead() or not e.armor.has(false):
+							break
+						var idx: int
+						if eff.get("el", "any") == "any":
+							idx = await picker.call(spell, e)
+						else:
+							idx = await _pick_of(spell, e, eff.el)
+						if idx < 0:
+							break
+						var got_el: String = e.pluck(idx)
+						if got_el == "":
+							break
+						chant.append(got_el)
+						_log("%s steals %s from %s into the chant." % [spell.name, Elements.NAMES[got_el], e.name])
+						await anim.call({"type": "chant_changed"})
+						await _disturb(got_el)
+					continue
 				if eff.get("el", "any") == "any":
 					for i in eff.n:
 						if e.is_dead() or not e.armor.has(false):
@@ -1105,10 +1395,16 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 				await anim.call({"type": "stolen", "enemy": e, "els": taken})
 		"pluck":
 			for e in targets:
-				for i in eff.n:
+				for i in int(eff.n) + player.passive("snipe_bonus"):  # (Daedalus's Trigger: +1 to every Snipe)
 					if e.is_dead() or not e.armor.has(false):
 						break
-					var idx: int = await picker.call(spell, e)
+					var idx: int
+					if eff.has("el"):
+						idx = await _pick_of(spell, e, eff.el)  # (Snipe 1 Fire: only Fire can be picked)
+						if idx < 0:
+							break
+					else:
+						idx = await picker.call(spell, e)
 					var el: String = e.pluck(idx)
 					if el != "":
 						_log("%s plucks %s from %s." % [spell.name, Elements.NAMES[el], e.name])
@@ -1127,6 +1423,13 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 				for k in eff.n:  # (next turn's draw is already rolled: it joins it right away)
 					player.next_draw.append({"el": player.passives.attune_el, "temp": false})
 			player.passives[eff.key] = player.passive(eff.key) + eff.n
+			if spell.get("power", false):
+				player.passive_src[eff.key] = spell.id
+			if eff.key == "chant_max":
+				player.passives[eff.key] = eff.n if player.passive(eff.key) == eff.n * 2 else mini(player.passive(eff.key), eff.n)  # (a cap: it doesn't stack)
+			if eff.key == "durability_bonus":
+				for id in player.durability:  # (already worn spells get the point too)
+					player.durability[id] += eff.n
 			if eff.key == "draw_bonus":
 				# next turn's draw is already rolled: the extra Essence joins it right away
 				for k in eff.n:
@@ -1154,6 +1457,53 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 				gone += e.remove_all(el).size()
 			_log("%s annihilates every %s: %d Essence gone." % [spell.name, Elements.NAMES[el], gone])
 	await anim.call({"type": "effect", "op": eff.op, "eff": eff, "targets": targets})
+
+
+## A Power does something: its badge shines (with a sound). By passive key, or by the Power's id.
+func _proc(key: String) -> void:
+	var id: String = player.passive_src.get(key, key)
+	await anim.call({"type": "power_proc", "id": id})
+
+
+## Steam Engine (a Power): each time you put Burn on an enemy, you gain Shield.
+func _burned(times: int) -> void:
+	var per := player.passive("shield_per_burn")
+	if per <= 0 or times <= 0:
+		return
+	await _proc("shield_per_burn")
+	_shield_gained(player.gain_shield(per * times))
+
+
+## How many kinds of debuff you have right now (Purify's Shield counts them).
+func _debuff_kinds() -> int:
+	var n := 0
+	for on in [player.blind_turns > 0, player.bleed > 0, player.confuse_turns > 0, not player.silenced.is_empty(),
+			player.frail_turns > 0, player.brittle_turns > 0, player.vulnerable > 0, player.stock.any(func(s): return s.frozen or s.hexed),
+			not player.ignited.is_empty()]:
+		if on:
+			n += 1
+	return n
+
+
+## Disturbance (a Power): each Essence added to (or taken out of) the chant after you Chant knocks the same Essence
+## off a random enemy that has one (an Any Essence: any Essence). Armour stops it.
+func _disturb(el: String) -> void:
+	if player.passive("disturbance") > 0 and not alive().is_empty():
+		await _proc("disturbance")
+	for k in player.passive("disturbance"):
+		var cands := []
+		for e in alive():
+			for i in e.size():
+				if not e.armor[i] and (el == "?" or e.elements[i] == el or e.elements[i] == "?"):
+					cands.append([e, i])
+		if cands.is_empty():
+			return
+		var pick: Array = cands[rng.randi() % cands.size()]
+		var e: EnemyState = pick[0]
+		var gone: String = e.pluck(pick[1])
+		_log("Disturbance: %s loses a %s." % [e.name, Elements.NAMES.get(gone, "Essence")])
+		await anim.call({"type": "strike", "enemy": e, "n": 1})
+		_cleanup()
 
 
 ## The picker, allowed only Essence of this kind (and not armoured). -1: there's none left to take.
@@ -1209,6 +1559,13 @@ func _targets(eff: Dictionary, spell: Dictionary, tctx: Dictionary) -> Array:
 			return live
 		"random":
 			return [live[rng.randi() % live.size()]]
+		"random2":
+			# two different random enemies (just the one, if it's alone)
+			var pool := live.duplicate()
+			var out := []
+			for k in mini(2, pool.size()):
+				out.append(pool.pop_at(rng.randi() % pool.size()))
+			return out
 	if eff.op == "barrage":
 		# Arcane Barrage: n hits, each on a random enemy that still has Essence it can lose (the same one can be hit again)
 		var out := []
@@ -1264,12 +1621,13 @@ func _favourite_element() -> String:
 ## ones already in your row), right where it was. They're Ephemeral: each vanishes once cast, and any left expire at
 ## the end of your next turn. When they're all gone, the conjuring spell comes back. (They're checked against this
 ## turn's chant at once, so some may wake straight away: see resolve_spell's re-count.)
-func _conjure(n: int, source: Dictionary) -> void:
+func _conjure(n: int, source: Dictionary, kind := "") -> void:
 	if source.get("ephemeral", false) or conjuring.has(source.id):
 		return
 	var have := loadout.map(func(s): return String(s.get("base_id", s.id)))
 	var pool: Array = db.all_spells.filter(func(s): return not s.power and not s.get("anti", false) and not (s.id in have) and not s.get("starter", false) \
-		and not s.effects.any(func(e): return e.op == "conjure"))
+		and not s.effects.any(func(e): return e.op == "conjure") and not s.get("hidden", false) and s.rarity != "unique" \
+		and (kind == "" or s.kind == kind))  # (Conjure Flame: offensive spells only)
 	var made := []
 	var at := loadout.find(source) + 1
 	for i in n:
@@ -1781,9 +2139,10 @@ func _hands_back() -> void:
 
 
 ## The Hammer Hand: it picks the spell you've cast most this fight (a tie: one at random) and sticks to it until it
-## breaks. 3 hits break a spell (a Fleeting one: the first); a broken spell is gone for the fight.
+## breaks. 3 hits break a spell; a spell with Durability loses 1 Durability per hit instead (at 0 it breaks). A broken
+## spell is gone for the fight.
 func _hammer(e: EnemyState) -> void:
-	var cands := shown_spells().filter(func(s): return not player.used_powers.has(s.id))
+	var cands := active_spells()
 	if cands.is_empty():
 		return
 	if hammer_target == "" or broken.has(hammer_target) or not cands.any(func(s): return s.id == hammer_target):
@@ -1795,11 +2154,9 @@ func _hammer(e: EnemyState) -> void:
 	var sp := _find_spell(hammer_target)
 	var hits: int = hammer_hits.get(hammer_target, 0) + 1
 	hammer_hits[hammer_target] = hits
-	var smashed: bool = hits >= 3 or sp.get("fleeting", false)
+	var smashed: bool = _wear(sp) if base_durability(sp) > 0 else hits >= 3
 	if smashed:
-		broken[hammer_target] = true
-		stored.erase(hammer_target)
-		charges.erase(hammer_target)
+		_break(hammer_target)
 		_log("%s smashes %s to pieces!" % [e.name, sp.name])
 	else:
 		_log("%s hammers %s (%d)." % [e.name, sp.name, hits])
@@ -1920,6 +2277,17 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				await anim.call({"type": "mend", "enemy": e})
 				return
 			for h in m.get("hits", 1):
+				if e.dazed > 0 and rng.randf() < 0.5:
+					e.dazed -= 1  # Dazed: it misses (and is a little less dazed)
+					_log("%s is Dazed and misses!" % e.name)
+					await anim.call({"type": "attack", "enemy": e, "n": 0, "blocked": true, "part": e.acting_part})
+					continue
+				if player.passive("thorns_on_hit") > 0:
+					player.passives["thorns"] = player.passive("thorns") + player.passive("thorns_on_hit")  # EleMantle
+					await _proc("thorns_on_hit")
+				if player.poison_retort > 0:
+					for x in alive():
+						x.poison += player.poison_retort + player.passive("poison_bonus")  # Venom Coat
 				var dmg: float = floorf((m.n + e.dmg_bonus) * e.damage_mult())
 				var shield_before := player.shield + player.lasting
 				var aegis_before := player.aegis

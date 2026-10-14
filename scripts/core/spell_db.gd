@@ -78,7 +78,7 @@ static func upgrade(spell: Dictionary) -> Dictionary:
 			if x.op in ["shield", "heal"]:
 				x.n += 2
 				improved = true
-			elif x.op in ["steal", "strike", "burn", "poison", "purge", "siphon", "move", "pluck", "draw", "thorns", "amplify", "retain", "passive", "summon_spells", "expose"] and x.has("n"):
+			elif x.op in ["steal", "strike", "burn", "poison", "purge", "siphon", "move", "pluck", "draw", "thorns", "amplify", "retain", "passive", "summon_spells", "expose", "self_repaint", "wild_move", "wild_repaint"] and x.has("n"):
 				x.n += 1
 				improved = true
 			elif x.op in ["weak", "freeze"]:

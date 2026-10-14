@@ -5,19 +5,19 @@ const VERSION := 3
 const SPELL_COST := {"common": 15, "rare": 30, "legendary": 60}
 const POWER_EXTRA := 10
 ## Unlocked from the first run (plus the four starters): commons, some rares, and enough legendaries for the bosses.
-const DEFAULT_SPELLS := ["thorn_dart", "hawks_eye", "ember", "spark", "droplet", "mist", "whisper", "updraft", "twin_flames", "flare",
+const DEFAULT_SPELLS := ["coup_de_grace", "thorn_dart", "hawks_eye", "ember", "droplet", "whisper", "updraft", "flare",
 	"tide_pool", "cyclone", "fan_the_flames", "steam", "scald", "mist_veil", "rain", "inferno", "glacier",
 	"tempest", "thermal_burst", "whirlpool", "alchemy", "clear_sight", "bandage", "kindle",
 	"spark_word", "spring_word", "breath_word", "firestorm", "storm_front", "leech", "searing_mist", "blight_wind",
 	"resonance", "steam_cloud", "tide_thief", "sirens_call", "maelstrom_grasp", "annihilate",
-	"meteor", "tidal_wave", "hurricane", "supernova", "deluge", "grimoire", "triune_chant",
+	"meteor", "tidal_wave", "hurricane", "supernova", "deluge", "grimoire",
 	# the second batch of spells (all but the new Legendaries, which are unlocked with Seedlings)
-	"flicker", "drizzle", "breeze", "tinder", "spark_shower", "dewdrop", "zephyr", "ashfall", "summoning_word",
-	"smolder", "calm_waters", "still_air", "wisp", "splash", "flame_lash", "steam_burst", "wildspark", "quench",
+	"drizzle", "breeze", "tinder", "spark_shower", "zephyr", "ashfall", "summoning_word",
+	"smolder", "calm_waters", "still_air", "wisp", "splash", "flame_lash", "steam_burst", "quench",
 	"tide_ward", "mist_step", "ember_gust", "rain_song", "whirl", "wild_flame", "wellspring_rite", "gale_call",
 	"twin_comets", "undercurrent", "crosswind", "scalding_rain", "searing_brand", "cold_snap", "hailstone",
 	"cinder_rain", "brine", "quiet_wind", "tidecaller", "ash_and_ember", "water_whip", "thieving_wind",
-	"kindled_heart", "mirror_pool", "updraft_lance", "steam_vent", "sea_breeze", "firefly", "fog_of_war", "heat_haze",
+	"kindled_heart", "mirror_pool", "updraft_lance", "steam_vent", "fog_of_war", "heat_haze",
 	"hush_of_rain", "smoke_signal", "ripplewind", "coal_toss", "spray", "flamecaller", "tsunami_ward", "thunderhead",
 	"lava_flow", "frostbite", "tempest_veil", "ember_storm", "healing_rain", "sky_lance", "witch_fire", "stormcaller",
 	"molten_core", "silent_tide", "windless_night", "cinder_shield", "gale_slash", "corrode", "wind_shear",
@@ -115,6 +115,19 @@ func is_unlocked(id: String) -> bool:
 
 func spell_cost(spell: Dictionary) -> int:
 	return SPELL_COST.get(spell.rarity, 30) + (POWER_EXTRA if spell.power else 0)
+
+
+## Spells a boss gives you when you first beat it ("unlock_by": its id): unlocks them, returns their names.
+func boss_unlocks(defeated: Array) -> Array:
+	var names := []
+	for s in GameData.db.all_spells:
+		var by: String = s.get("unlock_by", "")
+		if by != "" and by in defeated and not is_unlocked(s.id):
+			data.spells.append(s.id)
+			names.append(s.name)
+	if not names.is_empty():
+		save_game()
+	return names
 
 
 func buy_spell(spell: Dictionary) -> bool:

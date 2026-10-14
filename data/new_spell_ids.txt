@@ -1,9 +1,7 @@
-flicker
 drizzle
 breeze
 tinder
 spark_shower
-dewdrop
 zephyr
 ashfall
 summoning_word
@@ -14,7 +12,6 @@ wisp
 splash
 flame_lash
 steam_burst
-wildspark
 quench
 tide_ward
 mist_step
@@ -43,8 +40,6 @@ kindled_heart
 mirror_pool
 updraft_lance
 steam_vent
-sea_breeze
-firefly
 fog_of_war
 heat_haze
 hush_of_rain
@@ -101,7 +96,6 @@ forge_fire
 gust_front
 blood_moon
 solar_flare
-abyssal_tide
 heavens_gale
 elemental_fury
 tide_of_ages

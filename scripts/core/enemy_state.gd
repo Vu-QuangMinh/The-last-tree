@@ -21,6 +21,7 @@ var charge_dmg := -1
 var knocked := false
 var lives := 2  # a Handyman hand: times it can be knocked down this phase (then it stays down until the next one)
 var revive_in := 0  # a knocked-down hand: turns until it gets back up (0: it stays down)
+var dazed := 0  # Dazed: 50% to miss each attack; it goes down by 1 after a miss
 var disarmed := 0  # Disarmed (your Deafening Blast): its attacks do nothing on its next turn
 var invoke_all := false
 var invoke_next := -1  # the Invoker: the spell he casts this turn, whatever you chant (one he hasn't cast yet, if he can)
@@ -428,6 +429,8 @@ func describe_statuses() -> Array:
 		out.append(("Down: resurrected in %d turn%s" % [revive_in, "" if revive_in == 1 else "s"]) if revive_in > 0 else "Down: it gets up only when every other hand is down too")
 	if disarmed > 0:
 		out.append("Disarmed (its next attack does nothing)")
+	if dazed > 0:
+		out.append("Dazed %d (50%% chance to miss each attack; -1 after a miss)" % dazed)
 	if power > 0:
 		out.append("Power %d (+%d damage per hit)" % [power, power])
 	if burn > 0:

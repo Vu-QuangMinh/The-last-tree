@@ -123,13 +123,13 @@ const E := {
 		"flavor": "It steals the light, then the words."},
 	# ---------------- bosses (moves2 = second phase, at half HP)
 	# The Yin Yang Beast (an Act 1 boss): black and white. Inversion (3 of your spells flip: spell <-> anti-spell, and it
-	# turns the other colour) -> Roar (silence 2 spells, a small hit) -> a 3-turn Charge (an hourglass), then a big hit.
+	# turns the other colour) -> Roar (silence 2 spells for 3 turns, a small hit) -> a 3-turn Charge (an hourglass), then a big hit.
 	# While it charges, each spell of its own colour you cast (white: spells, black: anti-spells) raises the hit by 5
 	# (one of the other colour doesn't change it). None of that is told in the fight: the Codex explains it.
 	# When it dies it splits into two clones (one white, one black, out of step) that do the same at a smaller size.
 	"yin_yang_beast": {"name": "Yin Yang Beast", "act": 1, "boss": true, "hp": "FWAFWAFWAFWAFWAFWAFWAFWAFWAFWA", "yin": "white",
 		"passives": ["yinyang_split"],
-		"moves": [{"kind": "invert_spells", "n": 3}, {"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 5}},
+		"moves": [{"kind": "invert_spells", "n": 3}, {"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 5}},
 			{"kind": "charge", "left": 3, "n": 30}, {"kind": "charge", "left": 2}, {"kind": "charge", "left": 1, "hit": true}],
 		"flavor": "Two halves of one temper."},
 	# The Cubs both flip a spell first. Then the white one charges while the black one roars every turn (silence 2,
@@ -139,12 +139,12 @@ const E := {
 	"yin_yang_clone": {"name": "Yin Yang Cub", "act": 1, "member": true, "hp": "FFWWAAFFWW", "hp_black": "AWFAWFAWFA", "yin": "white",
 		"opener": [{"kind": "invert_spells", "n": 1}],
 		"moves": [{"kind": "charge", "left": 3, "n": 10}, {"kind": "charge", "left": 2}, {"kind": "charge", "left": 1, "hit": true},
-			{"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 2}},
-			{"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 2}},
-			{"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 2}}],
-		"moves_black": [{"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 2}},
-			{"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 2}},
-			{"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 2}},
+			{"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 2}},
+			{"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 2}},
+			{"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 2}}],
+		"moves_black": [{"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 2}},
+			{"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 2}},
+			{"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 2}},
 			{"kind": "charge", "left": 3, "n": 10}, {"kind": "charge", "left": 2}, {"kind": "charge", "left": 1, "hit": true}],
 		"flavor": "Half a beast, all the temper."},
 	# The Invoker (an Act 1 boss): he never attacks. Each turn he conjures 3 of his 10 spells (no repeats) as cards on his
@@ -538,7 +538,7 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 		"disarm":
 			s = "Disarm you (your next Release does nothing)"
 		"hammer_spell":
-			s = "Hammer your most-cast spell (3 hits break it for the fight; a Fleeting spell breaks at once)"
+			s = "Hammer your most-cast spell (3 hits break it for the fight; a spell with Durability loses 1 per hit)"
 		"stunned":
 			s = "Knocked out: back next turn"
 		"revive":

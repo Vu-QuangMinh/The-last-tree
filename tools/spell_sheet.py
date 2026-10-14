@@ -17,7 +17,7 @@ from openpyxl.utils import get_column_letter
 
 ROOT = Path(__file__).resolve().parent.parent
 ELEMS = {"F": "Fire", "W": "Water", "A": "Air", "?": "Any"}
-RARITY_ORDER = {"common": 0, "rare": 1, "legendary": 2}
+RARITY_ORDER = {"common": 0, "rare": 1, "legendary": 2, "unique": 3}
 
 
 def spell_type(s):
@@ -25,8 +25,8 @@ def spell_type(s):
         return "Anti-spell"
     if s["power"]:
         return "Power"
-    if s["fleeting"]:
-        return "Fleeting"
+    if s.get("durability", 0):
+        return "Durability %d" % s["durability"]
     return "Starter" if s["starter"] else "Spell"
 
 

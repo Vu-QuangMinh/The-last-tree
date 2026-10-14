@@ -424,6 +424,9 @@ func _show_event(ev: Dictionary) -> void:
 			"trade_artifacts":
 				_barter()
 				return
+			"invert_spell":
+				_invert_pick(ev)
+				return
 		var res: Dictionary = run.choose_event_option(ev.options[i])
 		if run.player.is_dead():
 			run.over = true
@@ -445,6 +448,19 @@ func _show_event(ev: Dictionary) -> void:
 	var s := _message(ev.title, ev.text, labels, Color(0.8, 0.7, 1))
 	s.disabled = ev.options.map(func(o): return not run.can_choose(o))
 	s.pressed.connect(pick)
+
+
+## The Upside-Down Pool: pick a spell from your spellbook; it pays half your HP and plays inverted for the run.
+func _invert_pick(ev: Dictionary) -> void:
+	var ids := run.invertible_spells()
+	var ch := _choice("The Upside-Down Pool", "Choose a spell to invert. It costs half your HP (%d)." % int(floorf(run.player.hp * 0.5)), ids.map(func(id): return run.spell(id)), [], true)
+	ch.chosen.connect(func(i):
+		if i < 0:
+			show_map()
+			return
+		var text := run.invert_spell(ids[i])
+		var after := _message(ev.title, text, ["Continue"], Color(0.8, 0.7, 1), SpellCard.make(run.spell(ids[i])))
+		after.pressed.connect(func(_k): show_map()))
 
 
 ## The Wandering Apothecary as a picture: the merchant (pay), the cart (a free sample), the signpost (walk on).
@@ -667,6 +683,8 @@ func _after_fight(f: Fight) -> void:
 		kind = "fight"
 	for id in ([] if _test_mode else SaveManager.add_to_codex(f.defeated)):
 		Events.toast.emit("New Codex entry: %s" % EnemyDefs.get_def(id).name, Color(1, 0.9, 0.5))
+	for spell_name in ([] if _test_mode else SaveManager.boss_unlocks(f.defeated)):
+		Events.toast.emit("New spell unlocked: %s" % spell_name, Color(1, 0.85, 0.4))
 	var act_before := run.act
 	if not f.won and run.can_revive():
 		# the Seed of Life: back to the start of this fight's preparation, as you were going in

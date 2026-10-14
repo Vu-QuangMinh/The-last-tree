@@ -65,7 +65,7 @@ func _refresh() -> void:
 	for c in _body.get_children():
 		c.queue_free()
 	if _tab == "spells":
-		var locked := GameData.db.all_spells.filter(func(s): return not SaveManager.is_unlocked(s.id))
+		var locked := GameData.db.all_spells.filter(func(s): return not SaveManager.is_unlocked(s.id) and not s.get("hidden", false) and s.get("unlock_by", "") == "")  # (a boss's gift isn't for sale)
 		locked.sort_custom(func(a, b): return SaveManager.spell_cost(a) < SaveManager.spell_cost(b))
 		if locked.is_empty():
 			_body.add_child(UiTheme.label("Every spell is unlocked.", 22))

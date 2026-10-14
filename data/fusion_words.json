@@ -4,10 +4,6 @@
     "Smouldering",
     "Ember"
   ],
-  "spark": [
-    "Sparking",
-    "Spark"
-  ],
   "cinder": [
     "Ashen",
     "Cinder"
@@ -15,10 +11,6 @@
   "droplet": [
     "Dripping",
     "Droplet"
-  ],
-  "mist": [
-    "Misty",
-    "Mist"
   ],
   "ripple": [
     "Rippling",
@@ -43,10 +35,6 @@
   "fire_ball": [
     "Blazing",
     "Fireball"
-  ],
-  "twin_flames": [
-    "Twin",
-    "Flames"
   ],
   "flare": [
     "Flaring",
@@ -123,10 +111,6 @@
   "rain": [
     "Rainsoaked",
     "Rain"
-  ],
-  "refresh": [
-    "Refreshing",
-    "Renewal"
   ],
   "inferno": [
     "Infernal",
@@ -228,10 +212,6 @@
     "Reborn",
     "Phoenix"
   ],
-  "eye_of_the_storm": [
-    "Stormeyed",
-    "Eye"
-  ],
   "supernova": [
     "Starborn",
     "Supernova"
@@ -239,10 +219,6 @@
   "deluge": [
     "Drowning",
     "Deluge"
-  ],
-  "convergence": [
-    "Converging",
-    "Convergence"
   ],
   "clear_sight": [
     "Clear-eyed",
@@ -392,10 +368,6 @@
     "Storm-crowned",
     "Diadem"
   ],
-  "unshackle": [
-    "Unshackled",
-    "Shackles"
-  ],
   "avatar_of_flame": [
     "Avatar",
     "Pyre"
@@ -420,10 +392,6 @@
     "Resonant",
     "Resonance"
   ],
-  "triune_chant": [
-    "Triune",
-    "Trinity"
-  ],
   "grimoire": [
     "Scholarly",
     "Grimoire"
@@ -444,10 +412,6 @@
     "Barraging",
     "Barrage"
   ],
-  "flicker": [
-    "Flickering",
-    "Flicker"
-  ],
   "drizzle": [
     "Drizzling",
     "Drizzle"
@@ -463,10 +427,6 @@
   "spark_shower": [
     "Showering",
     "Shower"
-  ],
-  "dewdrop": [
-    "Dewy",
-    "Dewdrop"
   ],
   "zephyr": [
     "Gentle",
@@ -507,10 +467,6 @@
   "steam_burst": [
     "Hissing",
     "Vent"
-  ],
-  "wildspark": [
-    "Wild-sparked",
-    "Sparks"
   ],
   "quench": [
     "Quenching",
@@ -623,14 +579,6 @@
   "steam_vent": [
     "Venting",
     "Fumes"
-  ],
-  "sea_breeze": [
-    "Salt-aired",
-    "Seabreeze"
-  ],
-  "firefly": [
-    "Glowing",
-    "Firefly"
   ],
   "fog_of_war": [
     "Fogbound",
@@ -855,10 +803,6 @@
   "solar_flare": [
     "Solar",
     "Sunflare"
-  ],
-  "abyssal_tide": [
-    "Abyssal",
-    "Abyss"
   ],
   "heavens_gale": [
     "Heavenly",

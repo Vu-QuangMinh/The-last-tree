@@ -129,11 +129,12 @@ static func _content() -> Dictionary:
 	c["The chant"] = [
 		["The Release", "When the chant is Released, every enemy loses the longest START of its Essence that appears unbroken anywhere in the chant.\nExample: enemies FFW and FWA both die to the chant FFWA. The chant FW leaves the first with FW (only its first F matched) and the second with A."],
 		["Essence by Essence", "The Release reads the chant from left to right. Each chant Essence lifts off as a comet and flies into the enemy Essence it lines up with, knocking it off, so you can watch the Essence break in order."],
-		["Spells come first", "All your spells are cast BEFORE the Release. Anything a spell does to an enemy (removing, moving or converting Essence, Expose, Armour breaks) changes what the Release will hit."],
+		["Spells come first", "All your spells are cast BEFORE the Release. Anything a spell does to an enemy (removing, rearranging or repainting Essence, Armour breaks) changes what the Release will hit."],
 		["Changing the chant", "Some spells change this turn's chant: Spark Word, Spring Word and Breath Word add an Essence anywhere you like; Resonance copies an Essence (×2), Triune Chant triples it (×3). Changes count straight away: new matches wake more spells (up to their limit)."],
 		["One chant per turn", "You Chant once per turn. If you don't want to, press Pass (E) and keep your Essence."],
 		["Armour", "Armoured Essence (grey ring) count for matching but are not removed that turn. F (F) W hit by FFW leaves F."],
-		["Expose (paint)", "Expose N gives you a paint brush: paint N enemy Essence, on any enemies. Each becomes a rainbow Any Essence for the rest of the fight, and any Essence in your chant hits it."],
+		["Repaint", "Repaint N gives you a paint brush: paint N enemy Essence, on any enemies, into the colour shown, for the rest of the fight. Painted Any {?}, any Essence in your chant hits it."],
+		["Self-Repaint", "Self-Repaint N paints N Essence of this turn's chant into the colour shown. An Any {?} in the chant fits every spot of a spell's pattern and hits any enemy Essence. New matches wake more spells; none go back to sleep."],
 		["Confused and Blind", "Confused: your next chant is read backwards and the preview is off. Blind: some enemy Essence show as {?}; they still match normally."],
 		["Warded and Ethereal enemies", "Warded enemies can only be struck by chants of 4 or more Essence. An Ethereal enemy can't be touched by the chant that turn."],
 	]

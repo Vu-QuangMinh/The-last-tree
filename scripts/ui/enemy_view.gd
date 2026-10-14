@@ -23,7 +23,8 @@ var move_mode := false
 var move_pick := -1  # the element picked up in move mode
 var pick_mode := false  # choosing an element to remove (Pluck)
 var keep_big := false  # a spell that picks several Essence is still being cast: keep the row enlarged between picks
-var paint_mode := false  # with pick_mode: Expose's brush (armoured Essence can be painted, Any ones can't)
+var paint_mode := false  # with pick_mode: Repaint's brush (armoured Essence can be painted, ones already its colour can't)
+var paint_to := "?"
 var pick_i := -1
 var pick_el := ""  # with pick_mode: only Essence of this kind can be picked (the rest are dimmed)
 var _spell_row: Control  # the Invoker's conjured spells: one in front of him, the others to his sides
@@ -144,6 +145,31 @@ func _gui_input(ev: InputEvent) -> void:
 		clicked.emit(self)
 
 
+## Rearrange: a draggable copy of its row is laid over the real one (which hides meanwhile). Hidden (Blind) Essence
+## stay hidden. The caller frees the copy and calls end_row_drag().
+func begin_row_drag(screen: Control) -> ChantDrag:
+	var d := ChantDrag.new()
+	var mask := fight.hidden_mask(enemy)
+	for i in enemy.size():
+		d.els.append("hidden" if i < mask.size() and mask[i] else enemy.elements[i])
+		d.live.append(true)
+	d.slots = 0
+	d.px = _hp_icons[0].size.x if not _hp_icons.is_empty() else 48.0
+	d.sep = 2.0
+	d.same_spot_is_no_move = true
+	d.z_index = 60
+	screen.add_child(d)
+	var w := enemy.size() * (d.px + d.sep) - d.sep
+	var row := _hp_row.get_global_rect()
+	d.global_position = Vector2(row.get_center().x - w / 2.0, row.position.y - 8.0)
+	_hp_row.modulate.a = 0.0
+	return d
+
+
+func end_row_drag() -> void:
+	_hp_row.modulate.a = 1.0
+
+
 ## Where the arrow should point / start for this enemy (global coordinates).
 func anchor_point() -> Vector2:
 	return global_position + Vector2(size.x / 2.0, 170)
@@ -203,7 +229,7 @@ func refresh(preview: Dictionary) -> void:
 			_make_clickable(icon, i)
 		elif pick_mode:
 			icon.highlight = i == pick_i
-			var can: bool = (e.elements[i] != "?") if paint_mode else (not e.armor[i] and (pick_el == "" or e.elements[i] == pick_el))
+			var can: bool = (e.elements[i] != paint_to) if paint_mode else (not e.armor[i] and (pick_el == "" or e.elements[i] == pick_el))
 			icon.dim = not can
 			if can:
 				_make_clickable(icon, i)

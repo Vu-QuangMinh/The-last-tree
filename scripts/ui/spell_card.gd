@@ -34,6 +34,7 @@ var zoom := 1.0
 
 var _count: Label
 var _rules: RichTextLabel
+var durability_left := -1  # in a fight: the Durability it has left (-1: not shown / no Durability)
 var _name_l: Label
 var _pat: HBoxContainer
 var _tag_l: Label
@@ -187,8 +188,6 @@ func _ready() -> void:
 	var tags := [spell.rarity_name.to_upper(), SpellDB.KIND_NAMES[spell.kind].to_upper()]
 	if spell.power:
 		tags.append("POWER")
-	if spell.get("fleeting", false):
-		tags.append("FLEETING")
 	if spell.get("fused", false):
 		tags.append("FUSED")
 	if spell.get("anti", false):
@@ -592,6 +591,14 @@ func _gui_input(ev: InputEvent) -> void:
 func refresh() -> void:
 	if _count == null:
 		return
+	if _rules != null and durability_left >= 0:
+		# Durability left changes during a fight: redraw the rules when it does
+		var sp := spell.duplicate()
+		sp.durability_left = durability_left
+		var t := "[center]" + Keywords.colorize(SpellText.card_text(sp), true, false, _zi(23)) + "[/center]"
+		if t != _rules.text:
+			_rules.text = t
+			_fit_text()
 	var n := charges if charges > 0 else fires
 	_count.text = ("×%d" % n) if n > 0 and state == "" else ""
 	# the frame is the spell's function colour; gold when the chant matches it or it's alive
@@ -607,6 +614,8 @@ func refresh() -> void:
 	_box.border_color = border
 	_box.set_border_width_all(_zi(bw))
 	modulate = Color(1, 1, 1, 0.45) if state == "used" else (Color(0.55, 0.55, 0.55, 0.8) if state == "spent" else Color.WHITE)
+	if state == "broken":
+		modulate = Color(0.5, 0.5, 0.52, 0.9)  # (broken: greyed out further than a spent one, under its cracks)
 	if spell.get("ephemeral", false):
 		modulate.a *= EPHEMERAL_ALPHA  # a little see-through: it isn't quite here
 	if is_instance_valid(_zoom):
@@ -633,7 +642,10 @@ func refresh() -> void:
 		_state.visible = false
 		if state == "silenced":
 			_state_num.text = state_text.get_slice("\n", 1).get_slice(" ", 0)
-	_shade.visible = state in ["silenced", "locked", "broken", "cooldown"]
+	_shade.visible = state in ["silenced", "locked", "cooldown"]  # (a broken card is greyed and cracked instead)
+	if spell.get("anti", false) and _pat != null:
+		for o in _pat.get_children():
+			o.z_index = 0 if _shade.visible else 1  # (an anti-spell's orbs sit above its negative, but not above a silence)
 	_flame.visible = ignited and state != "used"
 	if _base_tip != "":
 		tooltip_text = _base_tip + ("\n[color=#ff9a4a][b]Ignited:[/b] casting it this turn burns you for %d HP.[/color]" % Fight.IGNITE_DAMAGE if ignited else "")

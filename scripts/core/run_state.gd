@@ -52,6 +52,7 @@ var encounter_name := ""  # its name (Act 1's hand-made encounters, e.g. "The Sl
 var recent_encounters: Array = []  # names of the encounters met so far (an encounter never comes up twice in 3)
 var encounter_extra: Array = []  # the extra Essence each of those enemies will have (rolled once)
 var fused := {}  # id -> spell dict, for spells forged at campfires ("fused_1", ...)
+var inverted: Array = []  # spell ids inverted for the run (the Upside-Down Pool): a spell plays as an anti-spell, and back
 var _fuse_count := 0
 var over := false
 var won := false
@@ -98,6 +99,11 @@ static func from_save(d: Dictionary, p_db: SpellDB) -> RunState:
 	for k in d.player:
 		if k in r.player:
 			r.player.set(k, d.player[k])
+	# spells removed from the game since this run was saved are dropped
+	var known := func(id) -> bool: return r.fused.has(id) or not p_db.get_spell(id).is_empty()
+	r.spellbook = r.spellbook.filter(known)
+	r.loadout = r.loadout.filter(known)
+	r.unlocked_spells = r.unlocked_spells.filter(known)
 	return r
 
 
@@ -125,6 +131,9 @@ func active_slots() -> int:
 ## shows them, under a wax seal (full_pattern + seals).
 func spell(id: String) -> Dictionary:
 	var s: Dictionary = fused[id] if fused.has(id) else db.get_spell(id)
+	if id in inverted and not s.is_empty():
+		s = s.duplicate(true)
+		s.anti = not s.get("anti", false)
 	var extra: String = burdens.get(id, "")
 	if extra != "" and not s.is_empty():
 		s = s.duplicate(true)
@@ -246,6 +255,9 @@ func finish_fight(f: Fight) -> void:
 	if not f.won:
 		over = true
 		return
+	for id in f.exhausted:  # Exhausted spells: gone for the rest of the run
+		spellbook.erase(id)
+		loadout.erase(id)
 	kills += f.defeated.size()
 	for id in f.defeated:
 		if not (id in defeated_ids):
@@ -659,9 +671,27 @@ func can_choose(opt: Dictionary) -> bool:
 		return false
 	if opt.get("do", "") == "trade_artifacts" and tradeable_artifacts().is_empty():
 		return false
+	if opt.get("do", "") == "invert_spell" and (invertible_spells().is_empty() or player.hp < 2):
+		return false
 	if spellbook.size() <= opt.get("lose_spells", 0):
 		return false  # (you always keep at least one spell)
 	return amber >= opt.get("amber", 0) and player.hp > opt.get("hp", 0) and player.max_hp > opt.get("max_hp", 0) + 5
+
+
+## Spells the Upside-Down Pool can flip (not Powers).
+func invertible_spells() -> Array:
+	return spellbook.filter(func(id): return not spell(id).get("power", false))
+
+
+## The Upside-Down Pool: pay half your HP (rounded down), and the spell plays inverted for the rest of the run.
+func invert_spell(id: String) -> String:
+	player.hp -= floorf(player.hp * 0.5)
+	if id in inverted:
+		inverted.erase(id)
+	else:
+		inverted.append(id)
+	var s := spell(id)
+	return "%s is %s now." % [s.name, "an anti-spell" if s.get("anti", false) else "a spell again"]
 
 
 ## Do what an event option says. Returns {text, fight: bool}.

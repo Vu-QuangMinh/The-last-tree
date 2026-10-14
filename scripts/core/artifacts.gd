@@ -29,7 +29,7 @@ const ALL := [
 	{"id": "chant_bell", "name": "Chant Bell", "aspect": "Spells", "desc": "Your first spell each turn is cast twice.", "cost": 50, "starter": false, "pool": "normal", "tier": "rare", "icon": "🔔"},
 	{"id": "echo_shell", "name": "Echo Shell", "aspect": "Spells", "desc": "Every 10th spell charges it: the next spell is cast twice.", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "🐚"},
 	{"id": "bandolier", "name": "Bandolier", "aspect": "Bottles", "desc": "+2 bottle slots, and 2 random bottles.", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "🎽"},
-	{"id": "kindling_stone", "name": "Kindling Stone", "aspect": "Burn & Poison", "desc": "Every 3rd spell: Burn 1 on a random enemy.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "💥"},
+	{"id": "kindling_stone", "name": "Kindling Stone", "aspect": "Burn & Poison", "desc": "Every 3rd spell: apply 1 Burn to a random enemy.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "💥"},
 	{"id": "venom_gland", "name": "Venom Gland", "aspect": "Burn & Poison", "desc": "Your Poison +1.", "cost": 25, "starter": false, "pool": "normal", "tier": "common", "icon": "🧪"},
 	{"id": "lock_pick", "name": "Lock Pick", "aspect": "Debuffs", "desc": "Locks on your spells are 1 shorter.", "cost": 30, "starter": false, "pool": "normal", "tier": "common", "icon": "🗝"},
 	{"id": "keen_eye", "name": "Keen Eye", "aspect": "Debuffs", "desc": "You can't be Blinded.", "cost": 25, "starter": false, "pool": "normal", "tier": "common", "icon": "👁"},
@@ -38,7 +38,7 @@ const ALL := [
 	{"id": "rain_chalice", "name": "Rain Chalice", "aspect": "Defence", "desc": "Start each fight with 4 Lasting Shield.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🏆"},
 	{"id": "echo_chamber", "name": "Echo Chamber", "aspect": "Spells", "desc": "Chant 3 or fewer Essence: every spell this turn is cast twice.", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "🔊"},
 	{"id": "shield_of_silence", "name": "Shield of Silence", "aspect": "Defence", "desc": "Passing your turn without chanting grants 5 Lasting Shield.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🤫"},
-	{"id": "ward_stone", "name": "Ward Stone", "aspect": "Defence", "desc": "Start each fight with 1 Aegis.", "cost": 35, "starter": false, "pool": "normal", "tier": "rare", "icon": "🛡"},
+	{"id": "ward_stone", "name": "Ward Stone", "aspect": "Defence", "desc": "Start each fight with 1 Evasion.", "cost": 35, "starter": false, "pool": "normal", "tier": "rare", "icon": "🛡"},
 	{"id": "thornbark", "name": "Thornbark", "aspect": "Defence", "desc": "Thorns 1 every fight.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🌵"},
 	{"id": "iron_bark", "name": "Iron Bark", "aspect": "Defence", "desc": "Gain 1 Lasting Shield each turn.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🌲"},
 	{"id": "seed_of_life", "name": "Seed of Life", "aspect": "Health", "desc": "Lose a fight: it breaks, and the fight starts over. (Every run starts with it.)", "cost": 0, "starter": true, "pool": "none", "tier": "rare", "icon": "🌼"},
@@ -86,12 +86,12 @@ const PLUS := {
 	"flame_lens": [0.25, 0.4, "40% Refund for Fire."],
 	"tide_lens": [0.25, 0.4, "40% Refund for Water."],
 	"gale_lens": [0.25, 0.4, "40% Refund for Air."],
-	"kindling_stone": [3, 2, "Every 2nd spell: Burn 1 on a random enemy."],
+	"kindling_stone": [3, 2, "Every 2nd spell: apply 1 Burn to a random enemy."],
 	"echo_shell": [10, 7, "Every 7th spell charges it: the next spell is cast twice."],
 	"venom_gland": [1, 2, "Your Poison +2."],
 	"lock_pick": [1, 2, "Locks on your spells are 2 shorter."],
 	"rain_chalice": [4, 6, "Start each fight with 6 Lasting Shield."],
-	"ward_stone": [1, 2, "Start each fight with 2 Aegis."],
+	"ward_stone": [1, 2, "Start each fight with 2 Evasion."],
 	"echo_chamber": [3, 4, "Chant 4 or fewer Essence: every spell this turn is cast twice."],
 	"shield_of_silence": [5, 8, "Passing your turn without chanting grants 8 Lasting Shield."],
 	"thornbark": [1, 2, "Thorns 2 every fight."],
@@ -138,7 +138,7 @@ static func charge_state(id: String, p: PlayerState, plus := false) -> Array:
 			# it glows when the next spell you cast will set an enemy alight
 			var every := int(num(id, plus))
 			var ready := p.kindling_chants >= every - 1
-			return [ready, "READY: your next spell puts 1 Burn on a random enemy." if ready else "%d / %d spells" % [p.kindling_chants, every]]
+			return [ready, "READY: your next spell applies 1 Burn to a random enemy." if ready else "%d / %d spells" % [p.kindling_chants, every]]
 		"echo_chamber":
 			# it shines while it's on (a short chant this turn)
 			return [p.echo_chamber_on, "ON: every spell you cast this turn is cast twice." if p.echo_chamber_on else "Chant %d Essence or fewer to turn it on." % int(num(id, plus))]
