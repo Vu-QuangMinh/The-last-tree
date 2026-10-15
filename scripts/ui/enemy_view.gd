@@ -189,6 +189,18 @@ func _place_marker() -> void:
 		_marker.position = _puppet_rect().get_center() - _marker.size / 2.0
 
 
+## A hand of the Handyman that is not in the fight yet (HandymanStage.sync_ghosts): only its folded arm shows, no name, Essence, statuses, bubble or target
+## marker, and it takes no clicks.
+func make_ghost() -> void:
+	_ghost = true
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if creature != null:
+		creature.calm = true  # (it was never hurt: it lies folded and still, no creaking and trembling of the broken gears; Creature._draw_arm)
+	for c in [_name, _hp_row, _status, _intent_slot, _ring, _marker]:
+		if c != null:
+			c.visible = false
+
+
 func _has_point(p: Vector2) -> bool:
 	if _ghost:
 		return false

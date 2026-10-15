@@ -1,5 +1,5 @@
 Map Icon Normal: Two small carved wooden swords crossed in an X, steel-grey blades with brown carved hilts, no ring around them
-Map Icon Elite: A carved wooden horned demon head painted barn red with two curved cream horns, small angry yellow eyes and a toothy frown, no ring around it
+Map Icon Elite: A carved wooden friendly little devil mascot head seen perfectly straight from the front, symmetrical face, painted warm barn red with two short rounded cream horns, big round cheerful eyes with small shiny pupils, rosy cheeks, a wide goofy smile with two tiny buck teeth, small pointed ears, like a cute toy meant for small children, not scary at all, no ring around it
 Map Icon Boss: A small carved wooden crown painted tarnished gold with five points and three round jewels, one red, one blue, one green, no ring around it
 Map Icon Campfire: A small carved wooden campfire: three crossed brown logs under an orange and yellow carved flame, no ring around it
 Map Icon Merchant: A small carved wooden hanging shop sign shaped like a bag of coins tied with a string, painted green and ochre with one gold coin on it, no ring around it

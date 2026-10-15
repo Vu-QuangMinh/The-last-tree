@@ -24,7 +24,7 @@ static func open(host: Control, p_note_menu: String, p_note_quit: String) -> Pau
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	z_index = 100
+	z_index = 400  # (over everything of the screen it opens on, e.g. the Puppet Stage's map, whose HUD sits at PuppetStage.CEILING_Z + 2)
 	var shade := ColorRect.new()
 	shade.color = Color(0, 0, 0, 0.6)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

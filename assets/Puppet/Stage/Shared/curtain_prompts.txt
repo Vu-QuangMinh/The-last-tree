@@ -1,0 +1,8 @@
+Drape A: A tall panel of barn-red painted cloth with five soft vertical folds, the hem a gentle scallop edged with an ochre-gold painted band
+Drape B: A tall panel of deep brick-red painted cloth with four wide soft vertical folds and one narrow ochre-gold painted stripe running down its right edge, the hem a shallow curve edged with an ochre-gold band
+Drape C: A tall panel of dark wine-red painted cloth, slightly narrower at the top than at the bottom, six thin soft vertical folds, the hem in two rounded scallops edged with an ochre-gold band
+Drape D: A tall panel of warm rust-red painted cloth with three deep rounded folds, the hem straight with a thick ochre-gold painted band and a row of small carved wooden bead tassels hanging under it
+Drape E: A tall panel of bright barn-red painted cloth with five soft folds that lean slightly to the left, the hem in one deep swooping curve edged with an ochre-gold band
+(Ratio 2:3. Raw pictures: "Curtain Drape X_<stamp>.png" here; curtain_1..5.png = A..E cut with Tachnen, full size. The little Gemini sparkle at the hem corner of A, B and C was painted over by hand with a copied patch.)
+
+Sign Boss Defeated (sign_boss_defeated.png, picked of 3 tries, cut with Tachnen, full size; used by FightScreen._finish for every boss win): A wooden hanging sign: a wide plank board about 2 to 1 hanging from two chains, painted dull cream with a carved dark crimson-brown frame and small brass nails, the two words BOSS DEFEATED painted on two lines in large bold western serif capital letters, BOSS on the top line and DEFEATED on the bottom line, both in strong blood-red paint with a darker red inline stripe, a small painted skull-and-crown emblem on each side

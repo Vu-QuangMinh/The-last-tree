@@ -114,6 +114,40 @@ func play(name: String, volume_db := 0.0, pitch := 1.0, from := 0.0) -> void:
 	p.play(from)
 
 
+## A sound the caller can stop again (see stop_held): it has a player of its own, freed when it ends or is stopped. Returns null when there is no such file.
+func play_held(name: String, volume_db := 0.0, pitch := 1.0) -> AudioStreamPlayer:
+	var s := _load(UiSkin.theme_dir() + "SFX/" + name + ".wav", true)
+	if s == null:
+		s = _load(GLOBAL_SFX_DIR + name + ".wav")
+	if s == null:
+		return null
+	var p := AudioStreamPlayer.new()
+	p.stream = s
+	p.volume_db = _db(sfx_level * overall_level) + volume_db
+	p.pitch_scale = pitch
+	add_child(p)
+	p.finished.connect(p.queue_free)
+	p.play()
+	return p
+
+
+## How long a sound file lasts, seconds (0 when there is no such file).
+func get_sfx_length(name: String) -> float:
+	var s := _load(UiSkin.theme_dir() + "SFX/" + name + ".wav", true)
+	if s == null:
+		s = _load(GLOBAL_SFX_DIR + name + ".wav")
+	return s.get_length() if s != null else 0.0
+
+
+## Fade a sound from play_held out in `fade` seconds and free it (null / already freed is fine).
+func stop_held(p, fade := 0.25) -> void:  # (untyped: a sound that already ended has been freed, and a freed object cannot be passed as a typed argument)
+	if p == null or not is_instance_valid(p):
+		return
+	var tw := create_tween()
+	tw.tween_property(p, "volume_db", -60.0, fade)
+	tw.tween_callback(p.queue_free)
+
+
 # ------------------------------------------------------------------ music
 
 ## Every track file (with extension) sitting in assets/Global/Music/<category>/, sorted by name.
