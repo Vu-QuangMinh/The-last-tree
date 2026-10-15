@@ -1,7 +1,8 @@
 class_name UiSkin
 extends RefCounted
-## The two looks of the game: "new" (hand-drawn art, assets/New/) and "puppet" (the wooden puppet theatre, assets/Puppet/). Art that both share
-## sits in assets/Global/. Settings -> Theme picks one. (The old Default and Cirus looks are gone: a save that still says so opens in New.)
+## The look of the game: "puppet" (the wooden puppet theatre, assets/Puppet/), the only one the player gets. The "new" look (hand-drawn
+## art, assets/New/) is kept as the fallback for art Puppet has none of yet, and for tools that switch to it with set_theme("new").
+## Art both share sits in assets/Global/. (A save that still says "new", "default" or "cirus" opens in Puppet.)
 ## A piece of art that's missing just returns null, and the caller keeps drawing in code.
 ##
 ## Every theme folder has the same shape (see assets/README.md): Card, Enemies/Act1..3, Fonts, Icon/{Artifact,Bottle,Effect,Intent},
@@ -9,8 +10,8 @@ extends RefCounted
 ## root, in ROOTS' order) that holds <name>.png or <name>.jpg wins, so a picture can be moved between those folders freely.
 
 const ASSETS := "res://assets/"
-const OPTIONS := ["new", "puppet"]
-const LABELS := ["New", "Puppet Stage"]
+const OPTIONS := ["puppet", "new"]  # (only Puppet is offered to the player; "new" is for tools)
+const LABELS := ["Puppet Stage", "New"]
 ## Puppet Stage theme: pieces that would clash with the stage (the painted stump under an enemy) are hidden.
 const PUPPET_HIDDEN := ["enemy_stand"]
 
@@ -26,10 +27,12 @@ const FOLDERS := ["UI/Panels", "UI/Hp", "UI/Machine", "UI/Hint", "UI/Buttons", "
 const ARTIFACT_ART := {"scholar_quill": "scholars_quill"}
 
 
-## "new" or "puppet".
+## "puppet" (or "new" while a tool has switched to it).
 static func theme_id() -> String:
-	var t: String = SaveManager.setting("theme", "new")
-	return t if t in OPTIONS else "new"
+	return "new" if _tool_new else "puppet"
+
+
+static var _tool_new := false  # set_theme("new"): a tool or test asking for the New look
 
 
 ## The theme folders to look in, the chosen theme first (Puppet falls back to New for what it has no art of its own for yet, then Global).
@@ -57,7 +60,8 @@ static func is_puppet() -> bool:
 
 
 static func set_theme(id: String) -> void:
-	SaveManager.set_setting("theme", id if id in OPTIONS else "new")
+	_tool_new = id == "new"
+	SaveManager.set_setting("theme", "new" if _tool_new else "puppet")
 	_tex.clear()  # the same name now means another picture
 	_paths.clear()
 	UiTheme.reset()  # the shared Theme is rebuilt for the next screen

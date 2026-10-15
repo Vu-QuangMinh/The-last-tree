@@ -328,12 +328,12 @@ func _lens_refunds(chanted: Array) -> Array:
 			var el: String = chanted[i]
 			if el == LENSES[lens] and rng.randf() < _an(lens):
 				back.append(el)
-if has_artifact("hair_of_the_fairest"):
-		for i in range(chant.size()):
-			var el: String = chanted[i]
-			if rng.randf() < 0.01:  # (1%: tiny on purpose; its worth is the shopkeeper's offer)
-				back.append(el)
 				refund_slots.append(i)  # (which slot of the chant it leaves, for the animation)
+	if has_artifact("hair_of_the_fairest"):
+		for i in chanted.size():
+			if rng.randf() < 0.01:  # (1%: tiny on purpose; its worth is the shopkeeper's offer)
+				back.append(chanted[i])
+				refund_slots.append(i)
 	return back
 
 
@@ -756,7 +756,7 @@ func finish_turn() -> void:
 			refund_slots.append(maxi(0, chant.size() - 1))
 		var back_uids := []
 		for el in back:
-player.add_element(el if el != "?" else _random_element())
+			player.add_element(el if el != "?" else _random_element())
 			back_uids.append(player.stock.back().uid)
 		if not back.is_empty():
 			_log("Refunded to your bag: %s." % " ".join(back))

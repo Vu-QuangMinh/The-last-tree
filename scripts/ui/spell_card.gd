@@ -670,8 +670,8 @@ func refresh() -> void:
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if charges > 0 else Control.CURSOR_ARROW
 	_box.border_color = border
 	_box.set_border_width_all(_zi(bw))
-if _art != null:  # the wooden frame glows golden when the chant would wake the spell, brighter once it is charged
-	_art.modulate_color = Color(1.4, 1.2, 0.7) if charges > 0 else (Color(1.25, 1.1, 0.78) if fires > 0 and state == "" else Color.WHITE)
+	if _art != null:  # the wooden frame glows golden when the chant would wake the spell, brighter once it is charged
+		_art.modulate_color = Color(1.4, 1.2, 0.7) if charges > 0 else (Color(1.25, 1.1, 0.78) if fires > 0 and state == "" else Color.WHITE)
 	modulate = Color(1, 1, 1, 0.45) if state == "used" else (Color(0.55, 0.55, 0.55, 0.8) if state == "spent" else Color.WHITE)
 	if state == "broken":
 		modulate = Color(0.5, 0.5, 0.52, 0.9)  # (broken: greyed out further than a spent one, under its cracks)
@@ -706,8 +706,8 @@ if _art != null:  # the wooden frame glows golden when the chant would wake the 
 		for o in _pat.get_children():
 			o.z_index = 0 if _shade.visible else 1  # (an anti-spell's orbs sit above its negative, but not above a silence)
 	_flame.visible = ignited and state != "used"
-if _base_tip != "":
-	tooltip_text = _base_tip + ("\n[color=#ff9a4a][b]Ignited:[/b] casting it this turn burns you for %d HP.[/color]" % Fight.IGNITE_DAMAGE if ignited else "")
+	if _base_tip != "":
+		tooltip_text = _base_tip + ("\n[color=#ff9a4a][b]Ignited:[/b] casting it this turn burns you for %d HP.[/color]" % Fight.IGNITE_DAMAGE if ignited else "")
 	_cracks.set_level(0 if UiSkin.is_puppet() else cracks, String(spell.get("id", "")))  # (Puppet: the card is cut into planks instead: CardSplit)
 	if spell.get("anti", false):
 		# an anti-spell is always active: its spark keeps circling, unless the chant breaks it (state "broken")
