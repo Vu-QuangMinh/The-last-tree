@@ -86,11 +86,11 @@ const E := {
 	"storm_imp": {"name": "Storm Imp", "act": 3, "hp": "AAF", "moves": [{"kind": "attack", "n": 1, "hits": 3}, {"kind": "ethereal"}, {"kind": "empower", "n": 1}],
 		"flavor": "Flickers out of reach."},
 	# ---------------- elites
-	"storm_rider": {"name": "Storm Rider", "act": 2, "elite": true, "hp": "AAFAA", "moves": [{"kind": "attack", "n": 3, "hits": 2}, {"kind": "attack", "n": 2, "also": {"kind": "shuffle"}}],
+	"storm_rider": {"name": "Storm Rider", "act": 2, "elite": true, "retired": true, "hp": "AAFAA", "moves": [{"kind": "attack", "n": 3, "hits": 2}, {"kind": "attack", "n": 2, "also": {"kind": "shuffle"}}],
 		"flavor": "Fast, and hard to read."},
-	"lockwarden": {"name": "Lockwarden", "act": 2, "elite": true, "hp": "WFWAF", "moves": [{"kind": "lock", "len": 2}, {"kind": "attack", "n": 5}, {"kind": "attack", "n": 5}],
+	"lockwarden": {"name": "The Warden", "act": 2, "elite": true, "hp": "WFWAF", "moves": [{"kind": "lock", "len": 2}, {"kind": "attack", "n": 5}, {"kind": "attack", "n": 5}],
 		"flavor": "Chains your spells shut."},
-	"tide_colossus": {"name": "Tide Colossus", "act": 3, "elite": true, "hp": "WWWWFW", "moves": [{"kind": "mend", "el": "W", "n": 2, "who": "self"}, {"kind": "attack", "n": 8}],
+	"tide_colossus": {"name": "Tide Colossus", "act": 3, "elite": true, "retired": true, "hp": "WWWWFW", "moves": [{"kind": "mend", "el": "W", "n": 2, "who": "self"}, {"kind": "attack", "n": 8}],
 		"flavor": "A wave that stands up."},
 	# The Triplet (a mini boss of three separate enemies): one spirit of each element, each with its own cycle of moves.
 	# They START at different points of it ("start"); a stun or a death can bring them in step later, and that's fine.
@@ -117,9 +117,9 @@ const E := {
 		"moves": [{"kind": "sing"}, {"kind": "attack", "n": 1, "hits": 2}],
 		"wall_moves": [{"kind": "attack", "n": 2, "hits": 1}, {"kind": "attack", "n": 1, "hits": 2}, {"kind": "attack", "n": 1, "hits": 3}],
 		"flavor": "A hedge that sings."},
-	"mirror_knight": {"name": "Mirror Knight", "act": 2, "elite": true, "hp": "WAFWAF", "moves": [{"kind": "armor", "pos": 0, "also": {"kind": "attack", "n": 5}}, {"kind": "shuffle", "also": {"kind": "attack", "n": 7}}],
+	"mirror_knight": {"name": "Mirror Knight", "act": 3, "elite": true, "hp": "WAFWAF", "moves": [{"kind": "armor", "pos": 0, "also": {"kind": "attack", "n": 5}}, {"kind": "shuffle", "also": {"kind": "attack", "n": 7}}],
 		"flavor": "Its guard is where you least expect."},
-	"void_archon": {"name": "Void Archon", "act": 3, "elite": true, "hp": "AFWAFWA", "moves": [{"kind": "blind", "turns": 2, "also": {"kind": "attack", "n": 5}}, {"kind": "lock", "len": 2}, {"kind": "attack", "n": 4, "hits": 3}],
+	"void_archon": {"name": "Void Archon", "act": 3, "elite": true, "retired": true, "hp": "AFWAFWA", "moves": [{"kind": "blind", "turns": 2, "also": {"kind": "attack", "n": 5}}, {"kind": "lock", "len": 2}, {"kind": "attack", "n": 4, "hits": 3}],
 		"flavor": "It steals the light, then the words."},
 	# ---------------- bosses (moves2 = second phase, at half HP)
 	# The Yin Yang Beast (an Act 1 boss): black and white. Inversion (3 of your spells flip: spell <-> anti-spell, and it
@@ -314,9 +314,12 @@ static func normals(act: int) -> Array:
 	return E.keys().filter(func(k): return E[k].act == act and not E[k].get("elite", false) and not E[k].get("boss", false))
 
 
+## The mini bosses of an act (only that act's own; "retired" ones are kept for old saves and the codex but never met).
+## Act 1: The Triplet, Enraged Rolling Bear, Bramble Matron. Act 2: Chairman, Blackwing, The Warden.
+## Act 3: Bottle Head, Fire Dragon, Mirror Knight. (Chairman, Blackwing, Bottle Head and Fire Dragon: not made yet.)
 static func elites(act: int) -> Array:
-	var out := E.keys().filter(func(k): return E[k].get("elite", false) and not E[k].get("member", false) and E[k].act <= act and E[k].act >= act - 1)
-	return out + ELITE_GROUPS.keys().filter(func(k): return ELITE_GROUPS[k].act <= act and ELITE_GROUPS[k].act >= act - 1)
+	var out := E.keys().filter(func(k): return E[k].get("elite", false) and not E[k].get("member", false) and not E[k].get("retired", false) and E[k].act == act)
+	return out + ELITE_GROUPS.keys().filter(func(k): return ELITE_GROUPS[k].act == act)
 
 
 ## Mini bosses that are a group: always met together, left to right.
@@ -425,13 +428,7 @@ static func encounter(kind: String, act: int, floor: int, rng: RandomNumberGener
 			var fresh := pool.filter(func(id): return not (ids_of(id)[0] in seen))
 			if not fresh.is_empty():
 				pool = fresh
-			var out := ids_of(pool[rng.randi() % pool.size()])
-			if act >= 2:
-				# an elite brings 1 escort (sometimes 2 in act 3)
-				var n := normals(act)
-				for i in (2 if act >= 3 and rng.randf() < 0.4 else 1):
-					out.append(n[rng.randi() % n.size()])
-			return out
+			return ids_of(pool[rng.randi() % pool.size()])  # (a mini boss comes alone: no escorts)
 	var pool := normals(act)
 	var count := group_size(act, floor, rng)
 	var out := []
