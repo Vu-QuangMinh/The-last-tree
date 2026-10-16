@@ -163,7 +163,7 @@ func _draw() -> void:
 			continue
 		var c: Vector2 = _icons[i].position + Vector2(px, px) / 2.0
 		var pulse := 0.5 + 0.5 * sin(_t * 4.0 + i)
-		var strength := 1.6 if i == _held else 1.0
+		var strength := (1.6 if i == _held else 1.0) * (2.2 if UiSkin.is_puppet() else 1.0)  # (brighter on the wooden stage)
 		for k in 4:
 			var r := px * (0.55 + 0.09 * k + 0.04 * pulse)
 			draw_circle(c, r, Color(1.0, 0.88, 0.45, (0.10 - 0.02 * k) * strength))

@@ -67,13 +67,13 @@ var charges := {}  # spell id -> triggers left right now
 var talk_id := ""  # a boss you can talk to before the fight (BossTalk): its id
 var talk_free := false  # test mode: talking to a boss costs nothing
 var talk_spent: Array = []  # the Essence the talk has cost you so far
-var talk_enraged := false
-var invoke_count := 3  # how many spells the Invoker conjures a turn (a talk can make it 5)  # the talk made the boss Enraged (+1 Power whenever you gain Shield)
+var invoke_count := 3  # how many spells the Invoker conjures a turn
 var hm := {}  # the Handyman fight: {phase, kills, body}
 var cast_counts := {}  # spell id -> casts this fight (the Hammer goes for the most-cast)
 var hammer_target := ""
 var hammer_hits := {}  # spell id -> Hammer hits taken (3 break it)
-var broken := {}  # spell id -> true: smashed by the Hammer, gone for the fight
+var broken := {}  # spell id -> true: broken (worn out, or smashed by the Hammer), gone for the fight
+var hammered := {}  # spell id -> true: smashed by the Hammer: it leaves the row for the rest of the fight
 var exhausted: Array = []  # spell ids Exhausted this fight: gone for the rest of the run
 var stored := {}  # spell id -> true: alive but not cast when you Released; it wakes again on your next Chant
 var turn_ctx := {}  # {entries, amplify, echo, retain, last, cast_any}
@@ -173,13 +173,6 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 		player.lasting += _an("iron_bark")  # (turn 1's; begin_player_turn gives the rest)
 	if has_artifact("ward_stone"):
 		player.aegis = int(_an("ward_stone"))
-	# the Handyman's chairs: the deadly one hurts, the good ones rest you
-	if has_artifact("deadly_chair"):
-		player.hp = maxf(1.0, player.hp - _an("deadly_chair"))
-	if has_artifact("chair"):
-		player.heal(_an("chair"))
-	if has_artifact("comfy_chair"):
-		player.heal(_an("comfy_chair"))
 	player.dmg_taken_mult = 1.25 if has_artifact("glass_heart") else 1.0
 	var start_n := PlayerState.START_ELEMENTS + (int(_an("wind_chime")) if has_artifact("wind_chime") else 0)
 	# you always start with one of each element; the rest are random (in a random order)
@@ -255,7 +248,8 @@ func active_spells() -> Array:
 ## The active row as you see it: a Conjure spell whose conjured spells are out isn't in it (they stand in its place).
 func shown_spells() -> Array:
 	# (broken ones too: they stay, cracked and grey; a Power you've cast leaves the row: it's a badge now, if it lasts)
-	return loadout.filter(func(s): return not conjuring.has(s.id) and not (s.get("power", false) and player.used_powers.has(s.id)))
+	# (a spell the Hammer smashed is gone from the row altogether)
+	return loadout.filter(func(s): return not conjuring.has(s.id) and not hammered.has(s.id) and not (s.get("power", false) and player.used_powers.has(s.id)))
 
 
 ## Spells that can fire this turn (not silenced, not locked, not a spent Power).
@@ -329,11 +323,6 @@ func _lens_refunds(chanted: Array) -> Array:
 			if el == LENSES[lens] and rng.randf() < _an(lens):
 				back.append(el)
 				refund_slots.append(i)  # (which slot of the chant it leaves, for the animation)
-	if has_artifact("hair_of_the_fairest"):
-		for i in chanted.size():
-			if rng.randf() < 0.01:  # (1%: tiny on purpose; its worth is the shopkeeper's offer)
-				back.append(chanted[i])
-				refund_slots.append(i)
 	return back
 
 
@@ -848,6 +837,9 @@ func _strike(c: String) -> Array:
 		if e.has_passive("burning_hide") and not player.thorn_guard:
 			player.take_effect(1.0)
 			_log("%s's burning hide scorches you." % e.name)
+		if e.thorns > 0 and not player.thorn_guard:
+			player.take_effect(float(e.thorns))
+			_log("%s's thorns prick you for %d." % [e.name, e.thorns])
 		if e.has_passive("thorns") and not player.thorn_guard:
 			player.take_effect(2.0)
 			_log("%s's thorns prick you." % e.name)
@@ -1156,9 +1148,6 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 			for e in targets:
 				e.disarmed = maxi(e.disarmed, int(eff.get("turns", 1)))
 			_log("%s Disarms them." % spell.name)
-		"forbidden":
-			# it does nothing. (The screen counts the casts, across runs, and says something about it.)
-			await anim.call({"type": "forbidden", "id": spell.id})
 		"vulnerable":
 			player.vulnerable = maxi(player.vulnerable, int(eff.n))  # (a self debuff: the price of the spell)
 			_log("You are Vulnerable %d: you take 50%% more damage." % eff.n)
@@ -1950,7 +1939,7 @@ func _shield_gained(got: float) -> void:
 	if got <= 0.0:
 		return
 	for e in alive():
-		if e.has_passive("shield_rage") or (talk_enraged and (e.is_boss or e.has_passive("hand"))):
+		if e.has_passive("shield_rage"):
 			e.power += 1
 			e.dmg_bonus += 1
 			_log("%s is enraged by your Shield: Power %d." % [e.name, e.power])
@@ -2067,10 +2056,10 @@ func _rebirths() -> void:
 			e.set_meta("say_first", ["Very well, mortal.", "I have not been pushed this far in a while.", "Let me show you the pinnacle of Wizardry."])
 
 
-## The Handyman: in his first two phases each hand has 2 lives. At 0 Essence a hand goes down: with a life left it
-## lies there a turn and gets back up (the angel wings and an hourglass); out of lives it stays down. Once every hand
-## is out of lives, two new hands join and the fallen ones get back up too, for the next phase. In his last stand a
-## fallen hand stays down for good, and with every hand gone he shows himself.
+## The Handyman: in every phase each hand has 2 lives. At 0 Essence a hand goes down: with a life left it lies there
+## a turn and gets back up (the angel wings and an hourglass); out of lives it stays down. Once every hand is out of
+## lives, two new hands join and the fallen ones get back up too, for the next phase. In his last stand, once every
+## hand is out of lives, they go limp for good and he shows himself.
 const HAND_DOWN := 2  # a fallen hand gets back up at the start of your turn after next (a turn's rest)
 
 
@@ -2081,10 +2070,6 @@ func _handyman_step() -> void:
 		if not e.has_passive("hand") or not e.is_dead() or e.knocked:
 			continue
 		e.charge_dmg = -1
-		if hm.phase >= 3:
-			enemies.erase(e)  # (his last stand: it stays down)
-			_log("%s goes limp for good." % e.name)
-			continue
 		e.knocked = true
 		e.lives -= 1
 		hm.kills += 1
@@ -2104,6 +2089,10 @@ func _handyman_step() -> void:
 			_hm_phase(2, ["hand_hammer", "hand_crossbow"], "The Handyman reaches out with two more hands!")
 		else:
 			_hm_phase(3, ["hand_spear", "hand_shield"], "Two last hands, a spear and a shield: the Handyman makes his last stand!")
+	elif hm.phase >= 3 and not hands.is_empty() and hands.all(func(x): return x.knocked and x.lives <= 0):
+		for x in hands:
+			enemies.erase(x)  # (his last stand is over: they go limp for good)
+		_log("Every hand goes limp for good.")
 	if hm.phase == 3 and not hm.body and not enemies.any(func(x): return x.has_passive("hand")):
 		hm.body = true
 		var body := _spawn("handyman", [])
@@ -2132,7 +2121,7 @@ func _hand_down(e: EnemyState) -> void:
 	e.intent = {"kind": "revive", "left": HAND_DOWN}
 
 
-## Start of your turn: fallen hands count down, and get back up whole (the Crossbow starts loading again from 2).
+## Start of your turn: fallen hands count down, and get back up whole (the Crossbow starts loading again).
 func _hands_back() -> void:
 	for e in enemies:
 		if not e.knocked or e.revive_in <= 0:
@@ -2150,8 +2139,8 @@ func _hands_back() -> void:
 
 
 ## The Hammer Hand: it picks the spell you've cast most this fight (a tie: one at random) and sticks to it until it
-## breaks. 3 hits break a spell; a spell with Durability loses 1 Durability per hit instead (at 0 it breaks). A broken
-## spell is gone for the fight.
+## breaks. 3 hits break a spell; a spell with Durability loses 1 Durability per hit instead (at 0 it breaks). A smashed
+## spell is removed from the fight: it leaves the row.
 func _hammer(e: EnemyState) -> void:
 	var cands := active_spells()
 	if cands.is_empty():
@@ -2168,7 +2157,8 @@ func _hammer(e: EnemyState) -> void:
 	var smashed: bool = _wear(sp) if base_durability(sp) > 0 else hits >= 3
 	if smashed:
 		_break(hammer_target)
-		_log("%s smashes %s to pieces!" % [e.name, sp.name])
+		hammered[hammer_target] = true
+		_log("%s smashes %s to pieces! It's gone for the rest of the fight." % [e.name, sp.name])
 	else:
 		_log("%s hammers %s (%d)." % [e.name, sp.name, hits])
 	await anim.call({"type": "hammer", "enemy": e, "id": hammer_target, "hits": hits, "broken": smashed})
@@ -2198,58 +2188,9 @@ func can_talk_pay(cost: String) -> bool:
 	return true
 
 
-## An effect of something said (see BossTalk). Artifacts are the run's business: the screen gives those.
+## An effect of something said (see BossTalk). None yet: the boss conversations are being rewritten.
 func talk_effect(fx: String) -> void:
-	match fx:
-		"refund_plus2":
-			for el in talk_spent:
-				player.add_element(el)
-			talk_spent.clear()
-			for k in 2:
-				player.add_element(_random_element())
-			_log("The Handyman gives you back your Essence, and 2 more.")
-		"enrage":
-			talk_enraged = true
-			_log("The Handyman is Enraged: he gains Power whenever you gain Shield.")
-		"weaken2":
-			for e in alive():
-				e.weak_turns = maxi(e.weak_turns, 2)
-			_log("The Handyman is shaken: Weaken 2.")
-		"essence3":
-			for k in 3:
-				player.add_element(_random_element())
-			_log("The Invoker forgives you: +3 Essence.")
-		"wexwexwex":
-			player.stock.clear()
-			player.next_draw.clear()
-			_log("Wex Wex Wex! Every Essence you had, and all of next turn's, is gone.")
-		"immortality":
-			player.take_effect(10.0)
-			_log("A glimpse of immortality: 10 damage.")
-		"mind":
-			invoke_count = 5
-			for e in alive():
-				if e.def.get("invokes", false):
-					_invoker_plan(e)
-		"gold_dust":
-			for e in alive():
-				if e.def.get("invokes", false):
-					e.conjured.clear()
-					for id in ["inv_cold_snap", "inv_tornado", "inv_chaos_meteor", "inv_deafening_blast"]:
-						var sp: Dictionary = EnemyDefs.INVOKER_SPELLS.filter(func(x): return x.id == id)[0].duplicate(true)
-						sp.rarity = "rare"
-						sp.rarity_name = "Rare"
-						sp.power = false
-						sp.effects = []
-						sp.base = sp.pattern
-						sp.rank = e.conjured.size()
-						sp.ephemeral = true
-						e.conjured.append(sp)
-					_strip_conjured(e)
-					e.invoke_all = true
-		"refund2":
-			for k in mini(2, talk_spent.size()):
-				player.add_element(talk_spent.pop_back())
+	push_warning("talk effect not implemented: %s" % fx)
 
 
 ## A support move's target: itself, or ("who": "random") any living enemy at random, itself included.
@@ -2314,6 +2255,10 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				_check_end()
 				if over or e.is_dead():
 					break
+		"grow_thorns":
+			e.thorns += int(m.n)
+			_log("%s curls up tighter: Thorns %d." % [e.name, e.thorns])
+			await anim.call({"type": "effect", "op": "thorns", "targets": [e]})
 		"armor":
 			var t := _random_one(e, m)  # (itself, or one of them at random)
 			if m.pos < 0:  # the first Essence that isn't armoured yet (Ice Wall: several)
@@ -2545,6 +2490,12 @@ func _cleanup() -> void:
 		if _rage_check(e):
 			_plan(e)
 	for e in enemies.duplicate():
+		if e.is_dead() and e.has_passive("armadillo"):
+			# the Anxious Armadillo stays on the list, beaten: the screen plays his ending before the victory
+			if not (e.id in defeated):
+				defeated.append(e.id)
+				_log("%s is defeated." % e.name)
+			continue
 		if e.is_dead() and not e.knocked:
 			enemies.erase(e)
 			if e.is_boss:

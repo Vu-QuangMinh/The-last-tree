@@ -70,6 +70,12 @@ const E := {
 		"flavor": "Marks your Essence with pain."},
 	"shrine_maiden": {"name": "Shrine Maiden", "act": 2, "hp": "WAW", "moves": [{"kind": "mend", "el": "random", "n": 1, "who": "all"}, {"kind": "attack", "n": 3}, {"kind": "frail", "turns": 1}],
 		"flavor": "She mends everyone but you."},
+	# The Anxious Armadillo (Act 2, met once ever: the second fight of Act 2 on your very first run). He never attacks:
+	# he only curls up tighter (+2 Thorns a turn: your Release hitting him hurts you that much). Beaten, he doesn't
+	# break: FightScreen._armadillo_ending plays his scene (sad, he tries to hop away, the string yanks him up).
+	"anxious_armadillo": {"name": "Anxious Armadillo", "act": 2, "unique": true, "no_extra": true, "hp": "WFAAFWWAFFAWWFAAFWWA",
+		"passives": ["armadillo"], "moves": [{"kind": "grow_thorns", "n": 2}],
+		"flavor": "Curled up, spiky, and very, very nervous."},
 	"blinding_beetle": {"name": "Blinding Beetle", "act": 2, "hp": "FAF", "moves": [{"kind": "blind", "turns": 2}, {"kind": "attack", "n": 4}, {"kind": "empower", "n": 1}],
 		"flavor": "A flash, and everything blurs."},
 	# ---------------- act 3
@@ -161,10 +167,10 @@ const E := {
 	"forge_spirit_b": {"name": "Forge Spirit", "act": 1, "member": true, "hp": "WAF", "moves": [{"kind": "attack", "n": 3}],
 		"flavor": "A spark of the Invoker's forge, with a temper to match."},
 	# The Handyman (an Act 1 boss). No real HP until the very end: his HANDS are what you fight. A hand at 0 Essence is
-	# only knocked down. In his first two phases each hand has 2 lives: with one left it lies down a turn and is
+	# only knocked down. In every phase each hand has 2 lives: with one left it lies down a turn and is
 	# resurrected (angel wings + hourglass); out of lives it stays down. Every hand out of lives -> 2 more hands
-	# (hammer, crossbow), and the fallen ones get back up too; again -> 2 more (spear, shield, 3 Essence each), and from
-	# then on a fallen hand stays down. With every hand down, he shows himself: 1 Essence, and an intent to hit you for 999.
+	# (hammer, crossbow), and the fallen ones get back up too; again -> 2 more (spear, shield, 3 Essence each). With every
+	# hand out of lives in that last phase, he shows himself: 1 Essence, and an intent to hit you for 999.
 	# (Their rows were searched to overlap as little as possible: a chant aimed at one hand takes at most 2 off another.)
 	"handyman": {"name": "The Handyman", "act": 1, "boss": true, "no_extra": true, "hp": "A", "passives": ["handyman"],
 		"moves": [{"kind": "attack", "n": 999}], "flavor": "Six hands, one job."},
@@ -174,8 +180,8 @@ const E := {
 		"flavor": "Plucks Essence out of your bag and keeps it."},
 	"hand_hammer": {"name": "Hammer Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🔨", "hp": "AWFWA", "moves": [{"kind": "hammer_spell"}],
 		"flavor": "It knows which spell you love most."},
-	"hand_crossbow": {"name": "Crossbow Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🏹", "hp": "FFWAF", "moves": [{"kind": "charge", "left": 2, "n": 20},
-		{"kind": "charge", "left": 1}, {"kind": "charge", "left": 0, "hit": true}], "flavor": "Slow to load. Not slow to hurt."},
+	"hand_crossbow": {"name": "Crossbow Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🏹", "hp": "FFWAF", "moves": [{"kind": "charge", "left": 1, "n": 20, "turns": 2},
+		{"kind": "charge", "left": 0, "hit": true}], "flavor": "Slow to load. Not slow to hurt."},
 	"hand_spear": {"name": "Spear Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🔱", "hp": "AAA", "moves": [{"kind": "attack", "n": 8}],
 		"flavor": "The last hands are the sharpest."},
 	"hand_shield": {"name": "Shield Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🛡", "hp": "FFF", "moves": [{"kind": "armor", "pos": -1, "who": "random"}],
@@ -206,7 +212,7 @@ const PASSIVE_TEXT := {
 	"thorns": "Thorns 2: you lose 2 HP whenever your Release hits it.",
 	"burn_immune": "Fireproof: Burn has no effect on it.",
 	"slime_burst": "Burst: when it dies, two small slimes pop out.",
-	"hand": "A hand with 2 lives: at 0 Essence it goes down for a turn, then is resurrected whole. Out of lives, it stays down until every hand is; then they all rise for his next phase (in his last stand, a fallen hand stays down).",
+	"hand": "A hand with 2 lives: at 0 Essence it goes down for a turn, then is resurrected whole. Out of lives, it stays down until every hand is; then they all rise for his next phase (after his last stand, he shows himself).",
 	"handyman": "The Handyman himself: 1 Essence, out in the open at last.",
 	"invoker": "Invoker: every turn he conjures 3 spells. On his turn he casts every one your chant matched, or else the one it came closest to.",
 	"invoker_rebirth": "Second wind: at 0 Essence he rises again with 10 more, and starts chanting Quas, Wex or Exort, one a turn: each strips that Essence (Water, Air, Fire) from his spells for the rest of the fight.",
@@ -275,7 +281,7 @@ const BIOS := {
 
 const BOSSES := {1: ["yin_yang_beast", "invoker", "handyman"], 2: ["blightmother"], 3: ["last_winter"]}
 ## Passives the fight never tells you about (only the Codex does, once you've beaten it).
-const HIDDEN_PASSIVES := ["yinyang_split", "invoker_rebirth"]
+const HIDDEN_PASSIVES := ["yinyang_split", "invoker_rebirth", "armadillo"]
 
 ## The Invoker's spells (Dota 2's Invoker: Quas = Water, Wex = Air, Exort = Fire). Each one's "cast" is the move he makes
 ## when it goes off; "desc" is its card text.
@@ -311,7 +317,7 @@ static func get_def(id: String) -> Dictionary:
 
 
 static func normals(act: int) -> Array:
-	return E.keys().filter(func(k): return E[k].act == act and not E[k].get("elite", false) and not E[k].get("boss", false))
+	return E.keys().filter(func(k): return E[k].act == act and not E[k].get("elite", false) and not E[k].get("boss", false) and not E[k].get("unique", false))
 
 
 ## The mini bosses of an act (only that act's own; "retired" ones are kept for old saves and the codex but never met).
@@ -538,13 +544,15 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			s = "Hammer your most-cast spell (3 hits break it for the fight; a spell with Durability loses 1 per hit)"
 		"stunned":
 			s = "Knocked out: back next turn"
+		"grow_thorns":
+			s = "Gain %d Thorns (your Release hitting it hurts you that much)" % int(m.n)
 		"revive":
 			s = "Resurrected in %d turn%s" % [int(m.left), "" if int(m.left) == 1 else "s"]
 		"charge":
 			if not full and int(m.get("left", 1)) == 0:
 				s = "Fires at the end of this turn"
 			elif full and m.has("n"):
-				s = "Charge for 3 turns (an hourglass), then hit for %d. While it charges, every spell of its own colour you cast (white: spells, black: anti-spells) raises the hit by 5 (one of the other colour does nothing to it)" % m.n
+				s = "Charge for %d turns (an hourglass), then hit for %d. While it charges, every spell of its own colour you cast (white: spells, black: anti-spells) raises the hit by 5 (one of the other colour does nothing to it)" % [int(m.get("turns", 3)), m.n]
 			elif full:
 				s = ""
 			else:

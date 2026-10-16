@@ -1812,23 +1812,24 @@ func test_handyman() -> void:
 	f._do_move(hammer, {"kind": "hammer_spell"})
 	assert_true(f.broken.has("water_wall"), "3 hits: broken")
 	assert_true(not f.active_spells().any(func(s): return s.id == "water_wall"), "gone for the fight")
-	assert_true(f.shown_spells().any(func(s): return s.id == "water_wall"), "but it stays in the row, cracked")
+	assert_true(not f.shown_spells().any(func(s): return s.id == "water_wall"), "and it leaves the row")
 	# a Fleeting spell breaks at once
 	f.loadout[0] = f.loadout[0].duplicate(true)
 	f.loadout[0].fleeting = true
 	f._do_move(hammer, {"kind": "hammer_spell"})
 	assert_true(f.broken.has("fire_ball"), "Fleeting: first hit")
-	# the crossbow: 2, 1, then it fires (knocked out: it starts over)
+	# the crossbow: 1, then it fires (knocked out: it starts over)
 	var bow: EnemyState = f.enemies.filter(func(e): return e.id == "hand_crossbow")[0]
 	assert_eq(bow.intent.kind, "charge")
-	assert_eq(bow.intent.left, 2)
+	assert_eq(bow.intent.left, 1)
 	f._do_move(bow, bow.intent)
 	f._plan(bow)
-	assert_eq(bow.intent.left, 1)
+	assert_eq(bow.intent.left, 0)
+	assert_true(bow.intent.get("hit", false), "it fires next")
 	_knock(f, bow)
 	f._hands_back()
 	f._hands_back()
-	assert_eq(bow.intent.left, 2, "resurrected: back to 2")
+	assert_eq(bow.intent.left, 1, "resurrected: loading again")
 	# every hand out of lives (the bow has one left): the last two hands, 3 Essence each
 	for e in f.enemies.duplicate():
 		_knock(f, e)
@@ -1843,7 +1844,12 @@ func test_handyman() -> void:
 	assert_eq(last.map(func(e): return e.size()), [3, 3])
 	f._hands_back()
 	f._hands_back()
-	# last stand: a knocked-out hand stays down; with all of them down he shows himself (1 Essence, 999)
+	# last stand: each hand still has 2 lives; with every hand out of lives he shows himself (1 Essence, 999)
+	for e in f.enemies.duplicate():
+		_knock(f, e)
+	f._hands_back()
+	f._hands_back()
+	assert_eq(f.alive().size(), 6, "first life: all six hands get back up")
 	for e in f.enemies.duplicate():
 		_knock(f, e)
 	f._hands_back()
@@ -1913,25 +1919,17 @@ func test_reward_odds_follow_slay_the_spire() -> void:
 
 
 func test_talking_to_the_handyman() -> void:
+	# (the conversations themselves are being rewritten: the talk's logic is tested on its own)
 	var f := _fight(["handyman"], ["water_wall"], "FWAWF")
-	assert_eq(f.talk_id, "handyman", "he can be talked to")
+	f.talk_id = "handyman"
 	# options cost Essence from your bag; you can't pay what you don't have
 	assert_true(f.talk_pay("W"))
 	assert_eq(f.player.stock.size(), 4)
 	assert_true(f.talk_pay("W"))
 	assert_true(not f.can_talk_pay("W"), "no Water left")
 	assert_true(not f.talk_pay("W"))
-	# "Are you okay?": everything back, plus 2
-	f.talk_effect("refund_plus2")
-	assert_eq(f.player.stock.size(), 7, "5 again, plus 2")
-	# Weaken 2 on his hands; Enraged: Power whenever you gain Shield
-	f.talk_effect("weaken2")
-	assert_true(f.alive().all(func(e): return e.weak_turns == 2))
-	f.talk_effect("enrage")
-	f._shield_gained(4)
-	assert_true(f.alive().all(func(e): return e.power == 1), "every hand +1 Power")
 	# the tree: a tick only once a whole branch is explored
-	var who: Dictionary = BossTalk.tree_for("handyman").options[0]
+	var who := {"id": "hm_who", "options": [{"id": "a", "options": [{"id": "a1"}]}, {"id": "b"}]}
 	assert_true(not BossTalk.exhausted(who, ["hm_who"]))
 	var all_ids := ["hm_who"]
 	for o in who.options:
@@ -1941,80 +1939,44 @@ func test_talking_to_the_handyman() -> void:
 	assert_true(BossTalk.exhausted(who, all_ids))
 
 
-func test_the_handymans_chairs() -> void:
-	var run := RunState.new()
-	run.setup(db, [], [], 4)
-	run.player.hp = 30
-	run.gain_artifact("deadly_chair")
-	run.make_fight(["ashling"])
-	assert_eq(run.player.hp, 28.0, "the Deadly Chair: -2 HP each fight")
-	assert_true(run.shop_stock().any(func(it): return it.kind == "fix_chair" and it.price == 100), "the merchant offers to fix it")
-	assert_true(not ("deadly_chair" in run.upgradable_artifacts()), "it can't be upgraded, only fixed")
-	run.fix_chair()
-	assert_true("comfy_chair" in run.artifacts and not ("deadly_chair" in run.artifacts))
-	run.make_fight(["ashling"])
-	assert_eq(run.player.hp, 36.0, "the Comfy Chair: heal 8")
-	# the Chair (from being kind): heal 4; it upgrades into the Comfy Chair
-	var r2 := RunState.new()
-	r2.setup(db, [], [], 4)
-	r2.player.hp = 30
-	r2.gain_artifact("chair")
-	r2.make_fight(["ashling"])
-	assert_eq(r2.player.hp, 34.0)
-	assert_true("chair" in r2.upgradable_artifacts())
-	assert_eq(Artifacts.view("chair", true).name, "Comfy Chair")
-
-
 func test_talking_to_the_invoker() -> void:
 	var f := _fight(["invoker"], ["water_wall"], "FFWA")
-	var e: EnemyState = f.enemies[0]
-	assert_eq(f.talk_id, "invoker")
+	f.talk_id = "invoker"
 	assert_true(f.can_talk_pay("FF") and not f.can_talk_pay("WW"), "two of one Essence")
 	f.talk_pay("FF")
 	assert_eq(f.player.stock.size(), 2)
-	f.talk_effect("refund2")
-	assert_eq(f.player.stock.size(), 4, "a mastered element: the 2 come back")
-	f.talk_effect("essence3")
-	assert_eq(f.player.stock.size(), 7)
-	f.talk_effect("wexwexwex")
-	assert_eq(f.player.stock.size(), 0)
-	assert_eq(f.player.next_draw.size(), 0, "next turn's too")
-	f.talk_effect("mind")
-	assert_eq(e.conjured.size(), 5, "a mind expanded: 5 spells a turn")
-	f.talk_effect("gold_dust")
-	assert_eq(e.conjured.map(func(s): return s.id), ["inv_cold_snap", "inv_tornado", "inv_chaos_meteor", "inv_deafening_blast"])
-	f.heard = ""
-	f.player.hp = 99
-	f.player.shield = 0
-	f._do_move(e, {"kind": "invoke"})
-	assert_true(f.player.hp < 99.0 - 3, "all four go off, whatever you chanted")
-	assert_true(not e.invoke_all, "only that first time")
 
 
-func test_the_invokers_gifts() -> void:
-	# his spells, for you
-	var f := _fight(["ashling", "ashling"], ["inv_chaos_meteor", "inv_deafening_blast", "inv_tornado"], "")
-	for e in f.enemies:
-		_set_hp(e, "FWAFWA")
-		e.def.moves = [{"kind": "attack", "n": 4}]
-		e.dmg_bonus = 0
-		f._plan(e)
-	f._apply({"op": "meteor_rain", "n": 5}, db.get_spell("inv_chaos_meteor"), {})
-	assert_eq(f.enemies[0].burn + f.enemies[1].burn, 5, "Burn 1, 5 times, at random")
-	assert_eq(SpellText.card_text(db.get_spell("inv_chaos_meteor")), "Apply 1 Burn to a random enemy, 5 times.\nCooldown 2.")
-	f._apply({"op": "disarm", "turns": 1, "target": "all"}, db.get_spell("inv_deafening_blast"), {})
-	f.player.hp = 50
-	f.player.shield = 0
-	f.pass_turn()
-	assert_eq(f.player.hp, 50.0, "Disarmed: their attacks do nothing")
-	assert_true(f.enemies.all(func(e): return e.disarmed == 0), "for one turn")
-	# Forbidden Knowledge: Unique, never offered
-	assert_eq(db.get_spell("forbidden_f").rarity, "unique")
-	assert_eq(SpellText.card_text(db.get_spell("forbidden_w")), "It does nothing.\nDurability 1.")
+func test_anxious_armadillo() -> void:
+	# never in the normal pools; on the first run he is Act 2's second fight (and only then)
+	assert_true(not ("anxious_armadillo" in EnemyDefs.normals(2)))
 	var run := RunState.new()
-	run.setup(db, db.all_spells.map(func(s): return s.id), [], 4)
-	for i in 30:
-		for s in run.spell_offer(3, "fight"):
-			assert_true(s.rarity != "unique")
-	assert_true(BossTalk.forbidden_text(0).find("Hands") < 0, "unreadable at first")
-	assert_true(BossTalk.forbidden_text(3).begins_with("The Hands of Fate is merely a tool"), "readable after all 3")
+	run.setup(db, [], [], 7)
+	run.first_run = true
+	run.act = 2
+	run.map = []
+	for r in 3:
+		var row := []
+		row.resize(7)
+		row[0] = {"type": "fight", "next": [], "col": 0}
+		run.map.append(row)
+	run.col = 0
+	run.row = 0
+	assert_true(not ("anxious_armadillo" in run.encounter_ids()), "fight 1: not yet")
+	run.encounter_ids()  # (the same room again: still fight 1)
+	run.row = 1
+	assert_eq(run.encounter_ids(), ["anxious_armadillo"], "fight 2 of Act 2")
+	run.first_run = false
+	run.row = 2
+	assert_true(not ("anxious_armadillo" in run.encounter_ids()), "never again")
+	# 20 Essence, he never attacks: +2 Thorns a turn, and your Release hitting him hurts you that much
+	var f := _fight(["anxious_armadillo"], ["fire_ball"], "WFA")
+	var e: EnemyState = f.enemies[0]
+	assert_eq(e.size(), 20)
+	f.player.hp = 50
+	f._do_move(e, e.intent)
+	f._do_move(e, e.intent)
+	assert_eq(e.thorns, 4)
+	assert_eq(f.player.hp, 50.0, "no attack")
+	f.cast(_all(3))  # W F A: his row starts W F A
+	assert_true(f.player.hp <= 46.0, "his 4 Thorns pricked you")

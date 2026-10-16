@@ -5,6 +5,8 @@ extends Control
 ## spell slot) into your active row, drag them out to take them away, drop one on another to switch them.
 
 signal fight_requested(enemy_ids: Array, spells: Array)
+signal event_requested(event_id: String)  # the Events tab: straight into that "?" event
+signal custom_requested(test_id: String)  # the Custom tab: one of the hand-made test scenes
 signal back
 
 const MAX_ENEMIES := 5
@@ -56,9 +58,14 @@ func _ready() -> void:
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(shade)
+	# three tabs: Fight (pick enemies and spells), Events (go straight into any "?" event), Custom (hand-made test scenes)
+	var tabs := HBoxContainer.new()
+	tabs.position = Vector2(30, 14)
+	tabs.add_theme_constant_override("separation", 10)
+	add_child(tabs)
 	var root := VBoxContainer.new()
-	root.position = Vector2(30, 20)
-	root.size = Vector2(1860, 1040)
+	root.position = Vector2(30, 72)
+	root.size = Vector2(1860, 990)
 	root.add_theme_constant_override("separation", 8)
 	add_child(root)
 	var top := HBoxContainer.new()
@@ -164,6 +171,96 @@ func _ready() -> void:
 	bh.add_child(_fight_btn)
 	_refresh()
 	_build_list()
+	var pages := [root, _events_page(), _custom_page()]
+	for k in TABS.size():
+		var b := UiTheme.button(TABS[k], func(): _show_tab(k), 22)
+		b.custom_minimum_size = Vector2(200, 48)
+		b.toggle_mode = true
+		tabs.add_child(b)
+		_tab_buttons.append(b)
+	_pages = pages
+	_show_tab(int(state.get("tab", 0)))
+
+
+const TABS := ["Fight", "Events", "Custom"]
+var _pages: Array = []
+var _tab_buttons: Array = []
+
+
+func _show_tab(k: int) -> void:
+	state.tab = k
+	for i in _pages.size():
+		_pages[i].visible = i == k
+		_tab_buttons[i].set_pressed_no_signal(i == k)
+		_tab_buttons[i].modulate = Color.WHITE if i == k else Color(0.6, 0.6, 0.6)  # (the open tab stands out)
+
+
+## Events: every "?" event, one button each. You go straight into it (a throwaway run: 999 Leaves, full HP), and come back here.
+func _events_page() -> Control:
+	var v := VBoxContainer.new()
+	v.position = Vector2(30, 72)
+	v.size = Vector2(1860, 990)
+	v.add_theme_constant_override("separation", 12)
+	add_child(v)
+	v.add_child(UiTheme.heading("Events", 28, UiTheme.ACCENT))
+	v.add_child(UiTheme.label("Go straight into a \"?\" event. You get a throwaway run (999 Leaves, full HP) and come back here afterwards.", 18, UiTheme.MUTED))
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 10)
+	flow.add_theme_constant_override("v_separation", 10)
+	flow.custom_minimum_size = Vector2(1840, 0)
+	v.add_child(flow)
+	for ev in MapEvents.ALL:
+		var id: String = ev.id
+		var b := UiTheme.button(ev.title, func(): event_requested.emit(id), 20)
+		b.custom_minimum_size = Vector2(420, 56)
+		b.tooltip_text = ev.text
+		flow.add_child(b)
+	v.add_child(_back_row())
+	return v
+
+
+## Custom: hand-made test scenes (more to come).
+const CUSTOM := [  # [id, label, what it shows]
+	["armadillo_fight", "Anxious Armadillo: the fight", "The whole fight (20 Essence, +2 Thorns a turn, he never attacks), then his ending."],
+	["armadillo_end", "Anxious Armadillo: the ending only", "He starts with 1 Essence (Fire): chant one F and his ending plays."],
+]
+
+
+func _custom_page() -> Control:
+	var v := VBoxContainer.new()
+	v.position = Vector2(30, 72)
+	v.size = Vector2(1860, 990)
+	v.add_theme_constant_override("separation", 12)
+	add_child(v)
+	v.add_child(UiTheme.heading("Custom", 28, UiTheme.ACCENT))
+	if CUSTOM.is_empty():
+		v.add_child(UiTheme.label("Nothing here yet.", 20, UiTheme.MUTED))
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 10)
+	flow.add_theme_constant_override("v_separation", 10)
+	flow.custom_minimum_size = Vector2(1840, 0)
+	v.add_child(flow)
+	for c in CUSTOM:
+		var id: String = c[0]
+		var b := UiTheme.button(c[1], func(): custom_requested.emit(id), 20)
+		b.custom_minimum_size = Vector2(420, 56)
+		b.tooltip_text = c[2]
+		flow.add_child(b)
+	v.add_child(_back_row())
+	return v
+
+
+func _back_row() -> Control:
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var box := VBoxContainer.new()
+	box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(spacer)
+	var bh := HBoxContainer.new()
+	bh.alignment = BoxContainer.ALIGNMENT_END
+	bh.add_child(UiTheme.button("Main menu", func(): back.emit(), 20))
+	box.add_child(bh)
+	return box
 
 
 func _zone(edge: Color) -> PanelContainer:

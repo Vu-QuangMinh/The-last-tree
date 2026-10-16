@@ -44,10 +44,6 @@ const ALL := [
 	{"id": "seed_of_life", "name": "Seed of Life", "aspect": "Health", "desc": "Lose a fight: it breaks, and the fight starts over. (Every run starts with it.)", "cost": 0, "starter": true, "pool": "none", "tier": "rare", "icon": "🌼"},
 	{"id": "broken_seed_of_life", "name": "Broken Seed of Life", "aspect": "Health", "desc": "Spent. The merchant can mend it for 100 Leaves.", "cost": 0, "starter": true, "pool": "none", "tier": "rare", "icon": "🥀"},
 	{"id": "healing_sap", "name": "Healing Sap", "aspect": "Health", "desc": "Heal 4 after each fight.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🍯"},
-	{"id": "hair_of_the_fairest", "name": "Hair of the Fairest", "aspect": "Essence refund", "desc": "1% Refund for Random.", "cost": 0, "starter": false, "pool": "none", "tier": "rare", "icon": "✨"},
-	{"id": "deadly_chair", "name": "Deadly Chair", "aspect": "Health", "desc": "Lose 2 HP at the start of each fight.", "cost": 0, "starter": false, "pool": "none", "tier": "rare", "icon": "🪑"},
-	{"id": "comfy_chair", "name": "Comfy Chair", "aspect": "Health", "desc": "Heal 8 before each fight.", "cost": 0, "starter": false, "pool": "none", "tier": "rare", "icon": "🛋"},
-	{"id": "chair", "name": "Chair", "aspect": "Health", "desc": "Heal 4 before each fight.", "cost": 0, "starter": false, "pool": "none", "tier": "rare", "icon": "🪑"},
 	{"id": "mending_moss", "name": "Mending Moss", "aspect": "Health", "desc": "Heal 1 each turn.", "cost": 40, "starter": false, "pool": "normal", "tier": "rare", "icon": "🌿"},
 	# ---- rewards
 	{"id": "scholar_quill", "name": "Scholar's Quill", "aspect": "Rewards", "desc": "Spell rewards: 4 choices.", "cost": 40, "starter": false, "pool": "normal", "tier": "rare", "icon": "✒"},
@@ -97,9 +93,6 @@ const PLUS := {
 	"thornbark": [1, 2, "Thorns 2 every fight."],
 	"iron_bark": [1, 2, "Gain 2 Lasting Shield each turn."],
 	"healing_sap": [4, 6, "Heal 6 after each fight."],
-	"deadly_chair": [2, 2],
-	"comfy_chair": [8, 8],
-	"chair": [4, 8, "Heal 8 before each fight."],  # (its upgrade is the Comfy Chair: see view())
 	"mending_moss": [1, 2, "Heal 2 each turn."],
 	"scholar_quill": [4, 5, "Spell rewards: 5 choices."],
 	"seedling_pouch": [0.25, 0.5, "+50% Seedlings this run."],
@@ -114,17 +107,13 @@ static func num(id: String, plus := false) -> float:
 
 
 static func can_upgrade(id: String) -> bool:
-	return PLUS.has(id) and PLUS[id].size() > 2  # (just numbers, no upgraded text: the chairs, which can't be upgraded)
+	return PLUS.has(id) and PLUS[id].size() > 2
 
 
 ## How an artifact reads: an upgraded one gets a + on its name and its stronger text.
 static func view(id: String, plus := false) -> Dictionary:
 	var d := get_def(id).duplicate()
-	if plus and id == "chair":
-		d.name = "Comfy Chair"  # (the Handyman's best chair, upgraded: a name of its own, not "Chair+")
-		d.desc = PLUS[id][2]
-		d["plus"] = true
-	elif plus and PLUS.has(id):
+	if plus and PLUS.has(id):
 		d.name += "+"
 		d.desc = PLUS[id][2]
 		d["plus"] = true

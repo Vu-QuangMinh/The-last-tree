@@ -197,8 +197,6 @@ static func describe_op(e: Dictionary, same := false) -> String:
 			return "apply 1 Burn to a random enemy, %d times" % n
 		"disarm":
 			return ("Disarm %s for %d turns" % [t, int(e.turns)]) if int(e.get("turns", 1)) > 1 else "Disarm %s" % t
-		"forbidden":
-			return "it does nothing"
 		"amplify":
 			return "Amplify %d" % n
 		"echo":

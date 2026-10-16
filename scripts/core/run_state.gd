@@ -51,6 +51,8 @@ var encounter: Array = []  # the ids of the encounter being prepared
 var encounter_name := ""  # its name (Act 1's hand-made encounters, e.g. "The Slime Trio"; "" otherwise)
 var recent_encounters: Array = []  # names of the encounters met so far (an encounter never comes up twice in 3)
 var encounter_extra: Array = []  # the extra Essence each of those enemies will have (rolled once)
+var first_run := false  # the player's very first run (and the Anxious Armadillo not met yet): he waits in Act 2's 2nd fight
+var fight_rooms: Array = []  # "act:row:col" of every normal fight room entered (to count Act 2's fights)
 var fused := {}  # id -> spell dict, for spells forged at campfires ("fused_1", ...)
 var inverted: Array = []  # spell ids inverted for the run (the Upside-Down Pool): a spell plays as an anti-spell, and back
 var _fuse_count := 0
@@ -209,7 +211,14 @@ func encounter_ids() -> Array:
 		kind = "fight"
 	var ids: Array
 	encounter_name = ""
-	if act == 1 and kind == "fight":
+	var key := "%d:%d:%d" % [act, row, col]
+	if kind == "fight" and not (key in fight_rooms):
+		fight_rooms.append(key)
+	var act_fights := fight_rooms.filter(func(k): return String(k).begins_with("%d:" % act)).size()
+	if first_run and act == 2 and kind == "fight" and act_fights == 2:
+		ids = ["anxious_armadillo"]  # (once ever: main.gd records it when the fight starts)
+		encounter_name = "The Anxious Armadillo"
+	elif act == 1 and kind == "fight":
 		# a hand-made, themed encounter of the tier this floor brings (see EnemyDefs.ENCOUNTERS_ACT1)
 		var enc := EnemyDefs.act1_encounter(EnemyDefs.act1_tier(row), rng, recent_encounters)
 		ids = enc.ids
@@ -802,23 +811,6 @@ func _do_event_option(opt: Dictionary) -> Dictionary:
 
 # ------------------------------------------------------------------ the merchant
 
-const CHAIR_FIX_PRICE := 100
-
-
-## The merchant fixes the Handyman's Deadly Chair: it becomes the Comfy Chair.
-func fix_chair() -> void:
-	var i := artifacts.find("deadly_chair")
-	if i >= 0:
-		artifacts[i] = "comfy_chair"
-
-
-## The shopkeeper asked for the Hair of the Fairest and you gave it: everything in his shop is free this visit.
-func give_hair(stock: Array) -> void:
-	artifacts.erase("hair_of_the_fairest")
-	for it in stock:
-		it.price = 0
-
-
 ## What the merchant sells: 3 spells, 2 artifacts, an upgrade and a meal.
 func shop_stock() -> Array:
 	var items := []
@@ -836,10 +828,6 @@ func shop_stock() -> Array:
 	items.append({"kind": "upgrade", "price": PRICES.upgrade})
 	if "broken_seed_of_life" in artifacts:
 		items.append({"kind": "mend_seed", "price": SEED_MEND_PRICE})
-	if "deadly_chair" in artifacts:
-		items.append({"kind": "fix_chair", "price": CHAIR_FIX_PRICE})
-	if "hair_of_the_fairest" in artifacts:
-		items.append({"kind": "give_hair", "price": 0})
 	items.append({"kind": "heal", "price": PRICES.heal})
 	return items
 

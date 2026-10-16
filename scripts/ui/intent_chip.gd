@@ -42,7 +42,7 @@ const LOOK := {
 	"silence": ["🔇", PURPLE], "lock": ["🔒", PURPLE], "steal": ["✋", PURPLE], "confuse": ["🌀", PURPLE],
 	"blind": ["🙈", PURPLE], "bleed": ["🩸", PURPLE], "freeze": ["❄", PURPLE], "ethereal": ["👻", BLUE],
 	"empower": ["💪", BLUE], "summon": ["👤+", BLUE], "toll": ["⛓", PURPLE], "invert": ["🔄", PURPLE],
-	"hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "revive": ["🪽", Color(0.85, 0.75, 0.4)], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE],
+	"hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "grow_thorns": ["🌵", GREEN], "revive": ["🪽", Color(0.85, 0.75, 0.4)], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE],
 }
 
 
@@ -54,6 +54,7 @@ const INFO := {
 	"shuffle": ["Shuffle", "Moves its first Essence to the end."],
 	"silence": ["Silence", "One of your spells can't fire for a few turns."],
 	"hammer_spell": ["Hammer", "Hits the spell you've cast most this fight, and sticks to it: 3 hits break it for the fight (a spell with Durability loses 1 Durability per hit instead)."],
+	"grow_thorns": ["Thorns", "It curls up tighter. Each time your Release hits it, you take its Thorns as damage."],
 	"stunned": ["Knocked out", "It skips its action, and comes back whole at the start of your next turn."],
 	"revive": ["Resurrecting", "It's down: it has no Essence and can't be targeted. It gets back up, whole, when the hourglass runs out."],
 	"invoke": ["Invoke", ""],
@@ -248,6 +249,8 @@ func _add_move(row: HBoxContainer, m: Dictionary, e: EnemyState) -> void:
 			return
 		"bleed", "freeze", "steal", "summon", "invert_spells":
 			num = str(m.n)
+		"grow_thorns":
+			num = "+%d" % int(m.n)
 		"invoke":
 			row.add_child(_part(look[0], "", look[1], m.kind))
 			if m.has("word"):

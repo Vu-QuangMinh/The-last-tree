@@ -15,7 +15,7 @@ static func make(tex: Texture2D, pad: Vector2, size: Vector2, hits: int) -> Card
 	back.polygon = PackedVector2Array([Vector2(3, 3), Vector2(size.x - 3, 3), size - Vector2(3, 3), Vector2(3, size.y - 3)])
 	back.color = Color(0.32, 0.19, 0.1)
 	sp.add_child(back)
-	var cells := PuppetShatter.tile(Rect2(Vector2.ZERO, size), 5 if hits <= 1 else 10)
+	var cells := PuppetShatter.tile(Rect2(Vector2.ZERO, size), 5 if hits <= 1 else (10 if hits == 2 else 16))  # (3: broken)
 	for cell in cells:
 		sp._add_plank(cell, tex, pad)
 	return sp
