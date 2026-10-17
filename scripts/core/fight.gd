@@ -476,7 +476,7 @@ func cast_chant(stock_indices: Array) -> void:
 	charges.clear()
 	player.echo_chamber_on = has_artifact("echo_chamber") and chant.size() <= int(_an("echo_chamber"))
 	if player.echo_chamber_on:
-		_log("Echo Chamber: a short chant. Every spell this turn is cast twice.")
+		_log("Echo Chamber: a short chant. Your first spell this turn is cast twice.")
 	anti_broken.clear()
 	turn_ctx = {"entries": entries, "amplify": 0, "echo": 0, "retain": 0, "last": {}, "cast_any": false}
 	await anim.call({"type": "chant", "chant": c})
@@ -919,6 +919,8 @@ func _fire(spell: Dictionary, ctx: Dictionary, tctx: Dictionary) -> void:
 			echo_from = "power:echo_chamber"
 			await _apply(eff, spell, tctx, ctx)
 			echo_from = ""
+	if player.echo_chamber_on and not spell.has("bottle"):
+		player.echo_chamber_on = false  # (the Echo Chamber echoes only the first spell of the turn)
 	if spell.get("ephemeral", false):
 		# a conjured spell vanishes once cast; the last one of its group merges back into the spell that conjured it
 		loadout = loadout.filter(func(s): return s.id != spell.id)
@@ -2162,18 +2164,23 @@ func _hands_back() -> void:
 		anim.call({"type": "revive", "enemy": e})
 
 
-## The Hammer Hand: it picks the spell you've cast most this fight (a tie: one at random) and sticks to it until it
-## breaks. 3 hits break a spell; a spell with Durability loses 1 Durability per hit instead (at 0 it breaks). A smashed
+## The Hammer Hand: it always goes for the spell it can break with the fewest hits (a tie: the one you've cast most
+## this fight, then one at random). 3 hits break a spell; a spell with Durability loses 1 Durability per hit instead
+## (at 0 it breaks). A smashed
 ## spell is removed from the fight: it leaves the row.
 func _hammer(e: EnemyState) -> void:
 	var cands := active_spells()
 	if cands.is_empty():
 		return
-	if hammer_target == "" or broken.has(hammer_target) or not cands.any(func(s): return s.id == hammer_target):
-		var most := 0
-		for s in cands:
-			most = maxi(most, int(cast_counts.get(s.id, 0)))
-		var top := cands.filter(func(s): return int(cast_counts.get(s.id, 0)) == most)
+	var fewest := 999
+	for s in cands:
+		fewest = mini(fewest, _hits_to_break(s))
+	var top := cands.filter(func(s): return _hits_to_break(s) == fewest)
+	var most := 0
+	for s in top:
+		most = maxi(most, int(cast_counts.get(s.id, 0)))
+	top = top.filter(func(s): return int(cast_counts.get(s.id, 0)) == most)
+	if not top.any(func(s): return s.id == hammer_target):  # (a tie with the spell it's already hitting: it keeps at it)
 		hammer_target = top[rng.randi() % top.size()].id
 	var sp := _find_spell(hammer_target)
 	var hits: int = hammer_hits.get(hammer_target, 0) + 1
@@ -2186,6 +2193,13 @@ func _hammer(e: EnemyState) -> void:
 	else:
 		_log("%s hammers %s (%d)." % [e.name, sp.name, hits])
 	await anim.call({"type": "hammer", "enemy": e, "id": hammer_target, "hits": hits, "broken": smashed})
+
+
+## How many more Hammer hits break this spell: its Durability left, or 3 minus the hits it has taken.
+func _hits_to_break(s: Dictionary) -> int:
+	if base_durability(s) > 0 or player.durability.has(s.id):
+		return maxi(1, durability_left(s))
+	return maxi(1, 3 - int(hammer_hits.get(s.id, 0)))
 
 
 ## Talking to a boss: an option that costs an Essence takes one from your bag (the fight gets harder).

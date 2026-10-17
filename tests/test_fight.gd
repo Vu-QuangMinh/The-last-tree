@@ -1005,6 +1005,15 @@ func test_fuse_keeps_every_element_first_card_first() -> void:
 	assert_true(not ("water_wall" in run.spellbook) and not ("inferno" in run.spellbook), "both used up")
 	assert_true(prev.id in run.spellbook)
 	assert_true(not run.can_fuse(prev.id), "fused spells can't be fused again")
+	assert_true(not prev.has("durability"), "no Durability on either: none on the fusion")
+
+
+func test_fusing_keeps_the_lowest_durability() -> void:
+	var run := RunState.new()
+	run.setup(db, [], [], 4)
+	run.learn_spell("taint")  # Durability 1
+	var f := run.fuse_preview("water_wall", "taint")
+	assert_eq(int(f.durability), 1, "the lowest Durability carries over")
 
 
 func test_thermal_burst_hits_two_different_enemies() -> void:
@@ -1347,13 +1356,14 @@ func test_shield_of_silence_shields_a_silent_turn() -> void:
 	assert_eq(f.player.shield, 0.0, "(gone again once your next turn starts)")
 
 
-func test_echo_chamber_casts_every_spell_twice_after_a_short_chant() -> void:
+func test_echo_chamber_casts_the_first_spell_twice_after_a_short_chant() -> void:
 	var f := _fight(["ashling"], ["water_wall"], "WWF")
 	f.artifacts = ["echo_chamber"]
 	f.cast_chant(_all(2))  # WW: 2 Essence, short enough
 	assert_true(f.player.echo_chamber_on)
 	f.resolve_spell("water_wall")
 	assert_eq(f.player.shield, 8.0, "Water Wall cast twice: 4 + 4")
+	assert_true(not f.player.echo_chamber_on, "only the first spell: then it's off")
 	var g := _fight(["ashling"], ["water_wall"], "WWFAW")
 	g.artifacts = ["echo_chamber"]
 	g.cast_chant(_all(4))  # 4 Essence: too long

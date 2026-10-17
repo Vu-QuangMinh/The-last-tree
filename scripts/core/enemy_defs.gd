@@ -179,7 +179,7 @@ const E := {
 	"hand_tweezer": {"name": "Tweezer Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🥢", "hp": "FAFWA", "moves": [{"kind": "steal", "n": 1}],
 		"flavor": "Plucks Essence out of your bag and keeps it."},
 	"hand_hammer": {"name": "Hammer Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🔨", "hp": "AWFWA", "moves": [{"kind": "hammer_spell"}],
-		"flavor": "It knows which spell you love most."},
+		"flavor": "It knows which spell is closest to breaking."},
 	"hand_crossbow": {"name": "Crossbow Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🏹", "hp": "FFWAF", "moves": [{"kind": "charge", "left": 1, "n": 20, "turns": 2},
 		{"kind": "charge", "left": 0, "hit": true}], "flavor": "Slow to load. Not slow to hurt."},
 	"hand_spear": {"name": "Spear Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🔱", "hp": "AAA", "moves": [{"kind": "attack", "n": 8}],
@@ -541,7 +541,7 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 		"disarm":
 			s = "Disarm you (your next Release does nothing)"
 		"hammer_spell":
-			s = "Hammer your most-cast spell (3 hits break it for the fight; a spell with Durability loses 1 per hit)"
+			s = "Hammer the spell closest to breaking (3 hits break a spell for the fight; a spell with Durability loses 1 per hit)"
 		"stunned":
 			s = "Knocked out: back next turn"
 		"grow_thorns":

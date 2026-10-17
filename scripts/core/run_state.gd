@@ -577,6 +577,14 @@ func fuse_preview(id_a: String, id_b: String, drop := -1) -> Dictionary:
 		if not sl.is_empty():
 			s.full_pattern = full
 			s.seals = sl
+	# Durability: a fused spell keeps the lowest Durability of the two (a spell without Durability doesn't count)
+	var durs: Array[int] = []
+	for x in [a, b]:
+		var d := int(x.get("durability", 1 if x.get("fleeting", false) else 0))
+		if d > 0:
+			durs.append(d)
+	if not durs.is_empty():
+		s.durability = durs.min()
 	s.size = s.pattern.length()
 	s.rarity_name = SpellDB.RARITY_NAMES[rarity]
 	s.power = false

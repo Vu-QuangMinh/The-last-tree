@@ -439,7 +439,7 @@ func start_run() -> void:
 			return
 	var ch := _choice("Choose a keepsake", "It stays with you for the whole run.", [], offer, false)
 	ch.chosen.connect(func(i):
-		run.gain_artifact(offer[i].id)
+		_pick_artifact(offer[i].id)
 		show_map())
 
 
@@ -657,7 +657,7 @@ func _enter_room(kind: String) -> void:
 			var ch := _choice("Treasure", "Take one artifact. The red one is cursed: stronger, but it costs you.", [], offer, true)
 			ch.chosen.connect(func(i):
 				if i >= 0:
-					run.gain_artifact(offer[i].id)
+					_pick_artifact(offer[i].id)
 				show_map())
 		_:
 			_show_loadout(run.encounter_ids())
@@ -860,8 +860,23 @@ func _start_fight(ids: Array) -> void:
 	_swap(fs)
 
 
+var _picked := false  # the artifact being gained was just chosen on a choice screen: no pop-up for it
+
+## An artifact chosen from a choice screen (keepsake, treasure, elite, boss): the player already saw its card, so it
+## goes straight on without the "You found an artifact!" pop-up (a curse still says what it did, in a toast).
+func _pick_artifact(id: String) -> void:
+	_picked = true
+	run.gain_artifact(id)
+	_picked = false
+
+
 ## An artifact was picked up: its card (frame and picture) pops up in the middle of the screen for a moment (click to dismiss).
 func _on_artifact_found(id: String) -> void:
+	if _picked:
+		Audio.play("artifact_get")
+		if run != null and run.curse_note != "":
+			Events.toast.emit("CURSE: " + run.curse_note, UiTheme.DANGER)
+		return
 	var ov := Control.new()
 	ov.size = Vector2(1920, 1080)
 	ov.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -1019,7 +1034,7 @@ func _after_fight(f: Fight) -> void:
 				var ch := _choice("The elite dropped a relic", "Take one artifact.", [], ao, true)
 				ch.chosen.connect(func(i):
 					if i >= 0:
-						run.gain_artifact(ao[i].id)
+						_pick_artifact(ao[i].id)
 					go.call()))
 	if kind == "boss":
 		var relics := run.boss_relic_offer()
@@ -1027,7 +1042,7 @@ func _after_fight(f: Fight) -> void:
 			steps.append(func(go):
 				var ch := _choice("Legendary relic", "Only bosses drop these: more Essence every turn, or more spell slots.", [], relics, false)
 				ch.chosen.connect(func(i):
-					run.gain_artifact(relics[i].id)
+					_pick_artifact(relics[i].id)
 					go.call()))
 	if run.act != act_before:
 		steps.append(func(go):
