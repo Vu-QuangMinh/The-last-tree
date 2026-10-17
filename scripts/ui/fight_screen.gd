@@ -540,20 +540,17 @@ func _prepare_sounds() -> void:
 ## Walking on: the old props are cleared away first (that began at the encounter board; if the fight was begun early, it is waited for), then the
 ## new room's props and enemies come in from the right, and the HUD comes back up as the last of them settle.
 func _arrive() -> void:
+	_set_enemy_drop(ENEMY_UP)  # (they wait above the screen on their ropes while the old props are cleared; no first frame in their place)
 	if rope_mode:
-		_enemy_row.position.x = 2600.0
 		await get_tree().create_timer(0.15).timeout
-		create_tween().tween_property(_enemy_row, "position:x", 0.0, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		_let_enemies_down()
 		return
 	_prepare_sounds()  # (the stage is being made ready: old props away, new ones and the enemies in)
-	var far := 2600.0
-	_enemy_row.position.x = far  # (they wait off the screen on the right while the old props are cleared)
 	if _stage.is_clearing():
 		await _stage.cleared
 	var tw := _stage.bring_props()
-	await get_tree().create_timer(1.2).timeout  # (the enemies walk on after the first props)
-	var et := create_tween()
-	et.tween_property(_enemy_row, "position:x", 0.0, PuppetStage.BRING_TIME - 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	await get_tree().create_timer(1.2).timeout  # (the enemies are let down after the first props: the props walk on, the puppets hang from their ropes)
+	_let_enemies_down()
 	await get_tree().create_timer(PuppetStage.BRING_TIME - 1.2 - 1.0).timeout
 	_prepare_on = false
 	for p in _prepare_players:
@@ -569,10 +566,43 @@ func _arrive() -> void:
 		await tw.finished
 
 
-## Rope mode: the enemies walk off to the left (the next set comes in from the right).
+const ENEMY_UP := -1500.0  # how far above their places the enemies hang while they are out of sight (their ropes go straight up behind the ceiling)
+const ENEMY_LET_DOWN := 0.55  # seconds of free fall before the ropes are out to their length
+const ENEMY_SPRING := 1.1  # seconds the puppets bob on their ropes after that
+var _enemy_drop := 0.0  # how far the enemy row is lifted from its place (0 = standing)
+var _dropping := false  # (the lift of the Essence rows leaves the row alone while it is let down)
+
+
+func _set_enemy_drop(off: float) -> void:
+	_enemy_drop = off
+	if _enemy_row != null and _stage != null:
+		_enemy_row.position.y = _stage.floor_center_y() - ENEMY_FEET_DY - ENEMY_LIFT - _extra_lift + off
+
+
+## The enemies are let down on their ropes: straight down onto their places (the ropes' tops stay put, the rivets drag them), a short fall, then a
+## few bobs on the stretched ropes. (The props walk on from the side; the puppets do not.)
+func _let_enemies_down() -> void:
+	_dropping = true
+	var from := _enemy_drop
+	var tw := create_tween()
+	tw.tween_method(func(t: float):
+		var off := 0.0
+		if t < ENEMY_LET_DOWN:
+			var u := t / ENEMY_LET_DOWN
+			off = from * (1.0 - u * u)  # gravity: slow at first, fast at the end
+		else:
+			var s := t - ENEMY_LET_DOWN
+			off = 20.0 * exp(-4.5 * s) * sin(TAU * 1.8 * s)  # the rope stretches: a dip below the place, a bob back
+		_set_enemy_drop(off), 0.0, ENEMY_LET_DOWN + ENEMY_SPRING, ENEMY_LET_DOWN + ENEMY_SPRING)
+	await tw.finished
+	_set_enemy_drop(0.0)
+	_dropping = false
+
+
+## Rope mode: the enemies are pulled up on their ropes (the next set is let down).
 func rope_leave() -> void:
 	var tw := create_tween()
-	tw.tween_property(_enemy_row, "position:x", -2600.0, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_method(_set_enemy_drop, _enemy_drop, ENEMY_UP, 0.7).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	await tw.finished
 
 
@@ -853,7 +883,7 @@ func _fit_enemy_lift() -> void:
 	need = minf(need, top_room)  # (the floor's far edge is a hard limit: a lift kept from earlier in the turn must obey it too)
 	if absf(need - _extra_lift) > 0.5:
 		_extra_lift = need
-		if _enemy_row != null and _stage != null:  # (glide there instead of jumping)
+		if _enemy_row != null and _stage != null and not _dropping and _enemy_drop == 0.0:  # (glide there instead of jumping; while they are let down the drop follows the new place itself)
 			var y := _stage.floor_center_y() - ENEMY_FEET_DY - ENEMY_LIFT - _extra_lift
 			if _lift_tween != null and _lift_tween.is_valid():
 				_lift_tween.kill()
@@ -3895,7 +3925,7 @@ func _open_pause_menu() -> void:
 	var saved := "Your run is saved: Continue on the main menu starts this fight over."
 	var pm := PauseMenu.open(self,
 		"Return to the Main Menu? " + saved if run_saved else "Abandon this run and return to the Main Menu?",
-		"Quit The Last Tree? " + saved if run_saved else "Quit The Last Tree?")
+		"Quit Behind the Curtain? " + saved if run_saved else "Quit Behind the Curtain?")
 	pm.resumed.connect(_close_pause_menu)
 	pm.settings_closed.connect(_refresh_all)
 	pm.main_menu.connect(func(): menu_requested.emit())

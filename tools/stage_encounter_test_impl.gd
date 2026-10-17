@@ -17,14 +17,18 @@ func run(t: SceneTree) -> void:
 	root.add_child(m)
 	await t.create_timer(0.5).timeout
 	m.start_run()
-	await t.create_timer(0.5).timeout
-	m.current.chosen.emit(0)  # the keepsake
+	await t.create_timer(4.0).timeout  # (the drapes are drawn first)
+	m._overlay.chosen.emit(0)  # the keepsake
 	await t.create_timer(4.6).timeout
 	var run = m.run
 	var col: int = run.choices()[0]
 	m._overlay.node_chosen.emit(col)
 	await t.create_timer(0.4).timeout
 	await _shot(t, out, "1_board")
+	for k in 8:  # (the enemies are let down on their ropes: row y per half second)
+		await t.create_timer(0.5).timeout
+		print("enemy row y ", m.current._enemy_row.position.y, " drop ", m.current._enemy_drop)
+	await _shot(t, out, "1b_drop")
 	await t.create_timer(2.0).timeout  # (the stage is still clearing and bringing the new set: Begin is pressed early on purpose)
 	var fs = m.current
 	m._overlay.confirmed.emit()

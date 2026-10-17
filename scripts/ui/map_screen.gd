@@ -208,9 +208,15 @@ func _ready() -> void:
 ## before it hangs in place (a spring around the right place); the rooms hang on the rope like weights, so the lower ones swing a little later and a
 ## little more (see _dy) ...
 func rise() -> void:
-	_world.position.y = DROP_FROM
+	Audio.warm("sfx_cog_gear")  # (its first load, in the middle of the drop, was a hitch)
 	if drop_delay > 0.0:  # (the stage's drapes are being drawn together first)
+		# Warm-up: drawn once, invisibly (alpha just over the renderer's cut-off) at its real place, so the big rope and knot pictures are on the GPU before the drop
+		_world.position.y = 0.0
+		_world.modulate.a = 0.01
+		_world.visible = true
 		await get_tree().create_timer(drop_delay).timeout
+		_world.modulate.a = 1.0
+	_world.position.y = DROP_FROM
 	_world.visible = true
 	_drop = true
 	_drop_v = 0.0
@@ -321,7 +327,7 @@ func _open_pause_menu() -> void:
 	if _pause != null:
 		return
 	var saved := "Your run is saved: Continue on the main menu brings you back to this map."
-	_pause = PauseMenu.open(self, "Return to the Main Menu? " + saved, "Quit The Last Tree? " + saved)
+	_pause = PauseMenu.open(self, "Return to the Main Menu? " + saved, "Quit Behind the Curtain? " + saved)
 	_pause.resumed.connect(func():
 		_pause.queue_free()
 		_pause = null)

@@ -43,7 +43,7 @@ func _ready() -> void:
 		logo.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		v.add_child(logo)
 	else:
-		var t := UiTheme.label("The Last Tree", 88, Color(0.85, 1, 0.75))
+		var t := UiTheme.label("Behind the Curtain", 88, Color(0.85, 1, 0.75))
 		t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		t.add_theme_constant_override("outline_size", 12)
 		t.add_theme_color_override("font_outline_color", Color(0.03, 0.08, 0.04))

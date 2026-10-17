@@ -98,6 +98,12 @@ func _load(path: String, quiet := false) -> AudioStream:
 	return s
 
 
+## Load a sound into the cache ahead of time, so its first play does not hitch.
+func warm(name: String) -> void:
+	if _load(UiSkin.theme_dir() + "SFX/" + name + ".wav", true) == null:
+		_load(GLOBAL_SFX_DIR + name + ".wav")
+
+
 ## One-shot SFX. Safe to call for a name that has no file yet (it just stays silent).
 ## from: start this many seconds into the sound (to skip the silence some recordings begin with).
 func play(name: String, volume_db := 0.0, pitch := 1.0, from := 0.0) -> void:
