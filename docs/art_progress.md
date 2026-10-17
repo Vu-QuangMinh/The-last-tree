@@ -133,3 +133,6 @@ Source of truth for art: `assets/ui/Fight UI.pdf`, cut into `assets/ui/new/<fold
 - Done: encounter flow (props clear, cards fly in after Begin; "Begin" goes straight in, no "getting stage ready" text), white Leave text in the shop, hover disabled while a card moves, Spellbook button gone after a fight, a single artifacts frame (HudBar art row hidden in a stage fight), opaque visited ring on the map.
 - Done: bug fixes found by tests (HP text, spell row width, amber counter, enemy floor lift, ball stalls, chant orb drag zone); tests `ball_stress`, `chant_drag_stress`, `fight_cycle_test`, `stage_encounter_test`, `menu_actors_test` (check_scripts 98/0, run_tests 105/0).
 - To check by eye/ear: all new audio and animations, HP-text bug in a real play, burn-push out of the floor, brass slot strip came out dark, some map icons are 4/10 (vintage look), `docs/missing_icon.txt` leftovers (merchant full body done, 5 intent icons done; others open).
+
+
+**2026-10-17 (session):** see docs/session_2026_10_17.md (Act 1 enemy redo, rope mode F5 + ropes in fights, Handyman PDF swap + tweezer poke, slot machine from Slot_machine.pdf, merge of origin/main). To do: gắn dây cho mọi kẻ địch còn lại; test_new_commons trượt (dấu chấm trong text spell).

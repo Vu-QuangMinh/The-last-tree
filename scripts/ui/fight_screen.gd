@@ -421,6 +421,7 @@ func _ready() -> void:
 	if fight.talk_id != "" and not help_override.is_valid():
 		_talk.call_deferred()  # (a boss to talk to first; not in the tutorial)
 	tut.connect(func(_k, _d): note_progress())
+	_machine_ready = not (_stage != null and (map_mode or arrive))
 	if _stage != null and (map_mode or arrive):
 		_build_spellbook_button()
 		_start_down.call_deferred()
@@ -511,6 +512,7 @@ func _hud_up(secs := 0.8, free_input := true) -> void:
 	var tw := _hud_tw
 	tw.tween_method(_set_hud_shift, _hud_shift, 0.0, secs).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	await tw.finished
+	_machine_ready = true
 	if free_input:
 		busy = false
 		_fit_enemy_lift()
@@ -805,6 +807,9 @@ var _machine: SlotMachine  # Puppet Stage: the slot machine
 var _spawned_once := false  # the first launch of a fight counts as a spawn: the lever is pulled for it
 var _bonus_from := Vector2.INF  # where the next bonus Essence comes from (a screen point: the card, the bottle...); INF: it pops up over the top funnel
 var _reel_shown: Array = []  # the Essence the reels show (next turn's draw)
+var _machine_ready := false  # the machine is on the screen (a fight on the stage builds its HUD below the screen first and lifts it later: nothing may spawn before)
+var _pending: Array = []  # balls a spell gave "for next turn": they went through the machine into the Bag at once and wait at the end of the row; at the next spawn they are the ones that take their places
+var _keep_bag_order := false  # after a bonus ball joined mid-turn: the Bag keeps its order (the new ball stands after the others) until the next spawn
 var _reels_armed := false  # the reels have rolled next turn's draw (the lever was pulled after the last spawn) and show it
 var _tube_prep := false  # a launch is being set up
 var _rolling_in := 0  # Essence rolling into the tube right now
@@ -1105,7 +1110,7 @@ func _ball_sound(kind: String, volume_db := 0.0, pitch := 1.0) -> void:
 ## Puppet Stage: the Bag's balls swap into their types (fire, water, wind) once a launch is over: first the new balls stack after the old
 ## ones, a moment later everybody slides to the right place, with a small lift and one wooden "swap".
 func _resort_bag() -> void:
-	if not _puppet_strips() or _resort_wait:
+	if not _puppet_strips() or _resort_wait or _keep_bag_order:
 		return
 	_resort_wait = true
 	await get_tree().create_timer(0.45).timeout
@@ -1632,6 +1637,7 @@ const SLOT_BALL_SCALE := 0.92  # an Essence is drawn this big inside the glass
 
 ## The reels at rest show next turn's draw (in the Bag's order, three at most): what is about to spawn.
 func _sync_reels() -> void:
+	return  # (the faces on the reels are pictures of what was rolled at the lever: a bonus Essence never changes them)
 	if _machine == null or _machine.busy or not _reels_armed:
 		return
 	var ranked: Array = []
@@ -1666,7 +1672,7 @@ func _slot_route(ic: ElementIcon, delay: float, mode: String, from_local := Vect
 	var m := _machine
 	var half := ic.size / 2.0
 	var row_y := PuppetLayout.AXIS_Y - BAG_PX / 2.0
-	var pts: Array = [m.funnel_bottom_in()] if mode == "reel" else [m.funnel_top_mouth(), m.funnel_bottom_in()]
+	var pts: Array = [from_local, m.funnel_bottom_in()] if mode == "reel" else [m.funnel_top_mouth(), m.funnel_bottom_in()]
 	pts.append_array(m.tube_path())
 	var total := 0.0
 	for i in pts.size() - 1:
@@ -1703,7 +1709,7 @@ func _slot_route(ic: ElementIcon, delay: float, mode: String, from_local := Vect
 				ic.position = mouth + Vector2(0.0, lerpf(-80.0, 0.0, u * u)) - half
 				ic.modulate.a = minf(1.0, u * 4.0)
 				ic.scale = Vector2.ONE * lerpf(0.3, SLOT_BALL_SCALE, minf(1.0, u * 2.0)), 0.0, 1.0, fly)
-	else:
+	else:  # (mode "reel": it starts hidden behind the cabinet, where its reel is)
 		tw.tween_callback(func() -> void:
 			if is_instance_valid(ic):
 				ic.position = pts[0] - half
@@ -1766,26 +1772,34 @@ func _stash_to_machine(ev: Dictionary, from: Vector2) -> float:
 		for i in int(ev.eff.get("n", 1)):
 			els.append(["F", "W", "A"].pick_random() if el == "random" else el)
 	var last := 0.0
+	var port_x: float = _machine.port_center().x - BAG_PX / 2.0
 	for i in els.size():
 		var ic := ElementIcon.make(els[i], BAG_PX)
 		ic.size = Vector2(BAG_PX, BAG_PX)
 		ic.pivot_offset = ic.size / 2.0
 		ic.temp = ev.eff.get("temp", false)
 		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var a := from - _stock_row.global_position - ic.size / 2.0
-		var b := _machine.funnel_top_mouth() - ic.size / 2.0
-		ic.position = a
-		ic.scale = Vector2(0.4, 0.4)
-		ic.modulate = Color(1.6, 1.6, 1.6, 0.0)
 		_stock_row.add_child(ic)
-		var delay := i * 0.18
+		var delay := i * 0.2
+		Audio.play("spell_glow", -7.0, randf_range(1.15, 1.35))
+		var arrive := _slot_route(ic, delay, "from", from - _stock_row.global_position)  # (the same trip as any bonus Essence)
+		# it comes up out of the port and rolls to the end of the row, behind the balls that are there (it is not in the stock yet: it will spawn next turn)
+		var rest_k := _bag_order.size() + _pending.size()
+		var to := _bag_slot(rest_k, rest_k + 1)
+		_pending.append(ic)
+		var turns := roundf(maxf(0.0, port_x - to.x) / (PI * BAG_PX))
 		var tw := ic.create_tween()
-		tw.tween_interval(delay)
-		tw.tween_callback(func() -> void: Audio.play("spell_glow", -7.0, randf_range(1.15, 1.35)))
-		tw.tween_method(_stash_step.bind(ic, a, b), 0.0, 1.0, 0.55)
-		tw.tween_property(ic, "modulate:a", 0.0, 0.1)  # (it drops in behind the funnel's front)
-		tw.tween_callback(ic.queue_free)
-		last = delay + 0.75
+		tw.tween_interval(arrive)
+		tw.tween_callback(func() -> void: _ball_sound("roll", -8.0, randf_range(0.95, 1.05)))
+		tw.tween_method(func(u: float) -> void:
+			if is_instance_valid(ic):
+				ic.position = Vector2(lerpf(port_x, to.x, u), to.y)
+				ic.rotation = -TAU * turns * u, 0.0, 1.0, 0.25 + maxf(0.0, port_x - to.x) / 820.0)
+		tw.tween_callback(func() -> void:
+			if is_instance_valid(ic):
+				ic.rotation = 0.0
+				_ball_sound("hit", -6.0, randf_range(0.95, 1.08)))
+		last = maxf(last, arrive + 0.5)
 	return last
 
 
@@ -1796,6 +1810,7 @@ func _puppet_launch(balls: Array) -> void:
 	balls.sort_custom(func(a, b): return a[1].x < b[1].x)
 	var n := balls.size()
 	var spawn := Time.get_ticks_msec() < _turn_batch_until or not _spawned_once
+	_keep_bag_order = not spawn
 	_turn_batch_until = 0
 	_spawned_once = true
 	var from_pt := _bonus_from
@@ -1825,18 +1840,38 @@ func _puppet_launch(balls: Array) -> void:
 		if j < slots_in_order.size():
 			_bag_order[slots_in_order[j]] = uid_j
 	# the machine is on the HUD: when the HUD is still below the screen (the fight is being set up) it waits
-	while _hud_hidden() and is_inside_tree():
+	while (_hud_hidden() or not _machine_ready) and is_inside_tree():
 		await get_tree().process_frame
 	if not is_inside_tree() or _machine == null:
 		_launching -= 1
 		_tube_prep = false
 		return
-	var reel_n := 0
+	# who is who: a ball whose twin waits in the Bag (a spell gave it "for next turn") only rolls to its place; the first three of the others come out of the reels
+	var role: Array = []
+	var twin_of := {}
+	var pool: Array = _pending.filter(func(c): return is_instance_valid(c))
+	for j in n:
+		var r := "extra"
+		if spawn:
+			for k in pool.size():
+				if pool[k].el == balls[j][0].el:
+					twin_of[j] = pool[k]
+					pool.remove_at(k)
+					r = "twin"
+					break
+		role.append(r)
+	var reel_of := {}  # ball index -> reel
 	if spawn:
-		reel_n = mini(n, 3)
+		var r_i := 0
+		for j in n:
+			if role[j] == "extra" and r_i < 3:
+				role[j] = "reel"
+				reel_of[j] = r_i
+				r_i += 1
 		var finals: Array = []
-		for j in reel_n:
-			finals.append(balls[j][0].el)
+		for j in n:
+			if role[j] == "reel":
+				finals.append(balls[j][0].el)
 		while _machine.busy and is_inside_tree():  # (the reels are still rolling next turn's draw: wait for them)
 			await get_tree().process_frame
 		if _reel_shown.is_empty():  # the first hand of a fight: nothing was rolled yet, so the lever is pulled now
@@ -1848,17 +1883,19 @@ func _puppet_launch(balls: Array) -> void:
 		_reels_armed = false
 	var gap := 0.2
 	var emerge: Array = []  # seconds from now until each ball comes up out of the port
+	var extra_k := 0
 	for j in n:
 		var ic: ElementIcon = balls[j][0]
 		if not is_instance_valid(ic):
 			emerge.append(0.0)
 			continue
-		if j < reel_n:  # (out of its reel, into the bottom funnel; then the real ball goes on)
-			var d := j * gap
-			var fall := _machine.drop_front_orb(j, ic.el, BAG_PX, d)
-			emerge.append(_slot_route(ic, d + fall, "reel"))
+		if role[j] == "reel":  # (the real ball falls from behind the cabinet into the bottom funnel; the faces on the reels are only pictures and stay until the next roll)
+			emerge.append(_slot_route(ic, reel_of[j] * gap, "reel", _machine.reel_center(reel_of[j])))
+		elif role[j] == "twin":
+			emerge.append(0.0)
 		else:
-			var d := (j - reel_n) * gap + (0.25 if spawn else 0.0)
+			var d := extra_k * gap + (0.25 if spawn else 0.0)
+			extra_k += 1
 			if from_pt != Vector2.INF and not spawn:
 				emerge.append(_slot_route(ic, d, "from", from_pt - _stock_row.global_position))
 			else:
@@ -1867,8 +1904,19 @@ func _puppet_launch(balls: Array) -> void:
 	var last_emerge := 0.0
 	for j in n:
 		last_emerge = maxf(last_emerge, float(emerge[j]))
-		var dx := port_x - float(balls[j][1].x)
-		_roll_ball(balls, j, port_x, 0.25 + maxf(0.0, dx) / 820.0, float(emerge[j]))
+		var start_x := port_x
+		var delay_j: float = emerge[j]
+		if role[j] == "twin":  # (it is already in the Bag, waiting at the end of the row: it just rolls to its place)
+			var waiting: ElementIcon = twin_of[j]
+			_pending.erase(waiting)
+			start_x = waiting.position.x
+			balls[j][0].position = waiting.position
+			balls[j][0].modulate.a = 1.0
+			balls[j][0].scale = Vector2.ONE
+			waiting.queue_free()
+			delay_j = 0.0
+		var dx := start_x - float(balls[j][1].x)
+		_roll_ball(balls, j, start_x, 0.25 + maxf(0.0, dx) / 820.0, delay_j)
 	_tube_hold_until = Time.get_ticks_msec() + int((last_emerge + 1.0) * 1000.0)  # the reels show the next draw again a second after the last ball is out
 	_tube_prep = false
 	_machine.busy = false  # (the faces of the reels are on their way out)
@@ -2283,7 +2331,7 @@ func _refresh_stock() -> void:
 	var arrange: Array = shown.map(func(i): return p.stock[i].uid)  # (left to right)
 	if _puppet_strips():
 		var newcomers := arrange.filter(func(u): return not _bag_icons.has(u) and not _bag_seen.has(u) and not _flying.has(u))
-		if not newcomers.is_empty() or _launching > 0 or _tube_prep or _resort_wait:
+		if not newcomers.is_empty() or _launching > 0 or _tube_prep or _resort_wait or _keep_bag_order:
 			# while balls are being fired the ones already there keep their places and the new ones stack after them (they swap into
 			# their types only when the shooting is over: _resort_bag)
 			var keep := _bag_order.filter(func(u): return arrange.has(u))

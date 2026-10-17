@@ -4,27 +4,28 @@ extends RefCounted
 ## The Essence machine of the Puppet Stage. Every position is a SCREEN position in px (the page of the PDF is the screen); the game subtracts the Bag
 ## strip's corner (PuppetLayout.BAG_AT). A piece is (x, y, w, h) of its picture on the screen; the pngs are 2 x that size.
 
-const FUNNEL_TOP := Rect2(1639.29, 574.86, 205.50, 66.50)
-const BODY := Rect2(1621.58, 639.06, 240.50, 176.00)
-const FUNNEL_BOTTOM := Rect2(1694.21, 811.88, 150.50, 58.00)
-const TUBE := Rect2(1614.00, 856.17, 203.00, 205.00)
-const TUBE_CLAMPS := Rect2(1614.00, 856.17, 203.00, 205.00)
-const REEL := Rect2(1402.20, 374.25, 53.00, 62.50)
-const LEVER := Rect2(1648.84, 692.21, 27.00, 118.00)
-const LAMP_ON := Rect2(1353.56, 642.75, 13.00, 12.50)
-const LAMP_OFF := Rect2(1353.56, 685.56, 13.00, 13.00)
+const FUNNEL_TOP := Rect2(1746.03, 715.42, 107.50, 34.50)
+const BODY := Rect2(1684.08, 748.14, 170.00, 125.00)
+const TUBE_GLASS := Rect2(1614.00, 861.31, 203.00, 200.00)
+const TUBE_METAL := Rect2(1614.00, 861.31, 203.00, 200.00)
+const TUBE_GLASS_UNDER := Rect2(1614.00, 861.31, 203.00, 200.00)
+const REEL := Rect2(1745.46, 783.02, 48.50, 56.50)
+const LEVER := Rect2(1703.01, 785.63, 19.00, 83.50)
+const LAMP_ON := Rect2(1353.69, 643.09, 12.68, 12.68)
+const LAMP_OFF := Rect2(1353.69, 685.70, 12.68, 12.68)
 const PORT := Rect2(1549.50, 983.50, 57.50, 57.50)
 const PORT_RING := Rect2(1549.50, 983.50, 57.50, 57.50)
 
 ## The three reels (left edge x of each, top y, size) and the eight lamps (centres).
-const REEL_X := [1662.5, 1716.5, 1769.5]
-const REEL_Y := 690.5
-const REEL_SIZE := Vector2(53.00, 62.50)
-const LAMP_X := [1661.8, 1684.6, 1707.4, 1730.2, 1753.1, 1775.9, 1798.7, 1821.5]
-const LAMP_Y := 668.3
+const REEL_X := [1705.5, 1745.5, 1785.4]
+const REEL_Y := 783.0
+const REEL_SIZE := Vector2(48.50, 56.50)
+const LAMP_X := [1712.5, 1728.7, 1744.8, 1761.0, 1777.1, 1793.3, 1809.4, 1825.6]
+const LAMP_Y := 768.8
+const LAMP_SIZE := Vector2(12.68, 12.68)
 
 ## The lever turns about its hub; PULLED_ANGLE is how far it turns (radians, clockwise on the screen) when it is pulled down.
-const LEVER_HUB := Vector2(1662.3, 794.2)
+const LEVER_HUB := Vector2(1712.5, 859.6)
 const LEVER_PULLED_ANGLE := 1.57080
 
 ## The port: where Essence come up out of the Bag strip (centre).

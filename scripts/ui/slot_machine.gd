@@ -9,8 +9,8 @@ extends RefCounted
 ## A normal spawn: the lever is pulled down, the reels spin and stop one after another on the Essence that spawn (spin), each drops out into the bottom funnel
 ## (drop_front_orb), the lever goes back up. A bonus Essence just goes into the top funnel and comes out of the port (the route is FightScreen's).
 
-const FACE_PX := 40.0  # an Essence shown on a reel
-const SPIN_STEP := 46.0  # distance between two faces on a spinning reel
+const FACE_PX := 30.0  # an Essence shown on a reel
+const SPIN_STEP := 36.0  # distance between two faces on a spinning reel
 const SPIN_FACES := 14
 const DROP_TIME := 0.36
 const TUBE_R := 76.0  # radius of the tube's bend (the centre line of the glass)
@@ -40,7 +40,7 @@ static func local(p: Vector2) -> Vector2:
 
 
 static func available() -> bool:
-	for n in ["slot_body", "slot_funnel_top", "slot_funnel_bottom", "slot_tube", "slot_tube_clamps", "slot_reel", "slot_lever", "slot_lamp_on", "slot_lamp_off",
+	for n in ["slot_body", "slot_funnel_top", "slot_tube_glass_under", "slot_tube_glass", "slot_tube_metal", "slot_reel", "slot_lever", "slot_lamp_on", "slot_lamp_off",
 			"slot_port", "slot_port_ring"]:
 		if UiSkin.tex(n) == null:
 			return false
@@ -59,21 +59,71 @@ static func _art(tex_name: String, r: Rect2) -> TextureRect:
 	return t
 
 
+## A soft dark shadow shaped like a rounded box (`r`, screen px) that fades out over `fall` px all round: one texture, stretched.
+static func _shadow(r: Rect2, fall: float, strength: float) -> TextureRect:
+	var side := 96
+	var img := Image.create(side, side, false, Image.FORMAT_RGBA8)
+	var core := side * 0.5 - fall * 0.5  # (half the size of the solid part, in texture px, the rest is the fall)
+	for y in side:
+		for x in side:
+			var dx := maxf(absf(x + 0.5 - side * 0.5) - core * 0.55, 0.0)
+			var dy := maxf(absf(y + 0.5 - side * 0.5) - core * 0.55, 0.0)
+			var d := sqrt(dx * dx + dy * dy) / maxf(side * 0.5 - core * 0.55, 1.0)
+			var a := clampf(1.0 - d, 0.0, 1.0)
+			img.set_pixel(x, y, Color(0, 0, 0, pow(a, 0.7) * strength))
+	var t := TextureRect.new()
+	t.texture = ImageTexture.create_from_image(img)
+	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	t.stretch_mode = TextureRect.STRETCH_SCALE
+	t.position = local(r.position) - Vector2(fall, fall)
+	t.size = r.size + Vector2(fall, fall) * 2.0
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return t
+
+
+## Photoshop's Screen blend at 50 % opacity on a picture (it only lightens what is behind it; see assets/Global/Card/Shaders/screen_blend.gdshader).
+static func _screen(t: TextureRect) -> TextureRect:
+	var sh := load("res://assets/Global/Card/Shaders/screen_blend.gdshader") as Shader
+	if sh != null:
+		var m := ShaderMaterial.new()
+		m.shader = sh
+		m.set_shader_parameter("strength", 0.5)
+		t.material = m
+	else:
+		t.modulate.a = 0.5
+	return t
+
+
 func build() -> void:
 	for c in [back, front]:
 		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	back.add_child(_art("slot_tube", PuppetSlotMachine.TUBE))
+	# a plain soft shadow behind the cabinet and its funnel: the machine stands apart from the stage behind it
+	var body: Rect2 = PuppetSlotMachine.BODY
+	back.add_child(_shadow(body.grow(-2.0), 56.0, 1.0))
+	var top: Rect2 = PuppetSlotMachine.FUNNEL_TOP
+	back.add_child(_shadow(Rect2(top.position + Vector2(18.0, 8.0), top.size - Vector2(36.0, 16.0)), 40.0, 0.9))
+	# the glass under the Essence: Screen at 50 %. (The real Screen shader reads the screen behind it and, drawn below the Essence, makes them vanish in
+	# Compatibility; for these small bright patches over a dark floor "Add" at 50 % looks the same: screen(a, b) = a + b - a*b is almost a + b when b is small.)
+	var under := _art("slot_tube_glass_under", PuppetSlotMachine.TUBE_GLASS_UNDER)
+	var add := CanvasItemMaterial.new()
+	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	under.material = add
+	under.modulate.a = 0.5
+	back.add_child(under)
 	back.add_child(_art("slot_port", PuppetSlotMachine.PORT))
-	front.add_child(_art("slot_funnel_bottom", PuppetSlotMachine.FUNNEL_BOTTOM))
+	back.add_child(_art("slot_port_ring", PuppetSlotMachine.PORT_RING))  # (under the Essence: they roll over the ring once they are out)
 	front.add_child(_art("slot_funnel_top", PuppetSlotMachine.FUNNEL_TOP))
+	# the tube's glass over the Essence (Screen blend, 50 %: it only lightens, so they show through) and its metal (collars, clamps), under the cabinet
+	front.add_child(_screen(_art("slot_tube_glass", PuppetSlotMachine.TUBE_GLASS)))
+	front.add_child(_art("slot_tube_metal", PuppetSlotMachine.TUBE_METAL))
 	front.add_child(_art("slot_body", PuppetSlotMachine.BODY))
 	for i in 3:
 		var at := Vector2(PuppetSlotMachine.REEL_X[i], PuppetSlotMachine.REEL_Y)
 		front.add_child(_art("slot_reel", Rect2(at, PuppetSlotMachine.REEL_SIZE)))
 		var box := Control.new()
 		box.clip_contents = true
-		box.position = local(at)
-		box.size = PuppetSlotMachine.REEL_SIZE
+		box.position = local(at) + Vector2(2.0, 4.0)  # (only the face of the drum, not the shading around it: what spins must not spill out of the window)
+		box.size = PuppetSlotMachine.REEL_SIZE - Vector2(4.0, 18.0)
 		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		front.add_child(box)
 		_boxes.append(box)
@@ -84,16 +134,14 @@ func build() -> void:
 		l.texture = _lamp_off
 		l.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		l.stretch_mode = TextureRect.STRETCH_SCALE
-		l.size = Vector2(13.0, 13.0)
-		l.position = local(Vector2(x - 6.5, PuppetSlotMachine.LAMP_Y - 6.5))
+		l.size = PuppetSlotMachine.LAMP_SIZE
+		l.position = local(Vector2(x, PuppetSlotMachine.LAMP_Y) - PuppetSlotMachine.LAMP_SIZE / 2.0)
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		front.add_child(l)
 		_lamps.append(l)
 	_lever = _art("slot_lever", PuppetSlotMachine.LEVER)
 	_lever.pivot_offset = PuppetSlotMachine.LEVER_HUB - PuppetSlotMachine.LEVER.position
 	front.add_child(_lever)
-	front.add_child(_art("slot_tube_clamps", PuppetSlotMachine.TUBE_CLAMPS))
-	front.add_child(_art("slot_port_ring", PuppetSlotMachine.PORT_RING))
 	set_lamps(false)
 
 
@@ -109,15 +157,15 @@ func funnel_top_mouth() -> Vector2:
 	return local(Vector2(r.position.x + r.size.x / 2.0, r.position.y + 14.0))
 
 
-## Where an Essence enters the bottom funnel (still hidden behind it).
+## Where an Essence enters the tube: just under the cabinet, still hidden behind it (there is no bottom funnel: the tube starts right under the cabinet).
 func funnel_bottom_in() -> Vector2:
-	var r: Rect2 = PuppetSlotMachine.FUNNEL_BOTTOM
-	return local(Vector2(TUBE_X, r.position.y + 10.0))
+	var r: Rect2 = PuppetSlotMachine.BODY
+	return local(Vector2(TUBE_X, r.end.y - 6.0))
 
 
 ## The centre line of the tube, from just under the funnel to the cap at the Bag strip's edge.
 func tube_path() -> Array:
-	var pts: Array = [local(Vector2(TUBE_X, 874.0))]
+	var pts: Array = [local(Vector2(TUBE_X, PuppetSlotMachine.BODY.end.y + 2.0))]
 	var c := Vector2(TUBE_X - TUBE_R, TUBE_Y - TUBE_R)  # centre of the bend
 	pts.append(local(Vector2(TUBE_X, c.y)))
 	for k in range(1, 9):  # a quarter circle, from straight down to straight left
