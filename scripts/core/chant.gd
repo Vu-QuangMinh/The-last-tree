@@ -21,7 +21,7 @@ static func prefix_match(hp: Array, chant: String) -> int:
 
 ## Where the run of HP elements `seg` first appears in the chant ("?" in it matches anything), or -1.
 static func find_hp(seg: Array, chant: String) -> int:
-	return first_index("".join(seg), chant) if "?" in seg else chant.find("".join(seg))
+	return first_index("".join(seg), chant) if "?" in seg or "?" in chant else chant.find("".join(seg))
 
 
 ## Start indices of non-overlapping occurrences of `pattern` in `chant`, left to right ("?" matches anything).
@@ -43,7 +43,8 @@ static func occurrences(pattern: String, chant: String) -> Array:
 static func matches_at(pattern: String, chant: String, at: int) -> bool:
 	for k in pattern.length():
 		var p := pattern[k]
-		if p != "?" and p != chant[at + k]:
+		var c := chant[at + k]
+		if p != "?" and c != "?" and p != c:  # (an Any Essence fits on either side: Self-Repaint can put one in the chant)
 			return false
 	return true
 

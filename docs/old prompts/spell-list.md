@@ -1,230 +1,228 @@
 # Spell list
 
-224 spells, as the game shows them (made by tools/spell_sheet.py).
+222 spells, as the game shows them (made by tools/spell_sheet.py).
 
 | Name | Pattern | Rarity | Category | Type | Cooldown | Effect |
 |---|---|---|---|---|---|---|
-| Alchemist's Breath | AF | Common | Utility | Spell |  | Change 2 of your unused Essence into Fire. |
-| Arcane Barrage | WFA | Common | Offensive | Spell |  | Remove 3 random Essence from random enemies. |
-| Bandage | W | Common | Defensive | Spell |  | Cure Bleed. |
-| Blowtorch | FA | Common | Offensive | Spell |  | Remove the rightmost Essence of an enemy. If it has Burn, remove 1 more. |
-| Boil | FW | Common | Utility | Spell |  | Change the rightmost Essence of an enemy into Fire. |
-| Breath Word | FW | Common | Utility | Spell |  | Infuse an Air into the chant. |
+| Alchemist's Breath | AF | Common | Utility | Spell |  | Turn 2 unused Essence into Fire. |
+| Arcane Barrage | WFA | Common | Offensive | Spell |  | Remove 1 random enemy Essence, 3 times. |
+| Bandage | W | Common | Defensive | Spell |  | Cure Bleed. Heal 1 HP. Enemy thorns don't hurt you this turn. |
+| Blowtorch | FA | Common | Offensive | Spell |  | Remove an enemy's rightmost Essence. +1 if it has Burn. |
+| Boil | FW | Common | Utility | Spell |  | Wild Repaint 3 Fire. |
+| Borrowed Breath | A | Common | Utility | Spell |  | Gain 1 Random next turn. |
+| Breath Word | FW | Common | Utility | Spell |  | Infuse 1 Air. |
 | Breeze | A | Common | Defensive | Spell |  | Gain 2 Thorns this turn. |
-| Brine | WW | Common | Offensive | Spell | 1 | Poison 1 on an enemy. Cooldown 1. |
-| Chill | W | Common | Utility | Spell |  | Break all Armour on an enemy. |
+| Brine | WW | Common | Offensive | Spell | 2 | Apply 1 Poison to an enemy. Cooldown 2. |
+| Chill | WW | Common | Utility | Spell |  | Break an enemy's Armour. Gain 3 Shield for each Armour broken. |
 | Cinder Shield | FWW | Common | Defensive | Spell |  | Gain 5 Shield. |
-| Clear Sight | F | Common | Defensive | Spell |  | Cure Blind. |
-| Coal Toss | FF | Common | Offensive | Spell |  | Remove the 2 rightmost Essence of a random enemy. |
-| Conjure Flame | FA | Common | Utility | Spell |  | Infuse 2 Fire into the chant. |
-| Cyclone | AA | Common | Offensive | Spell |  | Remove the rightmost Essence of all enemies (only if it has 4 or more Essence). |
-| Dab | F | Common | Offensive | Spell |  | Expose 1. |
-| Dewdrop | W | Common | Defensive | Spell |  | Cleanse all your debuffs. |
+| Clear Sight | F | Common | Defensive | Spell |  | Cure Blind. Cure Confuse. |
+| Coal Toss | FF | Common | Offensive | Spell |  | Remove a random enemy's 2 rightmost Essence. |
+| Conjure Flame | FA | Common | Utility | Spell |  | Conjure 1 offensive spell. |
+| Coup de Grace | AA | Common | Offensive | Spell |  | Remove 1 random Essence of an enemy. Then if it has 2 or fewer Essence, Execute it. |
+| Cyclone | AA | Common | Offensive | Spell |  | Remove all enemies' rightmost Essence (if it has 3+). |
+| Dab | F | Common | Offensive | Spell |  | Repaint 2 Random. Lose 2 HP. |
 | Drizzle | W | Common | Defensive | Spell |  | Heal 2 HP. |
 | Droplet | W | Common | Defensive | Spell |  | Gain 2 Shield. |
-| Dustdevil | AAF | Common | Utility | Spell |  | Pick 2 of an enemy's Essence, one at a time, and move each to any spot in that row. |
-| Ember | F | Common | Offensive | Spell |  | Burn 1 on an enemy. |
-| Ember Storm | FAF | Common | Offensive | Spell |  | Burn 1 on all enemies. |
-| Fan the Flames | AF | Common | Offensive | Spell |  | Double the Burn on an enemy. |
-| Fire Ball | FF | Common | Offensive | Starter |  | Remove the rightmost Essence of an enemy. |
-| Firefly | FA | Common | Offensive | Spell |  | Burn 2 on a random enemy. |
-| Flame Lash | FF | Common | Offensive | Spell |  | Burn 1 on 2 different enemies. |
-| Flare | FF | Common | Offensive | Spell |  | Remove the leftmost Essence of an enemy. |
-| Fleck | A | Common | Offensive | Spell |  | Expose 1. |
-| Flicker | F | Common | Offensive | Spell |  | Remove 1 random Essence from random enemies. |
-| Forge Fire | FFWW | Common | Defensive | Spell |  | Gain 6 Shield. |
-| Frost Nova | WW | Common | Defensive | Spell |  | Weaken 1 on all enemies. |
-| Gale Barrier | AA | Common | Defensive | Spell |  | Gain 3 Shield. Gain 1 Thorns this turn. |
-| Gale Slash | AFFA | Common | Offensive | Spell |  | Remove the leftmost Essence of all enemies. |
-| Graft | WF | Common | Utility | Spell |  | Add a Water at the leftmost end of an enemy's Essence. |
-| Gust | AF | Common | Offensive | Spell |  | Snipe 1. |
-| Gust Front | AAFF | Common | Offensive | Spell |  | Remove the rightmost Essence of all enemies. |
-| Hailstone | AW | Common | Defensive | Spell |  | Weaken 2 on an enemy. |
+| Dustdevil | AAF | Common | Offensive | Spell |  | Rearrange 2. Repaint 2 Random. |
+| Ember | F | Common | Offensive | Spell |  | Apply 1 Burn to an enemy. Lose 2 HP. |
+| Ember Storm | FAF | Common | Offensive | Spell |  | Apply 1 Burn to all enemies. |
+| Fan the Flames | AF | Common | Offensive | Spell |  | Double an enemy's Burn. |
+| Fire Ball | FF | Common | Offensive | Starter |  | Remove an enemy's rightmost Essence. |
+| Flame Lash | FF | Common | Offensive | Spell |  | Apply 1 Burn to 2 different enemies. |
+| Flare | FF | Common | Offensive | Spell |  | Apply 1 Burn to an enemy for every 2 Fire in your chant. |
+| Fleck | A | Common | Offensive | Spell |  | Repaint 1 Random. |
+| Forge Fire | FFWW | Common | Defensive | Spell |  | Gain 6 Shield. Gain 1 Thorns for the whole fight. |
+| Frost Nova | WW | Common | Defensive | Spell |  | Apply 1 Weaken to all enemies. |
+| Gale Barrier | AA | Common | Defensive | Spell |  | Gain 3 Lasting Shield. |
+| Gale Slash | AFFA | Common | Offensive | Anti-spell |  | Remove an enemy's leftmost Essence. |
+| Graft | WF | Common | Utility | Spell |  | Wild Repaint 2 Water. |
+| Gust | AF | Common | Offensive | Spell |  | Snipe 2. Apply 2 Vulnerable to yourself. |
+| Hailstone | AW | Common | Defensive | Spell |  | Apply 2 Weaken to an enemy. |
 | Healing Rain | WWA | Common | Defensive | Spell |  | Heal 5 HP. |
 | Hot Spring | WF | Common | Defensive | Spell |  | Heal 2 HP. Gain 1 Shield. |
 | Hush of Rain | AWW | Common | Defensive | Anti-spell |  | Heal 2 HP. |
-| Ice Lance | WWA | Common | Offensive | Spell |  | Remove the 2 leftmost Essence of an enemy. |
-| Miasma | AA | Common | Offensive | Spell | 1 | Poison 1 on an enemy. Cooldown 1. |
-| Mist | W | Common | Defensive | Spell |  | Heal 1 HP. |
-| Mist Step | WA | Common | Utility | Spell |  | Infuse a random Essence into the chant. |
-| Mist Veil | WA | Common | Defensive | Fleeting |  | You become Ethereal this turn. |
+| Ice Lance | WWA | Common | Offensive | Durability 1 |  | Remove 3 random Essence of an enemy. Apply 1 Freeze to it. Durability 1. |
+| Miasma | AA | Common | Offensive | Durability 1 |  | Apply 2 Poison to an enemy. Durability 1. |
+| Mist Step | WA | Common | Utility | Spell |  | Infuse 1 Random. |
+| Mist Veil | WA | Common | Defensive | Durability 1 |  | Become Ethereal this turn. Apply 3 Vulnerable to yourself. Durability 1. |
+| Panic Button | WAAW | Common | Defensive | Durability 1 |  | Heal 5 HP. Apply 1 Freeze to all enemies. Durability 1. |
 | Quench | WF | Common | Defensive | Spell |  | Heal 3 HP. |
 | Quiet Wind | AAWA | Common | Defensive | Anti-spell |  | Gain 2 Shield. |
 | Rain | AW | Common | Defensive | Spell |  | Heal 2 HP. |
 | Rain Song | AWA | Common | Defensive | Spell |  | Heal 2 HP. Gain 1 Water next turn. |
-| Refresh | AW | Common | Defensive | Spell |  | Cleanse all your debuffs. Gain 1 Water next turn. |
-| Ripple | W | Common | Utility | Spell |  | Change the rightmost Essence of an enemy into Water. |
-| Ripplewind | WA | Common | Utility | Spell |  | Change the rightmost Essence of an enemy into Water. |
-| Riptide | WA | Common | Defensive | Spell |  | Pick 1 of an enemy's Essence and move it to any spot in that row. Weaken 1 on an enemy. |
-| Scald | FW | Common | Offensive | Spell |  | Remove the rightmost Essence of an enemy. Weaken 1 on an enemy. |
-| Sea Breeze | WA | Common | Defensive | Spell |  | Cleanse all your debuffs. |
+| Ripple | W | Common | Utility | Spell |  | Self-Repaint 2 Water. |
+| Ripplewind | WA | Common | Utility | Spell |  | Self-Repaint 3 Water. |
+| Riptide | WA | Common | Defensive | Spell |  | Rearrange 1. Apply 2 Weaken to an enemy. |
+| Scald | FW | Common | Offensive | Spell |  | Remove an enemy's rightmost Essence. Apply 1 Weaken to it. |
+| Seasickness | WAW | Common | Defensive | Spell |  | Apply 2 Weaken to all enemies. Break all enemies' Armour. |
 | Sky Lance | AAA | Common | Offensive | Spell |  | Snipe 2. |
 | Smoke Signal | AF | Common | Utility | Spell |  | Conjure 1 spell. |
 | Soothing Mist | WAAF | Common | Defensive | Anti-spell |  | Heal 1 HP. |
-| Spark | F | Common | Offensive | Spell |  | Remove the rightmost Essence of an enemy (only if it has 4 or more Essence). |
-| Spark Shower | F | Common | Utility | Spell |  | Gain 2 Fire next turn. |
-| Spark Word | WA | Common | Utility | Spell |  | Infuse a Fire into the chant. |
-| Spatter | AF | Common | Offensive | Spell |  | Expose 2. |
-| Splash | W | Common | Offensive | Spell |  | Remove the rightmost Essence of a random enemy. |
-| Spray | WA | Common | Offensive | Spell |  | Expose 2. |
-| Spring Word | AF | Common | Utility | Spell |  | Infuse a Water into the chant. |
+| Spark Shower | F | Common | Utility | Spell |  | Gain 1 Fire next turn. |
+| Spark Word | WA | Common | Utility | Spell |  | Infuse 1 Fire. |
+| Spatter | AF | Common | Offensive | Spell |  | Repaint 1 Random. |
+| Splash | W | Common | Offensive | Spell |  | Snipe 1 Fire. |
+| Spray | WA | Common | Offensive | Spell |  | Repaint 1 Random. |
+| Spring Word | AF | Common | Utility | Spell |  | Infuse 1 Water. |
 | Steady Mind | AA | Common | Defensive | Spell |  | Cure Confuse. Gain 1 Air next turn. |
-| Steam | WF | Common | Defensive | Spell |  | Gain 2 Shield. Weaken 1 on an enemy. |
+| Steam | WF | Common | Defensive | Spell |  | Gain 2 Shield. Apply 1 Weaken to an enemy. |
 | Steam Burst | FW | Common | Defensive | Spell |  | Gain 3 Shield. |
-| Summon Rain | WW | Common | Utility | Spell |  | Infuse 2 Water into the chant. |
+| Sulfuric Pit | AFAF | Common | Offensive | Spell | 1 | Apply 1 Poison to all enemies. Apply 2 Burn to all enemies. Cooldown 1. |
+| Summon Rain | WW | Common | Utility | Spell |  | Infuse 2 Water. |
 | Sunlit Grove | WAF | Common | Defensive | Spell |  | Heal 4 HP. |
-| Tailwind | AA | Common | Utility | Starter |  | Gain 1 random Essence next turn. |
-| Taint | A | Common | Offensive | Spell | 1 | Poison 1 on an enemy. Cooldown 1. |
+| Tailwind | AA | Common | Utility | Starter |  | Gain 1 Random next turn. |
+| Taint | A | Common | Offensive | Durability 1 |  | Apply 1 Poison to an enemy. Durability 1. |
 | Thorn Dart | AW | Common | Offensive | Spell |  | Snipe 1. |
 | Tide Pool | WW | Common | Defensive | Spell |  | Heal 3 HP. |
 | Tide Ward | WW | Common | Defensive | Spell |  | Gain 3 Thorns this turn. |
-| Tinder | F | Common | Offensive | Spell |  | Burn 1 on a random enemy. |
-| Twin Flames | FF | Common | Offensive | Spell |  | Burn 2 on an enemy. |
-| Unbind | AW | Common | Defensive | Spell |  | Cure Silence on all your spells. |
-| Undertow | WA | Common | Utility | Spell |  | Pick 2 of an enemy's Essence, one at a time, and move each to any spot in that row. |
-| Undertow Grip | WWF | Common | Defensive | Spell |  | Weaken 2 on an enemy. |
-| Updraft | A | Common | Utility | Spell |  | Pick 1 of an enemy's Essence and move it to any spot in that row. |
-| Updraft Lance | AF | Common | Offensive | Spell |  | Remove the rightmost Essence of a random enemy. |
-| Ward | WA | Common | Defensive | Spell |  | Gain 1 Aegis. |
+| Tinder | F | Common | Offensive | Spell |  | Apply 1 Burn to a random enemy. |
+| Unbind | AW | Common | Utility | Spell |  | Cure Silence, Frozen and Ignited. Heal 2 for each one cured. |
+| Undertow | WA | Common | Utility | Spell |  | Rearrange 2. |
+| Updraft | A | Common | Utility | Spell |  | Rearrange 2. |
+| Updraft Lance | AF | Common | Offensive | Spell |  | Remove 2 random enemies' rightmost Essence. |
+| Ward | WA | Common | Defensive | Spell | 2 | Gain 1 Evasion. Cooldown 2. |
 | Water Wall | WW | Common | Defensive | Starter |  | Gain 4 Shield. |
 | Water Whip | WF | Common | Offensive | Spell |  | Snipe 1. |
-| Whirl | AA | Common | Utility | Spell |  | Move the leftmost Essence of an enemy to the right end of its row. |
-| Whisper | A | Common | Defensive | Spell |  | Weaken 1 on an enemy. |
-| Wildfire | FA | Common | Offensive | Spell |  | Burn 1 on all enemies. |
-| Wildspark | FA | Common | Offensive | Spell |  | Remove 2 random Essence from random enemies. |
-| Wind Shear | AWF | Common | Offensive | Spell |  | Remove the 2 rightmost Essence of an enemy. |
-| Windless Night | AFA | Common | Defensive | Anti-spell |  | Gain 2 Shield. |
-| Winter Gale | WAAW | Common | Defensive | Spell |  | Weaken 2 on all enemies. |
-| Wisp | A | Common | Utility | Spell |  | Infuse a random Essence into the chant. |
-| A Broken Clock | ????? | Rare | Offensive | Spell |  | Gain 1 random Essence next turn. Remove the rightmost Essence of a random enemy. |
-| Absorb | FAW | Rare | Offensive | Spell |  | Remove the 2 rightmost Essence of an enemy. If this defeats it, heal 5 HP. |
-| Alchemy | FWA | Rare | Utility | Spell |  | Change every Water in an enemy's Essence into Fire. |
-| Ash and Ember | FA | Rare | Offensive | Spell |  | Burn 1 on all enemies. Double the Burn on all enemies. |
-| Ashen Veil | FAA | Rare | Defensive | Spell |  | You become Ethereal this turn. |
-| Ashfall | F | Rare | Offensive | Spell |  | Burn 1 on all enemies. |
-| Attunement | FWA | Rare | Utility | Power |  | Pick 1 Essence. Gain 1 of that Essence each turn. |
+| Whirl | AA | Common | Utility | Spell |  | Wild Rearrange 1. |
+| Whisper | A | Common | Defensive | Spell |  | Apply 1 Weaken to an enemy. |
+| Wildfire | FA | Common | Offensive | Spell |  | Apply 1 Burn to all enemies. |
+| Wind Shear | AWF | Common | Offensive | Spell |  | Remove an enemy's 2 rightmost Essence. |
+| Windless Night | AFA | Common | Defensive | Anti-spell |  | Gain 3 Shield. |
+| Wisp | A | Common | Utility | Spell |  | Infuse 1 Random. |
+| A Broken Clock | ????? | Rare | Offensive | Spell |  | Gain 1 Random next turn. Remove a random enemy's rightmost Essence. |
+| Absorb | FAW | Rare | Offensive | Spell |  | Remove an enemy's 2 rightmost Essence. If it dies, heal 5 HP. |
+| Against the Tide | WWF | Rare | Offensive | Spell |  | Remove 2 random Essence of an enemy. If it intends to attack, apply 1 Weaken to it. |
+| Alchemy | FWA | Rare | Utility | Spell |  | Turn every Water of an enemy into Fire. |
+| All In | F | Rare | Utility | Spell |  | Infuse your upcoming Essence. |
+| Aole's Blessing | AAA | Rare | Utility | Power |  | Each turn: gain 1 Random. |
+| Arctic Wind | WA | Rare | Defensive | Durability 1 |  | Apply 1 Freeze to an enemy. Durability 1. |
+| Ash and Ember | FA | Rare | Offensive | Durability 1 |  | Apply 1 Burn to all enemies. Double all enemies' Burn. Durability 1. |
+| Ashen Veil | FAA | Rare | Defensive | Durability 2 |  | Become Ethereal this turn. Apply 2 Vulnerable to yourself. Durability 2. |
+| Ashfall | F | Rare | Offensive | Spell | 1 | Apply 1 Burn to all enemies. Cooldown 1. |
 | Aurora | WAWA | Rare | Defensive | Spell |  | Heal 7 HP. Cleanse all your debuffs. Gain 5 Shield. |
-| Backdraft | AFF | Rare | Offensive | Spell |  | Remove the 3 rightmost Essence of an enemy. Overload 1. |
-| Blood Moon | FWWF | Rare | Offensive | Spell |  | Remove the 2 rightmost Essence of all enemies. |
-| Blood Price | FF | Rare | Utility | Spell |  | Lose 3 of your HP. Gain 4 random Essence. |
-| Boiling Tide | WWF | Rare | Offensive | Spell |  | Remove up to 3 Water from an enemy's Essence. |
-| Borrowed Breath | - | Rare | Utility | Spell |  | Infuse an Air into the chant. |
-| Brimstone | FFF | Rare | Offensive | Spell |  | Burn 2 on all enemies. |
-| Cauterize | FW | Rare | Utility | Power |  | An enemy can never Mend. |
-| Cinder Rain | AF | Rare | Offensive | Spell |  | Remove 3 random Essence from random enemies. |
-| Cold Snap | WA | Rare | Defensive | Spell |  | Freeze 1 on an enemy. |
-| Corrode | WFF | Rare | Offensive | Spell |  | Remove up to 3 Fire from an enemy's Essence. |
-| Crosswind | AA | Rare | Defensive | Spell |  | Weaken 1 on all enemies. |
-| Cyclone Edge | A?AF | Rare | Offensive | Spell |  | Remove the 2 leftmost Essence of 2 different enemies. |
-| Daub | FF | Rare | Offensive | Spell |  | Expose 2. |
+| Backdraft | AFF | Rare | Offensive | Durability 2 |  | Remove an enemy's 3 rightmost Essence. Durability 2. |
+| Blood Moon | FWWF | Rare | Offensive | Spell |  | Remove all enemies' 2 rightmost Essence. |
+| Blood Price | FF | Rare | Utility | Spell |  | Lose 3 HP. Gain 3 Random. |
+| Braum's Resolve | AAA | Rare | Utility | Power |  | All your Shield is Lasting. |
+| Brimstone | FFF | Rare | Offensive | Spell |  | Apply 2 Burn to all enemies. |
+| Burn Burn Burn! | F?FA | Rare | Offensive | Durability 2 |  | Apply 2 Burn to all enemies. Double all enemies' Burn. Durability 2. |
+| Cataclysm | AF?FA | Rare | Offensive | Spell | 2 | Apply 3 Burn to all enemies. Cooldown 2. |
+| Cauterize | FW | Rare | Utility | Power |  | Prevent an enemy from Mending. |
+| Cinder Rain | AF | Rare | Offensive | Spell |  | Remove 1 random enemy Essence, 3 times. |
+| Corrode | WFF | Rare | Offensive | Spell |  | Remove up to 3 Fire from an enemy. |
+| Crosswind | AA | Rare | Defensive | Spell |  | Apply 1 Weaken to all enemies. |
+| Cyclone Edge | A?AF | Rare | Offensive | Spell |  | Remove all enemies' 2 leftmost Essence. |
+| Daedalus's Barrel | FFFA | Rare | Offensive | Spell |  | Snipe 3. |
+| Daedalus's Scope | AFA | Rare | Offensive | Spell |  | Snipe 2. |
+| Daub | FF | Rare | Offensive | Spell |  | Repaint 2 Random. |
+| Devil's Hand | AFA? | Rare | Offensive | Durability 3 |  | Steal 2 Essence from an enemy. Lose 5 HP. Durability 3. |
+| Eclipse | FFWFF | Rare | Offensive | Durability 2 |  | Remove an enemy's 5 rightmost Essence. Durability 2. |
+| EleMantle | WFA | Rare | Utility | Power |  | Each time you are attacked, gain 1 Thorns for the whole fight. |
 | Ember Chorus | FWAF | Rare | Utility | Spell |  | Conjure 3 spells. |
-| Ember Crown | FFW | Rare | Offensive | Power |  | At the start of each of your turns: Burn 2 on a random enemy. |
-| Firestorm | AF?FA | Rare | Offensive | Spell |  | Burn 3 on all enemies. |
-| Firestorm Herald | F?A?F | Rare | Offensive | Spell |  | Burn 4 on all enemies. |
-| Flamecaller | FFA | Rare | Utility | Spell |  | Conjure 2 spells. |
-| Fog of War | FW | Rare | Defensive | Anti-spell |  | Weaken 2 on all enemies. |
-| Frostbite | WAW | Rare | Offensive | Spell | 1 | Freeze 1 on an enemy. Poison 1 on an enemy. Cooldown 1. |
+| Ember Crown | FFW | Rare | Offensive | Power |  | Each turn: apply 1 Burn to a random enemy. |
+| Fog of War | FW | Rare | Utility | Anti-spell |  | Apply 1 Dazed to all enemies. |
+| Frost Burn | FFW | Rare | Offensive | Spell |  | Apply 2 Burn to an enemy. Then if it has 4 or more Burn, apply 1 Freeze to it. |
+| Frostbite | WAW | Rare | Offensive | Spell | 2 | Apply 1 Freeze to an enemy. Apply 1 Poison to it. Cooldown 2. |
 | Gale Call | A? | Rare | Utility | Spell |  | Conjure 2 spells. |
-| Gale Force | AAF | Rare | Offensive | Spell |  | Remove up to 3 Air from an enemy's Essence. |
-| Glacial Spike | WFA | Rare | Offensive | Spell |  | Remove the leftmost Essence of 2 different enemies. |
-| Glacier | WWW | Rare | Defensive | Spell |  | Freeze 1 on an enemy. |
-| Grave Wind | AWW | Rare | Offensive | Spell |  | Execute an enemy with 3 Essence or less (not bosses). |
-| Hawk's Eye | AFA | Rare | Offensive | Spell |  | Snipe 2. |
+| Glacial Spike | WFA | Rare | Offensive | Spell |  | Remove 2 leftmost Essence of 2 enemies. |
+| Glacier | WWW | Rare | Defensive | Durability 2 |  | Apply 1 Freeze to an enemy. Durability 2. |
+| Grave Wind | AWW | Rare | Offensive | Spell |  | Execute an enemy with 3 or less Essence. |
+| Handyman | FW | Rare | Utility | Power |  | Your spells with Durability get +1 Durability. |
 | Hearth Song | FAW | Rare | Defensive | Spell |  | Heal 4 HP. |
-| Heat Haze | FA | Rare | Offensive | Anti-spell |  | Burn 1 on all enemies. |
-| Inferno | F?F | Rare | Offensive | Spell |  | Remove the rightmost Essence of all enemies. |
-| Inferno Lance | FFFA | Rare | Offensive | Spell |  | Snipe 3. |
-| Kindle | FFF | Rare | Offensive | Power |  | Whenever you apply Burn, apply 1 more. Burn 1 on all enemies. |
-| Kindled Heart | FW | Rare | Defensive | Spell |  | Gain 1 Aegis. |
+| Heat Haze | FA | Rare | Offensive | Anti-spell |  | Apply 1 Burn to all enemies. |
+| Inferno | F?F | Rare | Offensive | Spell |  | Remove all enemies' rightmost Essence. |
+| Jaeler's Backup Plan | W?A | Rare | Offensive | Spell |  | Instant Steal 2. Lose 5 HP. |
+| Jaeler's Boots | FAFA | Rare | Defensive | Spell |  | Gain 1 Evasion. |
+| Kindled Heart | FW | Rare | Defensive | Spell | 2 | Gain 1 Evasion. Cooldown 2. |
 | Kindling Wind | FAF | Rare | Offensive | Spell |  | Amplify 1. |
-| Last Rites | FFA | Rare | Offensive | Spell |  | Execute an enemy with 4 Essence or less (not bosses). |
-| Lava Flow | FFW | Rare | Offensive | Spell |  | Remove the 2 leftmost Essence of an enemy. Burn 2 on an enemy. |
+| Last Rites | FFA | Rare | Offensive | Spell |  | Execute an enemy with 4 or less Essence. |
 | Maelstrom Ward | WWWA | Rare | Defensive | Spell |  | Gain 8 Shield. |
-| Mimic | FW | Rare | Utility | Spell |  | Repeat the last spell you cast this turn. |
-| Mirror Pool | WW | Rare | Utility | Spell |  | Duplicate 1. |
-| Mistwalk | WAW | Rare | Defensive | Spell |  | You become Ethereal this turn. Heal 4 HP. |
-| Molten Core | FWF | Rare | Offensive | Anti-spell |  | Burn 1 on a random enemy. |
+| Mimic | FW | Rare | Utility | Spell | 2 | Your next spell this fight is cast twice. Cooldown 2. |
+| Mistwalk | WAW | Rare | Defensive | Durability 2 |  | Become Ethereal this turn. Heal 4 HP. Durability 2. |
+| Molten Core | FWF | Rare | Offensive | Anti-spell |  | Apply 1 Burn to a random enemy. |
 | Moon Tide | W?WA | Rare | Defensive | Spell |  | Heal 7 HP. |
-| Phase Shift | FA | Rare | Utility | Spell |  | Make an enemy Phased this turn. |
-| Phoenix Dive | FAFF | Rare | Offensive | Spell |  | Remove the 2 rightmost Essence of all enemies. |
-| Phoenix Rite | FAFA | Rare | Defensive | Spell |  | Gain 1 Aegis. Heal 5 HP. |
-| Purify | WWA | Rare | Defensive | Spell |  | Cleanse all your debuffs. |
-| Pyromancy | FFFA | Rare | Offensive | Power |  | Your spells remove 1 more Essence. |
-| Recall | FAW | Rare | Utility | Spell |  | After the Release, the 2 rightmost Essence of your chant go back to your bag, to use again. |
-| Reforge | WFF | Rare | Utility | Spell |  | Change the 2 leftmost Essence of an enemy into Fire. |
-| Resonance | AFW | Rare | Utility | Spell |  | Duplicate 1. |
-| Rising Tide | WWW | Rare | Defensive | Power |  | At the start of each of your turns: gain 4 Shield. |
-| Scalding Rain | FW | Rare | Offensive | Spell | 2 | Poison 1 on all enemies. Cooldown 2. |
-| Searing Mist | FFW | Rare | Offensive | Spell |  | Remove up to 3 Fire from an enemy's Essence. |
+| Phoenix Dive | FAFF | Rare | Offensive | Spell |  | Remove all enemies' 2 rightmost Essence. |
+| Purify | WWA | Rare | Defensive | Spell |  | Cleanse all your debuffs. Gain 4 Lasting Shield for each one cleansed. |
+| Pyromancy | FFFA | Rare | Offensive | Power |  | Each turn: apply 1 Burn to a random enemy. |
+| Pyromaniac | FFF | Rare | Offensive | Power |  | Your Burn +1. Apply 1 Burn to all enemies. |
+| RMK | WFA | Rare | Offensive | Spell |  | Repaint 3 Random. |
+| Recall | FAW | Rare | Utility | Spell |  | Refund 2. |
+| Reforge | WFF | Rare | Utility | Durability 1 |  | Seal 1 Essence of another spell for this fight. Durability 1. |
+| Resonance | AFW | Rare | Utility | Spell |  | Duplicate 1. Heal 3 HP for each Extension it causes. |
+| Scalding Rain | FW | Rare | Offensive | Spell | 2 | Apply 1 Poison to all enemies. Cooldown 2. |
+| Searing Mist | FFW | Rare | Offensive | Spell |  | Remove up to 3 Fire from an enemy. |
+| Shadows in the Flame | FFA | Rare | Utility | Spell |  | Conjure 2 spells. |
 | Silent Tide | WFW | Rare | Defensive | Anti-spell |  | Gain 3 Shield. |
-| Siphon | A | Rare | Offensive | Spell |  | Remove the 2 leftmost Essence of an enemy. Next turn you gain the removed Essence (Conjured). |
-| Siren's Call | WWF | Rare | Offensive | Spell |  | Steal up to 2 Fire from an enemy. |
-| Snuff Out | FF | Rare | Offensive | Spell |  | Execute an enemy with 3 Essence or less (not bosses). |
-| Soul Siphon | AFA | Rare | Offensive | Spell |  | Remove the 3 leftmost Essence of an enemy. Next turn you gain the removed Essence (Conjured). |
+| Siphon | AWAWA | Rare | Offensive | Spell |  | Instant Steal 1. |
+| Siren's Call | WA?AW | Rare | Offensive | Spell |  | Steal 2 Essence from an enemy. |
+| Snuff Out | FF | Rare | Offensive | Spell |  | Snipe 1. Then if it has 3 or fewer Essence, Execute it. |
 | Spirit Lantern | WA? | Rare | Utility | Spell |  | Conjure 2 spells. |
-| Splatter | WFA | Rare | Offensive | Spell |  | Expose 3. |
-| Splotch | AAW | Rare | Offensive | Spell |  | Expose 3. |
-| Spritz | WW | Rare | Offensive | Spell |  | Expose 2. |
-| Stain | AWW | Rare | Offensive | Power |  | At the start of each of your turns: Expose 1. |
-| Steam Cloud | WFW | Rare | Defensive | Spell |  | Weaken 1 on all enemies. Gain 4 Shield. |
-| Steam Vent | WF | Rare | Offensive | Anti-spell | 2 | Poison 1 on all enemies. Cooldown 2. |
-| Stillness | WWWW | Rare | Defensive | Power |  | All enemies deal 25% less damage for the rest of the fight. |
-| Storm Crown | AAAF | Rare | Utility | Power |  | Refund 1 Air each chant. |
+| Splotch | AAW | Rare | Offensive | Spell |  | Repaint 3 Random. |
+| Spritz | WW | Rare | Utility | Spell |  | Self-Repaint 2 Random. |
+| Stain | AWW | Rare | Offensive | Power |  | Each turn: Repaint 1 Random. |
+| Steam Cloud | WFW | Rare | Defensive | Spell |  | Apply 1 Dazed to all enemies. Gain 4 Shield. |
+| Steam Vent | WF | Rare | Offensive | Anti-spell | 2 | Apply 1 Poison to all enemies. Cooldown 2. |
+| Stillness | ? | Rare | Defensive | Anti-spell |  | Apply 99 Weaken to all enemies. Durability 1. |
 | Storm Front | AWF | Rare | Defensive | Spell |  | Gain 5 Shield. Gain 2 Thorns this turn. |
-| Storm Legion | AAAF | Rare | Offensive | Spell |  | Remove 4 random Essence from random enemies. |
-| Storm Sermon | A?W?A | Rare | Defensive | Spell |  | Weaken 3 on all enemies. |
+| Storm Legion | AAAF | Rare | Offensive | Spell |  | Remove 1 random enemy Essence, 4 times. |
+| Storm Sermon | A?W?A | Rare | Defensive | Spell |  | Apply 2 Freeze to all enemies. Exhaust. |
 | Stormcaller | A?A | Rare | Utility | Spell |  | Conjure 2 spells. |
 | Summoning Word | A | Rare | Utility | Spell |  | Conjure 1 spell. |
-| Sunfall | FFWFF | Rare | Offensive | Spell |  | Remove the 5 rightmost Essence of an enemy. |
-| Tempest | AAA | Rare | Utility | Spell |  | Gain 2 random Essence next turn. Rearrange 1. |
-| Tempest Veil | AWA | Rare | Defensive | Spell |  | Gain 5 Shield. |
-| Thermal Burst | FFWF | Rare | Offensive | Spell |  | Remove the 2 leftmost Essence of 2 different enemies. |
-| Thieving Wind | AA | Rare | Offensive | Spell |  | Steal 1 Essence of your choice from an enemy. |
-| Thorn Mantle | FA | Rare | Defensive | Power |  | Gain 1 Thorns for the rest of the fight. |
-| Tidal Surge | WAWW | Rare | Offensive | Spell |  | Remove the 2 leftmost Essence of all enemies. Next turn you gain the removed Essence (Conjured). |
-| Tide Thief | WAW | Rare | Offensive | Spell |  | Steal 1 Essence of your choice from an enemy. |
-| Tidecaller | A?A | Rare | Utility | Spell |  | Infuse 2 Water into the chant. |
-| Trade Winds | AAA | Rare | Utility | Power |  | At the start of each of your turns: gain 2 random Essence. |
+| Surgical Burn | F?A?F | Rare | Offensive | Durability 1 |  | Apply 6 Burn to an enemy. Durability 1. |
+| Tempest | AAA | Rare | Utility | Spell |  | Gain 2 Random next turn. Self-Rearrange 1. |
+| Tempest Veil | AWA | Rare | Defensive | Spell |  | Gain 4 Lasting Shield. |
+| Thermal Burst | FFWF | Rare | Offensive | Spell |  | Remove 2 leftmost Essence of 2 enemies. |
+| Thieving Wind | AA? | Rare | Offensive | Spell |  | Steal 1 Essence from an enemy. |
+| Tidecaller | A?A | Rare | Utility | Spell |  | Infuse 1 Water. Infuse 1 Any Essence. |
 | Tsunami Ward | WWW | Rare | Defensive | Spell |  | Gain 6 Shield. |
-| Twin Comets | FF | Rare | Offensive | Spell |  | Burn 2 on 2 different enemies. |
-| Undercurrent | WW | Rare | Offensive | Spell |  | Remove the 2 leftmost Essence of an enemy. Next turn you gain the removed Essence (Conjured). |
-| Unshackle | WAFW | Rare | Defensive | Spell |  | Break one Lock on your spells. |
-| Venom Coat | AAF | Rare | Offensive | Power |  | All enemies your Release hits get Poison 1. |
-| Wellspring Rite | ?W | Rare | Defensive | Spell |  | Heal 4 HP. |
-| Whirlpool | AWA | Rare | Offensive | Spell |  | Remove the rightmost Essence of all enemies. Weaken 1 on all enemies. |
-| Wild Flame | F? | Rare | Offensive | Spell |  | Burn 3 on an enemy. |
-| Wildfire Pact | F?FA | Rare | Offensive | Spell |  | Burn 2 on all enemies. |
-| Abyssal Tide | WWFWW | Legendary | Offensive | Spell |  | Remove the 3 leftmost Essence of all enemies. Next turn you gain the removed Essence (Conjured). Freeze 1 on all enemies. |
-| Annihilate | FWA?WF | Legendary | Offensive | Fleeting |  | Annihilate 1 kind of Essence on all enemies. |
-| Avatar of Flame | FFFFA | Legendary | Offensive | Power |  | All enemies your Release hits get Burn 1. |
-| Blight Wind | WAA | Legendary | Offensive | Spell | 2 | Poison 1 on all enemies. Cooldown 2. |
-| Calm Waters | W | Legendary | Defensive | Anti-spell |  | Gain 10 Shield. Heal 4 HP. |
-| Convergence | AFWFA | Legendary | Offensive | Spell |  | Echo. Amplify 1. |
-| Deep Freeze | W?W | Legendary | Defensive | Spell |  | Freeze 2 on all enemies. Gain 4 Shield. |
-| Deluge | WWWWW | Legendary | Defensive | Spell |  | Gain 14 Shield. Heal 10 HP. Freeze 2 on all enemies. |
-| Echoed Voice | AWA | Legendary | Utility | Power |  | The first spell you cast each turn is cast twice. |
-| Elemental Fury | FWA?F | Legendary | Offensive | Spell |  | Remove 6 random Essence from random enemies. Heal 4 HP. |
-| Eye of the Storm | AWFA | Legendary | Defensive | Spell |  | Freeze 2 on all enemies. |
-| Frozen Tomb | WWAW | Legendary | Offensive | Spell | 2 | Freeze 2 on an enemy. Expose 2. Poison 2 on an enemy. Cooldown 2. |
-| Heaven's Gale | AAWAA | Legendary | Defensive | Spell |  | Conjure 3 spells. Gain 1 Aegis. |
-| Hurricane | AAAA | Legendary | Offensive | Spell |  | Remove the 3 rightmost Essence of all enemies. |
-| Maelstrom Grasp | WWAWW | Legendary | Offensive | Spell |  | Steal 2 Essence of your choice from an enemy. Gain 4 Shield. |
-| Meteor | FFFF | Legendary | Offensive | Spell |  | Remove the 5 rightmost Essence of an enemy. |
-| Misdirection | AWAW | Legendary | Defensive | Spell |  | Redirect the intent of an enemy. Gain 1 Aegis. |
-| Open Grimoire | WFWA | Legendary | Utility | Power |  | Add 2 random spells from your spellbook to your active row for this fight. |
-| Phoenix Feather | F? | Legendary | Offensive | Spell |  | Heal 6 HP. Burn 2 on all enemies. |
-| Raigeki | AAF | Legendary | Offensive | Spell |  | Snipe 3. |
-| Rainbow Bridge | FWA | Legendary | Defensive | Spell |  | Conjure 2 spells. Gain 3 random Essence next turn. Heal 3 HP. |
-| Sky Sovereign | AAWA | Legendary | Offensive | Spell |  | Conjure 2 spells. Infuse 2 random Essence into the chant. Amplify 1. |
-| Smolder | F | Legendary | Offensive | Anti-spell |  | Remove the 3 rightmost Essence of all enemies. Burn 4 on all enemies. |
-| Solar Flare | FFAFF | Legendary | Offensive | Spell |  | Remove the 3 rightmost Essence of all enemies. Burn 3 on all enemies. |
-| Steam Engine | FWFW | Legendary | Offensive | Spell |  | Echo. |
-| Steam Titan | FWFW | Legendary | Offensive | Spell |  | Remove the 3 rightmost Essence of an enemy. Gain 5 Shield. Burn 2 on an enemy. |
-| Still Air | A | Legendary | Defensive | Anti-spell |  | Gain 1 Aegis. Heal 6 HP. |
-| Supernova | FFFFF | Legendary | Offensive | Spell |  | Remove the 3 rightmost Essence of all enemies. Burn 4 on all enemies. |
-| Tidal Wave | WWWW | Legendary | Offensive | Spell |  | Remove the 2 leftmost Essence of all enemies. Weaken 3 on all enemies. |
-| Tide of Ages | W?A?W | Legendary | Defensive | Spell |  | Heal 8 HP. Cleanse all your debuffs. Gain 4 Shield. |
-| Triune Chant | FAWAF | Legendary | Utility | Spell |  | Duplicate 2. |
-| Witch Fire | F?F | Legendary | Offensive | Spell |  | Burn 4 on an enemy. |
-| World Tree's Blessing | WAWAW | Legendary | Defensive | Power |  | At the start of each of your turns: heal 7 HP; gain 3 random Essence. |
-| World's End | FWA?AW | Legendary | Offensive | Fleeting | 2 | Remove the 5 rightmost Essence of all enemies. Burn 3 on all enemies. Poison 2 on all enemies. Cooldown 2. |
+| Twin Comets | FF | Rare | Offensive | Spell |  | Apply 2 Burn to 2 different enemies. |
+| Undercurrent | WW | Rare | Offensive | Durability 1 |  | Steal up to 2 Water from an enemy. Durability 1. |
+| Vacuum | AAF | Rare | Offensive | Spell |  | Remove up to 3 Air from an enemy. |
+| Venom Coat | AAF | Rare | Utility | Durability 1 |  | Each time you're hit until your next turn, apply 1 Poison to all enemies. Durability 1. |
+| Water Prison | WWW | Rare | Defensive | Power |  | Each turn: gain 5 Lasting Shield. Your chant holds at most 6 Essence. |
+| Wellspring Rite | ?W | Rare | Defensive | Spell |  | Heal 3 HP. |
+| Whirlpool | AWA | Rare | Offensive | Durability 3 |  | Remove all enemies' rightmost Essence. Apply 1 Weaken to all enemies. Durability 3. |
+| Wild Flame | F? | Rare | Offensive | Spell |  | Apply 3 Burn to an enemy. |
+| Annihilate | FWA?WF | Legendary | Offensive | Durability 1 |  | Annihilate 1 kind of Essence on all enemies. Durability 1. |
+| Aole's Avatar | WAWAW | Legendary | Utility | Power |  | Each turn: gain 1 Fire; gain 1 Water; gain 1 Air; lose 3 HP. |
+| Aole's Love | FWA | Legendary | Utility | Power |  | Pick 1 Essence. Gain 1 of that Essence each turn. |
+| Blight Wind | WAA | Legendary | Offensive | Spell | 1 | Apply 1 Poison to all enemies. Cooldown 1. |
+| Calm Waters | W | Legendary | Defensive | Anti-spell |  | Gain 5 Lasting Shield. |
+| Chaos Meteor | FFAF | Legendary | Offensive | Spell | 2 | Apply 1 Burn to a random enemy, 5 times. Cooldown 2. |
+| Daedalus's Perpetual Motion | FAAF | Legendary | Offensive | Power |  | Each turn: snipe 1. |
+| Daedalus's Trigger | FAF | Legendary | Offensive | Power |  | Your Snipes remove 1 more. Snipe 1. |
+| Damnation | ?W?F | Legendary | Offensive | Durability 1 |  | Apply 3 Weaken to an enemy. Apply 2 Dazed to it. Apply 1 Poison to it. Durability 1. |
+| Deafening Blast | WAFW | Legendary | Offensive | Spell | 2 | Disarm all enemies. Remove all enemies' leftmost Essence. Cooldown 2. |
+| Deep Freeze | W?W | Legendary | Defensive | Durability 1 |  | Apply 2 Freeze to all enemies. Gain 10 Lasting Shield. Durability 1. |
+| Desperate Measure | AFA | Legendary | Offensive | Spell |  | Apply 6 Burn to an enemy. Heal 6 HP. Gain 6 max HP. All your spells have Durability 1 this fight. |
+| Disturbance | FWA | Legendary | Utility | Power |  | Whenever an Essence is added to or removed from your chant after you Chant, remove the same Essence from a random enemy. |
+| Dranor's Avatar | FFFFA | Legendary | Offensive | Power |  | Your Release applies 1 Burn to every enemy it hits. Lose 15 HP. |
+| Echoed Voice | AWAF | Legendary | Utility | Power |  | Your first spell each turn is cast twice. |
+| Elemental Fury | F?A?W | Legendary | Offensive | Spell |  | Remove 1 random enemy Essence, 6 times. |
+| Frozen Tomb | WWAW | Legendary | Offensive | Spell | 2 | Apply 2 Freeze to an enemy. Repaint 2 Random. Apply 2 Poison to it. Cooldown 2. |
+| Heaven's Gale | AAWA | Legendary | Defensive | Spell |  | Conjure 3 spells. Gain 1 Evasion. |
+| Hurricane | AAAA | Legendary | Offensive | Spell |  | Remove all enemies' 3 rightmost Essence. |
+| Jaeler's Final Touch | WWA?WW | Legendary | Offensive | Spell |  | Steal 3 Essence from an enemy. |
+| Jaeler's Hand | WAW? | Legendary | Offensive | Spell |  | Instant Steal 1. |
+| Jaeler's Knife | AAAFF | Legendary | Utility | Power |  | Each time you Chant: Instant Steal 1. |
+| Meteor | FFFF | Legendary | Offensive | Spell |  | Remove an enemy's 5 rightmost Essence. |
+| Misdirection | AWAW | Legendary | Defensive | Spell |  | Gain 1 Evasion. |
+| Moonlight on a Still Lake | WW | Legendary | Utility | Spell |  | Duplicate 2. |
+| Open Grimoire | WFWA | Legendary | Utility | Power |  | Add 2 random spells from your spellbook to this fight. |
+| Paintress | WWWW | Legendary | Utility | Spell |  | Wild Repaint 5 Random. |
+| Phoenix Feather | F? | Legendary | Offensive | Spell |  | Apply 2 Burn to an enemy. |
+| Rainbow Bridge | FWA | Legendary | Utility | Spell |  | Conjure 2 spells. Gain 3 Random next turn. |
+| Sky Sovereign | AAWA | Legendary | Utility | Spell |  | Conjure 2 spells. Infuse 2 Random. |
+| Smolder | FFFFF | Legendary | Offensive | Anti-spell | 3 | Remove all enemies' 3 rightmost Essence. Apply 4 Burn to all enemies. Cooldown 3. |
+| Solar Flare | FFAFF | Legendary | Offensive | Durability 2 |  | Remove all enemies' 3 rightmost Essence. Apply 3 Burn to all enemies. Durability 2. |
+| Steam Engine | FWFW | Legendary | Utility | Power |  | Each time you apply Burn to an enemy, gain 2 Shield. |
+| Steam Titan | FWFW | Legendary | Offensive | Spell |  | Remove an enemy's 3 rightmost Essence. Gain 5 Shield. Apply 2 Burn to it. |
+| Still Air | A | Legendary | Defensive | Anti-spell |  | Gain 1 Evasion. Heal 6 HP. Durability 1. |
+| The Flood | WWWWW | Legendary | Utility | Spell |  | Remove every Fire from an enemy. |
+| Tornado | AW | Legendary | Defensive | Durability 1 |  | Disarm all enemies for 2 turns. Durability 1. |
+| Unholy Fire | F?F | Legendary | Offensive | Spell |  | Apply 4 Burn to an enemy. Lose 2 HP. |
+| World's End | FWA?AW | Legendary | Offensive | Durability 1 |  | Remove all enemies' 5 rightmost Essence. Apply 3 Burn to all enemies. Apply 2 Poison to all enemies. Durability 1. |
+| You Shall Not Pass | WAWA | Legendary | Defensive | Spell |  | Heal 5 HP. Gain 5 Shield. |
+| Forbidden Knowledge | FFFFFF | Unique | Utility | Durability 1 |  | It does nothing. Durability 1. |
+| Forbidden Knowledge | WWWWWW | Unique | Utility | Durability 1 |  | It does nothing. Durability 1. |
+| Forbidden Knowledge | AAAAAA | Unique | Utility | Durability 1 |  | It does nothing. Durability 1. |

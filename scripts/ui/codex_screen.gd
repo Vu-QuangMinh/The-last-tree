@@ -51,6 +51,14 @@ func _ready() -> void:
 			grid.add_child(_entry(id))
 		for i in (3 - ids.size() % 3) % 3:
 			grid.add_child(Control.new())
+	# every artifact you've unlocked (the Magic Box can be played here)
+	var arts: Array = Artifacts.ALL.filter(func(x): return x.id in SaveManager.unlocked_artifacts())
+	for i in 3:
+		grid.add_child(UiTheme.label("Artifacts" if i == 0 else "", 24, UiTheme.ACCENT))
+	for a in arts:
+		grid.add_child(_artifact_entry(a))
+	for i in (3 - arts.size() % 3) % 3:
+		grid.add_child(Control.new())
 
 
 func _entry(id: String) -> Control:
@@ -92,6 +100,93 @@ func _entry(id: String) -> Control:
 	t.custom_minimum_size = Vector2(420, 0)
 	v.add_child(t)
 	return p
+
+
+func _artifact_entry(a: Dictionary) -> Control:
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", UiTheme.panel_box(0.9, 10))
+	p.custom_minimum_size = Vector2(600, 150)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	p.add_child(v)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 10)
+	var art := UiSkin.artifact_icon(a.id, 40)
+	head.add_child(art if art != null else UiTheme.label(String(a.get("icon", "◆")), 30, Color.WHITE))
+	head.add_child(UiTheme.label(a.name, 22, Color(1, 0.85, 0.5)))
+	v.add_child(head)
+	var d := UiTheme.label(a.desc, 15, UiTheme.MUTED)
+	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	d.custom_minimum_size = Vector2(560, 0)
+	v.add_child(d)
+	if a.has("flavor"):
+		var fl := UiTheme.label("\"%s\"" % a.flavor, 15, Color(0.8, 0.75, 0.65))
+		fl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		fl.custom_minimum_size = Vector2(560, 0)
+		v.add_child(fl)
+	if a.id == "magic_box":
+		v.add_child(_magic_box())
+	return p
+
+
+## The Magic Box: six coloured buttons, each a note. Play the opening of Fur Elise on them and a row of six coloured
+## squares appears under it (the colours in the order the tune first plays them), and stays.
+const BOX_KEYS := [["red", Color(0.85, 0.2, 0.18), "B"], ["green", Color(0.25, 0.7, 0.3), "E"], ["white", Color(0.95, 0.95, 0.92), "A"],
+	["black", Color(0.08, 0.08, 0.1), "Ds"], ["blue", Color(0.2, 0.45, 0.9), "C"], ["yellow", Color(0.95, 0.82, 0.2), "D"]]
+const BOX_TUNE := ["E", "Ds", "E", "Ds", "E", "B", "D", "C", "A"]  # (the first bar of Fur Elise)
+var _box_played: Array = []
+
+
+func _magic_box() -> Control:
+	var col := VBoxContainer.new()
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	col.add_child(row)
+	var code := HBoxContainer.new()
+	code.add_theme_constant_override("separation", 4)
+	col.add_child(code)
+	var show_code := func() -> void:
+		for c in code.get_children():
+			c.queue_free()
+		var order: Array = []
+		for n in BOX_TUNE:
+			if not (n in order):
+				order.append(n)
+		for n in order:
+			for k in BOX_KEYS:
+				if k[2] == n:
+					var sq := ColorRect.new()
+					sq.color = k[1]
+					sq.custom_minimum_size = Vector2(26, 26)
+					code.add_child(sq)
+	if SaveManager.setting("box_solved", false):
+		show_code.call()
+	for k in BOX_KEYS:
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(52, 34)
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = k[1]
+		sb.set_corner_radius_all(6)
+		sb.set_border_width_all(2)
+		sb.border_color = Color(0.25, 0.18, 0.1)
+		b.add_theme_stylebox_override("normal", sb)
+		var hov := sb.duplicate()
+		hov.bg_color = (k[1] as Color).lightened(0.2)
+		b.add_theme_stylebox_override("hover", hov)
+		b.add_theme_stylebox_override("pressed", hov)
+		b.tooltip_text = k[0]
+		var note: String = k[2]
+		b.pressed.connect(func():
+			Audio.play("box_note_" + note)
+			_box_played.append(note)
+			if _box_played.size() > BOX_TUNE.size():
+				_box_played.pop_front()
+			if _box_played == BOX_TUNE and not SaveManager.setting("box_solved", false):
+				SaveManager.set_setting("box_solved", true)
+				Audio.play("discovery_unlock")
+				show_code.call())
+		row.add_child(b)
+	return col
 
 
 func _unhandled_input(ev: InputEvent) -> void:

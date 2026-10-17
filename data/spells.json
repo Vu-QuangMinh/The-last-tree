@@ -14,25 +14,13 @@
      "op": "burn",
      "n": 1,
      "target": "target"
+    },
+    {
+     "op": "sacrifice",
+     "hp": 2
     }
    ],
    "flavor": "A single spark that won't go out.",
-   "rarity": "common"
-  },
-  {
-   "id": "spark",
-   "name": "Spark",
-   "pattern": "F",
-   "effects": [
-    {
-     "op": "strike",
-     "from": "right",
-     "n": 1,
-     "target": "target",
-     "min_hp": 4
-    }
-   ],
-   "flavor": "Only big things catch.",
    "rarity": "common"
   },
   {
@@ -42,7 +30,11 @@
    "effects": [
     {
      "op": "expose",
-     "n": 1
+     "n": 2
+    },
+    {
+     "op": "sacrifice",
+     "hp": 2
     }
    ],
    "flavor": "A fingertip of paint, right on the weak spot.",
@@ -62,28 +54,14 @@
    "rarity": "common"
   },
   {
-   "id": "mist",
-   "name": "Mist",
-   "pattern": "W",
-   "effects": [
-    {
-     "op": "heal",
-     "n": 1
-    }
-   ],
-   "flavor": "Cool on the skin.",
-   "rarity": "common"
-  },
-  {
    "id": "ripple",
    "name": "Ripple",
    "pattern": "W",
    "effects": [
     {
-     "op": "convert",
-     "pos": "last",
-     "to": "W",
-     "target": "target"
+     "op": "self_repaint",
+     "n": 2,
+     "to": "W"
     }
    ],
    "flavor": "The end of it turns to water.",
@@ -92,11 +70,12 @@
   {
    "id": "chill",
    "name": "Chill",
-   "pattern": "W",
+   "pattern": "WW",
    "effects": [
     {
      "op": "shatter",
-     "target": "target"
+     "target": "target",
+     "shield_per": 3
     }
    ],
    "flavor": "Cold makes armour brittle.",
@@ -123,7 +102,7 @@
    "effects": [
     {
      "op": "move",
-     "n": 1,
+     "n": 2,
      "target": "target"
     }
    ],
@@ -143,7 +122,7 @@
    ],
    "flavor": "Something foul rides the breeze.",
    "rarity": "common",
-   "cooldown": 1
+   "durability": 1
   },
   {
    "id": "fire_ball",
@@ -162,6 +141,26 @@
    "rarity": "common"
   },
   {
+   "id": "coup_de_grace",
+   "name": "Coup de Grace",
+   "pattern": "AA",
+   "effects": [
+    {
+     "op": "random_hit",
+     "n": 1,
+     "target": "target"
+    },
+    {
+     "op": "execute",
+     "max": 2,
+     "target": "target",
+     "then": true
+    }
+   ],
+   "flavor": "A quick cut, and a quicker end.",
+   "rarity": "common"
+  },
+  {
    "id": "arcane_barrage",
    "name": "Arcane Barrage",
    "pattern": "WFA",
@@ -175,28 +174,15 @@
    "rarity": "common"
   },
   {
-   "id": "twin_flames",
-   "name": "Twin Flames",
-   "pattern": "FF",
-   "effects": [
-    {
-     "op": "burn",
-     "n": 2,
-     "target": "target"
-    }
-   ],
-   "flavor": "Two fires, one foe.",
-   "rarity": "common"
-  },
-  {
    "id": "flare",
    "name": "Flare",
    "pattern": "FF",
    "effects": [
     {
-     "op": "strike",
-     "from": "left",
+     "op": "burn",
      "n": 1,
+     "per_chant": "F",
+     "per": 2,
      "target": "target"
     }
    ],
@@ -270,7 +256,7 @@
      "from": "right",
      "n": 1,
      "target": "all",
-     "min_hp": 4
+     "min_hp": 3
     }
    ],
    "flavor": "Shaves the big ones down to size.",
@@ -283,13 +269,13 @@
    "effects": [
     {
      "op": "poison",
-     "n": 1,
+     "n": 2,
      "target": "target"
     }
    ],
    "flavor": "A choking cloud settles on it.",
    "rarity": "common",
-   "cooldown": 1
+   "durability": 1
   },
   {
    "id": "gust",
@@ -298,8 +284,12 @@
    "effects": [
     {
      "op": "pluck",
-     "n": 1,
+     "n": 2,
      "target": "target"
+    },
+    {
+     "op": "vulnerable",
+     "n": 2
     }
    ],
    "flavor": "A precise gust plucks one piece away.",
@@ -350,12 +340,11 @@
   },
   {
    "id": "phase_shift",
-   "name": "Phase Shift",
-   "pattern": "FA",
+   "name": "All In",
+   "pattern": "F",
    "effects": [
     {
-     "op": "ethereal",
-     "target": "target"
+     "op": "infuse_upcoming"
     }
    ],
    "flavor": "Untouchable by chants, fragile to magic.",
@@ -422,10 +411,9 @@
    "pattern": "FW",
    "effects": [
     {
-     "op": "convert",
-     "pos": "last",
-     "to": "F",
-     "target": "target"
+     "op": "wild_repaint",
+     "n": 3,
+     "to": "F"
     }
    ],
    "flavor": "Water at the end turns to fire.",
@@ -439,11 +427,15 @@
     {
      "op": "ethereal",
      "target": "self"
+    },
+    {
+     "op": "vulnerable",
+     "n": 3
     }
    ],
-   "fleeting": true,
    "flavor": "Blades pass through you. Curses don't.",
-   "rarity": "common"
+   "rarity": "common",
+   "durability": 1
   },
   {
    "id": "undertow",
@@ -470,24 +462,6 @@
     }
    ],
    "flavor": "Soft and steady.",
-   "rarity": "common"
-  },
-  {
-   "id": "refresh",
-   "name": "Refresh",
-   "pattern": "AW",
-   "effects": [
-    {
-     "op": "cleanse"
-    },
-    {
-     "op": "draw",
-     "n": 1,
-     "when": "next",
-     "el": "W"
-    }
-   ],
-   "flavor": "Wash the frost off.",
    "rarity": "common"
   },
   {
@@ -518,7 +492,7 @@
    ],
    "flavor": "Frozen mid-swing.",
    "rarity": "rare",
-   "cooldown": 1
+   "durability": 2
   },
   {
    "id": "tempest",
@@ -549,9 +523,9 @@
      "target": "all"
     }
    ],
-   "fleeting": true,
    "flavor": "Pick one. It stops existing.",
-   "rarity": "legendary"
+   "rarity": "legendary",
+   "durability": 1
   },
   {
    "id": "thermal_burst",
@@ -574,8 +548,8 @@
    "pattern": "WFW",
    "effects": [
     {
-     "op": "weak",
-     "turns": 1,
+     "op": "daze",
+     "n": 1,
      "target": "all"
     },
     {
@@ -588,7 +562,7 @@
   },
   {
    "id": "firestorm",
-   "name": "Firestorm",
+   "name": "Cataclysm",
    "pattern": "AF?FA",
    "effects": [
     {
@@ -598,7 +572,8 @@
     }
    ],
    "flavor": "Burning rain on all of them.",
-   "rarity": "rare"
+   "rarity": "rare",
+   "cooldown": 2
   },
   {
    "id": "kindling_wind",
@@ -628,7 +603,8 @@
     }
    ],
    "flavor": "Step between the drops.",
-   "rarity": "rare"
+   "rarity": "rare",
+   "durability": 2
   },
   {
    "id": "whirlpool",
@@ -648,7 +624,8 @@
     }
    ],
    "flavor": "Spins them off balance.",
-   "rarity": "rare"
+   "rarity": "rare",
+   "durability": 3
   },
   {
    "id": "searing_mist",
@@ -667,14 +644,19 @@
   },
   {
    "id": "boiling_tide",
-   "name": "Boiling Tide",
+   "name": "Against the Tide",
    "pattern": "WWF",
    "effects": [
     {
-     "op": "purge",
-     "el": "W",
+     "op": "random_hit",
+     "n": 2,
+     "target": "target"
+    },
+    {
+     "op": "weak",
+     "turns": 1,
      "target": "target",
-     "n": 3
+     "if_attacking": true
     }
    ],
    "flavor": "Two of its waters boil away.",
@@ -682,7 +664,7 @@
   },
   {
    "id": "gale_force",
-   "name": "Gale Force",
+   "name": "Vacuum",
    "pattern": "AAF",
    "effects": [
     {
@@ -730,7 +712,7 @@
   },
   {
    "id": "geyser",
-   "name": "Splatter",
+   "name": "RMK",
    "pattern": "WFA",
    "effects": [
     {
@@ -767,7 +749,7 @@
    ],
    "flavor": "Sickness on the wind, for everyone.",
    "rarity": "legendary",
-   "cooldown": 2
+   "cooldown": 1
   },
   {
    "id": "backdraft",
@@ -779,14 +761,11 @@
      "from": "right",
      "n": 3,
      "target": "target"
-    },
-    {
-     "op": "overload",
-     "n": 1
     }
    ],
    "flavor": "Big blast, slow recovery.",
-   "rarity": "rare"
+   "rarity": "rare",
+   "durability": 2
   },
   {
    "id": "meteor",
@@ -805,19 +784,13 @@
   },
   {
    "id": "tidal_wave",
-   "name": "Tidal Wave",
+   "name": "Paintress",
    "pattern": "WWWW",
    "effects": [
     {
-     "op": "strike",
-     "from": "left",
-     "n": 2,
-     "target": "all"
-    },
-    {
-     "op": "weak",
-     "turns": 3,
-     "target": "all"
+     "op": "wild_repaint",
+     "n": 5,
+     "to": "?"
     }
    ],
    "flavor": "Knock the leftmost off everything.",
@@ -844,12 +817,14 @@
    "pattern": "FWFW",
    "effects": [
     {
-     "op": "echo",
-     "n": 1
+     "op": "passive",
+     "key": "shield_per_burn",
+     "n": 2
     }
    ],
    "flavor": "The chant strikes again after your spells.",
-   "rarity": "legendary"
+   "rarity": "legendary",
+   "power": true
   },
   {
    "id": "aurora",
@@ -873,50 +848,26 @@
   },
   {
    "id": "phoenix_rite",
-   "name": "Phoenix Rite",
+   "name": "Jaeler's Boots",
    "pattern": "FAFA",
    "effects": [
     {
      "op": "aegis",
      "n": 1
-    },
-    {
-     "op": "heal",
-     "n": 5
     }
    ],
    "flavor": "Rise from the next blow untouched.",
    "rarity": "rare"
   },
   {
-   "id": "eye_of_the_storm",
-   "name": "Eye of the Storm",
-   "pattern": "AWFA",
-   "effects": [
-    {
-     "op": "freeze",
-     "turns": 2,
-     "target": "all"
-    }
-   ],
-   "flavor": "For one moment, everything stops.",
-   "rarity": "legendary"
-  },
-  {
    "id": "supernova",
-   "name": "Supernova",
-   "pattern": "FFFFF",
+   "name": "The Flood",
+   "pattern": "WWWWW",
    "effects": [
     {
-     "op": "strike",
-     "from": "right",
-     "n": 3,
-     "target": "all"
-    },
-    {
-     "op": "burn",
-     "n": 4,
-     "target": "all"
+     "op": "purge_all",
+     "el": "F",
+     "target": "target"
     }
    ],
    "flavor": "A star dies on the battlefield.",
@@ -924,42 +875,28 @@
   },
   {
    "id": "deluge",
-   "name": "Deluge",
-   "pattern": "WWWWW",
+   "name": "Damnation",
+   "pattern": "?W?F",
    "effects": [
     {
-     "op": "shield",
-     "n": 14
+     "op": "weak",
+     "turns": 3,
+     "target": "target"
     },
     {
-     "op": "heal",
-     "n": 10
+     "op": "daze",
+     "n": 2,
+     "target": "target"
     },
     {
-     "op": "freeze",
-     "turns": 2,
-     "target": "all"
+     "op": "poison",
+     "n": 1,
+     "target": "target"
     }
    ],
    "flavor": "The flood answers.",
-   "rarity": "legendary"
-  },
-  {
-   "id": "convergence",
-   "name": "Convergence",
-   "pattern": "AFWFA",
-   "effects": [
-    {
-     "op": "echo",
-     "n": 1
-    },
-    {
-     "op": "amplify",
-     "n": 1
-    }
-   ],
-   "flavor": "All three Essence sing as one.",
-   "rarity": "legendary"
+   "rarity": "legendary",
+   "durability": 1
   },
   {
    "id": "clear_sight",
@@ -969,6 +906,10 @@
     {
      "op": "cleanse",
      "what": "blind"
+    },
+    {
+     "op": "cleanse",
+     "what": "confuse"
     }
    ],
    "flavor": "A flash of light burns the fog away.",
@@ -982,6 +923,13 @@
     {
      "op": "cleanse",
      "what": "bleed"
+    },
+    {
+     "op": "heal",
+     "n": 1
+    },
+    {
+     "op": "thorn_guard"
     }
    ],
    "flavor": "Wash it, wrap it, keep going.",
@@ -990,19 +938,21 @@
   {
    "id": "borrowed_breath",
    "name": "Borrowed Breath",
-   "pattern": "",
+   "pattern": "A",
    "effects": [
     {
-     "op": "infuse",
-     "el": "A"
+     "op": "draw",
+     "n": 1,
+     "when": "next",
+     "el": "random"
     }
    ],
    "flavor": "A breath that isn't yours to keep.",
-   "rarity": "rare"
+   "rarity": "common"
   },
   {
    "id": "kindle",
-   "name": "Kindle",
+   "name": "Pyromaniac",
    "pattern": "FFF",
    "effects": [
     {
@@ -1023,11 +973,13 @@
   {
    "id": "siphon",
    "name": "Siphon",
-   "pattern": "A",
+   "pattern": "AWAWA",
    "effects": [
     {
-     "op": "siphon",
-     "n": 2,
+     "op": "steal",
+     "n": 1,
+     "el": "any",
+     "into": "chant",
      "target": "target"
     }
    ],
@@ -1040,9 +992,9 @@
    "pattern": "FA",
    "effects": [
     {
-     "op": "infuse",
-     "el": "F",
-     "n": 2
+     "op": "conjure",
+     "n": 1,
+     "kind": "damage"
     }
    ],
    "flavor": "Two flames, borrowed for a turn.",
@@ -1087,8 +1039,8 @@
    "pattern": "AW",
    "effects": [
     {
-     "op": "cleanse",
-     "what": "silence"
+     "op": "unbind",
+     "heal_per": 2
     }
    ],
    "flavor": "Your voice returns.",
@@ -1096,12 +1048,12 @@
   },
   {
    "id": "thorn_mantle",
-   "name": "Thorn Mantle",
-   "pattern": "FA",
+   "name": "EleMantle",
+   "pattern": "WFA",
    "effects": [
     {
      "op": "passive",
-     "key": "thorns",
+     "key": "thorns_on_hit",
      "n": 1
     }
    ],
@@ -1130,9 +1082,15 @@
    "pattern": "FF",
    "effects": [
     {
+     "op": "pluck",
+     "n": 1,
+     "target": "target"
+    },
+    {
      "op": "execute",
      "max": 3,
-     "target": "target"
+     "target": "target",
+     "then": true
     }
    ],
    "flavor": "Small flames are easy to pinch.",
@@ -1144,10 +1102,9 @@
    "pattern": "WF",
    "effects": [
     {
-     "op": "insert",
-     "el": "W",
-     "pos": "first",
-     "target": "target"
+     "op": "wild_repaint",
+     "n": 2,
+     "to": "W"
     }
    ],
    "flavor": "Plant water at its leftmost end, then chant it away.",
@@ -1178,7 +1135,7 @@
     },
     {
      "op": "draw",
-     "n": 4,
+     "n": 3,
      "when": "now",
      "el": "random"
     }
@@ -1197,7 +1154,8 @@
     }
    ],
    "flavor": "The next blow simply stops.",
-   "rarity": "common"
+   "rarity": "common",
+   "cooldown": 2
   },
   {
    "id": "scatter",
@@ -1206,11 +1164,8 @@
    "effects": [
     {
      "op": "shield",
-     "n": 3
-    },
-    {
-     "op": "thorns",
-     "n": 1
+     "n": 3,
+     "lasting": true
     }
    ],
    "flavor": "A wall of wind that bites back.",
@@ -1222,8 +1177,9 @@
    "pattern": "WW",
    "effects": [
     {
-     "op": "expose",
-     "n": 2
+     "op": "self_repaint",
+     "n": 2,
+     "to": "?"
     }
    ],
    "flavor": "A quick mist of colour, and they're anyone's.",
@@ -1235,11 +1191,12 @@
    "pattern": "FW",
    "effects": [
     {
-     "op": "copy_last"
+     "op": "echo_next"
     }
    ],
    "flavor": "Do that again.",
-   "rarity": "rare"
+   "rarity": "rare",
+   "cooldown": 2
   },
   {
    "id": "riptide",
@@ -1253,7 +1210,7 @@
     },
     {
      "op": "weak",
-     "turns": 1,
+     "turns": 2,
      "target": "target"
     }
    ],
@@ -1262,7 +1219,7 @@
   },
   {
    "id": "trade_winds",
-   "name": "Trade Winds",
+   "name": "Aole's Blessing",
    "pattern": "AAA",
    "effects": [
     {
@@ -1270,7 +1227,7 @@
      "effects": [
       {
        "op": "draw",
-       "n": 2,
+       "n": 1,
        "when": "now",
        "el": "random"
       }
@@ -1283,7 +1240,7 @@
   },
   {
    "id": "rising_tide",
-   "name": "Rising Tide",
+   "name": "Water Prison",
    "pattern": "WWW",
    "effects": [
     {
@@ -1291,9 +1248,15 @@
      "effects": [
       {
        "op": "shield",
-       "n": 4
+       "n": 5,
+       "lasting": true
       }
      ]
+    },
+    {
+     "op": "passive",
+     "key": "chant_max",
+     "n": 6
     }
    ],
    "flavor": "The water rises around you every turn.",
@@ -1310,7 +1273,7 @@
      "effects": [
       {
        "op": "burn",
-       "n": 2,
+       "n": 1,
        "target": "random"
       }
      ]
@@ -1326,19 +1289,18 @@
    "pattern": "AAF",
    "effects": [
     {
-     "op": "passive",
-     "key": "strike_poison",
+     "op": "poison_retort",
      "n": 1
     }
    ],
    "flavor": "Every enemy your chant touches is poisoned.",
-   "power": true,
-   "rarity": "rare"
+   "rarity": "rare",
+   "durability": 1
   },
   {
    "id": "echo_chamber",
    "name": "Echoed Voice",
-   "pattern": "AWA",
+   "pattern": "AWAF",
    "effects": [
     {
      "op": "passive",
@@ -1352,7 +1314,7 @@
   },
   {
    "id": "attunement",
-   "name": "Attunement",
+   "name": "Aole's Love",
    "pattern": "FWA",
    "effects": [
     {
@@ -1363,7 +1325,7 @@
    ],
    "flavor": "Choose an Essence; it comes to you every turn.",
    "power": true,
-   "rarity": "rare"
+   "rarity": "legendary"
   },
   {
    "id": "frailty",
@@ -1391,7 +1353,8 @@
    "effects": [
     {
      "op": "cleanse",
-     "what": "all"
+     "what": "all",
+     "lasting_per": 4
     }
    ],
    "flavor": "Every curse washed away.",
@@ -1423,28 +1386,32 @@
    "pattern": "WFF",
    "effects": [
     {
-     "op": "convert",
-     "pos": "first2",
-     "to": "F",
-     "target": "target"
+     "op": "temp_seal"
     }
    ],
    "flavor": "Its two leftmost Essence become Fire.",
-   "rarity": "rare"
+   "rarity": "rare",
+   "durability": 1
   },
   {
    "id": "soul_siphon",
-   "name": "Soul Siphon",
-   "pattern": "AFA",
+   "name": "Devil's Hand",
+   "pattern": "AFA?",
    "effects": [
     {
-     "op": "siphon",
-     "n": 3,
+     "op": "steal",
+     "n": 2,
+     "el": "any",
      "target": "target"
+    },
+    {
+     "op": "sacrifice",
+     "hp": 5
     }
    ],
-   "flavor": "Pull its two leftmost Essence into your hand.",
-   "rarity": "rare"
+   "flavor": "Pull out a piece of its soul, and wear it tomorrow.",
+   "rarity": "rare",
+   "durability": 3
   },
   {
    "id": "last_rites",
@@ -1484,17 +1451,18 @@
   {
    "id": "stillness",
    "name": "Stillness",
-   "pattern": "WWWW",
+   "pattern": "?",
    "effects": [
     {
-     "op": "curse",
-     "key": "weak25",
+     "op": "weak",
+     "turns": 99,
      "target": "all"
     }
    ],
    "flavor": "Every enemy deals 25% less damage, for good.",
-   "power": true,
-   "rarity": "rare"
+   "rarity": "rare",
+   "anti": true,
+   "durability": 1
   },
   {
    "id": "pyromancy",
@@ -1502,12 +1470,17 @@
    "pattern": "FFFA",
    "effects": [
     {
-     "op": "passive",
-     "key": "strike_bonus",
-     "n": 1
+     "op": "each_turn",
+     "effects": [
+      {
+       "op": "burn",
+       "n": 1,
+       "target": "random"
+      }
+     ]
     }
    ],
-   "flavor": "Your spells tear out one Essence more.",
+   "flavor": "Every turn, something catches fire.",
    "power": true,
    "rarity": "rare"
   },
@@ -1516,10 +1489,6 @@
    "name": "Misdirection",
    "pattern": "AWAW",
    "effects": [
-    {
-     "op": "redirect",
-     "target": "target"
-    },
     {
      "op": "aegis",
      "n": 1
@@ -1530,41 +1499,32 @@
   },
   {
    "id": "storm_crown",
-   "name": "Storm Crown",
-   "pattern": "AAAF",
+   "name": "Jaeler's Knife",
+   "pattern": "AAAFF",
    "effects": [
     {
      "op": "passive",
-     "key": "refund_air",
+     "key": "steal_each_chant",
      "n": 1
     }
    ],
    "flavor": "A conjured Wind every turn.",
    "power": true,
-   "rarity": "rare"
-  },
-  {
-   "id": "unshackle",
-   "name": "Unshackle",
-   "pattern": "WAFW",
-   "effects": [
-    {
-     "op": "cleanse",
-     "what": "lock"
-    }
-   ],
-   "flavor": "Break one lock on your spells.",
-   "rarity": "rare"
+   "rarity": "legendary"
   },
   {
    "id": "avatar_of_flame",
-   "name": "Avatar of Flame",
+   "name": "Dranor's Avatar",
    "pattern": "FFFFA",
    "effects": [
     {
      "op": "passive",
      "key": "strike_burn",
      "n": 1
+    },
+    {
+     "op": "sacrifice",
+     "hp": 15
     }
    ],
    "flavor": "Every enemy your chant touches catches fire.",
@@ -1573,21 +1533,33 @@
   },
   {
    "id": "world_tree_blessing",
-   "name": "World Tree's Blessing",
+   "name": "Aole's Avatar",
    "pattern": "WAWAW",
    "effects": [
     {
      "op": "each_turn",
      "effects": [
       {
-       "op": "heal",
-       "n": 7
+       "op": "draw",
+       "n": 1,
+       "when": "now",
+       "el": "F"
       },
       {
        "op": "draw",
-       "n": 3,
+       "n": 1,
        "when": "now",
-       "el": "random"
+       "el": "W"
+      },
+      {
+       "op": "draw",
+       "n": 1,
+       "when": "now",
+       "el": "A"
+      },
+      {
+       "op": "sacrifice",
+       "hp": 3
       }
      ]
     }
@@ -1643,23 +1615,14 @@
     {
      "op": "duplicate",
      "times": 2
+    },
+    {
+     "op": "heal_per_extension",
+     "n": 3
     }
    ],
    "flavor": "One note, sung twice.",
    "rarity": "rare"
-  },
-  {
-   "id": "triune_chant",
-   "name": "Triune Chant",
-   "pattern": "FAWAF",
-   "effects": [
-    {
-     "op": "duplicate",
-     "times": 3
-    }
-   ],
-   "flavor": "Three voices, one word.",
-   "rarity": "legendary"
   },
   {
    "id": "grimoire",
@@ -1677,14 +1640,15 @@
   },
   {
    "id": "tide_thief",
-   "name": "Tide Thief",
-   "pattern": "WAW",
-   "rarity": "rare",
+   "name": "Jaeler's Hand",
+   "pattern": "WAW?",
+   "rarity": "legendary",
    "effects": [
     {
      "op": "steal",
      "n": 1,
      "el": "any",
+     "into": "chant",
      "target": "target"
     }
    ],
@@ -1693,13 +1657,13 @@
   {
    "id": "sirens_call",
    "name": "Siren's Call",
-   "pattern": "WA?W",
+   "pattern": "WA?AW",
    "rarity": "rare",
    "effects": [
     {
      "op": "steal",
      "n": 2,
-     "el": "F",
+     "el": "any",
      "target": "target"
     }
    ],
@@ -1707,35 +1671,18 @@
   },
   {
    "id": "maelstrom_grasp",
-   "name": "Maelstrom Grasp",
-   "pattern": "WWAWW",
+   "name": "Jaeler's Final Touch",
+   "pattern": "WWA?WW",
    "rarity": "legendary",
    "effects": [
     {
      "op": "steal",
-     "n": 2,
+     "n": 3,
      "el": "any",
      "target": "target"
-    },
-    {
-     "op": "shield",
-     "n": 4
     }
    ],
    "flavor": "The whirlpool swallows their strength and spits it out at your feet."
-  },
-  {
-   "id": "flicker",
-   "name": "Flicker",
-   "pattern": "F",
-   "effects": [
-    {
-     "op": "barrage",
-     "n": 1
-    }
-   ],
-   "flavor": "A spark that won't sit still.",
-   "rarity": "common"
   },
   {
    "id": "drizzle",
@@ -1784,25 +1731,12 @@
    "effects": [
     {
      "op": "draw",
-     "n": 2,
+     "n": 1,
      "when": "next",
      "el": "F"
     }
    ],
    "flavor": "Somewhere, something got singed.",
-   "rarity": "common"
-  },
-  {
-   "id": "dewdrop",
-   "name": "Dewdrop",
-   "pattern": "W",
-   "effects": [
-    {
-     "op": "cleanse",
-     "what": "all"
-    }
-   ],
-   "flavor": "Morning clears every eye.",
    "rarity": "common"
   },
   {
@@ -1830,7 +1764,8 @@
     }
    ],
    "flavor": "Grey snow that burns.",
-   "rarity": "rare"
+   "rarity": "rare",
+   "cooldown": 1
   },
   {
    "id": "summoning_word",
@@ -1848,7 +1783,7 @@
   {
    "id": "smolder",
    "name": "Smolder",
-   "pattern": "F",
+   "pattern": "FFFFF",
    "effects": [
     {
      "op": "strike",
@@ -1864,7 +1799,8 @@
    ],
    "flavor": "Never let it touch fire again, and it burns everything for you.",
    "rarity": "legendary",
-   "anti": true
+   "anti": true,
+   "cooldown": 3
   },
   {
    "id": "calm_waters",
@@ -1873,11 +1809,8 @@
    "effects": [
     {
      "op": "shield",
-     "n": 10
-    },
-    {
-     "op": "heal",
-     "n": 4
+     "n": 5,
+     "lasting": true
     }
    ],
    "flavor": "Not a drop. Not one.",
@@ -1900,7 +1833,8 @@
    ],
    "flavor": "Hold your breath, and the world holds its blows.",
    "rarity": "legendary",
-   "anti": true
+   "anti": true,
+   "durability": 1
   },
   {
    "id": "wisp",
@@ -1921,10 +1855,10 @@
    "pattern": "W",
    "effects": [
     {
-     "op": "strike",
-     "from": "right",
+     "op": "pluck",
      "n": 1,
-     "target": "random"
+     "el": "F",
+     "target": "target"
     }
    ],
    "flavor": "Mostly harmless. Mostly.",
@@ -1955,19 +1889,6 @@
     }
    ],
    "flavor": "Hiss, pop, and a cloud to hide in.",
-   "rarity": "common"
-  },
-  {
-   "id": "wildspark",
-   "name": "Wildspark",
-   "pattern": "FA",
-   "effects": [
-    {
-     "op": "barrage",
-     "n": 2
-    }
-   ],
-   "flavor": "Two sparks, no aim.",
    "rarity": "common"
   },
   {
@@ -2016,7 +1937,7 @@
    "effects": [
     {
      "op": "expose",
-     "n": 2
+     "n": 1
     }
    ],
    "flavor": "Hot paint, flicked off the brush.",
@@ -2047,9 +1968,8 @@
    "pattern": "AA",
    "effects": [
     {
-     "op": "rotate",
-     "dir": "left",
-     "target": "target"
+     "op": "wild_move",
+     "n": 1
     }
    ],
    "flavor": "Spin them round; front goes to the back.",
@@ -2076,7 +1996,7 @@
    "effects": [
     {
      "op": "heal",
-     "n": 4
+     "n": 3
     }
    ],
    "flavor": "Every spring starts somewhere.",
@@ -2115,13 +2035,15 @@
    "pattern": "WW",
    "effects": [
     {
-     "op": "siphon",
+     "op": "steal",
      "n": 2,
+     "el": "W",
      "target": "target"
     }
    ],
    "flavor": "What it pulls under, it gives to you.",
-   "rarity": "rare"
+   "rarity": "rare",
+   "durability": 1
   },
   {
    "id": "crosswind",
@@ -2167,7 +2089,7 @@
   },
   {
    "id": "cold_snap",
-   "name": "Cold Snap",
+   "name": "Arctic Wind",
    "pattern": "WA",
    "effects": [
     {
@@ -2177,7 +2099,8 @@
     }
    ],
    "flavor": "Frozen mid-swing.",
-   "rarity": "rare"
+   "rarity": "rare",
+   "durability": 1
   },
   {
    "id": "hailstone",
@@ -2219,7 +2142,7 @@
    ],
    "flavor": "Salt in every wound.",
    "rarity": "common",
-   "cooldown": 1
+   "cooldown": 2
   },
   {
    "id": "quiet_wind",
@@ -2241,13 +2164,9 @@
    "pattern": "F?",
    "effects": [
     {
-     "op": "heal",
-     "n": 6
-    },
-    {
      "op": "burn",
      "n": 2,
-     "target": "all"
+     "target": "target"
     }
    ],
    "flavor": "Warm enough to heal, hot enough to hurt.",
@@ -2261,7 +2180,12 @@
     {
      "op": "infuse",
      "el": "W",
-     "n": 2
+     "n": 1
+    },
+    {
+     "op": "infuse",
+     "el": "?",
+     "n": 1
     }
    ],
    "flavor": "The water comes when called, for a turn.",
@@ -2283,7 +2207,8 @@
     }
    ],
    "flavor": "Feed every fire at once.",
-   "rarity": "rare"
+   "rarity": "rare",
+   "durability": 1
   },
   {
    "id": "water_whip",
@@ -2302,7 +2227,7 @@
   {
    "id": "thieving_wind",
    "name": "Thieving Wind",
-   "pattern": "AA",
+   "pattern": "AA?",
    "effects": [
     {
      "op": "steal",
@@ -2325,20 +2250,21 @@
     }
    ],
    "flavor": "A warm heart burns two ways.",
-   "rarity": "rare"
+   "rarity": "rare",
+   "cooldown": 2
   },
   {
    "id": "mirror_pool",
-   "name": "Mirror Pool",
+   "name": "Moonlight on a Still Lake",
    "pattern": "WW",
    "effects": [
     {
      "op": "duplicate",
-     "times": 2
+     "times": 3
     }
    ],
    "flavor": "Look closely: there are two of you.",
-   "rarity": "rare"
+   "rarity": "legendary"
   },
   {
    "id": "updraft_lance",
@@ -2349,7 +2275,7 @@
      "op": "strike",
      "from": "right",
      "n": 1,
-     "target": "random"
+     "target": "random2"
     }
    ],
    "flavor": "Thrown up, coming down somewhere.",
@@ -2372,40 +2298,13 @@
    "cooldown": 2
   },
   {
-   "id": "sea_breeze",
-   "name": "Sea Breeze",
-   "pattern": "WA",
-   "effects": [
-    {
-     "op": "cleanse",
-     "what": "all"
-    }
-   ],
-   "flavor": "Salt air clears the head.",
-   "rarity": "common"
-  },
-  {
-   "id": "firefly",
-   "name": "Firefly",
-   "pattern": "FA",
-   "effects": [
-    {
-     "op": "burn",
-     "n": 2,
-     "target": "random"
-    }
-   ],
-   "flavor": "A little light that bites.",
-   "rarity": "common"
-  },
-  {
    "id": "fog_of_war",
    "name": "Fog of War",
    "pattern": "FW",
    "effects": [
     {
-     "op": "weak",
-     "turns": 2,
+     "op": "daze",
+     "n": 1,
      "target": "all"
     }
    ],
@@ -2461,10 +2360,9 @@
    "pattern": "WA",
    "effects": [
     {
-     "op": "convert",
-     "pos": "last",
-     "to": "W",
-     "target": "target"
+     "op": "self_repaint",
+     "n": 3,
+     "to": "W"
     }
    ],
    "flavor": "A ripple that rewrites the shore.",
@@ -2492,7 +2390,7 @@
    "effects": [
     {
      "op": "expose",
-     "n": 2
+     "n": 1
     }
    ],
    "flavor": "Splash them, and see where they flinch.",
@@ -2500,7 +2398,7 @@
   },
   {
    "id": "flamecaller",
-   "name": "Flamecaller",
+   "name": "Shadows in the Flame",
    "pattern": "FFA",
    "effects": [
     {
@@ -2526,33 +2424,39 @@
   },
   {
    "id": "thunderhead",
-   "name": "Raigeki",
-   "pattern": "AAF",
+   "name": "Daedalus's Trigger",
+   "pattern": "FAF",
    "effects": [
     {
+     "op": "passive",
+     "key": "snipe_bonus",
+     "n": 1
+    },
+    {
      "op": "pluck",
-     "n": 3,
+     "n": 1,
      "target": "target"
     }
    ],
    "flavor": "The sky picks three, and does not miss.",
-   "rarity": "legendary"
+   "rarity": "legendary",
+   "power": true
   },
   {
    "id": "lava_flow",
-   "name": "Lava Flow",
+   "name": "Frost Burn",
    "pattern": "FFW",
    "effects": [
-    {
-     "op": "strike",
-     "from": "left",
-     "n": 2,
-     "target": "target"
-    },
     {
      "op": "burn",
      "n": 2,
      "target": "target"
+    },
+    {
+     "op": "freeze",
+     "turns": 1,
+     "target": "target",
+     "if_burn": 4
     }
    ],
    "flavor": "Slow, glowing, unstoppable.",
@@ -2576,7 +2480,7 @@
    ],
    "flavor": "It stops them, then it hurts.",
    "rarity": "rare",
-   "cooldown": 1
+   "cooldown": 2
   },
   {
    "id": "tempest_veil",
@@ -2585,7 +2489,8 @@
    "effects": [
     {
      "op": "shield",
-     "n": 5
+     "n": 4,
+     "lasting": true
     }
    ],
    "flavor": "Wrap yourself in the storm.",
@@ -2634,13 +2539,17 @@
   },
   {
    "id": "witch_fire",
-   "name": "Witch Fire",
+   "name": "Unholy Fire",
    "pattern": "F?F",
    "effects": [
     {
      "op": "burn",
      "n": 4,
      "target": "target"
+    },
+    {
+     "op": "sacrifice",
+     "hp": 2
     }
    ],
    "flavor": "Green flames, foul smoke.",
@@ -2671,11 +2580,13 @@
     },
     {
      "op": "shield",
-     "n": 4
+     "n": 10,
+     "lasting": true
     }
    ],
    "flavor": "Everything stops. Even the clock.",
-   "rarity": "legendary"
+   "rarity": "legendary",
+   "durability": 1
   },
   {
    "id": "molten_core",
@@ -2713,7 +2624,7 @@
    "effects": [
     {
      "op": "shield",
-     "n": 2
+     "n": 3
     }
    ],
    "flavor": "Not a breath, not a blow.",
@@ -2742,11 +2653,12 @@
      "op": "strike",
      "from": "left",
      "n": 1,
-     "target": "all"
+     "target": "target"
     }
    ],
    "flavor": "One sweep, everyone.",
-   "rarity": "common"
+   "rarity": "common",
+   "anti": true
   },
   {
    "id": "rainbow_bridge",
@@ -2762,10 +2674,6 @@
      "n": 3,
      "when": "next",
      "el": "random"
-    },
-    {
-     "op": "heal",
-     "n": 3
     }
    ],
    "flavor": "Every colour brings a gift.",
@@ -2830,13 +2738,17 @@
   },
   {
    "id": "undertow_grip",
-   "name": "Undertow Grip",
-   "pattern": "WWF",
+   "name": "Seasickness",
+   "pattern": "WAW",
    "effects": [
     {
      "op": "weak",
      "turns": 2,
-     "target": "target"
+     "target": "all"
+    },
+    {
+     "op": "shatter",
+     "target": "all"
     }
    ],
    "flavor": "Pulled under and worn down.",
@@ -2898,7 +2810,8 @@
     }
    ],
    "flavor": "Become smoke. Smoke can't be hit.",
-   "rarity": "rare"
+   "rarity": "rare",
+   "durability": 2
   },
   {
    "id": "ice_lance",
@@ -2906,14 +2819,19 @@
    "pattern": "WWA",
    "effects": [
     {
-     "op": "strike",
-     "from": "left",
-     "n": 2,
+     "op": "random_hit",
+     "n": 3,
+     "target": "target"
+    },
+    {
+     "op": "freeze",
+     "turns": 1,
      "target": "target"
     }
    ],
    "flavor": "Clean, cold, and to the point.",
-   "rarity": "common"
+   "rarity": "common",
+   "durability": 1
   },
   {
    "id": "grave_wind",
@@ -2951,6 +2869,10 @@
      "op": "move",
      "n": 2,
      "target": "target"
+    },
+    {
+     "op": "expose",
+     "n": 2
     }
    ],
    "flavor": "Spins things around, throws things about.",
@@ -2964,7 +2886,7 @@
     {
      "op": "strike",
      "from": "left",
-     "n": 1,
+     "n": 2,
      "target": "two"
     }
    ],
@@ -2973,7 +2895,7 @@
   },
   {
    "id": "inferno_lance",
-   "name": "Inferno Lance",
+   "name": "Daedalus's Barrel",
    "pattern": "FFFA",
    "effects": [
     {
@@ -3072,10 +2994,6 @@
      "op": "infuse",
      "el": "random",
      "n": 2
-    },
-    {
-     "op": "amplify",
-     "n": 1
     }
    ],
    "flavor": "The sky bows to no one, but sends gifts.",
@@ -3098,13 +3016,19 @@
   },
   {
    "id": "tidal_surge",
-   "name": "Tidal Surge",
-   "pattern": "WAWW",
+   "name": "Jaeler's Backup Plan",
+   "pattern": "W?A",
    "effects": [
     {
-     "op": "siphon",
+     "op": "steal",
      "n": 2,
-     "target": "all"
+     "el": "any",
+     "into": "chant",
+     "target": "target"
+    },
+    {
+     "op": "sacrifice",
+     "hp": 5
     }
    ],
    "flavor": "The tide takes, the tide gives.",
@@ -3112,17 +3036,22 @@
   },
   {
    "id": "wildfire_pact",
-   "name": "Wildfire Pact",
+   "name": "Burn Burn Burn!",
    "pattern": "F?FA",
    "effects": [
     {
      "op": "burn",
      "n": 2,
      "target": "all"
+    },
+    {
+     "op": "stoke",
+     "target": "all"
     }
    ],
    "flavor": "Burn it all, and pay tomorrow.",
-   "rarity": "rare"
+   "rarity": "rare",
+   "durability": 2
   },
   {
    "id": "moon_tide",
@@ -3146,7 +3075,7 @@
      "op": "strike",
      "from": "left",
      "n": 2,
-     "target": "two"
+     "target": "all"
     }
    ],
    "flavor": "Two spinning cuts, two open wounds.",
@@ -3167,17 +3096,22 @@
   },
   {
    "id": "winter_gale",
-   "name": "Winter Gale",
+   "name": "Panic Button",
    "pattern": "WAAW",
    "effects": [
     {
-     "op": "weak",
-     "turns": 2,
+     "op": "heal",
+     "n": 5
+    },
+    {
+     "op": "freeze",
+     "turns": 1,
      "target": "all"
     }
    ],
    "flavor": "Too cold to hit hard.",
-   "rarity": "common"
+   "rarity": "common",
+   "durability": 1
   },
   {
    "id": "forge_fire",
@@ -3187,6 +3121,11 @@
     {
      "op": "shield",
      "n": 6
+    },
+    {
+     "op": "passive",
+     "key": "thorns",
+     "n": 1
     }
    ],
    "flavor": "Hammer, quench, repeat.",
@@ -3194,18 +3133,23 @@
   },
   {
    "id": "gust_front",
-   "name": "Gust Front",
-   "pattern": "AAFF",
+   "name": "Sulfuric Pit",
+   "pattern": "AFAF",
    "effects": [
     {
-     "op": "strike",
-     "from": "right",
+     "op": "poison",
      "n": 1,
+     "target": "all"
+    },
+    {
+     "op": "burn",
+     "n": 2,
      "target": "all"
     }
    ],
    "flavor": "The wall of wind before the storm.",
-   "rarity": "common"
+   "rarity": "common",
+   "cooldown": 1
   },
   {
    "id": "blood_moon",
@@ -3240,31 +3184,13 @@
     }
    ],
    "flavor": "The sun leans in for a closer look.",
-   "rarity": "legendary"
-  },
-  {
-   "id": "abyssal_tide",
-   "name": "Abyssal Tide",
-   "pattern": "WWFWW",
-   "effects": [
-    {
-     "op": "siphon",
-     "n": 3,
-     "target": "all"
-    },
-    {
-     "op": "freeze",
-     "turns": 1,
-     "target": "all"
-    }
-   ],
-   "flavor": "From the deep, cold hands.",
-   "rarity": "legendary"
+   "rarity": "legendary",
+   "durability": 2
   },
   {
    "id": "heavens_gale",
    "name": "Heaven's Gale",
-   "pattern": "AAWAA",
+   "pattern": "AAWA",
    "effects": [
     {
      "op": "conjure",
@@ -3281,15 +3207,11 @@
   {
    "id": "elemental_fury",
    "name": "Elemental Fury",
-   "pattern": "FWA?F",
+   "pattern": "F?A?W",
    "effects": [
     {
      "op": "barrage",
      "n": 6
-    },
-    {
-     "op": "heal",
-     "n": 4
     }
    ],
    "flavor": "Everything, everywhere, all angry.",
@@ -3297,20 +3219,16 @@
   },
   {
    "id": "tide_of_ages",
-   "name": "Tide of Ages",
-   "pattern": "W?A?W",
+   "name": "You Shall Not Pass",
+   "pattern": "WAWA",
    "effects": [
     {
      "op": "heal",
-     "n": 8
-    },
-    {
-     "op": "cleanse",
-     "what": "all"
+     "n": 5
     },
     {
      "op": "shield",
-     "n": 4
+     "n": 5
     }
    ],
    "flavor": "The oldest water remembers how to mend.",
@@ -3318,17 +3236,18 @@
   },
   {
    "id": "firestorm_herald",
-   "name": "Firestorm Herald",
+   "name": "Surgical Burn",
    "pattern": "F?A?F",
    "effects": [
     {
      "op": "burn",
-     "n": 4,
-     "target": "all"
+     "n": 6,
+     "target": "target"
     }
    ],
    "flavor": "It announces the fire. Loudly.",
-   "rarity": "rare"
+   "rarity": "rare",
+   "durability": 1
   },
   {
    "id": "storm_sermon",
@@ -3336,17 +3255,18 @@
    "pattern": "A?W?A",
    "effects": [
     {
-     "op": "weak",
-     "turns": 3,
+     "op": "freeze",
+     "turns": 2,
      "target": "all"
     }
    ],
    "flavor": "A long sermon, and everyone's tired.",
-   "rarity": "rare"
+   "rarity": "rare",
+   "exhaust": true
   },
   {
    "id": "sunfall",
-   "name": "Sunfall",
+   "name": "Eclipse",
    "pattern": "FFWFF",
    "effects": [
     {
@@ -3357,7 +3277,8 @@
     }
    ],
    "flavor": "A piece of the sun, dropped on purpose.",
-   "rarity": "rare"
+   "rarity": "rare",
+   "durability": 2
   },
   {
    "id": "worlds_end",
@@ -3383,8 +3304,7 @@
    ],
    "flavor": "There is nothing after this. Use it well.",
    "rarity": "legendary",
-   "fleeting": true,
-   "cooldown": 2
+   "durability": 1
   },
   {
    "id": "thorn_dart",
@@ -3402,7 +3322,7 @@
   },
   {
    "id": "hawks_eye",
-   "name": "Hawk's Eye",
+   "name": "Daedalus's Scope",
    "pattern": "AFA",
    "effects": [
     {
@@ -3412,6 +3332,97 @@
     }
    ],
    "flavor": "Nothing hides from the hawk.",
+   "rarity": "rare"
+  },
+  {
+   "id": "handyman_power",
+   "name": "Handyman",
+   "pattern": "FW",
+   "effects": [
+    {
+     "op": "passive",
+     "key": "durability_bonus",
+     "n": 1
+    }
+   ],
+   "flavor": "A little glue, a few nails: everything lasts a bit longer.",
+   "power": true,
+   "rarity": "rare",
+   "unlock_by": "handyman"
+  },
+  {
+   "id": "disturbance",
+   "name": "Disturbance",
+   "pattern": "FWA",
+   "effects": [
+    {
+     "op": "passive",
+     "key": "disturbance",
+     "n": 1
+    }
+   ],
+   "flavor": "Touch the chant, and something out there flinches.",
+   "power": true,
+   "rarity": "legendary"
+  },
+  {
+   "id": "perpetual_motion",
+   "name": "Daedalus's Perpetual Motion",
+   "pattern": "FAAF",
+   "effects": [
+    {
+     "op": "each_turn",
+     "effects": [
+      {
+       "op": "pluck",
+       "n": 1,
+       "target": "target"
+      }
+     ]
+    }
+   ],
+   "flavor": "It never stops, and neither does its aim.",
+   "power": true,
+   "rarity": "legendary"
+  },
+  {
+   "id": "desperate_measure",
+   "name": "Desperate Measure",
+   "pattern": "AFA",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 6,
+     "target": "target"
+    },
+    {
+     "op": "heal",
+     "n": 6
+    },
+    {
+     "op": "max_hp",
+     "n": 6
+    },
+    {
+     "op": "all_fragile"
+    }
+   ],
+   "flavor": "Everything you have, right now. Nothing left for later.",
+   "rarity": "legendary"
+  },
+  {
+   "id": "braums_resolve",
+   "name": "Braum's Resolve",
+   "pattern": "AAA",
+   "effects": [
+    {
+     "op": "passive",
+     "key": "all_lasting",
+     "n": 1
+    }
+   ],
+   "flavor": "Stand your ground, and the ground stands with you.",
+   "power": true,
    "rarity": "rare"
   }
  ]

@@ -236,7 +236,7 @@ func test_arcane_barrage_removes_3_random_essence() -> void:
 	f.cast_chant(_all(3))
 	f.resolve_spell("arcane_barrage")
 	assert_eq(f.enemies[0].size() + f.enemies[1].size(), 5, "3 of the 8 gone")
-	assert_eq(SpellText.card_text(db.get_spell("arcane_barrage")), "Remove 3 random Essence from random enemies.")
+	assert_eq(SpellText.card_text(db.get_spell("arcane_barrage")), "Remove 1 random enemy Essence, 3 times.")
 
 
 func test_seals_shorten_a_spell_down_to_every_chant() -> void:
@@ -455,14 +455,17 @@ func test_spells_wait_for_the_player_after_the_chant() -> void:
 func test_move_lets_you_place_an_element() -> void:
 	var f := _fight(["ashling"], ["updraft"], "A")
 	_set_hp(f.enemies[0], "FWAWW")
-	f.mover = func(_s, _e): return [2, 0]  # pick up the A, put it first
+	var moves := [[2, 0], [4, 1]]  # pick up the A, put it first; then the last W goes second
+	f.mover = func(_s, _e): return moves.pop_front()
 	f.cast_chant([0])
 	f.resolve_spell("updraft", 0)
-	assert_eq(f.enemies[0].hp_text(), "AFWWW")
+	assert_eq(f.enemies[0].hp_text(), "AWFWW", "Updraft: Rearrange 2")
 
 
 func test_redirect_turns_an_attack_on_itself() -> void:
 	var f := _fight(["stone_knight"], ["decoy"], "AWAW")
+	f.loadout[0] = f.loadout[0].duplicate(true)  # (Misdirection lost its Redirect: test the effect itself)
+	f.loadout[0].effects = [{"op": "redirect", "target": "target"}]
 	var e: EnemyState = f.enemies[0]
 	_set_hp(e, "FFFFFFFF")
 	f.pass_turn()  # armour turn; next intent: attack 8
@@ -478,8 +481,10 @@ func test_redirect_turns_an_attack_on_itself() -> void:
 
 
 func test_spells_resolve_before_the_damage_step() -> void:
-	# Spritz (WW) paints 2 Essence Any; with spells first, this turn's chant already hits them
+	# a WW spell that paints 2 Essence Any (Repaint 2); with spells first, this turn's chant already hits them
 	var f := _fight(["ashling"], ["soak"], "WW")
+	f.loadout[0] = f.loadout[0].duplicate(true)
+	f.loadout[0].effects = [{"op": "expose", "n": 2}]
 	var e: EnemyState = f.enemies[0]
 	_set_hp(e, "AAWWF")
 	f.player.hp = 99
@@ -505,9 +510,295 @@ func test_expose_paints_anywhere_and_upgrades_add_one() -> void:
 	f.cast_chant(_all(2))
 	f.resolve_spell("spray")
 	assert_eq(a.hp_text(), "FF?", "one on the first enemy, at the end")
-	assert_eq(b.hp_text(), "F?F", "one on the second, in the middle")
+	assert_eq(b.hp_text(), "FFF", "Spray paints only 1")
 	var up := SpellDB.upgrade(f.db.get_spell("spray"))
-	assert_eq(up.effects[0].n, 3, "Spray+ paints 3")
+	assert_eq(up.effects[0].n, 2, "Spray+ paints 2")
+
+
+func test_remove_a_kind_lets_you_choose_which() -> void:
+	# "remove up to 3 Fire" / "steal up to 2 Water": you pick which of that kind (the picker only gets that kind)
+	var f := _fight(["ashling"], ["fire_ball"], "FF")
+	var e: EnemyState = f.enemies[0]
+	_set_hp(e, "FWFAF")
+	var asked := []
+	f.picker = func(_s, en):
+		asked.append(f.pick_el)
+		return 4 if asked.size() == 1 else 0
+	f._apply({"op": "purge", "el": "F", "n": 2, "target": "target"}, f.loadout[0], {"target": e})
+	assert_eq(e.hp_text(), "WFA", "the last Fire, then the first")
+	assert_eq(asked, ["F", "F"], "only Fire could be picked")
+	f.picker = func(_s, _en): return 0  # (a Water isn't Fire: it takes a Fire instead)
+	f._apply({"op": "purge", "el": "F", "n": 1, "target": "target"}, f.loadout[0], {"target": e})
+	assert_eq(e.hp_text(), "WA")
+
+
+func test_soul_siphon_deep_freeze_pyromancy() -> void:
+	var f := _fight(["ashling"], ["soul_siphon", "deep_freeze", "pyromancy"], "AFAA")  # (A F A, anything)
+	var e: EnemyState = f.enemies[0]
+	_set_hp(e, "FWAW")
+	f.picker = func(_s, _en): return 2
+	f.cast_chant(_all(4))
+	var bag := f.player.stock.size()
+	f.resolve_spell("soul_siphon")
+	assert_eq(e.hp_text(), "FW", "Devil's Hand: Steal 2 (its Air, then a Water)")
+	assert_eq(f.player.stock.size(), bag + 2, "into the bag")
+	assert_eq(Fight.base_durability(f.db.get_spell("soul_siphon")), 3, "Devil's Hand: Durability 3")
+	var df: Dictionary = f.db.get_spell("deep_freeze")
+	assert_eq(Fight.base_durability(df), 1, "Durability 1 (was Fleeting)")
+	f._apply(df.effects[1], df, {})
+	assert_eq(f.player.lasting, 10.0, "10 Lasting Shield")
+	var py: Dictionary = f.db.get_spell("pyromancy")
+	assert_eq(py.effects[0].op, "each_turn")
+	assert_eq([py.effects[0].effects[0].op, int(py.effects[0].effects[0].n), py.effects[0].effects[0].target], ["burn", 1, "random"])
+
+
+func test_repaint_and_self_repaint() -> void:
+	# Repaint to a colour: the brush skips Essence already that colour
+	var f := _fight(["ashling"], ["fire_ball"], "FF")
+	var e: EnemyState = f.enemies[0]
+	_set_hp(e, "WFA")
+	f._apply({"op": "expose", "n": 1, "to": "F"}, f.loadout[0], {})
+	assert_eq(e.hp_text(), "FFA", "the first Essence that isn't Fire turns Fire")
+	assert_eq(SpellText.describe_op({"op": "expose", "n": 2}), "Repaint 2 Random", "Any: the tri-colour orb")
+	assert_eq(SpellText.describe_op({"op": "expose", "n": 1, "to": "W"}), "Repaint 1 Water")
+	# Self-Repaint: an Any Essence in the chant fits every spot of a pattern, and wakes spells (retroactively)
+	var g := _fight(["ashling"], ["fire_ball", "tempest"], "FWAAA")
+	_set_hp(g.enemies[0], "WWWWWWWW")
+	g.cast_chant(_all(5))
+	assert_true(not g.charges.has("fire_ball"), "F W: no FF")
+	g.chant_picker = func(_s): return 1
+	g.current_eff = {"op": "self_repaint", "n": 1, "to": "?"}
+	g._apply({"op": "self_repaint", "n": 1, "to": "?"}, g.loadout[1], {})
+	assert_eq(g.chant_string(), "F?AAA")
+	await g._recount()
+	assert_eq(g.charges.get("fire_ball", 0), 1, "F + Any = FF: Fire Ball wakes")
+	assert_eq(Chant.prefix_match(["W", "A"], "F?A"), 2, "an Any in the chant hits any enemy Essence")
+	assert_eq(SpellText.describe_op({"op": "self_repaint", "n": 1, "to": "?"}), "Self-Repaint 1 Random")
+
+
+func test_wild_keywords_and_instant_steal() -> void:
+	var f := _fight(["ashling"], ["fire_ball", "tempest"], "FWAAA")
+	var e: EnemyState = f.enemies[0]
+	_set_hp(e, "WFAW")
+	f.cast_chant(_all(5))
+	# Wild Rearrange: a chant move, then an enemy move
+	var moves := [[1, 4], [0, 3, 0]]
+	f.wild_arranger = func(_s): return moves.pop_front()
+	f._apply({"op": "wild_move", "n": 2}, f.loadout[1], {})
+	assert_eq(f.chant_string(), "FAAAW", "the chant's W went to the end")
+	assert_eq(e.hp_text(), "FAWW", "the enemy's first W went to the end")
+	# Wild Repaint: one in the chant, one on the enemy
+	var paints := [["chant", 1], ["enemy", 0, 0]]
+	f.wild_painter = func(_s): return paints.pop_front()
+	f._apply({"op": "wild_repaint", "n": 2, "to": "F"}, f.loadout[1], {})
+	assert_eq(f.chant_string(), "FFAAW")
+	assert_eq(e.hp_text(), "FAWW", "already Fire: nothing to paint")
+	# Instant Steal: the stolen Essence goes into the chant, where you put it
+	f.picker = func(_s, _en): return 1
+	f.placer = func(_s, _el): return 0
+	var bag := f.player.stock.size()
+	f._apply({"op": "steal", "n": 1, "el": "any", "into": "chant", "target": "target"}, f.loadout[1], {"target": e})
+	assert_eq(f.chant_string(), "FFAAWA", "its Air, onto the end of the chant (like a Steal into the bag)")
+	assert_eq(f.player.stock.size(), bag, "not into the bag")
+	assert_eq(SpellText.describe_op({"op": "steal", "n": 2, "into": "chant"}), "Instant Steal 2")
+	assert_eq(SpellText.describe_op({"op": "wild_move", "n": 1}), "Wild Rearrange 1")
+	assert_eq(SpellText.describe_op({"op": "wild_repaint", "n": 1}), "Wild Repaint 1 Random")
+
+
+func test_new_commons() -> void:
+	# Coup de Grace: 1 random Essence off, then Execute at 2 or fewer
+	var f := _fight(["ashling"], ["coup_de_grace"], "AA")
+	var e: EnemyState = f.enemies[0]
+	_set_hp(e, "WWA")
+	f.cast_chant(_all(2))
+	f.resolve_spell("coup_de_grace", 0)
+	assert_true(e.is_dead() or not (e in f.enemies), "3 -> 2, executed")
+	# Flare: Burn 1 per 2 Fire in the chant (FFFF: Burn 2)
+	var g := _fight(["ashling"], ["flare"], "FFFF")
+	g.cast_chant(_all(4))
+	g.resolve_spell("flare", 0)
+	assert_eq(g.enemies[0].burn, 2)
+	# Chill: 3 Shield per Armour broken
+	var h := _fight(["ashling"], ["chill"], "WW")
+	h.enemies[0].armor[0] = true
+	h.enemies[0].armor[1] = true
+	h.cast_chant(_all(2))
+	h.resolve_spell("chill", 0)
+	assert_eq(h.player.shield, 6.0)
+	# Unbind: 2 HP per debuff cured
+	var u := _fight(["ashling"], ["unbind"], "AW")
+	u.player.hp = 30
+	u.player.silenced = {"x": 2}
+	u.player.ignited = {"y": 1}
+	u.cast_chant(_all(2))
+	u.resolve_spell("unbind", 0)
+	assert_eq(u.player.hp, 34.0)
+	assert_true(u.player.silenced.is_empty() and u.player.ignited.is_empty())
+	assert_eq(SpellText.card_text(db.get_spell("coup_de_grace")), "Remove 1 random Essence of an enemy.
+Then if it has 2 or fewer Essence, Execute it.")
+	assert_eq(SpellText.card_text(db.get_spell("updraft_lance")), "Remove 2 random enemies' rightmost Essence.")
+
+
+func test_durability_and_the_handyman_power() -> void:
+	# Durability 2: two casts, then it's gone; the Handyman Power gives it (and every such spell) 1 more
+	var f := _fight(["ashling"], ["fire_ball", "handyman_power"], "FWFF")
+	_set_hp(f.enemies[0], "WWWWWWWWWWWW")
+	f.loadout[0] = f.loadout[0].duplicate(true)  # (not the shared one)
+	var fb: Dictionary = f.loadout[0]
+	fb.durability = 2
+	assert_eq(f.durability_left(fb), 2)
+	f.cast_chant(_all(4))
+	f.resolve_spell("fire_ball", 0)
+	assert_eq(f.durability_left(fb), 1)
+	f.resolve_spell("handyman_power")
+	assert_eq(f.durability_left(fb), 2, "the Handyman: +1 Durability")
+	assert_true(SpellText.card_text(fb).contains("Durability"))
+	var hp: Dictionary = db.get_spell("handyman_power")
+	assert_eq([hp.pattern, hp.rarity, hp.power, hp.get("unlock_by", "")], ["FW", "rare", true, "handyman"])
+	# worn out: gone for the fight
+	f.player.durability[fb.id] = 1
+	f._wear(fb)
+	assert_true(f.broken.has(fb.id) and not f.active_spells().has(fb), "Durability 0: broken")
+	assert_true(f.shown_spells().has(fb), "it stays in the row, cracked")
+	# Tinker's Glue: mended, with 1 Durability
+	f.mend_spell(fb.id)
+	assert_true(not f.broken.has(fb.id))
+	assert_eq(f.durability_left(fb), 1)
+
+
+func test_refund_disturbance_and_the_pool() -> void:
+	# Refund 2: the two chant Essence you pick come back after the Release
+	var f := _fight(["ashling"], ["fire_ball"], "FWA")
+	_set_hp(f.enemies[0], "WWWWWWWW")
+	var picks := [0, 2]
+	f.chant_picker = func(_s): return picks.pop_front()
+	f.cast_chant(_all(3))
+	f._apply({"op": "retain", "n": 2}, f.loadout[0], {}, f.turn_ctx)
+	var bag := f.player.stock.size()
+	f.finish_turn()
+	var els := f.player.stock.map(func(s): return s.el)
+	assert_true("F" in els and "A" in els, "the F and the A came back")
+	assert_eq(SpellText.describe_op({"op": "retain", "n": 2}), "Refund 2")
+	# Disturbance: an Essence added to the chant knocks the same one off a random enemy
+	var g := _fight(["ashling"], ["fire_ball"], "FF")
+	_set_hp(g.enemies[0], "WFW")
+	g.player.passives["disturbance"] = 1
+	g.cast_chant(_all(2))
+	g.placer = func(_s, _el): return 0
+	g._apply({"op": "infuse", "el": "F", "n": 1}, g.loadout[0], {})
+	assert_eq(g.enemies[0].hp_text(), "WW", "its only Fire")
+	var d: Dictionary = db.get_spell("disturbance")
+	assert_eq([d.pattern, d.rarity, d.power], ["FWA", "legendary", true])
+	# the Upside-Down Pool: half your HP, and the spell plays inverted
+	var run := RunState.new()
+	run.setup(db, ["fire_ball", "water_wall", "tailwind"], [], 3)
+	run.player.hp = 40
+	run.invert_spell("fire_ball")
+	assert_eq(run.player.hp, 20.0)
+	assert_true(run.spell("fire_ball").get("anti", false), "an anti-spell now")
+	assert_true(not db.get_spell("fire_ball").get("anti", false), "(only in this run)")
+
+
+func test_rare_batch() -> void:
+	# Dazed: a miss takes 1 off
+	var f := _fight(["ashling"], ["fire_ball"], "FF")
+	var e: EnemyState = f.enemies[0]
+	e.dazed = 30
+	f.player.hp = 50
+	var hits := 0
+	for k in 10:
+		var hp_before: float = f.player.hp
+		f._do_move(e, {"kind": "attack", "n": 1})
+		if f.player.hp < hp_before:
+			hits += 1
+	assert_true(e.dazed < 30, "it missed at least once")
+	assert_true(hits < 10)
+	# Exhaust: gone from the fight and the spellbook
+	var run := RunState.new()
+	run.setup(db, ["storm_sermon", "fire_ball", "water_wall"], [], 5)
+	run.spellbook = ["storm_sermon", "fire_ball"]
+	run.loadout = ["storm_sermon", "fire_ball"]
+	var g := run.make_fight(["ashling"])
+	g.player.stock.clear()
+	for el in "AWWWA":  # (Storm Sermon: A ? W ? A)
+		g.player.add_element(el)
+	g.cast_chant([0, 1, 2, 3, 4])
+	g.resolve_spell("storm_sermon")
+	assert_true("storm_sermon" in g.exhausted)
+	assert_true(not g.loadout.any(func(s): return s.id == "storm_sermon"))
+	g.won = true
+	run.finish_fight(g)
+	assert_true(not ("storm_sermon" in run.spellbook), "gone for the run")
+	# All In: next turn's Essence go into this chant now
+	var h := _fight(["ashling"], ["phase_shift"], "F")
+	_set_hp(h.enemies[0], "WWWWWWWWWW")
+	h.player.next_draw = [{"el": "W", "temp": false}, {"el": "A", "temp": false}]
+	h.cast_chant(_all(1))
+	h.placer = func(_s, _el): return h.chant.size()
+	h.resolve_spell("phase_shift")
+	assert_eq(h.chant_string(), "FWA")
+	assert_true(h.player.next_draw.is_empty(), "not again next turn")
+	# Water Prison: the chant holds at most 6
+	h.player.passives["chant_max"] = 6
+	assert_eq(h.player.chant_slots(), 6)
+	assert_eq(SpellText.describe_op({"op": "daze", "n": 1, "target": "all"}), "apply 1 Dazed to all enemies")
+
+
+func test_perpetual_motion() -> void:
+	# Daedalus's Perpetual Motion: Snipe 1 at the start of each of your turns; its badge shines when it does
+	var f := _fight(["ashling"], ["perpetual_motion"], "FAAF")
+	_set_hp(f.enemies[0], "WWWWWWWW")
+	f.enemies[0].def.moves = [{"kind": "mend", "n": 0, "el": "W"}]
+	var procs := []
+	f.anim = func(ev): if ev.type == "power_proc": procs.append(ev.id)
+	f.cast_chant(_all(4))
+	f.resolve_spell("perpetual_motion")
+	var before: int = f.enemies[0].size()
+	f.begin_player_turn()
+	assert_eq(f.enemies[0].size(), before - 1, "sniped 1")
+	assert_true("perpetual_motion" in procs, "its badge shone")
+	var pm: Dictionary = db.get_spell("perpetual_motion")
+	assert_eq([pm.pattern.length(), pm.rarity, pm.power], [4, "legendary", true])
+
+
+func test_desperate_measure() -> void:
+	var f := _fight(["ashling"], ["desperate_measure", "water_wall"], "AFAWW")
+	_set_hp(f.enemies[0], "WWWWWWWWWW")
+	f.player.hp = 20
+	var mhp: float = f.player.max_hp
+	f.cast_chant(_all(5))
+	f.resolve_spell("desperate_measure", 0)
+	assert_eq(f.enemies[0].burn, 6)
+	assert_eq(f.player.max_hp, mhp + 6)
+	assert_eq(f.player.hp, 32.0, "heal 6, and the 6 new max HP")
+	var ww: Dictionary = f.loadout[1]
+	assert_eq(f.durability_left(ww), 1, "Water Wall had no Durability: now 1")
+	f.resolve_spell("water_wall")
+	assert_true(f.broken.has("water_wall"), "one cast and it breaks")
+
+
+func test_legendary_batch() -> void:
+	# Braum's Resolve: all your Shield is Lasting
+	var f := _fight(["ashling"], ["braums_resolve", "water_wall"], "AAAWW")
+	_set_hp(f.enemies[0], "FFFFFFFFFF")
+	f.cast_chant(_all(5))
+	f.resolve_spell("braums_resolve")
+	f.resolve_spell("water_wall")
+	assert_eq([f.player.shield, f.player.lasting], [0.0, 4.0], "Water Wall's 4 Shield is Lasting")
+	# Steam Engine: 2 Shield for each Burn you apply
+	var g := _fight(["ashling", "ashling"], ["steam_engine", "wildfire"], "FWFWFA")
+	g.cast_chant(_all(6))
+	g.resolve_spell("steam_engine")
+	g.resolve_spell("wildfire")
+	assert_eq(g.player.shield, 4.0, "Burn on 2 enemies: 4 Shield")
+	# The Flood: every Fire of an enemy
+	var h := _fight(["ashling"], ["supernova"], "WWWWW")
+	_set_hp(h.enemies[0], "FWFAFW")
+	h.cast_chant(_all(5))
+	h.resolve_spell("supernova", 0)
+	assert_eq(h.enemies[0].hp_text(), "WAW")
+	var br: Dictionary = db.get_spell("braums_resolve")
+	assert_eq([br.name, br.pattern, br.rarity, br.power], ["Braum's Resolve", "AAA", "rare", true])
 
 
 func test_every_spell_triggers_once_per_turn() -> void:
@@ -539,7 +830,7 @@ func test_rearrange_moves_a_chant_element_and_recounts() -> void:
 	f.resolve_spell("tempest")
 	assert_eq(f.chant_string(), "AAAFFW")
 	assert_eq(f.charges.get("fire_ball", 0), 1, "the new FF brings Fire Ball to life")
-	assert_eq(SpellText.card_text(db.get_spell("tempest")), "Gain 2 random Essence next turn.\nRearrange 1.")
+	assert_eq(SpellText.card_text(db.get_spell("tempest")), "Gain 2 Random next turn.\nSelf-Rearrange 1.")
 
 
 func test_changing_the_chant_never_puts_a_live_spell_to_sleep() -> void:
@@ -590,17 +881,19 @@ func test_rewards_follow_rarity() -> void:
 	var run := RunState.new()
 	var all: Array = db.all_spells.map(func(s): return s.id)
 	run.setup(db, all, [], 9)
-	for s in run.spell_offer(3, "elite"):
-		assert_eq(s.rarity, "rare")
 	for s in run.spell_offer(3, "boss"):
 		assert_eq(s.rarity, "legendary")
 	var rares := 0
+	var elite_better := 0
 	for i in 200:
 		for s in run.spell_offer(3, "fight"):
-			assert_true(s.rarity != "legendary")
 			if s.rarity == "rare":
 				rares += 1
-	assert_true(rares > 120 and rares < 240, "about 30%% rares, got %d of 600" % rares)
+		for s in run.spell_offer(3, "elite"):
+			if s.rarity != "common":
+				elite_better += 1
+	assert_true(rares > 170 and rares < 280, "about 37%% Rare, got %d of 600" % rares)
+	assert_true(elite_better > 220, "elites: about half Rare or better, got %d of 600" % elite_better)
 
 
 func test_reward_offers_mix_kinds() -> void:
@@ -621,7 +914,8 @@ func test_gust_plucks_the_chosen_element() -> void:
 	f.picker = func(_s, _e): return 3  # the Wind in the middle
 	f.cast_chant(_all(2))
 	f.resolve_spell("gust", 0)
-	assert_eq(f.enemies[0].hp_text(), "WWFW")
+	assert_eq(f.enemies[0].hp_text(), "WWF", "Snipe 2: the Wind, then the W that took its place")
+	assert_eq(f.player.vulnerable, 2, "and you're Vulnerable 2")
 
 
 func test_keywords_colour_words_and_numbers() -> void:
@@ -631,25 +925,37 @@ func test_keywords_colour_words_and_numbers() -> void:
 
 
 func test_steal_any_puts_the_chosen_element_in_your_bag() -> void:
-	var f := _fight(["ashling"], ["tide_thief"], "WAW")
+	var f := _fight(["ashling"], ["thieving_wind"], "AAA")  # (A A, anything)
 	_set_hp(f.enemies[0], "FFAWF")
 	f.picker = func(_s, _e): return 2  # the A
 	f.cast_chant(_all(3))
 	var before := f.player.stock.size()
-	f.resolve_spell("tide_thief", 0)
+	f.resolve_spell("thieving_wind", 0)
 	assert_eq(f.enemies[0].hp_text(), "FFWF")
 	assert_eq(f.player.stock.size(), before + 1)
 	assert_eq(f.player.stock[-1].el, "A", "stolen into the bag, not the chant")
-	assert_eq(f.chant_string(), "WAW")
+	assert_eq(f.chant_string(), "AAA")
 
 
 func test_steal_a_specific_element() -> void:
-	var f := _fight(["ashling"], ["sirens_call"], "WAAW")  # (W A, anything, W)
+	var f := _fight(["ashling"], ["undercurrent"], "WW")
+	_set_hp(f.enemies[0], "FWFWF")
+	f.cast_chant(_all(2))
+	f.resolve_spell("undercurrent", 0)
+	assert_eq(f.enemies[0].hp_text(), "FFF", "up to 2 Water")
+	assert_eq(f.player.stock.filter(func(s): return s.el == "W").size(), 2)
+	assert_eq(Fight.base_durability(f.db.get_spell("undercurrent")), 1, "Undercurrent: Durability 1")
+
+
+func test_sirens_call_steals_any_two() -> void:
+	var f := _fight(["ashling"], ["sirens_call"], "WAAAW")  # (W A, anything, A W)
 	_set_hp(f.enemies[0], "FWFAF")
-	f.cast_chant(_all(4))
+	f.picker = func(_s, _e): return 2
+	f.cast_chant(_all(5))
+	var before := f.player.stock.size()
 	f.resolve_spell("sirens_call", 0)
-	assert_eq(f.enemies[0].hp_text(), "WAF", "up to 2 Fire, from the front")
-	assert_eq(f.player.stock.filter(func(s): return s.el == "F").size(), 2)
+	assert_eq(f.enemies[0].hp_text(), "FWF", "the F, then the A")
+	assert_eq(f.player.stock.size(), before + 2)
 
 
 func test_spell_slots_start_at_5_and_cap_at_8() -> void:
@@ -713,7 +1019,7 @@ func test_thermal_burst_hits_two_different_enemies() -> void:
 	assert_eq(f.enemies[2].size(), 3, "second target: a different enemy")
 	assert_eq(f.enemies[1].size(), 5)
 	assert_true(not (0 in asked[0]), "the second pick can't be the first target again")
-	assert_eq(SpellText.card_text(db.get_spell("thermal_burst")), "Remove the 2 leftmost Essence of 2 different enemies.")
+	assert_eq(SpellText.card_text(db.get_spell("thermal_burst")), "Remove 2 leftmost Essence of 2 enemies.")
 
 
 func test_anti_spell_comes_alive_unless_its_pattern_is_chanted() -> void:
@@ -725,7 +1031,7 @@ func test_anti_spell_comes_alive_unless_its_pattern_is_chanted() -> void:
 	f.cast_chant([0])  # F: no W, so it comes alive like any spell
 	assert_eq(f.charges.get("calm_waters", 0), 1, "alive after the chant")
 	f.resolve_all()
-	assert_eq(f.player.shield, 10.0, "cast like a spell")
+	assert_eq(f.player.lasting, 5.0, "cast like a spell (5 Lasting Shield)")
 	var g := _fight(["ashling"], ["calm_waters"], "")
 	_set_hp(g.enemies[0], "AAAAAAAA")
 	g.player.stock.clear()
@@ -1074,7 +1380,7 @@ func test_storm_crown_refunds_an_air_each_chant() -> void:
 	var before := f.player.stock.size()
 	f.cast(_all(1))  # chant the F: after the Release, an Air comes back
 	assert_true(f.player.stock.any(func(s): return s.el == "A" and not s.temp), "an Air in the bag")
-	assert_eq(db.get_spell("storm_crown").effects[0].key, "refund_air")
+	assert_eq(db.get_spell("storm_crown").effects[0].key, "steal_each_chant", "(Storm Crown is Jaeler's Knife now)")
 
 
 func test_the_triplet() -> void:
@@ -1238,9 +1544,20 @@ func test_invoker() -> void:
 	for i in 3:
 		e.conjured[i].rank = i
 		e.conjured[i].base = e.conjured[i].pattern
-	assert_eq(f.invoke_picks(e, "FFFWWW"), [0, 1], "Sun Strike and Cold Snap both matched")
-	assert_eq(f.invoke_picks(e, "AAF"), [2], "EMP: 2 of its 3 Air chanted, the closest")
-	assert_eq(f.invoke_picks(e, ""), [0], "nothing chanted: all equally far, the tie goes to its rank")
+	e.invoke_next = 2
+	assert_eq(f.invoke_picks(e, "FFFWWW"), [0, 1, 2], "Sun Strike and Cold Snap matched, plus EMP, his choice")
+	assert_eq(f.invoke_picks(e, "AAF"), [2], "nothing matched: just his choice")
+	assert_eq(f.invoke_picks(e, ""), [2], "whatever you chant (or not)")
+	# he picks one he hasn't cast yet
+	e.cast_ids = ["inv_sun_strike", "inv_cold_snap"]
+	f._pick_next(e)
+	assert_eq(e.invoke_next, 2, "the only one not cast yet")
+	# his Power shows on the cards
+	assert_eq(Fight.invoker_desc(e.conjured[0], e), "Deal %d damage to you." % (10 + e.dmg_bonus))
+	e.dmg_bonus += 2
+	assert_eq(Fight.invoker_desc(e.conjured[0], e), "Deal %d damage to you." % (10 + e.dmg_bonus))
+	e.dmg_bonus -= 2
+	e.invoke_next = 0
 	# his turn: Sun Strike hits for 10
 	f.heard = "FFF"
 	f.player.hp = 50
@@ -1252,7 +1569,7 @@ func test_invoker() -> void:
 	f._cleanup()
 	assert_eq(f.alive().size(), 1, "not dead yet")
 	assert_eq(e.phase, 2)
-	assert_eq(e.size(), 10, "phase 2: 10 Essence")
+	assert_eq(e.size(), 15, "phase 2: 15 Essence")
 	f._plan(e)
 	assert_true(e.intent.has("word"))
 	var w: String = e.intent.word
@@ -1280,7 +1597,10 @@ func test_invoker_spell_effects() -> void:
 	f._do_move(e, EnemyDefs.INVOKER_SPELLS[1].cast)  # Ghost Walk
 	assert_eq([e.burn, e.poison], [0, 0])
 	f._do_move(e, EnemyDefs.INVOKER_SPELLS[7].cast)  # Forge Spirit
-	assert_eq(f.alive().size(), 2)
+	assert_eq(f.alive().size(), 3, "2 Forge Spirits")
+	var spirits := f.alive().filter(func(x): return x.id.begins_with("forge_spirit"))
+	assert_eq(spirits.map(func(x): return x.size()), [3, 3])
+	assert_true(spirits[0].hp_text() != spirits[1].hp_text(), "different rows")
 
 
 func test_yin_yang_inversion_prefers_short_to_anti_and_long_to_spell() -> void:
@@ -1334,20 +1654,23 @@ func test_yin_yang_flips_change_the_pattern() -> void:
 
 
 func test_poison_spells_have_a_cooldown() -> void:
-	for id in ["taint", "miasma", "brine", "frostbite", "blight_wind", "scalding_rain", "steam_vent", "frozen_tomb", "worlds_end"]:
+	assert_true(Fight.base_durability(db.get_spell("miasma")) == 1, "Miasma: Durability 1 instead")
+	assert_true(Fight.base_durability(db.get_spell("taint")) == 1, "Taint: Durability 1 instead")
+	for id in ["brine", "frostbite", "blight_wind", "scalding_rain", "steam_vent", "frozen_tomb", "blight_wind"]:
 		assert_true(int(db.get_spell(id).get("cooldown", 0)) > 0, id + " has a cooldown")
 	assert_eq(db.get_spell("blight_wind").rarity, "legendary")
-	assert_true(SpellText.card_text(db.get_spell("taint")).contains("Cooldown 1"))
-	# Taint (Cooldown 1): cast this turn, not the next, then again
-	var f := _fight(["ashling"], ["taint"], "AAA")
-	f.cast_chant(_all(1))
-	f.resolve_spell("taint", 0)
+	assert_true(SpellText.card_text(db.get_spell("gust_front")).contains("Cooldown 1"))
+	# Sulfuric Pit (Cooldown 1): cast this turn, not the next, then again
+	var f := _fight(["ashling"], ["gust_front"], "AFAF")
+	_set_hp(f.enemies[0], "WWWWWWWWWW")
+	f.cast_chant(_all(4))
+	f.resolve_spell("gust_front", 0)
 	assert_eq(f.enemies[0].poison, 1)
 	f.end_player_turn()
-	assert_true(f.player.cooldowns.has("taint"), "still cooling down on the next turn")
-	assert_true(not f.usable_spells().any(func(sp): return sp.id == "taint"))
+	assert_true(f.player.cooldowns.has("gust_front"), "still cooling down on the next turn")
+	assert_true(not f.usable_spells().any(func(sp): return sp.id == "gust_front"))
 	f.end_player_turn()
-	assert_true(not f.player.cooldowns.has("taint"), "ready again the turn after")
+	assert_true(not f.player.cooldowns.has("gust_front"), "ready again the turn after")
 
 
 func test_unused_spells_are_stored_for_the_next_chant() -> void:
@@ -1448,23 +1771,36 @@ func test_handyman() -> void:
 	assert_true("handyman" in EnemyDefs.BOSSES[1])
 	var sword: EnemyState = f.enemies[0]
 	assert_eq(sword.size(), 5)
-	# a knocked-out hand isn't killed: no win, it skips its turn, and it's back whole next turn
+	# a fallen hand isn't killed: no win; it lies down a turn (wings + hourglass), then rises whole
 	_knock(f, sword)
-	assert_true(not f.over, "not won: the hand is only knocked out")
+	assert_true(not f.over, "not won: the hand is only down")
 	assert_true(sword in f.enemies and sword.knocked)
+	assert_eq(sword.intent.kind, "revive")
+	assert_eq(sword.intent.left, 2)
 	_knock(f, f.enemies[1])
 	assert_true(not f.over, "both down at once still isn't a win")
 	f._hands_back()
+	assert_true(sword.knocked, "a turn's rest first")
+	assert_eq(sword.intent.left, 1)
+	f._hands_back()
 	assert_eq(sword.size(), 5, "back whole")
 	assert_true(not sword.knocked)
-	# 4 knockouts: two more hands
+	# second life gone: it stays down until the other one is out of lives too; then two more hands, and both rise
 	_knock(f, f.enemies[0])
+	assert_eq(f.enemies[0].revive_in, 0, "out of lives: down")
+	f._hands_back()
+	f._hands_back()
+	assert_true(f.enemies[0].knocked, "still down")
+	assert_eq(f.hm.phase, 1)
 	_knock(f, f.enemies[1])
 	assert_eq(f.hm.phase, 2)
 	assert_eq(f.enemies.size(), 4)
 	var ids := f.enemies.map(func(e): return e.id)
 	assert_true("hand_hammer" in ids and "hand_crossbow" in ids)
+	assert_eq(f.enemies[0].intent.kind, "revive", "the old hands rise again for the new phase")
 	f._hands_back()
+	f._hands_back()
+	assert_true(not f.enemies[0].knocked and not f.enemies[1].knocked)
 	# the hammer goes for the most-cast spell, and sticks to it: 3 hits break it
 	f.cast_counts = {"water_wall": 3, "fire_ball": 1}
 	var hammer: EnemyState = f.enemies.filter(func(e): return e.id == "hand_hammer")[0]
@@ -1475,35 +1811,45 @@ func test_handyman() -> void:
 	assert_eq(f.hammer_target, "water_wall", "it sticks to its target")
 	f._do_move(hammer, {"kind": "hammer_spell"})
 	assert_true(f.broken.has("water_wall"), "3 hits: broken")
-	assert_true(not f.shown_spells().any(func(s): return s.id == "water_wall"), "gone for the fight")
+	assert_true(not f.active_spells().any(func(s): return s.id == "water_wall"), "gone for the fight")
+	assert_true(not f.shown_spells().any(func(s): return s.id == "water_wall"), "and it leaves the row")
 	# a Fleeting spell breaks at once
 	f.loadout[0] = f.loadout[0].duplicate(true)
 	f.loadout[0].fleeting = true
 	f._do_move(hammer, {"kind": "hammer_spell"})
 	assert_true(f.broken.has("fire_ball"), "Fleeting: first hit")
-	# the crossbow: 2, 1, then it fires (knocked out: it starts over)
+	# the crossbow: 1, then it fires (knocked out: it starts over)
 	var bow: EnemyState = f.enemies.filter(func(e): return e.id == "hand_crossbow")[0]
 	assert_eq(bow.intent.kind, "charge")
-	assert_eq(bow.intent.left, 2)
+	assert_eq(bow.intent.left, 1)
 	f._do_move(bow, bow.intent)
 	f._plan(bow)
-	assert_eq(bow.intent.left, 1)
+	assert_eq(bow.intent.left, 0)
+	assert_true(bow.intent.get("hit", false), "it fires next")
 	_knock(f, bow)
 	f._hands_back()
-	assert_eq(bow.intent.left, 2, "knocked out: back to 2")
-	# 8 more knockouts: the last two hands, 3 Essence each
-	for k in 3:
-		_knock(f, f.enemies[0])
-		_knock(f, f.enemies[1])
-		f._hands_back()
-	assert_eq(f.hm.phase, 2, "7 so far")
-	_knock(f, f.enemies[0])
 	f._hands_back()
+	assert_eq(bow.intent.left, 1, "resurrected: loading again")
+	# every hand out of lives (the bow has one left): the last two hands, 3 Essence each
+	for e in f.enemies.duplicate():
+		_knock(f, e)
+	f._hands_back()
+	f._hands_back()
+	assert_eq(f.hm.phase, 2, "the others still had a life")
+	for e in f.enemies.filter(func(x): return not x.knocked):
+		_knock(f, e)
 	assert_eq(f.hm.phase, 3)
 	assert_eq(f.enemies.size(), 6)
 	var last := f.enemies.filter(func(e): return e.id in ["hand_spear", "hand_shield"])
 	assert_eq(last.map(func(e): return e.size()), [3, 3])
-	# last stand: a knocked-out hand stays down; with all of them down he shows himself (1 Essence, 999)
+	f._hands_back()
+	f._hands_back()
+	# last stand: each hand still has 2 lives; with every hand out of lives he shows himself (1 Essence, 999)
+	for e in f.enemies.duplicate():
+		_knock(f, e)
+	f._hands_back()
+	f._hands_back()
+	assert_eq(f.alive().size(), 6, "first life: all six hands get back up")
 	for e in f.enemies.duplicate():
 		_knock(f, e)
 	f._hands_back()
@@ -1525,7 +1871,7 @@ func test_ashen_veil_leaves_you_vulnerable() -> void:
 	f.enemies[0].dmg_bonus = 0
 	f._plan(f.enemies[0])
 	f.player.hp = 50
-	assert_true(SpellText.card_text(db.get_spell("ashen_veil")).contains("Vulnerable 2"))
+	assert_true(SpellText.card_text(db.get_spell("ashen_veil")).contains("Apply 2 Vulnerable to yourself"))
 	f.cast_chant(_all(3))
 	f.resolve_spell("ashen_veil")
 	assert_eq(f.player.vulnerable, 2)
@@ -1535,3 +1881,149 @@ func test_ashen_veil_leaves_you_vulnerable() -> void:
 	f.pass_turn()  # Vulnerable: 4 -> 6
 	assert_eq(f.player.hp, 44.0)
 	assert_eq(f.player.vulnerable, 0)
+
+
+func test_iron_bark_gives_lasting_shield_every_turn() -> void:
+	var f := _fight(["ashling"], [], "")
+	f.artifacts = ["iron_bark"]
+	f.player.lasting = 0
+	f.enemies[0].def.moves = [{"kind": "mend", "el": "F", "n": 1, "who": "self"}]  # (no attacks)
+	f._plan(f.enemies[0])
+	f.pass_turn()
+	assert_eq(f.player.lasting, 1.0, "+1 at the start of the turn")
+	f.pass_turn()
+	assert_eq(f.player.lasting, 2.0, "and it builds up")
+
+
+func test_reward_odds_follow_slay_the_spire() -> void:
+	var run := RunState.new()
+	run.setup(db, db.all_spells.map(func(x): return x.id), [], 5)
+	var counts := {"common": 0, "rare": 0, "legendary": 0}
+	for i in 4000:
+		counts[run._roll_rarity("fight")] += 1
+	# ~60 / 37 / 3, plus the pity counter nudging Legendary up a little between hits
+	assert_true(counts.common > 2000 and counts.common < 2600, str(counts))
+	assert_true(counts.rare > 1300 and counts.rare < 1700, str(counts))
+	assert_true(counts.legendary > 60 and counts.legendary < 400, str(counts))
+	assert_eq(run._roll_rarity("boss"), "legendary")
+	# the pity counter: every Common shown raises it 1%, a Legendary resets it
+	run.legendary_offset = 0.0
+	run.rng.seed = 3
+	var before := run.legendary_offset
+	var r := run._roll_rarity("fight")
+	if r == "common":
+		assert_eq(snappedf(run.legendary_offset - before, 0.001), 0.01)
+	run.legendary_offset = 0.9
+	assert_eq(run._roll_rarity("elite"), "legendary", "a big offset all but guarantees it")
+	assert_eq(run.legendary_offset, RunState.LEGENDARY_OFFSET_START, "and it resets")
+
+
+func test_talking_to_the_handyman() -> void:
+	# (the conversations themselves are being rewritten: the talk's logic is tested on its own)
+	var f := _fight(["handyman"], ["water_wall"], "FWAWF")
+	f.talk_id = "handyman"
+	# options cost Essence from your bag; you can't pay what you don't have
+	assert_true(f.talk_pay("W"))
+	assert_eq(f.player.stock.size(), 4)
+	assert_true(f.talk_pay("W"))
+	assert_true(not f.can_talk_pay("W"), "no Water left")
+	assert_true(not f.talk_pay("W"))
+	# the tree: a tick only once a whole branch is explored
+	var who := {"id": "hm_who", "options": [{"id": "a", "options": [{"id": "a1"}]}, {"id": "b"}]}
+	assert_true(not BossTalk.exhausted(who, ["hm_who"]))
+	var all_ids := ["hm_who"]
+	for o in who.options:
+		all_ids.append(o.id)
+		for o2 in o.get("options", []):
+			all_ids.append(o2.id)
+	assert_true(BossTalk.exhausted(who, all_ids))
+
+
+func test_talking_to_the_invoker() -> void:
+	var f := _fight(["invoker"], ["water_wall"], "FFWA")
+	f.talk_id = "invoker"
+	assert_true(f.can_talk_pay("FF") and not f.can_talk_pay("WW"), "two of one Essence")
+	f.talk_pay("FF")
+	assert_eq(f.player.stock.size(), 2)
+
+
+func test_anxious_armadillo() -> void:
+	# never in the normal pools; on the first run he is Act 2's second fight (and only then)
+	assert_true(not ("anxious_armadillo" in EnemyDefs.normals(2)))
+	var run := RunState.new()
+	run.setup(db, [], [], 7)
+	run.first_run = true
+	run.act = 2
+	run.map = []
+	for r in 3:
+		var row := []
+		row.resize(7)
+		row[0] = {"type": "fight", "next": [], "col": 0}
+		run.map.append(row)
+	run.col = 0
+	run.row = 0
+	assert_true(not ("anxious_armadillo" in run.encounter_ids()), "fight 1: not yet")
+	run.encounter_ids()  # (the same room again: still fight 1)
+	run.row = 1
+	assert_eq(run.encounter_ids(), ["anxious_armadillo"], "fight 2 of Act 2")
+	run.first_run = false
+	run.row = 2
+	assert_true(not ("anxious_armadillo" in run.encounter_ids()), "never again")
+	# 20 Essence, he never attacks: +2 Thorns a turn, and your Release hitting him hurts you that much
+	var f := _fight(["anxious_armadillo"], ["fire_ball"], "WFA")
+	var e: EnemyState = f.enemies[0]
+	assert_eq(e.size(), 20)
+	f.player.hp = 50
+	f._do_move(e, e.intent)
+	f._do_move(e, e.intent)
+	assert_eq(e.thorns, 4)
+	assert_eq(f.player.hp, 50.0, "no attack")
+	f.cast(_all(3))  # W F A: his row starts W F A
+	assert_true(f.player.hp <= 46.0, "his 4 Thorns pricked you")
+
+
+func test_handyman_talk_and_the_mysterious_hand() -> void:
+	var f := _fight(["handyman"], ["water_wall"], "FWAWF")
+	assert_eq(f.talk_id, "handyman", "he talks again")
+	var tree := BossTalk.tree_for("handyman")
+	var deep: Dictionary = tree.options[2].options[1].options[1]
+	assert_eq(deep.id, "hm_why_chance_hands")
+	assert_eq(tree.options[2].cost + tree.options[2].options[1].cost + deep.cost, "FAW", "one of each Essence to get there")
+	for fx in deep.effects:
+		if fx != "engage":
+			f.talk_effect(fx)
+	assert_eq(f.talk_rewards, ["mysterious_hand"], "promised: yours if you win")
+	assert_eq(Artifacts.get_def("mysterious_hand").get("unlock_by", ""), "handyman_talk", "never offered until earned")
+	# the Hand: a random enemy Essence into your bag at the start of each fight
+	var run := RunState.new()
+	run.setup(db, ["fire_ball"], [], 3)
+	run.gain_artifact("mysterious_hand")
+	var g := run.make_fight(["ashling"])
+	var before: int = EnemyDefs.get_def("ashling").hp.length()
+	assert_true(g.enemies[0].size() < before + 3, "it lost one (extra Essence aside)")
+	assert_true(g.lines.any(func(l): return l.contains("Mysterious Hand")))
+
+
+func test_ol_wiz_talk_and_the_magic_box() -> void:
+	assert_eq(EnemyDefs.name_of("invoker"), "Ol' Wiz")
+	var tree := BossTalk.tree_for("invoker")
+	var find: Dictionary = tree.options[1].options[1].options[1]
+	assert_eq(find.id, "wiz_find")
+	assert_eq(tree.options[1].cost + tree.options[1].options[1].cost + find.cost, "FAW")
+	assert_true("artifact:magic_box" in find.effects)
+	assert_eq(Artifacts.get_def("magic_box").get("unlock_by", ""), "invoker_talk")
+	# every 6th spell: its pattern comes back to your bag after the Release
+	var run := RunState.new()
+	run.setup(db, ["fire_ball"], [], 3)
+	run.gain_artifact("magic_box")
+	var f := run.make_fight(["ashling"])
+	_set_hp(f.enemies[0], "WWWWWWWWWWWWWWWW")
+	f.player.box_casts = 5
+	f.player.stock.clear()
+	for el in "FF":
+		f.player.add_element(el)
+	f.cast_chant([0, 1])
+	f.resolve_spell("fire_ball", 0)
+	assert_eq(f.player.box_casts, 6)
+	f.finish_turn()
+	assert_true(f.player.stock.filter(func(x): return x.el == "F").size() >= 2, "Fire Ball's F F came back")

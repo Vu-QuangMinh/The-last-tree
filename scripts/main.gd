@@ -46,7 +46,7 @@ func _ready() -> void:
 	add_child(tl)
 	_back_layer.layer = 9
 	_back_layer.visible = false
-	var back := UiTheme.button("Back to room map", func(): show_room_test(), 18)
+	var back := UiTheme.button("Back", func(): show_map(), 18)  # (to the room map, or to test mode's Events tab)
 	back.theme = UiTheme.get_theme()  # (this layer is outside every screen)
 	back.custom_minimum_size = Vector2(240, 44)
 	back.position = Vector2(24, 120)
@@ -306,11 +306,38 @@ func open_test_mode() -> void:
 	t.setup(_test_state)
 	t.back.connect(show_menu)
 	t.fight_requested.connect(_test_fight)
+	t.event_requested.connect(_test_event)
+	t.custom_requested.connect(_test_custom)
 	_swap(t)
 
 
+## Test mode's Events tab: a throwaway run goes straight into that event; afterwards, back to the test screen.
+var _test_back_to_tabs := false
+
+
+func _test_event(id: String) -> void:
+	_test_mode = true
+	_test_back_to_tabs = true
+	run = RunState.new()
+	run.artifact_gained.connect(_on_artifact_found)
+	run.setup(GameData.db, SaveManager.unlocked_spells(), SaveManager.unlocked_artifacts())
+	run.amber = 999  # (so every option can be tried)
+	_enter_test_room({"type": "event", "act": 1, "row": 3, "event": id})
+
+
+## Test mode's Custom tab: hand-made test scenes.
+func _test_custom(id: String) -> void:
+	var spells: Array = _test_state.get("spells", ["fire_ball", "water_wall", "tailwind"])
+	match id:
+		"armadillo_fight":
+			_test_fight(["anxious_armadillo"], spells)
+		"armadillo_end":
+			# he starts with a single Essence: one chant, and his ending plays
+			_test_fight(["anxious_armadillo"], spells, func(f: Fight): f.enemies[0].reset_hp("F"))
+
+
 ## A test fight: the picked enemies against the picked spells, at full HP, then back to the test screen.
-func _test_fight(ids: Array, spells: Array) -> void:
+func _test_fight(ids: Array, spells: Array, tweak := Callable()) -> void:
 	var r := RunState.new()
 	r.setup(GameData.db, [], [], 0)
 	r.artifacts.clear()  # (no Seed of Life: it's a test)
@@ -325,6 +352,9 @@ func _test_fight(ids: Array, spells: Array) -> void:
 	r.encounter_extra = ids.map(func(id): return EnemyDefs.extra_for(id, top_act, r.depth(), r.rng, ids.size()))
 	run = r
 	var f := r.make_fight(ids)
+	f.talk_free = true  # (test mode: a boss's talk costs no Essence)
+	if tweak.is_valid():
+		tweak.call(f)
 	var fs := FightScreen.new()
 	fs.setup(r, f)
 	fs.test_mode = true  # (Auto-fill and Auto-ball buttons)
@@ -393,6 +423,7 @@ func start_run() -> void:
 	run = RunState.new()
 	run.artifact_gained.connect(_on_artifact_found)
 	run.setup(GameData.db, SaveManager.unlocked_spells(), SaveManager.unlocked_artifacts())
+	run.first_run = int(SaveManager.data.stats.get("runs", 0)) == 0 and not SaveManager.setting("armadillo_met", false)
 	var offer := Artifacts.keepsakes(run.rng, 3)
 	if _stage_flow():
 		# Puppet Stage: the drapes are drawn over the stage, the three keepsakes are laid on it, then the map is let down
@@ -413,6 +444,11 @@ func start_run() -> void:
 
 
 func show_map() -> void:
+	if _test_mode and _test_back_to_tabs:
+		_test_back_to_tabs = false  # (an event from test mode's Events tab: back to it)
+		_test_mode = false
+		open_test_mode()
+		return
 	if _test_mode:
 		show_room_test()
 		return
@@ -638,6 +674,9 @@ func _show_event(ev: Dictionary) -> void:
 			"trade_artifacts":
 				_barter()
 				return
+			"invert_spell":
+				_invert_pick(ev)
+				return
 		var res: Dictionary = run.choose_event_option(ev.options[i])
 		if run.player.is_dead():
 			run.over = true
@@ -659,6 +698,19 @@ func _show_event(ev: Dictionary) -> void:
 	var s := _message(ev.title, ev.text, labels, Color(0.8, 0.7, 1))
 	s.disabled = ev.options.map(func(o): return not run.can_choose(o))
 	s.pressed.connect(pick)
+
+
+## The Upside-Down Pool: pick a spell from your spellbook; it pays half your HP and plays inverted for the run.
+func _invert_pick(ev: Dictionary) -> void:
+	var ids := run.invertible_spells()
+	var ch := _choice("The Upside-Down Pool", "Choose a spell to invert. It costs half your HP (%d)." % int(floorf(run.player.hp * 0.5)), ids.map(func(id): return run.spell(id)), [], true)
+	ch.chosen.connect(func(i):
+		if i < 0:
+			show_map()
+			return
+		var text := run.invert_spell(ids[i])
+		var after := _message(ev.title, text, ["Continue"], Color(0.8, 0.7, 1), SpellCard.make(run.spell(ids[i])))
+		after.pressed.connect(func(_k): show_map()))
 
 
 ## The Wandering Apothecary as a picture: the merchant (pay), the cart (a free sample), the signpost (walk on).
@@ -790,6 +842,9 @@ func _start_fight(ids: Array) -> void:
 	var fight_kind := run.current_kind()
 	_room_bg = "elite_arena" if fight_kind == "elite" else (BOSS_BG[clampi(run.act, 1, 3)] if fight_kind == "boss" else "")
 	_last_ids = ids.duplicate()
+	if "anxious_armadillo" in ids:
+		SaveManager.set_setting("armadillo_met", true)  # (he's met once, ever)
+		run.first_run = false
 	_checkpoint("fight", ids)  # (with the spells you just chose)
 	var f := run.make_fight(ids)
 	var fs := _new_fight_screen(f)
@@ -920,6 +975,13 @@ func _after_fight(f: Fight) -> void:
 		kind = "fight"
 	for id in ([] if _test_mode else SaveManager.add_to_codex(f.defeated)):
 		Events.toast.emit("New Codex entry: %s" % EnemyDefs.get_def(id).name, Color(1, 0.9, 0.5))
+	if f.won:
+		for aid in f.talk_rewards:  # (what a boss's talk promised: yours, and unlocked for good)
+			run.gain_artifact(aid)
+			if not _test_mode and SaveManager.unlock_artifact(aid):
+				Events.toast.emit("%s unlocked" % Artifacts.get_def(aid).name, Color(1, 0.85, 0.4))
+	for spell_name in ([] if _test_mode else SaveManager.boss_unlocks(f.defeated)):
+		Events.toast.emit("New spell unlocked: %s" % spell_name, Color(1, 0.85, 0.4))
 	var act_before := run.act
 	if not f.won and run.can_revive():
 		# the Seed of Life: back to the start of this fight's preparation, as you were going in

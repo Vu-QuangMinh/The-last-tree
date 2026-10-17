@@ -22,7 +22,7 @@ const GHOST := Color(0.8, 0.85, 1.0)
 const CURSE := Color(0.6, 0.2, 0.8)
 const WEAK := Color(0.45, 0.52, 0.95)  # a cold, heavy indigo: Weaken presses down
 
-const CHANT_OPS := ["infuse", "rearrange", "duplicate", "retain", "amplify", "echo", "overload", "transmute", "copy_last"]
+const CHANT_OPS := ["infuse", "rearrange", "self_repaint", "wild_move", "wild_repaint", "duplicate", "retain", "amplify", "echo", "overload", "transmute", "copy_last"]
 const SWIRL_OPS := ["convert", "insert", "move", "rotate", "swap"]
 const POWER_OPS := ["passive", "each_turn", "summon_spells"]
 

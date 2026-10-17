@@ -7,11 +7,11 @@ func run(t: SceneTree) -> void:
 	var out: String = OS.get_cmdline_user_args()[0]
 	var db = t.root.get_node("GameData").db
 	var rows := []
-	for s in db.all_spells:
+	for s in db.all_spells.filter(func(x): return not x.get("hidden", false)):  # (not the tutorial's own Fire Ball)
 		rows.append({
 			"id": s.id, "name": s.name, "pattern": s.pattern, "rarity": s.rarity,
 			"category": SpellDB.KIND_NAMES[s.kind], "text": SpellText.card_text(s).replace("\n", " "),
-			"anti": s.get("anti", false), "power": s.get("power", false), "fleeting": s.get("fleeting", false),
+			"anti": s.get("anti", false), "power": s.get("power", false), "fleeting": Fight.base_durability(s) > 0, "durability": Fight.base_durability(s),
 			"starter": s.get("starter", false), "cooldown": int(s.get("cooldown", 0)), "flavor": s.get("flavor", ""),
 		})
 	var f := FileAccess.open(out, FileAccess.WRITE)

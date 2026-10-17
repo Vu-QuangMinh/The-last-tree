@@ -32,9 +32,11 @@ func _draw() -> void:
 	var hits := [r.position + r.size * Vector2(rng.randf_range(0.3, 0.7), rng.randf_range(0.3, 0.6))]
 	if level >= 2:
 		hits.append(r.position + r.size * Vector2(rng.randf_range(0.15, 0.85), rng.randf_range(0.2, 0.8)))
+	if level >= 3:
+		hits.append(r.position + r.size * Vector2(rng.randf_range(0.15, 0.85), rng.randf_range(0.2, 0.8)))  # (broken)
 	for k in hits.size():
 		var at: Vector2 = hits[k]
-		var rays := 5 if level == 1 else 9
+		var rays := 5 if level == 1 else (9 if level == 2 else 12)
 		var reach := (0.35 if level == 1 else 1.0) * r.size.length()
 		var ends := []
 		for i in rays:
@@ -47,7 +49,7 @@ func _draw() -> void:
 				var j := rng.randi_range(1, maxi(1, pts.size() - 2))
 				_crack(_jagged(rng, pts[j], ang + rng.randf_range(-0.9, 0.9), reach * 0.35, r))
 		# rings joining the rays near the impact (the spider-web look)
-		for ring in (1 if level == 1 else 2):
+		for ring in mini(level, 3):
 			var t := 0.18 + 0.2 * ring
 			for i in ends.size():
 				var a: PackedVector2Array = ends[i]

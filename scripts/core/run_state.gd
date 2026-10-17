@@ -9,7 +9,12 @@ const SEEDLINGS := {"fight": 3, "elite": 8, "boss": 20}
 const WIN_BONUS := 30
 const REST_HEAL := 0.3
 ## Normal fights: each card is common 70% of the time, rare 30%. Elites: 3 rares. Bosses: 3 legendaries.
-const RARE_CHANCE := 0.3
+## Spell reward odds, Slay the Spire's (their common / uncommon / rare = our Common / Rare / Legendary), per card:
+## [Common, Rare, Legendary]. A boss always gives Legendary.
+const ODDS := {"fight": [0.60, 0.37, 0.03], "elite": [0.50, 0.40, 0.10], "shop": [0.54, 0.37, 0.09]}
+## Their hidden pity counter: the Legendary chance starts 5% lower, rises 1% with every Common you're shown, and drops
+## back when a Legendary shows up.
+const LEGENDARY_OFFSET_START := -0.05
 ## Amber: the run's money, spent at merchants and in some events.
 const START_AMBER := 30
 const AMBER := {"fight": [14, 22], "elite": [28, 38], "boss": [60, 60]}
@@ -46,7 +51,10 @@ var encounter: Array = []  # the ids of the encounter being prepared
 var encounter_name := ""  # its name (Act 1's hand-made encounters, e.g. "The Slime Trio"; "" otherwise)
 var recent_encounters: Array = []  # names of the encounters met so far (an encounter never comes up twice in 3)
 var encounter_extra: Array = []  # the extra Essence each of those enemies will have (rolled once)
+var first_run := false  # the player's very first run (and the Anxious Armadillo not met yet): he waits in Act 2's 2nd fight
+var fight_rooms: Array = []  # "act:row:col" of every normal fight room entered (to count Act 2's fights)
 var fused := {}  # id -> spell dict, for spells forged at campfires ("fused_1", ...)
+var inverted: Array = []  # spell ids inverted for the run (the Upside-Down Pool): a spell plays as an anti-spell, and back
 var _fuse_count := 0
 var over := false
 var won := false
@@ -93,6 +101,11 @@ static func from_save(d: Dictionary, p_db: SpellDB) -> RunState:
 	for k in d.player:
 		if k in r.player:
 			r.player.set(k, d.player[k])
+	# spells removed from the game since this run was saved are dropped
+	var known := func(id) -> bool: return r.fused.has(id) or not p_db.get_spell(id).is_empty()
+	r.spellbook = r.spellbook.filter(known)
+	r.loadout = r.loadout.filter(known)
+	r.unlocked_spells = r.unlocked_spells.filter(known)
 	return r
 
 
@@ -120,6 +133,9 @@ func active_slots() -> int:
 ## shows them, under a wax seal (full_pattern + seals).
 func spell(id: String) -> Dictionary:
 	var s: Dictionary = fused[id] if fused.has(id) else db.get_spell(id)
+	if id in inverted and not s.is_empty():
+		s = s.duplicate(true)
+		s.anti = not s.get("anti", false)
 	var extra: String = burdens.get(id, "")
 	if extra != "" and not s.is_empty():
 		s = s.duplicate(true)
@@ -195,7 +211,14 @@ func encounter_ids() -> Array:
 		kind = "fight"
 	var ids: Array
 	encounter_name = ""
-	if act == 1 and kind == "fight":
+	var key := "%d:%d:%d" % [act, row, col]
+	if kind == "fight" and not (key in fight_rooms):
+		fight_rooms.append(key)
+	var act_fights := fight_rooms.filter(func(k): return String(k).begins_with("%d:" % act)).size()
+	if first_run and act == 2 and kind == "fight" and act_fights == 2:
+		ids = ["anxious_armadillo"]  # (once ever: main.gd records it when the fight starts)
+		encounter_name = "The Anxious Armadillo"
+	elif act == 1 and kind == "fight":
 		# a hand-made, themed encounter of the tier this floor brings (see EnemyDefs.ENCOUNTERS_ACT1)
 		var enc := EnemyDefs.act1_encounter(EnemyDefs.act1_tier(row), rng, recent_encounters)
 		ids = enc.ids
@@ -241,6 +264,9 @@ func finish_fight(f: Fight) -> void:
 	if not f.won:
 		over = true
 		return
+	for id in f.exhausted:  # Exhausted spells: gone for the rest of the run
+		spellbook.erase(id)
+		loadout.erase(id)
 	kills += f.defeated.size()
 	for id in f.defeated:
 		if not (id in defeated_ids):
@@ -299,6 +325,27 @@ func is_boss_node() -> bool:
 
 ## Spells you don't own yet. Normal fights: each card common (70%) or rare (30%). Elites: rares. Bosses: legendaries.
 ## The Scholar's Quill adds a 4th card. Offers always mix at least two categories.
+var legendary_offset := LEGENDARY_OFFSET_START  # (the pity counter, see ODDS)
+
+
+## One card's rarity for a reward of this kind (fight, elite, shop, boss), moving the pity counter.
+func _roll_rarity(kind: String) -> String:
+	if kind == "boss":
+		return "legendary"
+	var o: Array = ODDS.get(kind, ODDS.fight)
+	var leg := maxf(0.0, o[2] + (legendary_offset if kind != "shop" else 0.0))
+	var r := rng.randf()
+	if r < leg:
+		if kind != "shop":
+			legendary_offset = LEGENDARY_OFFSET_START
+		return "legendary"
+	if r < leg + o[1]:
+		return "rare"
+	if kind != "shop":
+		legendary_offset += 0.01
+	return "common"
+
+
 func spell_offer(n := 3, kind := "fight") -> Array:
 	if "scholar_quill" in artifacts:
 		n += int(Artifacts.num("scholar_quill", "scholar_quill" in artifacts_plus)) - 3
@@ -307,18 +354,11 @@ func spell_offer(n := 3, kind := "fight") -> Array:
 		if id in spellbook:
 			continue
 		var s := db.get_spell(id)
-		if not s.is_empty() and not s.get("starter", false):  # the starting spells are never offered again
+		if not s.is_empty() and not s.get("starter", false) and by_rarity.has(s.rarity):  # (never the starters, nor Unique ones)
 			by_rarity[s.rarity].append(s)
 	var out := []
 	for i in n:
-		var r := "common"
-		match kind:
-			"elite":
-				r = "rare"
-			"boss":
-				r = "legendary"
-			_:
-				r = "rare" if rng.randf() < RARE_CHANCE else "common"
+		var r := _roll_rarity(kind)
 		var pool: Array = by_rarity[r]
 		if pool.is_empty():  # nothing of that rarity left: fall back to the next one down
 			for alt in ["rare", "common", "legendary"]:
@@ -640,9 +680,27 @@ func can_choose(opt: Dictionary) -> bool:
 		return false
 	if opt.get("do", "") == "trade_artifacts" and tradeable_artifacts().is_empty():
 		return false
+	if opt.get("do", "") == "invert_spell" and (invertible_spells().is_empty() or player.hp < 2):
+		return false
 	if spellbook.size() <= opt.get("lose_spells", 0):
 		return false  # (you always keep at least one spell)
 	return amber >= opt.get("amber", 0) and player.hp > opt.get("hp", 0) and player.max_hp > opt.get("max_hp", 0) + 5
+
+
+## Spells the Upside-Down Pool can flip (not Powers).
+func invertible_spells() -> Array:
+	return spellbook.filter(func(id): return not spell(id).get("power", false))
+
+
+## The Upside-Down Pool: pay half your HP (rounded down), and the spell plays inverted for the rest of the run.
+func invert_spell(id: String) -> String:
+	player.hp -= floorf(player.hp * 0.5)
+	if id in inverted:
+		inverted.erase(id)
+	else:
+		inverted.append(id)
+	var s := spell(id)
+	return "%s is %s now." % [s.name, "an anti-spell" if s.get("anti", false) else "a spell again"]
 
 
 ## Do what an event option says. Returns {text, fight: bool}.
@@ -756,9 +814,7 @@ func _do_event_option(opt: Dictionary) -> Dictionary:
 ## What the merchant sells: 3 spells, 2 artifacts, an upgrade and a meal.
 func shop_stock() -> Array:
 	var items := []
-	var spells := spell_offer(2, "fight") + spell_offer(1, "elite")
-	if rng.randf() < 0.3:
-		spells += spell_offer(1, "boss")
+	var spells := spell_offer(3, "shop")
 	var seen := {}
 	for s in spells:
 		if seen.has(s.id):

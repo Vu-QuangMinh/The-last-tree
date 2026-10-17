@@ -21,7 +21,7 @@ func run(t: SceneTree) -> void:
 	save.data.codex = ["ashling", "gale_sprite", "stone_knight", "woodcutter", "puddle_slime"]
 	save.data.seedlings = 85
 	if OS.get_environment("SHOT_THEME") != "":
-		save.data.settings["theme"] = OS.get_environment("SHOT_THEME")  # "new" renders the New theme
+		UiSkin.set_theme(OS.get_environment("SHOT_THEME"))  # "new" renders the New theme
 	var gd = root.get_node("GameData")
 	var run := RunState.new()
 	run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)

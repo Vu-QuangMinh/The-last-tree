@@ -70,6 +70,12 @@ const E := {
 		"flavor": "Marks your Essence with pain."},
 	"shrine_maiden": {"name": "Shrine Maiden", "act": 2, "hp": "WAW", "moves": [{"kind": "mend", "el": "random", "n": 1, "who": "all"}, {"kind": "attack", "n": 3}, {"kind": "frail", "turns": 1}],
 		"flavor": "She mends everyone but you."},
+	# The Anxious Armadillo (Act 2, met once ever: the second fight of Act 2 on your very first run). He never attacks:
+	# he only curls up tighter (+2 Thorns a turn: your Release hitting him hurts you that much). Beaten, he doesn't
+	# break: FightScreen._armadillo_ending plays his scene (sad, he tries to hop away, the string yanks him up).
+	"anxious_armadillo": {"name": "Anxious Armadillo", "act": 2, "unique": true, "no_extra": true, "hp": "WFAAFWWAFFAWWFAAFWWA",
+		"passives": ["armadillo"], "moves": [{"kind": "grow_thorns", "n": 2}],
+		"flavor": "Curled up, spiky, and very, very nervous."},
 	"blinding_beetle": {"name": "Blinding Beetle", "act": 2, "hp": "FAF", "moves": [{"kind": "blind", "turns": 2}, {"kind": "attack", "n": 4}, {"kind": "empower", "n": 1}],
 		"flavor": "A flash, and everything blurs."},
 	# ---------------- act 3
@@ -86,11 +92,11 @@ const E := {
 	"storm_imp": {"name": "Storm Imp", "act": 3, "hp": "AAF", "moves": [{"kind": "attack", "n": 1, "hits": 3}, {"kind": "ethereal"}, {"kind": "empower", "n": 1}],
 		"flavor": "Flickers out of reach."},
 	# ---------------- elites
-	"storm_rider": {"name": "Storm Rider", "act": 2, "elite": true, "hp": "AAFAA", "moves": [{"kind": "attack", "n": 3, "hits": 2}, {"kind": "attack", "n": 2, "also": {"kind": "shuffle"}}],
+	"storm_rider": {"name": "Storm Rider", "act": 2, "elite": true, "retired": true, "hp": "AAFAA", "moves": [{"kind": "attack", "n": 3, "hits": 2}, {"kind": "attack", "n": 2, "also": {"kind": "shuffle"}}],
 		"flavor": "Fast, and hard to read."},
-	"lockwarden": {"name": "Lockwarden", "act": 2, "elite": true, "hp": "WFWAF", "moves": [{"kind": "lock", "len": 2}, {"kind": "attack", "n": 5}, {"kind": "attack", "n": 5}],
+	"lockwarden": {"name": "The Warden", "act": 2, "elite": true, "hp": "WFWAF", "moves": [{"kind": "lock", "len": 2}, {"kind": "attack", "n": 5}, {"kind": "attack", "n": 5}],
 		"flavor": "Chains your spells shut."},
-	"tide_colossus": {"name": "Tide Colossus", "act": 3, "elite": true, "hp": "WWWWFW", "moves": [{"kind": "mend", "el": "W", "n": 2, "who": "self"}, {"kind": "attack", "n": 8}],
+	"tide_colossus": {"name": "Tide Colossus", "act": 3, "elite": true, "retired": true, "hp": "WWWWFW", "moves": [{"kind": "mend", "el": "W", "n": 2, "who": "self"}, {"kind": "attack", "n": 8}],
 		"flavor": "A wave that stands up."},
 	# The Triplet (a mini boss of three separate enemies): one spirit of each element, each with its own cycle of moves.
 	# They START at different points of it ("start"); a stun or a death can bring them in step later, and that's fine.
@@ -117,19 +123,19 @@ const E := {
 		"moves": [{"kind": "sing"}, {"kind": "attack", "n": 1, "hits": 2}],
 		"wall_moves": [{"kind": "attack", "n": 2, "hits": 1}, {"kind": "attack", "n": 1, "hits": 2}, {"kind": "attack", "n": 1, "hits": 3}],
 		"flavor": "A hedge that sings."},
-	"mirror_knight": {"name": "Mirror Knight", "act": 2, "elite": true, "hp": "WAFWAF", "moves": [{"kind": "armor", "pos": 0, "also": {"kind": "attack", "n": 5}}, {"kind": "shuffle", "also": {"kind": "attack", "n": 7}}],
+	"mirror_knight": {"name": "Mirror Knight", "act": 3, "elite": true, "hp": "WAFWAF", "moves": [{"kind": "armor", "pos": 0, "also": {"kind": "attack", "n": 5}}, {"kind": "shuffle", "also": {"kind": "attack", "n": 7}}],
 		"flavor": "Its guard is where you least expect."},
-	"void_archon": {"name": "Void Archon", "act": 3, "elite": true, "hp": "AFWAFWA", "moves": [{"kind": "blind", "turns": 2, "also": {"kind": "attack", "n": 5}}, {"kind": "lock", "len": 2}, {"kind": "attack", "n": 4, "hits": 3}],
+	"void_archon": {"name": "Void Archon", "act": 3, "elite": true, "retired": true, "hp": "AFWAFWA", "moves": [{"kind": "blind", "turns": 2, "also": {"kind": "attack", "n": 5}}, {"kind": "lock", "len": 2}, {"kind": "attack", "n": 4, "hits": 3}],
 		"flavor": "It steals the light, then the words."},
 	# ---------------- bosses (moves2 = second phase, at half HP)
 	# The Yin Yang Beast (an Act 1 boss): black and white. Inversion (3 of your spells flip: spell <-> anti-spell, and it
-	# turns the other colour) -> Roar (silence 2 spells, a small hit) -> a 3-turn Charge (an hourglass), then a big hit.
+	# turns the other colour) -> Roar (silence 2 spells for 3 turns, a small hit) -> a 3-turn Charge (an hourglass), then a big hit.
 	# While it charges, each spell of its own colour you cast (white: spells, black: anti-spells) raises the hit by 5
 	# (one of the other colour doesn't change it). None of that is told in the fight: the Codex explains it.
 	# When it dies it splits into two clones (one white, one black, out of step) that do the same at a smaller size.
 	"yin_yang_beast": {"name": "Yin Yang Beast", "act": 1, "boss": true, "hp": "FWAFWAFWAFWAFWAFWAFWAFWAFWAFWA", "yin": "white",
 		"passives": ["yinyang_split"],
-		"moves": [{"kind": "invert_spells", "n": 3}, {"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 5}},
+		"moves": [{"kind": "invert_spells", "n": 3}, {"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 5}},
 			{"kind": "charge", "left": 3, "n": 30}, {"kind": "charge", "left": 2}, {"kind": "charge", "left": 1, "hit": true}],
 		"flavor": "Two halves of one temper."},
 	# The Cubs both flip a spell first. Then the white one charges while the black one roars every turn (silence 2,
@@ -139,28 +145,32 @@ const E := {
 	"yin_yang_clone": {"name": "Yin Yang Cub", "act": 1, "member": true, "hp": "FFWWAAFFWW", "hp_black": "AWFAWFAWFA", "yin": "white",
 		"opener": [{"kind": "invert_spells", "n": 1}],
 		"moves": [{"kind": "charge", "left": 3, "n": 10}, {"kind": "charge", "left": 2}, {"kind": "charge", "left": 1, "hit": true},
-			{"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 2}},
-			{"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 2}},
-			{"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 2}}],
-		"moves_black": [{"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 2}},
-			{"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 2}},
-			{"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 2}},
+			{"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 2}},
+			{"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 2}},
+			{"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 2}}],
+		"moves_black": [{"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 2}},
+			{"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 2}},
+			{"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 2}},
 			{"kind": "charge", "left": 3, "n": 10}, {"kind": "charge", "left": 2}, {"kind": "charge", "left": 1, "hit": true}],
 		"flavor": "Half a beast, all the temper."},
 	# The Invoker (an Act 1 boss): he never attacks. Each turn he conjures 3 of his 10 spells (no repeats) as cards on his
 	# side; on his turn he casts every one your chant matched, or else the one it came closest to (ties: random). At 0
-	# Essence he rises again with 10 more, and from then on chants Quas / Wex / Exort, one a turn: that Essence is
+	# Essence he rises again with 15 more, and from then on chants Quas / Wex / Exort, one a turn: that Essence is
 	# stripped from his spells' patterns for the rest of the fight (they get easier to set off).
-	"invoker": {"name": "The Invoker", "act": 1, "boss": true, "hp": "FWAFWAFWAFWAFWAFWAFW", "hp2": "AWFAWFAWFA",
+	"invoker": {"name": "Ol' Wiz", "act": 1, "boss": true, "hp": "FWAFWAFWAFWAFWAFWAFW", "hp2": "AWFAWFAWFAWFAWF",
 		"invokes": true, "passives": ["invoker", "invoker_rebirth"], "tint": Color(0.5, 0.3, 0.72),
 		"moves": [{"kind": "invoke"}],
 		"flavor": "Ten spells, three words, no patience."},
-	"forge_spirit": {"name": "Forge Spirit", "act": 1, "member": true, "hp": "FFF", "moves": [{"kind": "attack", "n": 3}],
-		"flavor": "A spark of the Invoker's forge, with a temper to match."},
+	# (two Forge Spirits come at once: their rows share no start, so one chant can't take both down)
+	"forge_spirit": {"name": "Forge Spirit", "act": 1, "member": true, "hp": "FFW", "moves": [{"kind": "attack", "n": 3}],
+		"flavor": "A spark of Ol' Wiz's forge, with a temper to match."},
+	"forge_spirit_b": {"name": "Forge Spirit", "act": 1, "member": true, "hp": "WAF", "moves": [{"kind": "attack", "n": 3}],
+		"flavor": "A spark of Ol' Wiz's forge, with a temper to match."},
 	# The Handyman (an Act 1 boss). No real HP until the very end: his HANDS are what you fight. A hand at 0 Essence is
-	# only knocked out: it skips its action and comes back whole next turn. 4 knockouts (any hands) -> 2 more hands
-	# (hammer, crossbow); 8 more -> 2 more (spear, shield, 3 Essence each), and from then on a knocked-out hand stays
-	# down. With every hand down, he shows himself: 1 Essence, and an intent to hit you for 999.
+	# only knocked down. In every phase each hand has 2 lives: with one left it lies down a turn and is
+	# resurrected (angel wings + hourglass); out of lives it stays down. Every hand out of lives -> 2 more hands
+	# (hammer, crossbow), and the fallen ones get back up too; again -> 2 more (spear, shield, 3 Essence each). With every
+	# hand out of lives in that last phase, he shows himself: 1 Essence, and an intent to hit you for 999.
 	# (Their rows were searched to overlap as little as possible: a chant aimed at one hand takes at most 2 off another.)
 	"handyman": {"name": "The Handyman", "act": 1, "boss": true, "no_extra": true, "hp": "A", "passives": ["handyman"],
 		"moves": [{"kind": "attack", "n": 999}], "flavor": "Six hands, one job."},
@@ -170,8 +180,8 @@ const E := {
 		"flavor": "Plucks Essence out of your bag and keeps it."},
 	"hand_hammer": {"name": "Hammer Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🔨", "hp": "AWFWA", "moves": [{"kind": "hammer_spell"}],
 		"flavor": "It knows which spell you love most."},
-	"hand_crossbow": {"name": "Crossbow Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🏹", "hp": "FFWAF", "moves": [{"kind": "charge", "left": 2, "n": 20},
-		{"kind": "charge", "left": 1}, {"kind": "charge", "left": 0, "hit": true}], "flavor": "Slow to load. Not slow to hurt."},
+	"hand_crossbow": {"name": "Crossbow Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🏹", "hp": "FFWAF", "moves": [{"kind": "charge", "left": 1, "n": 20, "turns": 2},
+		{"kind": "charge", "left": 0, "hit": true}], "flavor": "Slow to load. Not slow to hurt."},
 	"hand_spear": {"name": "Spear Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🔱", "hp": "AAA", "moves": [{"kind": "attack", "n": 8}],
 		"flavor": "The last hands are the sharpest."},
 	"hand_shield": {"name": "Shield Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🛡", "hp": "FFF", "moves": [{"kind": "armor", "pos": -1, "who": "random"}],
@@ -202,9 +212,9 @@ const PASSIVE_TEXT := {
 	"thorns": "Thorns 2: you lose 2 HP whenever your Release hits it.",
 	"burn_immune": "Fireproof: Burn has no effect on it.",
 	"slime_burst": "Burst: when it dies, two small slimes pop out.",
-	"hand": "A hand: at 0 Essence it's only knocked out. It skips its action and comes back whole next turn (in his last stand, it stays down).",
+	"hand": "A hand with 2 lives: at 0 Essence it goes down for a turn, then is resurrected whole. Out of lives, it stays down until every hand is; then they all rise for his next phase (after his last stand, he shows himself).",
 	"handyman": "The Handyman himself: 1 Essence, out in the open at last.",
-	"invoker": "Invoker: every turn he conjures 3 spells. On his turn he casts every one your chant matched, or else the one it came closest to.",
+	"invoker": "Ol' Wiz: every turn he conjures 3 spells. On his turn he casts every one your chant matched, or else the one it came closest to.",
 	"invoker_rebirth": "Second wind: at 0 Essence he rises again with 10 more, and starts chanting Quas, Wex or Exort, one a turn: each strips that Essence (Water, Air, Fire) from his spells for the rest of the fight.",
 	"yinyang_split": "Split: when it dies, it splits into two Yin Yang Cubs (10 Essence each), one white and one black.",
 	"shield_rage": "Enraged: every time you gain Shield, it gains Power +1 (its attacks deal 1 more damage).",
@@ -271,31 +281,31 @@ const BIOS := {
 
 const BOSSES := {1: ["yin_yang_beast", "invoker", "handyman"], 2: ["blightmother"], 3: ["last_winter"]}
 ## Passives the fight never tells you about (only the Codex does, once you've beaten it).
-const HIDDEN_PASSIVES := ["yinyang_split", "invoker_rebirth"]
+const HIDDEN_PASSIVES := ["yinyang_split", "invoker_rebirth", "armadillo"]
 
 ## The Invoker's spells (Dota 2's Invoker: Quas = Water, Wex = Air, Exort = Fire). Each one's "cast" is the move he makes
 ## when it goes off; "desc" is its card text.
 const INVOKER_WORDS := {"W": "Quas", "A": "Wex", "F": "Exort"}
 const INVOKER_SPELLS := [
-	{"id": "inv_cold_snap", "name": "Cold Snap", "pattern": "WWW", "kind": "damage", "desc": "Deal 1 damage to you, 4 times.",
+	{"id": "inv_cold_snap", "name": "Cold Snap", "pattern": "WWW", "kind": "damage", "desc_fmt": "Deal %d damage to you, 4 times.", "dmg": [1],
 		"cast": {"kind": "attack", "n": 1, "hits": 4}},
 	{"id": "inv_ghost_walk", "name": "Ghost Walk", "pattern": "WWA", "kind": "utility", "desc": "He cleanses all his debuffs.",
 		"cast": {"kind": "cleanse_self"}},
 	{"id": "inv_ice_wall", "name": "Ice Wall", "pattern": "WWF", "kind": "defense", "desc": "He Armours 3 of his Essence.",
 		"cast": {"kind": "armor", "pos": -1, "count": 3}},
-	{"id": "inv_emp", "name": "EMP", "pattern": "AAA", "kind": "utility", "desc": "You lose 2 random Essence from your bag, and take 2 damage.",
+	{"id": "inv_emp", "name": "EMP", "pattern": "AAA", "kind": "utility", "desc_fmt": "You lose 2 random Essence from your bag, and take %d damage.", "dmg": [2],
 		"cast": {"kind": "drain_essence", "n": 2, "also": {"kind": "attack", "n": 2}}},
-	{"id": "inv_tornado", "name": "Tornado", "pattern": "AAW", "kind": "damage", "desc": "Deal 3 damage to you and Silence 1 of your spells (1 turn).",
+	{"id": "inv_tornado", "name": "Tornado", "pattern": "AAW", "kind": "damage", "desc_fmt": "Deal %d damage to you and Silence 1 of your spells (1 turn).", "dmg": [3],
 		"cast": {"kind": "attack", "n": 3, "also": {"kind": "silence", "n": 1, "turns": 1}}},
 	{"id": "inv_alacrity", "name": "Alacrity", "pattern": "AAF", "kind": "utility", "desc": "He gains Power +2.",
 		"cast": {"kind": "empower", "n": 2}},
-	{"id": "inv_sun_strike", "name": "Sun Strike", "pattern": "FFF", "kind": "damage", "desc": "Deal 10 damage to you.",
+	{"id": "inv_sun_strike", "name": "Sun Strike", "pattern": "FFF", "kind": "damage", "desc_fmt": "Deal %d damage to you.", "dmg": [10],
 		"cast": {"kind": "attack", "n": 10}},
-	{"id": "inv_forge_spirit", "name": "Forge Spirit", "pattern": "FFW", "kind": "utility", "desc": "He summons a Forge Spirit (3 Essence, attacks for 3).",
-		"cast": {"kind": "summon", "id": "forge_spirit", "n": 1}},
-	{"id": "inv_chaos_meteor", "name": "Chaos Meteor", "pattern": "FFA", "kind": "damage", "desc": "Deal 2 damage to you, 3 times, and Ignite 3 of your spells.",
+	{"id": "inv_forge_spirit", "name": "Forge Spirit", "pattern": "FFW", "kind": "utility", "desc": "He summons 2 Forge Spirits (3 Essence each, attack for 3).",
+		"cast": {"kind": "summon", "list": ["forge_spirit", "forge_spirit_b"], "n": 2}},
+	{"id": "inv_chaos_meteor", "name": "Chaos Meteor", "pattern": "FFA", "kind": "damage", "desc_fmt": "Deal %d damage to you, 3 times, and Ignite 3 of your spells.", "dmg": [2],
 		"cast": {"kind": "attack", "n": 2, "hits": 3, "also": {"kind": "ignite_spell", "n": 3, "turns": 1}}},
-	{"id": "inv_deafening_blast", "name": "Deafening Blast", "pattern": "WAF", "kind": "damage", "desc": "Deal 5 damage to you and Disarm you (your next Release does nothing).",
+	{"id": "inv_deafening_blast", "name": "Deafening Blast", "pattern": "WAF", "kind": "damage", "desc_fmt": "Deal %d damage to you and Disarm you (your next Release does nothing).", "dmg": [5],
 		"cast": {"kind": "attack", "n": 5, "also": {"kind": "disarm", "turns": 1}}},
 ]
 
@@ -307,12 +317,15 @@ static func get_def(id: String) -> Dictionary:
 
 
 static func normals(act: int) -> Array:
-	return E.keys().filter(func(k): return E[k].act == act and not E[k].get("elite", false) and not E[k].get("boss", false))
+	return E.keys().filter(func(k): return E[k].act == act and not E[k].get("elite", false) and not E[k].get("boss", false) and not E[k].get("unique", false))
 
 
+## The mini bosses of an act (only that act's own; "retired" ones are kept for old saves and the codex but never met).
+## Act 1: The Triplet, Enraged Rolling Bear, Bramble Matron. Act 2: Chairman, Blackwing, The Warden.
+## Act 3: Bottle Head, Fire Dragon, Mirror Knight. (Chairman, Blackwing, Bottle Head and Fire Dragon: not made yet.)
 static func elites(act: int) -> Array:
-	var out := E.keys().filter(func(k): return E[k].get("elite", false) and not E[k].get("member", false) and E[k].act <= act and E[k].act >= act - 1)
-	return out + ELITE_GROUPS.keys().filter(func(k): return ELITE_GROUPS[k].act <= act and ELITE_GROUPS[k].act >= act - 1)
+	var out := E.keys().filter(func(k): return E[k].get("elite", false) and not E[k].get("member", false) and not E[k].get("retired", false) and E[k].act == act)
+	return out + ELITE_GROUPS.keys().filter(func(k): return ELITE_GROUPS[k].act == act)
 
 
 ## Mini bosses that are a group: always met together, left to right.
@@ -421,13 +434,7 @@ static func encounter(kind: String, act: int, floor: int, rng: RandomNumberGener
 			var fresh := pool.filter(func(id): return not (ids_of(id)[0] in seen))
 			if not fresh.is_empty():
 				pool = fresh
-			var out := ids_of(pool[rng.randi() % pool.size()])
-			if act >= 2:
-				# an elite brings 1 escort (sometimes 2 in act 3)
-				var n := normals(act)
-				for i in (2 if act >= 3 and rng.randf() < 0.4 else 1):
-					out.append(n[rng.randi() % n.size()])
-			return out
+			return ids_of(pool[rng.randi() % pool.size()])  # (a mini boss comes alone: no escorts)
 	var pool := normals(act)
 	var count := group_size(act, floor, rng)
 	var out := []
@@ -522,9 +529,11 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			if full:
 				s += ", and it turns the other colour (white / black)"
 		"invoke":
-			s = "Cast one of his spells (every one your chant matched, or else the closest)"
+			s = "Cast his glowing spells"
 			if m.has("word"):
-				s += ", then chant %s: his spells lose every %s" % [INVOKER_WORDS[m.word], Elements.NAMES[m.word]]
+				s = "Chant %s %s" % [INVOKER_WORDS[m.word], Elements.NAMES[m.word]]  # (just what he'll say: "Chant Quas" + the Water icon)
+			if full:
+				s = "Cast the spell he chose this turn, and every one your chant contains" + ((", then chant %s (his spells lose every %s)" % [INVOKER_WORDS[m.word], Elements.NAMES[m.word]]) if m.has("word") else "")
 		"cleanse_self":
 			s = "Cleanse all its debuffs"
 		"drain_essence":
@@ -532,14 +541,18 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 		"disarm":
 			s = "Disarm you (your next Release does nothing)"
 		"hammer_spell":
-			s = "Hammer your most-cast spell (3 hits break it for the fight; a Fleeting spell breaks at once)"
+			s = "Hammer your most-cast spell (3 hits break it for the fight; a spell with Durability loses 1 per hit)"
 		"stunned":
 			s = "Knocked out: back next turn"
+		"grow_thorns":
+			s = "Gain %d Thorns (your Release hitting it hurts you that much)" % int(m.n)
+		"revive":
+			s = "Resurrected in %d turn%s" % [int(m.left), "" if int(m.left) == 1 else "s"]
 		"charge":
 			if not full and int(m.get("left", 1)) == 0:
 				s = "Fires at the end of this turn"
 			elif full and m.has("n"):
-				s = "Charge for 3 turns (an hourglass), then hit for %d. While it charges, every spell of its own colour you cast (white: spells, black: anti-spells) raises the hit by 5 (one of the other colour does nothing to it)" % m.n
+				s = "Charge for %d turns (an hourglass), then hit for %d. While it charges, every spell of its own colour you cast (white: spells, black: anti-spells) raises the hit by 5 (one of the other colour does nothing to it)" % [int(m.get("turns", 3)), m.n]
 			elif full:
 				s = ""
 			else:

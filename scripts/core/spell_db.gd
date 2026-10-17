@@ -3,13 +3,13 @@ extends RefCounted
 ## Loads data/spells.json (chant patterns). Adds derived fields: size, rarity_name, targeted, kind.
 ## Rarity (common / rare / legendary) is set per spell in the JSON.
 
-const RARITY_NAMES := {"common": "Common", "rare": "Rare", "legendary": "Legendary"}
+const RARITY_NAMES := {"common": "Common", "rare": "Rare", "legendary": "Legendary", "unique": "Unique"}  # (Unique: never offered)
 const TARGETED_OPS := ["steal", "pluck", "move", "redirect", "strike", "burn", "poison", "weak", "freeze", "expose", "ethereal", "rotate", "swap",
 	"convert", "purge", "shatter", "stoke", "siphon", "execute", "insert", "curse"]
 
 ## Every spell is in one of three categories: Offensive, Defensive, Utility (reward offers, card colour and tag).
-const DAMAGE_OPS := ["steal", "pluck", "strike", "burn", "poison", "purge", "execute", "siphon", "amplify", "echo", "stoke", "expose", "annihilate", "barrage", "random_hit"]
-const DEFENSE_OPS := ["shield", "heal", "aegis", "thorns", "weak", "freeze", "cleanse", "redirect"]
+const DAMAGE_OPS := ["steal", "pluck", "strike", "burn", "poison", "purge", "execute", "siphon", "amplify", "echo", "stoke", "expose", "annihilate", "barrage", "random_hit", "meteor_rain"]
+const DEFENSE_OPS := ["shield", "heal", "aegis", "thorns", "weak", "freeze", "cleanse", "redirect", "disarm"]
 const DAMAGE_KEYS := ["burn_bonus", "strike_poison", "strike_burn", "strike_bonus"]
 const DEFENSE_KEYS := ["thorns", "weak25"]
 const KIND_NAMES := {"damage": "Offensive", "defense": "Defensive", "utility": "Utility"}
@@ -78,7 +78,7 @@ static func upgrade(spell: Dictionary) -> Dictionary:
 			if x.op in ["shield", "heal"]:
 				x.n += 2
 				improved = true
-			elif x.op in ["steal", "strike", "burn", "poison", "purge", "siphon", "move", "pluck", "draw", "thorns", "amplify", "retain", "passive", "summon_spells", "expose"] and x.has("n"):
+			elif x.op in ["steal", "strike", "burn", "poison", "purge", "siphon", "move", "pluck", "draw", "thorns", "amplify", "retain", "passive", "summon_spells", "expose", "self_repaint", "wild_move", "wild_repaint"] and x.has("n"):
 				x.n += 1
 				improved = true
 			elif x.op in ["weak", "freeze"]:
