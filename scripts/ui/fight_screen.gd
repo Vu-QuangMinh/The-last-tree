@@ -126,6 +126,7 @@ const FLY_TIME := 0.26  # an element jumping between the bag and the chant
 const BAG_MOVE := 0.22  # the bag's icons closing up or making room
 var _next_row: HBoxContainer
 var _next_panel: PanelContainer
+var _talk_pending := false  # a boss to talk to: _arrive starts it once everything is in place
 var _talking := false  # talking to a boss before the fight (BossTalk): only the boss, the backdrop and your bag
 var _prompt: Label
 var _info: Label
@@ -410,7 +411,10 @@ func _ready() -> void:
 		ropes.fs = self
 		add_child(ropes)
 	if fight.talk_id != "" and not help_override.is_valid():
-		_talk.call_deferred()  # (a boss to talk to first; not in the tutorial)
+		if _stage != null and (map_mode or arrive):
+			_talk_pending = true  # (Puppet Stage: he speaks once "Begin the fight" is pressed and the scene and the HUD are all in place, see _arrive)
+		else:
+			_talk.call_deferred()  # (a boss to talk to first; not in the tutorial)
 	tut.connect(func(_k, _d): note_progress())
 	_machine_ready = not (_stage != null and (map_mode or arrive))
 	if _stage != null and (map_mode or arrive):
@@ -561,14 +565,25 @@ func _arrive() -> void:
 		arrival_ready.emit()
 		if hold_hud:
 			await hud_released
+	while _dropping and is_inside_tree():  # (the HUD comes up once the enemies hang in their places)
+		await get_tree().process_frame
+	if _talk_pending:
+		_talk_pending = false
+		await _hud_up()
+		if tw.is_running():
+			await tw.finished
+		await get_tree().create_timer(0.6).timeout  # (the cards have landed)
+		_talk()
+		return
 	_hud_up()
 	if tw.is_running():
 		await tw.finished
 
 
 const ENEMY_UP := -1500.0  # how far above their places the enemies hang while they are out of sight (their ropes go straight up behind the ceiling)
-const ENEMY_LET_DOWN := 0.55  # seconds of free fall before the ropes are out to their length
+const ENEMY_LET_DOWN := 0.55  # seconds of free fall before the ropes are out to their length (at ENEMY_SPEED 1)
 const ENEMY_SPRING := 1.1  # seconds the puppets bob on their ropes after that
+const ENEMY_SPEED := 0.5  # how fast the whole let-down goes: half of what it was
 var _enemy_drop := 0.0  # how far the enemy row is lifted from its place (0 = standing)
 var _dropping := false  # (the lift of the Essence rows leaves the row alone while it is let down)
 
@@ -587,13 +602,14 @@ func _let_enemies_down() -> void:
 	var tw := create_tween()
 	tw.tween_method(func(t: float):
 		var off := 0.0
+		# (t is in seconds at normal speed)
 		if t < ENEMY_LET_DOWN:
 			var u := t / ENEMY_LET_DOWN
 			off = from * (1.0 - u * u)  # gravity: slow at first, fast at the end
 		else:
 			var s := t - ENEMY_LET_DOWN
 			off = 20.0 * exp(-4.5 * s) * sin(TAU * 1.8 * s)  # the rope stretches: a dip below the place, a bob back
-		_set_enemy_drop(off), 0.0, ENEMY_LET_DOWN + ENEMY_SPRING, ENEMY_LET_DOWN + ENEMY_SPRING)
+		_set_enemy_drop(off), 0.0, ENEMY_LET_DOWN + ENEMY_SPRING, (ENEMY_LET_DOWN + ENEMY_SPRING) / ENEMY_SPEED)
 	await tw.finished
 	_set_enemy_drop(0.0)
 	_dropping = false
@@ -814,6 +830,10 @@ var _cast_uids := {}  # uid -> true: the Essence of the chant being cast right n
 var _tube_icons: Array = []  # the Essence in the tube (next turn's draw), or waiting hidden in the red block (sent by a spell)
 var _tube_hold_until := 0  # ticks: the tube rests, empty, until then (2 s after a launch)
 var _tube_sync_pending := false
+var _direct_in := 0  # stolen Essence on their way into the Bag that skip the machine
+var _direct_until := 0  # ticks: after this a stolen one is no longer waited for
+var _direct_landed := false
+var _direct_wait: Array = []  # the Bag's balls waiting for the flying one to land
 var _bag_order: Array = []  # Puppet Stage: the uids of the Bag's balls in the order they stand now (new balls stack after them; a re-sort follows)
 var _resort := false  # (set while the sorted order is being walked into: its balls swap with a lift and one sound)
 var _resort_wait := false  # a launch just ended: the balls wait a moment before they swap into their types
@@ -1561,6 +1581,7 @@ func _refund_flight(ev: Dictionary) -> void:
 	if not _puppet_strips() or _stock_row == null:
 		return
 	var uids: Array = ev.uids
+	_keep_bag_order = true  # (the refunded balls roll to the back of the Bag: nothing is placed ahead of time or sorted until the next spawn)
 	for u in uids:
 		_flying[u] = true
 	_refresh_stock()
@@ -1917,7 +1938,7 @@ func _puppet_launch(balls: Array) -> void:
 	balls.sort_custom(func(a, b): return a[1].x < b[1].x)
 	var n := balls.size()
 	var spawn := Time.get_ticks_msec() < _turn_batch_until or not _spawned_once
-	_keep_bag_order = false  # (when the balls are all in, the Bag sorts itself once)
+	_keep_bag_order = not spawn  # (a spawn: when its balls are all in, the Bag sorts itself once; a bonus / refund: it keeps its order, the new balls stay at the back)
 	_turn_batch_until = 0
 	_spawned_once = true
 	var from_pt := _bonus_from
@@ -2499,7 +2520,12 @@ func _refresh_stock() -> void:
 		if fresh:
 			var brand_new := not _bag_seen.has(uid)
 			if not _flying.has(uid):
-				if circus and brand_new:
+				if circus and brand_new and _direct_in > 0 and Time.get_ticks_msec() < _direct_until:
+					_direct_in -= 1  # (a stolen Essence: it rests in its place, unseen until the one in the air has landed)
+					ic.modulate.a = 1.0 if _direct_landed else 0.0
+					if not _direct_landed:
+						_direct_wait.append(ic)
+				elif circus and brand_new:
 					ic.modulate.a = 0.0
 					ic.set_meta("rolling", true)  # (_tube_launch takes it from here)
 					rolled.append([ic, target, uid])
@@ -2714,6 +2740,7 @@ func note_progress() -> void:
 
 
 func _exit_tree() -> void:
+	SpellCard.hover_off = false  # (a steal may have been cut short)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE  # never leave the pointer hidden
 	Engine.time_scale = 1.0  # never leave the game frozen by a hit-stop
 	if _counted:
@@ -2963,6 +2990,11 @@ func _begin_build_drag(pointer: Vector2) -> void:
 	d.begin_external(held, pointer)
 	_bdrag = d
 	_bdrag_src = src
+	if _puppet_strips() and UiSkin.tex("cursor_hand_fist") != null and not is_instance_valid(_grab_cursor):
+		_grab_cursor = AimCursor.new()  # (the pointer is a fist round the Essence while you drag it)
+		_grab_cursor.mode = "grab"
+		add_child(_grab_cursor)
+		Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
 	if not _puppet_strips():
 		_elem_sound("grab")
 	_refresh_stock()
@@ -4053,9 +4085,45 @@ func _pulse_release() -> void:
 		_cast_btn.scale = Vector2.ONE
 
 
+## Dragging: the Bag (or the Chant, for a steal into it) lights up while the Essence in your hand can be let go on it; the fist goes when the drag is over.
+var _glow_panel: Control
+var _glow_tween: Tween
+var _grab_cursor: AimCursor
+var _test_pointer := Vector2(-1, -1)  # (a test's pointer: the real one cannot be moved from a script)
+
+
+func _drag_feedback() -> void:
+	if is_instance_valid(_grab_cursor) and not is_instance_valid(_bdrag):
+		_grab_cursor.queue_free()
+		_grab_cursor = null
+		if not _picking_any:
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	var panel: Control = null
+	if not _steal_drag.is_empty():
+		var chant_drop := _steal_into_chant
+		var r := (_chant_row if chant_drop else _stock_row).get_global_rect().grow(BAG_DROP_MARGIN * (0.6 if chant_drop else 1.0))
+		if r.has_point(_test_pointer if _test_pointer.x >= 0.0 else get_global_mouse_position()):
+			panel = _chant_panel if chant_drop else _bag_panel
+	elif is_instance_valid(_bdrag) and _bdrag_src.get("kind", "") == "chant" and not _bdrag.external_result().inside:
+		panel = _bag_panel  # (let go away from the chant: it goes home to the Bag)
+	if panel == _glow_panel:
+		return
+	if is_instance_valid(_glow_panel):
+		var tw0 := create_tween()
+		tw0.tween_property(_glow_panel, "self_modulate", Color.WHITE, 0.15)
+	_glow_panel = panel
+	if panel != null:
+		if _glow_tween != null and _glow_tween.is_valid():
+			_glow_tween.kill()
+		_glow_tween = create_tween()
+		_glow_tween.tween_property(panel, "self_modulate", Color(1.6, 1.4, 0.85), 0.15)
+
+
 func _process(_d: float) -> void:
 	if not rope_mode:
 		_update_hover_info(_d)
+	if _puppet_strips():
+		_drag_feedback()
 	_pulse_release()
 	if _puppet_strips():
 		_fit_enemy_lift()
@@ -4294,6 +4362,8 @@ func _pick_any_essence(spell: Dictionary, cancellable: bool, only: EnemyState = 
 		greyed.modulate = Color(0.55, 0.55, 0.55, 0.6)
 	_picking_any = true
 	_picking_any_cancellable = cancellable
+	if _pick_style == "hand":
+		_shrink_cards(true)  # (the cards must not cover the enemies' rows of Essence)
 	tut.emit("picking", null)
 	for v in _views.values():
 		v.pick_mode = (only == null or v.enemy == only) and not v.enemy.is_dead()  # (not a fallen hand)
@@ -4315,6 +4385,8 @@ func _pick_any_essence(spell: Dictionary, cancellable: bool, only: EnemyState = 
 	var got: Array = await _any_picked
 	if greyed != null:
 		greyed.modulate = Color.WHITE
+	if _pick_style == "hand":
+		_shrink_cards(false)
 	_picking_any = false
 	_pick_only = null
 	_pick_el = ""
@@ -4332,6 +4404,25 @@ func _pick_any_essence(spell: Dictionary, cancellable: bool, only: EnemyState = 
 			v.pick_i = -1
 	_refresh_all()
 	return got
+
+
+var _cards_tween: Tween
+
+
+## Steal: the spell row shrinks towards the chant (its bottom middle) and the cards stop magnifying under the mouse, so the enemies' Essence stay in view.
+func _shrink_cards(on: bool) -> void:
+	SpellCard.hover_off = on
+	if on:
+		for c in _cards:
+			if is_instance_valid(c):
+				c.drop_zoom()
+	if _spell_row == null:
+		return
+	if _cards_tween != null and _cards_tween.is_valid():
+		_cards_tween.kill()
+	_spell_row.pivot_offset = Vector2(_spell_row.size.x / 2.0, _spell_row.size.y)
+	_cards_tween = create_tween()
+	_cards_tween.tween_property(_spell_row, "scale", Vector2.ONE * (0.5 if on else 1.0), 0.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 
 ## Expose: the brush comes out and you paint one enemy Essence (anywhere) into an Any Essence. Asked once per paint.
@@ -4403,9 +4494,11 @@ func _end_steal_drag(at: Vector2) -> void:
 		bag = _chant_row.get_global_rect().grow(BAG_DROP_MARGIN * 0.6)  # (Instant Steal: it goes into the chant)
 	var ghost := ElementIcon.make(d.el, 52)
 	ghost.size = Vector2(52, 52)
+	ghost.pivot_offset = ghost.size / 2.0
 	ghost.z_index = 150
 	ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ghost.position = at - ghost.size / 2.0 - _fx.global_position
+	ghost.position = at + Vector2(0, -35.0) - ghost.size / 2.0 - _fx.global_position  # (where the hand held it)
+	ghost.scale = Vector2.ONE * (34.0 / 52.0)  # (as small as in the hand)
 	_fx.add_child(ghost)
 	if bag.has_point(at):
 		var to := _stock_row.global_position + _bag_slot(_bag_icons.size(), _bag_icons.size() + 1) - _fx.global_position
@@ -4415,10 +4508,28 @@ func _end_steal_drag(at: Vector2) -> void:
 			var slot: Control = _chant_row.get_child(n) if n < _chant_row.get_child_count() else null
 			var end := (slot.get_global_rect().get_center() if slot != null else _chant_row.get_global_rect().end - Vector2(30, _chant_row.size.y / 2.0))
 			to = end - ghost.size / 2.0 - _fx.global_position
-		var tw := ghost.create_tween()
-		tw.tween_property(ghost, "position", to, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		tw.tween_callback(ghost.queue_free)
-		Audio.play("elem_remove")
+		var direct := _puppet_strips() and not _steal_into_chant
+		if direct:  # the Essence goes straight into the Bag (no machine, no show): the Bag's own ball shows up when this one has landed
+			_direct_in += 1
+			_direct_until = Time.get_ticks_msec() + 5000
+			_direct_landed = false
+			_direct_wait.clear()
+			_keep_bag_order = true  # (it stays at the back; the Bag is sorted once at the next spawn)
+			to = _stock_row.global_position + _bag_slot(_bag_icons.size(), _bag_icons.size() + 1) - _fx.global_position
+		var tw := ghost.create_tween().set_parallel(true)
+		tw.tween_property(ghost, "position", to, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(ghost, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)  # (it grows to the size of your own Essence)
+		tw.chain().tween_callback(func():
+			if direct:
+				_direct_landed = true
+				for w in _direct_wait:
+					if is_instance_valid(w):
+						w.modulate.a = 1.0
+				_direct_wait.clear()
+				_ball_sound("hit", -4.0, randf_range(0.95, 1.08))
+			ghost.queue_free())
+		if not direct:
+			Audio.play("elem_remove")
 		_any_picked.emit([fight.enemies.find(d.enemy), d.index])
 	else:
 		var tw := ghost.create_tween()
@@ -5722,6 +5833,7 @@ func _talk() -> void:
 			lines.append("[color=#ffcf7a][b]%s:[/b][/color] \"%s\"%s" % [BossTalk.speaker(tree), node.reply2, (" [i][color=#c8bfa8]%s[/color][/i]" % node.note2) if node.has("note2") else ""])
 		text.text = "\n".join(lines)
 		col.add_child(text)
+		Audio.play_voice(BossTalk.voice_paths(tree, fight.talk_id, node))  # (his recorded line, if there is one)
 		if node.has("show"):
 			# an artifact he's offering: hover it to read it
 			var a := Artifacts.view(String(node.show))
@@ -5748,6 +5860,12 @@ func _talk() -> void:
 		for st in amber:
 			go.add_theme_stylebox_override(st, amber[st])
 		col.add_child(go)
+		if node == tree and Audio.voice_busy():  # his first line: the buttons wait until he has said it (the later ones can be answered at once, which cuts him off)
+			var lock: Array = []
+			for b in col.find_children("*", "Button", true, false):
+				lock.append([b, b.disabled])
+				b.disabled = true
+			_unlock_after_voice(lock)
 		await get_tree().process_frame
 		box.size = Vector2.ZERO
 		box.reset_size()
@@ -5755,6 +5873,7 @@ func _talk() -> void:
 		chosen[0] = null
 		while chosen[0] == null:  # (a line that ends the talk: only Engage! is left, pressed when you've read it)
 			await get_tree().process_frame
+		Audio.stop_voice()  # (you answered: he stops)
 		if chosen[0].has("engage") or forced:
 			break
 		# you said it: pay, remember, apply, and on to its answer
@@ -5806,6 +5925,14 @@ func _talk() -> void:
 	gate = old_gate
 	_talking = false
 	_refresh_all()
+
+
+func _unlock_after_voice(lock: Array) -> void:
+	while Audio.voice_busy() and is_inside_tree():
+		await get_tree().process_frame
+	for l in lock:
+		if is_instance_valid(l[0]):
+			l[0].disabled = l[1]
 
 
 ## One thing you can say: its Essence cost on the left, the words, and a green tick at the right end once its whole
@@ -6680,8 +6807,7 @@ func _steal_fx(ev: Dictionary, v: EnemyView) -> void:
 func _steal_poke(ev: Dictionary, v: EnemyView, items: Array) -> void:
 	var cr: Creature = v.creature
 	var thief := ev.enemy.name as String
-	var z_before := v.z_index
-	v.z_index = PuppetStage.CEILING_Z + 3  # (the arm goes over the HUD)
+	cr.tip_z = PuppetStage.CEILING_Z + 3  # (the tweezers go over the HUD: only the lower stick, the upper one stays under the Handyman's body)
 	var names: Array = items.map(func(it): return Elements.NAMES.get(it.el, it.el))
 	_float_text("%s steals %s" % [thief, ", ".join(names)], _stock_row.global_position + Vector2(260, -40), Color(1, 0.55, 0.45))
 	await _wait(0.12)
@@ -6737,8 +6863,8 @@ func _steal_poke(ev: Dictionary, v: EnemyView, items: Array) -> void:
 			cr.flash = 0.7
 	if is_instance_valid(cr):
 		cr.poke = 0.0
-	if is_instance_valid(v):
-		v.z_index = z_before
+	if is_instance_valid(cr):
+		cr.tip_z = 0
 	_sync_views()
 	_refresh_all()
 

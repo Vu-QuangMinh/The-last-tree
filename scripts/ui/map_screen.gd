@@ -229,10 +229,10 @@ func lower() -> void:
 	_drop = false
 	_land_t = -1.0
 	var tw := create_tween().set_parallel(true)
-	tw.tween_property(_world, "position:y", -1200.0, 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	tw.tween_property(_world, "position:y", -1200.0, 0.75).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)  # (80 % of the old speed: 0.6 s before)
 	for c in get_children():
 		if c is Label and c != null:
-			tw.tween_property(c, "modulate:a", 0.0, 0.3)
+			tw.tween_property(c, "modulate:a", 0.0, 0.375)
 	await tw.finished
 	_lowering = false  # (the winch stops with the map)
 

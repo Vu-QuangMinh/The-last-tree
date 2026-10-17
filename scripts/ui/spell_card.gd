@@ -380,12 +380,24 @@ func _fit_text() -> void:
 ## Hovering a card shows a magnified copy of it on a layer above everything else, so it's never clipped by a
 ## scroll area or hidden behind other cards. The copy ignores the mouse, so the real card keeps its hover.
 static var _layer: CanvasLayer
+static var hover_off := false  # a steal spell is being aimed: the cards are small and stay small, nothing magnifies
 var _zoom: SpellCard
 var is_zoom_copy := false
 
 
+## Take the magnified copy away at once (a steal begins while the mouse is over a card).
+func drop_zoom() -> void:
+	_hover = false
+	if is_instance_valid(_zoom):
+		_zoom.queue_free()
+		_zoom = null
+		refresh()
+
+
 func _on_hover(on: bool) -> void:
 	if is_zoom_copy or on == _hover:
+		return
+	if hover_off and on:
 		return
 	# only let go when the mouse has really left the card (not when something flickers on top of it)
 	if not on and is_visible_in_tree() and get_global_rect().has_point(get_global_mouse_position()):

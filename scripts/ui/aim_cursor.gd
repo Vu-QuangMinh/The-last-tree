@@ -49,8 +49,10 @@ func _draw() -> void:
 		_draw_crosshair(m)
 	elif mode == "brush":
 		_draw_brush(m)
+	elif mode == "grab":
+		_draw_grab(m)
 	else:
-		if holding != "":
+		if holding != "" and not UiSkin.is_puppet():  # (Puppet: no tether, the hand just carries the Essence)
 			_draw_tether(tether_from - global_position, m)
 		_draw_hand(m)
 
@@ -92,8 +94,34 @@ func _draw_tether(a: Vector2, b: Vector2) -> void:
 		draw_circle(at, 3.5, Color(0.8, 0.95, 1.0, 0.9))
 
 
+## "grab": you hold one of your own orbs (from the chant or the bag): a fist closed round it. The orb is drawn by whoever drags it, at the pointer; the fist sits just under it.
+func _draw_grab(m: Vector2) -> void:
+	var fist: Texture2D = UiSkin.tex("cursor_hand_fist")
+	if fist == null:
+		return
+	var h := 66.0
+	var w := h * fist.get_width() / fist.get_height()
+	draw_texture_rect(fist, Rect2(m + Vector2(-w / 2.0, 15.0), Vector2(w, h)), false)
+
+
 ## An open hand (fingers spread), or a fist while it holds an Essence, drawn as a little cartoon glove.
 func _draw_hand(m: Vector2) -> void:
+	var open_tex: Texture2D = UiSkin.tex("cursor_hand_open")
+	var fist_tex: Texture2D = UiSkin.tex("cursor_hand_fist")
+	if open_tex != null and fist_tex != null:  # Puppet: the carved wooden hand seen from its back; a fist while it holds an Essence
+		var h := 66.0
+		if holding != "":
+			var orb_col: Color = Elements.COLORS.get(holding, Color.WHITE)
+			var orb_tex: Texture2D = UiSkin.tex(ElementIcon.ART.get(holding, "essence_any"))  # (the Essence peeks out over the knuckles: its real ball)
+			if orb_tex != null:
+				draw_texture_rect(orb_tex, Rect2(m + Vector2(-17.0, -52.0), Vector2(34.0, 34.0)), false)
+			else:
+				draw_circle(m + Vector2(0, -35.0), 14.0, orb_col.darkened(0.5))
+				draw_circle(m + Vector2(0, -35.0), 11.5, orb_col)
+			draw_texture_rect(fist_tex, Rect2(m + Vector2(-h * fist_tex.get_width() / fist_tex.get_height() / 2.0, -h * 0.3), Vector2(h * fist_tex.get_width() / fist_tex.get_height(), h)), false)
+		else:
+			draw_texture_rect(open_tex, Rect2(m + Vector2(-h * open_tex.get_width() / open_tex.get_height() / 2.0, -h * 0.12), Vector2(h * open_tex.get_width() / open_tex.get_height(), h)), false)  # (the middle fingertip is the hotspot)
+		return
 	var skin := Color(1.0, 0.86, 0.72)
 	var line := Color(0.35, 0.2, 0.12)
 	if holding != "":

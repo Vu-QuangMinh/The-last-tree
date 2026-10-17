@@ -178,7 +178,52 @@ func cry(sec: float) -> void:
 	_sad_t = maxf(_sad_t, sec)
 
 
+const HANDY_HIT_KO := 2  # sfx_handy_hit_2: only when a hand is knocked out or the Handyman himself dies
+const HANDY_HITS := [3, 4, 5, 6, 7]  # the grunts of an ordinary hit (sfx_handy_hit_<n>, cut from the user's take by tools/split_handyman_hits.py; a file that is not there is skipped)
+static var _handy_hit_at := -10000
+static var _handy_hit_last := -1
+var _ko_seen := false  # (the first frame only learns the state: a screen built with a hand already down says nothing)
+var _was_knocked := false
+var _was_dead := false
+
+
+## The Handyman (his body or one of his hands) takes a hit: a grunt, never the same one twice running, and not more often than every half second (all the hands of a Release
+## are hit together).
+func _handy_grunt() -> void:
+	if _enemy == null or not (_enemy.id == "handyman" or _enemy.id.begins_with("hand_")):
+		return
+	var now := Time.get_ticks_msec()
+	if now - _handy_hit_at < 500:
+		return
+	if _enemy.knocked or _enemy.size() <= 0:
+		return  # (the blow that puts it down: the knock-out sound takes it, see _handy_ko_watch)
+	var pool: Array = HANDY_HITS.filter(func(n): return ResourceLoader.exists("res://assets/Puppet/SFX/sfx_handy_hit_%d.wav" % n))
+	if pool.is_empty():
+		return
+	_handy_hit_at = now
+	var k: int = pool.pick_random()
+	if pool.size() > 1:
+		while k == _handy_hit_last:
+			k = pool.pick_random()
+	_handy_hit_last = k
+	Audio.play("sfx_handy_hit_%d" % k, 0.0, randf_range(0.97, 1.03))
+
+
+## A hand of the Handyman is knocked out, or the Handyman himself falls: the one grunt kept for that (HANDY_HIT_KO).
+func _handy_ko_watch() -> void:
+	if _enemy == null or not (_enemy.id == "handyman" or _enemy.id.begins_with("hand_")):
+		return
+	var knocked_now := _enemy.knocked
+	if _ko_seen and ((knocked_now and not _was_knocked) or (dead and not _was_dead and _enemy.id == "handyman")):
+		_handy_hit_at = Time.get_ticks_msec()
+		Audio.play("sfx_handy_hit_%d" % HANDY_HIT_KO, 0.0, randf_range(0.98, 1.02))
+	_was_knocked = knocked_now
+	_was_dead = dead
+	_ko_seen = true
+
+
 func hit(strength := 1.0) -> void:
+	_handy_grunt()
 	if not _rig.is_empty() and is_inside_tree():  # (a hand of the Handyman took damage: his body cries)
 		get_tree().call_group("handyman_body", "cry", 1.4)
 	hurt = HURT_TIME
@@ -229,6 +274,7 @@ func _process(d: float) -> void:
 			_fold_t = move_toward(_fold_t, 1.0, d * 0.5 * _drive)
 		else:
 			_fold_t = move_toward(_fold_t, 0.0, d * 1.8)  # (it reaches out again, smoothly)
+	_handy_ko_watch()
 	flash = maxf(0.0, flash - d * 3.0)
 	hurt = maxf(0.0, hurt - d)
 	_sad_t = maxf(0.0, _sad_t - d)
@@ -419,13 +465,54 @@ static func arm_hand(arm: Dictionary, r: Vector2, th2: float) -> Vector2:
 
 
 ## Draw one stick of an arm (its picture lies along +x, the joint it turns about at `pivot`): the stretch `slab` is made `extra` px longer.
-func _draw_stick(tex: Texture2D, pivot: Vector2, slab: Vector2, extra: float, mod: Color) -> void:
+## `ci`: the item to draw on (this Control, or the tip layer).
+func _draw_stick(tex: Texture2D, pivot: Vector2, slab: Vector2, extra: float, mod: Color, ci: CanvasItem = null) -> void:
+	if ci == null:
+		ci = self
 	var h := float(tex.get_height())
 	var w := float(tex.get_width())
 	extra = maxf(extra, -(slab.y - slab.x) * 0.9)
-	draw_texture_rect_region(tex, Rect2(-pivot.x, -pivot.y, slab.x + 1.0, h), Rect2(0.0, 0.0, slab.x + 1.0, h), mod)
-	draw_texture_rect_region(tex, Rect2(slab.y - pivot.x + extra - 1.0, -pivot.y, w - slab.y + 1.0, h), Rect2(slab.y - 1.0, 0.0, w - slab.y + 1.0, h), mod)
-	draw_texture_rect_region(tex, Rect2(slab.x - pivot.x - 0.5, -pivot.y, slab.y - slab.x + extra + 1.0, h), Rect2(slab.x, 0.0, slab.y - slab.x, h), mod)
+	ci.draw_texture_rect_region(tex, Rect2(-pivot.x, -pivot.y, slab.x + 1.0, h), Rect2(0.0, 0.0, slab.x + 1.0, h), mod)
+	ci.draw_texture_rect_region(tex, Rect2(slab.y - pivot.x + extra - 1.0, -pivot.y, w - slab.y + 1.0, h), Rect2(slab.y - 1.0, 0.0, w - slab.y + 1.0, h), mod)
+	ci.draw_texture_rect_region(tex, Rect2(slab.x - pivot.x - 0.5, -pivot.y, slab.y - slab.x + extra + 1.0, h), Rect2(slab.x, 0.0, slab.y - slab.x, h), mod)
+
+
+## The tweezer hand reaches over the HUD: only its lower stick (elbow, hand and tweezers) is drawn on a layer of its own, high up (`tip_z`); the upper stick, the
+## part that hangs on the Handyman's shoulder, stays where it was in the draw order, so it does not climb over his body.
+var tip_z := 0  # 0 = off; else the z_index of the tip layer while the arm reaches
+var _tip_layer: TipLayer
+var _tip_args := {}
+
+
+class TipLayer extends Control:
+	var owner_arm: Creature
+	var args := {}
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		z_as_relative = false
+		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	func _draw() -> void:
+		if owner_arm == null or args.is_empty():
+			return
+		draw_set_transform_matrix(args.m)
+		owner_arm._draw_stick(args.tex, args.pivot, args.slab, args.extra, args.mod, self)
+		draw_set_transform_matrix(Transform2D.IDENTITY)
+
+
+func _sync_tip_layer(on: bool) -> void:
+	if on:
+		if _tip_layer == null:
+			_tip_layer = TipLayer.new()
+			_tip_layer.owner_arm = self
+			add_child(_tip_layer)
+		_tip_layer.z_index = tip_z
+		_tip_layer.args = _tip_args
+		_tip_layer.queue_redraw()
+	elif _tip_layer != null:
+		_tip_layer.queue_free()
+		_tip_layer = null
 
 
 ## The pose of a knocked-out arm at `f` (0 = as it hangs, 1 = away): {u: upper direction, l: lower direction, len: stick lengths, px of the art}.
@@ -522,8 +609,13 @@ func _draw_arm(blink_on: bool) -> void:
 	var m2 := m1 * Transform2D(a2, elbow)
 	draw_set_transform_matrix(m1 * Transform2D(_rig.theta1, Vector2.ZERO))
 	_draw_stick(_rig_tex[0], _rig.upper_pivot, _rig.upper_slab, r.x - float(_rig.l1), mod)
-	draw_set_transform_matrix(m2 * Transform2D(th2, Vector2.ZERO))
-	_draw_stick(_rig_tex[1], _rig.lower_pivot, _rig.lower_slab, r.y - float(_rig.l2), mod)
+	if tip_z != 0 and poked:  # (the lower stick goes to the tip layer, over the HUD)
+		_tip_args = {"m": m2 * Transform2D(th2, Vector2.ZERO), "tex": _rig_tex[1], "pivot": _rig.lower_pivot, "slab": _rig.lower_slab, "extra": r.y - float(_rig.l2), "mod": mod}
+		_sync_tip_layer(true)
+	else:
+		_sync_tip_layer(false)
+		draw_set_transform_matrix(m2 * Transform2D(th2, Vector2.ZERO))
+		_draw_stick(_rig_tex[1], _rig.lower_pivot, _rig.lower_slab, r.y - float(_rig.l2), mod)
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 	if _enemy != null and POKE_TIP.has(_enemy.id):
 		var tt: Vector2 = POKE_TIP[_enemy.id]

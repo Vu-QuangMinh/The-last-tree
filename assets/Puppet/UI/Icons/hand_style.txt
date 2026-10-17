@@ -1,0 +1,9 @@
+Style: one small mouse-cursor icon that is a real physical object genuinely hand-carved from solid wood and hand-painted, a puppet hand from an antique Czech marionette puppet theatre. Chunky toy-like shape with thick rounded carved edges, visible chisel and knife marks, soft wood grain showing through the matte milk-paint finish, paint worn thin at the edges so raw wood shows, tiny chips and scuffs, small aged brass details only where the object needs them. Folk-art fairytale craftsmanship, slightly imperfect like handmade work, never machine-perfect. Warm rustic palette: barn red, cream, ochre gold, aged brass, steel blue-grey, muted teal, dark walnut brown, with one strong accent colour as the description says.
+
+Lighting: soft even diffuse light from the upper left, gentle natural shading that shows the depth of the carving, no strong highlights, no glossy shine.
+
+Composition: this one hand only, centred, seen from straight above with no perspective, filling most of the square image with an even margin, a bold simple silhouette that still reads when shrunk to 32 pixels. Isolated on a pure white seamless background (#FFFFFF), as if cut out: no table, no surface, no cast shadow, no reflection, no gradient, no other objects, no arm, no second hand, no body, no round medal, ring, frame or square plate behind it.
+
+Must look like a tangible wooden craft object with real material texture. Not vector art, not flat colours, not clean outlines, not cartoon, not a sticker, not plastic, not glossy, not a 3D game render. No text, letters, numbers, logos or watermark.
+
+The hand is the player's mouse cursor while stealing an enemy's Essence: a puppet theatre's wooden hand on a short jointed wrist cuff, seen from its BACK (the palm faces down, away from the viewer, so only the back of the hand with its carved knuckles and finger joints is visible). It must read at a glance when small and look the same size and style in both poses.

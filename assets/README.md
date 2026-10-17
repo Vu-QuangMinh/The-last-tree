@@ -6,7 +6,7 @@ Two looks, one shared folder. `New/` and `Puppet/` have exactly the same shape, 
 ```
 assets/
   Global/            used by both themes
-    Card/Art         spell pictures (256 px)        Card/Icons   element / rarity / kind pips        Card/Shaders   card and fight shaders
+    Card/Icons   element / rarity / kind pips        Card/Shaders   card and fight shaders
     Fonts/           every font so far (a theme can override one by putting a file of the same name in its own Fonts/)
     Icon/Element/    the Fire / Water / Wind / Any glyphs used inside rich text
     Music/{boss,fight,map,menu}                       SFX/   sounds both themes use           UI/   shared pieces (empty so far)

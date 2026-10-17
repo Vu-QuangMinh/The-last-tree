@@ -480,12 +480,9 @@ func _show_stage_map() -> void:
 	if draw_drapes:  # the red drapes are drawn together over the stage, and the map is let down in front of them
 		m.drop_delay = 2.6  # (as long as the drapes take to close, and the two frames they wait)
 	m.node_chosen.connect(func(col: int):
-		if st != null and is_instance_valid(st):
-			st.curtains.open()  # (pulled apart while the map is pulled up)
-		await m.lower()
+		await m.lower()  # (the map is pulled all the way up first, then the drapes are pulled apart)
 		if st != null and is_instance_valid(st) and st.curtains.has_art():
-			while st.curtains.is_moving():
-				await get_tree().process_frame
+			await st.curtains.open()
 		_on_node(col))
 	m.codex_pressed.connect(open_codex)
 	m.menu_requested.connect(func(): run = null; show_menu())

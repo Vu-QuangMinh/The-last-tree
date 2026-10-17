@@ -1,0 +1,27 @@
+THE HANDYMAN - lines to voice (only his speech, in the order of the conversation; narration and the player's lines are left out)
+
+01_greeting
+Hello there, weary traveler. You seem burdened. Would you like me to give you A HAND? Hehe, hehehe.
+
+02_sure
+How about MORE than just A hand? Muahahahah!
+
+03_creepy
+Thank you for your compliment. Let's see how you feel about this! Muahahahah!
+
+04_why
+Fate put me here to, uhm, fix you up. Hehe, hehe.
+
+05_why_chance
+Oh no, my Chosen One, it was written. You were destined to walk this Path and be... HANDLED by me. Hehe, you will get that soon enough. Hehehehe.
+
+06_show_me
+With pleasure! Muahahahah!
+
+07_hands_a
+My hands are a gift from God. They are so wonderful. Here, take a look at this one.
+
+07_hands_b
+This used to belong to a great artist, but it is MINE now. I will show you the rest, in due time. Hahahahaha.
+
+Notes for the voice: sadistic but proud and polite, a creepy giggle ("Hehe, hehehe") and a loud villain laugh ("Muahahahah") that the lines already spell out. 07_hands_a and 07_hands_b are one reply split by the line "He unfolds the Tweezer Hand." (record them as two clips).

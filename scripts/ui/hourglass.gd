@@ -12,9 +12,11 @@ var _sand := Color(1.0, 0.8, 0.35)
 static func make(p_left: int, e: Object) -> Hourglass:
 	var h := Hourglass.new()
 	h.left = p_left
-	h.custom_minimum_size = Vector2(SIZE, SIZE)
-	h.size = Vector2(SIZE, SIZE)
-	h.pivot_offset = Vector2(SIZE, SIZE) / 2.0
+	var art := UiSkin.tex("intent_charge")  # (the painted hourglass is tall and narrow: it keeps its shape instead of being squeezed into a square)
+	var box := Vector2(SIZE, SIZE) if art == null else Vector2(SIZE * 1.15 * art.get_width() / art.get_height(), SIZE * 1.15)
+	h.custom_minimum_size = box
+	h.size = box
+	h.pivot_offset = box / 2.0
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	h.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var key := e.get_instance_id()
@@ -28,14 +30,24 @@ func _ready() -> void:
 	if get_meta("flip", false):
 		rotation = -PI
 		create_tween().tween_property(self, "rotation", 0.0, 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if UiSkin.tex("intent_charge") != null:  # the turns left: small wooden digits on the glass's waist
+		var digits := UiSkin.number(str(left), 15.0, false)
+		if digits != null:
+			add_child(digits)
+			digits.position = (size - digits.get_combined_minimum_size()) / 2.0 + Vector2(0.0, 1.0)
+			_digits = digits
+
+
+var _digits: Control
 
 
 func _draw() -> void:
 	var w := SIZE
 	var art := UiSkin.tex("intent_charge")  # (Puppet / New: the painted hourglass, with the number over its middle)
 	if art != null:
-		draw_texture_rect(art, Rect2(0, 0, w, w), false)
-		_draw_number(w)
+		draw_texture_rect(art, Rect2(Vector2.ZERO, size), false)
+		if _digits == null:
+			_draw_number(w)  # (no wooden digits in this theme)
 		return
 	var frame := Color(0.55, 0.35, 0.18)
 	var glass := Color(0.85, 0.95, 1.0, 0.35)

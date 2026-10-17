@@ -104,6 +104,48 @@ func warm(name: String) -> void:
 		_load(GLOBAL_SFX_DIR + name + ".wav")
 
 
+var _voice: AudioStreamPlayer
+var _voice_run := 0  # a new line (or a stop) cancels the one being said
+var _voice_active := false
+
+
+## True while a spoken line is still being said (between its clips too).
+func voice_busy() -> bool:
+	return _voice_active
+
+
+## A spoken line: the clips (res:// paths that exist) one after the other, with a short breath between them. A new call or stop_voice() cuts the old one off.
+func play_voice(paths: Array) -> void:
+	stop_voice()
+	var clips: Array = paths.filter(func(p): return String(p) != "" and ResourceLoader.exists(String(p)))
+	if clips.is_empty():
+		return
+	if _voice == null:
+		_voice = AudioStreamPlayer.new()
+		add_child(_voice)
+	_voice_run += 1
+	var mine := _voice_run
+	_voice_active = true
+	for p in clips:
+		_voice.stream = load(String(p))
+		_voice.volume_db = _db(sfx_level * overall_level)
+		_voice.play()
+		await _voice.finished
+		if mine != _voice_run:
+			return
+		await get_tree().create_timer(0.15).timeout
+		if mine != _voice_run:
+			return
+	_voice_active = false
+
+
+func stop_voice() -> void:
+	_voice_run += 1
+	_voice_active = false
+	if _voice != null:
+		_voice.stop()
+
+
 ## One-shot SFX. Safe to call for a name that has no file yet (it just stays silent).
 ## from: start this many seconds into the sound (to skip the silence some recordings begin with).
 func play(name: String, volume_db := 0.0, pitch := 1.0, from := 0.0) -> void:
