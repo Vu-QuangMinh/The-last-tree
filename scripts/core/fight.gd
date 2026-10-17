@@ -66,7 +66,8 @@ var conjuring := {}
 var charges := {}  # spell id -> triggers left right now
 var talk_id := ""  # a boss you can talk to before the fight (BossTalk): its id
 var talk_free := false  # test mode: talking to a boss costs nothing
-var talk_spent: Array = []  # the Essence the talk has cost you so far
+var talk_spent: Array = []
+var talk_rewards: Array = []  # artifact ids the talk promised: yours (and unlocked for good) if you win  # the Essence the talk has cost you so far
 var invoke_count := 3  # how many spells the Invoker conjures a turn
 var hm := {}  # the Handyman fight: {phase, kills, body}
 var cast_counts := {}  # spell id -> casts this fight (the Hammer goes for the most-cast)
@@ -173,6 +174,19 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 		player.lasting += _an("iron_bark")  # (turn 1's; begin_player_turn gives the rest)
 	if has_artifact("ward_stone"):
 		player.aegis = int(_an("ward_stone"))
+	if has_artifact("mysterious_hand"):
+		# the Mysterious Hand: a random Essence of a random enemy, into your bag
+		var pool := alive().filter(func(x): return x.armor.has(false))
+		if not pool.is_empty():
+			var e: EnemyState = pool[rng.randi() % pool.size()]
+			var free := []
+			for i in e.size():
+				if not e.armor[i]:
+					free.append(i)
+			var el: String = e.pluck(free[rng.randi() % free.size()])
+			if el != "":
+				player.add_element(el if el != "?" else _random_element())
+				_log("The Mysterious Hand steals a %s from %s." % [Elements.NAMES.get(el, "Essence"), e.name])
 	player.dmg_taken_mult = 1.25 if has_artifact("glass_heart") else 1.0
 	var start_n := PlayerState.START_ELEMENTS + (int(_an("wind_chime")) if has_artifact("wind_chime") else 0)
 	# you always start with one of each element; the rest are random (in a random order)
@@ -599,6 +613,15 @@ func resolve_spell(id: String, target_idx := -1) -> void:
 				player.echo_charged = true
 				_log("Echo Shell is charged: your next spell is cast twice.")
 	_wear(spell)  # (Durability: one cast, one point, however many times it's echoed)
+	if has_artifact("magic_box"):
+		player.box_casts += 1
+		if player.box_casts % 6 == 0:
+			# the Magic Box: this spell's pattern comes back to your bag after the Release
+			if not turn_ctx.has("box_refund"):
+				turn_ctx.box_refund = []
+			for ch in String(spell.get("pattern", "")):
+				turn_ctx.box_refund.append(ch if ch != "?" else _random_element())
+			_log("The Magic Box plays a note: %s's Essence will come back after the Release." % spell.name)
 	for t in times:
 		if over:
 			break
@@ -740,6 +763,7 @@ func finish_turn() -> void:
 				var el: String = chant[i]
 				player.add_element(el if el != "?" else _random_element())
 		var back := _lens_refunds(chant)
+		back.append_array(turn_ctx.get("box_refund", []))  # (the Magic Box)
 		for k in player.passive("refund_air"):
 			back.append("A")  # Storm Crown: Air comes back after every Release
 			refund_slots.append(maxi(0, chant.size() - 1))
@@ -2190,6 +2214,9 @@ func can_talk_pay(cost: String) -> bool:
 
 ## An effect of something said (see BossTalk). None yet: the boss conversations are being rewritten.
 func talk_effect(fx: String) -> void:
+	if fx.begins_with("win_artifact:"):
+		talk_rewards.append(fx.get_slice(":", 1))
+		return
 	push_warning("talk effect not implemented: %s" % fx)
 
 

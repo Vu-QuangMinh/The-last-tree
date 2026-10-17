@@ -5497,6 +5497,8 @@ func _talk() -> void:
 	col.add_theme_constant_override("separation", 8)
 	box.add_child(col)
 	var node: Dictionary = tree
+	var first_meeting := not BossTalk.met_before(fight.talk_id)  # (some narration only comes the very first time)
+	BossTalk.meet(fight.talk_id)
 	var said := ""
 	var prefix := ""  # (something he says before his answer: "You are a master of this element as well, I see.")
 	var chosen := [null]
@@ -5516,12 +5518,20 @@ func _talk() -> void:
 		var lines := []
 		if node.has("opening"):
 			lines.append("[i][color=#c8bfa8]%s[/color][/i]" % node.opening)
+		if node.has("greeting"):
+			lines.append("[color=#ffcf7a][b]%s:[/b][/color] \"%s\"" % [BossTalk.speaker(tree), node.greeting])
 		if said != "":
 			lines.append("[color=#9ec9ff]You:[/color] %s" % said)
+		if node.has("first_note") and first_meeting:
+			lines.append("[i][color=#c8bfa8]%s[/color][/i]" % node.first_note)
+		if node.has("pre"):
+			lines.append("[i][color=#c8bfa8]%s[/color][/i]" % node.pre)
 		if node.has("reply"):
 			lines.append("[color=#ffcf7a][b]%s:[/b][/color] \"%s%s\"%s" % [BossTalk.speaker(tree), prefix, node.reply, (" [i][color=#c8bfa8]%s[/color][/i]" % node.note) if node.has("note") else ""])
 		elif node.has("note"):
 			lines.append("[i][color=#c8bfa8]%s[/color][/i]" % node.note)
+		if node.has("reply2"):
+			lines.append("[color=#ffcf7a][b]%s:[/b][/color] \"%s\"%s" % [BossTalk.speaker(tree), node.reply2, (" [i][color=#c8bfa8]%s[/color][/i]" % node.note2) if node.has("note2") else ""])
 		text.text = "\n".join(lines)
 		col.add_child(text)
 		if node.has("show"):
@@ -5555,12 +5565,9 @@ func _talk() -> void:
 		box.reset_size()
 		box.position.y = minf(545.0, 920.0 - box.size.y)  # (it stays clear of your bag)
 		chosen[0] = null
-		if forced:
-			await _wait(1.8)
-			break
-		while chosen[0] == null:
+		while chosen[0] == null:  # (a line that ends the talk: only Engage! is left, pressed when you've read it)
 			await get_tree().process_frame
-		if chosen[0].has("engage"):
+		if chosen[0].has("engage") or forced:
 			break
 		# you said it: pay, remember, apply, and on to its answer
 		var o: Dictionary = chosen[0]
@@ -5586,6 +5593,8 @@ func _talk() -> void:
 				run.gain_artifact(aid)
 				Audio.play("artifact_get")
 				Events.toast.emit("Got %s" % Artifacts.view(aid).name, UiTheme.ACCENT)
+				if not test_mode and Artifacts.get_def(aid).get("unlock_by", "") != "" and SaveManager.unlock_artifact(aid):
+					Events.toast.emit("%s unlocked" % Artifacts.view(aid).name, Color(1, 0.85, 0.4))  # (and in the pool for good)
 				new_bar.call()
 			elif f == "engage":
 				pass
@@ -5751,6 +5760,8 @@ func _armadillo_ending(e: EnemyState) -> void:
 	Audio.play("sfx_card_hit", -6.0, 0.8)
 	await _wait(1.0)
 	await _dillo_say(_dillo_head(doll), "Oh no.", 1.6)
+	await _dillo_say(_dillo_head(doll), "Oh @##%#, @$%@ me, #@%$.", 2.2)  # (swearing, censored)
+	await _dillo_say(_dillo_head(doll), "No no no NO!", 1.6)
 	# the yank: very fast and violent, right off the top of the screen
 	var top_x := _dillo_head(doll).x
 	var yank := doll.create_tween().set_parallel()

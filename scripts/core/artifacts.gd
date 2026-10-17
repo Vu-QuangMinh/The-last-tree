@@ -30,6 +30,8 @@ const ALL := [
 	{"id": "echo_shell", "name": "Echo Shell", "aspect": "Spells", "desc": "Every 10th spell charges it: the next spell is cast twice.", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "🐚"},
 	{"id": "bandolier", "name": "Bandolier", "aspect": "Bottles", "desc": "+2 bottle slots, and 2 random bottles.", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "🎽"},
 	{"id": "kindling_stone", "name": "Kindling Stone", "aspect": "Burn & Poison", "desc": "Every 3rd spell: apply 1 Burn to a random enemy.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "💥"},
+	{"id": "mysterious_hand", "name": "Mysterious Hand", "aspect": "Steal", "desc": "At the start of each fight, steal 1 Essence from a random enemy.", "cost": 0, "starter": false, "pool": "normal", "tier": "rare", "icon": "🖐", "unlock_by": "handyman_talk", "flavor": "Once played defiantly, now lies lifeless."},
+	{"id": "magic_box", "name": "Magic Box", "aspect": "Refund", "desc": "Every 6th spell you cast: Refund its pattern after the Release.", "cost": 0, "starter": false, "pool": "normal", "tier": "rare", "icon": "🎵", "unlock_by": "invoker_talk", "flavor": "With the right tune, it may reveal a secret."},
 	{"id": "venom_gland", "name": "Venom Gland", "aspect": "Burn & Poison", "desc": "Your Poison +1.", "cost": 25, "starter": false, "pool": "normal", "tier": "common", "icon": "🧪"},
 	{"id": "lock_pick", "name": "Lock Pick", "aspect": "Debuffs", "desc": "Locks on your spells are 1 shorter.", "cost": 30, "starter": false, "pool": "normal", "tier": "common", "icon": "🗝"},
 	{"id": "keen_eye", "name": "Keen Eye", "aspect": "Debuffs", "desc": "You can't be Blinded.", "cost": 25, "starter": false, "pool": "normal", "tier": "common", "icon": "👁"},
@@ -131,6 +133,9 @@ static func charge_state(id: String, p: PlayerState, plus := false) -> Array:
 		"echo_chamber":
 			# it shines while it's on (a short chant this turn)
 			return [p.echo_chamber_on, "ON: every spell you cast this turn is cast twice." if p.echo_chamber_on else "Chant %d Essence or fewer to turn it on." % int(num(id, plus))]
+		"magic_box":
+			var nth := p.box_casts % 6
+			return [nth == 5, "READY: your next spell's pattern is Refunded after the Release." if nth == 5 else "%d / 6 spells" % nth]
 		"echo_shell":
 			return [p.echo_charged, "CHARGED: your next spell is cast twice." if p.echo_charged else "%d / %d spells" % [p.echo_casts, int(num(id, plus))]]
 	return []

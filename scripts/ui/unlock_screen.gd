@@ -106,6 +106,8 @@ func _refresh() -> void:
 			v.add_child(d)
 			if a.id in unlocked:
 				v.add_child(UiTheme.label("Unlocked", 16, UiTheme.ACCENT))
+			elif a.get("unlock_by", "") != "":
+				v.add_child(UiTheme.label("??? (found on the road, not for sale)", 16, UiTheme.MUTED))
 			else:
 				var b := UiTheme.button("Unlock  ✿ %d" % a.cost, func():
 					if SaveManager.buy_artifact(a.id):

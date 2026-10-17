@@ -1980,3 +1980,50 @@ func test_anxious_armadillo() -> void:
 	assert_eq(f.player.hp, 50.0, "no attack")
 	f.cast(_all(3))  # W F A: his row starts W F A
 	assert_true(f.player.hp <= 46.0, "his 4 Thorns pricked you")
+
+
+func test_handyman_talk_and_the_mysterious_hand() -> void:
+	var f := _fight(["handyman"], ["water_wall"], "FWAWF")
+	assert_eq(f.talk_id, "handyman", "he talks again")
+	var tree := BossTalk.tree_for("handyman")
+	var deep: Dictionary = tree.options[2].options[1].options[1]
+	assert_eq(deep.id, "hm_why_chance_hands")
+	assert_eq(tree.options[2].cost + tree.options[2].options[1].cost + deep.cost, "FAW", "one of each Essence to get there")
+	for fx in deep.effects:
+		if fx != "engage":
+			f.talk_effect(fx)
+	assert_eq(f.talk_rewards, ["mysterious_hand"], "promised: yours if you win")
+	assert_eq(Artifacts.get_def("mysterious_hand").get("unlock_by", ""), "handyman_talk", "never offered until earned")
+	# the Hand: a random enemy Essence into your bag at the start of each fight
+	var run := RunState.new()
+	run.setup(db, ["fire_ball"], [], 3)
+	run.gain_artifact("mysterious_hand")
+	var g := run.make_fight(["ashling"])
+	var before: int = EnemyDefs.get_def("ashling").hp.length()
+	assert_true(g.enemies[0].size() < before + 3, "it lost one (extra Essence aside)")
+	assert_true(g.lines.any(func(l): return l.contains("Mysterious Hand")))
+
+
+func test_ol_wiz_talk_and_the_magic_box() -> void:
+	assert_eq(EnemyDefs.name_of("invoker"), "Ol' Wiz")
+	var tree := BossTalk.tree_for("invoker")
+	var find: Dictionary = tree.options[1].options[1].options[1]
+	assert_eq(find.id, "wiz_find")
+	assert_eq(tree.options[1].cost + tree.options[1].options[1].cost + find.cost, "FAW")
+	assert_true("artifact:magic_box" in find.effects)
+	assert_eq(Artifacts.get_def("magic_box").get("unlock_by", ""), "invoker_talk")
+	# every 6th spell: its pattern comes back to your bag after the Release
+	var run := RunState.new()
+	run.setup(db, ["fire_ball"], [], 3)
+	run.gain_artifact("magic_box")
+	var f := run.make_fight(["ashling"])
+	_set_hp(f.enemies[0], "WWWWWWWWWWWWWWWW")
+	f.player.box_casts = 5
+	f.player.stock.clear()
+	for el in "FF":
+		f.player.add_element(el)
+	f.cast_chant([0, 1])
+	f.resolve_spell("fire_ball", 0)
+	assert_eq(f.player.box_casts, 6)
+	f.finish_turn()
+	assert_true(f.player.stock.filter(func(x): return x.el == "F").size() >= 2, "Fire Ball's F F came back")

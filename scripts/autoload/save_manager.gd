@@ -150,6 +150,15 @@ func unlocked_artifacts() -> Array:
 	return out
 
 
+## An artifact earned in play (a boss's talk): unlocked for good, into the pool. True if it's new.
+func unlock_artifact(id: String) -> bool:
+	if id in unlocked_artifacts():
+		return false
+	data.artifacts.append(id)
+	save_game()
+	return true
+
+
 func buy_artifact(id: String) -> bool:
 	var a := Artifacts.get_def(id)
 	if a.is_empty() or id in unlocked_artifacts() or data.seedlings < a.cost:

@@ -866,6 +866,11 @@ func _after_fight(f: Fight) -> void:
 		kind = "fight"
 	for id in ([] if _test_mode else SaveManager.add_to_codex(f.defeated)):
 		Events.toast.emit("New Codex entry: %s" % EnemyDefs.get_def(id).name, Color(1, 0.9, 0.5))
+	if f.won:
+		for aid in f.talk_rewards:  # (what a boss's talk promised: yours, and unlocked for good)
+			run.gain_artifact(aid)
+			if not _test_mode and SaveManager.unlock_artifact(aid):
+				Events.toast.emit("%s unlocked" % Artifacts.get_def(aid).name, Color(1, 0.85, 0.4))
 	for spell_name in ([] if _test_mode else SaveManager.boss_unlocks(f.defeated)):
 		Events.toast.emit("New spell unlocked: %s" % spell_name, Color(1, 0.85, 0.4))
 	var act_before := run.act

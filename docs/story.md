@@ -75,3 +75,20 @@ Act 1: The triplet, enraged rolling bear, bramble matron
 Act 2: Chairman, Blackwing, The Warden
 Act 3: Bottle head, Fire Dragon, Mirror Knight
 
+## The Handyman (Act 1 boss)
+
+A twisted, sadistic loyal servant of the Hands. He is rewarded with the hands of characters who acted out of line (the Pianist's hand among them: the Tweezer Hand, "used to belong to a great artist"). He enjoys the violence and is proud of how loyal he is. Laughs "Hehe, hehehe" / "Muahahahah".
+
+Talk (in game: scripts/core/boss_talk.gd): opening "A tall figure with an unsettling smile blocked the road." Greeting: "Would you like me to give you A HAND?" The branch Why are you here? (F) > by accident? (A) > something special about your hands? (W) reveals the Tweezer Hand; winning that fight gives the Mysterious Hand artifact and unlocks it (only way to get it).
+
+## Ol' Wiz (Act 1 boss; was the Invoker, then the Old Wizard)
+
+The first character created for the game, and the oldest. Worried about his student Knivel (gone 273 years, looking for Nila the Darkblade; he fears she hurt him). He doesn't enjoy the violence but knows there's no way out. One word: Defeated. He seems to remember the Chosen One ("ol' friend", "why call me a stranger?") and hushes himself as if someone could hear.
+
+Talk (scripts/core/boss_talk.gd): opening "A troubled man with an impossibly old face sat on the side of the road." Branch: warmth (F) > "just messing with you" (A; the very first meeting adds "You lied straight to his face.") > "tell me where you last saw him" (W): he gives the Magic Box (given at once and unlocked for good).
+
+## The Magic Box tune (in game: Codex > Artifacts, once the box is unlocked)
+
+Buttons, left to right: red = B, green = E, white = A, black = D#, blue = C, yellow = D (music-box notes, assets/Global/SFX/box_note_*.wav).
+The first bar of Fur Elise (E D# E D# E B D C A) = green black green black green red yellow blue white.
+Played right, a row of 6 squares appears and stays: the colours in the order the tune first plays them: green, black, red, yellow, blue, white.
