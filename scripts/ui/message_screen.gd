@@ -12,6 +12,7 @@ var act := 1
 var on_stage := false  # Puppet Stage: laid over the stage (no backdrop of its own), the shade a little lighter
 var title_color := Color.WHITE
 var extra: Control = null  # shown between the text and the buttons (the campfire's HP bar)
+var small_buttons := false  # the size of the Main Menu's buttons (170 x 42)
 
 
 func _ready() -> void:
@@ -49,7 +50,7 @@ func _ready() -> void:
 	v.add_child(row)
 	for i in buttons.size():
 		var idx := i
-		var btn := UiTheme.button(buttons[i], func(): pressed.emit(idx), 22)
-		btn.custom_minimum_size = Vector2(240, 56)
+		var btn := UiTheme.button(buttons[i], func(): pressed.emit(idx), MenuScreen.BTN_FONT if small_buttons else 22)
+		btn.custom_minimum_size = MenuScreen.BTN if small_buttons else Vector2(240, 56)
 		btn.disabled = disabled.size() > i and disabled[i]
 		row.add_child(btn)

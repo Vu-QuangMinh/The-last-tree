@@ -36,8 +36,8 @@ DOT = (0.14, 0.12, 0.13)  # the fill of the black marker dots
 # arm name -> (enemy id, side (-1 left shoulder, +1 right), layer: 0 lowest ... the body is above them all)
 ARMS = {
     "Spear": ("hand_spear", -1, 0), "Crossbow": ("hand_crossbow", 1, 0),
-    "Sword": ("hand_sword", -1, 1), "Hammer": ("hand_hammer", 1, 1),
-    "Tweezer": ("hand_tweezer", -1, 2), "Shield": ("hand_shield", 1, 2),
+    "Shield": ("hand_shield", -1, 1), "Hammer": ("hand_hammer", 1, 1),
+    "Tweezer": ("hand_tweezer", -1, 2), "Sword": ("hand_sword", 1, 2),
 }
 
 doc = pymupdf.open(SRC)
@@ -128,19 +128,68 @@ for d in dots:  # the two dots with no pivot label: they sit next to "Điểm g�
 assert len(pivots) == 12 and len(sockets) == 2, (len(pivots), sockets)
 print("pivots:", {k: (round(centre(v).x, 1), round(centre(v).y, 1)) for k, v in sorted(pivots.items())})
 
-# ---- every arm is the run of operators that ends at its dots ----------------------------------------------------------------
-order = sorted(ARMS, key=lambda n: max(pivots[(n, 1)], pivots[(n, 2)]))
-start = 0
-runs = {}
-for n in order:
-    end = max(pivots[(n, 1)], pivots[(n, 2)])
-    runs[n] = list(range(start, end + 1))
-    start = end + 1
-body_run = list(range(start, len(dr)))
+# ---- which operators are which arm -------------------------------------------------------------------------------------------
+# The paint operators come in contiguous clumps (a stick, a hand with its tool, the body), but the ORDER of the arms in the file is whatever the artist
+# last left it as (the two black pivot dots of an arm do not have to follow its paint). So the stream is cut into clumps that touch each other in the
+# page, and every clump goes to the arm whose pivots are nearest to it (or to the body, which holds the two shoulder sockets). The clean pieces of page 3
+# and the green hand marker are checked against this further down, so a wrong guess stops the export.
 GREEN = (0.0, 0.6, 0.3)  # the green circles: where each hand is (its name, Essence and target marker go there)
 greens = [i for i, d in enumerate(dr) if d.get("fill") and d["fill"][1] > 0.5 and d["fill"][0] < 0.3 and d["fill"][2] < 0.6
           and abs(d["rect"].width - d["rect"].height) < 2 and d["rect"].width > 6 and len(d["items"]) == 4]
 assert len(greens) == 6, len(greens)
+hand_of = {}  # arm -> its green circle: the nearest one to its elbow, closest pairs first
+for dist, n, g in sorted(((math.hypot(centre(g).x - centre(pivots[(n, 2)]).x, centre(g).y - centre(pivots[(n, 2)]).y), n, g) for n in ARMS for g in greens),
+                         key=lambda t: t[0]):
+    if n not in hand_of and g not in hand_of.values():
+        hand_of[n] = g
+
+
+def rect_gap(a, b):
+    return math.hypot(max(a.x0 - b.x1, b.x0 - a.x1, 0), max(a.y0 - b.y1, b.y0 - a.y1, 0))
+
+
+clumps = []  # [first op, last op, Rect]
+for i, d in enumerate(dr):
+    r = pymupdf.Rect(d["rect"])
+    if clumps:
+        c = clumps[-1]
+        near = pymupdf.Rect(c[2].x0 - 120, c[2].y0 - 120, c[2].x1 + 120, c[2].y1 + 120)
+        if near.intersects(r) or near.contains(r):
+            c[1] = i
+            c[2] |= r
+            continue
+    clumps.append([i, i, pymupdf.Rect(r)])
+sock_pts = [centre(d) for d in sockets.values()]
+body_clump = max((c for c in clumps if all(c[2].contains(p) for p in sock_pts)), key=lambda c: c[1] - c[0])
+arm_pts = {n: [centre(pivots[(n, 1)]), centre(pivots[(n, 2)]), centre(hand_of[n])] for n in ARMS}
+runs = {n: [] for n in ARMS}
+body_run = []
+owner_rect = {}  # arm name or "body" -> the box of its big clumps
+owner_of = {}  # clump index -> owner
+for k, c in enumerate(clumps):  # big clumps first: the body is the one that holds the sockets, the rest go to the arm whose pivots / hand are nearest
+    if c[1] - c[0] < 60 and c is not body_clump:
+        continue
+    if c is body_clump:
+        o = "body"
+    else:
+        o = min(ARMS, key=lambda n: min(rect_gap(c[2], pymupdf.Rect(p.x, p.y, p.x, p.y)) for p in arm_pts[n]))
+    owner_of[k] = o
+    owner_rect[o] = pymupdf.Rect(c[2]) if o not in owner_rect else owner_rect[o] | c[2]
+for k, c in enumerate(clumps):  # a few stray operators: with whoever owns the big clump next to it in the file and is nearest to it in the page
+    if k in owner_of:
+        continue
+    cands = {owner_of[j] for j in (k - 1, k + 1) if j in owner_of}
+    if not cands:  # (neighbours are small too: look further along the file)
+        for step in range(2, 8):
+            cands |= {owner_of[j] for j in (k - step, k + step) if j in owner_of}
+            if cands:
+                break
+    cands.add("body")
+    owner_of[k] = min(cands, key=lambda o: rect_gap(c[2], owner_rect[o]))
+for k, c in enumerate(clumps):
+    (body_run if owner_of[k] == "body" else runs[owner_of[k]]).extend(range(c[0], c[1] + 1))
+for n in ARMS:
+    print("arm", n, "clumps ops:", len(runs[n]))
 marker = set(pivots.values()) | set(sockets.values()) | set(greens)
 
 

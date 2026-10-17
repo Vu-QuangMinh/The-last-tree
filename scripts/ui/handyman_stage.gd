@@ -64,7 +64,7 @@ func socket(side: int) -> Vector2:
 ## The six places where the hands' names stand, in one row (x from the middle of the row, three on each side, evenly spaced; y of the
 ## hand marker: the name is just above it, the Essence just under it, so the names are level and so are the Essence). The sticks of each arm are
 ## stretched until its hand marker is there. Outermost slot = the highest arm of its side, so the arms do not cross.
-const SLOT_X := {"hand_spear": -690.0, "hand_sword": -460.0, "hand_tweezer": -230.0, "hand_shield": 230.0, "hand_hammer": 460.0, "hand_crossbow": 690.0}
+const SLOT_X := {"hand_spear": -690.0, "hand_shield": -460.0, "hand_tweezer": -230.0, "hand_sword": 230.0, "hand_hammer": 460.0, "hand_crossbow": 690.0}
 const SLOT_Y := 430.0
 
 
@@ -124,10 +124,15 @@ func add_hand(e: EnemyState, v: EnemyView, reach: bool) -> void:
 		v.creature._fold_t = 1.0
 
 
+## A hand that has not been called out yet is not on the stage at all: it appears (reaching out from behind him) when it is called, and folds back
+## only when it has been called and is then knocked out. (The old way, the hands lying folded behind him from the start, is kept behind this switch.)
+const SHOW_GHOSTS := false
+
+
 ## The hands that are not in the fight yet lie folded behind him from the start (for them to unfold when their turn comes).
 func sync_ghosts(live_ids: Array, phase: int, fight: Fight) -> void:
 	for id in LATER:
-		var wanted: bool = phase < int(LATER[id]) and not (id in live_ids)
+		var wanted: bool = SHOW_GHOSTS and phase < int(LATER[id]) and not (id in live_ids)
 		if not wanted:
 			drop_ghost(id)
 		elif not _ghosts.has(id):
@@ -182,6 +187,11 @@ func set_real(real: bool) -> void:
 	_real = real
 	if _body != null:
 		_body.visible = not real
+
+
+## Rope mode: his body's picture while it is the one standing there (null once his own view has taken its place).
+func rope_body() -> Creature:
+	return _body if _body != null and not _real and _body.visible and _body.rope_ok() else null
 
 
 func body_feet() -> Variant:

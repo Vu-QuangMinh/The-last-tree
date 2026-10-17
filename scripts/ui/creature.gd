@@ -23,6 +23,9 @@ var _yin_rot := 0.0  # the Yin Yang Beast's symbol: turned upside down (PI) when
 var _yin_target := 0.0
 var _yin_last := ""
 var _orbs: Array = []  # the Invoker's words so far: their Essence orbit him for the rest of the fight
+var _art_tip := 0.0  # the tilt the picture was last drawn with, and how far the jolt of a hit moved it sideways (for the rope mode's rivets)
+var _art_shake_x := 0.0
+var _floaters: Array = []  # [texture, centre fraction, phase] of the loose pieces hovering by the puppet (FLOATERS)
 var _art := {}  # face name -> Texture2D, for enemies with drawn art (empty: drawn procedurally)
 
 ## Enemies with drawn art (New theme): one picture per face (angry: half its Essence or more; normal: low, under half; hurt: just hit).
@@ -34,6 +37,9 @@ const ART_FACES := ["angry", "normal", "hurt"]
 ## one picture instead of its procedural body; it rocks on its base instead of bobbing, and tips back when hit.
 const ENEMY_ACTS := [1, 2, 3]
 const PUPPET_FILES := {"triplet_fire": "triplet_fire", "triplet_water": "triplet_water", "triplet_air": "triplet_air"}
+## Loose pieces that hover next to a puppet instead of being painted on it: [file in Enemies/Act<n>/, centre as a fraction of the picture's square, phase].
+## The Invoker's three orbs float above his open palm (cut off his hand by tools/import_act1_fix.py), each bobbing on its own beat.
+const FLOATERS := {"invoker": [["invoker/orb_fire", Vector2(0.7274, 0.4508), 0.0], ["invoker/orb_water", Vector2(0.7640, 0.3995), 2.1], ["invoker/orb_wind", Vector2(0.7953, 0.4555), 4.2]]}
 
 const SHAPES := {
 	# act 1 (the Verdant Circle)
@@ -54,6 +60,13 @@ var _puppet := false  # Puppet Stage cut-out in use
 var _rig := {}  # the arm's entry of HandymanRig.ARMS ({} for everything else)
 var _rig_tex: Array = []  # [upper, lower]
 var swing := 0.0  # the attack, set by the fight screen: -0.4 wound up ... 1 struck
+## A hand that reaches for something on the screen (the Tweezer Hand stealing Essence): `poke` 0 = hanging as usual ... 1 = the tip of its tool is on
+## `poke_target` (a screen point), the sticks stretched to get there (see _poke_pose). Only the arms in POKE_TIP can do it.
+var poke := 0.0
+var poke_target := Vector2.ZERO
+var _arm_tip := Vector2.ZERO  # where the tip of the tool was drawn last, in this Control's own coordinates
+## The tip of the tool of an arm, in px of the arm's lower piece (the Tweezer: where the two prongs close).
+const POKE_TIP := {"hand_tweezer": Vector2(432.5, 25.5)}
 var intro := 0.0  # 1 -> 0: the arm reaches out from the body when it first appears
 var _fold_t := 0.0  # 0 -> 1 while the hand is knocked out (it folds away behind the Handyman's back), 1 -> 0 when it comes back
 var _gear_t := 0.0  # the clock of the arm's jammed machinery (a knocked-out arm)
@@ -101,6 +114,12 @@ func setup(e: EnemyState) -> void:
 			_sad_tex = _puppet_tex("handyman_sad", 1)
 			add_to_group("handyman_body")
 		_puppet = not _art.is_empty()
+		_floaters = []
+		if _puppet and FLOATERS.has(e.id):
+			for f in FLOATERS[e.id]:
+				var ft := _puppet_tex(f[0], int(e.def.get("act", 1)))
+				if ft != null:
+					_floaters.append([ft, f[1], f[2]])
 		_rig = {}
 		_rig_tex = []
 		if HandymanRig.ARMS.has(e.id):
@@ -429,6 +448,7 @@ func _draw_arm(blink_on: bool) -> void:
 	a2 += sd * (swing * 0.26 - h * 0.25 - intro * 0.6)
 	var rest := reach if reach != Vector2.ZERO else Vector2(_rig.l1, _rig.l2)
 	var r := rest
+	var poked := poke > 0.0 and _enemy != null and POKE_TIP.has(_enemy.id)
 	if _fold_t > 0.0:
 		var pose := _fold_pose(_fold_t, float(_rig.theta1), th2, sd, rest)
 		var fold1 := angle_difference(float(_rig.theta1), pose.u)
@@ -443,6 +463,11 @@ func _draw_arm(blink_on: bool) -> void:
 			# a folded arm always drifts a little, slowly (a calm one, never hurt, only this: no trembling)
 			a1 += sin(_gear_t * 0.9 + _rig_phase) * 0.012 * _fold_t
 			a2 += sin(_gear_t * 1.3) * 0.03 * _fold_t
+	if poked:  # (reaching for a point of the screen: both sticks turn and stretch to put the tip of its tool there)
+		var pk := _poke_pose(size / 2.0 - arm_hand(_rig, rest, th2) * sc, rest, th2, sc)
+		a1 += angle_difference(a1, pk.a1) * poke
+		a2 += angle_difference(a2, pk.a2) * poke
+		r = r.lerp(pk.r, poke)
 	# a stick cannot be shorter than its stretch allows: the elbow pin of the upper stick and the lower stick's must stay on one another
 	var slab_u: Vector2 = _rig.upper_slab
 	var slab_l: Vector2 = _rig.lower_slab
@@ -465,6 +490,39 @@ func _draw_arm(blink_on: bool) -> void:
 	draw_set_transform_matrix(m2 * Transform2D(th2, Vector2.ZERO))
 	_draw_stick(_rig_tex[1], _rig.lower_pivot, _rig.lower_slab, r.y - float(_rig.l2), mod)
 	draw_set_transform_matrix(Transform2D.IDENTITY)
+	if _enemy != null and POKE_TIP.has(_enemy.id):
+		var tt: Vector2 = POKE_TIP[_enemy.id]
+		var piv: Vector2 = _rig.lower_pivot
+		_arm_tip = (m2 * Transform2D(th2, Vector2.ZERO)) * Vector2(tt.x - piv.x + (r.y - float(_rig.l2)), tt.y - piv.y)
+
+
+## Where the tip of the arm's tool is on the screen.
+func tool_tip() -> Vector2:
+	return get_global_transform() * _arm_tip
+
+
+## The pose that puts the tip of the tool on `poke_target`: the hand has to be where the tip would leave it (the tool sticks out of the hand at a fixed
+## angle to the lower stick), and the upper stick turns most of the way toward it, so the arm bends a little at the elbow. Returns the turn of the
+## upper stick (a1) and of the lower one (a2) from their rest, and the two lengths (px of the art). `s`: the shoulder, in this Control's coordinates.
+func _poke_pose(s: Vector2, rest: Vector2, th2: float, sc: float) -> Dictionary:
+	var tt: Vector2 = POKE_TIP[_enemy.id]
+	var piv: Vector2 = _rig.lower_pivot
+	var off := Vector2(tt.x - (piv.x + float(_rig.l2)), tt.y - piv.y) * sc  # (tip relative to the hand marker, with the lower stick along +x)
+	var t := get_global_transform().affine_inverse() * poke_target
+	var th := (t - s).angle()
+	var u := float(_rig.theta1)
+	var h := t
+	var e := s
+	var l1 := rest.x * sc
+	for k in 6:
+		h = t - off.rotated(th)
+		var d := h - s
+		u = lerp_angle(float(_rig.theta1), d.angle(), 0.7)
+		l1 = maxf(d.length() * 0.5, rest.x * sc)
+		e = s + Vector2.from_angle(u) * l1
+		th = (h - e).angle()
+	var a1p := angle_difference(float(_rig.theta1), u)
+	return {"a1": a1p, "a2": wrapf(th - a1p - th2, -PI, PI), "r": Vector2(l1 / sc, (h - e).length() / sc)}
 
 
 ## Drawn art instead of the procedural body: hurt for a moment after a hit, angry while it has at least half its
@@ -486,11 +544,13 @@ func _draw_art(blink_on: bool) -> void:
 	var c := Vector2(size.x / 2.0, size.y - side * 0.5 + sin(bob) * 4.0)
 	if _shake > 0.0:
 		c += Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake) * 0.5)
+	_art_shake_x = c.x - size.x / 2.0
 	if _puppet and not dead:
 		_draw_puppet_shadow(tex, Vector2(c.x, size.y), side)
 	if _puppet:  # a puppet doesn't bob: it rocks on its base, and tips back when it is hit
 		var tip := 0.0 if dead else (0.0 if enemy_id == "handyman" else sin(bob * 0.5) * 0.04) - 0.16 * minf(hurt / 0.4, 1.0)  # (the Handyman's body does not rock: six arms hang on its shoulders)
 		draw_set_transform(Vector2(c.x, size.y), tip)
+		_art_tip = tip
 		c = Vector2(0, -side * 0.5)
 	var mod := Color.WHITE
 	if dead:
@@ -499,6 +559,13 @@ func _draw_art(blink_on: bool) -> void:
 		var b := 1.0 + 0.9 * maxf(flash, 1.0 if blink_on else 0.0)
 		mod = Color(b, b, b)
 	draw_texture_rect(tex, Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side)), false, mod)
+	if _puppet and not dead:
+		for fl in _floaters:  # (they hover: a slow drift up and down and a little sideways, each on its own beat)
+			var ft: Texture2D = fl[0]
+			var k := side / float(tex.get_width())
+			var ph: float = fl[2]
+			var at: Vector2 = c + (fl[1] - Vector2(0.5, 0.5)) * side + Vector2(sin(bob * 0.7 + ph) * side * 0.006, sin(bob * 1.1 + ph) * side * 0.014)
+			draw_texture_rect(ft, Rect2(at - ft.get_size() * k * 0.5, ft.get_size() * k), false, mod)
 	if _puppet:
 		draw_set_transform(Vector2.ZERO)
 
@@ -533,6 +600,47 @@ func puppet_tex() -> Texture2D:
 	if _enemy != null and _enemy.yin != "" and _art.has("yin_" + _enemy.yin):
 		return _art["yin_" + _enemy.yin]
 	return _art.values()[0]
+
+
+## ---- Rope mode (RopeEditor): points on the puppet's picture, given as fractions of its square (0..1 from the top left) --------------------------
+## Only a plain Puppet Stage cut-out takes ropes (a Handyman hand is a rig and a dead puppet is a silhouette).
+func rope_ok() -> bool:
+	return _puppet and _rig.is_empty() and not dead and not _art.is_empty()
+
+
+## Where a point of the picture is on the screen. `rest`: where it is while the puppet stands still (no rocking, no jolt): the top of its rope hangs over that.
+func rope_point(frac: Vector2, rest := false) -> Vector2:
+	var side := _art_side()
+	var local := Vector2(0.0, -side * 0.5) + (frac - Vector2(0.5, 0.5)) * side
+	var org := Vector2(size.x / 2.0 + (0.0 if rest else _art_shake_x), size.y)
+	return get_global_transform() * (org + local.rotated(0.0 if rest else _art_tip))
+
+
+## The point of the picture under a screen point (the inverse of rope_point; outside the square when the point is off the picture).
+func rope_frac_at(g: Vector2) -> Vector2:
+	var side := _art_side()
+	var l := get_global_transform().affine_inverse() * g
+	l = (l - Vector2(size.x / 2.0 + _art_shake_x, size.y)).rotated(-_art_tip)
+	return (l - Vector2(0.0, -side * 0.5)) / side + Vector2(0.5, 0.5)
+
+
+static var _alpha_cache := {}  # texture path -> a small copy of its picture (only the opaque parts matter)
+
+
+## How opaque the picture is at a point of it (0 outside the square or on a see-through part).
+func rope_alpha(frac: Vector2) -> float:
+	var tex := puppet_tex()
+	if tex == null or frac.x < 0.0 or frac.y < 0.0 or frac.x >= 1.0 or frac.y >= 1.0:
+		return 0.0
+	var key := tex.resource_path
+	if not _alpha_cache.has(key):
+		var img := tex.get_image()
+		if img.is_compressed():
+			img.decompress()
+		img.resize(128, 128, Image.INTERPOLATE_BILINEAR)
+		_alpha_cache[key] = img
+	var img: Image = _alpha_cache[key]
+	return img.get_pixel(int(frac.x * img.get_width()), int(frac.y * img.get_height())).a
 
 
 static var _bounds_cache := {}  # texture path -> Rect2 (the painted part of the picture, as fractions of its square)

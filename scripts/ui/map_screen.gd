@@ -62,7 +62,6 @@ const WHEEL_SOUND_MS := 140  # the winch is heard this long after each notch of 
 var _drop_v := 0.0
 var _land_t := -1.0  # seconds since the map first reached its place (-1 = not yet / over)
 var _base := {}  # Vector2i(floor, col) -> the room button's own place
-var _walk := {}  # the rope the hero is walking on: {from_row, from_col, to_col, p} (the part behind the hero is gone)
 
 
 func setup(p_run: RunState) -> void:
@@ -509,8 +508,16 @@ func _walk_to(f: int, col: int) -> void:
 		from = _pos(run.row, run.col)
 		walk_edge = true
 	var here_btn: Control = _buttons.get(Vector2i(run.row, run.col))
-	if here_btn != null:
-		here_btn.visible = false  # the marker leaves it
+	if here_btn != null:  # the marker leaves it: the room it stood in turns into a visited one (its ring with the leaf), it does not just vanish
+		var visited_ring := UiSkin.icon("map_ring_visited", here_btn.size.x)
+		if visited_ring != null:
+			for c in here_btn.get_children():
+				c.queue_free()
+			visited_ring.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			here_btn.add_child(visited_ring)
+			here_btn.modulate = Color.WHITE
+		else:
+			here_btn.visible = false
 	var sz := 66.0
 	var marker := Control.new()
 	marker.size = Vector2(sz, sz)
@@ -535,9 +542,7 @@ func _walk_to(f: int, col: int) -> void:
 	var tw := create_tween()
 	tw.tween_method(func(p: float):
 		marker.position = from.lerp(to, p) - Vector2(sz, sz) / 2.0
-		if walk_edge and on_stage:
-			_walk = {"f": run.row, "c": run.col, "to": col, "p": p}
-		elif walk_edge:
+		if walk_edge and not on_stage:
 			for i in steps:
 				if i >= 3 and i <= steps - 4 and i / float(steps) <= p + 0.02:
 					_eaten["%d_%d_%d_%d" % [run.row, run.col, col, i]] = true
@@ -557,9 +562,7 @@ func _draw_paths() -> void:
 				var col := INK.lerp(Color(0.2, 0.5, 0.15), 0.8) if from_here else Color(INK, 0.55)
 				var a := _pos(f, n.col) + Vector2(0.0, _dy(f))
 				var b := _pos(f + 1, c) + Vector2(0.0, _dy(f + 1))
-				if on_stage:  # a rope from room to room, tucked under the rings; the part the hero has walked over is gone
-					if not _walk.is_empty() and _walk.f == f and _walk.c == n.col and _walk.to == c:
-						a = a.lerp(b, _walk.p)
+				if on_stage:  # a rope from room to room, tucked under the rings; the hero's walk leaves them whole
 					MapRope.draw_between(_content, a, b, RING_R * 0.8, Color(0.75, 1.0, 0.6) if from_here else Color(1, 1, 1, 0.92), 8.0 if from_here else 6.5)
 					continue
 				var d := a.distance_to(b)

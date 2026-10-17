@@ -50,7 +50,7 @@ func _watch(d: float) -> void:
 	var rolling: Array = []
 	for uid in fs._bag_icons:
 		var ic: Control = fs._bag_icons[uid]
-		if is_instance_valid(ic) and ic.has_meta("rolling") and ic.modulate.a > 0.5 and ic.position.x < PuppetMachine.BOX_LEFT - 20.0:  # (inside the box it is hidden: waiting there is not a stall)
+		if is_instance_valid(ic) and ic.has_meta("rolling") and ic.modulate.a > 0.5 and ic.position.x < PuppetSlotMachine.PORT_C.x - PuppetLayout.BAG_AT.x - 20.0:  # (before it comes up out of the port it is hidden: waiting there is not a stall)
 			rolling.append(ic)
 			var x := ic.position.x
 			var rec: Array = _last.get(uid, [x, 0.0, x])  # [last x, still seconds, x where it began]

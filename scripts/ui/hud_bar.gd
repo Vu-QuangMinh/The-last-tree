@@ -41,9 +41,17 @@ func _ready() -> void:
 	UiSkin.frame_behind(_art_row, Vector2(16, 6), "slot_strip_brass")  # (Puppet: the artifacts' frame has a brass rim, the bottles' is plain wood)
 	UiSkin.frame_behind(_bottle_row, Vector2(16, 6), "slot_strip_wood")
 	if UiSkin.is_puppet() and not get_tree().get_nodes_in_group("fight_screen").is_empty():
-		_art_row.visible = false  # (laid over the stage: the stage's own artifacts frame, top left, shows them: two frames on top of each other looked wrong)
-		var gap := Control.new()  # (the room of that frame, so the bottles and the numbers stand clear of it)
-		gap.custom_minimum_size = Vector2(maxf(60.0, 20.0 + 56.0 * run.artifacts.size()), 1)
+		_art_row.visible = false  # (laid over the stage: the stage's own frames, top left, show the artifacts and the bottles: two frames on top of each other looked wrong)
+		_bottle_row.visible = false
+		var gap := Control.new()  # (the room of those frames, so the numbers stand clear of them)
+		var na := run.artifacts.size()
+		var nb := run.player.bottles.size()
+		var arts_w := 0.0
+		if na > 0:
+			var step := minf(PuppetLayout.ART_STEP, (FightScreen.ART_MAX_W - 2.0 * PuppetLayout.ART_X0 - PuppetLayout.ART_PX) / maxf(1.0, na - 1.0))
+			arts_w = maxf(56.0, 2.0 * PuppetLayout.ART_X0 + (na - 1) * step + PuppetLayout.ART_PX) + FightScreen.SIDE_GAP
+		var bottles_w := maxf(56.0, 16.0 + nb * 52.0) + FightScreen.SIDE_GAP if nb > 0 else 0.0
+		gap.custom_minimum_size = Vector2(maxf(60.0, 24.0 + arts_w + bottles_w), 1)
 		_arts.add_child(gap)
 		_arts.move_child(gap, 0)
 	_label = UiTheme.label("", 20, Color.WHITE)

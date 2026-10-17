@@ -64,7 +64,7 @@ func run(p_t: SceneTree) -> void:
 		await t.process_frame
 		var rolling2: Array = []
 		for c in fs._stock_row.get_children():
-			if c is ElementIcon and is_instance_valid(c) and c.has_meta("rolling") and c.position.x < PuppetMachine.BOX_LEFT:  # (the ones still inside the box are hidden behind its front)
+			if c is ElementIcon and is_instance_valid(c) and c.has_meta("rolling") and c.position.x < PuppetSlotMachine.PORT_C.x - PuppetLayout.BAG_AT.x:  # (the ones still inside the machine are hidden behind its front)
 				rolling2.append(c)
 		if rolling2.size() > 1:
 			worst2 = minf(worst2, _min_gap(rolling2))

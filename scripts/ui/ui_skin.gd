@@ -17,7 +17,7 @@ const PUPPET_HIDDEN := ["enemy_stand"]
 static var _tex := {}
 static var _paths := {}  # name -> res:// path ("" = there is none)
 ## Where a name is looked for, inside a theme folder (in this order).
-const FOLDERS := ["UI/Panels", "UI/Hp", "UI/Machine", "UI/Hint", "UI/Buttons", "UI/Essence", "Icon/Intent", "Icon/Effect", "UI/Icons",
+const FOLDERS := ["UI/Panels", "UI/Hp", "UI/SlotMachine", "UI/Machine", "UI/Hint", "UI/Buttons", "UI/Essence", "Icon/Intent", "Icon/Effect", "UI/Icons",
 	"Card", "UI/Numbers", "Card/Treasure", "Map", "UI/Fx", "Stage/Act1/Backdrop", "Stage/Act2/Backdrop", "Stage/Act3/Backdrop",
 	"Map/Rooms/Backgrounds", "Stage/Act1/Fx", "Stage/Act2/Fx", "Stage/Act3/Fx", "UI/Banners", "UI/Characters", "Icon/Artifact", "Icon/Bottle",
 	"Map/Rooms/Campfire", "Map/Rooms/Apothecary", "UI/Misc", "Fonts/Letters", "Stage/Shared", "UI"]

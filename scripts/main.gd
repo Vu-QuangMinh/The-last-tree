@@ -9,6 +9,11 @@ var current: Control
 var run: RunState
 var _test_mode := false  # Dev Mode "Room Test": a throwaway run, nothing is saved or recorded
 var _back_layer := CanvasLayer.new()  # the "Back to room map" button of a test room
+var _test_room := {}  # the Room Test room that was entered last ({type, act, ...})
+var _rope_active := false  # Room Test, F5: the rope mode is up (see RopeEditor)
+var _rope_sets: Array = []
+var _rope_i := 0
+var _rope_busy := false
 
 
 func _ready() -> void:
@@ -67,6 +72,7 @@ func _swap(c: Control) -> void:
 	if is_instance_valid(current):
 		current.queue_free()
 	current = c
+	_rope_active = _rope_active and c is FightScreen and c.rope_mode
 	screen_layer.add_child(c)
 	_back_layer.visible = _test_mode and not (c is MapScreen)
 
@@ -127,6 +133,10 @@ var _pinned_text := ""
 
 ## Right-click pins whatever tooltip is under the mouse; any click closes it again.
 func _input(ev: InputEvent) -> void:
+	if ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_F5:
+		_toggle_rope_mode()
+		get_viewport().set_input_as_handled()
+		return
 	if not (ev is InputEventMouseButton) or not ev.pressed:
 		return
 	if is_instance_valid(_pinned):
@@ -164,6 +174,8 @@ func _input(ev: InputEvent) -> void:
 
 ## In a fight, right-click also means "put the spell back" / "skip": don't pin then.
 func _right_click_busy() -> bool:
+	if _rope_active:
+		return true  # (right click takes a rivet away)
 	var fs: FightScreen = null
 	if current is FightScreen:
 		fs = current
@@ -327,7 +339,26 @@ func _new_run() -> void:
 	if not SaveManager.has_run():
 		start_run()
 		return
-	var s := _message("Start a new run?", "You have a run in progress. Starting a new one replaces it: the saved run will be lost.", ["Start a new run", "Back"], UiTheme.DANGER)
+	var body := "You have a run in progress. Starting a new one replaces it: the saved run will be lost."
+	if _stage_flow() and is_instance_valid(current) and current is MenuScreen:
+		# Puppet Stage: the pop-up is laid over the menu's own stage (no screen of its own)
+		var m := MessageScreen.new()
+		m.title = "Start a new run?"
+		m.body = body
+		m.buttons = ["Start a new run", "Back"]
+		m.title_color = UiTheme.DANGER
+		m.on_stage = true
+		m.small_buttons = true
+		m.z_index = PuppetStage.CEILING_Z + 2
+		current.add_child(m)
+		m.pressed.connect(func(i):
+			if i == 0:
+				SaveManager.clear_run()
+				start_run()  # (the menu is swapped out there)
+			else:
+				m.queue_free())
+		return
+	var s := _message("Start a new run?", body, ["Start a new run", "Back"], UiTheme.DANGER)
 	s.pressed.connect(func(i):
 		if i == 0:
 			SaveManager.clear_run()
@@ -363,6 +394,18 @@ func start_run() -> void:
 	run.artifact_gained.connect(_on_artifact_found)
 	run.setup(GameData.db, SaveManager.unlocked_spells(), SaveManager.unlocked_artifacts())
 	var offer := Artifacts.keepsakes(run.rng, 3)
+	if _stage_flow():
+		# Puppet Stage: the drapes are drawn over the stage, the three keepsakes are laid on it, then the map is let down
+		var fs := _new_fight_screen(run.make_fight([]))
+		fs.map_mode = true
+		_swap(fs)
+		var st: PuppetStage = fs.get_stage()
+		if st != null and st.curtains.has_art():
+			await get_tree().process_frame  # (the stage was just built: the drapes start once that frame is over, or their move would jump)
+			await get_tree().process_frame
+			await st.curtains.close()
+		if current != fs or run == null:  # (left for the menu meanwhile)
+			return
 	var ch := _choice("Choose a keepsake", "It stays with you for the whole run.", [], offer, false)
 	ch.chosen.connect(func(i):
 		run.gain_artifact(offer[i].id)
@@ -397,9 +440,9 @@ func _show_stage_map() -> void:
 	m.on_stage = true
 	m.setup(run)
 	var st: PuppetStage = current.get_stage() if is_instance_valid(current) and current is FightScreen else null
-	if st != null and st.curtains.has_art():  # the red drapes are drawn together over the stage, and the map is let down in front of them
-		st.curtains.close()
-		m.drop_delay = 2.4  # (as long as the drapes take to close)
+	var draw_drapes: bool = st != null and st.curtains.has_art() and not st.curtains.is_shut()  # (a new run: they were drawn for the keepsakes already)
+	if draw_drapes:  # the red drapes are drawn together over the stage, and the map is let down in front of them
+		m.drop_delay = 2.6  # (as long as the drapes take to close, and the two frames they wait)
 	m.node_chosen.connect(func(col: int):
 		if st != null and is_instance_valid(st):
 			st.curtains.open()  # (pulled apart while the map is pulled up)
@@ -411,6 +454,11 @@ func _show_stage_map() -> void:
 	m.codex_pressed.connect(open_codex)
 	m.menu_requested.connect(func(): run = null; show_menu())
 	_set_overlay(m)
+	if draw_drapes:  # (the map was just built, which takes a frame or two: the drapes start once that is over, or their move would jump)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		if is_instance_valid(st):
+			st.curtains.close()
 
 
 func _new_fight_screen(f: Fight) -> FightScreen:
@@ -464,6 +512,7 @@ func show_room_test() -> void:
 
 ## Go straight into a room: the run is put on a one-room map that holds just that room.
 func _enter_test_room(room: Dictionary) -> void:
+	_test_room = room
 	run.over = false
 	run.won = false
 	run.player.hp = run.player.max_hp
@@ -478,6 +527,66 @@ func _enter_test_room(room: Dictionary) -> void:
 	run.row = room.row
 	run.col = 0
 	_enter_room(room.type)
+
+
+## F5 in a Room Test fight / elite / boss room (the Puppet Stage theme): the enemies of that room type and act stand on the stage in sets of four and
+## can be hung from the ceiling on ropes (RopeEditor). F5 again goes back to the room map.
+func _toggle_rope_mode() -> void:
+	if not _test_mode or _rope_busy:
+		return
+	if _rope_active:
+		show_room_test()
+		return
+	if not UiSkin.is_puppet() or not (_test_room.get("type", "") in ["fight", "elite", "boss"]):
+		Events.toast.emit("F5 (rope mode) works in a Room Test fight, elite or boss room, in the Puppet theme.", Color(1, 0.85, 0.5))
+		return
+	if not (current is LoadoutScreen or current is FightScreen):
+		return
+	_rope_sets = RopeSets.build(_test_room.type, int(_test_room.act))
+	if _rope_sets.is_empty():
+		Events.toast.emit("No puppet with a picture in this room type.", Color(1, 0.85, 0.5))
+		return
+	_rope_i = 0
+	_rope_active = true
+	_show_rope_set()
+
+
+func _show_rope_set() -> void:
+	var ids: Array = _rope_sets[_rope_i]
+	var kind: String = _test_room.type
+	_room_bg = "elite_arena" if kind == "elite" else (BOSS_BG[clampi(run.act, 1, 3)] if kind == "boss" else "")
+	var f := run.make_fight(ids.map(RopeSets.real_id))
+	var painted := []  # (a black Yin Yang Beast / Cub of the set: the first white one of that id turns black, before its picture is chosen)
+	for k in ids.size():
+		if RopeSets.is_black(ids[k]):
+			for e in f.enemies:
+				if e.id == RopeSets.real_id(ids[k]) and e.yin == "white" and not (e in painted):
+					e.yin = "black"
+					painted.append(e)
+					break
+	var fs := _new_fight_screen(f)
+	fs.rope_mode = true
+	fs.arrive = true
+	if current is FightScreen and current.rope_mode and current.get_stage() != null:
+		fs.stage_in = current.get_stage()  # (the same theatre and scenery: only the enemies change)
+	var ed := RopeEditor.new()
+	ed.setup(fs, _rope_i, _rope_sets.size(), ids, kind, int(_test_room.act))
+	ed.next_pressed.connect(_next_rope_set)
+	fs.add_child(ed)
+	_rope_active = true
+	_swap(fs)
+	_rope_active = true  # (_swap looks at the screen before it is ready)
+
+
+func _next_rope_set() -> void:
+	if _rope_busy or not _rope_active or not (current is FightScreen):
+		return
+	_rope_busy = true
+	await current.rope_leave()
+	_rope_i = (_rope_i + 1) % _rope_sets.size()
+	if _rope_active:
+		_show_rope_set()
+	_rope_busy = false
 
 
 func _on_node(col: int) -> void:

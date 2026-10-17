@@ -16,7 +16,7 @@ func run(t: SceneTree) -> void:
 	await t.create_timer(0.5).timeout
 	m.start_run()
 	await t.create_timer(0.5).timeout
-	m.current.chosen.emit(0)  # the keepsake
+	m._overlay.chosen.emit(0)  # the keepsake (laid over the stage, behind the drawn drapes)
 	await t.create_timer(4.6).timeout
 	await _shot(t, "1_map")
 	print("current: ", m.current, " overlay: ", m._overlay)
