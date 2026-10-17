@@ -136,3 +136,5 @@ Source of truth for art: `assets/ui/Fight UI.pdf`, cut into `assets/ui/new/<fold
 
 
 **2026-10-17 (session):** see docs/session_2026_10_17.md (Act 1 enemy redo, rope mode F5 + ropes in fights, Handyman PDF swap + tweezer poke, slot machine from Slot_machine.pdf, merge of origin/main). To do: gắn dây cho mọi kẻ địch còn lại; test_new_commons trượt (dấu chấm trong text spell).
+
+**2026-10-18:** top HUD / debuff board / hover board / encounter screen restyle / fuse wax click, see docs/session_2026_10_17.md (Bổ sung 18/10). Exporter: tools/export_top_hud.py (indexes are per PDF version). Obsolete: tools/export_puppet_hud.py. To do: gắn dây cho các enemy còn lại; test_new_commons.

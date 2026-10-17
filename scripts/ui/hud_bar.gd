@@ -12,6 +12,7 @@ var _arts: HBoxContainer  # the artifacts, then the bottles: each in its own row
 var _art_row: HBoxContainer
 var _bottle_row: HBoxContainer
 var _heart: TextureRect
+var _on_stage := false  # laid over the Puppet stage: a small block in the top left corner
 
 
 
@@ -43,17 +44,7 @@ func _ready() -> void:
 	if UiSkin.is_puppet() and not get_tree().get_nodes_in_group("fight_screen").is_empty():
 		_art_row.visible = false  # (laid over the stage: the stage's own frames, top left, show the artifacts and the bottles: two frames on top of each other looked wrong)
 		_bottle_row.visible = false
-		var gap := Control.new()  # (the room of those frames, so the numbers stand clear of them)
-		var na := run.artifacts.size()
-		var nb := run.player.bottles.size()
-		var arts_w := 0.0
-		if na > 0:
-			var step := minf(PuppetLayout.ART_STEP, (FightScreen.ART_MAX_W - 2.0 * PuppetLayout.ART_X0 - PuppetLayout.ART_PX) / maxf(1.0, na - 1.0))
-			arts_w = maxf(56.0, 2.0 * PuppetLayout.ART_X0 + (na - 1) * step + PuppetLayout.ART_PX) + FightScreen.SIDE_GAP
-		var bottles_w := maxf(56.0, 16.0 + nb * 52.0) + FightScreen.SIDE_GAP if nb > 0 else 0.0
-		gap.custom_minimum_size = Vector2(maxf(60.0, 24.0 + arts_w + bottles_w), 1)
-		_arts.add_child(gap)
-		_arts.move_child(gap, 0)
+		_on_stage = true  # (the top frame of the fight screen shows Act, HP, bottles and artifacts: only the Seedlings line and the Codex / Wiki buttons are left here)
 	_label = UiTheme.label("", 20, Color.WHITE)
 	_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var info := HBoxContainer.new()
@@ -70,21 +61,52 @@ func _ready() -> void:
 		info.add_child(_seed_icon)
 		_label2 = UiTheme.label("", 20, Color.WHITE)
 		info.add_child(_label2)
-	h.add_child(info)
-	h.add_child(UiTheme.button("Codex", func(): codex_pressed.emit()))
-	h.add_child(UiTheme.button(UiTheme.hk("Wiki", "F1"), func(): get_tree().root.get_node("Main").open_wiki() if get_tree().root.has_node("Main") else null))
+	var codex := UiTheme.button("Codex", func(): codex_pressed.emit())
+	var wiki := UiTheme.button(UiTheme.hk("Wiki", "F1"), func(): get_tree().root.get_node("Main").open_wiki() if get_tree().root.has_node("Main") else null)
+	if _on_stage:
+		h.queue_free()  # (a two-line block in the corner, clear of the top frame)
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 6)
+		var btns := HBoxContainer.new()
+		btns.add_theme_constant_override("separation", 8)
+		btns.add_child(codex)
+		btns.add_child(wiki)
+		box.add_child(btns)
+		info.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		box.add_child(info)
+		var pad := MarginContainer.new()  # (top left corner)
+		pad.add_theme_constant_override("margin_left", 20)
+		pad.add_theme_constant_override("margin_top", 26)
+		pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pad.add_child(box)
+		add_child(pad)
+		custom_minimum_size = Vector2(1920, 56)
+	else:
+		h.add_child(info)
+		h.add_child(codex)
+		h.add_child(wiki)
 	refresh()
 
 
 func refresh() -> void:
 	var p := run.player
-	if _label2 != null:
+	if _on_stage:  # (HP and Act are in the top frame)
+		if _heart != null:
+			_heart.visible = false
+		_label.text = ""
+		if _label2 != null:
+			_label2.text = "%d Seedlings · %d spells · %d slots" % [run.seedlings, run.spellbook.size(), run.active_slots()]
+		else:
+			_label.text = "✿ %d Seedlings · %d spells · %d slots" % [run.seedlings, run.spellbook.size(), run.active_slots()]
+	elif _label2 != null:
 		_label.text = ("" if _heart != null else "♥ ") + "%d / %d     Act %d    " % [p.hp, p.max_hp, run.act]
 		_label2.text = "%d Seedlings     %d spells · %d slots" % [run.seedlings, run.spellbook.size(), run.active_slots()]
 	else:
 		_label.text = ("" if _heart != null else "♥ ") + "%d / %d     Act %d     ✿ %d Seedlings     %d spells · %d slots" % [p.hp, p.max_hp, run.act, run.seedlings, run.spellbook.size(), run.active_slots()]
 	for c in _art_row.get_children() + _bottle_row.get_children():
 		c.queue_free()
+	if _on_stage:
+		return
 	for id in run.artifacts:
 		_art_row.add_child(ArtifactBar.ArtifactChip.make(id, id in run.artifacts_plus, 56.0))
 	# your bottles (and empty bottle slots), after the artifacts

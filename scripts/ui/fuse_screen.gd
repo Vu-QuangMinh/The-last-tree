@@ -528,10 +528,12 @@ func _wax_seal(stage: Control, card: SpellCard, id: String, mid: Vector2) -> Spe
 	var top := card.get_global_rect().position.y
 	var home := Vector2(mid.x, top - 80.0) - stage.global_position
 	var wax := TextureRect.new()
-	wax.texture = UiSkin.tex("wax_seal")
+	var puppet_wax := UiSkin.is_puppet() and UiSkin.tex("wax_seal_on_card") != null  # (Puppet: the new carved wax seal, not the old cartoon one)
+	wax.texture = UiSkin.tex("wax_seal_on_card") if puppet_wax else UiSkin.tex("wax_seal")
 	wax.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	wax.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	wax.size = Vector2(54, 64)
+	wax.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	wax.size = Vector2(76, 74) if puppet_wax else Vector2(54, 64)
 	wax.pivot_offset = wax.size / 2.0
 	wax.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	wax.mouse_default_cursor_shape = Control.CURSOR_DRAG
@@ -543,7 +545,7 @@ func _wax_seal(stage: Control, card: SpellCard, id: String, mid: Vector2) -> Spe
 	var bob := wax.create_tween().set_loops()
 	bob.tween_property(wax, "rotation", 0.08, 0.7).set_trans(Tween.TRANS_SINE)
 	bob.tween_property(wax, "rotation", -0.08, 0.7).set_trans(Tween.TRANS_SINE)
-	var hint := UiTheme.label("A drop of purple wax! It can shorten your spell.", 24, Color(0.9, 0.75, 1.0))
+	var hint := UiTheme.label("A drop of purple wax! Click an Essence (or drag the wax onto it) to seal it.", 24, Color(0.9, 0.75, 1.0))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.size = Vector2(900, 40)
 	hint.position = Vector2(mid.x - 450, card.get_global_rect().end.y + 30.0) - stage.global_position
@@ -558,6 +560,12 @@ func _wax_seal(stage: Control, card: SpellCard, id: String, mid: Vector2) -> Spe
 				best_d = d
 				best = k
 		return best
+	var orb_at := func(at: Vector2) -> int:  # the Essence right under the pointer (a click on it seals it, no need to carry the wax there)
+		var orbs := card.live_orbs()
+		for k in orbs.size():
+			if (orbs[k] as Control).get_global_rect().grow(10.0).has_point(at):
+				return k
+		return -1
 	var light := func(k: int) -> void:
 		var orbs := card.live_orbs()
 		for i in orbs.size():
@@ -575,6 +583,8 @@ func _wax_seal(stage: Control, card: SpellCard, id: String, mid: Vector2) -> Spe
 				bob.pause()
 				wax.rotation = 0.0
 				wax.create_tween().tween_property(wax, "scale", Vector2(1.15, 1.15), 0.1)
+			elif ev.pressed and not st.drag and orb_at.call(ev.global_position) >= 0:
+				st.picked = orb_at.call(ev.global_position)  # (clicked the Essence itself: the wax flies there)
 			elif not ev.pressed and st.drag:
 				st.drag = false
 				var k: int = nearest.call(wax.global_position + wax.size / 2.0)
@@ -590,7 +600,9 @@ func _wax_seal(stage: Control, card: SpellCard, id: String, mid: Vector2) -> Spe
 			if st.drag:
 				wax.global_position = ev.global_position + st.grab
 				light.call(nearest.call(wax.global_position + wax.size / 2.0))
-			stage.mouse_default_cursor_shape = Control.CURSOR_DRAG if st.drag or wax.get_global_rect().grow(18.0).has_point(ev.global_position) else Control.CURSOR_ARROW
+			else:
+				light.call(orb_at.call(ev.global_position))  # (the Essence under the pointer lights up: click it)
+			stage.mouse_default_cursor_shape = Control.CURSOR_DRAG if st.drag or wax.get_global_rect().grow(18.0).has_point(ev.global_position) else (Control.CURSOR_POINTING_HAND if orb_at.call(ev.global_position) >= 0 else Control.CURSOR_ARROW)
 	stage.gui_input.connect(on_input)
 	while st.picked < 0:
 		await get_tree().process_frame

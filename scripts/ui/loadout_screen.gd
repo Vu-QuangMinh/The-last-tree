@@ -32,8 +32,20 @@ func setup(p_run: RunState, ids: Array) -> void:
 	enemy_ids = ids
 
 
+## Puppet Stage: the boards of this screen are the painted ones of the Chant UI PDF (the char panel's cream frame, the red debuff board, the bottle board).
+func _painted() -> bool:
+	return on_stage and UiSkin.is_puppet() and UiSkin.tex("bottle_board") != null and UiSkin.tex("debuff_board") != null and UiSkin.tex("hud_frame") != null
+
+
+## A painted 9-slice style (`m`: left, top, right, bottom margins of the picture; `c`: the room kept free inside).
+func _board_box(tex_name: String, m: Array, c: Array) -> StyleBoxTexture:
+	return UiSkin.box(tex_name, m, c)
+
+
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	if on_stage:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE  # (the Menu button of the stage, in the top left corner, stays clickable under this screen)
 	theme = UiTheme.get_theme()
 	if not on_stage:
 		var bd := Backdrop.new()
@@ -46,8 +58,8 @@ func _ready() -> void:
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(shade)
 	var root := VBoxContainer.new()
-	root.position = Vector2(40, 100)  # (below the top bar, which used to hide the title)
-	root.size = Vector2(1840, 884)
+	root.position = Vector2(40, 100 if not _painted() else 30)  # (below the top bar, which used to hide the title; the painted stage has none: it all stands higher)
+	root.size = Vector2(1840, 884 if not _painted() else 938)
 	root.add_theme_constant_override("separation", 10)
 	add_child(root)
 	var kind := run.current_kind()
@@ -69,10 +81,11 @@ func _ready() -> void:
 	_active_zone.add_child(av)
 	var ah := HBoxContainer.new()
 	av.add_child(ah)
-	ah.add_child(UiTheme.heading("Active spells", 24, UiTheme.ACCENT))
-	_count = UiTheme.label("", 20, UiTheme.MUTED)
+	var on_cream := _painted()  # (the active board is cream: dark words)
+	ah.add_child(UiTheme.heading("Active spells", 24, Color(0.5, 0.15, 0.1) if on_cream else UiTheme.ACCENT))
+	_count = UiTheme.label("", 20, Color(0.3, 0.2, 0.15) if on_cream else UiTheme.MUTED)
 	ah.add_child(_count)
-	ah.add_child(UiTheme.label("     these come with you into the fight", 17, UiTheme.MUTED))
+	ah.add_child(UiTheme.label("     these come with you into the fight", 17, Color(0.3, 0.2, 0.15) if on_cream else UiTheme.MUTED))
 	# many slots wrap onto a second row instead of running off the screen
 	_active_row = HFlowContainer.new()
 	_active_row.add_theme_constant_override("h_separation", 10)
@@ -92,8 +105,8 @@ func _ready() -> void:
 	_book_zone.add_child(bv)
 	var bh2 := HBoxContainer.new()
 	bv.add_child(bh2)
-	bh2.add_child(UiTheme.heading("Spellbook", 22, Color(0.85, 0.92, 0.8)))
-	bh2.add_child(UiTheme.label("     the rest of your spells. Powers fire once, then leave the row for the rest of the fight.", 16, UiTheme.MUTED))
+	bh2.add_child(UiTheme.heading("Spellbook", 22, Color(1.0, 0.92, 0.8) if _painted() else Color(0.85, 0.92, 0.8)))
+	bh2.add_child(UiTheme.label("     the rest of your spells. Powers fire once, then leave the row for the rest of the fight.", 16, Color(0.95, 0.82, 0.72) if _painted() else UiTheme.MUTED))
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(1800, SpellCard.H + 6)
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -109,17 +122,18 @@ func _ready() -> void:
 	bh.add_theme_constant_override("separation", 20)
 	bh.alignment = BoxContainer.ALIGNMENT_END
 	bh.position = Vector2(1300, 996)
-	bh.size = Vector2(580, 60)
+	bh.size = Vector2(580, 60)  # (the Menu button of the stage stands to the left of Begin the fight: see FightScreen.MENU_TOP_AT)
 	add_child(bh)
 	if not on_stage:  # (on the stage the Codex button is in the bar at the top)
 		bh.add_child(UiTheme.button("Codex", func(): codex_pressed.emit()))
 	_go = UiTheme.button("Close" if book_only else "Begin the fight", func(): (closed if book_only else confirmed).emit(), 24)
 	_go.custom_minimum_size = Vector2(300, 56)
 	bh.add_child(_go)
-	var hud := HudBar.new()
-	hud.setup(run)
-	hud.codex_pressed.connect(func(): codex_pressed.emit())
-	add_child(hud)
+	if not _painted():  # (on the painted stage the Menu button is in the corner and the Codex / Wiki / Seedlings line are not shown here)
+		var hud := HudBar.new()
+		hud.setup(run)
+		hud.codex_pressed.connect(func(): codex_pressed.emit())
+		add_child(hud)
 	_refresh()
 
 
@@ -135,7 +149,7 @@ func active_rects() -> Array:
 func _enemy_panel(id: String, index: int, width := 440.0) -> Control:
 	var d := EnemyDefs.get_def(id)
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", UiTheme.panel_box(0.9, 10))
+	p.add_theme_stylebox_override("panel", UiTheme.panel_box(0.9, 10))  # (the wooden frame, as before)
 	p.custom_minimum_size = Vector2(width, 220)
 	var h := HBoxContainer.new()
 	p.add_child(h)
@@ -172,6 +186,14 @@ func _enemy_panel(id: String, index: int, width := 440.0) -> Control:
 ## A framed zone for a group of cards: a tinted panel with a coloured edge (it glows while a card hovers over it).
 func _zone(edge: Color, fill_alpha: float) -> PanelContainer:
 	var p := PanelContainer.new()
+	if _painted():
+		p.set_meta("edge", edge)
+		if edge.r > 0.9:  # (the active row: the char panel's cream frame)
+			p.add_theme_stylebox_override("panel", _board_box("hud_frame", [int(PuppetTopHud.FRAME_MARGINS.x), 30, int(PuppetTopHud.FRAME_MARGINS.y), 30], [36, 20, 30, 20]))
+		else:  # (the spellbook: the red debuff board)
+			var dm := PuppetTopHud.DEBUFF_MARGIN
+			p.add_theme_stylebox_override("panel", _board_box("debuff_board", [dm, dm, dm, dm], [dm + 6, dm - 2, dm + 6, dm - 2]))
+		return p
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.05, 0.04, 0.02, fill_alpha + 0.3)
 	sb.border_color = Color(edge, 0.55)
@@ -193,6 +215,12 @@ func _refresh() -> void:
 	for i in run.active_slots() - run.loadout.size():
 		var empty := Panel.new()
 		empty.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H)
+		if _painted():
+			var m: Array = PuppetTopHud.BOARD_MARGINS
+			empty.add_theme_stylebox_override("panel", _board_box("bottle_board", m, [0, 0, 0, 0]))
+			empty.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_active_row.add_child(empty)
+			continue
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = Color(0, 0, 0, 0.2)
 		sb.border_color = Color(1.0, 0.85, 0.5, 0.35)
@@ -287,9 +315,12 @@ func _target_at(at: Vector2) -> Dictionary:
 ## Light up the zone (and the card) under the card in your hand.
 func _show_target() -> void:
 	for zone in [_active_zone, _book_zone]:
+		var lit: bool = not _hover_target.is_empty() and _hover_target.active == (zone == _active_zone)
+		if _painted():  # (a painted board: it brightens while a card hovers over it)
+			zone.self_modulate = Color(1.18, 1.14, 1.0) if lit else Color.WHITE
+			continue
 		var sb: StyleBoxFlat = zone.get_theme_stylebox("panel")
 		var edge: Color = zone.get_meta("edge")
-		var lit: bool = not _hover_target.is_empty() and _hover_target.active == (zone == _active_zone)
 		sb.border_color = Color(edge, 1.0 if lit else 0.55)
 		sb.set_border_width_all(5 if lit else 3)
 		sb.shadow_color = Color(edge, 0.45 if lit else 0.0)

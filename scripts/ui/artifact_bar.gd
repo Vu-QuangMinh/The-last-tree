@@ -49,16 +49,11 @@ func update_charges(p: PlayerState) -> void:
 				c.set_charge(st[0], st[1])
 
 
-## A quick bright flash on an artifact that just did something.
+## An artifact that just did something: it grows, shines, and goes back to its size (one that works again and again).
 func flash(id: String) -> void:
 	for c in get_children():
 		if c is ArtifactChip and c.id == id:
-			c.pivot_offset = c.size / 2.0
-			var tw := c.create_tween()
-			tw.tween_property(c, "scale", Vector2(1.5, 1.5), 0.1)
-			tw.parallel().tween_property(c, "modulate", Color(2.2, 2.0, 1.4), 0.1)
-			tw.tween_property(c, "scale", Vector2.ONE, 0.25)
-			tw.parallel().tween_property(c, "modulate", Color.WHITE, 0.3)
+			c.activate()
 
 
 class ArtifactChip extends PanelContainer:
@@ -71,6 +66,8 @@ class ArtifactChip extends PanelContainer:
 
 	var id := ""
 	var charged := false
+	var _glow := 0.0  # 0..1: the golden light behind it while it is doing its thing
+	var _act_tw: Tween
 	var _sb: StyleBoxFlat
 	var _base_border: Color
 	var _base_tip := ""
@@ -89,8 +86,10 @@ class ArtifactChip extends PanelContainer:
 		sb.set_border_width_all(1)
 		sb.set_corner_radius_all(10)
 		sb.anti_aliasing = true
-		sb.set_content_margin_all(5)
+		sb.set_content_margin_all(0 if UiSkin.is_puppet() else 5)
 		c.add_theme_stylebox_override("panel", sb)
+		if HoverBoard.available():  # (its hover board is its own picture: the game's plain tooltip box must not show behind it)
+			c.theme = HoverBoard.bare_theme()
 		c.custom_minimum_size = Vector2(px, px)
 		# under the mouse: no glowing outline, a tiny click and the icon grows a little (the info panel still shows)
 		c.mouse_entered.connect(func():
@@ -102,7 +101,7 @@ class ArtifactChip extends PanelContainer:
 			if not c.charged:
 				c.create_tween().tween_property(c, "scale", Vector2.ONE, 0.08))
 		c.mouse_filter = Control.MOUSE_FILTER_STOP
-		var art := UiSkin.artifact_icon(id, px * ICON / SIZE)  # New theme: the painted artifact; otherwise its symbol
+		var art := UiSkin.artifact_icon(id, px if UiSkin.is_puppet() else px * ICON / SIZE)  # New theme: the painted artifact (kept in proportion); otherwise its symbol
 		if art != null:
 			art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 			art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -114,7 +113,7 @@ class ArtifactChip extends PanelContainer:
 			l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			c.add_child(l)
 		var tier: String = Artifacts.TIER_NAMES.get(a.get("tier", "common"), "")
-		c.tooltip_text = Keywords.tooltip(a.name, a.desc, "[color=#9aa89a]%s artifact · %s[/color]" % [tier, a.get("aspect", "")], UiSkin.inline(UiSkin.ARTIFACT_ART.get(id, id), a.get("icon", ""), 28))
+		c.tooltip_text = Keywords.tooltip(a.name, a.desc, "[color=#9aa89a]%s artifact · %s[/color]" % [tier, a.get("aspect", "")], "" if UiSkin.is_puppet() else UiSkin.inline(UiSkin.ARTIFACT_ART.get(id, id), a.get("icon", ""), 28))  # (Puppet: the big picture of the hover board stands for it)
 		c._sb = sb
 		c._base_border = sb.border_color
 		c._base_tip = c.tooltip_text
@@ -146,7 +145,43 @@ class ArtifactChip extends PanelContainer:
 		_sb.shadow_color = Color(1.0, 0.8, 0.25, 0.5 + 0.4 * g)
 		_sb.shadow_size = int(6 + 8 * g)
 
+	## It grows to 1.55 x and shines, holds a moment, and comes back (a quick golden glow behind it).
+	func activate() -> void:
+		if _act_tw != null and _act_tw.is_valid():
+			_act_tw.kill()
+		pivot_offset = size / 2.0
+		z_index = 20
+		_act_tw = create_tween()
+		_act_tw.tween_method(func(u: float) -> void:
+			_glow = u
+			scale = Vector2.ONE * lerpf(1.0, 1.55, u)
+			modulate = Color.WHITE.lerp(Color(1.5, 1.4, 1.0), u)
+			queue_redraw(), 0.0, 1.0, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_act_tw.tween_interval(0.3)
+		_act_tw.tween_method(func(u: float) -> void:
+			_glow = 1.0 - u
+			scale = Vector2.ONE * lerpf(1.55, 1.0, u)
+			modulate = Color(1.5, 1.4, 1.0).lerp(Color.WHITE, u)
+			queue_redraw(), 0.0, 1.0, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		_act_tw.tween_callback(func() -> void:
+			z_index = 0
+			scale = Vector2.ONE
+			modulate = Color.WHITE)
+
+	func _draw() -> void:
+		if _glow > 0.01:
+			var r := size.x * 0.62
+			for k in 4:
+				draw_circle(size / 2.0, r * (1.0 + 0.28 * k), Color(1.0, 0.82, 0.3, 0.2 * _glow * (1.0 - 0.22 * k)))
+
 	func _make_custom_tooltip(for_text: String) -> Object:
 		if for_text.strip_edges() == "":
 			return null  # no text (e.g. its tooltip is pinned): no hover tooltip at all
+		if HoverBoard.available():
+			return ArtifactBar.hover_panel(id, for_text)
 		return Keywords.make_tooltip(for_text)
+
+
+## The hover board of an artifact (Puppet Stage): see HoverBoard.
+static func hover_panel(id: String, bbcode: String) -> Control:
+	return HoverBoard.make(UiSkin.tex(UiSkin.ARTIFACT_ART.get(id, id)), bbcode)

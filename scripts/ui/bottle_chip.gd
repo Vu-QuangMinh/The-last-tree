@@ -51,6 +51,9 @@ func _ready() -> void:
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if clickable else Control.CURSOR_ARROW
 	var how := "Click it on your turn to drink it. It's gone once used." if clickable else "Drink it during a fight (click it on your turn)."
 	tooltip_text = Keywords.tooltip(b.get("name", id), b.get("desc", ""), "[color=#9aa89a]Bottle · %d Amber · %s[/color]" % [b.get("price", 0), how], UiSkin.inline(id, b.get("icon", ""), 28))
+	if HoverBoard.available():
+		theme = HoverBoard.bare_theme()
+		tooltip_text = Keywords.tooltip(b.get("name", id), b.get("desc", ""), "[color=#9aa89a]Bottle · %d Amber · %s[/color]" % [b.get("price", 0), how])  # (the big picture of the board stands for the small inline one)
 	mouse_entered.connect(func(): _box.border_color = hover)
 	mouse_exited.connect(func(): _box.border_color = idle)
 
@@ -74,7 +77,7 @@ func _art_name() -> String:
 func _draw() -> void:
 	if id != "" and UiSkin.tex(_art_name()) != null:
 		# New theme: the painted bottle, filling most of its square (bobbing gently when you can drink it)
-		var bob := sin(_t * 2.4) * 1.5 if clickable else 0.0
+		var bob := sin(_t * 2.4) * 1.5 if clickable and not UiSkin.is_puppet() else 0.0  # (Puppet: it stands still, like the artifacts)
 		UiSkin.draw_fit(self, _art_name(), size / 2.0 + Vector2(0, bob), minf(size.x, size.y) * 0.86)
 		return
 	if id == "":
@@ -131,4 +134,6 @@ func _gui_input(ev: InputEvent) -> void:
 func _make_custom_tooltip(for_text: String) -> Object:
 	if for_text.strip_edges() == "":
 		return null
+	if HoverBoard.available() and id != "":
+		return HoverBoard.make(UiSkin.tex(_art_name()), for_text)
 	return Keywords.make_tooltip(for_text)

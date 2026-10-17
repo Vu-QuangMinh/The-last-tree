@@ -59,17 +59,18 @@ func _ready() -> void:
 	add_child(v)
 	# the symbol, big, in a medallion
 	_medal = Control.new()
-	_medal.custom_minimum_size = Vector2(0, 118)
+	var icon_px := 108.0 if UiSkin.is_puppet() else 76.0  # (Puppet: the artifact stands alone, no round medal behind it, a little bigger)
+	_medal.custom_minimum_size = Vector2(0, 124 if UiSkin.is_puppet() else 118)
 	_medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_medal.draw.connect(_draw_medal)
 	v.add_child(_medal)
-	var icon: Control = UiSkin.artifact_icon(str(a.get("id", "")), 76)
+	var icon: Control = UiSkin.artifact_icon(str(a.get("id", "")), icon_px)
 	if icon != null:
 		icon.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-		icon.offset_left = -38
-		icon.offset_right = 38
-		icon.offset_top = -38
-		icon.offset_bottom = 38
+		icon.offset_left = -icon_px / 2.0
+		icon.offset_right = icon_px / 2.0
+		icon.offset_top = -icon_px / 2.0
+		icon.offset_bottom = icon_px / 2.0
 	else:
 		icon = UiTheme.label(a.get("icon", "◆"), 60, Color.WHITE)
 		icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -119,6 +120,8 @@ func _process(d: float) -> void:
 
 
 func _draw_medal() -> void:
+	if UiSkin.is_puppet():
+		return  # (no round medal: only the artifact)
 	var c := _medal.size / 2.0
 	var r := 52.0
 	if _ring != null:  # New theme: a dark disc behind the artifact, the painted ring around it

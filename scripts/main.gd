@@ -189,7 +189,7 @@ func _pin_tooltip(content: Control) -> void:
 	layer.layer = 30
 	var p := PanelContainer.new()
 	p.theme = UiTheme.get_theme()  # its layer is outside every screen: use the game's font, not Godot's default
-	p.add_theme_stylebox_override("panel", UiTheme.get_theme().get_stylebox("panel", "TooltipPanel"))
+	p.add_theme_stylebox_override("panel", StyleBoxEmpty.new() if content.has_meta("bare") else UiTheme.get_theme().get_stylebox("panel", "TooltipPanel"))
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var v := VBoxContainer.new()
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -788,6 +788,10 @@ func _show_shop(stock: Array) -> void:
 
 func _show_loadout(ids: Array) -> void:
 	_room_bg = "screen_loadout"
+	if _stage_flow() and not _on_stage():  # (Continue from the menu lands here with no stage up: put the stage up first, as if you had come from the map)
+		var base := _new_fight_screen(run.make_fight([]))
+		base.map_mode = true
+		_swap(base)
 	_checkpoint("fight", ids)
 	var l := LoadoutScreen.new()
 	l.setup(run, ids)

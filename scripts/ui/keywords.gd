@@ -214,6 +214,22 @@ static func make_tooltip(bbcode: String) -> Control:
 	return r
 
 
+## How wide a tooltip's words are (px), from its longest line (measured with the game's font), kept between `lo` and `hi`: a short text gets a narrow box.
+static func natural_width(bbcode: String, lo := 200.0, hi := 560.0) -> float:
+	var font := UiTheme.get_theme().default_font
+	var rx := RegEx.new()
+	rx.compile("\\[[^\\]]*\\]")
+	var best := 0.0
+	for line in bbcode.split("\n"):
+		var plain := rx.sub(String(line), "", true)
+		var size := 25 if "font_size=25" in line else 21
+		var w := font.get_string_size(plain, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x + 30.0 * String(line).count("[img")
+		if "[b]" in line:
+			w *= 1.06
+		best = maxf(best, w)
+	return clampf(best + 8.0, lo, hi)
+
+
 ## Moves the window holding `c` (a tooltip) back inside the visible screen, if any of it sticks out.
 static func _keep_on_screen(c: Control) -> void:
 	if not is_instance_valid(c) or not c.is_inside_tree():
