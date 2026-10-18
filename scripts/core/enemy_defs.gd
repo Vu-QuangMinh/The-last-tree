@@ -157,15 +157,15 @@ const E := {
 	# side; on his turn he casts every one your chant matched, or else the one it came closest to (ties: random). At 0
 	# Essence he rises again with 15 more, and from then on chants Quas / Wex / Exort, one a turn: that Essence is
 	# stripped from his spells' patterns for the rest of the fight (they get easier to set off).
-	"invoker": {"name": "Ol' Wiz", "act": 1, "boss": true, "hp": "FWAFWAFWAFWAFWAFWAFW", "hp2": "AWFAWFAWFAWFAWF",
+	"invoker": {"name": "Good Ol' Wizard", "act": 1, "boss": true, "hp": "FWAFWAFWAFWAFWAFWAFW", "hp2": "AWFAWFAWFAWFAWF",
 		"invokes": true, "passives": ["invoker", "invoker_rebirth"], "tint": Color(0.5, 0.3, 0.72),
 		"moves": [{"kind": "invoke"}],
 		"flavor": "Ten spells, three words, no patience."},
 	# (two Forge Spirits come at once: their rows share no start, so one chant can't take both down)
 	"forge_spirit": {"name": "Forge Spirit", "act": 1, "member": true, "hp": "FFW", "moves": [{"kind": "attack", "n": 3}],
-		"flavor": "A spark of Ol' Wiz's forge, with a temper to match."},
+		"flavor": "A spark of the Good Ol' Wizard's forge, with a temper to match."},
 	"forge_spirit_b": {"name": "Forge Spirit", "act": 1, "member": true, "hp": "WAF", "moves": [{"kind": "attack", "n": 3}],
-		"flavor": "A spark of Ol' Wiz's forge, with a temper to match."},
+		"flavor": "A spark of the Good Ol' Wizard's forge, with a temper to match."},
 	# The Handyman (an Act 1 boss). No real HP until the very end: his HANDS are what you fight. A hand at 0 Essence is
 	# only knocked down. In every phase each hand has 2 lives: with one left it lies down a turn and is
 	# resurrected (angel wings + hourglass); out of lives it stays down. Every hand out of lives -> 2 more hands
@@ -214,7 +214,7 @@ const PASSIVE_TEXT := {
 	"slime_burst": "Burst: when it dies, two small slimes pop out.",
 	"hand": "A hand with 2 lives: at 0 Essence it goes down for a turn, then is resurrected whole. Out of lives, it stays down until every hand is; then they all rise for his next phase (after his last stand, he shows himself).",
 	"handyman": "The Handyman himself: 1 Essence, out in the open at last.",
-	"invoker": "Ol' Wiz: every turn he conjures 3 spells. On his turn he casts every one your chant matched, or else the one it came closest to.",
+	"invoker": "Good Ol' Wizard: every turn he conjures 3 spells. On his turn he casts every one your chant matched, or else the one it came closest to.",
 	"invoker_rebirth": "Second wind: at 0 Essence he rises again with 10 more, and starts chanting Quas, Wex or Exort, one a turn: each strips that Essence (Water, Air, Fire) from his spells for the rest of the fight.",
 	"yinyang_split": "Split: when it dies, it splits into two Yin Yang Cubs (10 Essence each), one white and one black.",
 	"shield_rage": "Enraged: every time you gain Shield, it gains Power +1 (its attacks deal 1 more damage).",

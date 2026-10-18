@@ -848,7 +848,7 @@
   },
   {
    "id": "phoenix_rite",
-   "name": "Jaeler's Boots",
+   "name": "Ludwig's Boots",
    "pattern": "FAFA",
    "effects": [
     {
@@ -1499,7 +1499,7 @@
   },
   {
    "id": "storm_crown",
-   "name": "Jaeler's Knife",
+   "name": "Ludwig's Knife",
    "pattern": "AAAFF",
    "effects": [
     {
@@ -1640,7 +1640,7 @@
   },
   {
    "id": "tide_thief",
-   "name": "Jaeler's Hand",
+   "name": "Ludwig's Hand",
    "pattern": "WAW?",
    "rarity": "legendary",
    "effects": [
@@ -1671,7 +1671,7 @@
   },
   {
    "id": "maelstrom_grasp",
-   "name": "Jaeler's Final Touch",
+   "name": "Ludwig's Final Touch",
    "pattern": "WWA?WW",
    "rarity": "legendary",
    "effects": [
@@ -3016,7 +3016,7 @@
   },
   {
    "id": "tidal_surge",
-   "name": "Jaeler's Backup Plan",
+   "name": "Ludwig's Backup Plan",
    "pattern": "W?A",
    "effects": [
     {

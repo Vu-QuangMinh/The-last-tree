@@ -131,11 +131,11 @@
 | Hearth Song | FAW | Rare | Defensive | Spell |  | Heal 4 HP. |
 | Heat Haze | FA | Rare | Offensive | Anti-spell |  | Apply 1 Burn to all enemies. |
 | Inferno | F?F | Rare | Offensive | Spell |  | Remove all enemies' rightmost Essence. |
-| Jaeler's Backup Plan | W?A | Rare | Offensive | Spell |  | Instant Steal 2. Lose 5 HP. |
-| Jaeler's Boots | FAFA | Rare | Defensive | Spell |  | Gain 1 Evasion. |
 | Kindled Heart | FW | Rare | Defensive | Spell | 2 | Gain 1 Evasion. Cooldown 2. |
 | Kindling Wind | FAF | Rare | Offensive | Spell |  | Amplify 1. |
 | Last Rites | FFA | Rare | Offensive | Spell |  | Execute an enemy with 4 or less Essence. |
+| Ludwig's Backup Plan | W?A | Rare | Offensive | Spell |  | Instant Steal 2. Lose 5 HP. |
+| Ludwig's Boots | FAFA | Rare | Defensive | Spell |  | Gain 1 Evasion. |
 | Maelstrom Ward | WWWA | Rare | Defensive | Spell |  | Gain 8 Shield. |
 | Mimic | FW | Rare | Utility | Spell | 2 | Your next spell this fight is cast twice. Cooldown 2. |
 | Mistwalk | WAW | Rare | Defensive | Durability 2 |  | Become Ethereal this turn. Heal 4 HP. Durability 2. |
@@ -200,9 +200,9 @@
 | Frozen Tomb | WWAW | Legendary | Offensive | Spell | 2 | Apply 2 Freeze to an enemy. Repaint 2 Random. Apply 2 Poison to it. Cooldown 2. |
 | Heaven's Gale | AAWA | Legendary | Defensive | Spell |  | Conjure 3 spells. Gain 1 Evasion. |
 | Hurricane | AAAA | Legendary | Offensive | Spell |  | Remove all enemies' 3 rightmost Essence. |
-| Jaeler's Final Touch | WWA?WW | Legendary | Offensive | Spell |  | Steal 3 Essence from an enemy. |
-| Jaeler's Hand | WAW? | Legendary | Offensive | Spell |  | Instant Steal 1. |
-| Jaeler's Knife | AAAFF | Legendary | Utility | Power |  | Each time you Chant: Instant Steal 1. |
+| Ludwig's Final Touch | WWA?WW | Legendary | Offensive | Spell |  | Steal 3 Essence from an enemy. |
+| Ludwig's Hand | WAW? | Legendary | Offensive | Spell |  | Instant Steal 1. |
+| Ludwig's Knife | AAAFF | Legendary | Utility | Power |  | Each time you Chant: Instant Steal 1. |
 | Meteor | FFFF | Legendary | Offensive | Spell |  | Remove an enemy's 5 rightmost Essence. |
 | Misdirection | AWAW | Legendary | Defensive | Spell |  | Gain 1 Evasion. |
 | Moonlight on a Still Lake | WW | Legendary | Utility | Spell |  | Duplicate 2. |

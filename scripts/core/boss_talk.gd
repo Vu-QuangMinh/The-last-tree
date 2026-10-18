@@ -40,7 +40,7 @@ const TREES := {
 		],
 	},
 	"invoker": {
-		"name": "Ol' Wiz", "who": "",
+		"name": "Good Ol' Wizard", "who": "",
 		"opening": "A troubled man with an impossibly old face sat on the side of the road. He was not aware of your approach.",
 		"options": [
 			{"id": "wiz_sneak", "say": "*Try to sneak past him.*", "cost": "", "pre": "Without looking at you, his voice bellows:",

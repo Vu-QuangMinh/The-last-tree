@@ -2015,7 +2015,7 @@ func test_handyman_talk_and_the_mysterious_hand() -> void:
 
 
 func test_ol_wiz_talk_and_the_magic_box() -> void:
-	assert_eq(EnemyDefs.name_of("invoker"), "Ol' Wiz")
+	assert_eq(EnemyDefs.name_of("invoker"), "Good Ol' Wizard")
 	var tree := BossTalk.tree_for("invoker")
 	var find: Dictionary = tree.options[1].options[1].options[1]
 	assert_eq(find.id, "wiz_find")
