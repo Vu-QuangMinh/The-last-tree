@@ -1978,7 +1978,7 @@
   {
    "id": "wild_flame",
    "name": "Wild Flame",
-   "pattern": "F?",
+   "pattern": "F??",
    "effects": [
     {
      "op": "burn",

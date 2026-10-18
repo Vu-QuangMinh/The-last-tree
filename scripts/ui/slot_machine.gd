@@ -110,8 +110,7 @@ func build() -> void:
 	under.material = add
 	under.modulate.a = 0.5
 	back.add_child(under)
-	back.add_child(_art("slot_port", PuppetSlotMachine.PORT))
-	back.add_child(_art("slot_port_ring", PuppetSlotMachine.PORT_RING))  # (under the Essence: they roll over the ring once they are out)
+	# (no port hole in the Bag strip any more: the Essence roll straight out of the tube into the Bag)
 	front.add_child(_art("slot_funnel_top", PuppetSlotMachine.FUNNEL_TOP))
 	# the tube's glass over the Essence (Screen blend, 50 %: it only lightens, so they show through) and its metal (collars, clamps), under the cabinet
 	front.add_child(_screen(_art("slot_tube_glass", PuppetSlotMachine.TUBE_GLASS)))

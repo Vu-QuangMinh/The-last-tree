@@ -30,8 +30,6 @@ var run_saved := false  # a real run (saved at the start of this fight): leaving
 var auto_release := false  # the Release always waits for the player now (it's the one thing that can't be undone)
 ## Undo: a snapshot of the fight is taken before each spell is cast; Undo (the button under the chant, Ctrl+Z or
 ## Backspace) puts the last one back. The Release (and drinking a bottle) clears it: those are for good.
-var _undo: Array = []
-var _undo_btn: Button
 ## When the player clicks around a lot without anything happening, we explain the situation.
 ## help_override (tutorial): func() -> String; return "" to use the normal explanation.
 var help_override: Callable = Callable()
@@ -722,12 +720,6 @@ func _build_strips_classic() -> void:
 	ch.add_child(_chant_row)
 	_chant_note = UiTheme.label("", 14, UiTheme.MUTED)
 	cv.add_child(_chant_note)
-	_undo_btn = UiTheme.button("↶ Undo last spell  (Ctrl+Z)", _undo_last, 15)
-	_undo_btn.custom_minimum_size = Vector2(230, 32)
-	_undo_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	_undo_btn.tooltip_text = "Take back the last spell you cast this turn. (Pressing Release can't be undone.)"
-	_undo_btn.visible = false
-	cv.add_child(_undo_btn)
 	var bv := VBoxContainer.new()
 	bv.add_theme_constant_override("separation", 6)
 	chh.add_child(bv)
@@ -792,7 +784,7 @@ var _spawned_once := false  # the first launch of a fight counts as a spawn: the
 var _bonus_from := Vector2.INF  # where the next bonus Essence comes from (a screen point: the card, the bottle...); INF: it pops up over the top funnel
 var _reel_shown: Array = []  # the Essence the reels show (next turn's draw)
 var _machine_ready := false  # the machine is on the screen (a fight on the stage builds its HUD below the screen first and lifts it later: nothing may spawn before)
-var _pending: Array = []  # balls a spell gave "for next turn": they went through the machine into the Bag at once and wait at the end of the row; at the next spawn they are the ones that take their places
+var _pending: Array = []  # balls a spell gave "for next turn": they lie in the tray on top of the machine; at the next spawn they go down with the others
 var _keep_bag_order := false  # after a bonus ball joined mid-turn: the Bag keeps its order (the new ball stands after the others) until the next spawn
 var _reels_armed := false  # the reels have rolled next turn's draw (the lever was pulled after the last spawn) and show it
 var _tube_prep := false  # a launch is being set up
@@ -1281,13 +1273,6 @@ func _build_strips_puppet() -> void:
 	_clear_btn.tooltip_text = "Clear the chant (Backspace)."
 	_clear_btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	clear_slot.add_child(_clear_btn)
-	_undo_btn = UiTheme.button("Undo", _undo_last, 13)
-	UiTheme.use_heading_font(_undo_btn)
-	UiTheme.style_puppet_button(_undo_btn, "clear", 14)
-	_undo_btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_undo_btn.tooltip_text = "Take back the last spell you cast this turn. (Ctrl+Z. Pressing Release cannot be undone.)"
-	_undo_btn.visible = false
-	clear_slot.add_child(_undo_btn)
 	var pass_slot := Control.new()
 	_place(pass_slot, PuppetLayout.BTN_PASS)
 	cin.add_child(pass_slot)
@@ -1707,7 +1692,7 @@ func _roll_ball(balls: Array, j: int, from_x: float, t: float, delay: float) -> 
 ## A spawn (the start of a turn, the first hand of a fight): the lever is pulled, the three reels spin for 2 s and stop on the Essence that spawn, each of them drops into
 ## the bottom funnel, goes down the glass tube and comes up out of the port in the Bag strip, and rolls to its place. A bonus Essence (a spell, a bottle, an artifact,
 ## a refund, the ones of a spawn beyond the third) does not touch the reels: it flies from its source into the top funnel, falls through the machine, and takes the same
-## way out. An Essence that a spell gives for NEXT turn goes into the top funnel and stays in the machine (the reels show it at rest, then it spawns).
+## way out. An Essence that a spell gives for NEXT turn materializes in the tray on top of the machine and lies there; at the next spawn it goes down with the others.
 const SLOT_TUBE_SPEED := 470.0  # px/s of an Essence inside the machine and the tube
 const SLOT_BALL_SCALE := 0.92  # an Essence is drawn this big inside the glass
 
@@ -1743,7 +1728,8 @@ func _path_point(pts: Array, at: float) -> Vector2:
 
 
 ## An Essence's trip to the Bag, set up as one tween on the icon: it starts `delay` seconds from now, mode "reel" (it takes over from the Essence dropping out of a reel: it
-## starts in the bottom funnel), "from" (it flies from `from_local` into the top funnel first) or "pop" (it pops up over the top funnel), then it falls through the machine,
+## starts in the bottom funnel), "from" (it flies from `from_local` into the top funnel first), "tray" (it lay in the tray at `from_local` and slips into the funnel)
+## or "pop" (it pops up over the top funnel), then it falls through the machine,
 ## goes down the tube, shrinks into the cap at the Bag strip's edge and comes up out of the port. Returns when it is up (seconds from now).
 func _slot_route(ic: ElementIcon, delay: float, mode: String, from_local := Vector2.ZERO) -> float:
 	var m := _machine
@@ -1786,6 +1772,17 @@ func _slot_route(ic: ElementIcon, delay: float, mode: String, from_local := Vect
 				ic.position = mouth + Vector2(0.0, lerpf(-80.0, 0.0, u * u)) - half
 				ic.modulate.a = minf(1.0, u * 4.0)
 				ic.scale = Vector2.ONE * lerpf(0.3, SLOT_BALL_SCALE, minf(1.0, u * 2.0)), 0.0, 1.0, fly)
+	elif mode == "tray":  # (it lay in the tray at from_local: it slips off into the funnel's mouth)
+		fly = 0.2
+		tw.tween_callback(func() -> void:
+			if is_instance_valid(ic):
+				ic.modulate.a = 1.0
+				ic.scale = Vector2.ONE * TRAY_SCALE
+				ic.position = from_local - half)
+		tw.tween_method(func(u: float) -> void:
+			if is_instance_valid(ic):
+				ic.position = from_local.lerp(mouth, u * u) - half
+				ic.scale = Vector2.ONE * lerpf(TRAY_SCALE, SLOT_BALL_SCALE, u), 0.0, 1.0, fly)
 	else:  # (mode "reel": it starts hidden behind the cabinet, where its reel is)
 		tw.tween_callback(func() -> void:
 			if is_instance_valid(ic):
@@ -1796,15 +1793,20 @@ func _slot_route(ic: ElementIcon, delay: float, mode: String, from_local := Vect
 			ic.position = _path_point(pts, u * total) - half
 			ic.rotation = -u * TAU * maxf(1.0, roundf(total / (PI * BAG_PX)))
 			ic.scale = Vector2.ONE * SLOT_BALL_SCALE, 0.0, 1.0, dur)
-	tw.tween_property(ic, "modulate:a", 0.0, 0.07)  # (it goes in under the cap)
+	# out of the tube it keeps rolling, straight into the Bag strip (no hole: one continuous roll), growing to its full size; _roll_ball takes over from there
+	var tube_end: Vector2 = pts[pts.size() - 1]
+	var entry := Vector2(m.port_center().x, row_y + half.y)
+	var spin0 := -TAU * maxf(1.0, roundf(total / (PI * BAG_PX)))
+	var out_t := maxf(0.05, tube_end.distance_to(entry) / SLOT_TUBE_SPEED)
+	tw.tween_method(func(u: float) -> void:
+		if is_instance_valid(ic):
+			ic.position = tube_end.lerp(entry, u) - half
+			ic.rotation = spin0 - u * TAU  # (one whole turn: it ends upright, where the roll along the Bag starts)
+			ic.scale = Vector2.ONE * lerpf(SLOT_BALL_SCALE, 1.0, u), 0.0, 1.0, out_t)
 	tw.tween_callback(func() -> void:
 		if is_instance_valid(ic):
-			ic.rotation = 0.0
-			ic.scale = Vector2.ONE * 0.55
-			ic.position = Vector2(m.port_center().x - half.x, row_y))
-	tw.tween_property(ic, "modulate:a", 1.0, 0.1)  # (and comes up out of the port, from under its ring)
-	tw.parallel().tween_property(ic, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	return delay + fly + dur + 0.07 + 0.18
+			ic.rotation = 0.0)
+	return delay + fly + dur + out_t
 
 
 ## Pull the lever, spin the reels for 2 s and stop them on these Essence (they stay there: next turn they drop out). One sound covers the pull and the return.
@@ -1841,52 +1843,58 @@ func _roll_next_on_reels(wait: float) -> void:
 	await _roll_reels(els)
 
 
-## A spell gives Essence for next turn: each one flies from the card into the top funnel and stays in the machine (the reels will show it).
+## A spell gives Essence for next turn: a comet of light flies from the card to the tray on top of the machine (the top funnel), where it materializes into an
+## Essence and lies there. At the next spawn the tray's Essence go down with the others: they drop into the funnel and take the usual way to the Bag (_puppet_launch).
+const TRAY_SCALE := 0.72  # an Essence lying in the tray is drawn this big
+
+
+## The centre of the k-th Essence lying in the tray (local to the Bag strip): side by side over the funnel's mouth, three to a row, the next row on top.
+func _tray_center(k: int) -> Vector2:
+	var mouth := _machine.funnel_top_mouth()
+	var step := BAG_PX * TRAY_SCALE * 0.82
+	var row := floori(k / 3.0)
+	var col := k % 3
+	var x := mouth.x + (col - 1) * step + (step * 0.5 if row % 2 == 1 else 0.0)
+	return Vector2(x, mouth.y - BAG_PX * TRAY_SCALE * 0.42 - row * step * 0.8)
+
+
 func _stash_to_machine(ev: Dictionary, from: Vector2) -> float:
 	var els: Array = ev.get("drawn", [])
 	if els.is_empty():
 		var el: String = ev.eff.get("el", "random")
 		for i in int(ev.eff.get("n", 1)):
 			els.append(["F", "W", "A"].pick_random() if el == "random" else el)
-	var last := 0.0
-	var port_x: float = _machine.port_center().x - BAG_PX / 2.0
+	var dests := []
+	var base_k := _pending.size()
 	for i in els.size():
 		var ic := ElementIcon.make(els[i], BAG_PX)
 		ic.size = Vector2(BAG_PX, BAG_PX)
 		ic.pivot_offset = ic.size / 2.0
 		ic.temp = ev.eff.get("temp", false)
 		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ic.scale = Vector2.ONE * TRAY_SCALE
+		ic.modulate.a = 0.0  # (it shows when its comet lands)
+		var c := _tray_center(base_k + i)
+		ic.position = c - ic.size / 2.0
 		_stock_row.add_child(ic)
-		var delay := i * 0.2
-		Audio.play("spell_glow", -7.0, randf_range(1.15, 1.35))
-		var arrive := _slot_route(ic, delay, "from", from - _stock_row.global_position)  # (the same trip as any bonus Essence)
-		# it comes up out of the port and rolls to the end of the row, behind the balls that are there (it is not in the stock yet: it will spawn next turn)
-		var rest_k := _bag_order.size() + _pending.size()
-		var to := _bag_slot(rest_k, rest_k + 1)
 		_pending.append(ic)
-		var turns := roundf(maxf(0.0, port_x - to.x) / (PI * BAG_PX))
+		dests.append({"body": _stock_row.global_position + c, "row": _stock_row.global_position + c, "el": els[i], "px": BAG_PX * TRAY_SCALE, "ghost": false})  # (no copy on top: the real one shows behind the tray's front wall)
+		# (SpellFx._draw_fx: the i-th comet lands 0.13 s after the one before it, 0.6 s after it set off; it materializes there and this Essence takes over)
 		var tw := ic.create_tween()
-		tw.tween_interval(arrive)
-		tw.tween_callback(func() -> void: _ball_sound("roll", -8.0, randf_range(0.95, 1.05)))
-		tw.tween_method(func(u: float) -> void:
-			if is_instance_valid(ic):
-				ic.position = Vector2(lerpf(port_x, to.x, u), to.y)
-				ic.rotation = -TAU * turns * u, 0.0, 1.0, 0.25 + maxf(0.0, port_x - to.x) / 820.0)
-		tw.tween_callback(func() -> void:
-			if is_instance_valid(ic):
-				ic.rotation = 0.0
-				_ball_sound("hit", -6.0, randf_range(0.95, 1.08)))
-		last = maxf(last, arrive + 0.5)
-	return last
+		tw.tween_interval(i * 0.13 + 0.62)
+		tw.tween_callback(func() -> void: _ball_sound("hit", -9.0, randf_range(1.05, 1.2)))
+		tw.tween_property(ic, "modulate:a", 1.0, 0.25)
+	return SpellFx.play(_fx, "draw", ev.eff, from, dests, Color.WHITE, Vector2.ZERO, _shake, _hitstop)
 
 
 ## New balls of the Bag (rolled: [[icon, place, uid]]) come out of the machine. See the block comment above.
+## The first hand of a fight: one Essence of each element is in the Bag already when the fight opens; only the rest come out of the machine.
 func _puppet_launch(balls: Array) -> void:
 	_launching += 1
 	_tube_prep = true
 	balls.sort_custom(func(a, b): return a[1].x < b[1].x)
-	var n := balls.size()
-	var spawn := Time.get_ticks_msec() < _turn_batch_until or not _spawned_once
+	var first_hand := not _spawned_once
+	var spawn := Time.get_ticks_msec() < _turn_batch_until or first_hand
 	_keep_bag_order = false  # (when the balls are all in, the Bag sorts itself once)
 	_turn_batch_until = 0
 	_spawned_once = true
@@ -1898,9 +1906,41 @@ func _puppet_launch(balls: Array) -> void:
 		hidden_ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		hidden_ic.modulate.a = 0.0
 		hidden_ic.position = Vector2(_machine.port_center().x + 400.0, PuppetLayout.AXIS_Y - BAG_PX / 2.0)  # (out of the way)
-	# The balls come out of the port one after another and cannot pass each other: the first out gets the home furthest left, the next the next one, and so on (a ball in
-	# front whose home was on the right used to block the ones behind it, which needed a home on its left). Which Essence is which does not change; the ones that
-	# swapped homes slide into their types after (_resort_bag).
+	# who is who. The first hand: one of each element is already in the Bag ("preset"). At a spawn, a ball whose twin lies in the tray (a spell gave it "for next
+	# turn") comes from the tray ("tray"); the first three of the others come out of the reels ("reel"); the rest pop over the top funnel ("extra").
+	var n := balls.size()
+	var role: Array = []
+	role.resize(n)
+	role.fill("extra")
+	if first_hand:
+		for el in ["F", "W", "A"]:
+			for j in n:
+				if role[j] == "extra" and balls[j][0].el == el:
+					role[j] = "preset"
+					break
+	var twin_of := {}
+	if spawn:
+		var pool: Array = _pending.filter(func(c): return is_instance_valid(c))
+		for j in n:
+			if role[j] != "extra":
+				continue
+			for k in pool.size():
+				if pool[k].el == balls[j][0].el:
+					twin_of[j] = pool[k]
+					pool.remove_at(k)
+					role[j] = "tray"
+					break
+	var reel_of := {}  # ball index -> reel
+	if spawn:
+		var r_i := 0
+		for j in n:
+			if role[j] == "extra" and r_i < 3:
+				role[j] = "reel"
+				reel_of[j] = r_i
+				r_i += 1
+	# The balls come out of the port one after another and cannot pass each other: the first out gets the home furthest left, the next the next one, and so on. The
+	# Essence already in the Bag take the first homes; then the reels' balls, then the tray's, then the rest (the order they come out in). Which Essence is which does
+	# not change; the ones that swapped homes slide into their types after (_resort_bag).
 	var homes: Array = balls.map(func(b): return b[1])
 	homes.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
 	var slots_in_order: Array = []  # the places in _bag_order the batch holds
@@ -1908,24 +1948,15 @@ func _puppet_launch(balls: Array) -> void:
 	for k in _bag_order.size():
 		if _bag_order[k] in batch_uids:
 			slots_in_order.append(k)
-	# A bonus ball that has been waiting at the head of the row (a spell gave it "for next turn") stays where it is: the first places of the batch are its, and the balls
-	# of the spawn run in and line up behind it. Once all of them are in, the Bag sorts itself once (_resort_bag).
-	var wait_pool: Array = _pending.filter(func(c): return is_instance_valid(c))
 	var order: Array = []
-	var rest_order: Array = []
-	for j in n:
-		var twin_k := -1
-		if spawn:
-			for k in wait_pool.size():
-				if wait_pool[k].el == balls[j][0].el:
-					twin_k = k
-					break
-		if twin_k >= 0:
-			wait_pool.remove_at(twin_k)
-			order.append(j)
-		else:
-			rest_order.append(j)
-	order.append_array(rest_order)
+	for want in ["preset", "reel", "tray", "extra"]:
+		var group: Array = []
+		for j in n:
+			if role[j] == want:
+				group.append(j)
+		if want == "reel":
+			group.sort_custom(func(a, b): return reel_of[a] < reel_of[b])
+		order.append_array(group)
 	for k in n:
 		var j: int = order[k]
 		var uid_j: int = balls[j][2]
@@ -1935,6 +1966,16 @@ func _puppet_launch(balls: Array) -> void:
 			(balls[j][0] as Control).set_meta("goal", homes[k])
 		if k < slots_in_order.size():
 			_bag_order[slots_in_order[k]] = uid_j
+	# the first hand's one of each element: in its place at once, no trip through the machine
+	for j in n:
+		if role[j] == "preset" and is_instance_valid(balls[j][0]):
+			var pic: ElementIcon = balls[j][0]
+			pic.remove_meta("rolling")
+			pic.mouse_filter = Control.MOUSE_FILTER_STOP
+			pic.position = balls[j][1]
+			pic.rotation = 0.0
+			pic.scale = Vector2.ONE
+			pic.modulate.a = 1.0
 	# the machine is on the HUD: when the HUD is still below the screen (the fight is being set up) it waits
 	while (_hud_hidden() or not _machine_ready) and is_inside_tree():
 		await get_tree().process_frame
@@ -1942,36 +1983,16 @@ func _puppet_launch(balls: Array) -> void:
 		_launching -= 1
 		_tube_prep = false
 		return
-	# who is who: a ball whose twin waits in the Bag (a spell gave it "for next turn") only rolls to its place; the first three of the others come out of the reels
-	var role: Array = []
-	var twin_of := {}
-	var pool: Array = _pending.filter(func(c): return is_instance_valid(c))
-	for j in n:
-		var r := "extra"
-		if spawn:
-			for k in pool.size():
-				if pool[k].el == balls[j][0].el:
-					twin_of[j] = pool[k]
-					pool.remove_at(k)
-					r = "twin"
-					break
-		role.append(r)
-	var reel_of := {}  # ball index -> reel
 	if spawn:
-		var r_i := 0
-		for j in n:
-			if role[j] == "extra" and r_i < 3:
-				role[j] = "reel"
-				reel_of[j] = r_i
-				r_i += 1
 		var finals: Array = []
-		for j in n:
+		for j in order:
 			if role[j] == "reel":
 				finals.append(balls[j][0].el)
 		while _machine.busy and is_inside_tree():  # (the reels are still rolling next turn's draw: wait for them)
 			await get_tree().process_frame
 		if _reel_shown.is_empty():  # the first hand of a fight: nothing was rolled yet, so the lever is pulled now
-			await _roll_reels(finals)
+			if not finals.is_empty():
+				await _roll_reels(finals)
 		elif finals != _reel_shown:  # (what spawns is not what the reels showed: they show what really spawns)
 			_machine.set_faces(finals, true)
 			await get_tree().create_timer(0.25).timeout
@@ -1979,40 +2000,45 @@ func _puppet_launch(balls: Array) -> void:
 		_reels_armed = false
 	var gap := 0.2
 	var emerge: Array = []  # seconds from now until each ball comes up out of the port
+	emerge.resize(n)
+	emerge.fill(0.0)
+	var tray_k := 0
 	var extra_k := 0
-	for j in n:
-		var ic: ElementIcon = balls[j][0]
-		if not is_instance_valid(ic):
-			emerge.append(0.0)
+	var n_tray := role.count("tray")
+	for j in order:
+		var ic = balls[j][0]  # (untyped: it may have been freed while the reels spun, e.g. the tutorial moved on)
+		if not is_instance_valid(ic) or role[j] == "preset":
 			continue
 		if role[j] == "reel":  # (the real ball falls from behind the cabinet into the bottom funnel; the faces on the reels are only pictures and stay until the next roll)
-			emerge.append(_slot_route(ic, reel_of[j] * gap, "reel", _machine.reel_center(reel_of[j])))
-		elif role[j] == "twin":
-			emerge.append(0.0)
+			emerge[j] = _slot_route(ic, reel_of[j] * gap, "reel", _machine.reel_center(reel_of[j]))
+		elif role[j] == "tray":  # it goes down with the others: it slips off the tray into the funnel (the real ball takes over from the one lying there)
+			var lying = twin_of[j]  # (untyped: it may have been freed meanwhile)
+			var d := 0.45 + tray_k * gap
+			tray_k += 1
+			_pending.erase(lying)
+			var at: Vector2 = (lying.position + lying.size / 2.0) if is_instance_valid(lying) else _machine.funnel_top_mouth()
+			get_tree().create_timer(d).timeout.connect(func() -> void:
+				if is_instance_valid(lying):
+					lying.queue_free())
+			emerge[j] = _slot_route(ic, d, "tray", at)
 		else:
-			var d := extra_k * gap + (0.25 if spawn else 0.0)
+			var d := (0.45 + (n_tray + extra_k) * gap) if spawn else extra_k * gap
 			extra_k += 1
 			if from_pt != Vector2.INF and not spawn:
-				emerge.append(_slot_route(ic, d, "from", from_pt - _stock_row.global_position))
+				emerge[j] = _slot_route(ic, d, "from", from_pt - _stock_row.global_position)
 			else:
-				emerge.append(_slot_route(ic, d, "pop"))
+				emerge[j] = _slot_route(ic, d, "pop")
 	var port_x: float = _machine.port_center().x - BAG_PX / 2.0
 	var last_emerge := 0.0
-	for j in n:
+	var rollers: Array = []  # (the balls that roll in; the ones already in the Bag don't)
+	for j in order:
+		if role[j] != "preset":
+			rollers.append(balls[j])
+	for r in rollers.size():
+		var j: int = balls.find(rollers[r])
 		last_emerge = maxf(last_emerge, float(emerge[j]))
-		var start_x := port_x
-		var delay_j: float = emerge[j]
-		if role[j] == "twin":  # (it is already in the Bag, waiting at the end of the row: it just rolls to its place)
-			var waiting: ElementIcon = twin_of[j]
-			_pending.erase(waiting)
-			start_x = waiting.position.x
-			balls[j][0].position = waiting.position
-			balls[j][0].modulate.a = 1.0
-			balls[j][0].scale = Vector2.ONE
-			waiting.queue_free()
-			delay_j = 0.0
-		var dx := start_x - float(balls[j][1].x)
-		_roll_ball(balls, j, start_x, 0.25 + maxf(0.0, dx) / 820.0, delay_j)
+		var dx := port_x - float(rollers[r][1].x)
+		_roll_ball(rollers, r, port_x, 0.25 + maxf(0.0, dx) / 820.0, float(emerge[j]))
 	_tube_hold_until = Time.get_ticks_msec() + int((last_emerge + 1.0) * 1000.0)  # the reels show the next draw again a second after the last ball is out
 	_tube_prep = false
 	_machine.busy = false  # (the faces of the reels are on their way out)
@@ -2020,6 +2046,8 @@ func _puppet_launch(balls: Array) -> void:
 	_sync_tube()  # (it waits for _tube_hold_until)
 	if spawn:
 		_roll_next_on_reels(last_emerge)  # (as soon as these balls are in the Bag, the lever is pulled for the next turn's draw)
+	if rollers.is_empty():
+		_resort_bag()  # (nothing rolled: nothing else will sort the Bag)
 
 
 ## The spell row. With many spells the cards shrink to fit the screen; hovering one brings it back to full size.
@@ -2288,9 +2316,6 @@ func _refresh_all() -> void:
 		card.refresh()
 	_log.text = "\n".join(fight.lines.slice(maxi(0, fight.lines.size() - 5)))
 	_light_patterns()
-	if _undo_btn != null:
-		_undo_btn.visible = phase == "spells" and not _released and not fight.over
-		_undo_btn.disabled = _undo.is_empty() or busy or aiming or _picking_any
 	# one main button: Chant while you build, then Release once the chant is spoken
 	_clear_btn.visible = phase == "build"
 	_end_btn.visible = phase == "build"
@@ -2697,6 +2722,14 @@ func _exit_tree() -> void:
 
 
 func _input(ev: InputEvent) -> void:
+	# a selected spell (its arrow out, or the crosshair / hand / brush over the enemies) goes back on right-click or Esc. Caught here, before the cards and
+	# enemies under the pointer can swallow the click (and before a right-click pins a tooltip), so it works wherever the pointer is.
+	if (aiming and aim_cancellable) or (_picking_any and _picking_any_cancellable):
+		var back: bool = (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_RIGHT) or (ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_ESCAPE)
+		if back and _pause_overlay == null:
+			_cancel()
+			get_viewport().set_input_as_handled()
+			return
 	# steal: letting go of the Essence you're dragging
 	if not _steal_drag.is_empty() and ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT and not ev.pressed:
 		_end_steal_drag(ev.global_position)
@@ -3266,13 +3299,6 @@ func _unhandled_input(ev: InputEvent) -> void:
 		KEY_BACKSPACE:
 			if not busy and phase == "build" and not chant_idx.is_empty():
 				_remove_from_chant(chant_idx.size() - 1)
-			elif phase == "spells":
-				_undo_last()
-		KEY_Z:
-			if ev.ctrl_pressed:
-				_undo_last()
-			else:
-				return
 		KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
 			_on_cast()
 		KEY_E:
@@ -3357,7 +3383,6 @@ func _on_card_clicked(card: SpellCard) -> void:
 					return
 	busy = true
 	end_confirm = false
-	_undo.append(fight.snapshot())  # so this spell can be taken back until the Release
 	_casting = true
 	await fight.resolve_spell(spell.id, target)
 	_end_casting()
@@ -3410,7 +3435,6 @@ func _damage_step() -> void:
 	if busy or fight.over:
 		return
 	busy = true
-	_undo.clear()  # the Release is for good
 	end_confirm = false
 	tut.emit("releasing", null)
 	_prompt.text = "Release!"
@@ -3420,7 +3444,6 @@ func _damage_step() -> void:
 
 
 func _after_turn() -> void:
-	_undo.clear()
 	phase = "build"
 	_step_pos = -1
 	_released = false
@@ -3815,7 +3838,6 @@ func _on_bottle(chip: BottleChip) -> void:
 			if target < 0:
 				return
 	busy = true
-	_undo.clear()  # a bottle is drunk for good: nothing before it can be undone
 	_casting = true
 	if UiSkin.tex(chip._art_name()) != null:  # it grows, shines and vaporises in a puff of smoke (a picture of its own: the real chip is gone as soon as the screen refreshes)
 		BottleVapor.play(_fx, chip._art_name(), chip.get_global_rect().get_center() - _fx.global_position, chip.size.x)
@@ -4214,23 +4236,6 @@ func _end_casting() -> void:
 			any = true
 	if any:
 		_refresh_all()
-
-
-## Take back the last spell cast this turn: the fight goes back to exactly how it was before it.
-func _undo_last() -> void:
-	if busy or aiming or _picking_any or phase != "spells" or _released or fight.over or _undo.is_empty() or not _allowed("undo"):
-		return
-	fight.restore(_undo.pop_back())
-	_prepicked.clear()
-	end_confirm = false
-	Audio.play("elem_remove")
-	# a quick cool flash over the board: time rewound
-	var v := Vfx.make(_fx, 70)
-	v.flash(Color(0.6, 0.75, 1.0, 0.18), 0.3)
-	_sync_views()
-	_build_spells()
-	_refresh_all()
-	tut.emit("undone", null)
 
 
 ## Spells that take "an Essence of your choice" (Pluck, Steal any): the choice is the Essence itself, anywhere.

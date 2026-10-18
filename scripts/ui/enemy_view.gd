@@ -435,11 +435,24 @@ func _make_clickable(c: Control, index: int) -> void:
 
 
 ## The intent bubble (null if it has none this turn).
-## The Invoker's spells, as big as yours: the first in front of him (just above his Essence row), the others to his
-## sides, higher up. Plain cards (no conjured static): they appear, and fade away when cast or when the turn ends.
-## The ones that will go off this turn glow gold. Their numbers follow his Power.
+## The Invoker's spells, as big as yours: one at each side of him and one above his head (never in front of him), further ones
+## lower at his sides. They hover, each drifting up and down on its own beat like his orbs. Plain cards (no conjured static): they
+## appear, and fade away when cast or when the turn ends. The ones that will go off this turn glow gold. Their numbers follow his Power.
 const INVOKER_LIFT := 150.0  # how far the Invoker's model sits above where models usually stand
-const INVOKED_SPOTS := [Vector2(25, 34), Vector2(-280, -80), Vector2(330, -80), Vector2(-280, 130), Vector2(330, 130)]
+const INVOKED_SPOTS := [Vector2(-290, -60), Vector2(340, -60), Vector2(25, -282), Vector2(-290, 150), Vector2(340, 150)]
+var _float_t := 0.0
+
+
+## The Invoker's cards hover: a slow drift up and down and a little sideways, each on its own beat (like the orbs over his hand).
+func _process(d: float) -> void:
+	if _spell_cards.is_empty():
+		return
+	_float_t += d
+	for i in _spell_cards.size():
+		var c = _spell_cards[i]  # (untyped: a card may have been freed)
+		if is_instance_valid(c) and c.has_meta("home"):
+			var ph := i * 2.1
+			c.position = (c.get_meta("home") as Vector2) + Vector2(sin(_float_t * 1.4 + ph) * 2.5, sin(_float_t * 2.2 + ph) * 6.0)
 
 
 func _refresh_invoked(picks: Array) -> void:
@@ -459,6 +472,7 @@ func _refresh_invoked(picks: Array) -> void:
 			var card := SpellCard.make(enemy.conjured[k])
 			card.size = Vector2(SpellCard.W, SpellCard.H)
 			card.position = INVOKED_SPOTS[mini(k, INVOKED_SPOTS.size() - 1)]
+			card.set_meta("home", card.position)
 			_spell_row.add_child(card)
 			_spell_cards.append(card)
 	for i in _spell_cards.size():

@@ -13,7 +13,7 @@
 ## Settled game rules (don't "restore" older versions of these)
 
 - **No spell casts itself.** After Chant, every awake spell waits for the player's click, even one with nothing to aim at (shield, heal, a lone enemy). No `_auto_cast`.
-- **The Release is manual.** When every spell is cast the Release button pulses; the player presses it (E). Undo (Ctrl+Z / Backspace / the button under the chant) takes back spells until then.
+- **The Release is manual.** When every spell is cast the Release button pulses; the player presses it (E). There is no Undo (removed by the user, 2026-10-17): a cast spell can't be taken back; right-click or Esc puts back a *selected* spell (arrow / crosshair) before it's cast.
 - **Spell cards have no picture.** Classic layout: name banner on top, pattern orbs under it, coloured rules text, and the "RARITY · CATEGORY" line written at the bottom (no icons there). Wax seals on sealed orbs; anti-spells use the dark holo look; a fused anti-spell shows its two patterns as two rows.
 - **Artifact slots**: no painted box, just a faint outline (72 px in fights, 56 px in the top bar).
 - **Mend intent**: a red heart with a green up-arrow (`MendIcon`), never a "+" sign.

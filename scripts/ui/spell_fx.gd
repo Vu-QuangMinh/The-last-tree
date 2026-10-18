@@ -856,7 +856,7 @@ static func _draw_fx(v: Vfx, from: Vector2, dests: Array) -> float:
 					var sp := vv.part(m.pos + _jit(10), -m.dir * 50.0 + _jit(30), c.lerp(Color.WHITE, 0.6), randf_range(0.3, 0.5), randf_range(6, 10), Vfx.STAR)
 					sp.spin = 6.0
 					sp.drag = 2.0,
-			func(vv: Vfx, at: Vector2) -> void: _materialize(vv, at, el, c, px))
+			func(vv: Vfx, at: Vector2) -> void: _materialize(vv, at, el, c, px, d.get("ghost", true)))
 		orb.accel = false
 		last = delay + 0.6
 		i += 1
@@ -864,8 +864,9 @@ static func _draw_fx(v: Vfx, from: Vector2, dests: Array) -> float:
 
 
 ## An Essence materializes at `at`: a flash, a ring snapping inwards, then it pops in (overshoots, settles) with a
-## sparkle. The popped copy fades once the real Essence is showing underneath it.
-static func _materialize(v: Vfx, at: Vector2, el: String, c: Color, px: float) -> void:
+## sparkle. The popped copy fades once the real Essence is showing underneath it. ghost = false: no popped copy (the
+## caller shows the real Essence itself there, e.g. behind the front wall of the machine's tray: a copy on top would cover the wall).
+static func _materialize(v: Vfx, at: Vector2, el: String, c: Color, px: float, ghost := true) -> void:
 	v.glow(at, px * 1.8, Color(1, 1, 1, 0.95), 0.14)
 	v.glow(at, px * 3.2, Color(c, 0.65), 0.55)
 	v.flare(at, px * 4.0, Color(c.lerp(Color.WHITE, 0.5), 0.85), 0.25)
@@ -874,6 +875,8 @@ static func _materialize(v: Vfx, at: Vector2, el: String, c: Color, px: float) -
 	for s in v.burst(at, 12, c.lerp(Color.WHITE, 0.45), Vector2(90, 260), Vector2(0.35, 0.6), Vector2(5, 9), Vfx.STAR, 0.1):
 		s.spin = 5.0
 		s.drag = 3.0
+	if not ghost:
+		return
 	var icon := ElementIcon.make(el, int(px))
 	icon.size = Vector2(px, px)
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE

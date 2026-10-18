@@ -18,6 +18,7 @@ func run(t: SceneTree, p_out: String) -> void:
 	var last := {}
 	var n := 0
 	var stall := 0
+	var step_fs: FightScreen = null
 	while not finished[0] and stall < 900:
 		await tree.process_frame
 		var step: Dictionary = tut._step
@@ -25,6 +26,7 @@ func run(t: SceneTree, p_out: String) -> void:
 			continue
 		if step != last:
 			last = step
+			step_fs = tut.fs  # (a step acts only on its own lesson's fight: the next lesson's may already be up while the old step lingers)
 			stall = 0
 			n += 1
 			for i in 12:
@@ -52,6 +54,8 @@ func run(t: SceneTree, p_out: String) -> void:
 					tree.root.get_texture().get_image().save_png("%s/turnfx_%d.png" % [out, k])
 		stall += 1
 		var fs: FightScreen = tut.fs
+		if fs != step_fs:
+			continue
 		var then: String = step.then
 		var kind := then.get_slice(":", 0)
 		var arg := then.get_slice(":", 1) if then.contains(":") else ""
@@ -85,8 +89,6 @@ func run(t: SceneTree, p_out: String) -> void:
 				fs._clear_chant()
 			"release":
 				fs._on_end_turn()
-			"undo":
-				fs._undo_last()
 			"win":
 				# free play: chant everything that matches an enemy start, then cast what comes alive
 				if fs.phase == "build":

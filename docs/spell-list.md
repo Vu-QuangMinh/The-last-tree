@@ -182,7 +182,7 @@
 | Water Prison | WWW | Rare | Defensive | Power |  | Each turn: gain 5 Lasting Shield. Your chant holds at most 6 Essence. |
 | Wellspring Rite | ?W | Rare | Defensive | Spell |  | Heal 3 HP. |
 | Whirlpool | AWA | Rare | Offensive | Durability 3 |  | Remove all enemies' rightmost Essence. Apply 1 Weaken to all enemies. Durability 3. |
-| Wild Flame | F? | Rare | Offensive | Spell |  | Apply 3 Burn to an enemy. |
+| Wild Flame | F?? | Rare | Offensive | Spell |  | Apply 3 Burn to an enemy. |
 | Annihilate | FWA?WF | Legendary | Offensive | Durability 1 |  | Annihilate 1 kind of Essence on all enemies. Durability 1. |
 | Aole's Avatar | WAWAW | Legendary | Utility | Power |  | Each turn: gain 1 Fire; gain 1 Water; gain 1 Air; lose 3 HP. |
 | Aole's Love | FWA | Legendary | Utility | Power |  | Pick 1 Essence. Gain 1 of that Essence each turn. |
