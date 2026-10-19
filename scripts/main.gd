@@ -597,6 +597,14 @@ func _show_rope_set() -> void:
 					e.yin = "black"
 					painted.append(e)
 					break
+	var phased := []  # (the Veiled Eyes' second phase: the first of that id stands as the spider)
+	for k in ids.size():
+		if RopeSets.is_phase2(ids[k]):
+			for e in f.enemies:
+				if e.id == RopeSets.real_id(ids[k]) and e.phase < 2 and not (e in phased):
+					e.phase = 2
+					phased.append(e)
+					break
 	var fs := _new_fight_screen(f)
 	fs.rope_mode = true
 	fs.arrive = true

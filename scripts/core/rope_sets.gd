@@ -9,6 +9,8 @@ const SOLO := ["handyman"]  # (his six hands fill the stage: he stands alone; th
 ## Enemies that come in two colours: the black one has its own picture, so it is a set member of its own, written "<id>@black".
 const TWO_COLOURS := ["yin_yang_beast", "yin_yang_clone"]
 ## Enemies a passive brings into the fight (their summon moves are found by reading the moves).
+## Enemies whose second phase has a picture of its own: it is a set member of its own, written "<id>@2" (its ropes are kept under "<id>_2").
+const TWO_PHASES := ["veiled_eyes"]
 const PASSIVE_SUMMONS := {"yinyang_split": ["yin_yang_clone"]}
 
 
@@ -30,10 +32,17 @@ static func build(kind: String, act: int) -> Array:
 			ids = _with_summons(EnemyDefs.BOSSES.get(act, []), act)
 	ids = ids.filter(func(id): return _has_art(id, act))
 	var all: Array = []
+	var files: Array = []  # (the Spiderlings share one picture: one set member for both)
 	for id in ids:
+		var file: String = Creature.PUPPET_FILES.get(id, id)
+		if file in files:
+			continue
+		files.append(file)
 		all.append(id)
 		if id in TWO_COLOURS:
 			all.append(id + "@black")
+		if id in TWO_PHASES:
+			all.append(id + "@2")
 	ids = all
 	var sets: Array = []
 	var cur: Array = []
@@ -84,6 +93,9 @@ static func _collect(m: Dictionary, out: Array) -> void:
 		if m.has("id"):
 			out.append(m.id)
 		out.append_array(m.get("ids", []))
+		out.append_array(m.get("list", []))
+	if m.get("kind", "") == "steal_spell":
+		out.append("spider_cocoon")  # (the Veiled Eyes wrap the spell they take in one)
 	if m.has("also"):
 		_collect(m.also, out)
 
@@ -110,6 +122,15 @@ static func is_black(token: String) -> bool:
 	return token.ends_with("@black")
 
 
+static func is_phase2(token: String) -> bool:
+	return token.ends_with("@2")
+
+
 ## The key the ropes of a set member are kept under (the black one has its own picture, so its own ropes).
-static func rope_key(id: String, yin: String) -> String:
-	return id if yin == "" else "%s_%s" % [id, yin]
+static func rope_key(id: String, yin: String, phase := 1) -> String:
+	var key: String = Creature.PUPPET_FILES.get(id, id)  # (both Spiderlings hang by the same ropes)
+	if yin != "":
+		key = "%s_%s" % [key, yin]
+	if phase >= 2 and id in TWO_PHASES:
+		key += "_2"
+	return key

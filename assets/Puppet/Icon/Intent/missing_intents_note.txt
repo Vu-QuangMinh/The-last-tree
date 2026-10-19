@@ -1,0 +1,1 @@
+Style file: intent_extra_style.txt (same folder). Names match the Puppet intent icons: intent_<name>.png. In game these are the enemy moves grow_thorns, hold, cleanse_self, drain_essence, disarm, brittle (the Brittle status as an intent), regrow.

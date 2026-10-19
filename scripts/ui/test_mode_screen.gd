@@ -12,6 +12,7 @@ signal back
 const MAX_ENEMIES := 5
 const MAX_SPELLS := 8
 const DRAG_START := 10.0
+const THUMB := 150  # an enemy thumbnail is a square this many px wide
 const ZOOM := 0.72  # the cards on this screen are drawn at this size
 ## The 8 spells a fresh Test mode starts with: the hardest hitters (and one big defence) that can be cast every turn (no Fleeting spell like Annihilate / World's End, no cooldown), so a test fight is about the enemy, not the loadout.
 const STRONGEST := ["supernova", "solar_flare", "meteor", "hurricane", "tidal_wave", "deluge", "steam_titan", "elemental_fury"]
@@ -24,6 +25,8 @@ var state := {}
 
 var _db: SpellDB
 var _enemy_row: HBoxContainer  # the enemies you picked
+var _enemy_grid: HFlowContainer  # the thumbnails of the open enemy tab
+var _enemy_tab_buttons: Array = []
 var _active_row: HBoxContainer  # your active spells
 var _active_zone: PanelContainer
 var _list: HFlowContainer  # every spell
@@ -87,25 +90,30 @@ func _ready() -> void:
 	_enemy_row.add_theme_constant_override("separation", 8)
 	_enemy_row.custom_minimum_size = Vector2(0, 40)
 	ev.add_child(_enemy_row)
+	# one tab per group (Act 1, Act 1 mini bosses, Act 1 bosses ...), each a grid of square thumbnails
+	var groups := _enemy_groups()
+	state.enemy_tab = clampi(int(state.get("enemy_tab", 0)), 0, groups.size() - 1)
+	var etabs := HFlowContainer.new()
+	etabs.add_theme_constant_override("h_separation", 6)
+	etabs.add_theme_constant_override("v_separation", 4)
+	ev.add_child(etabs)
 	var escroll := ScrollContainer.new()
-	escroll.custom_minimum_size = Vector2(1820, 130)
+	escroll.custom_minimum_size = Vector2(1820, THUMB + 50)
 	escroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	ev.add_child(escroll)
-	var egrid := VBoxContainer.new()
-	egrid.custom_minimum_size = Vector2(1800, 0)
-	escroll.add_child(egrid)
-	for group in _enemy_groups():
-		var row := HFlowContainer.new()
-		row.add_theme_constant_override("h_separation", 6)
-		row.add_theme_constant_override("v_separation", 6)
-		row.custom_minimum_size = Vector2(1800, 0)
-		var lbl := UiTheme.label(group[0], 15, UiTheme.MUTED)
-		lbl.custom_minimum_size = Vector2(150, 0)
-		row.add_child(lbl)
-		for id in group[1]:
-			var b := UiTheme.button(EnemyDefs.name_of(id), func(): _add_enemy(id), 14)
-			row.add_child(b)
-		egrid.add_child(row)
+	_enemy_grid = HFlowContainer.new()
+	_enemy_grid.add_theme_constant_override("h_separation", 8)
+	_enemy_grid.add_theme_constant_override("v_separation", 8)
+	_enemy_grid.custom_minimum_size = Vector2(1800, 0)
+	escroll.add_child(_enemy_grid)
+	for g in groups.size():
+		var tb := UiTheme.button(groups[g][0], func():
+			state.enemy_tab = g
+			_build_enemy_grid(groups), 15)
+		tb.toggle_mode = true
+		etabs.add_child(tb)
+		_enemy_tab_buttons.append(tb)
+	_build_enemy_grid(groups)
 	# --- your active spells
 	_active_zone = _zone(Color(1.0, 0.8, 0.35))
 	root.add_child(_active_zone)
@@ -289,11 +297,61 @@ func _enemy_groups() -> Array:
 	var out := []
 	for act in [1, 2, 3]:
 		out.append(["Act %d" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and not EnemyDefs.E[k].get("elite", false) and not EnemyDefs.E[k].get("boss", false) and not EnemyDefs.E[k].get("member", false))])
-		out.append(["Act %d mini bosses" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and EnemyDefs.E[k].get("elite", false) and not EnemyDefs.E[k].get("member", false))
+		out.append(["Act %d Mini Bosses" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and EnemyDefs.E[k].get("elite", false) and not EnemyDefs.E[k].get("member", false))
 			+ EnemyDefs.ELITE_GROUPS.keys().filter(func(k): return EnemyDefs.ELITE_GROUPS[k].act == act)])
-		out.append(["Act %d bosses" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and EnemyDefs.E[k].get("boss", false) and not EnemyDefs.E[k].get("member", false))])  # (the Handyman brings his own hands)
+		out.append(["Act %d Bosses" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and EnemyDefs.E[k].get("boss", false) and not EnemyDefs.E[k].get("member", false))])  # (the Handyman brings his own hands)
 	out.append(["In reserve", EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == 0)])
 	return out.filter(func(g): return not g[1].is_empty())
+
+
+## Fills the enemy grid with the open tab's enemies: a square thumbnail each, the picture with the name over it.
+func _build_enemy_grid(groups: Array) -> void:
+	var open: int = state.enemy_tab
+	for k in _enemy_tab_buttons.size():
+		_enemy_tab_buttons[k].set_pressed_no_signal(k == open)
+		_enemy_tab_buttons[k].modulate = Color.WHITE if k == open else Color(0.65, 0.65, 0.65)
+	for c in _enemy_grid.get_children():
+		c.queue_free()
+	for id in groups[open][1]:
+		_enemy_grid.add_child(_enemy_thumb(id))
+
+
+func _enemy_thumb(id: String) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(THUMB, THUMB)
+	b.clip_contents = true
+	b.focus_mode = Control.FOCUS_NONE
+	b.tooltip_text = EnemyDefs.name_of(id)
+	b.pressed.connect(func(): _add_enemy(id))
+	var first: String = EnemyDefs.ids_of(id)[0]  # (a group mini boss shows its first member)
+	var act := int(EnemyDefs.E[first].get("act", 1)) if EnemyDefs.E.has(first) else 1
+	var tex := Creature._puppet_tex(Creature.PUPPET_FILES.get(first, first), act)
+	if tex == null:
+		tex = Creature._puppet_tex(first + "_white", act)
+	if tex != null:
+		var tr := TextureRect.new()
+		tr.texture = tex
+		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 6)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(tr)
+	var shade := ColorRect.new()
+	shade.color = Color(0, 0, 0, 0.6)
+	shade.anchor_top = 1.0
+	shade.anchor_right = 1.0
+	shade.anchor_bottom = 1.0
+	shade.offset_top = -34
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(shade)
+	var lbl := UiTheme.label(EnemyDefs.name_of(id), 14, Color.WHITE)
+	lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shade.add_child(lbl)
+	return b
 
 
 func _add_enemy(id: String) -> void:

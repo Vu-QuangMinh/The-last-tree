@@ -35,6 +35,7 @@ var _spell_ids := ""
 var _spell_cards: Array = []
 var _holder: Control
 var _px := 30.0  # the size of one Essence orb now
+var _max_n := 0  # the most Essence this enemy has had in this view: its orb size and its rows follow that, never its Essence now (the bar must not reflow as it is hurt)
 var _ghost := false  # a hand of the Handyman that is not in the fight yet: only its folded arm shows (HandymanStage)
 var _rig_view := false  # a Handyman hand or his body (see _raise_text)
 var _free_layout := false  # Puppet Stage: the name stands on the puppet's head and the Essence under its feet (see _layout_free)
@@ -292,14 +293,15 @@ func refresh(preview: Dictionary) -> void:
 			ghosts[i] = true
 		seen += 1
 	var mask := fight.hidden_mask(e)
-	var px := 38.0 if e.size() <= 7 else 30.0
+	_max_n = maxi(_max_n, e.size())
+	var px := 38.0 if _max_n <= 7 else 30.0
 	if _rig_view and creature.has_rig():
 		px = 30.0  # (the hands hang close to each other: their name and Essence are smaller)
 	var walled := e.has_passive("briar_walls")
 	if walled:
 		px = 30.0
 	if move_mode or pick_mode or keep_big:
-		px = 48.0 if e.size() <= 6 else 40.0
+		px = 48.0 if _max_n <= 6 else 40.0
 		if _rig_view and creature.has_rig():
 			px = 38.0
 		if walled:
@@ -381,6 +383,14 @@ func _puppet_rect() -> Rect2:
 	return b
 
 
+## The painted puppet on the screen (where the hover panels keep clear of: they stand at its side, where the intent bubble is).
+func puppet_global_rect() -> Rect2:
+	if creature == null or not is_instance_valid(creature):
+		return Rect2()
+	var b := _puppet_rect()
+	return Rect2(_intent_slot.global_position + b.position, b.size)
+
+
 ## Puppet Stage: the name sits right on the puppet's head, its Essence 5 px under its feet, its statuses under them.
 func _layout_free() -> void:
 	if not _free_layout or creature == null or not is_instance_valid(_name):
@@ -395,9 +405,11 @@ func _layout_free() -> void:
 	var top := b.end.y + 5.0
 	var row_w := w  # (a long row of Essence, usually a boss's, is laid out wider so that it never takes more than two lines)
 	var step := _px + 2.0
-	var n := _hp_row.get_child_count()
+	var n := maxi(_max_n, _hp_row.get_child_count())  # (rows are worked out from the most Essence it ever had: the number of rows stays put)
 	if n * step > 2.0 * w:
 		row_w = ceilf(n / 2.0) * step + 4.0
+	var rows := maxi(1, ceili(n * step / row_w))
+	_hp_row.custom_minimum_size.y = rows * _px + (rows - 1) * 4.0  # (and it keeps its height: what hangs under it does not jump)
 	var row_x := (w - row_w) / 2.0 + dx
 	if _hp_row.position != Vector2(row_x, top) or _hp_row.size.x != row_w:
 		_hp_row.position = Vector2(row_x, top)
@@ -491,6 +503,12 @@ func flash_invoked(i: int) -> void:
 
 
 ## Talking to a boss: only the creature shows (no intent, no Essence row, no statuses) until you Engage.
+## Rope mode: no name over the puppet.
+func hide_name() -> void:
+	if _name != null:
+		_name.visible = false
+
+
 func set_talk(on: bool, fade := 0.0, talk_name := "") -> void:
 	# its name: what you know of it so far ("???" until you've asked who it is), its real name once you Engage
 	if _name != null:

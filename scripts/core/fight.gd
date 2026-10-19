@@ -2567,6 +2567,7 @@ func _steal_spell(e: EnemyState) -> void:
 	_log("%s steals %s and wraps it in a cocoon. Break the cocoon to get it back!" % [e.name, sp.name])
 	await anim.call({"type": "loadout_changed"})
 	await anim.call({"type": "spawn", "enemy": cocoon})
+	await anim.call({"type": "spider_return", "enemy": e})  # (the cocoon is let down first, then the spider comes back down)
 
 
 ## A cocoon broken (or the fight won): its spell goes back into your row, where it was.

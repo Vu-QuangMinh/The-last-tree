@@ -544,6 +544,9 @@ func _prepare_sounds() -> void:
 func _arrive() -> void:
 	_set_enemy_drop(ENEMY_UP)  # (they wait above the screen on their ropes while the old props are cleared; no first frame in their place)
 	if rope_mode:
+		for e in _views:  # (the name would lie over the puppet and hide the spot to click)
+			if is_instance_valid(_views[e]):
+				_views[e].hide_name()
 		await get_tree().create_timer(0.15).timeout
 		_let_enemies_down()
 		return
@@ -626,7 +629,7 @@ func rope_targets() -> Array:
 	for e in _views:
 		var v: EnemyView = _views[e]
 		if is_instance_valid(v) and is_instance_valid(v.creature) and not e.is_dead() and v.creature.rope_ok():
-			out.append([RopeSets.rope_key(e.id, e.yin), v.creature])
+			out.append([RopeSets.rope_key(e.id, e.yin, e.phase), v.creature])
 	if _hm_stage != null and is_instance_valid(_hm_stage) and _hm_stage.rope_body() != null:  # (the Handyman's body before he steps out)
 		out.append(["handyman", _hm_stage.rope_body()])
 	return out
@@ -2189,7 +2192,7 @@ func _hand_going_down(e: EnemyState) -> bool:
 
 
 func _sync_views() -> void:
-	var live := fight.enemies.filter(func(e): return not e.is_dead() or e.knocked or _hand_going_down(e) or e.has_passive("armadillo"))  # (the Armadillo doesn't break: his ending plays)  # (a knocked-out hand stays in view)
+	var live := fight.enemies.filter(func(e): return not e.is_dead() or e.knocked or _hand_going_down(e) or e.has_passive("armadillo") or (e.has_passive("veil_falls") and e.phase == 1))  # (the Armadillo doesn't break: his ending plays; the Veiled Eyes do not break either: the veil falls and the same puppet unfolds)  # (a knocked-out hand stays in view)
 	var hm := not fight.hm.is_empty() and HandymanStage.available()  # (the Handyman fight with its art: hands on the body's shoulders)
 	var same := live.size() == _views.size() and live.all(func(e): return _views.has(e))
 	if same:
@@ -2237,6 +2240,8 @@ func _sync_views() -> void:
 		else:
 			_hm_stage.add_hand(e, v, not (e in had))
 		_views[e] = v
+		if e == _spider_away:
+			_hold_spider_up(v)
 	if hm:
 		_hm_stage.set_real(body_out or fight.enemies.any(func(e): return e.id == "handyman" and e.is_dead()))  # (he is down for good: his plain picture must not stand there again after he has shattered)
 		_hm_stage.sync_ghosts(live.map(func(e): return e.id), int(fight.hm.phase), fight)
@@ -4045,6 +4050,7 @@ func _update_hover_info(d: float, m := Vector2(-1, -1)) -> void:
 	var key := ""
 	var text := ""
 	var anchor := Rect2()
+	var avoid := Rect2()  # (the puppet it is about: the panel never covers it)
 	if not (aiming or _picking_any or pick_view != null or move_view != null or chant_mode != "" or _pause_overlay != null):
 		for e in _views:
 			var v: EnemyView = _views[e]
@@ -4056,12 +4062,14 @@ func _update_hover_info(d: float, m := Vector2(-1, -1)) -> void:
 				key = "intent:%d" % v.get_instance_id()
 				text = chip.get_meta("info", "")
 				anchor = chip.get_global_rect()
+				avoid = v.puppet_global_rect()
 				break
 			# its HP: every status on it explained (Power, Burn, armour, passives...)
 			if v.hp_hovered(m):
 				key = "hp:%d" % v.get_instance_id()
 				text = v.info_text()
 				anchor = Rect2(m - Vector2(20, 20), Vector2(40, 40))
+				avoid = v.puppet_global_rect()
 				break
 	if key != _hover_key:
 		_hover_key = key
@@ -4085,6 +4093,11 @@ func _update_hover_info(d: float, m := Vector2(-1, -1)) -> void:
 	_hover_panel = p
 	await get_tree().process_frame
 	if not is_instance_valid(p):
+		return
+	if avoid.has_area():  # on the puppet's left, where its intent bubble stands (on its right when the left side has no room): never over the puppet
+		var left := avoid.position.x - 4.0 - p.size.x
+		var ax := left if left >= 10.0 else avoid.end.x + 4.0
+		p.position = Vector2(clampf(ax, 10.0, 1910.0 - p.size.x), clampf(avoid.get_center().y - p.size.y / 2.0, 10.0, 1070.0 - p.size.y))
 		return
 	# beside the enemy (right if there's room, else left), kept on screen
 	var x := anchor.end.x + 12.0
@@ -4901,7 +4914,7 @@ func _cull_dead() -> void:
 	if _enemy_row == null:
 		return
 	for e in _views.keys():
-		if e.is_dead() and not e.knocked and not _hand_going_down(e) and not e.has_passive("armadillo"):
+		if e.is_dead() and not e.knocked and not _hand_going_down(e) and not e.has_passive("armadillo") and not (e.has_passive("veil_falls") and e.phase == 1):  # (the Veiled Eyes at 0 Essence do not break: the veil falls and the same puppet unfolds)
 			var old: EnemyView = _views[e]
 			_views.erase(e)
 			if is_instance_valid(old):
@@ -4912,6 +4925,12 @@ func _cull_dead() -> void:
 						PuppetShatter.spawn(self, old.creature)
 				old.get_parent().remove_child(old)
 				old.queue_free()
+
+
+## The card's own sound (Spell Card SFX/spell_<id>.wav), when it has one: it plays as the card lights up.
+func _spell_sound(id: String) -> void:
+	if Audio.has_sfx("spell_" + id):
+		Audio.play("spell_" + id)
 
 
 func _anim_event(ev: Dictionary) -> void:
@@ -4997,6 +5016,7 @@ func _anim_event(ev: Dictionary) -> void:
 				await get_tree().process_frame
 				var splash := PaintSplash.new()
 				var ic: Control = pv._hp_icons[ev.index] if ev.index < pv._hp_icons.size() else null
+				splash.el = String(ev.get("to", "?"))
 				splash.radius = (ic.size.x if ic else 40.0) * 0.62
 				splash.position = pv.hp_point(ev.index) - _fx.global_position
 				_fx.add_child(splash)
@@ -5081,11 +5101,13 @@ func _anim_event(ev: Dictionary) -> void:
 				if c:
 					c.create_tween().tween_property(c, "modulate:a", 0.0, 0.25)
 				Audio.play("spell_glow")
+				_spell_sound(ev.spell.id)
 				return
 			if ev.spell.get("power", false):
 				await _power_fly(ev.spell)
 				return
 			Audio.play("spell_glow")
+			_spell_sound(ev.spell.id)
 			# the card lifts and glows (its text is right there on the card)
 			var card := _card_for(ev.spell.id)
 			if card:
@@ -5196,8 +5218,11 @@ func _anim_event(ev: Dictionary) -> void:
 			Audio.play("boss_phase_change")
 			_sync_views()
 			_refresh_all()
-			_callout("[i]The veil falls away. Something underneath unfolds its legs.[/i]", Vector2(960, 600), Color(0.75, 0.5, 1.0), 2.4)
+			_callout_beside(_views.get(ev.enemy), "[i]The veil falls away. Something underneath unfolds its legs.[/i]", Color(0.75, 0.5, 1.0), 2.4)
 			await _wait(1.4)
+			var vv: EnemyView = _views.get(ev.enemy)
+			while vv != null and is_instance_valid(vv.creature) and vv.creature.unveiling():  # (the Veiled Eyes' unveiling plays out before anything else)
+				await get_tree().process_frame
 		"spider_steal":
 			await _spider_steal(ev.enemy, ev.spell)
 		"boss_phase":
@@ -5207,8 +5232,15 @@ func _anim_event(ev: Dictionary) -> void:
 		"spawn":
 			Audio.play("enemy_spawn")
 			_sync_views()
+			var cocoon_view: EnemyView = _views.get(ev.enemy) if ev.enemy.id == "spider_cocoon" else null
+			if cocoon_view != null:
+				cocoon_view.modulate.a = 0.0  # (no first frame in its place: it is let down from above)
 			_refresh_all()
+			if cocoon_view != null:
+				await _drop_view_in(cocoon_view)
 			await _wait(0.25)
+		"spider_return":
+			await _spider_return(ev.enemy)
 		"meteor":
 			# Chaos Meteor: a fireball falls from the sky onto this enemy
 			var mv: EnemyView = _views.get(ev.enemy)
@@ -5454,13 +5486,45 @@ const SLAM_ANGLE := -35.0  # degrees: low on the left, high on the right
 ## burst of sparks along its length, and fades. The 2nd one this turn says "Double Extension!", and so on.
 func _extension_slam(count := 1) -> void:
 	var text: String = EXTENSION_NAMES[count - 1] if count <= EXTENSION_NAMES.size() else "%d× Extension!" % count
-	await _slam(text, Color(1.0, 0.86, 0.25), Color(0.4, 0.08, 0.0), 128 if count == 1 else 104)
+	var words: Array = ["extension"] if count == 1 else [WORD_COUNTS[count - 2], "extension"] if count - 2 < WORD_COUNTS.size() else []  # (the carved wooden lettering, when the theme has it)
+	await _slam(text, Color(1.0, 0.86, 0.25), Color(0.4, 0.08, 0.0), 128 if count == 1 else 104, words)
+
+
+const WORD_COUNTS := ["double", "triple", "quadruple", "quintuple"]  # (UI/Banners/word_<name>.png: "Double" ... then "Extension" under it)
+
+
+## The carved lettering of a slam: one picture per word, stacked, centred in a box the size of the text it replaces (null when a picture is missing).
+func _art_words(words: Array) -> Control:
+	var texs: Array = words.map(func(w): return UiSkin.tex("word_" + w))
+	if texs.has(null):
+		return null
+	var box := Control.new()
+	var row_h := 190.0 if texs.size() == 1 else 125.0
+	var total := row_h * texs.size()
+	for i in texs.size():
+		var t: Texture2D = texs[i]
+		var r := TextureRect.new()
+		r.texture = t
+		r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		r.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		r.size = Vector2(row_h * t.get_width() / t.get_height(), row_h)
+		r.position = Vector2(750.0 - r.size.x / 2.0, 100.0 - total / 2.0 + i * row_h)
+		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(r)
+	return box
 
 
 ## Big slanted words slapped onto the table (Extension!, Perfect!): they drop in huge, hit with a shake and a
 ## burst of sparks along their length, bounce, and fade.
-func _slam(text: String, col: Color, outline: Color, font_px: int) -> void:
-	var l := Label.new()
+func _slam(text: String, col: Color, outline: Color, font_px: int, words := []) -> void:
+	var art: Control = _art_words(words) if not words.is_empty() else null
+	var l: Control = art if art != null else Label.new()
+	if art == null:
+		_style_slam_label(l as Label, text, col, outline, font_px)
+	await _slam_finish(l)
+
+
+func _style_slam_label(l: Label, text: String, col: Color, outline: Color, font_px: int) -> void:
 	l.text = text
 	var f := SystemFont.new()
 	f.font_names = PackedStringArray(["Impact", "Arial Black", "Segoe UI Black", "Arial"])
@@ -5476,6 +5540,10 @@ func _slam(text: String, col: Color, outline: Color, font_px: int) -> void:
 	l.add_theme_constant_override("shadow_offset_y", 10)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+
+
+## The slam itself (shared by text and carved lettering): drops in huge, hits, bounces, fades.
+func _slam_finish(l: Control) -> void:
 	l.size = Vector2(1500, 200)
 	l.position = Vector2(960 - 750, 330)
 	l.pivot_offset = l.size / 2.0
@@ -5958,7 +6026,7 @@ func _hypnotize_opening() -> void:
 		if v.enemy.has_passive("veiled") and is_instance_valid(v.creature):
 			v.creature.hypnotize()
 			Audio.play("spell_glow")
-			_callout("[i]The beautiful eyes hypnotize you, concealing their intentions.[/i]", Vector2(960, 600), Color(0.75, 0.5, 1.0), 3.2)
+			_callout_beside(v, "[i]The beautiful eyes hypnotize you, concealing their intentions.[/i]", Color(0.75, 0.5, 1.0), 3.2)
 
 
 func _unlock_after_voice(lock: Array) -> void:
@@ -6434,6 +6502,27 @@ func _callout(bbcode: String, at: Vector2, col: Color, life := 1.0) -> void:
 	tw.tween_callback(p.queue_free)
 
 
+## A callout about one enemy: it stands at the puppet's left, where its intent bubble is (on its right when there is no room), never over the puppet.
+func _callout_beside(v: EnemyView, bbcode: String, col: Color, life := 1.0) -> void:
+	if v == null or not is_instance_valid(v) or not v.puppet_global_rect().has_area():
+		_callout(bbcode, Vector2(960, 600), col, life)
+		return
+	var p := _callout_panel(bbcode, col)
+	await get_tree().process_frame
+	if not is_instance_valid(p) or not is_instance_valid(v):
+		return
+	var r := v.puppet_global_rect()
+	var left := r.position.x - 4.0 - p.size.x
+	var x := left if left >= 10.0 else r.end.x + 4.0
+	p.position = Vector2(clampf(x, 10.0, 1910.0 - p.size.x), clampf(r.get_center().y - p.size.y / 2.0, 10.0, 1070.0 - p.size.y))
+	p.modulate.a = 0.0
+	var tw := p.create_tween()
+	tw.tween_property(p, "modulate:a", 1.0, 0.12)
+	tw.tween_interval(life)
+	tw.tween_property(p, "modulate:a", 0.0, 0.25)
+	tw.tween_callback(p.queue_free)
+
+
 ## The callout box itself (dark, with a coloured border), added to the effects layer but not placed yet.
 func _callout_panel(bbcode: String, col: Color) -> PanelContainer:
 	var p := PanelContainer.new()
@@ -6610,10 +6699,15 @@ func _eye_laser(e: EnemyState) -> void:
 	Audio.play("spell_glow")
 	var fx := Vfx.make(_fx, 80)
 	fx.shaker = _shake
-	for k in 2:
+	for k in 2:  # (soft beams, like the glow of its eyes)
 		var gap := Vector2(-22.0 if k == 0 else 22.0, 0)
-		fx.beam(from + gap, to, Color(0.7, 0.35, 1.0), 0.32, 14.0)
-		fx.beam(from + gap, to, Color(1.0, 0.85, 1.0), 0.32, 5.0)
+		var beam := SoftBeam.new()
+		beam.a = from + gap - _fx.global_position
+		beam.b = to - _fx.global_position
+		beam.color = Color(0.7, 0.35, 1.0)
+		beam.width = 9.0
+		beam.life = 0.42
+		_fx.add_child(beam)
 	fx.glow(from, 90, Color(0.75, 0.4, 1.0, 0.9), 0.35)
 	fx.glow(to, 120, Color(0.75, 0.4, 1.0, 0.8), 0.3, 0.1)
 	fx.shake(6.0, 0.1)
@@ -6628,19 +6722,23 @@ func _spider_steal(e: EnemyState, sp: Dictionary) -> void:
 	if v == null or not is_instance_valid(v.creature):
 		return
 	var cr := v.creature
-	var home := cr.global_position
+	while is_instance_valid(cr) and cr.unveiling():  # (it is still coming out of its veil: the theft comes after)
+		await get_tree().process_frame
+	if not is_instance_valid(cr):
+		return
 	var z := cr.z_index
+	var slow := SPIDER_SLOW
 	cr.z_index = 120
 	Audio.play("elem_pickup")
 	var up := cr.create_tween()
-	up.tween_property(cr, "global_position:y", -cr.size.y - 40.0, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	up.tween_property(cr, "global_position:y", -cr.size.y - 40.0, 0.35 * slow).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	await up.finished
 	var grab := Vector2(960, 700)
 	if card:
 		grab = card.global_position + Vector2(card.size.x * card.scale.x / 2.0, 0)
 	cr.global_position = Vector2(grab.x - cr.size.x / 2.0, -cr.size.y - 40.0)
 	var down := cr.create_tween()
-	down.tween_property(cr, "global_position:y", grab.y - cr.size.y * 0.85, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	down.tween_property(cr, "global_position:y", grab.y - cr.size.y * 0.85, 0.4 * slow).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	await down.finished
 	cr.hit(0.4)  # (it snatches)
 	var ghost: SpellCard = null
@@ -6653,20 +6751,84 @@ func _spider_steal(e: EnemyState, sp: Dictionary) -> void:
 		ghost.scale = card.scale
 		card.modulate.a = 0.0
 	Audio.play("elem_remove")
-	await _wait(0.2)
+	await _wait(0.2 * slow)
 	var off := cr.create_tween().set_parallel()
-	off.tween_property(cr, "global_position:y", -cr.size.y - 300.0, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	off.tween_property(cr, "global_position:y", -cr.size.y - 300.0, 0.45 * slow).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	if ghost:
-		off.tween_property(ghost, "global_position:y", -400.0, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		off.tween_property(ghost, "rotation", 0.5, 0.45)
+		off.tween_property(ghost, "global_position:y", -400.0, 0.45 * slow).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		off.tween_property(ghost, "rotation", 0.5, 0.45 * slow)
 	await off.finished
 	if ghost:
 		ghost.queue_free()
-	cr.global_position = Vector2(home.x, -cr.size.y - 40.0)
-	var back := cr.create_tween()
-	back.tween_property(cr, "global_position:y", home.y, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	await back.finished
 	cr.z_index = z
+	_spider_away = e  # (it stays up there: the cocoon is let down first, then the spider comes back, see _spider_return)
+
+
+## How much slower the spiders and their cocoons move than the rest (their durations are multiplied by this): half the speed.
+const SPIDER_SLOW := 2.0
+var _spider_away: EnemyState  # the Veiled Eyes, pulled up with a stolen spell and waiting up there for the cocoon to be let down
+
+
+func _slow_of(e: EnemyState) -> float:
+	return SPIDER_SLOW if e != null and (e.id == "veiled_eyes" or e.id.begins_with("spiderling") or e.id == "spider_cocoon") else 1.0
+
+
+## The puppet of a view lifted by `off` px (0 = standing; ENEMY_UP = up in the ropes, out of sight). It moves the Creature's own edges, so the row's layout leaves it alone.
+func _lift_creature(cr: Creature, off: float) -> void:
+	if not cr.has_meta("base_edges"):
+		cr.set_meta("base_edges", Vector2(cr.offset_top, cr.offset_bottom))
+	var base: Vector2 = cr.get_meta("base_edges")
+	cr.offset_top = base.x + off
+	cr.offset_bottom = base.y + off
+
+
+## A rebuilt view of the spider that is up in the ropes: out of sight, high above its place (it is let down by _spider_return).
+func _hold_spider_up(v: EnemyView) -> void:
+	v.modulate.a = 0.0
+	_lift_creature(v.creature, ENEMY_UP)
+
+
+## A puppet that arrives in the middle of a fight (the Silk Cocoon) is let down from above on its rope: a fall, then a few bobs. At the spiders' slow speed.
+func _drop_view_in(v: EnemyView) -> void:
+	if not is_instance_valid(v) or not is_instance_valid(v.creature):
+		return
+	var slow := _slow_of(v.enemy)
+	var cr := v.creature
+	_lift_creature(cr, ENEMY_UP)
+	v.modulate.a = 1.0
+	var tw := create_tween()
+	tw.tween_method(func(t: float):
+		if not is_instance_valid(cr):
+			return
+		var off := 0.0
+		if t < ENEMY_LET_DOWN:
+			var u := t / ENEMY_LET_DOWN
+			off = ENEMY_UP * (1.0 - u * u)
+		else:
+			var sec := t - ENEMY_LET_DOWN
+			off = 20.0 * exp(-4.5 * sec) * sin(TAU * 1.8 * sec)
+		_lift_creature(cr, off), 0.0, ENEMY_LET_DOWN + ENEMY_SPRING, (ENEMY_LET_DOWN + ENEMY_SPRING) * slow)
+	await tw.finished
+	if is_instance_valid(cr):
+		_lift_creature(cr, 0.0)
+
+
+## The spider comes back down to its place after the cocoon has been let down.
+func _spider_return(e: EnemyState) -> void:
+	_spider_away = null
+	var v: EnemyView = _views.get(e)
+	if v == null or not is_instance_valid(v.creature):
+		return
+	var cr := v.creature
+	_lift_creature(cr, ENEMY_UP)
+	v.modulate.a = 1.0
+	var back := create_tween()
+	back.tween_method(func(o: float):
+		if is_instance_valid(cr):
+			_lift_creature(cr, o), ENEMY_UP * 0.4, 0.0, 0.45 * SPIDER_SLOW).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await back.finished
+	if is_instance_valid(cr):
+		_lift_creature(cr, 0.0)
 
 
 ## Where what lands on you lands: the middle of the HP tray (Puppet), the Keeper's panel otherwise.
@@ -6800,15 +6962,16 @@ func _enemy_attack(ev: Dictionary) -> void:
 		var home := c.position
 		var toward := (target - (c.global_position + c.size / 2.0)).normalized() * 70.0
 		c.pivot_offset = c.size / 2.0
+		var sl := _slow_of(ev.enemy)  # (the spiders move at half speed)
 		var tw := c.create_tween()
-		tw.tween_property(c, "position", home - toward * 0.3, 0.12)  # wind up
-		tw.parallel().tween_property(c, "scale", Vector2(0.92, 0.92), 0.12)
-		tw.tween_property(c, "position", home + toward, 0.09)  # lunge
-		tw.parallel().tween_property(c, "scale", Vector2(1.3, 1.3), 0.09)
-		tw.tween_interval(0.12)
-		tw.tween_property(c, "position", home, 0.2)
-		tw.parallel().tween_property(c, "scale", Vector2.ONE, 0.2)
-		await _wait(0.2)
+		tw.tween_property(c, "position", home - toward * 0.3, 0.12 * sl)  # wind up
+		tw.parallel().tween_property(c, "scale", Vector2(0.92, 0.92), 0.12 * sl)
+		tw.tween_property(c, "position", home + toward, 0.09 * sl)  # lunge
+		tw.parallel().tween_property(c, "scale", Vector2(1.3, 1.3), 0.09 * sl)
+		tw.tween_interval(0.12 * sl)
+		tw.tween_property(c, "position", home, 0.2 * sl)
+		tw.parallel().tween_property(c, "scale", Vector2.ONE, 0.2 * sl)
+		await _wait(0.2 * sl)
 	var blocked: bool = ev.get("blocked", false)
 	ImpactFx.burst(_fx, target, blocked and ev.n == 0)
 	Audio.play("sfx_player_hit" if ev.n > 0 else "release_armour_block")
