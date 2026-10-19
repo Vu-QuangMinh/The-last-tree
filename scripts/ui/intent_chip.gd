@@ -96,7 +96,8 @@ const ART := {"attack": "intent_attack", "armor": "intent_armor", "freeze": "int
 	"poison": "intent_poison", "blind": "intent_blind", "confuse": "intent_confuse", "mend": "intent_mend", "shuffle": "intent_shuffle",
 	"silence": "intent_silence", "lock": "intent_lock", "ethereal": "intent_ethereal", "empower": "intent_empower", "toll": "intent_toll",
 	"invert": "intent_invert", "hex": "intent_hex", "mimic": "intent_mimic", "frail": "intent_frail", "hammer_spell": "intent_hammer_spell",
-	"invert_spells": "intent_invert_spells", "invoke": "intent_invoke", "stunned": "intent_stunned", "sing": "intent_sing", "ignite_spell": "intent_ignite_spell", "charge": "intent_charge"}
+	"invert_spells": "intent_invert_spells", "invoke": "intent_invoke", "stunned": "intent_stunned", "sing": "intent_sing", "ignite_spell": "intent_ignite_spell", "charge": "intent_charge", "revive": "intent_revive",
+	"grow_thorns": "intent_grow_thorns", "hold": "intent_hold", "cleanse_self": "intent_cleanse_self", "drain_essence": "intent_drain_essence", "disarm": "intent_disarm", "brittle": "intent_brittle", "regrow": "intent_regrow"}
 
 
 ## New theme: the bubble is five fixed-ratio pieces: two end caps, the arrow in the middle, and a stretchy piece on each
@@ -263,7 +264,8 @@ func _add_move(row: HBoxContainer, m: Dictionary, e: EnemyState) -> void:
 				row.add_child(ic)
 			return
 		"revive":
-			row.add_child(WingsIcon.make())  # angel wings, then the turns left in an hourglass
+			var rev: Control = UiSkin.icon("intent_revive", 38) if UiSkin.is_puppet() else null  # (Puppet: the hand that stands up again; else the drawn wings)
+			row.add_child(rev if rev != null else WingsIcon.make())  # then the turns left in an hourglass
 			row.add_child(Hourglass.make(int(m.left), e))
 			return
 		"charge":

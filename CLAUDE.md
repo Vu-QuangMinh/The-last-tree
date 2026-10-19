@@ -1,4 +1,4 @@
-# The Last Tree: rules for Claude
+# Behind the Curtain: rules for Claude
 
 - Reply in Vietnamese (also set globally).
 - Art pipeline: `assets/New/_Source/Fight UI.pdf` -> `python tools/export_fight_ui.py` -> `assets/New/...` (layout of `assets/`: see `assets/README.md`; exporters write through `tools/asset_paths.py`) (see `docs/art_progress.md`). Godot: `C:\Program Files\Godot\Godot.exe`; new `class_name` files need `--headless --editor --quit` once; warnings are errors; tests: `--headless --script res://tests/run_tests.gd`.

@@ -152,7 +152,7 @@ func _place_icons(d: float) -> void:
 func _draw() -> void:
 	# empty rings for the unused chant slots
 	var slot_tex: Texture2D = UiSkin.tex("chant_slot_empty") if UiSkin.is_puppet() else null  # (Puppet: the carved wooden socket, not a drawn ring)
-	for s in range(els.size(), maxi(slots, els.size())):
+	for s in range(0 if slot_tex != null else els.size(), maxi(slots, els.size())):  # (Puppet: every socket stays, the ones holding an Essence too: they did not vanish when you lifted one)
 		if slot_tex != null:
 			draw_texture_rect(slot_tex, Rect2(Vector2(_slot_x(s), 8.0), Vector2(px, px)), false)
 		else:

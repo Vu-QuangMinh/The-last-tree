@@ -4,3 +4,10 @@ Missing icons (to be gathered, sorted and made later). One line each: where it i
 [Puppet] Hot meal icon: the merchant's "A hot meal" item (ShopScreen, UiSkin name "hot_meal"; no Puppet picture)
 [DONE 2026-10-14: UI/Characters/merchant_full.png] [Puppet] Merchant, full body: the whole merchant standing (ShopScreen puts "merchant_portrait" above the Leave button; the Puppet portrait is a bust/half figure; a full-length figure is wanted)
 [Puppet] Intent icons without art (not boss intents): brittle, regrow, cleanse_self, drain_essence, disarm
+
+--- Audit 2026-10-18 (tools/icon_audit.gd; Act 2 and 3 left out) ---
+[DONE 2026-10-18: UI/Icons/cursor_hand_open.png + cursor_hand_fist.png, wired in AimCursor] [Puppet] Open hand icon + clenched fist icon: the cursor of a "steal" spell (AimCursor "hand" mode: open hand while you aim, a fist while it holds an Essence). Drawn in code as a cartoon glove today (AimCursor._draw_hand); no picture exists.
+[Puppet] Artifact icon: mysterious_hand (Mysterious Hand, steals 1 Essence at the start of a fight; the emoji shows). [DONE 2026-10-18: magic_box]
+[DONE 2026-10-18] [Puppet] Bottle icon: tinkers_glue (Tinker's Glue, 🩹; the nearest-colour generic bottle shows).
+[DONE 2026-10-18: intent_revive] [Puppet] Intent icon for "revive" (a fallen Handyman hand is down, hourglass; Act 1). Other intents with no picture name: cleanse_self, drain_essence, disarm, brittle (no Act 1 enemy), regrow (Bramble Matron), grow_thorns (Anxious Armadillo, act 2).
+[Puppet, only as the older New art] float_heal, wax_seal, artifact_slot_hover, legend_plate (Puppet falls back to the New theme's picture).

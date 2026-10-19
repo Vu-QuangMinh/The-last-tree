@@ -16,11 +16,11 @@ const STAGE_FOLDERS := {"back_wall": "Backdrop", "wall_left": "Wall", "wall_righ
 static func default_verts() -> Dictionary:
 	return {
 		"top_l": Vector2(-92, -72), "top_r": Vector2(2012, -72),  # the side walls' outer top corners
-		"back_top_l": Vector2(130, -126), "back_top_r": Vector2(1790, -126),
-		"back_bot_l": Vector2(130, 410), "back_bot_r": Vector2(1790, 410),  # where the back wall meets the floor
-		"front_l": Vector2(-92, 562), "front_r": Vector2(2012, 562),  # the floor's front edge
-		"low_top_l": Vector2(4, 876), "low_top_r": Vector2(1916, 876),  # the lower floor
-		"low_bot_l": Vector2(-190, 1080), "low_bot_r": Vector2(2110, 1080),
+		"back_top_l": Vector2(0, -126), "back_top_r": Vector2(1920, -126),
+		"back_bot_l": Vector2(0, 410), "back_bot_r": Vector2(1920, 410),  # where the back wall meets the floor
+		"front_l": Vector2(-150, 562), "front_r": Vector2(2070, 562),  # the floor's front edge
+		"low_top_l": Vector2(-147, 876), "low_top_r": Vector2(2067, 876),  # the lower floor
+		"low_bot_l": Vector2(-400, 1080), "low_bot_r": Vector2(2320, 1080),
 	}
 
 

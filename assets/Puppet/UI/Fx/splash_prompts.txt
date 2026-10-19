@@ -1,0 +1,9 @@
+Splash Fire 1: One big thick wet splat of bright orange-red paint seen from straight above, a lumpy rounded puddle with a few long pointed splatter arms flung outwards and five small round droplets around it
+Splash Fire 2: One thick splat of bright orange-red paint seen from straight above, an uneven oval puddle with three fat rounded lobes, a short crown of splatter spikes on one side and several tiny droplets scattered nearby
+Splash Fire 3: One thick wet blob of bright orange-red paint seen from straight above that has been slapped down hard, a wide ragged-edged puddle with a long streak flicked off to one side and small drops along it
+Splash Water 1: One big thick wet splat of deep blue paint seen from straight above, a lumpy rounded puddle with a few long pointed splatter arms flung outwards and five small round droplets around it
+Splash Water 2: One thick splat of deep blue paint seen from straight above, an uneven oval puddle with three fat rounded lobes, a short crown of splatter spikes on one side and several tiny droplets scattered nearby
+Splash Water 3: One thick wet blob of deep blue paint seen from straight above that has been slapped down hard, a wide ragged-edged puddle with a long streak flicked off to one side and small drops along it
+Splash Wind 1: One big thick wet splat of fresh leaf green paint seen from straight above, a lumpy rounded puddle with a few long pointed splatter arms flung outwards and five small round droplets around it
+Splash Wind 2: One thick splat of fresh leaf green paint seen from straight above, an uneven oval puddle with three fat rounded lobes, a short crown of splatter spikes on one side and several tiny droplets scattered nearby
+Splash Wind 3: One thick wet blob of fresh leaf green paint seen from straight above that has been slapped down hard, a wide ragged-edged puddle with a long streak flicked off to one side and small drops along it

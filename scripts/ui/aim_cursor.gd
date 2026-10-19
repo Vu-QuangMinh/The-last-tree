@@ -49,8 +49,10 @@ func _draw() -> void:
 		_draw_crosshair(m)
 	elif mode == "brush":
 		_draw_brush(m)
+	elif mode == "grab":
+		_draw_grab(m)
 	else:
-		if holding != "":
+		if holding != "" and not UiSkin.is_puppet():  # (Puppet: no tether, the hand just carries the Essence)
 			_draw_tether(tether_from - global_position, m)
 		_draw_hand(m)
 
@@ -92,8 +94,34 @@ func _draw_tether(a: Vector2, b: Vector2) -> void:
 		draw_circle(at, 3.5, Color(0.8, 0.95, 1.0, 0.9))
 
 
+## "grab": you hold one of your own orbs (from the chant or the bag): a fist closed round it. The orb is drawn by whoever drags it, at the pointer; the fist sits just under it.
+func _draw_grab(m: Vector2) -> void:
+	var fist: Texture2D = UiSkin.tex("cursor_hand_fist")
+	if fist == null:
+		return
+	var h := 66.0
+	var w := h * fist.get_width() / fist.get_height()
+	draw_texture_rect(fist, Rect2(m + Vector2(-w / 2.0, 15.0), Vector2(w, h)), false)
+
+
 ## An open hand (fingers spread), or a fist while it holds an Essence, drawn as a little cartoon glove.
 func _draw_hand(m: Vector2) -> void:
+	var open_tex: Texture2D = UiSkin.tex("cursor_hand_open")
+	var fist_tex: Texture2D = UiSkin.tex("cursor_hand_fist")
+	if open_tex != null and fist_tex != null:  # Puppet: the carved wooden hand seen from its back; a fist while it holds an Essence
+		var h := 66.0
+		if holding != "":
+			var orb_col: Color = Elements.COLORS.get(holding, Color.WHITE)
+			var orb_tex: Texture2D = UiSkin.tex(ElementIcon.ART.get(holding, "essence_any"))  # (the Essence peeks out over the knuckles: its real ball)
+			if orb_tex != null:
+				draw_texture_rect(orb_tex, Rect2(m + Vector2(-17.0, -52.0), Vector2(34.0, 34.0)), false)
+			else:
+				draw_circle(m + Vector2(0, -35.0), 14.0, orb_col.darkened(0.5))
+				draw_circle(m + Vector2(0, -35.0), 11.5, orb_col)
+			draw_texture_rect(fist_tex, Rect2(m + Vector2(-h * fist_tex.get_width() / fist_tex.get_height() / 2.0, -h * 0.3), Vector2(h * fist_tex.get_width() / fist_tex.get_height(), h)), false)
+		else:
+			draw_texture_rect(open_tex, Rect2(m + Vector2(-h * open_tex.get_width() / open_tex.get_height() / 2.0, -h * 0.12), Vector2(h * open_tex.get_width() / open_tex.get_height(), h)), false)  # (the middle fingertip is the hotspot)
+		return
 	var skin := Color(1.0, 0.86, 0.72)
 	var line := Color(0.35, 0.2, 0.12)
 	if holding != "":
@@ -123,11 +151,31 @@ func _draw_hand(m: Vector2) -> void:
 
 
 const BRUSH_SCALE := 1.8
+const BRUSH_ART_H := 100.0  # the carved paintbrush picture (UI/Icons/icon_brush.png) is drawn this tall
+const BRUSH_ART_TIP := Vector2(8.0, 126.0)  # its bristle tip, in px of the picture (the pointer's hot spot)
+
+
+## Puppet: the carved wooden paintbrush, its tip on the pointer. The paint on the tip still shifts through the rainbow, and a drip falls from it.
+func _draw_brush_art(at: Vector2, art: Texture2D) -> void:
+	var k := BRUSH_ART_H / art.get_height()
+	var press := _kick * 6.0
+	var dir := Vector2(1, -1.25).normalized()  # from the tip up the handle
+	var tip := at + dir * press * 0.3  # (a dab: it presses in and springs back)
+	draw_texture_rect(art, Rect2(tip - BRUSH_ART_TIP * k, art.get_size() * k), false)
+	var paint := rainbow(_t * 0.35)
+	draw_circle(tip + dir * 3.0, 5.5, Color(paint, 0.9))
+	draw_circle(tip + dir * 3.0, 3.0, Color(1, 1, 1, 0.5))
+	var drip := fmod(_t * 0.8, 1.0)
+	draw_circle(tip + Vector2(0, 6.0 + drip * 14.0), 3.4 * (1.0 - drip * 0.6), Color(paint, 1.0 - drip))
 
 
 ## A round paint brush, handle up and to the right, its bristles loaded with paint that shifts through the rainbow.
 ## m is the very tip. After a dab (kick) the brush presses in and springs back.
 func _draw_brush(at: Vector2) -> void:
+	var art: Texture2D = UiSkin.tex("icon_brush") if UiSkin.is_puppet() else null
+	if art != null:
+		_draw_brush_art(at, art)
+		return
 	draw_set_transform(at, 0.0, Vector2.ONE * BRUSH_SCALE)
 	var m := Vector2.ZERO
 	var press := _kick * 6.0

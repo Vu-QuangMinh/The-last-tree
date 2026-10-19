@@ -27,5 +27,5 @@ func run(t: SceneTree) -> void:
 			var v: EnemyView = fs._views[e]
 			lines.append("%s feet %.0f name %.0f" % [e.id, v.creature.global_position.y + v.creature.size.y, v._name.global_position.y])
 		print("step ", step, " lift ", snappedf(fs._extra_lift, 0.1), " row y ", snappedf(fs._enemy_row.position.y, 0.1), " | ", " | ".join(lines))
-	root.get_texture().get_image().save_png("C:/Users/sonvt/AppData/Local/Temp/claude/C--Users-sonvt/7c0dcdbf-bdfb-49d8-a0ae-8e42a974181a/scratchpad/burn.png")
+	root.get_texture().get_image().save_png("C:/temp/burn.png")
 	t.quit()

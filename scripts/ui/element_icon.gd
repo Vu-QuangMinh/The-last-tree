@@ -9,7 +9,10 @@ var temp := false  # conjured: fades at end of turn
 var frozen := false
 var hexed := false
 var wall := false  # part of a hedge wall (Bramble Matron): a ring of thorny bramble around it
-var burning := false  # will burn away (Burn takes the leftmost): flickering flames around it
+var burning := false:  # will burn away (Burn takes the leftmost): flames rise off it, like Flame Lash's fire
+	set(v):
+		burning = v
+		_sync_flames()
 var poisoned := false  # will be eaten by Poison (it takes the rightmost): green venom bubbling on it
 var sealed := false  # upgraded away: a purple wax seal covers it (this Essence isn't needed any more)
 var cracked := 0.0  # 0..1: fractures spreading across it, white light blazing out (Annihilate)
@@ -36,6 +39,63 @@ static func make(p_el: String, px := 40.0) -> ElementIcon:
 
 func refresh() -> void:
 	queue_redraw()
+
+
+var _flames: BurnFlames
+
+
+func _sync_flames() -> void:
+	if burning and _flames == null:
+		_flames = BurnFlames.new()
+		add_child(_flames)
+	elif not burning and _flames != null:
+		_flames.queue_free()
+		_flames = null
+
+
+## The fire of a burning orb: the same glowing flames as the Flame Lash's fireball leaves on its target (SpellFx.fire_ramp, the Vfx glow, drawn additively), but
+## rising for as long as the orb burns: tongues of fire climb off its top, drift a little, shrink and go to smoke-red.
+class BurnFlames extends Control:
+	var _p: Array = []  # [pos from the orb's centre, vel, age, life, size, wobble phase]
+	var _acc := 0.0
+	var _mat: CanvasItemMaterial
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_mat = CanvasItemMaterial.new()
+		_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		material = _mat
+		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	func _process(d: float) -> void:
+		var par := get_parent() as Control
+		if par == null:
+			return
+		var r := minf(par.size.x, par.size.y) * 0.5
+		var k := r / 20.0  # (everything is made for an orb of 40 px)
+		_acc += d * 34.0
+		while _acc >= 1.0:
+			_acc -= 1.0
+			var a := randf_range(-PI * 0.85, -PI * 0.15)  # (off the upper half of the ball)
+			_p.append([Vector2.from_angle(a) * r * randf_range(0.2, 0.85), Vector2(randf_range(-14.0, 14.0), -randf_range(80.0, 160.0)) * k, 0.0, randf_range(0.5, 0.85), randf_range(14.0, 26.0) * k, randf() * TAU])
+		for q in _p:
+			q[2] += d
+			q[0] += q[1] * d + Vector2(sin(q[2] * 9.0 + q[5]) * 18.0 * k * d, 0.0)
+		_p = _p.filter(func(q): return q[2] < q[3])
+		queue_redraw()
+
+	func _draw() -> void:
+		var par := get_parent() as Control
+		if par == null:
+			return
+		var c := par.size / 2.0
+		var r := minf(par.size.x, par.size.y) * 0.5
+		draw_texture_rect(Vfx.glow_tex(), Rect2(c - Vector2(r, r) * 1.5, Vector2(r, r) * 3.0), false, Color(1.0, 0.45, 0.1, 0.35))  # (a warm halo)
+		var ramp := SpellFx.fire_ramp()
+		for q in _p:
+			var u: float = q[2] / q[3]
+			var sz: float = lerpf(q[4], q[4] * 0.15, u)
+			draw_texture_rect(Vfx.glow_tex(), Rect2(c + q[0] - Vector2(sz, sz), Vector2(sz, sz) * 2.0), false, ramp.sample(u))
 
 
 ## The mouse is over this element (or has left): it floats up 3 px and drops back.
@@ -211,16 +271,8 @@ func _draw() -> void:
 				var d := Vector2.from_angle(k * PI / 3.0) * r * 0.7
 				draw_line(c - d, c + d, Color(1, 1, 1, 0.95), 2.0)
 	if burning:
-		# a flickering ring of fire, and flame tongues licking up around the top
-		var t := Time.get_ticks_msec() / 1000.0
+		# a flickering ring of fire (the flames rise from BurnFlames)
 		draw_arc(c, r + 1.5, 0, TAU, 32, Color(1.0, 0.45, 0.1, 0.95), 3.0)
-		for k in 5:
-			var ang := -PI / 2.0 + (k - 2) * 0.5
-			var h := r * (0.45 + 0.18 * sin(t * 11.0 + k * 1.9))
-			var base := c + Vector2.from_angle(ang) * (r - 1.0)
-			var tip := c + Vector2.from_angle(ang) * (r + h)
-			var side := Vector2.from_angle(ang + PI / 2.0) * r * 0.18
-			draw_colored_polygon(PackedVector2Array([base - side, tip, base + side]), Color(1.0, 0.55 + 0.25 * sin(t * 9.0 + k), 0.1, 0.95))
 	if poisoned:
 		# a sickly green ring, venom dripping down and bubbles popping
 		var t := Time.get_ticks_msec() / 1000.0

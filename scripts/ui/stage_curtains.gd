@@ -11,6 +11,9 @@ const TOP := -34.0
 const BOTTOM := 706.0  # (just over the floor's front edge, where the front wall begins)
 const REACH := 1000.0  # how far past the middle (x = 960) the innermost panel of a side goes: they overlap there
 const OUTER := -92.0  # the outer edge of the outermost panel of the left side (the floor's front corner)
+const REST_SWAY := 0.003  # radians the cloth swings while it hangs still
+const MOVE_SWAY := 0.015  # ... and while it is being pulled
+const SWAY_EASE := 1.6  # how fast the swing's size follows (1 / s): about a second to settle
 const STAGGER := 0.07  # of the whole move: how much later each panel further out starts
 
 const SHADOW := """
@@ -53,6 +56,8 @@ var _amount := 0.0  # 0 = open (all panels off the sides of the screen), 1 = shu
 var _t := 0.0
 var _tween: Tween
 var _xs := 1.0
+var _warmed := false
+var _sway := REST_SWAY  # the swing's size now: it eases between the resting and the pulled size (a sudden change was a visible jerk when the move ended)
 
 
 ## `poly` = the outline of the back wall and the floor together (the drapes only show inside it).
@@ -94,6 +99,7 @@ func setup(poly: PackedVector2Array) -> void:
 			panels.append(r)
 	_layout()
 	_apply()
+	Audio.warm("sfx_curtain")  # (its first load, as the drapes start to move, was a hitch)
 
 
 ## The soft shadow a panel throws on the ones under it (further from the middle): its own silhouette, blurred, a little to the outer side and down. It is a child that draws
@@ -171,12 +177,12 @@ func _process(delta: float) -> void:
 	if _mask == null or (_amount <= 0.0 and _tween == null):
 		return
 	_t += delta
-	var moving := 1.0 if _tween != null else 0.0
+	_sway = lerpf(_sway, MOVE_SWAY if _tween != null else REST_SWAY, 1.0 - exp(-SWAY_EASE * delta))
 	for side in 2:
 		var panels: Array[TextureRect] = _left if side == 0 else _right
 		for i in PER_SIDE:
 			# a heavy cloth hanging from its top edge: it swings a little all the time, and more while it is being pulled
-			panels[i].rotation = sin(_t * 1.2 + i * 1.3 + side * 2.0) * (0.003 + 0.012 * moving)
+			panels[i].rotation = sin(_t * 1.2 + i * 1.3 + side * 2.0) * _sway
 
 
 func _go(to: float, secs: float) -> void:
@@ -190,10 +196,28 @@ func _go(to: float, secs: float) -> void:
 	_tween = null
 
 
+## The panels (and their blurred shadows) are drawn once, shut and almost invisible (alpha just over the renderer's cut-off), before the first move: until then they
+## wait off the screen and are never drawn, so the shadow shader was compiled and the big pictures uploaded in the middle of the first pull, which jerked.
+func _warm() -> void:
+	if _warmed:
+		return
+	_warmed = true
+	var was := _amount
+	_amount = 1.0
+	_apply()
+	modulate.a = 0.01
+	await get_tree().process_frame
+	await get_tree().process_frame
+	modulate.a = 1.0
+	_amount = was
+	_apply()
+
+
 ## Draw the drapes together; returns when they have met.
 func close(secs := 2.4) -> void:
 	if _mask == null or is_shut():
 		return
+	await _warm()
 	Audio.play("sfx_curtain")
 	await _go(1.0, secs)
 

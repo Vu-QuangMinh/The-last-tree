@@ -23,7 +23,7 @@ const TREES := {
 		"options": [],
 	},
 	"handyman": {
-		"name": "The Handyman", "who": "",
+		"name": "The Handyman", "who": "", "voice_greeting": "hm_greeting",
 		"opening": "A tall figure with an unsettling smile blocked the road.",
 		"greeting": "Hello there, weary traveler. You seem burdened. Would you like me to give you A HAND? Hehe, hehehe.",
 		"options": [
@@ -72,6 +72,22 @@ const TREES := {
 		],
 	},
 }
+
+
+## The recorded clips of a node (assets/Puppet/Voice/<boss>/<id>.wav, cut by tools/split_handyman_voice.py): the greeting of the tree's root, or the boss's
+## reply of a node (<id>.wav, or <id>_a.wav then <id>_b.wav when the reply is split in two by a bit of narration). Only the files that exist.
+static func voice_paths(tree: Dictionary, boss_id: String, node: Dictionary) -> Array:
+	var base := "res://assets/Puppet/Voice/%s/" % boss_id
+	var ids: Array = []
+	if node.has("greeting") and tree.has("voice_greeting"):
+		ids.append(String(tree.voice_greeting))
+	if node.has("id") and node.has("reply"):
+		if ResourceLoader.exists(base + String(node.id) + ".wav"):
+			ids.append(String(node.id))
+		else:
+			ids.append(String(node.id) + "_a")
+			ids.append(String(node.id) + "_b")
+	return ids.map(func(i): return base + i + ".wav").filter(func(p): return ResourceLoader.exists(p))
 
 
 ## The speaker's name: "???" until you've asked who they are (in any run; this very answer counts).

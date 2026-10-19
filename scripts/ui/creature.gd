@@ -26,7 +26,12 @@ var _orbit_t := 0.0
 var _orbs: Array = []  # the Invoker's words so far: their Essence orbit him for the rest of the fight
 var _art_tip := 0.0  # the tilt the picture was last drawn with, and how far the jolt of a hit moved it sideways (for the rope mode's rivets)
 var _art_shake_x := 0.0
+var _art_xf := Transform2D.IDENTITY  # the puppet's own transform in this Control (its feet, its tip), for pieces drawn on their own
 var _floaters: Array = []  # [texture, centre fraction, phase] of the loose pieces hovering by the puppet (FLOATERS)
+var _unveil_tex: Array = []  # [ball without its veil, head, left legs, right legs] of the Veiled Eyes' unveiling (see _draw_unveil)
+var _unveil_t := -1.0  # -1: not playing; 0 .. UNVEIL_DUR: seconds into the unveiling
+var _saw_veil1 := false  # it has been drawn as phase 1 (only then does phase 2 come with the animation)
+var _veil_tex: Array = []  # [phase 2, phase 2 with its eyes lit] of the Veiled Eyes (empty: drawn procedurally)
 var _art := {}  # face name -> Texture2D, for enemies with drawn art (empty: drawn procedurally)
 
 ## Enemies with drawn art (New theme): one picture per face (angry: half its Essence or more; normal: low, under half; hurt: just hit).
@@ -40,7 +45,7 @@ const ART_FORMS := {"yin_yang_beast": "res://assets/enemies/yin_yang_%s_%d.webp"
 ## Puppet Stage: every enemy that has a cut-out in Puppet/Enemies/Act1..3/ (named after its id, or the PUPPET_FILES entry) is drawn from that
 ## one picture instead of its procedural body; it rocks on its base instead of bobbing, and tips back when hit.
 const ENEMY_ACTS := [1, 2, 3]
-const PUPPET_FILES := {"triplet_fire": "triplet_fire", "triplet_water": "triplet_water", "triplet_air": "triplet_air",
+const PUPPET_FILES := {"triplet_fire": "triplet_fire", "triplet_water": "triplet_water", "triplet_air": "triplet_air", "spiderling_a": "spiderling", "spiderling_b": "spiderling",
 	"forge_spirit_b": "forge_spirit"}  # (the Wizard's second Forge Spirit: the same puppet)
 ## Loose pieces that hover next to a puppet instead of being painted on it: [file in Enemies/Act<n>/, centre as a fraction of the picture's square, phase].
 ## The Invoker's three orbs float above his open palm (cut off his hand by tools/import_act1_fix.py), each bobbing on its own beat.
@@ -121,6 +126,11 @@ func setup(e: EnemyState) -> void:
 		var t := _puppet_tex(file, int(e.def.get("act", 1)))
 		if t != null:
 			_art = {"angry": t, "normal": t, "hurt": t}
+		if e.id == "veiled_eyes":  # (phase 1 is the plain file; phase 2 the spider, and its twin with the eyes glowing: tools/import_veiled_eyes.py)
+			_veil_tex = [_puppet_tex("veiled_eyes_2", 2), _puppet_tex("veiled_eyes_2_lit", 2)]
+			_unveil_tex = [_puppet_tex("veiled_eyes_u_ball", 2), _puppet_tex("veiled_eyes_u_head", 2), _puppet_tex("veiled_eyes_u_legl", 2), _puppet_tex("veiled_eyes_u_legr", 2)]
+			_saw_veil1 = false
+			_unveil_t = -1.0
 		if e.id == "anxious_armadillo":
 			_sad_tex = _puppet_tex("anxious_armadillo_sad", 2)
 		if e.id == "handyman":  # (his two faces: the smiling body above, and the crying one when a hand of his takes damage)
@@ -179,7 +189,52 @@ func cry(sec: float) -> void:
 	_sad_t = maxf(_sad_t, sec)
 
 
+const HANDY_HIT_KO := 2  # sfx_handy_hit_2: only when a hand is knocked out or the Handyman himself dies
+const HANDY_HITS := [3, 4, 5, 6, 7]  # the grunts of an ordinary hit (sfx_handy_hit_<n>, cut from the user's take by tools/split_handyman_hits.py; a file that is not there is skipped)
+static var _handy_hit_at := -10000
+static var _handy_hit_last := -1
+var _ko_seen := false  # (the first frame only learns the state: a screen built with a hand already down says nothing)
+var _was_knocked := false
+var _was_dead := false
+
+
+## The Handyman (his body or one of his hands) takes a hit: a grunt, never the same one twice running, and not more often than every half second (all the hands of a Release
+## are hit together).
+func _handy_grunt() -> void:
+	if _enemy == null or not (_enemy.id == "handyman" or _enemy.id.begins_with("hand_")):
+		return
+	var now := Time.get_ticks_msec()
+	if now - _handy_hit_at < 500:
+		return
+	if _enemy.knocked or _enemy.size() <= 0:
+		return  # (the blow that puts it down: the knock-out sound takes it, see _handy_ko_watch)
+	var pool: Array = HANDY_HITS.filter(func(n): return ResourceLoader.exists("res://assets/Puppet/SFX/sfx_handy_hit_%d.wav" % n))
+	if pool.is_empty():
+		return
+	_handy_hit_at = now
+	var k: int = pool.pick_random()
+	if pool.size() > 1:
+		while k == _handy_hit_last:
+			k = pool.pick_random()
+	_handy_hit_last = k
+	Audio.play("sfx_handy_hit_%d" % k, 0.0, randf_range(0.97, 1.03))
+
+
+## A hand of the Handyman is knocked out, or the Handyman himself falls: the one grunt kept for that (HANDY_HIT_KO).
+func _handy_ko_watch() -> void:
+	if _enemy == null or not (_enemy.id == "handyman" or _enemy.id.begins_with("hand_")):
+		return
+	var knocked_now := _enemy.knocked
+	if _ko_seen and ((knocked_now and not _was_knocked) or (dead and not _was_dead and _enemy.id == "handyman")):
+		_handy_hit_at = Time.get_ticks_msec()
+		Audio.play("sfx_handy_hit_%d" % HANDY_HIT_KO, 0.0, randf_range(0.98, 1.02))
+	_was_knocked = knocked_now
+	_was_dead = dead
+	_ko_seen = true
+
+
 func hit(strength := 1.0) -> void:
+	_handy_grunt()
 	if not _rig.is_empty() and is_inside_tree():  # (a hand of the Handyman took damage: his body cries)
 		get_tree().call_group("handyman_body", "cry", 1.4)
 	hurt = HURT_TIME
@@ -231,6 +286,7 @@ func _process(d: float) -> void:
 			_fold_t = move_toward(_fold_t, 1.0, d * 0.5 * _drive)
 		else:
 			_fold_t = move_toward(_fold_t, 0.0, d * 1.8)  # (it reaches out again, smoothly)
+	_handy_ko_watch()
 	flash = maxf(0.0, flash - d * 3.0)
 	hurt = maxf(0.0, hurt - d)
 	_sad_t = maxf(0.0, _sad_t - d)
@@ -430,13 +486,54 @@ static func arm_hand(arm: Dictionary, r: Vector2, th2: float) -> Vector2:
 
 
 ## Draw one stick of an arm (its picture lies along +x, the joint it turns about at `pivot`): the stretch `slab` is made `extra` px longer.
-func _draw_stick(tex: Texture2D, pivot: Vector2, slab: Vector2, extra: float, mod: Color) -> void:
+## `ci`: the item to draw on (this Control, or the tip layer).
+func _draw_stick(tex: Texture2D, pivot: Vector2, slab: Vector2, extra: float, mod: Color, ci: CanvasItem = null) -> void:
+	if ci == null:
+		ci = self
 	var h := float(tex.get_height())
 	var w := float(tex.get_width())
 	extra = maxf(extra, -(slab.y - slab.x) * 0.9)
-	draw_texture_rect_region(tex, Rect2(-pivot.x, -pivot.y, slab.x + 1.0, h), Rect2(0.0, 0.0, slab.x + 1.0, h), mod)
-	draw_texture_rect_region(tex, Rect2(slab.y - pivot.x + extra - 1.0, -pivot.y, w - slab.y + 1.0, h), Rect2(slab.y - 1.0, 0.0, w - slab.y + 1.0, h), mod)
-	draw_texture_rect_region(tex, Rect2(slab.x - pivot.x - 0.5, -pivot.y, slab.y - slab.x + extra + 1.0, h), Rect2(slab.x, 0.0, slab.y - slab.x, h), mod)
+	ci.draw_texture_rect_region(tex, Rect2(-pivot.x, -pivot.y, slab.x + 1.0, h), Rect2(0.0, 0.0, slab.x + 1.0, h), mod)
+	ci.draw_texture_rect_region(tex, Rect2(slab.y - pivot.x + extra - 1.0, -pivot.y, w - slab.y + 1.0, h), Rect2(slab.y - 1.0, 0.0, w - slab.y + 1.0, h), mod)
+	ci.draw_texture_rect_region(tex, Rect2(slab.x - pivot.x - 0.5, -pivot.y, slab.y - slab.x + extra + 1.0, h), Rect2(slab.x, 0.0, slab.y - slab.x, h), mod)
+
+
+## The tweezer hand reaches over the HUD: only its lower stick (elbow, hand and tweezers) is drawn on a layer of its own, high up (`tip_z`); the upper stick, the
+## part that hangs on the Handyman's shoulder, stays where it was in the draw order, so it does not climb over his body.
+var tip_z := 0  # 0 = off; else the z_index of the tip layer while the arm reaches
+var _tip_layer: TipLayer
+var _tip_args := {}
+
+
+class TipLayer extends Control:
+	var owner_arm: Creature
+	var args := {}
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		z_as_relative = false
+		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	func _draw() -> void:
+		if owner_arm == null or args.is_empty():
+			return
+		draw_set_transform_matrix(args.m)
+		owner_arm._draw_stick(args.tex, args.pivot, args.slab, args.extra, args.mod, self)
+		draw_set_transform_matrix(Transform2D.IDENTITY)
+
+
+func _sync_tip_layer(on: bool) -> void:
+	if on:
+		if _tip_layer == null:
+			_tip_layer = TipLayer.new()
+			_tip_layer.owner_arm = self
+			add_child(_tip_layer)
+		_tip_layer.z_index = tip_z
+		_tip_layer.args = _tip_args
+		_tip_layer.queue_redraw()
+	elif _tip_layer != null:
+		_tip_layer.queue_free()
+		_tip_layer = null
 
 
 ## The pose of a knocked-out arm at `f` (0 = as it hangs, 1 = away): {u: upper direction, l: lower direction, len: stick lengths, px of the art}.
@@ -533,8 +630,13 @@ func _draw_arm(blink_on: bool) -> void:
 	var m2 := m1 * Transform2D(a2, elbow)
 	draw_set_transform_matrix(m1 * Transform2D(_rig.theta1, Vector2.ZERO))
 	_draw_stick(_rig_tex[0], _rig.upper_pivot, _rig.upper_slab, r.x - float(_rig.l1), mod)
-	draw_set_transform_matrix(m2 * Transform2D(th2, Vector2.ZERO))
-	_draw_stick(_rig_tex[1], _rig.lower_pivot, _rig.lower_slab, r.y - float(_rig.l2), mod)
+	if tip_z != 0 and poked:  # (the lower stick goes to the tip layer, over the HUD)
+		_tip_args = {"m": m2 * Transform2D(th2, Vector2.ZERO), "tex": _rig_tex[1], "pivot": _rig.lower_pivot, "slab": _rig.lower_slab, "extra": r.y - float(_rig.l2), "mod": mod}
+		_sync_tip_layer(true)
+	else:
+		_sync_tip_layer(false)
+		draw_set_transform_matrix(m2 * Transform2D(th2, Vector2.ZERO))
+		_draw_stick(_rig_tex[1], _rig.lower_pivot, _rig.lower_slab, r.y - float(_rig.l2), mod)
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 	if _enemy != null and POKE_TIP.has(_enemy.id):
 		var tt: Vector2 = POKE_TIP[_enemy.id]
@@ -590,17 +692,27 @@ func _draw_art(blink_on: bool) -> void:
 		tex = _art["yin_" + _enemy.yin]
 	if _sad_tex != null and (sad_forever or _sad_t > 0.0):
 		tex = _sad_tex
+	var veil2: bool = enemy_id == "veiled_eyes" and _veil_tex.size() == 2 and _veil_tex[0] != null and _enemy != null and _enemy.phase >= 2
+	if veil2:
+		tex = _veil_tex[0]
+	if enemy_id == "veiled_eyes" and _puppet:
+		if not veil2:
+			_saw_veil1 = true
+		elif _saw_veil1 and _unveil_t < 0.0 and _unveil_tex.size() == 4 and not _unveil_tex.has(null):
+			_unveil_t = 0.0  # (it was phase 1 on this screen and now it is phase 2: the veil breaks and the spider comes out)
+	var unveiling: bool = veil2 and _unveil_t >= 0.0
 	var side := _art_side()
 	var c := Vector2(size.x / 2.0, size.y - side * 0.5 + sin(bob) * 4.0)
 	if _shake > 0.0:
 		c += Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake) * 0.5)
 	_art_shake_x = c.x - size.x / 2.0
 	if _puppet and not dead:
-		_draw_puppet_shadow(tex, Vector2(c.x, size.y), side)
+		_draw_puppet_shadow(_unveil_tex[0] if unveiling and _unveil_t < UNVEIL_LEGS[0] else tex, Vector2(c.x, size.y), side)  # (the spider's shadow only once its legs are out)
 	if _puppet:  # a puppet doesn't bob: it rocks on its base, and tips back when it is hit
 		var tip := 0.0 if dead else (0.0 if enemy_id == "handyman" else sin(bob * 0.5) * 0.04) - 0.16 * minf(hurt / 0.4, 1.0)  # (the Handyman's body does not rock: six arms hang on its shoulders)
 		draw_set_transform(Vector2(c.x, size.y), tip)
 		_art_tip = tip
+		_art_xf = Transform2D(tip, Vector2(c.x, size.y))
 		c = Vector2(0, -side * 0.5)
 	var mod := Color.WHITE
 	if dead:
@@ -608,7 +720,12 @@ func _draw_art(blink_on: bool) -> void:
 	elif blink_on or flash > 0.0:
 		var b := 1.0 + 0.9 * maxf(flash, 1.0 if blink_on else 0.0)
 		mod = Color(b, b, b)
-	draw_texture_rect(tex, Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side)), false, mod)
+	if unveiling and _puppet and not dead:
+		_draw_unveil(tex, c, side, mod)
+	else:
+		draw_texture_rect(tex, Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side)), false, mod)
+	if enemy_id == "veiled_eyes" and _puppet and not dead and not unveiling:
+		_draw_veiled_eyes_art(c, side, mod, veil2)
 	if _puppet and not dead:
 		for fl in _floaters:  # (they hover: a slow drift up and down and a little sideways, each on its own beat)
 			var ft: Texture2D = fl[0]
@@ -649,6 +766,8 @@ func puppet_tex() -> Texture2D:
 		return null
 	if _enemy != null and _enemy.yin != "" and _art.has("yin_" + _enemy.yin):
 		return _art["yin_" + _enemy.yin]
+	if enemy_id == "veiled_eyes" and _veil_tex.size() == 2 and _veil_tex[0] != null and _enemy != null and _enemy.phase >= 2:
+		return _veil_tex[0]  # (the spider of phase 2)
 	return _art.values()[0]
 
 
@@ -741,6 +860,11 @@ func hypnotize(sec := 2.2) -> void:
 func _spider_tick(d: float) -> void:
 	if enemy_id != "veiled_eyes" or _enemy == null:
 		return
+	if _unveil_t >= 0.0:
+		_unveil_t += d
+		if _unveil_t >= UNVEIL_DUR:
+			_unveil_t = -1.0
+			_saw_veil1 = false
 	if _enemy.phase >= 2:
 		_veil_drop = move_toward(_veil_drop, 1.0, d * 0.7)
 	_hypno = maxf(0.0, _hypno - d)
@@ -818,6 +942,117 @@ func _draw_veiled(c: Vector2, s: float, body: Color, blink_on: bool) -> void:
 			draw_circle(p + Vector2(-s * 0.015, -s * 0.015), s * 0.015, Color(1, 1, 1, 0.5))
 	if _veil_drop < 1.0:
 		_draw_veil(ab + Vector2(0, -s * 0.2), s * 0.95, _veil_drop)  # (falling away)
+
+
+## The Veiled Eyes go from phase 1 to 2 (the user's storyboard, animation.pdf): the veil breaks and the bare face stays; the head of the spider peeks out from
+## behind the ball (its fangs show under it), goes down and comes up in front of it; two sets of legs reach out from behind the ball; the finished phase 2 picture
+## takes over. The pieces (tools/import_veiled_eyes.py) all lie on the canvas of the pictures at the place they have in phase 2.
+const UNVEIL_DUR := 3.0
+const UNVEIL_BREAK := [0.0, 0.35]  # the veil breaks (phase 1 turns into the bare face)
+const UNVEIL_HEAD_DOWN := [0.9, 1.5]  # the head slides down from behind the ball
+const UNVEIL_HEAD_UP := [1.5, 2.1]  # and comes up in front of it
+const UNVEIL_LEGS := [2.0, 2.65]  # the legs reach out
+const UNVEIL_DONE := [2.65, 3.0]  # the finished picture fades in over the pieces
+const UNVEIL_HEAD_HIDDEN := Vector2(0.0, -0.15)  # the head's place behind the ball, from its place in phase 2 (in pictures): the fangs just show under the ball
+const UNVEIL_HEAD_LOW := Vector2(0.0, 0.12)  # and below the ball
+const UNVEIL_LEG_PIVOTS := [Vector2(0.37, 0.57), Vector2(0.63, 0.57)]  # where the legs join the body (left, right), as fractions of the picture
+
+
+## The Veiled Eyes are coming out of their veil (phase 1 -> 2).
+func unveiling() -> bool:
+	return _unveil_t >= 0.0
+
+
+func _unveil_span(span: Array) -> float:
+	return clampf((_unveil_t - float(span[0])) / (float(span[1]) - float(span[0])), 0.0, 1.0)
+
+
+func _draw_unveil(final: Texture2D, c: Vector2, side: float, mod: Color) -> void:
+	var rect := Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side))
+	var brk := _unveil_span(UNVEIL_BREAK)
+	var down := _unveil_span(UNVEIL_HEAD_DOWN)
+	var up := _unveil_span(UNVEIL_HEAD_UP)
+	var legs := _unveil_span(UNVEIL_LEGS)
+	var done := _unveil_span(UNVEIL_DONE)
+	var ease_io := func(x: float) -> float: return x * x * (3.0 - 2.0 * x)
+	var back := func(x: float) -> float:  # (out, with a little overshoot)
+		var t1 := x - 1.0
+		return 1.0 + 2.2 * t1 * t1 * t1 + 1.2 * t1 * t1
+	if brk > 0.0 and brk < 1.0:
+		_shake = maxf(_shake, 6.0)
+	# the legs, behind everything
+	for k in 2:
+		var pivot: Vector2 = c + (UNVEIL_LEG_PIVOTS[k] - Vector2(0.5, 0.5)) * side
+		var e: float = back.call(legs)
+		var sgn := -1.0 if k == 0 else 1.0
+		var tuck := 1.0 - e
+		var about := Transform2D(sgn * 0.8 * tuck, Vector2.ONE * (1.0 - 0.4 * tuck), 0.0, pivot) * Transform2D(0.0, -pivot)  # (folded in about the shoulder)
+		var shift := Transform2D(0.0, Vector2(-sgn * 0.10, -0.05) * side * tuck)
+		draw_set_transform_matrix(_art_xf * shift * about)
+		draw_texture_rect(_unveil_tex[2 + k], rect, false, Color(mod, clampf(legs * 5.0, 0.0, 1.0)))
+	draw_set_transform_matrix(_art_xf)
+	var head_off := UNVEIL_HEAD_HIDDEN.lerp(UNVEIL_HEAD_LOW, ease_io.call(down)).lerp(Vector2.ZERO, ease_io.call(up)) * side
+	if up == 0.0:
+		_draw_head(rect, head_off, Color(mod, brk))  # (still behind the ball)
+	# the ball: the picture with its veil turns into the bare face
+	draw_texture_rect(_art.values()[0], rect, false, Color(mod, 1.0 - brk))
+	draw_texture_rect(_unveil_tex[0], rect, false, Color(mod, brk))
+	if up > 0.0:
+		_draw_head(rect, head_off, Color(mod, brk))  # (now in front of it)
+	if done > 0.0:
+		draw_texture_rect(final, rect, false, Color(mod, done))
+
+
+func _draw_head(rect: Rect2, off: Vector2, mod: Color) -> void:
+	draw_texture_rect(_unveil_tex[1], Rect2(rect.position + off, rect.size), false, mod)
+
+
+## The Veiled Eyes' drawn art: its eyes light up over the picture to tell what it does next (see _eyes_cue). The glow is not painted on: it is a patch of the
+## picture with its eyes lit (veiled_eyes_2_lit: the same pose, so every eye is where it is in the other pictures), laid over the dull eye with soft edges.
+## Phase 1: the human eyes glow through the veil. Phase 2: its human eyes stare / shine, and as many of its spider eyes as the cue counts light up.
+const VEIL_EYES := [[Vector2(0.3665, 0.4590), 0.085], [Vector2(0.6398, 0.4625), 0.085]]  # [place, radius as a fraction of the picture] of the two human eyes (both phases)
+const VEIL_DOTS := [[Vector2(0.4625, 0.7519), 0.034], [Vector2(0.5403, 0.7519), 0.034], [Vector2(0.4695, 0.7162), 0.026], [Vector2(0.5389, 0.7148), 0.026]]
+
+
+func _draw_veiled_eyes_art(c: Vector2, side: float, mod: Color, phase2: bool) -> void:
+	if _veil_tex.size() != 2 or _veil_tex[1] == null:
+		return
+	var pulse := 0.85 + 0.15 * sin(Time.get_ticks_msec() / 1000.0 * 9.0)
+	var cue: Variant = _eyes_cue()
+	var lit: Texture2D = _veil_tex[1]
+	var stare: bool = _hypno > 0.0 or (phase2 and cue != null and typeof(cue) != TYPE_STRING and int(cue) == 0)
+	var side_cue: String = cue if typeof(cue) == TYPE_STRING else ""  # (phase 1 says "both" / "left" / "right"; phase 2 a number: comparing the two kinds is an error)
+	var left: bool = stare or side_cue == "both" or side_cue == "left"
+	var right: bool = stare or side_cue == "both" or side_cue == "right"
+	for k in 2:
+		if (left if k == 0 else right):
+			_lit_patch(lit, c, side, VEIL_EYES[k][0], side * float(VEIL_EYES[k][1]), pulse, mod)
+	if phase2 and not stare and cue != null and typeof(cue) != TYPE_STRING:
+		for k in mini(int(cue), VEIL_DOTS.size()):
+			_lit_patch(lit, c, side, VEIL_DOTS[k][0], side * float(VEIL_DOTS[k][1]), pulse, mod)
+
+
+## A round patch of `tex` (a picture of the same square as the puppet) around the point `frac`, its edge fading into what is under it.
+func _lit_patch(tex: Texture2D, c: Vector2, side: float, frac: Vector2, r: float, amount: float, mod: Color) -> void:
+	var centre := c + (frac - Vector2(0.5, 0.5)) * side
+	var origin := c - Vector2(side, side) * 0.5
+	var rings := [[0.03, 1.0], [0.55, 1.0], [0.8, 0.55], [1.0, 0.0]]  # [radius fraction, opacity]: solid in the middle, a soft edge
+	var seg := 28
+	for i in rings.size() - 1:
+		for j in seg:
+			var a0 := TAU * j / seg
+			var a1 := TAU * (j + 1) / seg
+			var pts := PackedVector2Array()
+			var cols := PackedColorArray()
+			var uvs := PackedVector2Array()
+			var quad := [[i, a0], [i + 1, a0], [i + 1, a1], [i, a1]]
+			for q in quad:
+				var ring: Array = rings[q[0]]
+				var p: Vector2 = centre + Vector2.from_angle(q[1]) * r * float(ring[0])
+				pts.append(p)
+				cols.append(Color(mod.r, mod.g, mod.b, float(ring[1]) * amount))
+				uvs.append((p - origin) / side)
+			draw_polygon(pts, cols, uvs, tex)
 
 
 ## A human eye: an almond of white with a violet iris; lit, it glows through anything over it.

@@ -19,7 +19,7 @@ var _rig: RopeRig  # draws the ropes and the rivets
 
 func setup(p_fs: FightScreen, set_index: int, set_count: int, ids: Array, kind: String, act: int) -> void:
 	fs = p_fs
-	var names: Array = ids.map(func(id): return EnemyDefs.E[RopeSets.real_id(id)].name + (" (black)" if RopeSets.is_black(id) else ""))
+	var names: Array = ids.map(func(id): return EnemyDefs.E[RopeSets.real_id(id)].name + (" (black)" if RopeSets.is_black(id) else "") + (" (phase 2)" if RopeSets.is_phase2(id) else ""))
 	_title = "Rope mode · Act %d %s · set %d of %d: %s" % [act, kind.capitalize(), set_index + 1, set_count, ", ".join(names)]
 
 

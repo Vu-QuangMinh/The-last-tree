@@ -9,7 +9,7 @@ signal main_menu
 signal settings_closed  # (the Show Hotkey setting may have changed: the host can refresh)
 
 var note_menu := "Abandon this run and return to the Main Menu?"
-var note_quit := "Quit The Last Tree?"
+var note_quit := "Quit Behind the Curtain?"
 
 
 ## Opens over `host`, full screen. note_menu / note_quit: the confirmation texts.

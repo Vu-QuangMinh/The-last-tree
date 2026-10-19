@@ -1,0 +1,7 @@
+Style: copy the look of the reference picture, a hand-made antique game piece: a worn painted base with chipped paint, tiny cracks, scuffs and rusty-brown stains at the edges, and one symbol sculpted in raised relief out of aged brass, embossed on top of the surface, the only shiny part. Here the base is a perfectly round chunky ball (a sphere, not a flat medallion), so the symbol follows the curve of the ball. Folk-art fairytale craftsmanship from an antique Czech marionette puppet theatre, slightly imperfect like handmade work. Warm rustic palette: orange-red, cornflower blue, sage green, aged brass, dark walnut brown.
+
+Lighting: soft even diffuse light from the upper left, gentle natural shading that shows the roundness of the ball, no strong highlights on the paint, a soft metallic sheen and a small soft shadow under the raised brass.
+
+Composition: this one ball only, centred, seen straight from the front with the symbol facing the viewer, filling most of the square image with an even margin, bold and simple enough to read when shrunk to 32 pixels. Isolated on a pure white seamless background (#FFFFFF), as if cut out: no table, no stand, no surface, no cast shadow, no reflection, no gradient, no other objects, no hands.
+
+Must look like a tangible physical craft object with real material texture. Not vector art, not flat colours, not clean outlines, not cartoon, not a sticker, not plastic, not glossy paint, not a 3D game render. No text, letters, numbers, logos or watermark.

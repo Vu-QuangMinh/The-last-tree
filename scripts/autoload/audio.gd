@@ -23,6 +23,11 @@ signal preview_changed(path: String)
 var _cache := {}  # resource path -> AudioStream (or null if missing)
 var _pool: Array = []  # AudioStreamPlayer, round-robin so overlapping sounds don't cut each other off
 var _pool_i := 0
+## Sounds of the same name that are still playing (name -> [end time in ms, ...]): a volley (Elemental Fury's six hits) must not pile up into a wall of noise.
+var _active := {}
+const STACK_STEP_DB := 2.5  # each copy of the same sound already playing makes the next one this much quieter
+const STACK_MAX_DB := 10.0  # ... down to this much
+const STACK_MAX := 5  # the sixth copy of one sound at once is not played at all
 var _music: AudioStreamPlayer
 var _music_category := ""
 var _music_track := {}  # category -> chosen filename (with extension)
@@ -41,6 +46,7 @@ func _ready() -> void:
 	overall_level = SaveManager.setting("overall_volume", 1.0)
 	for cat in MUSIC_CATEGORIES:
 		_music_track[cat] = SaveManager.setting("music_track_%s" % cat, "")
+	_add_master_limiter()
 	for i in POOL_SIZE:
 		var p := AudioStreamPlayer.new()
 		add_child(p)
@@ -53,6 +59,31 @@ func _ready() -> void:
 	_preview.finished.connect(func():
 		_preview_path = ""
 		preview_changed.emit(""))
+
+
+## A limiter on the Master bus (once): whatever piles up, nothing goes over the ceiling, so many sounds at once never get too loud.
+func _add_master_limiter() -> void:
+	var bus := AudioServer.get_bus_index("Master")
+	for i in AudioServer.get_bus_effect_count(bus):
+		if AudioServer.get_bus_effect(bus, i) is AudioEffectLimiter:
+			return
+	var lim := AudioEffectLimiter.new()
+	lim.ceiling_db = -1.5
+	lim.threshold_db = -4.0
+	lim.soft_clip_db = 2.0
+	AudioServer.add_bus_effect(bus, lim)
+
+
+## How many dB quieter this copy of `name` must be because copies of it are still playing (-1000 = too many: do not play it). Records it when it plays.
+func _stack_gain(name: String, length: float) -> float:
+	var now := Time.get_ticks_msec()
+	var live: Array = (_active.get(name, []) as Array).filter(func(t): return t > now)
+	if live.size() >= STACK_MAX:
+		_active[name] = live
+		return -1000.0
+	live.append(now + int(length * 1000.0))
+	_active[name] = live
+	return -minf(STACK_MAX_DB, STACK_STEP_DB * (live.size() - 1))
 
 
 static func _db(level: float) -> float:
@@ -85,6 +116,33 @@ func set_overall_level(v: float) -> void:
 		_preview.volume_db = _db(_music_gain())
 
 
+var _sfx_index := {}  # SFX folder -> {sound name: path}, for the sounds that sit in sub-folders (Spell Card SFX, Debuff SFX, ...)
+
+
+## Where the sound `name` is: right in `dir`, else in one of the sub-folders of `dir` (the sounds are sorted into folders by kind; the name alone finds them).
+func _sfx_path(dir: String, name: String) -> String:
+	var flat := dir + name + ".wav"
+	if ResourceLoader.exists(flat):
+		return flat
+	if not _sfx_index.has(dir):
+		var found := {}
+		_scan_sfx(dir, found)
+		_sfx_index[dir] = found
+	return (_sfx_index[dir] as Dictionary).get(name, flat)
+
+
+func _scan_sfx(dir: String, found: Dictionary) -> void:
+	for sub in DirAccess.get_directories_at(dir):
+		if sub.begins_with("_"):
+			continue  # (_Candidates and the like: not for the game)
+		var path := dir + sub + "/"
+		for f in DirAccess.get_files_at(path):
+			var file := f.trim_suffix(".import").trim_suffix(".remap")  # (an exported game lists the imported files like that)
+			if file.ends_with(".wav") and not found.has(file.trim_suffix(".wav")):
+				found[file.trim_suffix(".wav")] = path + file
+		_scan_sfx(path, found)
+
+
 func _load(path: String, quiet := false) -> AudioStream:
 	if _cache.has(path):
 		return _cache[path]
@@ -98,27 +156,122 @@ func _load(path: String, quiet := false) -> AudioStream:
 	return s
 
 
+## Load a sound into the cache ahead of time, so its first play does not hitch.
+func warm(name: String) -> void:
+	if _load(_sfx_path(UiSkin.theme_dir() + "SFX/", name), true) == null:
+		_load(_sfx_path(GLOBAL_SFX_DIR, name))
+
+
+var _voice: AudioStreamPlayer
+var _voice_run := 0  # a new line (or a stop) cancels the one being said
+var _voice_active := false
+
+
+## True while a spoken line is still being said (between its clips too).
+func voice_busy() -> bool:
+	return _voice_active
+
+
+## A spoken line: the clips (res:// paths that exist) one after the other, with a short breath between them. A new call or stop_voice() cuts the old one off.
+func play_voice(paths: Array) -> void:
+	stop_voice()
+	var clips: Array = paths.filter(func(p): return String(p) != "" and ResourceLoader.exists(String(p)))
+	if clips.is_empty():
+		return
+	if _voice == null:
+		_voice = AudioStreamPlayer.new()
+		add_child(_voice)
+	_voice_run += 1
+	var mine := _voice_run
+	_voice_active = true
+	for p in clips:
+		_voice.stream = load(String(p))
+		_voice.volume_db = _db(sfx_level * overall_level)
+		_voice.play()
+		await _voice.finished
+		if mine != _voice_run:
+			return
+		await get_tree().create_timer(0.15).timeout
+		if mine != _voice_run:
+			return
+	_voice_active = false
+
+
+func stop_voice() -> void:
+	_voice_run += 1
+	_voice_active = false
+	if _voice != null:
+		_voice.stop()
+
+
+## Is there a sound called `name` (in the theme's SFX or the global ones, in any sub-folder)?
+func has_sfx(name: String) -> bool:
+	return _override.has(name) or ResourceLoader.exists(_sfx_path(UiSkin.theme_dir() + "SFX/", name)) or ResourceLoader.exists(_sfx_path(GLOBAL_SFX_DIR, name))
+
+
+var _override := {}  # sound name -> a stream that plays instead of the file (the SFX Test screen installs a new sample while the game runs)
+
+
+func set_override(name: String, stream: AudioStream) -> void:
+	_override[name] = stream
+
+
+## A .wav (16 bit PCM) read straight from the disk, outside the imported resources (null when it cannot be read).
+func wav_from_file(path: String) -> AudioStreamWAV:
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return null
+	var b := f.get_buffer(f.get_length())
+	var rate := 44100
+	var channels := 1
+	var data := PackedByteArray()
+	var pos := 12
+	while pos + 8 <= b.size():
+		var id := b.slice(pos, pos + 4).get_string_from_ascii()
+		var size := b.decode_u32(pos + 4)
+		if id == "fmt ":
+			channels = b.decode_u16(pos + 10)
+			rate = b.decode_u32(pos + 12)
+		elif id == "data":
+			data = b.slice(pos + 8, mini(b.size(), pos + 8 + size))
+			break
+		pos += 8 + size + (size & 1)
+	if data.is_empty():
+		return null
+	var w := AudioStreamWAV.new()
+	w.format = AudioStreamWAV.FORMAT_16_BITS
+	w.mix_rate = rate
+	w.stereo = channels == 2
+	w.data = data
+	return w
+
+
 ## One-shot SFX. Safe to call for a name that has no file yet (it just stays silent).
 ## from: start this many seconds into the sound (to skip the silence some recordings begin with).
 func play(name: String, volume_db := 0.0, pitch := 1.0, from := 0.0) -> void:
-	var s := _load(UiSkin.theme_dir() + "SFX/" + name + ".wav", true)  # (the theme's own sound, if it has one)
+	var s: AudioStream = _override.get(name, null)
 	if s == null:
-		s = _load(GLOBAL_SFX_DIR + name + ".wav")
+		s = _load(_sfx_path(UiSkin.theme_dir() + "SFX/", name), true)  # (the theme's own sound, if it has one)
 	if s == null:
+		s = _load(_sfx_path(GLOBAL_SFX_DIR, name))
+	if s == null:
+		return
+	var stack := _stack_gain(name, maxf(0.0, s.get_length() - from) / maxf(0.1, pitch))
+	if stack < -100.0:
 		return
 	var p: AudioStreamPlayer = _pool[_pool_i]
 	_pool_i = (_pool_i + 1) % _pool.size()
 	p.stream = s
-	p.volume_db = _db(sfx_level * overall_level) + volume_db
+	p.volume_db = _db(sfx_level * overall_level) + volume_db + stack
 	p.pitch_scale = pitch
 	p.play(from)
 
 
 ## A sound the caller can stop again (see stop_held): it has a player of its own, freed when it ends or is stopped. Returns null when there is no such file.
 func play_held(name: String, volume_db := 0.0, pitch := 1.0) -> AudioStreamPlayer:
-	var s := _load(UiSkin.theme_dir() + "SFX/" + name + ".wav", true)
+	var s := _load(_sfx_path(UiSkin.theme_dir() + "SFX/", name), true)
 	if s == null:
-		s = _load(GLOBAL_SFX_DIR + name + ".wav")
+		s = _load(_sfx_path(GLOBAL_SFX_DIR, name))
 	if s == null:
 		return null
 	var p := AudioStreamPlayer.new()
@@ -133,9 +286,9 @@ func play_held(name: String, volume_db := 0.0, pitch := 1.0) -> AudioStreamPlaye
 
 ## How long a sound file lasts, seconds (0 when there is no such file).
 func get_sfx_length(name: String) -> float:
-	var s := _load(UiSkin.theme_dir() + "SFX/" + name + ".wav", true)
+	var s := _load(_sfx_path(UiSkin.theme_dir() + "SFX/", name), true)
 	if s == null:
-		s = _load(GLOBAL_SFX_DIR + name + ".wav")
+		s = _load(_sfx_path(GLOBAL_SFX_DIR, name))
 	return s.get_length() if s != null else 0.0
 
 

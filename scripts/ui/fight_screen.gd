@@ -124,6 +124,7 @@ const FLY_TIME := 0.26  # an element jumping between the bag and the chant
 const BAG_MOVE := 0.22  # the bag's icons closing up or making room
 var _next_row: HBoxContainer
 var _next_panel: PanelContainer
+var _talk_pending := false  # a boss to talk to: _arrive starts it once everything is in place
 var _talking := false  # talking to a boss before the fight (BossTalk): only the boss, the backdrop and your bag
 var _prompt: Label
 var _info: Label
@@ -175,6 +176,14 @@ const EFFECT_SFX := {
 	"overload": "sfx_overload", "cleanse": "sfx_cleanse", "redirect": "sfx_redirect", "passive": "spell_glow",
 	"curse": "sfx_weaken_apply",
 	"barrage": "sfx_magic_hit",  # (a volley of arcane bolts: Arcane Barrage, Elemental Fury, ...)
+}
+## op -> the shared sound of what it does (SFX/Spell SFX/spellfx_<group>.wav, made by tools/make_spell_sfx.py, chosen in the SFX Test screen). It plays instead of
+## the EFFECT_SFX sound above when the file exists; the ops that have no sound above get one here.
+const EFFECT_FX := {
+	"strike": "remove_essence", "barrage": "magic_bolt", "burn": "burn", "stoke": "stoke", "weak": "weaken", "vulnerable": "vulnerable", "freeze": "freeze", "daze": "daze",
+	"ethereal": "ethereal", "shield": "shield", "thorns": "thorns", "aegis": "evasion", "heal": "heal", "max_hp": "max_hp", "cleanse": "cleanse", "expose": "repaint",
+	"convert": "transmute", "transmute": "transmute", "draw": "gain_essence", "sacrifice": "lose_hp", "amplify": "amplify", "shatter": "break_armour", "execute": "execute",
+	"purge": "purge", "curse": "curse", "passive": "power", "temp_seal": "seal",
 }
 ## Element letter -> sfx name, comet leaving the chant (a whoosh) and comet landing on an enemy (an impact).
 const LAUNCH_SFX := {"F": "element_fire", "W": "element_water", "A": "element_wind"}
@@ -408,7 +417,10 @@ func _ready() -> void:
 		ropes.fs = self
 		add_child(ropes)
 	if fight.talk_id != "" and not help_override.is_valid():
-		_talk.call_deferred()  # (a boss to talk to first; not in the tutorial)
+		if _stage != null and (map_mode or arrive):
+			_talk_pending = true  # (Puppet Stage: he speaks once "Begin the fight" is pressed and the scene and the HUD are all in place, see _arrive)
+		else:
+			_talk.call_deferred()  # (a boss to talk to first; not in the tutorial)
 	tut.connect(func(_k, _d): note_progress())
 	_machine_ready = not (_stage != null and (map_mode or arrive))
 	if _stage != null and (map_mode or arrive):
@@ -538,20 +550,20 @@ func _prepare_sounds() -> void:
 ## Walking on: the old props are cleared away first (that began at the encounter board; if the fight was begun early, it is waited for), then the
 ## new room's props and enemies come in from the right, and the HUD comes back up as the last of them settle.
 func _arrive() -> void:
+	_set_enemy_drop(ENEMY_UP)  # (they wait above the screen on their ropes while the old props are cleared; no first frame in their place)
 	if rope_mode:
-		_enemy_row.position.x = 2600.0
+		for e in _views:  # (the name would lie over the puppet and hide the spot to click)
+			if is_instance_valid(_views[e]):
+				_views[e].hide_name()
 		await get_tree().create_timer(0.15).timeout
-		create_tween().tween_property(_enemy_row, "position:x", 0.0, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		_let_enemies_down()
 		return
 	_prepare_sounds()  # (the stage is being made ready: old props away, new ones and the enemies in)
-	var far := 2600.0
-	_enemy_row.position.x = far  # (they wait off the screen on the right while the old props are cleared)
 	if _stage.is_clearing():
 		await _stage.cleared
 	var tw := _stage.bring_props()
-	await get_tree().create_timer(1.2).timeout  # (the enemies walk on after the first props)
-	var et := create_tween()
-	et.tween_property(_enemy_row, "position:x", 0.0, PuppetStage.BRING_TIME - 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	await get_tree().create_timer(1.2).timeout  # (the enemies are let down after the first props: the props walk on, the puppets hang from their ropes)
+	_let_enemies_down()
 	await get_tree().create_timer(PuppetStage.BRING_TIME - 1.2 - 1.0).timeout
 	_prepare_on = false
 	for p in _prepare_players:
@@ -562,15 +574,60 @@ func _arrive() -> void:
 		arrival_ready.emit()
 		if hold_hud:
 			await hud_released
+	while _dropping and is_inside_tree():  # (the HUD comes up once the enemies hang in their places)
+		await get_tree().process_frame
+	if _talk_pending:
+		_talk_pending = false
+		await _hud_up()
+		if tw.is_running():
+			await tw.finished
+		await get_tree().create_timer(0.6).timeout  # (the cards have landed)
+		_talk()
+		return
 	_hud_up()
 	if tw.is_running():
 		await tw.finished
 
 
-## Rope mode: the enemies walk off to the left (the next set comes in from the right).
+const ENEMY_UP := -1500.0  # how far above their places the enemies hang while they are out of sight (their ropes go straight up behind the ceiling)
+const ENEMY_LET_DOWN := 0.55  # seconds of free fall before the ropes are out to their length (at ENEMY_SPEED 1)
+const ENEMY_SPRING := 1.1  # seconds the puppets bob on their ropes after that
+const ENEMY_SPEED := 0.5  # how fast the whole let-down goes: half of what it was
+var _enemy_drop := 0.0  # how far the enemy row is lifted from its place (0 = standing)
+var _dropping := false  # (the lift of the Essence rows leaves the row alone while it is let down)
+
+
+func _set_enemy_drop(off: float) -> void:
+	_enemy_drop = off
+	if _enemy_row != null and _stage != null:
+		_enemy_row.position.y = _stage.floor_center_y() - ENEMY_FEET_DY - ENEMY_LIFT - _extra_lift + off
+
+
+## The enemies are let down on their ropes: straight down onto their places (the ropes' tops stay put, the rivets drag them), a short fall, then a
+## few bobs on the stretched ropes. (The props walk on from the side; the puppets do not.)
+func _let_enemies_down() -> void:
+	_dropping = true
+	var from := _enemy_drop
+	var tw := create_tween()
+	tw.tween_method(func(t: float):
+		var off := 0.0
+		# (t is in seconds at normal speed)
+		if t < ENEMY_LET_DOWN:
+			var u := t / ENEMY_LET_DOWN
+			off = from * (1.0 - u * u)  # gravity: slow at first, fast at the end
+		else:
+			var s := t - ENEMY_LET_DOWN
+			off = 20.0 * exp(-4.5 * s) * sin(TAU * 1.8 * s)  # the rope stretches: a dip below the place, a bob back
+		_set_enemy_drop(off), 0.0, ENEMY_LET_DOWN + ENEMY_SPRING, (ENEMY_LET_DOWN + ENEMY_SPRING) / ENEMY_SPEED)
+	await tw.finished
+	_set_enemy_drop(0.0)
+	_dropping = false
+
+
+## Rope mode: the enemies are pulled up on their ropes (the next set is let down).
 func rope_leave() -> void:
 	var tw := create_tween()
-	tw.tween_property(_enemy_row, "position:x", -2600.0, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_method(_set_enemy_drop, _enemy_drop, ENEMY_UP, 0.7).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	await tw.finished
 
 
@@ -580,7 +637,7 @@ func rope_targets() -> Array:
 	for e in _views:
 		var v: EnemyView = _views[e]
 		if is_instance_valid(v) and is_instance_valid(v.creature) and not e.is_dead() and v.creature.rope_ok():
-			out.append([RopeSets.rope_key(e.id, e.yin), v.creature])
+			out.append([RopeSets.rope_key(e.id, e.yin, e.phase), v.creature])
 	if _hm_stage != null and is_instance_valid(_hm_stage) and _hm_stage.rope_body() != null:  # (the Handyman's body before he steps out)
 		out.append(["handyman", _hm_stage.rope_body()])
 	return out
@@ -776,6 +833,10 @@ var _cast_uids := {}  # uid -> true: the Essence of the chant being cast right n
 var _tube_icons: Array = []  # the Essence in the tube (next turn's draw), or waiting hidden in the red block (sent by a spell)
 var _tube_hold_until := 0  # ticks: the tube rests, empty, until then (2 s after a launch)
 var _tube_sync_pending := false
+var _direct_in := 0  # stolen Essence on their way into the Bag that skip the machine
+var _direct_until := 0  # ticks: after this a stolen one is no longer waited for
+var _direct_landed := false
+var _direct_wait: Array = []  # the Bag's balls waiting for the flying one to land
 var _bag_order: Array = []  # Puppet Stage: the uids of the Bag's balls in the order they stand now (new balls stack after them; a re-sort follows)
 var _resort := false  # (set while the sorted order is being walked into: its balls swap with a lift and one sound)
 var _resort_wait := false  # a launch just ended: the balls wait a moment before they swap into their types
@@ -845,7 +906,7 @@ func _fit_enemy_lift() -> void:
 	need = minf(need, top_room)  # (the floor's far edge is a hard limit: a lift kept from earlier in the turn must obey it too)
 	if absf(need - _extra_lift) > 0.5:
 		_extra_lift = need
-		if _enemy_row != null and _stage != null:  # (glide there instead of jumping)
+		if _enemy_row != null and _stage != null and not _dropping and _enemy_drop == 0.0:  # (glide there instead of jumping; while they are let down the drop follows the new place itself)
 			var y := _stage.floor_center_y() - ENEMY_FEET_DY - ENEMY_LIFT - _extra_lift
 			if _lift_tween != null and _lift_tween.is_valid():
 				_lift_tween.kill()
@@ -1516,6 +1577,7 @@ func _refund_flight(ev: Dictionary) -> void:
 	if not _puppet_strips() or _stock_row == null:
 		return
 	var uids: Array = ev.uids
+	_keep_bag_order = true  # (the refunded balls roll to the back of the Bag: nothing is placed ahead of time or sorted until the next spawn)
 	for u in uids:
 		_flying[u] = true
 	_refresh_stock()
@@ -1895,7 +1957,7 @@ func _puppet_launch(balls: Array) -> void:
 	balls.sort_custom(func(a, b): return a[1].x < b[1].x)
 	var first_hand := not _spawned_once
 	var spawn := Time.get_ticks_msec() < _turn_batch_until or first_hand
-	_keep_bag_order = false  # (when the balls are all in, the Bag sorts itself once)
+	_keep_bag_order = not spawn  # (a spawn: when its balls are all in, the Bag sorts itself once; a bonus / refund: it keeps its order, the new balls stay at the back)
 	_turn_batch_until = 0
 	_spawned_once = true
 	var from_pt := _bonus_from
@@ -2138,7 +2200,7 @@ func _hand_going_down(e: EnemyState) -> bool:
 
 
 func _sync_views() -> void:
-	var live := fight.enemies.filter(func(e): return not e.is_dead() or e.knocked or _hand_going_down(e) or e.has_passive("armadillo"))  # (the Armadillo doesn't break: his ending plays)  # (a knocked-out hand stays in view)
+	var live := fight.enemies.filter(func(e): return not e.is_dead() or e.knocked or _hand_going_down(e) or e.has_passive("armadillo") or (e.has_passive("veil_falls") and e.phase == 1))  # (the Armadillo doesn't break: his ending plays; the Veiled Eyes do not break either: the veil falls and the same puppet unfolds)  # (a knocked-out hand stays in view)
 	var hm := not fight.hm.is_empty() and HandymanStage.available()  # (the Handyman fight with its art: hands on the body's shoulders)
 	var same := live.size() == _views.size() and live.all(func(e): return _views.has(e))
 	if same:
@@ -2186,6 +2248,8 @@ func _sync_views() -> void:
 		else:
 			_hm_stage.add_hand(e, v, not (e in had))
 		_views[e] = v
+		if e == _spider_away:
+			_hold_spider_up(v)
 	if hm:
 		_hm_stage.set_real(body_out or fight.enemies.any(func(e): return e.id == "handyman" and e.is_dead()))  # (he is down for good: his plain picture must not stand there again after he has shattered)
 		_hm_stage.sync_ghosts(live.map(func(e): return e.id), int(fight.hm.phase), fight)
@@ -2512,7 +2576,12 @@ func _refresh_stock() -> void:
 		if fresh:
 			var brand_new := not _bag_seen.has(uid)
 			if not _flying.has(uid):
-				if circus and brand_new:
+				if circus and brand_new and _direct_in > 0 and Time.get_ticks_msec() < _direct_until:
+					_direct_in -= 1  # (a stolen Essence: it rests in its place, unseen until the one in the air has landed)
+					ic.modulate.a = 1.0 if _direct_landed else 0.0
+					if not _direct_landed:
+						_direct_wait.append(ic)
+				elif circus and brand_new:
 					ic.modulate.a = 0.0
 					ic.set_meta("rolling", true)  # (_tube_launch takes it from here)
 					rolled.append([ic, target, uid])
@@ -2727,6 +2796,7 @@ func note_progress() -> void:
 
 
 func _exit_tree() -> void:
+	SpellCard.hover_off = false  # (a steal may have been cut short)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE  # never leave the pointer hidden
 	Engine.time_scale = 1.0  # never leave the game frozen by a hit-stop
 	if _counted:
@@ -2984,6 +3054,11 @@ func _begin_build_drag(pointer: Vector2) -> void:
 	d.begin_external(held, pointer)
 	_bdrag = d
 	_bdrag_src = src
+	if _puppet_strips() and UiSkin.tex("cursor_hand_fist") != null and not is_instance_valid(_grab_cursor):
+		_grab_cursor = AimCursor.new()  # (the pointer is a fist round the Essence while you drag it)
+		_grab_cursor.mode = "grab"
+		add_child(_grab_cursor)
+		Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
 	if not _puppet_strips():
 		_elem_sound("grab")
 	_refresh_stock()
@@ -3935,7 +4010,7 @@ func _open_pause_menu() -> void:
 	var saved := "Your run is saved: Continue on the main menu starts this fight over."
 	var pm := PauseMenu.open(self,
 		"Return to the Main Menu? " + saved if run_saved else "Abandon this run and return to the Main Menu?",
-		"Quit The Last Tree? " + saved if run_saved else "Quit The Last Tree?")
+		"Quit Behind the Curtain? " + saved if run_saved else "Quit Behind the Curtain?")
 	pm.resumed.connect(_close_pause_menu)
 	pm.settings_closed.connect(_refresh_all)
 	pm.main_menu.connect(func(): menu_requested.emit())
@@ -4001,6 +4076,7 @@ func _update_hover_info(d: float, m := Vector2(-1, -1)) -> void:
 	var key := ""
 	var text := ""
 	var anchor := Rect2()
+	var avoid := Rect2()  # (the puppet it is about: the panel never covers it)
 	if not (aiming or _picking_any or pick_view != null or move_view != null or chant_mode != "" or _pause_overlay != null):
 		for e in _views:
 			var v: EnemyView = _views[e]
@@ -4012,12 +4088,14 @@ func _update_hover_info(d: float, m := Vector2(-1, -1)) -> void:
 				key = "intent:%d" % v.get_instance_id()
 				text = chip.get_meta("info", "")
 				anchor = chip.get_global_rect()
+				avoid = v.puppet_global_rect()
 				break
 			# its HP: every status on it explained (Power, Burn, armour, passives...)
 			if v.hp_hovered(m):
 				key = "hp:%d" % v.get_instance_id()
 				text = v.info_text()
 				anchor = Rect2(m - Vector2(20, 20), Vector2(40, 40))
+				avoid = v.puppet_global_rect()
 				break
 	if key != _hover_key:
 		_hover_key = key
@@ -4042,6 +4120,11 @@ func _update_hover_info(d: float, m := Vector2(-1, -1)) -> void:
 	await get_tree().process_frame
 	if not is_instance_valid(p):
 		return
+	if avoid.has_area():  # on the puppet's left, where its intent bubble stands (on its right when the left side has no room): never over the puppet
+		var left := avoid.position.x - 4.0 - p.size.x
+		var ax := left if left >= 10.0 else avoid.end.x + 4.0
+		p.position = Vector2(clampf(ax, 10.0, 1910.0 - p.size.x), clampf(avoid.get_center().y - p.size.y / 2.0, 10.0, 1070.0 - p.size.y))
+		return
 	# beside the enemy (right if there's room, else left), kept on screen
 	var x := anchor.end.x + 12.0
 	if x + p.size.x > 1910.0:
@@ -4063,9 +4146,45 @@ func _pulse_release() -> void:
 		_cast_btn.scale = Vector2.ONE
 
 
+## Dragging: the Bag (or the Chant, for a steal into it) lights up while the Essence in your hand can be let go on it; the fist goes when the drag is over.
+var _glow_panel: Control
+var _glow_tween: Tween
+var _grab_cursor: AimCursor
+var _test_pointer := Vector2(-1, -1)  # (a test's pointer: the real one cannot be moved from a script)
+
+
+func _drag_feedback() -> void:
+	if is_instance_valid(_grab_cursor) and not is_instance_valid(_bdrag):
+		_grab_cursor.queue_free()
+		_grab_cursor = null
+		if not _picking_any:
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	var panel: Control = null
+	if not _steal_drag.is_empty():
+		var chant_drop := _steal_into_chant
+		var r := (_chant_row if chant_drop else _stock_row).get_global_rect().grow(BAG_DROP_MARGIN * (0.6 if chant_drop else 1.0))
+		if r.has_point(_test_pointer if _test_pointer.x >= 0.0 else get_global_mouse_position()):
+			panel = _chant_panel if chant_drop else _bag_panel
+	elif is_instance_valid(_bdrag) and _bdrag_src.get("kind", "") == "chant" and not _bdrag.external_result().inside:
+		panel = _bag_panel  # (let go away from the chant: it goes home to the Bag)
+	if panel == _glow_panel:
+		return
+	if is_instance_valid(_glow_panel):
+		var tw0 := create_tween()
+		tw0.tween_property(_glow_panel, "self_modulate", Color.WHITE, 0.15)
+	_glow_panel = panel
+	if panel != null:
+		if _glow_tween != null and _glow_tween.is_valid():
+			_glow_tween.kill()
+		_glow_tween = create_tween()
+		_glow_tween.tween_property(panel, "self_modulate", Color(1.6, 1.4, 0.85), 0.15)
+
+
 func _process(_d: float) -> void:
 	if not rope_mode:
 		_update_hover_info(_d)
+	if _puppet_strips():
+		_drag_feedback()
 	_pulse_release()
 	if _puppet_strips():
 		_fit_enemy_lift()
@@ -4287,6 +4406,8 @@ func _pick_any_essence(spell: Dictionary, cancellable: bool, only: EnemyState = 
 		greyed.modulate = Color(0.55, 0.55, 0.55, 0.6)
 	_picking_any = true
 	_picking_any_cancellable = cancellable
+	if _pick_style == "hand":
+		_shrink_cards(true)  # (the cards must not cover the enemies' rows of Essence)
 	tut.emit("picking", null)
 	for v in _views.values():
 		v.pick_mode = (only == null or v.enemy == only) and not v.enemy.is_dead()  # (not a fallen hand)
@@ -4308,6 +4429,8 @@ func _pick_any_essence(spell: Dictionary, cancellable: bool, only: EnemyState = 
 	var got: Array = await _any_picked
 	if greyed != null:
 		greyed.modulate = Color.WHITE
+	if _pick_style == "hand":
+		_shrink_cards(false)
 	_picking_any = false
 	_pick_only = null
 	_pick_el = ""
@@ -4325,6 +4448,25 @@ func _pick_any_essence(spell: Dictionary, cancellable: bool, only: EnemyState = 
 			v.pick_i = -1
 	_refresh_all()
 	return got
+
+
+var _cards_tween: Tween
+
+
+## Steal: the spell row shrinks towards the chant (its bottom middle) and the cards stop magnifying under the mouse, so the enemies' Essence stay in view.
+func _shrink_cards(on: bool) -> void:
+	SpellCard.hover_off = on
+	if on:
+		for c in _cards:
+			if is_instance_valid(c):
+				c.drop_zoom()
+	if _spell_row == null:
+		return
+	if _cards_tween != null and _cards_tween.is_valid():
+		_cards_tween.kill()
+	_spell_row.pivot_offset = Vector2(_spell_row.size.x / 2.0, _spell_row.size.y)
+	_cards_tween = create_tween()
+	_cards_tween.tween_property(_spell_row, "scale", Vector2.ONE * (0.5 if on else 1.0), 0.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 
 ## Expose: the brush comes out and you paint one enemy Essence (anywhere) into an Any Essence. Asked once per paint.
@@ -4396,9 +4538,11 @@ func _end_steal_drag(at: Vector2) -> void:
 		bag = _chant_row.get_global_rect().grow(BAG_DROP_MARGIN * 0.6)  # (Instant Steal: it goes into the chant)
 	var ghost := ElementIcon.make(d.el, 52)
 	ghost.size = Vector2(52, 52)
+	ghost.pivot_offset = ghost.size / 2.0
 	ghost.z_index = 150
 	ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ghost.position = at - ghost.size / 2.0 - _fx.global_position
+	ghost.position = at + Vector2(0, -35.0) - ghost.size / 2.0 - _fx.global_position  # (where the hand held it)
+	ghost.scale = Vector2.ONE * (34.0 / 52.0)  # (as small as in the hand)
 	_fx.add_child(ghost)
 	if bag.has_point(at):
 		var to := _stock_row.global_position + _bag_slot(_bag_icons.size(), _bag_icons.size() + 1) - _fx.global_position
@@ -4408,10 +4552,28 @@ func _end_steal_drag(at: Vector2) -> void:
 			var slot: Control = _chant_row.get_child(n) if n < _chant_row.get_child_count() else null
 			var end := (slot.get_global_rect().get_center() if slot != null else _chant_row.get_global_rect().end - Vector2(30, _chant_row.size.y / 2.0))
 			to = end - ghost.size / 2.0 - _fx.global_position
-		var tw := ghost.create_tween()
-		tw.tween_property(ghost, "position", to, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		tw.tween_callback(ghost.queue_free)
-		Audio.play("elem_remove")
+		var direct := _puppet_strips() and not _steal_into_chant
+		if direct:  # the Essence goes straight into the Bag (no machine, no show): the Bag's own ball shows up when this one has landed
+			_direct_in += 1
+			_direct_until = Time.get_ticks_msec() + 5000
+			_direct_landed = false
+			_direct_wait.clear()
+			_keep_bag_order = true  # (it stays at the back; the Bag is sorted once at the next spawn)
+			to = _stock_row.global_position + _bag_slot(_bag_icons.size(), _bag_icons.size() + 1) - _fx.global_position
+		var tw := ghost.create_tween().set_parallel(true)
+		tw.tween_property(ghost, "position", to, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(ghost, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)  # (it grows to the size of your own Essence)
+		tw.chain().tween_callback(func():
+			if direct:
+				_direct_landed = true
+				for w in _direct_wait:
+					if is_instance_valid(w):
+						w.modulate.a = 1.0
+				_direct_wait.clear()
+				_ball_sound("hit", -4.0, randf_range(0.95, 1.08))
+			ghost.queue_free())
+		if not direct:
+			Audio.play("elem_remove")
 		_any_picked.emit([fight.enemies.find(d.enemy), d.index])
 	else:
 		var tw := ghost.create_tween()
@@ -4778,7 +4940,7 @@ func _cull_dead() -> void:
 	if _enemy_row == null:
 		return
 	for e in _views.keys():
-		if e.is_dead() and not e.knocked and not _hand_going_down(e) and not e.has_passive("armadillo"):
+		if e.is_dead() and not e.knocked and not _hand_going_down(e) and not e.has_passive("armadillo") and not (e.has_passive("veil_falls") and e.phase == 1):  # (the Veiled Eyes at 0 Essence do not break: the veil falls and the same puppet unfolds)
 			var old: EnemyView = _views[e]
 			_views.erase(e)
 			if is_instance_valid(old):
@@ -4789,6 +4951,12 @@ func _cull_dead() -> void:
 						PuppetShatter.spawn(self, old.creature)
 				old.get_parent().remove_child(old)
 				old.queue_free()
+
+
+## The card's own sound (Spell Card SFX/spell_<id>.wav), when it has one: it plays as the card lights up.
+func _spell_sound(id: String) -> void:
+	if Audio.has_sfx("spell_" + id):
+		Audio.play("spell_" + id)
 
 
 func _anim_event(ev: Dictionary) -> void:
@@ -4874,6 +5042,7 @@ func _anim_event(ev: Dictionary) -> void:
 				await get_tree().process_frame
 				var splash := PaintSplash.new()
 				var ic: Control = pv._hp_icons[ev.index] if ev.index < pv._hp_icons.size() else null
+				splash.el = String(ev.get("to", "?"))
 				splash.radius = (ic.size.x if ic else 40.0) * 0.62
 				splash.position = pv.hp_point(ev.index) - _fx.global_position
 				_fx.add_child(splash)
@@ -4958,11 +5127,13 @@ func _anim_event(ev: Dictionary) -> void:
 				if c:
 					c.create_tween().tween_property(c, "modulate:a", 0.0, 0.25)
 				Audio.play("spell_glow")
+				_spell_sound(ev.spell.id)
 				return
 			if ev.spell.get("power", false):
 				await _power_fly(ev.spell)
 				return
 			Audio.play("spell_glow")
+			_spell_sound(ev.spell.id)
 			# the card lifts and glows (its text is right there on the card)
 			var card := _card_for(ev.spell.id)
 			if card:
@@ -5004,7 +5175,12 @@ func _anim_event(ev: Dictionary) -> void:
 			var snd: String = EFFECT_SFX.get(ev.op, "")
 			if snd == "sfx_magic_hit" and not UiSkin.is_puppet():
 				snd = "sfx_damage_hit"  # (the magic hit sound is Puppet art)
-			if snd != "":
+			var fx_group: String = EFFECT_FX.get(ev.op, "")
+			if fx_group == "shield" and ev.get("eff", {}).get("lasting", false):
+				fx_group = "lasting_shield"
+			if fx_group != "" and Audio.has_sfx("spellfx_" + fx_group):
+				Audio.play("spellfx_" + fx_group)
+			elif snd != "":
 				Audio.play(snd)
 			_effect_landed(ev)
 			_sync_views()
@@ -5073,8 +5249,11 @@ func _anim_event(ev: Dictionary) -> void:
 			Audio.play("boss_phase_change")
 			_sync_views()
 			_refresh_all()
-			_callout("[i]The veil falls away. Something underneath unfolds its legs.[/i]", Vector2(960, 600), Color(0.75, 0.5, 1.0), 2.4)
+			_callout_beside(_views.get(ev.enemy), "[i]The veil falls away. Something underneath unfolds its legs.[/i]", Color(0.75, 0.5, 1.0), 2.4)
 			await _wait(1.4)
+			var vv: EnemyView = _views.get(ev.enemy)
+			while vv != null and is_instance_valid(vv.creature) and vv.creature.unveiling():  # (the Veiled Eyes' unveiling plays out before anything else)
+				await get_tree().process_frame
 		"spider_steal":
 			await _spider_steal(ev.enemy, ev.spell)
 		"boss_phase":
@@ -5084,8 +5263,15 @@ func _anim_event(ev: Dictionary) -> void:
 		"spawn":
 			Audio.play("enemy_spawn")
 			_sync_views()
+			var cocoon_view: EnemyView = _views.get(ev.enemy) if ev.enemy.id == "spider_cocoon" else null
+			if cocoon_view != null:
+				cocoon_view.modulate.a = 0.0  # (no first frame in its place: it is let down from above)
 			_refresh_all()
+			if cocoon_view != null:
+				await _drop_view_in(cocoon_view)
 			await _wait(0.25)
+		"spider_return":
+			await _spider_return(ev.enemy)
 		"meteor":
 			# Chaos Meteor: a fireball falls from the sky onto this enemy
 			var mv: EnemyView = _views.get(ev.enemy)
@@ -5331,13 +5517,45 @@ const SLAM_ANGLE := -35.0  # degrees: low on the left, high on the right
 ## burst of sparks along its length, and fades. The 2nd one this turn says "Double Extension!", and so on.
 func _extension_slam(count := 1) -> void:
 	var text: String = EXTENSION_NAMES[count - 1] if count <= EXTENSION_NAMES.size() else "%d× Extension!" % count
-	await _slam(text, Color(1.0, 0.86, 0.25), Color(0.4, 0.08, 0.0), 128 if count == 1 else 104)
+	var words: Array = ["extension"] if count == 1 else [WORD_COUNTS[count - 2], "extension"] if count - 2 < WORD_COUNTS.size() else []  # (the carved wooden lettering, when the theme has it)
+	await _slam(text, Color(1.0, 0.86, 0.25), Color(0.4, 0.08, 0.0), 128 if count == 1 else 104, words)
+
+
+const WORD_COUNTS := ["double", "triple", "quadruple", "quintuple"]  # (UI/Banners/word_<name>.png: "Double" ... then "Extension" under it)
+
+
+## The carved lettering of a slam: one picture per word, stacked, centred in a box the size of the text it replaces (null when a picture is missing).
+func _art_words(words: Array) -> Control:
+	var texs: Array = words.map(func(w): return UiSkin.tex("word_" + w))
+	if texs.has(null):
+		return null
+	var box := Control.new()
+	var row_h := 190.0 if texs.size() == 1 else 125.0
+	var total := row_h * texs.size()
+	for i in texs.size():
+		var t: Texture2D = texs[i]
+		var r := TextureRect.new()
+		r.texture = t
+		r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		r.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		r.size = Vector2(row_h * t.get_width() / t.get_height(), row_h)
+		r.position = Vector2(750.0 - r.size.x / 2.0, 100.0 - total / 2.0 + i * row_h)
+		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(r)
+	return box
 
 
 ## Big slanted words slapped onto the table (Extension!, Perfect!): they drop in huge, hit with a shake and a
 ## burst of sparks along their length, bounce, and fade.
-func _slam(text: String, col: Color, outline: Color, font_px: int) -> void:
-	var l := Label.new()
+func _slam(text: String, col: Color, outline: Color, font_px: int, words := []) -> void:
+	var art: Control = _art_words(words) if not words.is_empty() else null
+	var l: Control = art if art != null else Label.new()
+	if art == null:
+		_style_slam_label(l as Label, text, col, outline, font_px)
+	await _slam_finish(l)
+
+
+func _style_slam_label(l: Label, text: String, col: Color, outline: Color, font_px: int) -> void:
 	l.text = text
 	var f := SystemFont.new()
 	f.font_names = PackedStringArray(["Impact", "Arial Black", "Segoe UI Black", "Arial"])
@@ -5353,6 +5571,10 @@ func _slam(text: String, col: Color, outline: Color, font_px: int) -> void:
 	l.add_theme_constant_override("shadow_offset_y", 10)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+
+
+## The slam itself (shared by text and carved lettering): drops in huge, hits, bounces, fades.
+func _slam_finish(l: Control) -> void:
 	l.size = Vector2(1500, 200)
 	l.position = Vector2(960 - 750, 330)
 	l.pivot_offset = l.size / 2.0
@@ -5735,6 +5957,7 @@ func _talk() -> void:
 			lines.append("[color=#ffcf7a][b]%s:[/b][/color] \"%s\"%s" % [BossTalk.speaker(tree), node.reply2, (" [i][color=#c8bfa8]%s[/color][/i]" % node.note2) if node.has("note2") else ""])
 		text.text = "\n".join(lines)
 		col.add_child(text)
+		Audio.play_voice(BossTalk.voice_paths(tree, fight.talk_id, node))  # (his recorded line, if there is one)
 		if node.has("show"):
 			# an artifact he's offering: hover it to read it
 			var a := Artifacts.view(String(node.show))
@@ -5761,6 +5984,12 @@ func _talk() -> void:
 		for st in amber:
 			go.add_theme_stylebox_override(st, amber[st])
 		col.add_child(go)
+		if node == tree and Audio.voice_busy():  # his first line: the buttons wait until he has said it (the later ones can be answered at once, which cuts him off)
+			var lock: Array = []
+			for b in col.find_children("*", "Button", true, false):
+				lock.append([b, b.disabled])
+				b.disabled = true
+			_unlock_after_voice(lock)
 		await get_tree().process_frame
 		box.size = Vector2.ZERO
 		box.reset_size()
@@ -5768,6 +5997,7 @@ func _talk() -> void:
 		chosen[0] = null
 		while chosen[0] == null:  # (a line that ends the talk: only Engage! is left, pressed when you've read it)
 			await get_tree().process_frame
+		Audio.stop_voice()  # (you answered: he stops)
 		if chosen[0].has("engage") or forced:
 			break
 		# you said it: pay, remember, apply, and on to its answer
@@ -5830,7 +6060,15 @@ func _hypnotize_opening() -> void:
 		if v.enemy.has_passive("veiled") and is_instance_valid(v.creature):
 			v.creature.hypnotize()
 			Audio.play("spell_glow")
-			_callout("[i]The beautiful eyes hypnotize you, concealing their intentions.[/i]", Vector2(960, 600), Color(0.75, 0.5, 1.0), 3.2)
+			_callout_beside(v, "[i]The beautiful eyes hypnotize you, concealing their intentions.[/i]", Color(0.75, 0.5, 1.0), 3.2)
+
+
+func _unlock_after_voice(lock: Array) -> void:
+	while Audio.voice_busy() and is_inside_tree():
+		await get_tree().process_frame
+	for l in lock:
+		if is_instance_valid(l[0]):
+			l[0].disabled = l[1]
 
 
 ## One thing you can say: its Essence cost on the left, the words, and a green tick at the right end once its whole
@@ -6298,6 +6536,27 @@ func _callout(bbcode: String, at: Vector2, col: Color, life := 1.0) -> void:
 	tw.tween_callback(p.queue_free)
 
 
+## A callout about one enemy: it stands at the puppet's left, where its intent bubble is (on its right when there is no room), never over the puppet.
+func _callout_beside(v: EnemyView, bbcode: String, col: Color, life := 1.0) -> void:
+	if v == null or not is_instance_valid(v) or not v.puppet_global_rect().has_area():
+		_callout(bbcode, Vector2(960, 600), col, life)
+		return
+	var p := _callout_panel(bbcode, col)
+	await get_tree().process_frame
+	if not is_instance_valid(p) or not is_instance_valid(v):
+		return
+	var r := v.puppet_global_rect()
+	var left := r.position.x - 4.0 - p.size.x
+	var x := left if left >= 10.0 else r.end.x + 4.0
+	p.position = Vector2(clampf(x, 10.0, 1910.0 - p.size.x), clampf(r.get_center().y - p.size.y / 2.0, 10.0, 1070.0 - p.size.y))
+	p.modulate.a = 0.0
+	var tw := p.create_tween()
+	tw.tween_property(p, "modulate:a", 1.0, 0.12)
+	tw.tween_interval(life)
+	tw.tween_property(p, "modulate:a", 0.0, 0.25)
+	tw.tween_callback(p.queue_free)
+
+
 ## The callout box itself (dark, with a coloured border), added to the effects layer but not placed yet.
 func _callout_panel(bbcode: String, col: Color) -> PanelContainer:
 	var p := PanelContainer.new()
@@ -6474,10 +6733,15 @@ func _eye_laser(e: EnemyState) -> void:
 	Audio.play("spell_glow")
 	var fx := Vfx.make(_fx, 80)
 	fx.shaker = _shake
-	for k in 2:
+	for k in 2:  # (soft beams, like the glow of its eyes)
 		var gap := Vector2(-22.0 if k == 0 else 22.0, 0)
-		fx.beam(from + gap, to, Color(0.7, 0.35, 1.0), 0.32, 14.0)
-		fx.beam(from + gap, to, Color(1.0, 0.85, 1.0), 0.32, 5.0)
+		var beam := SoftBeam.new()
+		beam.a = from + gap - _fx.global_position
+		beam.b = to - _fx.global_position
+		beam.color = Color(0.7, 0.35, 1.0)
+		beam.width = 9.0
+		beam.life = 0.42
+		_fx.add_child(beam)
 	fx.glow(from, 90, Color(0.75, 0.4, 1.0, 0.9), 0.35)
 	fx.glow(to, 120, Color(0.75, 0.4, 1.0, 0.8), 0.3, 0.1)
 	fx.shake(6.0, 0.1)
@@ -6492,19 +6756,23 @@ func _spider_steal(e: EnemyState, sp: Dictionary) -> void:
 	if v == null or not is_instance_valid(v.creature):
 		return
 	var cr := v.creature
-	var home := cr.global_position
+	while is_instance_valid(cr) and cr.unveiling():  # (it is still coming out of its veil: the theft comes after)
+		await get_tree().process_frame
+	if not is_instance_valid(cr):
+		return
 	var z := cr.z_index
+	var slow := SPIDER_SLOW
 	cr.z_index = 120
 	Audio.play("elem_pickup")
 	var up := cr.create_tween()
-	up.tween_property(cr, "global_position:y", -cr.size.y - 40.0, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	up.tween_property(cr, "global_position:y", -cr.size.y - 40.0, 0.35 * slow).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	await up.finished
 	var grab := Vector2(960, 700)
 	if card:
 		grab = card.global_position + Vector2(card.size.x * card.scale.x / 2.0, 0)
 	cr.global_position = Vector2(grab.x - cr.size.x / 2.0, -cr.size.y - 40.0)
 	var down := cr.create_tween()
-	down.tween_property(cr, "global_position:y", grab.y - cr.size.y * 0.85, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	down.tween_property(cr, "global_position:y", grab.y - cr.size.y * 0.85, 0.4 * slow).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	await down.finished
 	cr.hit(0.4)  # (it snatches)
 	var ghost: SpellCard = null
@@ -6517,20 +6785,84 @@ func _spider_steal(e: EnemyState, sp: Dictionary) -> void:
 		ghost.scale = card.scale
 		card.modulate.a = 0.0
 	Audio.play("elem_remove")
-	await _wait(0.2)
+	await _wait(0.2 * slow)
 	var off := cr.create_tween().set_parallel()
-	off.tween_property(cr, "global_position:y", -cr.size.y - 300.0, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	off.tween_property(cr, "global_position:y", -cr.size.y - 300.0, 0.45 * slow).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	if ghost:
-		off.tween_property(ghost, "global_position:y", -400.0, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		off.tween_property(ghost, "rotation", 0.5, 0.45)
+		off.tween_property(ghost, "global_position:y", -400.0, 0.45 * slow).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		off.tween_property(ghost, "rotation", 0.5, 0.45 * slow)
 	await off.finished
 	if ghost:
 		ghost.queue_free()
-	cr.global_position = Vector2(home.x, -cr.size.y - 40.0)
-	var back := cr.create_tween()
-	back.tween_property(cr, "global_position:y", home.y, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	await back.finished
 	cr.z_index = z
+	_spider_away = e  # (it stays up there: the cocoon is let down first, then the spider comes back, see _spider_return)
+
+
+## How much slower the spiders and their cocoons move than the rest (their durations are multiplied by this): half the speed.
+const SPIDER_SLOW := 2.0
+var _spider_away: EnemyState  # the Veiled Eyes, pulled up with a stolen spell and waiting up there for the cocoon to be let down
+
+
+func _slow_of(e: EnemyState) -> float:
+	return SPIDER_SLOW if e != null and (e.id == "veiled_eyes" or e.id.begins_with("spiderling") or e.id == "spider_cocoon") else 1.0
+
+
+## The puppet of a view lifted by `off` px (0 = standing; ENEMY_UP = up in the ropes, out of sight). It moves the Creature's own edges, so the row's layout leaves it alone.
+func _lift_creature(cr: Creature, off: float) -> void:
+	if not cr.has_meta("base_edges"):
+		cr.set_meta("base_edges", Vector2(cr.offset_top, cr.offset_bottom))
+	var base: Vector2 = cr.get_meta("base_edges")
+	cr.offset_top = base.x + off
+	cr.offset_bottom = base.y + off
+
+
+## A rebuilt view of the spider that is up in the ropes: out of sight, high above its place (it is let down by _spider_return).
+func _hold_spider_up(v: EnemyView) -> void:
+	v.modulate.a = 0.0
+	_lift_creature(v.creature, ENEMY_UP)
+
+
+## A puppet that arrives in the middle of a fight (the Silk Cocoon) is let down from above on its rope: a fall, then a few bobs. At the spiders' slow speed.
+func _drop_view_in(v: EnemyView) -> void:
+	if not is_instance_valid(v) or not is_instance_valid(v.creature):
+		return
+	var slow := _slow_of(v.enemy)
+	var cr := v.creature
+	_lift_creature(cr, ENEMY_UP)
+	v.modulate.a = 1.0
+	var tw := create_tween()
+	tw.tween_method(func(t: float):
+		if not is_instance_valid(cr):
+			return
+		var off := 0.0
+		if t < ENEMY_LET_DOWN:
+			var u := t / ENEMY_LET_DOWN
+			off = ENEMY_UP * (1.0 - u * u)
+		else:
+			var sec := t - ENEMY_LET_DOWN
+			off = 20.0 * exp(-4.5 * sec) * sin(TAU * 1.8 * sec)
+		_lift_creature(cr, off), 0.0, ENEMY_LET_DOWN + ENEMY_SPRING, (ENEMY_LET_DOWN + ENEMY_SPRING) * slow)
+	await tw.finished
+	if is_instance_valid(cr):
+		_lift_creature(cr, 0.0)
+
+
+## The spider comes back down to its place after the cocoon has been let down.
+func _spider_return(e: EnemyState) -> void:
+	_spider_away = null
+	var v: EnemyView = _views.get(e)
+	if v == null or not is_instance_valid(v.creature):
+		return
+	var cr := v.creature
+	_lift_creature(cr, ENEMY_UP)
+	v.modulate.a = 1.0
+	var back := create_tween()
+	back.tween_method(func(o: float):
+		if is_instance_valid(cr):
+			_lift_creature(cr, o), ENEMY_UP * 0.4, 0.0, 0.45 * SPIDER_SLOW).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await back.finished
+	if is_instance_valid(cr):
+		_lift_creature(cr, 0.0)
 
 
 ## Where what lands on you lands: the middle of the HP tray (Puppet), the Keeper's panel otherwise.
@@ -6664,15 +6996,16 @@ func _enemy_attack(ev: Dictionary) -> void:
 		var home := c.position
 		var toward := (target - (c.global_position + c.size / 2.0)).normalized() * 70.0
 		c.pivot_offset = c.size / 2.0
+		var sl := _slow_of(ev.enemy)  # (the spiders move at half speed)
 		var tw := c.create_tween()
-		tw.tween_property(c, "position", home - toward * 0.3, 0.12)  # wind up
-		tw.parallel().tween_property(c, "scale", Vector2(0.92, 0.92), 0.12)
-		tw.tween_property(c, "position", home + toward, 0.09)  # lunge
-		tw.parallel().tween_property(c, "scale", Vector2(1.3, 1.3), 0.09)
-		tw.tween_interval(0.12)
-		tw.tween_property(c, "position", home, 0.2)
-		tw.parallel().tween_property(c, "scale", Vector2.ONE, 0.2)
-		await _wait(0.2)
+		tw.tween_property(c, "position", home - toward * 0.3, 0.12 * sl)  # wind up
+		tw.parallel().tween_property(c, "scale", Vector2(0.92, 0.92), 0.12 * sl)
+		tw.tween_property(c, "position", home + toward, 0.09 * sl)  # lunge
+		tw.parallel().tween_property(c, "scale", Vector2(1.3, 1.3), 0.09 * sl)
+		tw.tween_interval(0.12 * sl)
+		tw.tween_property(c, "position", home, 0.2 * sl)
+		tw.parallel().tween_property(c, "scale", Vector2.ONE, 0.2 * sl)
+		await _wait(0.2 * sl)
 	var blocked: bool = ev.get("blocked", false)
 	ImpactFx.burst(_fx, target, blocked and ev.n == 0)
 	Audio.play("sfx_player_hit" if ev.n > 0 else "release_armour_block")
@@ -6773,8 +7106,7 @@ func _steal_fx(ev: Dictionary, v: EnemyView) -> void:
 func _steal_poke(ev: Dictionary, v: EnemyView, items: Array) -> void:
 	var cr: Creature = v.creature
 	var thief := ev.enemy.name as String
-	var z_before := v.z_index
-	v.z_index = PuppetStage.CEILING_Z + 3  # (the arm goes over the HUD)
+	cr.tip_z = PuppetStage.CEILING_Z + 3  # (the tweezers go over the HUD: only the lower stick, the upper one stays under the Handyman's body)
 	var names: Array = items.map(func(it): return Elements.NAMES.get(it.el, it.el))
 	_float_text("%s steals %s" % [thief, ", ".join(names)], _stock_row.global_position + Vector2(260, -40), Color(1, 0.55, 0.45))
 	await _wait(0.12)
@@ -6830,8 +7162,8 @@ func _steal_poke(ev: Dictionary, v: EnemyView, items: Array) -> void:
 			cr.flash = 0.7
 	if is_instance_valid(cr):
 		cr.poke = 0.0
-	if is_instance_valid(v):
-		v.z_index = z_before
+	if is_instance_valid(cr):
+		cr.tip_z = 0
 	_sync_views()
 	_refresh_all()
 

@@ -72,7 +72,9 @@ static func play(fx: Control, op: String, eff: Dictionary, from: Vector2, dests:
 			return _disintegrate(v, from, dests, Elements.COLORS.get(eff.get("el", ""), col))
 		"pluck":
 			return _snipe(v, from, dests, col)
-		"steal", "siphon":
+		"steal":
+			return 0.0  # (no show: you drag the Essence home yourself, see FightScreen._end_steal_drag)
+		"siphon":
 			return _siphon(v, from, dests, col, player)
 		"redirect":
 			return _redirect(v, from, dests)

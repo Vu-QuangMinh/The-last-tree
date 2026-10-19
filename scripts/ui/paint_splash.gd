@@ -12,6 +12,9 @@ var fade := 1.0:
 	set(v):
 		fade = v
 		queue_redraw()
+var el := "?"  # the Essence painted: F / W / A, or ? (Any: white). Puppet: its colour's carved-paint pictures (UI/Fx/splash_<fire|water|wind|any>_<1..3>.png)
+var _pieces: Array = []  # Puppet: [picture, offset (radius units), rotation, size (radius units), mirrored] -- several splats of the colour laid over each other into one puddle
+const ART_NAMES := {"F": "fire", "W": "water", "A": "wind", "?": "any"}
 var _blobs: Array = []  # [offset (in radius units), size (radius units), colour]
 var _drops: Array = []  # [direction, distance (radius units), size, colour]
 
@@ -20,6 +23,18 @@ func _ready() -> void:
 	z_index = 160
 	var g := RandomNumberGenerator.new()
 	g.randomize()
+	if UiSkin.is_puppet():
+		var pics: Array = []
+		for k in [1, 2, 3]:
+			var t := UiSkin.tex("splash_%s_%d" % [ART_NAMES.get(el, "any"), k])
+			if t != null:
+				pics.append(t)
+		if not pics.is_empty():
+			pics.shuffle()
+			for k in 4:  # (the first in the middle, the others a little off to the sides, each turned its own way: one lumpy puddle)
+				var off := Vector2.from_angle(g.randf() * TAU) * g.randf_range(0.3, 0.55) if k > 0 else Vector2.ZERO
+				_pieces.append([pics[k % pics.size()], off, g.randf() * TAU, g.randf_range(1.2, 1.55) if k > 0 else 1.65, g.randf() < 0.5])
+			return
 	var hue0 := g.randf()
 	# a fat core of overlapping blobs, each a different band of the rainbow, so the blotch is lumpy and colourful
 	for k in 7:
@@ -44,6 +59,19 @@ func play(reveal: Callable) -> void:
 func _draw() -> void:
 	var r := radius * grow
 	if r <= 0.5:
+		return
+	if not _pieces.is_empty():
+		for i in _pieces.size():
+			var pc: Array = _pieces[i]
+			var tex: Texture2D = pc[0]
+			var gi := clampf((grow - 0.12 * i) / (1.0 - 0.12 * i), 0.0, 1.0)  # (they splat down one after the other)
+			if gi <= 0.0:
+				continue
+			var side: float = radius * float(pc[3]) * 2.0 * gi
+			draw_set_transform(pc[1] * radius * gi, pc[2], Vector2(-1.0 if pc[4] else 1.0, 1.0))
+			var sz := Vector2(side, side * tex.get_height() / tex.get_width())  # (the pictures are trimmed: each has its own shape)
+			draw_texture_rect(tex, Rect2(-sz * 0.5, sz), false, Color(1, 1, 1, fade))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		return
 	for b in _blobs:
 		var col: Color = b[2]

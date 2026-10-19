@@ -10,6 +10,7 @@ signal how_to
 signal tutorial
 signal test_mode  # the sandbox: pick enemies and spells, fight, come back
 signal settings
+signal sfx_test  # Dev Mode: listen to the samples of each sound and choose the official one
 signal room_test  # Dev Mode
 
 
@@ -43,7 +44,7 @@ func _ready() -> void:
 		logo.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		v.add_child(logo)
 	else:
-		var t := UiTheme.label("The Last Tree", 88, Color(0.85, 1, 0.75))
+		var t := UiTheme.label("Behind the Curtain", 88, Color(0.85, 1, 0.75))
 		t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		t.add_theme_constant_override("outline_size", 12)
 		t.add_theme_color_override("font_outline_color", Color(0.03, 0.08, 0.04))
@@ -170,7 +171,7 @@ func _dev_column() -> void:
 	d.add_theme_constant_override("separation", 8 if puppet else 16)
 	add_child(d)
 	_dev_col = d
-	for pair in [["Test mode", test_mode], ["Room Test", room_test]]:
+	for pair in [["Test mode", test_mode], ["Room Test", room_test], ["SFX Test", sfx_test]]:
 		var sig: Signal = pair[1]
 		var b := UiTheme.button(pair[0], func(): sig.emit(), BTN_FONT if puppet else 26)
 		b.custom_minimum_size = BTN if puppet else Vector2(360, 60)

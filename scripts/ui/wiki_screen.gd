@@ -29,7 +29,7 @@ func _ready() -> void:
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 16)
 	v.add_child(top)
-	var t := UiTheme.heading("The Last Tree · Wiki", 32, Color(0.85, 1, 0.75))
+	var t := UiTheme.heading("Behind the Curtain · Wiki", 32, Color(0.85, 1, 0.75))
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(t)
 	_search = LineEdit.new()

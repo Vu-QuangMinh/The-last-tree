@@ -1,4 +1,4 @@
-# The Last Tree
+# Behind the Curtain
 
 A Godot 4.6 chanting roguelite. You travel through three acts on a branching map and fight one encounter at a time, first person, with the enemies in front of you. Enemies' HP is a row of Fire, Water and Wind. You chant elements to break those rows and trigger your spells.
 

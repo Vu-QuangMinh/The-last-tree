@@ -95,6 +95,7 @@ func show_menu() -> void:
 	m.test_mode.connect(open_test_mode)
 	m.settings.connect(open_settings)
 	m.room_test.connect(start_room_test)
+	m.sfx_test.connect(open_sfx_test)
 	_swap(m)
 
 
@@ -293,6 +294,16 @@ func _message(title: String, body: String, buttons: Array, col := Color.WHITE, e
 
 # ------------------------------------------------------------------ run flow
 
+## SFX Test (Dev Mode): the samples of each sound, one is chosen as the official one.
+func open_sfx_test() -> void:
+	run = null
+	_room_bg = ""
+	Audio.play_music("menu")
+	var t := SfxTestScreen.new()
+	t.back.connect(show_menu)
+	_swap(t)
+
+
 ## Test mode: the sandbox screen (your picks are kept between fights in _test_state). Nothing here touches the
 ## saved run, unlocks or stats.
 var _test_state := {}
@@ -480,12 +491,9 @@ func _show_stage_map() -> void:
 	if draw_drapes:  # the red drapes are drawn together over the stage, and the map is let down in front of them
 		m.drop_delay = 2.6  # (as long as the drapes take to close, and the two frames they wait)
 	m.node_chosen.connect(func(col: int):
-		if st != null and is_instance_valid(st):
-			st.curtains.open()  # (pulled apart while the map is pulled up)
-		await m.lower()
+		await m.lower()  # (the map is pulled all the way up first, then the drapes are pulled apart)
 		if st != null and is_instance_valid(st) and st.curtains.has_art():
-			while st.curtains.is_moving():
-				await get_tree().process_frame
+			await st.curtains.open()
 		_on_node(col))
 	m.codex_pressed.connect(open_codex)
 	m.menu_requested.connect(func(): run = null; show_menu())
@@ -599,6 +607,14 @@ func _show_rope_set() -> void:
 				if e.id == RopeSets.real_id(ids[k]) and e.yin == "white" and not (e in painted):
 					e.yin = "black"
 					painted.append(e)
+					break
+	var phased := []  # (the Veiled Eyes' second phase: the first of that id stands as the spider)
+	for k in ids.size():
+		if RopeSets.is_phase2(ids[k]):
+			for e in f.enemies:
+				if e.id == RopeSets.real_id(ids[k]) and e.phase < 2 and not (e in phased):
+					e.phase = 2
+					phased.append(e)
 					break
 	var fs := _new_fight_screen(f)
 	fs.rope_mode = true
