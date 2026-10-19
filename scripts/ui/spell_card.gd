@@ -8,6 +8,8 @@ signal clicked(card: SpellCard)
 const W := 250.0
 ## Category colours: Offensive red, Defensive blue, Utility gold.
 const KIND_COLORS := {"damage": Color(0.74, 0.22, 0.18), "defense": Color(0.2, 0.42, 0.72), "utility": Color(0.78, 0.58, 0.12)}
+## A fused spell's name banner: the plum of the purple wax seal (its frame keeps its category colour).
+const FUSED_COLOR := Color(0.365, 0.216, 0.325)
 const PARCHMENT := Color(0.93, 0.87, 0.72)
 const RARITY_COLORS := {"common": Color(0.35, 0.3, 0.25), "rare": Color(0.1, 0.35, 0.75), "legendary": Color(0.75, 0.45, 0.0), "unique": Color(0.55, 0.1, 0.55)}
 const INK := Color(0.1, 0.08, 0.06)
@@ -81,6 +83,7 @@ func _ready() -> void:
 		mouse_entered.connect(_on_hover.bind(true))
 		mouse_exited.connect(_on_hover.bind(false))
 	var kc: Color = KIND_COLORS[spell.kind]
+	var name_col: Color = FUSED_COLOR if spell.get("fused", false) else kc
 	_box = StyleBoxFlat.new()
 	_box.bg_color = PARCHMENT
 	_box.set_corner_radius_all(_zi(10))
@@ -109,8 +112,8 @@ func _ready() -> void:
 	v.add_child(top)
 	var nb := PanelContainer.new()
 	var nbs := StyleBoxFlat.new()
-	nbs.bg_color = kc
-	nbs.border_color = Color(1, 0.85, 0.3) if spell.get("upgraded", false) else kc.darkened(0.45)
+	nbs.bg_color = name_col
+	nbs.border_color = Color(1, 0.85, 0.3) if spell.get("upgraded", false) else name_col.darkened(0.45)
 	nbs.set_border_width_all(_zi(2 if spell.get("upgraded", false) else 1))
 	nbs.set_corner_radius_all(_zi(4))
 	nbs.content_margin_left = _z(8)
@@ -124,7 +127,7 @@ func _ready() -> void:
 	_name_l = name_l
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_l.add_theme_constant_override("outline_size", _zi(4))
-	name_l.add_theme_color_override("font_outline_color", kc.darkened(0.6))
+	name_l.add_theme_color_override("font_outline_color", name_col.darkened(0.6))
 	name_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	nb.add_child(name_l)
 	top.add_child(nb)

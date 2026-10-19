@@ -8,10 +8,10 @@ const TARGETED_OPS := ["steal", "pluck", "move", "redirect", "strike", "burn", "
 	"convert", "purge", "shatter", "stoke", "siphon", "execute", "insert", "curse"]
 
 ## Every spell is in one of three categories: Offensive, Defensive, Utility (reward offers, card colour and tag).
-const DAMAGE_OPS := ["steal", "pluck", "strike", "burn", "purge", "execute", "siphon", "amplify", "echo", "stoke", "expose", "annihilate", "barrage", "random_hit", "meteor_rain"]
-const DEFENSE_OPS := ["shield", "heal", "aegis", "thorns", "weak", "freeze", "cleanse", "redirect", "disarm"]
-const DAMAGE_KEYS := ["burn_bonus", "strike_burn", "strike_bonus"]
-const DEFENSE_KEYS := ["thorns", "weak25"]
+const DAMAGE_OPS := ["steal", "pluck", "strike", "burn", "purge", "purge_all", "execute", "siphon", "amplify", "echo", "stoke", "expose", "annihilate", "barrage", "random_hit", "meteor_rain"]
+const DEFENSE_OPS := ["shield", "heal", "aegis", "thorns", "weak", "freeze", "cleanse", "redirect", "disarm", "daze", "unbind"]
+const DAMAGE_KEYS := ["burn_bonus", "strike_burn", "strike_bonus", "disturbance", "steal_each_chant"]
+const DEFENSE_KEYS := ["thorns", "weak25", "thorns_on_hit", "all_lasting", "shield_per_burn"]
 const KIND_NAMES := {"damage": "Offensive", "defense": "Defensive", "utility": "Utility"}
 
 var all_spells: Array = []
