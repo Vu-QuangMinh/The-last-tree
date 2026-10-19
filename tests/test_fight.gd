@@ -236,7 +236,7 @@ func test_arcane_barrage_removes_3_random_essence() -> void:
 	f.cast_chant(_all(3))
 	f.resolve_spell("arcane_barrage")
 	assert_eq(f.enemies[0].size() + f.enemies[1].size(), 5, "3 of the 8 gone")
-	assert_eq(SpellText.card_text(db.get_spell("arcane_barrage")), "Remove 1 random enemy Essence, 3 times.")
+	assert_eq(SpellText.card_text(db.get_spell("arcane_barrage")), "Randomly deal 1 damage 3 times.")
 
 
 func test_seals_shorten_a_spell_down_to_every_chant() -> void:
@@ -634,9 +634,9 @@ func test_new_commons() -> void:
 	u.resolve_spell("unbind", 0)
 	assert_eq(u.player.hp, 34.0)
 	assert_true(u.player.silenced.is_empty() and u.player.ignited.is_empty())
-	assert_eq(SpellText.card_text(db.get_spell("coup_de_grace")), "Remove 1 random Essence of an enemy.
-Then if it has 2 or fewer Essence, Execute it.")
-	assert_eq(SpellText.card_text(db.get_spell("updraft_lance")), "Remove 2 random enemies' rightmost Essence.")
+	assert_eq(SpellText.card_text(db.get_spell("coup_de_grace")), "Deal 1 Random damage to an enemy.
+Then Execute at 2.")
+	assert_eq(SpellText.card_text(db.get_spell("updraft_lance")), "Deal 1 Right damage to 2 random enemies.")
 
 
 func test_durability_and_the_handyman_power() -> void:
@@ -1028,7 +1028,7 @@ func test_thermal_burst_hits_two_different_enemies() -> void:
 	assert_eq(f.enemies[2].size(), 3, "second target: a different enemy")
 	assert_eq(f.enemies[1].size(), 5)
 	assert_true(not (0 in asked[0]), "the second pick can't be the first target again")
-	assert_eq(SpellText.card_text(db.get_spell("thermal_burst")), "Remove 2 leftmost Essence of 2 enemies.")
+	assert_eq(SpellText.card_text(db.get_spell("thermal_burst")), "Deal 2 Left damage to 2 different enemies.")
 
 
 func test_anti_spell_comes_alive_unless_its_pattern_is_chanted() -> void:
@@ -1893,7 +1893,7 @@ func test_ashen_veil_leaves_you_vulnerable() -> void:
 	f.enemies[0].dmg_bonus = 0
 	f._plan(f.enemies[0])
 	f.player.hp = 50
-	assert_true(SpellText.card_text(db.get_spell("ashen_veil")).contains("Apply 2 Vulnerable to yourself"))
+	assert_true(SpellText.card_text(db.get_spell("ashen_veil")).contains("Gain 2 Vulnerable"))
 	f.cast_chant(_all(3))
 	f.resolve_spell("ashen_veil")
 	assert_eq(f.player.vulnerable, 2)
@@ -2148,3 +2148,103 @@ func test_veiled_eyes_venom_veil_theft_and_brood() -> void:
 	f._cleanup()
 	assert_eq(f.loadout.size(), before, "the spell comes back when the spider dies")
 	assert_true(f.over and f.won, "its brood scatters: the fight is won")
+
+
+func test_fused_cooldowns_add_up() -> void:
+	var run := RunState.new()
+	run.setup(db, ["firestorm", "ashfall", "ward"], [], 4)
+	run.learn_spell("firestorm")  # Cooldown 2
+	run.learn_spell("ashfall")  # Cooldown 1
+	var fz := run.fuse_preview("firestorm", "ashfall")
+	assert_eq(int(fz.get("cooldown", 0)), 2, "Cooldown 2 + Cooldown 1: the stricter, Cooldown 2")
+	var plain := run.fuse_preview("fire_ball", "water_wall")
+	assert_true(not plain.has("cooldown"), "no cooldowns: none on the fused spell")
+	run.fuse_commit(fz, "firestorm", "ashfall")
+	assert_eq(int(run.spell(fz.id).get("cooldown", 0)), 2, "it keeps it once forged")
+
+
+func test_magic_box_refund_has_a_slot_per_essence() -> void:
+	var f := _fight(["ashling"], ["fire_ball"], "FF")
+	f.artifacts = ["magic_box"]
+	f.player.box_casts = 5  # (the next cast is the 6th: the box plays)
+	_set_hp(f.enemies[0], "WWWWWWWWWW")
+	var events := []
+	f.anim = func(ev): events.append(ev)
+	f.cast_chant(_all(2))
+	f.resolve_spell("fire_ball", 0)
+	f.finish_turn()
+	var refunds := events.filter(func(ev): return ev.type == "refund")
+	assert_eq(refunds.size(), 1, "the box gives the pattern back")
+	var r: Dictionary = refunds[0]
+	assert_eq(r.els.size(), 2, "Fire Ball's two Fire")
+	assert_eq(r.slots.size(), r.els.size(), "a chant slot for each one (the animation needs it)")
+	assert_eq(r.uids.size(), r.els.size())
+
+
+
+func test_fusion_rules_melt_damage_and_executes() -> void:
+	var run := RunState.new()
+	run.setup(db, ["coup_de_grace", "snuff_out", "arcane_barrage", "gust"], [], 4)
+	for id in ["coup_de_grace", "snuff_out", "arcane_barrage", "gust"]:
+		run.learn_spell(id)
+	var fc := run.fuse_preview("fire_ball", "coup_de_grace")
+	assert_eq(fc.effects.map(func(e): return e.op), ["random_hit", "execute"], "one damage effect, then the Execute")
+	assert_eq(int(fc.effects[0].n), 2, "1 + 1")
+	assert_eq(SpellText.card_text(fc), "Deal 2 Random damage to an enemy.
+Then Execute at 2.", "less control: random spots")
+	var cs := run.fuse_preview("coup_de_grace", "snuff_out")
+	var ex: Array = cs.effects.filter(func(e): return e.op == "execute")
+	assert_eq(ex.size(), 1, "two Executes become one")
+	assert_eq(int(ex[0].max), 3, "at the higher number")
+	var fg := run.fuse_preview("fire_ball", "gust")
+	assert_eq(fg.effects[0].op, "strike", "Snipe + from the right: from the right (less control)")
+	assert_eq(int(fg.effects[0].n), 3)
+	var bf := run.fuse_preview("arcane_barrage", "fire_ball")
+	assert_eq(bf.effects[0].op, "barrage", "a Barrage swallows the aimed shot")
+	assert_eq(int(bf.effects[0].n), 4)
+
+
+func test_then_execute_takes_every_enemy_hit() -> void:
+	var f := _fight(["ashling", "ashling", "ashling"], [], "")
+	for e in f.enemies:
+		_set_hp(e, "FFF")
+	var sp := {"id": "t_barrage_exec", "name": "T", "pattern": "F", "power": false, "effects": [{"op": "strike", "n": 1, "from": "right", "target": "all"}, {"op": "execute", "max": 2, "then": true, "target": "target"}]}
+	await f._fire(sp, {}, {})
+	assert_true(f.enemies.all(func(e): return e.is_dead()) or f.alive().is_empty(), "all three were hit down to 2: all three Executed")
+
+
+
+func test_fusion_riders_follow_fold_and_order() -> void:
+	# a Barrage swallows the aimed shot: an aimed Burn is scattered, 1 at a time
+	var m := FuseRules.merge([{"op": "barrage", "n": 3}, {"op": "burn", "n": 6, "target": "target"}])
+	assert_eq(m[1].op, "meteor_rain", "Burn 6 on an enemy: scattered")
+	assert_eq(int(m[1].n), 6)
+	assert_eq(SpellText.card_text({"id": "t", "pattern": "", "power": false, "effects": m}), "Randomly deal 1 damage 3 times and apply 1 Burn 6 times.")
+	# one random enemy: the rider lands on the one it hit
+	var r := FuseRules.merge([{"op": "strike", "n": 1, "from": "right", "target": "random"}, {"op": "weak", "turns": 1, "target": "target"}])
+	assert_eq(r[1].target, "hit")
+	# the same rider adds up wherever it is; your own effects go last
+	var f := FuseRules.merge([{"op": "freeze", "turns": 1, "target": "target"}, {"op": "shield", "n": 5}, {"op": "freeze", "turns": 2, "target": "target"}])
+	assert_eq(f.map(func(e): return e.op), ["freeze", "shield"], "Freeze 1 + Freeze 2 on it: one Freeze; Shield after")
+	assert_eq(int(f[0].turns), 3)
+	# all of them, and more on one
+	var b := FuseRules.merge([{"op": "burn", "n": 3, "target": "all"}, {"op": "heal", "n": 2}, {"op": "burn", "n": 6, "target": "target"}])
+	assert_eq(SpellText.card_text({"id": "t", "pattern": "", "power": false, "effects": b}), "Apply 6 Burn to an enemy, then 3 more to all.
+Heal 2 HP.")
+	# losing HP and healing cancel out
+	var h := FuseRules.merge([{"op": "sacrifice", "hp": 5}, {"op": "heal", "n": 6}])
+	assert_eq(h, [{"op": "heal", "n": 1}], "heal 6, lose 5: heal 1")
+
+
+
+func test_fusion_one_enemy_first_then_all() -> void:
+	var m := FuseRules.merge([{"op": "strike", "n": 5, "from": "right", "target": "all"}, {"op": "burn", "n": 3, "target": "all"},
+		{"op": "strike", "n": 3, "from": "right", "target": "target"}, {"op": "burn", "n": 2, "target": "target"}])
+	var sp := {"id": "t", "pattern": "", "power": false, "effects": m}
+	assert_eq(SpellText.card_text(sp), "Deal 3 Right damage and apply 2 Burn to an enemy, then 5 Right damage and 3 Burn to all.")
+	var r := FuseRules.merge([{"op": "strike", "n": 3, "from": "right", "target": "all"}, {"op": "strike", "n": 1, "from": "right", "target": "random"}])
+	assert_eq(SpellText.card_text({"id": "t", "pattern": "", "power": false, "effects": r}), "Deal 1 Right damage to a random enemy, then 3 more to all.")
+	var run := RunState.new()
+	run.setup(db, ["desperate_measure"], [], 4)
+	run.learn_spell("desperate_measure")
+	assert_true(not run.can_fuse("desperate_measure"), "Desperate Measure can't be fused")

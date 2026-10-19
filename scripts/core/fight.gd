@@ -619,8 +619,13 @@ func resolve_spell(id: String, target_idx := -1) -> void:
 			# the Magic Box: this spell's pattern comes back to your bag after the Release
 			if not turn_ctx.has("box_refund"):
 				turn_ctx.box_refund = []
-			for ch in String(spell.get("pattern", "")):
+				turn_ctx.box_slots = []
+			var pat := String(spell.get("pattern", ""))
+			var at := Chant.first_index(pat, chant_string()) if pat != "" else -1  # (where it sits in the chant: the animation flies them from there)
+			for k in pat.length():
+				var ch := pat[k]
 				turn_ctx.box_refund.append(ch if ch != "?" else _random_element())
+				turn_ctx.box_slots.append(at + k if at >= 0 else maxi(0, chant.size() - 1))
 			_log("The Magic Box plays a note: %s's Essence will come back after the Release." % spell.name)
 	for t in times:
 		if over:
@@ -764,6 +769,7 @@ func finish_turn() -> void:
 				player.add_element(el if el != "?" else _random_element())
 		var back := _lens_refunds(chant)
 		back.append_array(turn_ctx.get("box_refund", []))  # (the Magic Box)
+		refund_slots.append_array(turn_ctx.get("box_slots", []))  # (one chant slot per refunded Essence, for the animation)
 		for k in player.passive("refund_air"):
 			back.append("A")  # Storm Crown: Air comes back after every Release
 			refund_slots.append(maxi(0, chant.size() - 1))
@@ -974,6 +980,13 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 		return
 	current_eff = eff
 	var targets := await _targets(eff, spell, tctx)
+	if eff.op in HIT_OPS:
+		# who this spell's damage has hit so far ("then Execute" looks at every one of them)
+		if not tctx.has("_hit"):
+			tctx["_hit"] = []
+		for t in targets:
+			if not (t in tctx._hit):
+				tctx._hit.append(t)
 	# Gain Essence: rolled before the show, so each orb flies in its own element's colour to its own slot
 	var drawn: Array[String] = []
 	if eff.op == "draw":
@@ -1182,11 +1195,15 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 				if pool.is_empty():
 					break
 				var t: EnemyState = pool[rng.randi() % pool.size()]
+				if eff.get("what", "burn") == "poison":
+					t.poison += 1 + player.passive("poison_bonus")  # (a fused spell's Poison, scattered at random)
+					anim.call({"type": "effect", "op": "poison", "eff": {"op": "poison", "n": 1}, "targets": [t]})
+					continue
 				await anim.call({"type": "meteor", "enemy": t})  # (one fireball at a time)
 				t.ignite(1, rng)
 				await _burned(1)
 				anim.call({"type": "meteor_hit", "enemy": t})
-			_log("%s rains fire: Burn 1, %d times." % [spell.name, eff.n])
+			_log("%s scatters %s: 1, %d times." % [spell.name, "Poison" if eff.get("what", "burn") == "poison" else "Burn", eff.n])
 		"disarm":
 			for e in targets:
 				e.disarmed = maxi(e.disarmed, int(eff.get("turns", 1)))
@@ -1572,7 +1589,17 @@ func _burn_amount(n: int) -> int:
 	return n
 
 
+## Damage effects: the enemies they hit are remembered for this cast (see "then Execute").
+const HIT_OPS := ["strike", "random_hit", "barrage", "pluck", "purge", "purge_all", "siphon"]
+
+
 func _targets(eff: Dictionary, spell: Dictionary, tctx: Dictionary) -> Array:
+	if eff.get("target", "") == "hit":
+		# (a fused spell's rider whose damage went random: it lands on whoever that damage hit)
+		return tctx.get("_hit", []).filter(func(x): return not x.is_dead())
+	if eff.op == "execute" and eff.get("then", false) and tctx.has("_hit"):
+		# "then Execute at X": every enemy this spell's damage hit (all of them for a Barrage or an all-enemy hit)
+		return tctx._hit.filter(func(x): return not x.is_dead())
 	var t: String = eff.get("target", "")
 	var live := alive()
 	if live.is_empty():
@@ -2518,6 +2545,10 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				if alive().size() < MAX_ENEMIES:
 					var sid: String = m.list[i % m.list.size()] if m.has("list") else (m.id if m.has("id") else m.ids[rng.randi() % m.ids.size()])
 					var add := _spawn(sid)
+					if m.get("flank", false) and e in enemies:
+						# (the Wizard's Forge Spirits: one on each side of him, the first on his left)
+						enemies.erase(add)
+						enemies.insert(enemies.find(e) + (0 if i % 2 == 0 else 1), add)
 					add.fresh = true
 					_plan(add)
 					await anim.call({"type": "spawn", "enemy": add})

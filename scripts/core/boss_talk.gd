@@ -6,7 +6,7 @@ extends RefCounted
 ##
 ## A node: {id, say (your line; "*...*" is an action), cost ("F" / "W" / "A" / ""), reply (the boss's line), note
 ## (narration after the reply), show (an artifact id to show, hover to read), effects: [...], options: [nodes]}.
-## Effects: "artifact:<id>" (you get that artifact now), "win_artifact:<id>" (you get it, and it's unlocked for
+## Effects: "artifact:<id>" (you get that artifact when the talk is over), "win_artifact:<id>" (you get it, and it's unlocked for
 ## good, if you win this fight), "engage" (the fight starts).
 ## An option whose whole branch you've explored (in any run) gets a green tick: SaveManager setting "talk_seen".
 

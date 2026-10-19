@@ -3278,7 +3278,8 @@
     }
    ],
    "flavor": "Everything you have, right now. Nothing left for later.",
-   "rarity": "legendary"
+   "rarity": "legendary",
+   "no_fuse": true
   },
   {
    "id": "braums_resolve",

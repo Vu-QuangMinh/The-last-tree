@@ -334,7 +334,7 @@ const INVOKER_SPELLS := [
 	{"id": "inv_sun_strike", "name": "Sun Strike", "pattern": "FFF", "kind": "damage", "desc_fmt": "Deal %d damage to you.", "dmg": [10],
 		"cast": {"kind": "attack", "n": 10}},
 	{"id": "inv_forge_spirit", "name": "Forge Spirit", "pattern": "FFW", "kind": "utility", "desc": "He summons 2 Forge Spirits (3 Essence each, attack for 3).",
-		"cast": {"kind": "summon", "list": ["forge_spirit", "forge_spirit_b"], "n": 2}},
+		"cast": {"kind": "summon", "list": ["forge_spirit", "forge_spirit_b"], "n": 2, "flank": true}},
 	{"id": "inv_chaos_meteor", "name": "Chaos Meteor", "pattern": "FFA", "kind": "damage", "desc_fmt": "Deal %d damage to you, 3 times, and Ignite 3 of your spells.", "dmg": [2],
 		"cast": {"kind": "attack", "n": 2, "hits": 3, "also": {"kind": "ignite_spell", "n": 3, "turns": 1}}},
 	{"id": "inv_deafening_blast", "name": "Deafening Blast", "pattern": "WAF", "kind": "damage", "desc_fmt": "Deal %d damage to you and Disarm you (your next Release does nothing).", "dmg": [5],

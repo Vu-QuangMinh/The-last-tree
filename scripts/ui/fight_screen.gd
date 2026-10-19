@@ -1519,12 +1519,12 @@ func _refund_flight(ev: Dictionary) -> void:
 	for u in uids:
 		_flying[u] = true
 	_refresh_stock()
-	var by_home: Array = range(ev.els.size())
+	var by_home: Array = range(mini(ev.els.size(), uids.size()))  # (never more than there are new Essence)
 	by_home.sort_custom(func(x: int, y: int) -> bool: return float(_bag_target.get(uids[x], Vector2.ZERO).x) < float(_bag_target.get(uids[y], Vector2.ZERO).x))
 	for k in by_home.size():
 		var i: int = by_home[k]
 		var uid: int = uids[i]
-		var slot: int = clampi(int(ev.slots[i]), 0, maxi(0, fight.chant.size() - 1))
+		var slot: int = clampi(int(ev.slots[i]) if i < ev.slots.size() else fight.chant.size() - 1, 0, maxi(0, fight.chant.size() - 1))
 		_flying.erase(uid)
 		var real: ElementIcon = _bag_icons.get(uid)
 		if real != null and is_instance_valid(real):
@@ -2189,6 +2189,24 @@ func _sync_views() -> void:
 	if hm:
 		_hm_stage.set_real(body_out or fight.enemies.any(func(e): return e.id == "handyman" and e.is_dead()))  # (he is down for good: his plain picture must not stand there again after he has shattered)
 		_hm_stage.sync_ghosts(live.map(func(e): return e.id), int(fight.hm.phase), fight)
+	else:
+		_space_enemy_row()
+
+
+## The gap between the enemies: as wide as the stage allows (up to ENEMY_GAP_MAX), so an intent bubble (it sits beside
+## its enemy) never lands on its neighbour's model or cards (the Wizard's floating spells); 20 px when the row is full.
+const ENEMY_GAP_MAX := 150.0
+
+
+func _space_enemy_row() -> void:
+	var views := _enemy_row.get_children().filter(func(c): return c is EnemyView)
+	if views.size() < 2:
+		return
+	var total := 0.0
+	for v in views:
+		total += (v as Control).custom_minimum_size.x
+	var gap := clampf((1840.0 - total) / float(views.size() - 1), 20.0, ENEMY_GAP_MAX)
+	_enemy_row.add_theme_constant_override("separation", int(gap))
 
 
 func _chant_string() -> String:
@@ -5684,6 +5702,7 @@ func _talk() -> void:
 	var said := ""
 	var prefix := ""  # (something he says before his answer: "You are a master of this element as well, I see.")
 	var chosen := [null]
+	var given: Array = []  # artifacts you were given while talking: you get them once the talk is over
 	while true:
 		for c in col.get_children():
 			col.remove_child(c)  # (gone right away, so the box measures only what's new)
@@ -5758,23 +5777,10 @@ func _talk() -> void:
 			Audio.play("elem_pickup", -4.0)
 		BossTalk.mark_seen(o.id)
 		prefix = ""
-		var new_bar := func() -> void:
-			var old_bar := _arts
-			_arts = _make_arts()
-			_arts.position = old_bar.position
-			_top_layer.add_child(_arts)
-			old_bar.queue_free()
-			_fit_hud_frames()
 		for fx in o.get("effects", []):
 			var f := String(fx)
 			if f.begins_with("artifact:"):
-				var aid := f.get_slice(":", 1)
-				run.gain_artifact(aid)
-				Audio.play("artifact_get")
-				Events.toast.emit("Got %s" % Artifacts.view(aid).name, UiTheme.ACCENT)
-				if not test_mode and Artifacts.get_def(aid).get("unlock_by", "") != "" and SaveManager.unlock_artifact(aid):
-					Events.toast.emit("%s unlocked" % Artifacts.view(aid).name, Color(1, 0.85, 0.4))  # (and in the pool for good)
-				new_bar.call()
+				given.append(f.get_slice(":", 1))  # (handed over when the talk is over, not mid-conversation)
 			elif f == "engage":
 				pass
 			else:
@@ -5800,6 +5806,21 @@ func _talk() -> void:
 	gate = old_gate
 	_talking = false
 	_refresh_all()
+	# what you were given while talking: yours now, at the end of the talk
+	for aid in given:
+		run.gain_artifact(aid)
+		Audio.play("artifact_get")
+		Events.toast.emit("Got %s" % Artifacts.view(aid).name, UiTheme.ACCENT)
+		if not test_mode and Artifacts.get_def(aid).get("unlock_by", "") != "" and SaveManager.unlock_artifact(aid):
+			Events.toast.emit("%s unlocked" % Artifacts.view(aid).name, Color(1, 0.85, 0.4))  # (and in the pool for good)
+	if not given.is_empty():
+		var old_bar := _arts
+		_arts = _make_arts()
+		_arts.position = old_bar.position
+		_top_layer.add_child(_arts)
+		old_bar.queue_free()
+		_fit_hud_frames()
+		_refresh_all()
 	_hypnotize_opening()
 
 
