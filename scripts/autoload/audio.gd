@@ -206,13 +206,52 @@ func stop_voice() -> void:
 
 ## Is there a sound called `name` (in the theme's SFX or the global ones, in any sub-folder)?
 func has_sfx(name: String) -> bool:
-	return ResourceLoader.exists(_sfx_path(UiSkin.theme_dir() + "SFX/", name)) or ResourceLoader.exists(_sfx_path(GLOBAL_SFX_DIR, name))
+	return _override.has(name) or ResourceLoader.exists(_sfx_path(UiSkin.theme_dir() + "SFX/", name)) or ResourceLoader.exists(_sfx_path(GLOBAL_SFX_DIR, name))
+
+
+var _override := {}  # sound name -> a stream that plays instead of the file (the SFX Test screen installs a new sample while the game runs)
+
+
+func set_override(name: String, stream: AudioStream) -> void:
+	_override[name] = stream
+
+
+## A .wav (16 bit PCM) read straight from the disk, outside the imported resources (null when it cannot be read).
+func wav_from_file(path: String) -> AudioStreamWAV:
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return null
+	var b := f.get_buffer(f.get_length())
+	var rate := 44100
+	var channels := 1
+	var data := PackedByteArray()
+	var pos := 12
+	while pos + 8 <= b.size():
+		var id := b.slice(pos, pos + 4).get_string_from_ascii()
+		var size := b.decode_u32(pos + 4)
+		if id == "fmt ":
+			channels = b.decode_u16(pos + 10)
+			rate = b.decode_u32(pos + 12)
+		elif id == "data":
+			data = b.slice(pos + 8, mini(b.size(), pos + 8 + size))
+			break
+		pos += 8 + size + (size & 1)
+	if data.is_empty():
+		return null
+	var w := AudioStreamWAV.new()
+	w.format = AudioStreamWAV.FORMAT_16_BITS
+	w.mix_rate = rate
+	w.stereo = channels == 2
+	w.data = data
+	return w
 
 
 ## One-shot SFX. Safe to call for a name that has no file yet (it just stays silent).
 ## from: start this many seconds into the sound (to skip the silence some recordings begin with).
 func play(name: String, volume_db := 0.0, pitch := 1.0, from := 0.0) -> void:
-	var s := _load(_sfx_path(UiSkin.theme_dir() + "SFX/", name), true)  # (the theme's own sound, if it has one)
+	var s: AudioStream = _override.get(name, null)
+	if s == null:
+		s = _load(_sfx_path(UiSkin.theme_dir() + "SFX/", name), true)  # (the theme's own sound, if it has one)
 	if s == null:
 		s = _load(_sfx_path(GLOBAL_SFX_DIR, name))
 	if s == null:

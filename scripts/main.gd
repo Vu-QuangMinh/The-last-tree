@@ -95,6 +95,7 @@ func show_menu() -> void:
 	m.test_mode.connect(open_test_mode)
 	m.settings.connect(open_settings)
 	m.room_test.connect(start_room_test)
+	m.sfx_test.connect(open_sfx_test)
 	_swap(m)
 
 
@@ -292,6 +293,16 @@ func _message(title: String, body: String, buttons: Array, col := Color.WHITE, e
 
 
 # ------------------------------------------------------------------ run flow
+
+## SFX Test (Dev Mode): the samples of each sound, one is chosen as the official one.
+func open_sfx_test() -> void:
+	run = null
+	_room_bg = ""
+	Audio.play_music("menu")
+	var t := SfxTestScreen.new()
+	t.back.connect(show_menu)
+	_swap(t)
+
 
 ## Test mode: the sandbox screen (your picks are kept between fights in _test_state). Nothing here touches the
 ## saved run, unlocks or stats.

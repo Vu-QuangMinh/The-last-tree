@@ -4,10 +4,15 @@ For each spell id: POST /api/generate (4 variants of one prompt), pick the best 
 loudness matched to the game's own sounds, peak limited) and write it to  assets/Puppet/SFX/Spell Card SFX/spell_<id>.wav.  All 4 variants are kept in
 assets/Puppet/SFX/_Candidates/<id>_<n>.wav (a .gdignore keeps Godot from importing them), so another variant can be chosen later without generating again.
 
+Besides the cards there are the sounds of what spells DO (Burn, Shield, Heal, Repaint ...: FX in spell_sfx_prompts.py), shared by many cards: their keys are "fx_<group>"
+(e.g. fx_burn) and they go to assets/Puppet/SFX/Spell SFX/spellfx_<group>.wav; their candidates are _Candidates/fx_<group>_<n>.wav.
 Run with AnySFX's python (it has numpy / soundfile / scipy), with the AnySFX backend running on port 8890 (this script starts it itself when it is not running, and stops
 only the process it started):
   "D:/GitHub Projects/AnySFX/backend/.venv/Scripts/python.exe" tools/make_spell_sfx.py [--redo] [id ...]
-  ... --pick <id> <n>      use candidate n of <id> instead (polished again, nothing generated)
+  ... --pick <id> <n>      use candidate n of <id> instead (nothing generated)
+  ... --prepare            (once, for what was made before) polish every kept candidate into _Candidates/polished/ and write chosen.json from the log
+The SFX Test screen of the game (scripts/ui/sfx_test_screen.gd) plays the polished candidates and makes the clicked one the official sound; it reads and writes
+_Candidates/chosen.json (spell id -> number of the chosen candidate).
 Done spells are skipped (unless --redo). Progress: tools/_spell_sfx_log.txt. Then Godot --headless --editor --quit once, to import the new sounds."""
 import json
 import os
@@ -26,6 +31,7 @@ sys.path.insert(0, HERE)
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
 SFX = os.path.join(ROOT, "assets", "Puppet", "SFX")
 OUT = os.path.join(SFX, "Spell Card SFX")
+OUT_FX = os.path.join(SFX, "Spell SFX")
 CAND = os.path.join(SFX, "_Candidates")
 ANYSFX = r"D:\GitHub Projects\AnySFX"
 BATCHES = os.path.join(ANYSFX, "outputs", "batches")
@@ -33,6 +39,8 @@ URL = "http://127.0.0.1:8890"
 SR = 44100
 NEGATIVE = "music, melody, speech, voice, vocals, singing, noise, static, low quality, silence"
 LOG = os.path.join(HERE, "_spell_sfx_log.txt")
+POLISHED = os.path.join(CAND, "polished")
+CHOSEN = os.path.join(CAND, "chosen.json")
 TARGET_PEAK_DB = -1.0
 
 
@@ -176,6 +184,36 @@ def polish(a):
     return a.astype(np.float32)
 
 
+def official_path(key):
+    """Where the official sound of a card (spell id) or of an effect group ("fx_<group>") is."""
+    if key.startswith("fx_"):
+        return os.path.join(OUT_FX, "spellfx_%s.wav" % key[3:])
+    return os.path.join(OUT, "spell_%s.wav" % key)
+
+
+def prompt_of(key):
+    from spell_sfx_prompts import FX, PROMPTS
+    if key.startswith("fx_"):
+        return FX[key[3:]][1], FX[key[3:]][2]
+    return PROMPTS[key]
+
+
+def set_chosen(sid, n):
+    data = json.load(open(CHOSEN, encoding="utf-8")) if os.path.exists(CHOSEN) else {}
+    data[sid] = n
+    json.dump(data, open(CHOSEN, "w", encoding="utf-8"), indent=1, sort_keys=True)
+
+
+def store_candidates(sid, audios, best):
+    """Keeps the 4 raw variants and their polished copies (what the game plays and installs), writes the official sound and notes which one it is."""
+    os.makedirs(POLISHED, exist_ok=True)
+    for n, a in enumerate(audios):
+        write(os.path.join(CAND, "%s_%d.wav" % (sid, n)), a)
+        write(os.path.join(POLISHED, "%s_%d.wav" % (sid, n)), polish(a))
+    write(official_path(sid), polish(audios[best]))
+    set_chosen(sid, best)
+
+
 def write(path, a):
     sf.write(path, a, SR, subtype="PCM_16")  # (16 bit: half the size of the 32-bit float the engine writes)
 
@@ -183,25 +221,40 @@ def write(path, a):
 # ------------------------------------------------------------------ main
 def main():
     args = [x for x in sys.argv[1:] if not x.startswith("--")]
-    from spell_sfx_prompts import PROMPTS
+    from spell_sfx_prompts import FX, PROMPTS
     os.makedirs(OUT, exist_ok=True)
+    os.makedirs(OUT_FX, exist_ok=True)
     os.makedirs(CAND, exist_ok=True)
     gd = os.path.join(CAND, ".gdignore")
     if not os.path.exists(gd):
         open(gd, "w").close()
+    if "--prepare" in sys.argv:
+        import re
+        picks = {}
+        for line in open(LOG, encoding="utf-8"):
+            m = re.search(r"\] (\S+)\s+pick (\d) of", line)
+            if m:
+                picks[m.group(1)] = int(m.group(2))
+        for sid, best in picks.items():
+            if os.path.exists(os.path.join(CAND, "%s_0.wav" % sid)):
+                store_candidates(sid, [load(os.path.join(CAND, "%s_%d.wav" % (sid, n))) for n in range(4)], best)
+        # (the 4 spells of the first test run have no line of their own in this log: whatever is official stays chosen, found by the closest candidate)
+        log("prepared %d spells" % len(picks))
+        return
     if "--pick" in sys.argv:
         sid, n = args[0], int(args[1])
-        write(os.path.join(OUT, "spell_%s.wav" % sid), polish(load(os.path.join(CAND, "%s_%d.wav" % (sid, n)))))
+        write(official_path(sid), load(os.path.join(POLISHED, "%s_%d.wav" % (sid, n))))
+        set_chosen(sid, n)
         log("%s: candidate %d chosen" % (sid, n))
         return
     redo = "--redo" in sys.argv
-    ids = args or list(PROMPTS)
-    todo = [i for i in ids if redo or not os.path.exists(os.path.join(OUT, "spell_%s.wav" % i))]
+    ids = args or (list(PROMPTS) + ["fx_" + g for g in FX])
+    todo = [i for i in ids if redo or not os.path.exists(official_path(i))]
     log("%d to make (%d already done)" % (len(todo), len(ids) - len(todo)))
     proc = start_backend()
     try:
         for k, sid in enumerate(todo):
-            prompt, dur = PROMPTS[sid]
+            prompt, dur = prompt_of(sid)
             t0 = time.time()
             try:
                 files = generate(prompt, dur)
@@ -211,9 +264,7 @@ def main():
             audios = [load(f) for f in files]
             scores = [score(a) for a in audios]
             best = int(np.argmax(scores))
-            for n, a in enumerate(audios):
-                write(os.path.join(CAND, "%s_%d.wav" % (sid, n)), a)
-            write(os.path.join(OUT, "spell_%s.wav" % sid), polish(audios[best]))
+            store_candidates(sid, audios, best)
             log("[%d/%d] %-24s pick %d of %s  (%.0f s)  %s" % (k + 1, len(todo), sid, best, " ".join("%.2f" % x for x in scores), time.time() - t0, prompt))
     finally:
         if proc is not None:

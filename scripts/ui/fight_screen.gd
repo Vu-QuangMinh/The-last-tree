@@ -177,6 +177,14 @@ const EFFECT_SFX := {
 	"curse": "sfx_weaken_apply",
 	"barrage": "sfx_magic_hit",  # (a volley of arcane bolts: Arcane Barrage, Elemental Fury, ...)
 }
+## op -> the shared sound of what it does (SFX/Spell SFX/spellfx_<group>.wav, made by tools/make_spell_sfx.py, chosen in the SFX Test screen). It plays instead of
+## the EFFECT_SFX sound above when the file exists; the ops that have no sound above get one here.
+const EFFECT_FX := {
+	"strike": "remove_essence", "barrage": "magic_bolt", "burn": "burn", "stoke": "stoke", "weak": "weaken", "vulnerable": "vulnerable", "freeze": "freeze", "daze": "daze",
+	"ethereal": "ethereal", "shield": "shield", "thorns": "thorns", "aegis": "evasion", "heal": "heal", "max_hp": "max_hp", "cleanse": "cleanse", "expose": "repaint",
+	"convert": "transmute", "transmute": "transmute", "draw": "gain_essence", "sacrifice": "lose_hp", "amplify": "amplify", "shatter": "break_armour", "execute": "execute",
+	"purge": "purge", "curse": "curse", "passive": "power", "temp_seal": "seal",
+}
 ## Element letter -> sfx name, comet leaving the chant (a whoosh) and comet landing on an enemy (an impact).
 const LAUNCH_SFX := {"F": "element_fire", "W": "element_water", "A": "element_wind"}
 const IMPACT_SFX := {"F": "fire", "W": "water", "A": "air"}
@@ -5149,7 +5157,12 @@ func _anim_event(ev: Dictionary) -> void:
 			var snd: String = EFFECT_SFX.get(ev.op, "")
 			if snd == "sfx_magic_hit" and not UiSkin.is_puppet():
 				snd = "sfx_damage_hit"  # (the magic hit sound is Puppet art)
-			if snd != "":
+			var fx_group: String = EFFECT_FX.get(ev.op, "")
+			if fx_group == "shield" and ev.get("eff", {}).get("lasting", false):
+				fx_group = "lasting_shield"
+			if fx_group != "" and Audio.has_sfx("spellfx_" + fx_group):
+				Audio.play("spellfx_" + fx_group)
+			elif snd != "":
 				Audio.play(snd)
 			_effect_landed(ev)
 			_sync_views()

@@ -220,3 +220,44 @@ PROMPTS = {
     "trinity_third": ("wind shard sound, light gust, small heal chime", 1.6),
     "trinity": ("three elemental shards combining, fire water and wind, bright magical chord", 3.5),
 }
+
+
+## The sound of what spells DO, shared by many cards (Burn, Shield, Heal, Repaint ...): group id -> (name, prompt, seconds). Made into SFX/Spell SFX/spellfx_<id>.wav;
+## the effect events of a fight play them (FightScreen.EFFECT_FX). The ops each one stands for are in the comment.
+FX = {
+    "remove_essence": ("Remove Essence", "sharp magical hit knocking a glass bead off, short crisp impact", 1.2),  # strike, random_hit
+    "magic_bolt": ("Magic Bolt", "single quick arcane bolt zap, short sharp magical hit", 0.8),  # barrage (each shot of a volley)
+    "snipe": ("Snipe", "precise sniper shot, quick crack and a ping", 1.2),  # pluck
+    "burn": ("Burn", "flame igniting, hissing flare of fire catching", 1.8),  # burn
+    "stoke": ("Double Burn", "flames flaring up doubled, fire swelling whoosh", 1.8),  # stoke
+    "weaken": ("Weaken", "weakening magic, drained descending sigh, soft sagging thud", 1.6),  # weak
+    "vulnerable": ("Vulnerable", "brittle shell cracking, fragile glass crackle", 1.5),  # vulnerable
+    "freeze": ("Freeze", "freezing crackle, ice forming fast, frosty shimmer", 1.8),  # freeze
+    "daze": ("Dazed", "dizzy ringing tone, wobbling woozy swirl", 1.8),  # daze
+    "ethereal": ("Ethereal", "ghostly shimmer, airy phasing whoosh", 1.8),  # ethereal
+    "shield": ("Shield", "magic shield forming, bright ring and a soft thud", 1.5),  # shield
+    "lasting_shield": ("Lasting Shield", "heavy lasting barrier forming, deep solid hum, metal ring", 2.2),  # shield (Lasting)
+    "thorns": ("Thorns", "thorny vines sprouting, sharp prickly rustle", 1.6),  # thorns, thorn_guard
+    "evasion": ("Evasion", "quick dodge swish, light sidestep whoosh", 1.2),  # aegis
+    "heal": ("Heal", "warm healing chime, gentle glowing sparkle", 2.0),  # heal, heal_per_extension
+    "cleanse": ("Cleanse", "bright cleansing sparkle, water rinse, clear chime", 1.8),  # cleanse, unbind
+    "repaint": ("Repaint", "wet paint brush stroke, paint splash onto a bead", 1.5),  # expose, wild_repaint
+    "self_repaint": ("Self-Repaint", "quick soft paint swish over own beads, wet brush", 1.3),  # self_repaint
+    "infuse": ("Infuse", "magical essence poured in, bubbling liquid drop, glow", 1.6),  # infuse, infuse_upcoming
+    "rearrange": ("Rearrange", "wooden beads sliding and swapping, quick clicks", 1.4),  # rearrange, wild_move, move
+    "duplicate": ("Duplicate", "magical copy echo, double chime, shimmering clone", 1.8),  # duplicate, echo_next
+    "conjure": ("Conjure", "spell conjured from nothing, magical whoosh and sparkle, pop", 1.8),  # conjure, summon_spells
+    "steal": ("Steal", "quick snatch, grabbing swish, small pop", 1.2),  # steal
+    "execute": ("Execute", "final executioner blow, heavy slash and thud", 1.8),  # execute
+    "purge": ("Purge Essence", "sweeping vacuum clearing everything, big wipe whoosh", 2.2),  # purge, purge_all, annihilate
+    "transmute": ("Transmute", "alchemical transformation, bubbling fizz, magical change chime", 1.8),  # convert, transmute
+    "gain_essence": ("Gain Essence", "glowing orb appearing, soft magical pickup chime", 1.4),  # draw
+    "lose_hp": ("Lose HP", "dark sacrifice, heartbeat thump, painful gulp", 1.6),  # sacrifice
+    "max_hp": ("Max HP", "vitality swell, rising warm chime", 2.0),  # max_hp
+    "amplify": ("Amplify", "power surge, rising hum, crackling energy", 1.8),  # amplify
+    "break_armour": ("Break Armour", "armour breaking apart, metal crack, plates clattering", 1.8),  # shatter
+    "seal": ("Seal", "magic lock sealing, heavy click, wax stamp press", 1.4),  # temp_seal
+    "power": ("Power", "passive power pulse, low magical throb, soft glow", 1.8),  # passive, each_turn
+    "refund": ("Refund", "coin returned, quick rewind chime", 1.4),  # retain
+    "curse": ("Curse", "dark curse whisper, ominous low drone, evil chime", 2.0),  # curse
+}

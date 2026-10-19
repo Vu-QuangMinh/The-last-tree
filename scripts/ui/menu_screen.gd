@@ -10,6 +10,7 @@ signal how_to
 signal tutorial
 signal test_mode  # the sandbox: pick enemies and spells, fight, come back
 signal settings
+signal sfx_test  # Dev Mode: listen to the samples of each sound and choose the official one
 signal room_test  # Dev Mode
 
 
@@ -170,7 +171,7 @@ func _dev_column() -> void:
 	d.add_theme_constant_override("separation", 8 if puppet else 16)
 	add_child(d)
 	_dev_col = d
-	for pair in [["Test mode", test_mode], ["Room Test", room_test]]:
+	for pair in [["Test mode", test_mode], ["Room Test", room_test], ["SFX Test", sfx_test]]:
 		var sig: Signal = pair[1]
 		var b := UiTheme.button(pair[0], func(): sig.emit(), BTN_FONT if puppet else 26)
 		b.custom_minimum_size = BTN if puppet else Vector2(360, 60)
