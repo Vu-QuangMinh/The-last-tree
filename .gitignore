@@ -17,3 +17,6 @@ assets/Puppet/UI/_Source/*/*.png
 
 # raw full-size ImageSet pictures (Name_YYYYMMDD_HHMMSS.png) that sit beside the cut-out files in the Puppet folders: kept on the artist machine for hand repair, only the cut files are committed
 assets/Puppet/**/*_20[0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]*.png
+
+# every generated variant of the spell card sounds (tools/make_spell_sfx.py keeps all 4 per spell here to choose again: 350 MB)
+assets/Puppet/SFX/_Candidates/

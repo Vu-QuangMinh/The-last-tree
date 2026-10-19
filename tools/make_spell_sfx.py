@@ -177,7 +177,7 @@ def polish(a):
 
 
 def write(path, a):
-    sf.write(path, a, SR, subtype="FLOAT")
+    sf.write(path, a, SR, subtype="PCM_16")  # (16 bit: half the size of the 32-bit float the engine writes)
 
 
 # ------------------------------------------------------------------ main
