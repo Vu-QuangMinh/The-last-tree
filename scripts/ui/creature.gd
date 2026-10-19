@@ -265,6 +265,7 @@ func _process(d: float) -> void:
 		_yin_last = _enemy.yin
 		_yin_rot = move_toward(_yin_rot, _yin_target, d * TAU)
 	bob += d * 2.0
+	_spider_tick(d)
 	if not _rig.is_empty():
 		var folded := _enemy != null and _enemy.knocked
 		_gear_t += d
@@ -309,6 +310,15 @@ func _draw() -> void:
 		_draw_art(blink_on)
 		if not ART_FORMS.has(enemy_id):
 			_draw_yinyang(c, s)  # (two-form art paints its own yin-yang)
+		return
+	if enemy_id == "veiled_eyes":
+		_draw_veiled(c, s, body, blink_on)
+		return
+	if enemy_id.begins_with("spiderling"):
+		_draw_spiderling(c, s * 0.75, body)
+		return
+	if enemy_id == "spider_cocoon":
+		_draw_cocoon(c, s * 0.8)
 		return
 	var eye_y := -s * 0.15
 	match shape:
@@ -801,3 +811,170 @@ func puppet_bounds() -> Rect2:
 		if sym_top < r.position.y:
 			r = Rect2(r.position.x, sym_top, r.size.x, r.end.y - sym_top)
 	return r
+
+
+# ------------------------------------------------------------------ the Veiled Eyes (drawn until it has art)
+
+const VIOLET := Color(0.66, 0.32, 1.0)
+const SILK := Color(0.95, 0.94, 0.9)
+var _veil_drop := 0.0  # 0: the veil is on; 1: it has fallen away (it slides off when phase 2 starts)
+var _hypno := 0.0  # seconds left of the human eyes' bright hypnotizing glow (the fight's opening)
+var _look := Vector2.ZERO  # where the human eyes look, -1..1 (phase 2: they glance around)
+var _look_to := Vector2.ZERO
+var _look_t := 0.0
+
+
+## The fight's opening: the human eyes shine brightly for a moment.
+func hypnotize(sec := 2.2) -> void:
+	_hypno = sec
+
+
+func _spider_tick(d: float) -> void:
+	if enemy_id != "veiled_eyes" or _enemy == null:
+		return
+	if _enemy.phase >= 2:
+		_veil_drop = move_toward(_veil_drop, 1.0, d * 0.7)
+	_hypno = maxf(0.0, _hypno - d)
+	_look_t -= d
+	if _look_t <= 0.0:
+		_look_t = randf_range(0.9, 2.2)  # (every so often they glance somewhere else)
+		_look_to = Vector2(randf_range(-1, 1), randf_range(-0.7, 0.7))
+	_look = _look.lerp(_look_to, minf(1.0, d * 6.0))
+	queue_redraw()
+
+
+## What its eyes say: phase 1 "both" / "left" / "right"; phase 2 how many dots (0..4) are lit.
+func _eyes_cue() -> Variant:
+	if _enemy == null or _enemy.intent.is_empty():
+		return null
+	return _enemy.intent.get("eyes", null)
+
+
+func _draw_veiled(c: Vector2, s: float, body: Color, blink_on: bool) -> void:
+	var phase2 := _enemy != null and _enemy.phase >= 2
+	var top := Vector2(c.x, 0.0)
+	if not phase2:
+		var ball := c + Vector2(0, -s * 0.05)
+		var r := s * 0.95
+		draw_line(top, ball + Vector2(0, -r), SILK, 2.0, true)
+		draw_circle(ball, r * 1.04, Color(0, 0, 0, 0.5))
+		draw_circle(ball, r, body)
+		draw_circle(ball + Vector2(-r * 0.35, -r * 0.4), r * 0.25, Color(1, 1, 1, 0.08))  # (a dull sheen)
+		var cue: Variant = _eyes_cue()
+		var lit_l: bool = _hypno > 0.0 or cue == "both" or cue == "left"
+		var lit_r: bool = _hypno > 0.0 or cue == "both" or cue == "right"
+		for side in [-1, 1]:
+			_human_eye(ball + Vector2(side * r * 0.4, -r * 0.12), r * 0.3, Vector2.ZERO, false, blink_on)
+		_draw_veil(ball, r, 0.0)
+		for side in [-1, 1]:  # a lit eye pierces right through the veil
+			if lit_l if side < 0 else lit_r:
+				_human_eye(ball + Vector2(side * r * 0.4, -r * 0.12), r * 0.3, Vector2.ZERO, true, blink_on)
+		return
+	# phase 2: the spider, hanging head-down on its thread
+	var ab := c + Vector2(0, -s * 0.25)  # its back (the abdomen), where the human eyes are
+	var head := c + Vector2(0, s * 0.55)
+	draw_line(top, ab + Vector2(0, -s * 0.7), SILK, 2.0, true)
+	var leg := Color(body.darkened(0.3), 1.0)
+	for side in [-1, 1]:
+		for k in 4:
+			var root := c + Vector2(side * s * 0.35, -s * 0.15 + k * s * 0.24)
+			var knee := root + Vector2(side * s * (0.7 + 0.08 * k), (-0.6 + k * 0.26) * s)
+			var foot := knee + Vector2(side * s * 0.2, (0.45 + k * 0.05) * s)
+			draw_polyline(PackedVector2Array([root, knee, foot]), Color(0, 0, 0, 0.6), s * 0.16, true)
+			draw_polyline(PackedVector2Array([root, knee, foot]), leg, s * 0.11, true)
+	draw_circle(ab, s * 0.72, Color(0, 0, 0, 0.5))
+	draw_circle(ab, s * 0.68, body)
+	draw_circle(head, s * 0.42, Color(0, 0, 0, 0.5))
+	draw_circle(head, s * 0.38, body.lightened(0.05))
+	for side in [-1, 1]:  # fangs
+		draw_colored_polygon(PackedVector2Array([head + Vector2(side * s * 0.12, s * 0.28), head + Vector2(side * s * 0.2, s * 0.32),
+			head + Vector2(side * s * 0.1, s * 0.58)]), SILK.darkened(0.2))
+	# the human eyes on its back: they look around; before the laser they glow and stare straight at you
+	var cue: Variant = _eyes_cue()
+	var stare: bool = cue != null and typeof(cue) != TYPE_STRING and int(cue) == 0
+	for side in [-1, 1]:
+		var at := ab + Vector2(side * s * 0.3, -s * 0.12)
+		_human_eye(at, s * 0.24, Vector2(0, 0.35) if stare else _look, stare or _hypno > 0.0, blink_on)
+	# the 4 spider-eye dots on its head: as many light up as its count says
+	var n_lit: int = int(cue) if cue != null and typeof(cue) != TYPE_STRING else 0
+	var dots := [Vector2(-0.14, -0.12), Vector2(0.14, -0.12), Vector2(-0.16, 0.1), Vector2(0.16, 0.1)]
+	for k in 4:
+		var p: Vector2 = head + dots[k] * s
+		if k < n_lit:
+			draw_circle(p, s * 0.13, Color(VIOLET, 0.35))
+			draw_circle(p, s * 0.075, Color(1.0, 0.55, 1.0))
+			draw_circle(p, s * 0.035, Color(1, 1, 1))
+		else:
+			draw_circle(p, s * 0.06, Color(0.03, 0.02, 0.04))
+			draw_circle(p + Vector2(-s * 0.015, -s * 0.015), s * 0.015, Color(1, 1, 1, 0.5))
+	if _veil_drop < 1.0:
+		_draw_veil(ab + Vector2(0, -s * 0.2), s * 0.95, _veil_drop)  # (falling away)
+
+
+## A human eye: an almond of white with a violet iris; lit, it glows through anything over it.
+func _human_eye(at: Vector2, w: float, look: Vector2, lit: bool, blink_on: bool) -> void:
+	var pts := PackedVector2Array()
+	for k in 24:
+		var t := k / 23.0 * TAU
+		pts.append(at + Vector2(cos(t) * w, sin(t) * w * 0.48 * (1.0 if sin(t) > 0 else 0.9)))
+	if lit:
+		var pulse := 0.8 + 0.2 * sin(Time.get_ticks_msec() / 1000.0 * 9.0)
+		draw_circle(at, w * 1.9, Color(VIOLET, 0.16 * pulse))
+		draw_circle(at, w * 1.3, Color(VIOLET, 0.28 * pulse))
+	draw_colored_polygon(pts, Color(0.97, 0.95, 0.98) if not blink_on else Color.WHITE)
+	var iris := at + Vector2(look.x * w * 0.35, look.y * w * 0.15)
+	draw_circle(iris, w * 0.36, VIOLET.lightened(0.25) if lit else VIOLET)
+	draw_circle(iris, w * 0.17, Color(0.05, 0.02, 0.08))
+	draw_circle(iris + Vector2(-w * 0.1, -w * 0.1), w * 0.07, Color(1, 1, 1, 0.9))
+	pts.append(pts[0])
+	draw_polyline(pts, Color(0.05, 0.03, 0.06), maxf(1.5, w * 0.1), true)
+
+
+## The thin black veil over its eyes (drop 0: on; up to 1: it slides down and fades away).
+func _draw_veil(at: Vector2, r: float, drop: float) -> void:
+	var a := 0.72 * (1.0 - drop)
+	if a <= 0.01:
+		return
+	var off := Vector2(drop * r * 0.15, drop * r * 2.4)
+	var pts := PackedVector2Array()
+	for k in 13:
+		var t := PI + k / 12.0 * PI  # the top half of the ball
+		pts.append(at + off + Vector2(cos(t), sin(t)) * r * 1.03)
+	for k in 13:  # a wavy hem, under the eyes
+		var u := 1.0 - k / 12.0
+		var x := lerpf(-r * 1.03, r * 1.03, u)
+		pts.append(at + off + Vector2(x, r * (0.18 + 0.07 * sin(u * 18.0 + bob * 0.6))))
+	draw_colored_polygon(pts, Color(0.02, 0.01, 0.03, a))
+
+
+func _draw_spiderling(c: Vector2, s: float, body: Color) -> void:
+	draw_line(Vector2(c.x, 0), c + Vector2(0, -s * 0.5), Color(SILK, 0.8), 1.5, true)
+	var leg := body.darkened(0.3)
+	for side in [-1, 1]:
+		for k in 4:
+			var root := c + Vector2(side * s * 0.25, -s * 0.1 + k * s * 0.13)
+			var knee := root + Vector2(side * s * 0.55, (-0.4 + k * 0.22) * s)
+			var foot := knee + Vector2(side * s * 0.2, (0.45 + k * 0.08) * s)
+			draw_polyline(PackedVector2Array([root, knee, foot]), leg, s * 0.09, true)
+	draw_circle(c, s * 0.48, body)
+	draw_circle(c + Vector2(0, s * 0.5), s * 0.28, body.lightened(0.05))
+	for side in [-1, 1]:
+		draw_circle(c + Vector2(side * s * 0.1, s * 0.48), s * 0.07, Color(1.0, 0.45, 0.9))
+
+
+func _draw_cocoon(c: Vector2, s: float) -> void:
+	var sway := sin(bob * 0.7) * 0.08
+	var at := c + Vector2(0, -s * 0.05)
+	draw_line(Vector2(c.x, 0), at + Vector2(0, -s * 0.9), SILK, 2.0, true)
+	draw_set_transform(at, sway, Vector2.ONE)
+	var pts := PackedVector2Array()
+	for k in 28:
+		var t := k / 27.0 * TAU
+		pts.append(Vector2(cos(t) * s * 0.55, sin(t) * s * 0.9))
+	draw_colored_polygon(pts, SILK)
+	for k in 7:  # silk wound round and round
+		var y := -s * 0.75 + k * s * 0.25
+		var half := s * 0.55 * sqrt(maxf(0.0, 1.0 - pow(y / (s * 0.9), 2)))
+		draw_line(Vector2(-half, y - s * 0.05), Vector2(half, y + s * 0.07), SILK.darkened(0.15), 2.0, true)
+	draw_rect(Rect2(Vector2(-s * 0.2, -s * 0.28), Vector2(s * 0.4, s * 0.56)), Color(0.55, 0.4, 0.75, 0.18))  # (a card, faintly, inside)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

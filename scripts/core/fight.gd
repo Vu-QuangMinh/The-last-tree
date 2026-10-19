@@ -31,7 +31,7 @@ const LENSES := {"flame_lens": "F", "tide_lens": "W", "gale_lens": "A"}
 const REDIRECT_DMG_PER_ELEMENT := 3.0
 ## Moves aimed at you. When an intent is redirected, attacks hit the new target and these fizzle.
 const IGNITE_DAMAGE := 5  # casting an Ignited spell burns you this much (the Ember Sprite)
-const AT_PLAYER := ["disarm", "drain_essence", "invert_spells", "ignite_spell", "silence", "lock", "steal", "confuse", "blind", "bleed", "freeze", "toll", "invert", "hex", "mimic", "frail", "brittle"]
+const AT_PLAYER := ["disarm", "drain_essence", "invert_spells", "ignite_spell", "silence", "lock", "steal", "confuse", "blind", "poison", "freeze", "toll", "invert", "hex", "mimic", "frail", "brittle"]
 
 var rng := RandomNumberGenerator.new()
 var db: SpellDB
@@ -76,6 +76,9 @@ var hammer_hits := {}  # spell id -> Hammer hits taken (3 break it)
 var broken := {}  # spell id -> true: broken (worn out, or smashed by the Hammer), gone for the fight
 var hammered := {}  # spell id -> true: smashed by the Hammer: it leaves the row for the rest of the fight
 var exhausted: Array = []  # spell ids Exhausted this fight: gone for the rest of the run
+const TRINITY_PARTS := ["trinity_first", "trinity_second", "trinity_third"]
+var trinity_cast := {}  # Trinity Fragments cast this turn (base id -> true)
+var trinity_formed := false  # the three became Trinity this fight (the run keeps it: see RunState.finish_fight)
 var stored := {}  # spell id -> true: alive but not cast when you Released; it wakes again on your next Chant
 var turn_ctx := {}  # {entries, amplify, echo, retain, last, cast_any}
 var paint_to := "?"  # Repaint: what the brush paints right now (the painter skips Essence already that)
@@ -164,8 +167,6 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 		_spawn(enemy_ids[i], preset_extra[i] if i < preset_extra.size() else null)
 	if has_artifact("thornbark"):
 		player.passives["thorns"] = int(_an("thornbark"))
-	if has_artifact("venom_gland"):
-		player.passives["poison_bonus"] = int(_an("venom_gland"))
 	if has_artifact("chant_bell"):
 		player.passives["echo_first"] = 1
 	if has_artifact("rain_chalice"):
@@ -214,7 +215,7 @@ func _spawn(id: String, extra = null) -> EnemyState:
 	var d := EnemyDefs.get_def(id)
 	var e := EnemyState.new()
 	e.setup(d, extra if extra is Array else EnemyDefs.extra_for(id, act, depth, rng))
-	e.dmg_bonus = EnemyDefs.attack_bonus(act)
+	e.dmg_bonus = 0 if d.get("no_bonus", false) else EnemyDefs.attack_bonus(act)
 	if d.has("walls"):
 		for side in ["L", "R"]:
 			e.grow_wall(side, _wall_essence(int(d.walls)))
@@ -376,18 +377,17 @@ func _roll_next_draw(upcoming: int) -> void:
 					player.next_draw.append({"el": EMBLEMS[em], "temp": false})
 
 
-## Start of your turn (not the first): bleed, receive the previewed draw, Powers tick.
+## Start of your turn (not the first): Poison bites, receive the previewed draw, Powers tick.
 func begin_player_turn() -> void:
-	if player.bleed > 0:
-		player.take_effect(player.bleed)
-		_log("You bleed for %d." % player.bleed)
-		player.bleed -= 1
-		await anim.call({"type": "bleed_tick"})
+	if player.poison > 0:
+		player.take_effect(player.poison)  # Poison: lose that much HP, then it drops by 1
+		_log("Poison: you lose %d HP." % player.poison)
+		player.poison -= 1
+		await anim.call({"type": "poison_tick"})
 	if has_artifact("mending_moss"):
 		player.heal(_an("mending_moss"))
 	player.thorns_turn = 0
 	player.thorn_guard = false
-	player.poison_retort = 0
 	_hands_back()
 	if has_artifact("iron_bark"):
 		player.lasting += _an("iron_bark")  # Iron Bark: Lasting Shield every turn
@@ -431,7 +431,7 @@ func preview(c: String, raw := true) -> Dictionary:
 					own += 1
 			if own >= e.parts.count(""):
 				dies.append(e)
-		elif n >= e.size() or (e.poison > 0 and e.size() - n <= e.poison):
+		elif n >= e.size():
 			dies.append(e)
 	var spells := {}
 	for s in usable_spells():
@@ -476,7 +476,7 @@ func cast_chant(stock_indices: Array) -> void:
 	charges.clear()
 	player.echo_chamber_on = has_artifact("echo_chamber") and chant.size() <= int(_an("echo_chamber"))
 	if player.echo_chamber_on:
-		_log("Echo Chamber: a short chant. Every spell this turn is cast twice.")
+		_log("Echo Chamber: a short chant. Your first spell this turn is cast twice.")
 	anti_broken.clear()
 	turn_ctx = {"entries": entries, "amplify": 0, "echo": 0, "retain": 0, "last": {}, "cast_any": false}
 	await anim.call({"type": "chant", "chant": c})
@@ -851,9 +851,6 @@ func _strike(c: String) -> Array:
 			removed.append_array(e.remove_right(extra))
 		e.struck_this_turn = true
 		hit.append(e)
-		if player.passive("strike_poison") > 0:
-			e.poison += player.passive("strike_poison") + player.passive("poison_bonus")
-			await _proc("strike_poison")
 		if player.passive("strike_burn") > 0:
 			await _proc("strike_burn")
 			await _burned(1)
@@ -919,6 +916,8 @@ func _fire(spell: Dictionary, ctx: Dictionary, tctx: Dictionary) -> void:
 			echo_from = "power:echo_chamber"
 			await _apply(eff, spell, tctx, ctx)
 			echo_from = ""
+	if player.echo_chamber_on and not spell.has("bottle"):
+		player.echo_chamber_on = false  # (the Echo Chamber echoes only the first spell of the turn)
 	if spell.get("ephemeral", false):
 		# a conjured spell vanishes once cast; the last one of its group merges back into the spell that conjured it
 		loadout = loadout.filter(func(s): return s.id != spell.id)
@@ -941,8 +940,31 @@ func _fire(spell: Dictionary, ctx: Dictionary, tctx: Dictionary) -> void:
 		loadout = loadout.filter(func(s): return s.id != spell.id)
 		_log("%s is Exhausted: gone for the rest of the run." % spell.name)
 		await anim.call({"type": "loadout_changed"})
+	var base_id := String(spell.get("base_id", spell.id))
+	if base_id in TRINITY_PARTS and not trinity_formed and not spell.get("ephemeral", false):
+		trinity_cast[base_id] = true
+		if trinity_cast.size() == TRINITY_PARTS.size():
+			await _form_trinity()
 	ctx.last = spell
 	_cleanup()
+
+
+## The three Trinity Fragments were all cast this turn (any order): they combine into Trinity, in the row where the
+## first of them was. It can't be cast until your next turn; the run keeps it in place of the three.
+func _form_trinity() -> void:
+	trinity_formed = true
+	var parts := loadout.filter(func(s): return String(s.get("base_id", s.id)) in TRINITY_PARTS)
+	var trinity := db.get_spell("trinity").duplicate(true)
+	var at := loadout.size()
+	for s in parts:
+		at = mini(at, loadout.find(s))
+	loadout = loadout.filter(func(s): return not (s in parts))
+	loadout.insert(mini(at, loadout.size()), trinity)
+	spellbook = spellbook.filter(func(s): return not (String(s.get("base_id", s.id)) in TRINITY_PARTS))
+	spellbook.append(trinity)
+	used[trinity.id] = 99  # (asleep for the rest of this turn, even if the chant has its pattern)
+	_log("The three Fragments become Trinity!")
+	await anim.call({"type": "trinity", "parts": parts, "result": trinity})
 
 
 ## Resolves one effect. tctx caches the chosen target for this spell.
@@ -987,9 +1009,6 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 			for e in targets:
 				e.ignite(amount, rng)
 			await _burned(targets.size())
-		"poison":
-			for e in targets:
-				e.poison += eff.n + player.passive("poison_bonus")
 		"stoke":
 			for e in targets:
 				e.ignite(e.burn, rng)
@@ -1262,8 +1281,6 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 		"daze":
 			for e in targets:
 				e.dazed += int(eff.n)
-		"poison_retort":
-			player.poison_retort += int(eff.n)
 		"heal_per_extension":
 			pass  # (resolve_spell heals once the chant's been re-read)
 		"infuse_upcoming":
@@ -1501,7 +1518,7 @@ func _burned(times: int) -> void:
 ## How many kinds of debuff you have right now (Purify's Shield counts them).
 func _debuff_kinds() -> int:
 	var n := 0
-	for on in [player.blind_turns > 0, player.bleed > 0, player.confuse_turns > 0, not player.silenced.is_empty(),
+	for on in [player.blind_turns > 0, player.poison > 0, player.confuse_turns > 0, not player.silenced.is_empty(),
 			player.frail_turns > 0, player.brittle_turns > 0, player.vulnerable > 0, player.stock.any(func(s): return s.frozen or s.hexed),
 			not player.ignited.is_empty()]:
 		if on:
@@ -1610,8 +1627,8 @@ func _targets(eff: Dictionary, spell: Dictionary, tctx: Dictionary) -> Array:
 func _cleanse(what: String) -> void:
 	if what in ["all", "blind"]:
 		player.blind_turns = 0
-	if what in ["all", "bleed"]:
-		player.bleed = 0
+	if what in ["all", "poison"]:
+		player.poison = 0
 	if what in ["all", "confuse"]:
 		player.confuse_turns = 0
 	if what in ["all", "silence"]:
@@ -1744,6 +1761,7 @@ func end_player_turn() -> void:
 	player.echo_chamber_on = false
 	charges.clear()
 	used.clear()
+	trinity_cast.clear()
 	anti_broken.clear()
 	# conjured (Ephemeral) spells last until the end of the turn after they appear: those still here then expire, and
 	# merge back into the spell that conjured them
@@ -1808,6 +1826,8 @@ func _enemy_phase() -> void:
 			return
 		if e.is_dead():
 			continue
+		if e.def.get("inert", false):
+			continue  # (a cocoon: it just hangs there)
 		if e.fresh:
 			# it arrived during your turn: this time it only shows what it's going to do
 			e.fresh = false
@@ -1823,8 +1843,8 @@ func _enemy_phase() -> void:
 				_check_end()
 				continue
 		var ticks: Dictionary = e.begin_turn(rng)
-		if not ticks.burn.is_empty() or not ticks.poison.is_empty():
-			await anim.call({"type": "dot", "enemy": e, "burn": not ticks.burn.is_empty(), "poison": not ticks.poison.is_empty()})
+		if not ticks.burn.is_empty():
+			await anim.call({"type": "dot", "enemy": e, "burn": true})
 		if e.is_dead():
 			_cleanup()
 			continue
@@ -1863,11 +1883,14 @@ func _plan(e: EnemyState) -> void:
 		# a wall is down: she shows it, and regrows it on her next turn (the left one first)
 		e.intent = {"kind": "regrow", "side": "L" if not ("L" in e.parts) else "R"}
 		return
+	if e.has_meta("pending_theft"):
+		e.intent = e.def.moves2[0]  # the Veiled Eyes' veil just fell: the theft comes first, whatever else happened
+		return
 	if not e.opener.is_empty():
 		e.intent = e.opener.pop_front()  # (a move it makes once, before its cycle: the Cubs' first flip)
 		return
 	var moves: Array = e.def.moves
-	if e.is_boss and e.phase == 1 and e.size() <= int(e.def.hp.length() / 2) and not e.has_passive("yinyang_split") and not e.has_passive("hand") and not e.has_passive("handyman"):
+	if e.is_boss and e.phase == 1 and e.size() <= int(e.def.hp.length() / 2) and not e.has_passive("yinyang_split") and not e.has_passive("hand") and not e.has_passive("handyman") and not e.has_passive("veil_falls"):
 		e.phase = 2
 		e.move_index = 0
 		_log("%s grows desperate!" % e.name)
@@ -2070,8 +2093,18 @@ func _invoke(e: EnemyState, m: Dictionary) -> void:
 
 
 ## The Invoker at 0 Essence the first time: he rises again with his second row, and starts chanting.
+## The Veiled Eyes at 0 Essence the first time: the veil falls and the spider underneath fights on, with its second row;
+## its first move is the theft, straight away (this very enemy turn, if it fell during your Release).
 func _rebirths() -> void:
 	for e in enemies:
+		if e.has_passive("veil_falls") and e.phase == 1 and e.is_dead():
+			e.phase = 2
+			e.reset_hp(String(e.def.hp2))
+			e.intent = e.def.moves2[0]
+			e.move_index = 1
+			e.set_meta("pending_theft", true)  # (kept as its intent until the theft has happened: see _plan)
+			_log("The veil falls away. Something underneath unfolds its legs.")
+			anim.call({"type": "veil_falls", "enemy": e})
 		if e.has_passive("invoker_rebirth") and e.phase == 1 and e.is_dead():
 			e.phase = 2
 			e.reset_hp(String(e.def.hp2))
@@ -2162,18 +2195,23 @@ func _hands_back() -> void:
 		anim.call({"type": "revive", "enemy": e})
 
 
-## The Hammer Hand: it picks the spell you've cast most this fight (a tie: one at random) and sticks to it until it
-## breaks. 3 hits break a spell; a spell with Durability loses 1 Durability per hit instead (at 0 it breaks). A smashed
+## The Hammer Hand: it always goes for the spell it can break with the fewest hits (a tie: the one you've cast most
+## this fight, then one at random). 3 hits break a spell; a spell with Durability loses 1 Durability per hit instead
+## (at 0 it breaks). A smashed
 ## spell is removed from the fight: it leaves the row.
 func _hammer(e: EnemyState) -> void:
 	var cands := active_spells()
 	if cands.is_empty():
 		return
-	if hammer_target == "" or broken.has(hammer_target) or not cands.any(func(s): return s.id == hammer_target):
-		var most := 0
-		for s in cands:
-			most = maxi(most, int(cast_counts.get(s.id, 0)))
-		var top := cands.filter(func(s): return int(cast_counts.get(s.id, 0)) == most)
+	var fewest := 999
+	for s in cands:
+		fewest = mini(fewest, _hits_to_break(s))
+	var top := cands.filter(func(s): return _hits_to_break(s) == fewest)
+	var most := 0
+	for s in top:
+		most = maxi(most, int(cast_counts.get(s.id, 0)))
+	top = top.filter(func(s): return int(cast_counts.get(s.id, 0)) == most)
+	if not top.any(func(s): return s.id == hammer_target):  # (a tie with the spell it's already hitting: it keeps at it)
 		hammer_target = top[rng.randi() % top.size()].id
 	var sp := _find_spell(hammer_target)
 	var hits: int = hammer_hits.get(hammer_target, 0) + 1
@@ -2186,6 +2224,13 @@ func _hammer(e: EnemyState) -> void:
 	else:
 		_log("%s hammers %s (%d)." % [e.name, sp.name, hits])
 	await anim.call({"type": "hammer", "enemy": e, "id": hammer_target, "hits": hits, "broken": smashed})
+
+
+## How many more Hammer hits break this spell: its Durability left, or 3 minus the hits it has taken.
+func _hits_to_break(s: Dictionary) -> int:
+	if base_durability(s) > 0 or player.durability.has(s.id):
+		return maxi(1, durability_left(s))
+	return maxi(1, 3 - int(hammer_hits.get(s.id, 0)))
 
 
 ## Talking to a boss: an option that costs an Essence takes one from your bag (the fight gets harder).
@@ -2265,16 +2310,18 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				if player.passive("thorns_on_hit") > 0:
 					player.passives["thorns"] = player.passive("thorns") + player.passive("thorns_on_hit")  # EleMantle
 					await _proc("thorns_on_hit")
-				if player.poison_retort > 0:
-					for x in alive():
-						x.poison += player.poison_retort + player.passive("poison_bonus")  # Venom Coat
 				var dmg: float = floorf((m.n + e.dmg_bonus) * e.damage_mult())
+				if m.get("laser", false) and h == 0:
+					await anim.call({"type": "laser", "enemy": e})  # (its eyes fire: the beam lands with the hit below)
 				var shield_before := player.shield + player.lasting
 				var aegis_before := player.aegis
 				var lost := player.take_attack(dmg)
 				var blocked := player.aegis < aegis_before or player.shield + player.lasting < shield_before
 				_log("%s attacks for %d." % [e.name, lost])
 				await anim.call({"type": "attack", "enemy": e, "n": lost, "blocked": blocked, "part": e.acting_part})
+				if lost > 0.0 and e.has_passive("envenomed"):
+					player.poison += 1  # Envenomed: only a hit that takes HP (Shield stopping it all doesn't count)
+					_log("%s's venom gets in: Poison +1." % e.name)
 				var th := player.thorns_turn + player.passive("thorns")
 				if th > 0 and not player.ethereal:
 					e.remove_right(th)
@@ -2357,7 +2404,6 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 			await _invoke(e, m)
 		"cleanse_self":
 			e.burn = 0
-			e.poison = 0
 			e.weak_turns = 0
 			e.weak25 = false
 			e.freeze_turns = 0
@@ -2425,8 +2471,8 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				player.blind_turns = m.turns
 				blind_masks.clear()
 				await anim.call({"type": "blind"})
-		"bleed":
-			player.bleed += m.n
+		"poison":
+			player.poison += m.n
 		"frail":
 			player.frail_turns = maxi(player.frail_turns, m.turns)
 			_log("%s makes you Frail: you take 25%% more damage." % e.name)
@@ -2464,6 +2510,9 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 			t.power += m.n
 			if t != e:
 				_log("%s empowers %s." % [e.name, t.name])
+		"steal_spell":
+			e.remove_meta("pending_theft")
+			await _steal_spell(e)
 		"summon":
 			for i in m.n:
 				if alive().size() < MAX_ENEMIES:
@@ -2496,6 +2545,41 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 		await _do_move(e, m.also)
 
 
+## The Veiled Eyes' theft: it is pulled up out of sight, drops in front of you, takes one of your spells at random,
+## is pulled up again and comes back with a cocoon (an enemy of its own, 3 Essence) with the spell wrapped inside.
+## Break the cocoon and the spell comes back (where it was in your row); win the fight and it comes back anyway.
+func _steal_spell(e: EnemyState) -> void:
+	var cands := active_spells().filter(func(x): return not x.get("ephemeral", false))
+	if cands.is_empty() or alive().size() >= MAX_ENEMIES:
+		_log("%s reaches for your spells, but finds nothing to take." % e.name)
+		return
+	var sp: Dictionary = cands[rng.randi() % cands.size()]
+	var at := loadout.find(sp)
+	await anim.call({"type": "spider_steal", "enemy": e, "spell": sp})
+	loadout.remove_at(at)
+	charges.erase(sp.id)
+	player.silenced.erase(sp.id)
+	player.locks.erase(sp.id)
+	var cocoon := _spawn("spider_cocoon")
+	cocoon.set_meta("held", {"spell": sp, "at": at})
+	cocoon.fresh = true
+	_plan(cocoon)
+	_log("%s steals %s and wraps it in a cocoon. Break the cocoon to get it back!" % [e.name, sp.name])
+	await anim.call({"type": "loadout_changed"})
+	await anim.call({"type": "spawn", "enemy": cocoon})
+
+
+## A cocoon broken (or the fight won): its spell goes back into your row, where it was.
+func _free_cocooned(c: EnemyState) -> void:
+	if not c.has_meta("held"):
+		return
+	var h: Dictionary = c.get_meta("held")
+	c.remove_meta("held")
+	loadout.insert(clampi(int(h.at), 0, loadout.size()), h.spell)
+	_log("The cocoon tears open: %s is yours again." % h.spell.name)
+	anim.call({"type": "loadout_changed"})
+
+
 # ------------------------------------------------------------------ bookkeeping
 
 ## Tomato Knight: at half its Essence or less it throws its shield away and goes all out (right away: its next
@@ -2525,17 +2609,25 @@ func _cleanup() -> void:
 			continue
 		if e.is_dead() and not e.knocked:
 			enemies.erase(e)
+			_free_cocooned(e)
+			if e.has_passive("veil_falls") and e.phase == 2:
+				# the spider is dead: its spiderlings scatter and its cocoons fall open (your spells come back)
+				for x in enemies.duplicate():
+					if x.id in ["spiderling_a", "spiderling_b", "spider_cocoon"]:
+						_free_cocooned(x)
+						x.elements.clear()
+						x.armor.clear()
+						enemies.erase(x)
+				_log("With the spider dead, its brood scatters.")
 			if e.is_boss:
 				anim.call({"type": "boss_defeat"})
 			if not (e.id in defeated):
 				defeated.append(e.id)
 			if e.has_passive("briar_walls") and not e.elements.is_empty():
 				_log("The walls fall with her.")
-			if not e.elements.is_empty() and e.poisoned_out():
-				_log("%s succumbs to the poison." % e.name)
 			if e.has_passive("last_gasp"):
-				player.bleed += 2
-				_log("%s bursts: you bleed." % e.name)
+				player.poison += 2
+				_log("%s bursts: you are poisoned." % e.name)
 			if e.has_passive("yinyang_split"):
 				# it splits into two cubs: one white, one black, out of step (one inverts first, the other roars)
 				for k in 2:

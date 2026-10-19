@@ -17,7 +17,6 @@ extends Control
 ##   "release"          press Release
 ##   "turn"             watch the Release and the enemy turn play out
 ##   "clear"            clear the chant
-##   "undo"             take back the last spell (Undo button, Ctrl+Z or Backspace)
 ##   "win"              free play until the fight is won
 
 signal done
@@ -62,11 +61,7 @@ const LESSONS := [
 			{"say": "Both spells are awake. Tap Water Wall to cast it.", "focus": "card:water_wall", "then": "cast:water_wall"},
 			{"say": "4 Shield: the blue glass over your HP bar. Shield blocks attack damage until the start of your next turn, then it's gone.", "focus": "player", "then": "tap"},
 			{"say": "Fire Ball needs a target. Tap it: it pulls out an arrow. (Changed your mind? Right-click or press Esc to put a selected spell back, then pick something else.)", "focus": "card:fire_ball", "then": "aiming:fire_ball"},
-			{"say": "Let's make a mistake on purpose, so you can see how to fix one. Tap the Ashling (or press Tab to switch targets and Enter to confirm).", "focus": "enemy:0", "then": "target:0"},
-			{"say": "Fire Ball knocked off the Ashling's last A… but the Ashling was going to die anyway: your chant starts with A, so the Release would have finished it. Now look at the Gale Sprite: A W F still leaves its last A, so it survives and hits you next turn. Fire Ball was wasted!", "focus": "enemies", "then": "tap"},
-			{"say": "Good news: until you press Release, you can take back any spell you cast. Tap Undo (or press Ctrl+Z or Backspace).", "focus": "undo_btn", "then": "undo"},
-			{"say": "Time rewound: the Ashling is back, and so is Fire Ball. Only Release is permanent. Tap Fire Ball again.", "focus": "card:fire_ball", "then": "aiming:fire_ball"},
-			{"say": "This time, tap the Gale Sprite.", "focus": "enemy:1", "then": "target:1"},
+			{"say": "Think before you aim: once a spell is cast, it can't be taken back. The Ashling is going to die anyway (your chant starts with A, so the Release finishes it), but A W F leaves the Gale Sprite's last A. Tap the Gale Sprite (or press Tab to switch targets and Enter to confirm).", "focus": "enemy:1", "then": "target:1"},
 			{"say": "Fire Ball knocked off the Gale Sprite's last A, and now the preview shows two skulls. Your spells are done: Release the chant!", "focus": "chant_btn", "then": "release"},
 			{"say": "Here it goes!", "focus": "none_clear", "then": "win"},
 		],
@@ -101,7 +96,7 @@ const LESSONS := [
 const END_STEPS := [
 	{"say": "Well done! A run is 3 acts. Each act is a map you climb one room at a time: fights, elites, unknown rooms, a merchant, treasure and campfires, with a boss at the top.", "focus": "none", "then": "tap"},
 	{"say": "After each fight you learn a new spell. Before each fight you choose which 5 spells to bring. Bosses give Legendary spells and relics that add Essence every turn.", "focus": "none", "then": "tap"},
-	{"say": "There's more to discover: Burn and Poison, Armour, Targeted spells, spells that change your chant, cursed artifacts… Press F1 any time to open the Wiki: every rule is in there. Good luck, Keeper!", "focus": "none", "then": "tap"},
+	{"say": "There's more to discover: Burn, Armour, Targeted spells, spells that change your chant, cursed artifacts… Press F1 any time to open the Wiki: every rule is in there. Good luck, Keeper!", "focus": "none", "then": "tap"},
 ]
 
 var db: SpellDB
@@ -255,8 +250,6 @@ func _do_step(step: Dictionary) -> void:
 			await _wait_tut(func(k, _d): return k == "turn_start")
 		"clear":
 			await _wait_tut(func(k, d): return k == "chant_changed" and d == "")
-		"undo":
-			await _wait_tut(func(k, _d): return k == "undone")
 		"win":
 			await fs.finished
 
@@ -300,8 +293,6 @@ func _gate(action: String, arg) -> bool:
 			return action == "place" and str(arg) == want
 		"release":
 			return action == "release"
-		"undo":
-			return action == "undo"
 	return false
 
 
@@ -320,7 +311,6 @@ const DO_WHAT := {
 	"placing": "Tap the glowing spell card.",
 	"release": "Tap the Release button (or press E).",
 	"clear": "Tap the Clear button.",
-	"undo": "Tap the Undo button under your chant (or press Ctrl+Z or Backspace).",
 	"turn": "Nothing to do right now: watch the Essence fly and the enemies act.",
 	"win": "",
 }
@@ -389,8 +379,6 @@ func _focus_rect(name: String) -> Rect2:
 			return _rect_of(fs._cast_btn)
 		"clear_btn":
 			return _rect_of(fs._clear_btn)
-		"undo_btn":
-			return _rect_of(fs._undo_btn)
 		"spells":
 			return _rect_of(fs._spell_row).grow_individual(0, 0, 0, 0) if fs._cards.is_empty() else _cards_rect()
 		"card":

@@ -1005,6 +1005,15 @@ func test_fuse_keeps_every_element_first_card_first() -> void:
 	assert_true(not ("water_wall" in run.spellbook) and not ("inferno" in run.spellbook), "both used up")
 	assert_true(prev.id in run.spellbook)
 	assert_true(not run.can_fuse(prev.id), "fused spells can't be fused again")
+	assert_true(not prev.has("durability"), "no Durability on either: none on the fusion")
+
+
+func test_fusing_keeps_the_lowest_durability() -> void:
+	var run := RunState.new()
+	run.setup(db, [], [], 4)
+	run.learn_spell("mist_veil")  # Durability 1
+	var f := run.fuse_preview("water_wall", "mist_veil")
+	assert_eq(int(f.durability), 1, "the lowest Durability carries over")
 
 
 func test_thermal_burst_hits_two_different_enemies() -> void:
@@ -1347,13 +1356,14 @@ func test_shield_of_silence_shields_a_silent_turn() -> void:
 	assert_eq(f.player.shield, 0.0, "(gone again once your next turn starts)")
 
 
-func test_echo_chamber_casts_every_spell_twice_after_a_short_chant() -> void:
+func test_echo_chamber_casts_the_first_spell_twice_after_a_short_chant() -> void:
 	var f := _fight(["ashling"], ["water_wall"], "WWF")
 	f.artifacts = ["echo_chamber"]
 	f.cast_chant(_all(2))  # WW: 2 Essence, short enough
 	assert_true(f.player.echo_chamber_on)
 	f.resolve_spell("water_wall")
 	assert_eq(f.player.shield, 8.0, "Water Wall cast twice: 4 + 4")
+	assert_true(not f.player.echo_chamber_on, "only the first spell: then it's off")
 	var g := _fight(["ashling"], ["water_wall"], "WWFAW")
 	g.artifacts = ["echo_chamber"]
 	g.cast_chant(_all(4))  # 4 Essence: too long
@@ -1593,9 +1603,8 @@ func test_invoker_spell_effects() -> void:
 	f._do_move(e, EnemyDefs.INVOKER_SPELLS[2].cast)  # Ice Wall
 	assert_eq(e.armor.count(true), 3)
 	e.burn = 3
-	e.poison = 2
 	f._do_move(e, EnemyDefs.INVOKER_SPELLS[1].cast)  # Ghost Walk
-	assert_eq([e.burn, e.poison], [0, 0])
+	assert_eq(e.burn, 0)
 	f._do_move(e, EnemyDefs.INVOKER_SPELLS[7].cast)  # Forge Spirit
 	assert_eq(f.alive().size(), 3, "2 Forge Spirits")
 	var spirits := f.alive().filter(func(x): return x.id.begins_with("forge_spirit"))
@@ -1653,19 +1662,32 @@ func test_yin_yang_flips_change_the_pattern() -> void:
 	assert_eq(String(f._invert_spell(e, one).pattern), "F")
 
 
-func test_poison_spells_have_a_cooldown() -> void:
-	assert_true(Fight.base_durability(db.get_spell("miasma")) == 1, "Miasma: Durability 1 instead")
-	assert_true(Fight.base_durability(db.get_spell("taint")) == 1, "Taint: Durability 1 instead")
-	for id in ["brine", "frostbite", "blight_wind", "scalding_rain", "steam_vent", "frozen_tomb", "blight_wind"]:
+func test_no_spell_poisons_enemies() -> void:
+	for sp in db.all_spells:
+		for x in sp.get("effects", []):
+			assert_true(not (String(x.op) in ["poison", "poison_retort"]), sp.id + " still poisons")
+
+
+func test_enemy_poison_hurts_you_then_drops() -> void:
+	var f := _fight(["ashling"], [], "FFF")
+	f.player.hp = 30.0
+	f._do_move(f.enemies[0], {"kind": "poison", "n": 3})
+	assert_eq(f.player.poison, 3)
+	f.begin_player_turn()  # (the start of your next turn)
+	assert_eq([f.player.hp, f.player.poison], [27.0, 2], "lose 3 HP, then Poison 2")
+	f.begin_player_turn()
+	assert_eq([f.player.hp, f.player.poison], [25.0, 1])
+
+
+func test_cooldown_spells() -> void:
+	for id in ["frostbite", "frozen_tomb"]:
 		assert_true(int(db.get_spell(id).get("cooldown", 0)) > 0, id + " has a cooldown")
-	assert_eq(db.get_spell("blight_wind").rarity, "legendary")
 	assert_true(SpellText.card_text(db.get_spell("gust_front")).contains("Cooldown 1"))
 	# Sulfuric Pit (Cooldown 1): cast this turn, not the next, then again
 	var f := _fight(["ashling"], ["gust_front"], "AFAF")
 	_set_hp(f.enemies[0], "WWWWWWWWWW")
 	f.cast_chant(_all(4))
 	f.resolve_spell("gust_front", 0)
-	assert_eq(f.enemies[0].poison, 1)
 	f.end_player_turn()
 	assert_true(f.player.cooldowns.has("gust_front"), "still cooling down on the next turn")
 	assert_true(not f.usable_spells().any(func(sp): return sp.id == "gust_front"))
@@ -2005,7 +2027,7 @@ func test_handyman_talk_and_the_mysterious_hand() -> void:
 
 
 func test_ol_wiz_talk_and_the_magic_box() -> void:
-	assert_eq(EnemyDefs.name_of("invoker"), "Ol' Wiz")
+	assert_eq(EnemyDefs.name_of("invoker"), "Good Ol' Wizard")
 	var tree := BossTalk.tree_for("invoker")
 	var find: Dictionary = tree.options[1].options[1].options[1]
 	assert_eq(find.id, "wiz_find")
@@ -2027,3 +2049,102 @@ func test_ol_wiz_talk_and_the_magic_box() -> void:
 	assert_eq(f.player.box_casts, 6)
 	f.finish_turn()
 	assert_true(f.player.stock.filter(func(x): return x.el == "F").size() >= 2, "Fire Ball's F F came back")
+
+
+func test_trinity_fragments_combine_when_all_cast_in_one_turn() -> void:
+	var f := _fight(["ashling"], ["trinity_first", "trinity_second", "trinity_third"], "FFWWAAFWA")
+	_set_hp(f.enemies[0], "WWWWWWWW")
+	f.picker = func(_s, _en): return 0
+	f.player.hp = 30.0
+	f.cast_chant(_all(9))
+	f.resolve_spell("trinity_third", 0)
+	f.resolve_spell("trinity_first", 0)
+	assert_true(not f.trinity_formed, "two of three: not yet")
+	f.resolve_spell("trinity_second", 0)
+	assert_true(f.trinity_formed, "all three, in any order")
+	assert_eq(f.loadout.map(func(s): return s.id), ["trinity"], "one card in their place")
+	assert_eq([f.player.hp, f.enemies[0].size()], [31.0, 7], "the Fragments still did their own effects")
+	f._recount()
+	assert_true(not f.charges.has("trinity"), "asleep until next turn, even with FWA in the chant")
+	var t := db.get_spell("trinity")
+	assert_eq([t.rarity, t.pattern, t.get("hidden", false)], ["legendary", "FWA", true])
+
+
+func test_trinity_fragments_over_two_turns_dont_combine() -> void:
+	var f := _fight(["ashling"], ["trinity_first", "trinity_second", "trinity_third"], "FFWW")
+	_set_hp(f.enemies[0], "WWWWWWWW")
+	f.picker = func(_s, _en): return 0
+	f.cast_chant(_all(4))
+	f.resolve_spell("trinity_first", 0)
+	f.resolve_spell("trinity_second", 0)
+	f.end_player_turn()
+	assert_true(f.trinity_cast.is_empty(), "a new turn starts the count again")
+	assert_true(not f.trinity_formed)
+
+
+func test_the_run_keeps_trinity() -> void:
+	var run := RunState.new()
+	run.setup(db, [], [], 4)
+	for id in Fight.TRINITY_PARTS:
+		run.learn_spell(id)
+	run.form_trinity()
+	assert_true("trinity" in run.spellbook and not Fight.TRINITY_PARTS.any(func(id): return id in run.spellbook))
+
+
+func test_veiled_eyes_venom_veil_theft_and_brood() -> void:
+	var f := _fight(["veiled_eyes"], ["fire_ball", "water_wall", "tailwind"], "")
+	var e: EnemyState = f.enemies[0]
+	assert_eq(e.size(), 15, "phase 1: exactly 15 Essence (no act bonus)")
+	assert_eq(e.dmg_bonus, 0, "and no act attack bonus")
+	assert_true(e.def.get("hidden_intent", false), "its intent is hidden")
+	assert_eq(String(e.intent.get("eyes", "")), "both", "it opens with the laser: both eyes light up")
+	# Envenomed: a hit that takes HP poisons you; one your Shield stops entirely doesn't
+	f.player.poison = 0
+	f.player.shield = 0
+	f._do_move(e, {"kind": "attack", "n": 1, "hits": 3})
+	assert_eq(f.player.poison, 3, "three hits that took HP: Poison 3")
+	f.player.poison = 0
+	f.player.shield = 10
+	f._do_move(e, {"kind": "attack", "n": 1, "hits": 3})
+	assert_eq(f.player.poison, 0, "all stopped by Shield: no Poison")
+	# the veil falls at 0 Essence: 20 more, and the theft comes first
+	e.elements.clear()
+	e.armor.clear()
+	f._cleanup()
+	assert_true(not f.over, "the fight isn't over")
+	assert_eq(e.phase, 2)
+	assert_eq(e.size(), 20, "phase 2: 20 Essence")
+	assert_eq(e.intent.kind, "steal_spell", "it opens phase 2 with the theft")
+	f._plan(e)
+	assert_eq(e.intent.kind, "steal_spell", "still the theft until it happens")
+	var before := f.loadout.size()
+	f._do_move(e, e.intent)
+	assert_eq(f.loadout.size(), before - 1, "a spell was taken")
+	var cocoon: EnemyState = null
+	for x in f.enemies:
+		if x.id == "spider_cocoon":
+			cocoon = x
+	assert_true(cocoon != null, "a cocoon appeared")
+	assert_eq(cocoon.size(), 3, "3 Essence")
+	var held: Dictionary = cocoon.get_meta("held").spell
+	f._plan(e)
+	assert_eq(e.intent.kind, "poison", "then it counts on: 2 dots, Poison 5")
+	assert_eq(int(e.intent.eyes), 2)
+	cocoon.elements.clear()
+	cocoon.armor.clear()
+	f._cleanup()
+	assert_eq(f.loadout.size(), before, "breaking the cocoon gives the spell back")
+	assert_true(held in f.loadout)
+	# the spiderlings: two of them, 5 Essence each, Envenomed
+	f._do_move(e, {"kind": "summon", "list": ["spiderling_a", "spiderling_b"], "n": 2})
+	var lings := f.enemies.filter(func(x): return x.id.begins_with("spiderling"))
+	assert_eq(lings.size(), 2, "two spiderlings")
+	assert_true(lings.all(func(x): return x.size() == 5 and x.has_passive("envenomed")), "5 Essence each, Envenomed")
+	# another theft, then the spider dies: its brood scatters, the spell comes back, the fight is won
+	f._do_move(e, {"kind": "steal_spell"})
+	assert_eq(f.loadout.size(), before - 1)
+	e.elements.clear()
+	e.armor.clear()
+	f._cleanup()
+	assert_eq(f.loadout.size(), before, "the spell comes back when the spider dies")
+	assert_true(f.over and f.won, "its brood scatters: the fight is won")

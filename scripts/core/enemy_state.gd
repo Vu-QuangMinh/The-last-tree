@@ -3,7 +3,7 @@ extends RefCounted
 ## One enemy in a fight. HP is a row of Essence (left to right); `armor[i]` marks Essence that can't be
 ## removed this turn (it still counts for matching).
 ## Burn N: at the start of its turn it loses its N rightmost Essence, then the Burn is gone.
-## Poison N: grows by 1 every turn; it dies once Poison reaches the Essence it has left. Fire and venom ignore armour.
+## Fire ignores armour.
 
 ## Just summoned (or popped out mid-fight): it shows its intent first and only acts after a whole turn of yours.
 var fresh := false
@@ -34,7 +34,6 @@ var power := 0  # Power: +1 damage per hit for each stack (her song; Empower)
 var wall_step := {"L": 0, "R": 0}  # where each wall is in its attack pattern (a regrown wall starts over)
 var parts: Array = []  # per Essence: "" = the enemy itself, "L" / "R" = a wall it stands behind (Bramble Matron)
 var burn := 0
-var poison := 0
 var weak_turns := 0
 var weak25 := false  # Stillness (permanent)
 var freeze_turns := 0
@@ -72,9 +71,9 @@ func size() -> int:
 	return elements.size()
 
 
-## Dead: no Essence left, or Poison has caught up with the Essence it has left (armour doesn't help).
+## Dead: no Essence left.
 func is_dead() -> bool:
-	if elements.is_empty() or poisoned_out():
+	if elements.is_empty():
 		return true
 	return has_passive("briar_walls") and not ("" in parts)
 
@@ -139,11 +138,6 @@ func grow_wall(side: String, els: Array) -> void:
 			parts.append("R")
 
 
-## Poison as high as (or higher than) the Essence it has left: it dies at once.
-func poisoned_out() -> bool:
-	return poison > 0 and poison >= elements.size()
-
-
 func hp_text() -> String:
 	return "".join(elements)
 
@@ -151,11 +145,6 @@ func hp_text() -> String:
 ## Will this Essence burn away at the start of its next turn? (The rightmost `burn` of them.)
 func is_lit(i: int) -> bool:
 	return i >= 0 and i < elements.size() and i >= elements.size() - burn
-
-
-## (Poison doesn't eat Essence any more: it builds up until it kills, see poisoned_out. No Essence is marked.)
-func is_poisoned(_i: int) -> bool:
-	return false
 
 
 ## Keeps `lit` the same length as `elements` (anything new starts unlit).
@@ -381,24 +370,11 @@ func damage_mult() -> float:
 	return m
 
 
-## Start of the enemy's turn (after Burn): armour from last turn fades, then Poison bites.
+## Start of the enemy's turn (after Burn): armour from last turn fades.
 func begin_turn(_rng: RandomNumberGenerator = null) -> Dictionary:
 	armor.fill(false)
 	ethereal = false
-	var out := {"burn": [], "poison": []}
-	if poison > 0 and not is_dead():
-		poison += 1  # Poison grows by 1 every turn (and kills once it reaches the Essence left)
-		out.poison = ["+1"]
-	return out
-
-
-## (Old Poison: ate its `poison` rightmost Essence, then dropped by 1. Unused now.)
-func poison_bite(_rng: RandomNumberGenerator = null) -> Array:
-	var removed := []
-	for i in mini(poison, elements.size()):
-		removed.push_front(_remove_at(elements.size() - 1))
-	poison = maxi(0, poison - 1)
-	return removed
+	return {"burn": []}
 
 
 ## After its action: timed statuses count down.
@@ -412,7 +388,6 @@ func reset_hp(hp: String) -> void:
 	lit.clear()
 	_fix_lit()
 	burn = 0
-	poison = 0
 	freeze_turns = 0
 
 
@@ -438,8 +413,6 @@ func describe_statuses() -> Array:
 		out.append("Power %d (+%d damage per hit)" % [power, power])
 	if burn > 0:
 		out.append("Burn %d (loses its %d rightmost Essence at the start of its turn, then the Burn is gone)" % [burn, burn])
-	if poison > 0:
-		out.append("Poison %d (+1 every turn; it dies once Poison reaches the Essence it has left)" % poison)
 	if weak_turns > 0:
 		out.append("Weakened %d turn%s (deals 50%% less)" % [weak_turns, "" if weak_turns == 1 else "s"])
 	if weak25:

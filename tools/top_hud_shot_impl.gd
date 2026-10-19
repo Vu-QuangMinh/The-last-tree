@@ -9,7 +9,7 @@ func run(t: SceneTree) -> void:
 	var run := RunState.new()
 	run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
 	var counts: Array = OS.get_environment("HUD_N").split(",") if OS.get_environment("HUD_N") != "" else ["3", "2"]
-	var arts: Array = ["heartwood_seed", "ember_charm", "lucky_acorn", "wind_chime", "second_wind", "blood_pact", "withered_idol", "thornbark", "venom_gland", "chant_bell"]
+	var arts: Array = ["heartwood_seed", "ember_charm", "lucky_acorn", "wind_chime", "second_wind", "blood_pact", "withered_idol", "thornbark", "chant_bell"]
 	for k in int(counts[0]):
 		run.artifacts.append(arts[k])
 	run.player.bottles.clear()
@@ -19,7 +19,7 @@ func run(t: SceneTree) -> void:
 	var nd := int(OS.get_environment("HUD_DEBUFFS")) if OS.get_environment("HUD_DEBUFFS") != "" else 0
 	if nd > 0:
 		var pl = f.player
-		pl.bleed = 3
+		pl.poison = 3
 		if nd > 1: pl.confuse_turns = 2
 		if nd > 2: pl.disarmed_turns = 1
 		if nd > 3: pl.toll = 5

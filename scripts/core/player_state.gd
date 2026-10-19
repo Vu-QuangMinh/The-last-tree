@@ -16,10 +16,9 @@ var max_hp := 50.0
 var shield := 0.0
 var aegis := 0
 var thorns_turn := 0  # thorns that last until your next turn
-var poison_retort := 0  # Venom Coat: each time you're hit until your next turn, Poison this much on all enemies
 var thorn_guard := false  # Bandage: enemy thorns (and burning hides) don't hurt you until your next turn
 var ethereal := false  # this enemy turn: no attack damage
-var bleed := 0
+var poison := 0  # Poison N: at the start of your turn you lose N HP, then it drops by 1
 var confuse_turns := 0
 var blind_turns := 0
 var toll := 0  # Toll: your next chant holds at most this many Essence (0 = no limit)
@@ -46,7 +45,7 @@ var kindling_charged := false
 var box_casts := 0  # Magic Box: spells cast so far (every 6th one's pattern is Refunded)
 var echo_casts := 0  # Echo Shell: spells cast since it last charged
 var echo_charged := false
-var echo_chamber_on := false  # Echo Chamber: this turn's chant was short, so every spell is cast twice
+var echo_chamber_on := false  # Echo Chamber: this turn's chant was short, so the next spell is cast twice (then it's off)
 var bottles: Array = []  # bottle ids you carry (see Bottles)
 var echo_next := false  # Echo Draught: your next spell is cast twice (this fight)
 
@@ -72,7 +71,7 @@ func reset_fight() -> void:
 	aegis = 0
 	thorns_turn = 0
 	ethereal = false
-	bleed = 0
+	poison = 0
 	confuse_turns = 0
 	blind_turns = 0
 	toll = 0
@@ -149,7 +148,7 @@ func take_attack(x: float) -> float:
 	return x
 
 
-## Damage from effects (bleed, hexes, burning hide, blood price): skips shield.
+## Damage from effects (poison, hexes, burning hide, blood price): skips shield.
 func take_effect(x: float) -> float:
 	hp -= x
 	damage_taken += maxf(0.0, x)
@@ -172,8 +171,8 @@ func describe_statuses() -> Array:
 		out.append("Thorns %d" % (thorns_turn + passive("thorns")))
 	if ethereal:
 		out.append("Ethereal (no attack damage this turn)")
-	if bleed > 0:
-		out.append("Bleed %d" % bleed)
+	if poison > 0:
+		out.append("Poison %d" % poison)
 	if confuse_turns > 0:
 		out.append("Confused: your chant is read backwards")
 	if blind_turns > 0:
