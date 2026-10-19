@@ -40,7 +40,7 @@ func _draw() -> void:
 const LOOK := {
 	"attack": ["⚔", RED], "armor": ["🛡", GREY], "mend": ["❤", GREEN], "shuffle": ["🔀", BLUE],
 	"silence": ["🔇", PURPLE], "lock": ["🔒", PURPLE], "steal": ["✋", PURPLE], "confuse": ["🌀", PURPLE],
-	"blind": ["🙈", PURPLE], "bleed": ["🩸", PURPLE], "freeze": ["❄", PURPLE], "ethereal": ["👻", BLUE],
+	"blind": ["🙈", PURPLE], "poison": ["🧪", PURPLE], "freeze": ["❄", PURPLE], "ethereal": ["👻", BLUE],
 	"empower": ["💪", BLUE], "summon": ["👤+", BLUE], "toll": ["⛓", PURPLE], "invert": ["🔄", PURPLE],
 	"hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "grow_thorns": ["🌵", GREEN], "revive": ["🪽", Color(0.85, 0.75, 0.4)], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE],
 }
@@ -68,7 +68,7 @@ const INFO := {
 	"steal": ["Steal", "Takes Essence from your bag and adds it to its own."],
 	"confuse": ["Confuse", "Your next chant is read backwards, and there's no preview."],
 	"blind": ["Blind", "Some enemy Essence show as ?. They still match normally."],
-	"bleed": ["Bleed", "At the start of your turn you lose that much HP, then Bleed goes down by 1."],
+	"poison": ["Poison", "At the start of your turn you lose that much HP, then Poison goes down by 1."],
 	"freeze": ["Freeze", "Freezes some of your Essence: they can't be used next turn."],
 	"ethereal": ["Ethereal", "Your next chant can't touch it."],
 	"empower": ["Empower", "Its attacks deal more damage from now on."],
@@ -90,10 +90,10 @@ static func make(e: EnemyState, move := {}) -> IntentChip:
 	return c
 
 
-## New theme: the painted icon of each intent kind (assets/New/Icon/Intent/intent_<kind>.png). Burn / Poison / Unknown are painted too,
-## but no enemy intent uses them (burn and poison are statuses).
+## New theme: the painted icon of each intent kind (assets/New/Icon/Intent/intent_<kind>.png). Burn / Unknown are painted too,
+## but no enemy intent uses them (burn is a status).
 const ART := {"attack": "intent_attack", "armor": "intent_armor", "freeze": "intent_freeze", "steal": "intent_steal", "summon": "intent_summon",
-	"bleed": "intent_bleed", "blind": "intent_blind", "confuse": "intent_confuse", "mend": "intent_mend", "shuffle": "intent_shuffle",
+	"poison": "intent_poison", "blind": "intent_blind", "confuse": "intent_confuse", "mend": "intent_mend", "shuffle": "intent_shuffle",
 	"silence": "intent_silence", "lock": "intent_lock", "ethereal": "intent_ethereal", "empower": "intent_empower", "toll": "intent_toll",
 	"invert": "intent_invert", "hex": "intent_hex", "mimic": "intent_mimic", "frail": "intent_frail", "hammer_spell": "intent_hammer_spell",
 	"invert_spells": "intent_invert_spells", "invoke": "intent_invoke", "stunned": "intent_stunned", "sing": "intent_sing", "ignite_spell": "intent_ignite_spell", "charge": "intent_charge"}
@@ -247,7 +247,7 @@ func _add_move(row: HBoxContainer, m: Dictionary, e: EnemyState) -> void:
 				row.add_child(digits if digits != null else _word(str(m.n), Color.WHITE))
 			row.add_child(ElementIcon.make("?" if m.el == "random" else m.el, 26))
 			return
-		"bleed", "freeze", "steal", "summon", "invert_spells":
+		"poison", "freeze", "steal", "summon", "invert_spells":
 			num = str(m.n)
 		"grow_thorns":
 			num = "+%d" % int(m.n)

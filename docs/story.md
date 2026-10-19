@@ -144,7 +144,7 @@ On your very first run, the 2nd fight of Act 2. 20 HP, gains 2 Thorns a turn, ne
 > And so I endure, with eternal guilt:
 > My love was the culprit, and my heart was killed.
 
-### Older verses (were Master Penn's; now the Masked's / Malfatti's (?))
+### These verse belongs to King Malfatti which is the final boss
 
 How to help the merchant? (opens once the merchant's quest is started)
 > Help not the merchant, show him no pitty
@@ -154,13 +154,14 @@ How to help the merchant? (opens once the merchant's quest is started)
 > The first sinner, the first punished
 > Look down and learn, ye untarnished.
 
-Where is Knivel? (opens once you have the Magic Box)
+Where is Nila? (Available once you have the magic box unlocked)
 > Theirs was a love story in this tragedy.
 > Comical, isn't it? For love must be free,
 > But their stars were fixed and their fates sworn.
 > Thus, a broken man and his lady forlorn.
 > Foolish, those two, for one thing is certain:
 > There is no happiness behind the curtain.
+
 
 ### The back of the princess cardboard
 > Fairest of the seven seas,
@@ -197,3 +198,31 @@ Played right, a row of 6 squares appears and stays: the colours in the order the
 - Which boss gets the Darklord's speech, and the third Act 2 boss.
 - Where exactly dead Knivel lies (Nila's room in Act 0?).
 - Not yet covered by anyone: the Hands / the Avatar / V; why the Chosen One keeps coming back; how the 4 parts come together; the Skinwalker.
+
+The story that the game tells us: 
+
+Once upon a time, in the fair realm of Happyland, there lived a maiden of unparalleled beauty: Princess Elise. Yet envy is a bitter seed, and in the heart of Nila the Witch, it took root and blossomed into wickedness. Under cover of darkness, she stole the princess away and imprisoned her within the highest tower of the land, where none could reach her.
+
+When word of this cruel deed reached King Malfatti, he made a solemn proclamation throughout the kingdom: whosoever should rescue his beloved daughter would win her hand in marriage and inherit the crown of Happyland.
+
+And so, dear traveler, your tale begins. With courage in your heart and fate as your guide, you set forth to rescue the princess from her accursed tower.
+
+The final boss
+Act -1 has the following bosses:
+
+1) Modified Armadillo
+2) Nila The Witch
+3) Isaac the first Sinner
+4) The hands  
+
+
+Boss spiders: Spider with set of 6 spider eyes and 1 pair of human eyes. Entrance: Two haunting violet eyes pierced through a thin black veil. It looks at you in desperation. Describe a circular ball hanging from a white thred with 2 violet human eyes and a black cloth over them phase 2. Phase 2 the cloth is moved away reveal a spider underneath
+Special status (always on for the spider): Envenomed: Each time it deals damage to you, apply 1 poison
+1) Has a move where its eyes shoot at you with laser: 5 damage
+2) Has a move where it it spit venom at you (3 poison)
+3) Slash at you with 1 damage 4 times. 
+This phase has 10HP.
+After you kill it, the cloth falls away and reveal a spider. Beside the move that it already have, it also have 3 more move
+1) Slash at you with 1 damage 8 times (This is when the 4 pairs of eyes light up.)
+2) Call 5 small spiders each with 2HP. These spider will also have envenomed and their only move is to slash at you 2 times 
+3) Pulled up out of the screen, then reappear right in front of the player and take pick a spell up. Then he will pull up and reappear again on the stage alongside with the cocoon with 3HP would appear. Killing this cocoon will return the spell. (The cocoon is also an enemy, need to space it out)

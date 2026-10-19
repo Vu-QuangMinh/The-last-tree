@@ -21,7 +21,7 @@ func run(t: SceneTree) -> void:
 	p.thorns_turn = 3
 	p.ethereal = true
 	p.echo_next = true
-	p.bleed = 3
+	p.poison = 3
 	p.confuse_turns = 2
 	p.blind_turns = 1
 	p.frail_turns = 2
@@ -32,7 +32,7 @@ func run(t: SceneTree) -> void:
 	p.disarmed_turns = 1
 	p.silenced = {"fire_ball": 1}
 	# 8 Powers (the most a loadout of 8 can hold)
-	for id in ["kindle", "thorn_mantle", "cauterize", "trade_winds", "rising_tide", "ember_crown", "venom_coat", "attunement"]:
+	for id in ["kindle", "thorn_mantle", "cauterize", "trade_winds", "rising_tide", "ember_crown", "attunement"]:
 		p.used_powers[id] = true
 	p.passives["attune_el"] = "W"
 	p.passives["attune"] = 1

@@ -16,6 +16,12 @@ extends RefCounted
 ## greeting: what the boss says right after the opening. A node may also have reply2 / note2: more of the boss's
 ## answer after its narration ("He unfolds the Tweezer Hand." and then he goes on). A boss without a tree has no talk.
 const TREES := {
+	# (no words yet: just its entrance, then Engage! Its name stays "???": nothing ever reveals it before the fight)
+	"veiled_eyes": {
+		"name": "The Veiled Eyes", "who": "veiled_eyes_never",
+		"opening": "Two haunting violet eyes pierce through a thin black veil. They look at you in desperation.",
+		"options": [],
+	},
 	"handyman": {
 		"name": "The Handyman", "who": "",
 		"opening": "A tall figure with an unsettling smile blocked the road.",

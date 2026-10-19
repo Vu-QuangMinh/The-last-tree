@@ -26,7 +26,7 @@ func run(t: SceneTree) -> void:
 	var run := RunState.new()
 	run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
 	run.gain_artifact("ember_charm")
-	for id in ["inferno", "miasma", "kindle"]:
+	for id in ["inferno", "kindle"]:
 		run.learn_spell(id)
 	var sh := ShopScreen.new()
 	run.amber = 130
@@ -196,7 +196,7 @@ func run(t: SceneTree) -> void:
 	big.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 5)
 	for art in ["broken_crown", "tangled_grimoire", "spell_satchel"]:
 		big.gain_artifact(art)
-	for id in ["inferno", "miasma", "kindle", "tide_thief", "sirens_call", "glacier", "whirlpool", "tempest", "firestorm"]:
+	for id in ["inferno", "kindle", "tide_thief", "sirens_call", "glacier", "whirlpool", "tempest", "firestorm"]:
 		big.learn_spell(id)
 	big.move_to(big.choices()[0])
 	var bl := LoadoutScreen.new()

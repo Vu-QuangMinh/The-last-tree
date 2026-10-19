@@ -19,7 +19,6 @@ func run(t: SceneTree) -> void:
 		for e in f.enemies:
 			if step >= 1:
 				e.burn = 2 + step
-				e.poison = 1 if step > 3 else 0
 				e.weak_turns = 1
 		fs._refresh_all()
 		await t.create_timer(0.6).timeout

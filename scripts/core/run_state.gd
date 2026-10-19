@@ -267,6 +267,8 @@ func finish_fight(f: Fight) -> void:
 	for id in f.exhausted:  # Exhausted spells: gone for the rest of the run
 		spellbook.erase(id)
 		loadout.erase(id)
+	if f.trinity_formed:
+		form_trinity()
 	kills += f.defeated.size()
 	for id in f.defeated:
 		if not (id in defeated_ids):
@@ -593,6 +595,25 @@ func fuse_preview(id_a: String, id_b: String, drop := -1) -> Dictionary:
 	s.kind = SpellDB.kind_of(effects)
 	s.targeted = SpellDB._needs_target(effects)
 	return s
+
+
+## The three Trinity Fragments became Trinity in a fight: it takes their place for the rest of the run (in the active
+## row where the first of them was, if any was there).
+func form_trinity() -> void:
+	var at := -1
+	for id in Fight.TRINITY_PARTS:
+		var i := loadout.find(id)
+		if i >= 0 and (at < 0 or i < at):
+			at = i
+		spellbook.erase(id)
+		loadout.erase(id)
+		upgraded.erase(id)
+		seals.erase(id)
+		burdens.erase(id)
+	if not ("trinity" in spellbook):
+		spellbook.append("trinity")
+	if at >= 0 and not ("trinity" in loadout):
+		loadout.insert(mini(at, loadout.size()), "trinity")
 
 
 ## Use up the two spells and add the fused one (into the active row if either of them was there).

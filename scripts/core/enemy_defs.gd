@@ -3,7 +3,7 @@ extends RefCounted
 ## Every enemy: Essence pattern (elements, left to right), moves (cycled in order), passives.
 ## Moves are used in the listed order, looping. Normal enemies mix offence, defence and utility.
 ## Move kinds: attack {n, hits}, armor {pos}, mend {el, n, who: self/ally/all}, shuffle, silence {turns}, frail {turns},
-## lock {len}, steal {n}, confuse, blind {turns}, bleed {n}, freeze {n}, ethereal, empower {n}, brittle {turns},
+## lock {len}, steal {n}, confuse, blind {turns}, poison {n}, freeze {n}, ethereal, empower {n}, brittle {turns},
 ## summon {id, n}, toll, invert, hex, mimic. A move may carry `also` (a second move done the same turn).
 
 const E := {
@@ -62,7 +62,7 @@ const E := {
 	# ---------------- act 2
 	"splitter_ooze": {"name": "Splitter Ooze", "act": 2, "hp": "WWFF", "moves": [{"kind": "attack", "n": 4}, {"kind": "mend", "el": "random", "n": 1, "who": "self"}, {"kind": "frail", "turns": 2}], "passives": ["split"],
 		"flavor": "Hit it wrong and there are two."},
-	"overgrowth_vine": {"name": "Overgrowth Vine", "act": 2, "hp": "FAWA", "moves": [{"kind": "attack", "n": 4}, {"kind": "armor", "pos": 0}, {"kind": "bleed", "n": 2}], "passives": ["overgrowth"],
+	"overgrowth_vine": {"name": "Overgrowth Vine", "act": 2, "hp": "FAWA", "moves": [{"kind": "attack", "n": 4}, {"kind": "armor", "pos": 0}, {"kind": "poison", "n": 2}], "passives": ["overgrowth"],
 		"flavor": "Ignore it and it grows."},
 	"toll_keeper": {"name": "Toll Keeper", "act": 2, "hp": "WWAW", "moves": [{"kind": "toll"}, {"kind": "attack", "n": 5}, {"kind": "armor", "pos": 1}],
 		"flavor": "Every word costs extra."},
@@ -87,7 +87,7 @@ const E := {
 		"flavor": "Everything it does, it does twice."},
 	"mimic_chest": {"name": "Mimic Chest", "act": 3, "hp": "FWAF", "moves": [{"kind": "mimic"}, {"kind": "attack", "n": 6}, {"kind": "armor", "pos": 0}],
 		"flavor": "It becomes your last words, backwards."},
-	"last_gasp_spore": {"name": "Last Gasp Spore", "act": 3, "hp": "AWW", "moves": [{"kind": "attack", "n": 3}, {"kind": "mend", "el": "W", "n": 1, "who": "self"}, {"kind": "bleed", "n": 1}], "passives": ["last_gasp"],
+	"last_gasp_spore": {"name": "Last Gasp Spore", "act": 3, "hp": "AWW", "moves": [{"kind": "attack", "n": 3}, {"kind": "mend", "el": "W", "n": 1, "who": "self"}, {"kind": "poison", "n": 1}], "passives": ["last_gasp"],
 		"flavor": "Bursts when it dies."},
 	"storm_imp": {"name": "Storm Imp", "act": 3, "hp": "AAF", "moves": [{"kind": "attack", "n": 1, "hits": 3}, {"kind": "ethereal"}, {"kind": "empower", "n": 1}],
 		"flavor": "Flickers out of reach."},
@@ -191,9 +191,33 @@ const E := {
 		"moves2": [{"kind": "attack", "n": 5, "hits": 2}, {"kind": "mend", "el": "random", "n": 1, "who": "self"}],
 		"flavor": "He came for the last tree."},
 	"blightmother": {"name": "The Blightmother", "act": 2, "boss": true, "hp": "WAWFWAAWFWAWFA",
-		"moves": [{"kind": "bleed", "n": 2}, {"kind": "summon", "id": "puddle_slime", "n": 1}, {"kind": "attack", "n": 7}],
+		"moves": [{"kind": "poison", "n": 2}, {"kind": "summon", "id": "puddle_slime", "n": 1}, {"kind": "attack", "n": 7}],
 		"moves2": [{"kind": "lock", "len": 3}, {"kind": "mend", "el": "random", "n": 1, "who": "all"}, {"kind": "attack", "n": 5, "hits": 2}],
 		"flavor": "Rot, and everything it feeds."},
+	# The Veiled Eyes (an Act 2 boss). Phase 1: a ball hanging on a white thread, two violet human eyes behind a black
+	# veil. Phase 2 (at 0 Essence the veil falls): the spider underneath, the human eyes on its back and 4 spider-eye
+	# dots. Its intent is never shown (hidden_intent): only its eyes light up, a turn ahead ("eyes" on each move).
+	# Phase 1 cycles laser (both eyes) / venom (right eye) / slashes (left eye); phase 2 counts its dots 0 -> 4 and
+	# starts at 1 (the theft): 1 steal a spell into a cocoon, 2 venom, 3 two spiderlings, 4 eight slashes, 0 the human
+	# eyes' laser (the only time they look straight at you). Envenomed: every hit that takes HP gives you 1 Poison.
+	# Its numbers are exactly these: no act bonus Essence (no_extra) and no act attack bonus (no_bonus).
+	"veiled_eyes": {"name": "The Veiled Eyes", "act": 2, "boss": true, "no_extra": true, "no_bonus": true, "hidden_intent": true,
+		"hp": "FWAAWFFAWWFAAFW", "hp2": "AWFFWAAFWWAFFAWWFAAW", "passives": ["envenomed", "veiled", "veil_falls"], "tint": Color(0.16, 0.12, 0.2),
+		"moves": [{"kind": "attack", "n": 5, "eyes": "both", "laser": true}, {"kind": "poison", "n": 4, "eyes": "right"},
+			{"kind": "attack", "n": 1, "hits": 4, "eyes": "left"}],
+		"moves2": [{"kind": "steal_spell", "eyes": 1}, {"kind": "poison", "n": 5, "eyes": 2},
+			{"kind": "summon", "list": ["spiderling_a", "spiderling_b"], "n": 2, "eyes": 3},
+			{"kind": "attack", "n": 1, "hits": 8, "eyes": 4}, {"kind": "attack", "n": 5, "eyes": 0, "laser": true}],
+		"flavor": "It looks at you in desperation."},
+	# (two spiderlings come at once: their rows share no start, so one chant can't take both down)
+	"spiderling_a": {"name": "Spiderling", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FFAWA", "passives": ["envenomed"],
+		"tint": Color(0.18, 0.14, 0.22), "moves": [{"kind": "attack", "n": 1, "hits": 2}], "flavor": "Small, fast, and very much its mother's."},
+	"spiderling_b": {"name": "Spiderling", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WWFAF", "passives": ["envenomed"],
+		"tint": Color(0.18, 0.14, 0.22), "moves": [{"kind": "attack", "n": 1, "hits": 2}], "flavor": "Small, fast, and very much its mother's."},
+	# the cocoon the Veiled Eyes wraps a stolen spell in: it does nothing; break it and the spell comes back
+	"spider_cocoon": {"name": "Silk Cocoon", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "inert": true, "hidden_intent": true,
+		"hp": "WAF", "passives": ["cocoon"], "tint": Color(0.92, 0.9, 0.86), "moves": [{"kind": "hold"}],
+		"flavor": "Something you need is wrapped up in there."},
 	"last_winter": {"name": "The Last Winter", "act": 3, "boss": true, "hp": "WWAWFAWWAFAWWAFWAW",
 		"moves": [{"kind": "freeze", "n": 2}, {"kind": "attack", "n": 8}, {"kind": "confuse"}, {"kind": "attack", "n": 7}],
 		"moves2": [{"kind": "lock", "len": 3}, {"kind": "summon", "id": "storm_imp", "n": 2}, {"kind": "attack", "n": 6, "hits": 2}],
@@ -205,7 +229,7 @@ const PASSIVE_TEXT := {
 	"split": "Split: struck but not killed, it splits its remaining Essence into two enemies (once).",
 	"overgrowth": "Overgrowth: if not struck during your turn, it grows a random Essence.",
 	"warded": "Warded: only chants of 4 or more Essence can strike it.",
-	"last_gasp": "Last Gasp: gives you Bleed 2 when it dies.",
+	"last_gasp": "Last Gasp: gives you Poison 2 when it dies.",
 	"gem_crown": "Gem Crown: at the end of its turn, armours its first Essence if nothing is armoured (not when it has 1 left).",
 	"echo": "Echo: repeats each action twice.",
 	"briar_walls": "Briar Walls: she hides between two hedge walls (3 Essence each, the two ends of her row). They are part of her: leftmost and rightmost effects hit the ends of her row (a wall while it stands), random effects pick wall Essence first, and Snipe can reach anything. She regrows a fallen wall (she shows it first); with both up she sings (Power +1) or attacks. When her own Essence is gone, the walls fall with her.",
@@ -218,6 +242,10 @@ const PASSIVE_TEXT := {
 	"invoker_rebirth": "Second wind: at 0 Essence he rises again with 10 more, and starts chanting Quas, Wex or Exort, one a turn: each strips that Essence (Water, Air, Fire) from his spells for the rest of the fight.",
 	"yinyang_split": "Split: when it dies, it splits into two Yin Yang Cubs (10 Essence each), one white and one black.",
 	"shield_rage": "Enraged: every time you gain Shield, it gains Power +1 (its attacks deal 1 more damage).",
+	"envenomed": "Envenomed: every hit that takes HP from you also gives you 1 Poison (hits your Shield stops don't).",
+	"veiled": "Hypnotic: its intentions are hidden. Watch its eyes: they light up a turn before it acts, and each light means a different move.",
+	"veil_falls": "The veil falls: at 0 Essence the veil drops and what is underneath fights on, with 20 more Essence and new moves.",
+	"cocoon": "Cocoon: a spell of yours is wrapped inside. Break it and the spell comes back (and it comes back anyway if you win).",
 	"rage_at_half": "Shield Wall: above half its Essence it guards and strikes in turn. At half or below it drops its shield and attacks twice every turn.",
 }
 
@@ -257,7 +285,7 @@ const BIOS := {
 	"warded_golem": "Short chants bounce right off. Say something meaningful: at least four Essence long.",
 	"echo_wraith": "Everything it does, it does twice. Everything it does, it does twice.",
 	"mimic_chest": "Turns into your last words, backwards. Not the treasure you were hoping for.",
-	"last_gasp_spore": "Mostly harmless until it dies. Then it sneezes on you, and you bleed about it.",
+	"last_gasp_spore": "Mostly harmless until it dies. Then it sneezes on you, and you feel sick about it.",
 	"storm_imp": "Three tiny zaps, then it flickers out of reach. Hits harder every time it gets bored.",
 	"storm_rider": "Fast, loud and hard to read. Imagine a thunderstorm that learned to ride a horse.",
 	"lockwarden": "Chains your spells shut and expects you to guess the combination.",
@@ -275,13 +303,17 @@ const BIOS := {
 	"mirror_knight": "Its guard is always exactly where you didn't aim. Rude, but fair.",
 	"void_archon": "Steals the light, then your words, then your patience.",
 	"woodcutter": "He came for the last tree, and he brought friends and an axe. Mostly the axe.",
-	"blightmother": "Rot, and everything it feeds. She bleeds you, locks you, and calls in the slimes for moral support.",
+	"veiled_eyes": "Two haunting violet eyes behind a thin black veil. They look at you in desperation. Don't look back for too long.",
+	"spiderling_a": "Eight legs, one thought: you.",
+	"spiderling_b": "Eight legs, one thought: you.",
+	"spider_cocoon": "Silk, wrapped tight around something that used to be yours.",
+	"blightmother": "Rot, and everything it feeds. She poisons you, locks you, and calls in the slimes for moral support.",
 	"last_winter": "The end of every season. Freezes your hands, scrambles your words, and calls a storm to finish the job.",
 }
 
-const BOSSES := {1: ["yin_yang_beast", "invoker", "handyman"], 2: ["blightmother"], 3: ["last_winter"]}
+const BOSSES := {1: ["yin_yang_beast", "invoker", "handyman"], 2: ["blightmother", "veiled_eyes"], 3: ["last_winter"]}
 ## Passives the fight never tells you about (only the Codex does, once you've beaten it).
-const HIDDEN_PASSIVES := ["yinyang_split", "invoker_rebirth", "armadillo"]
+const HIDDEN_PASSIVES := ["yinyang_split", "invoker_rebirth", "armadillo", "veil_falls"]
 
 ## The Invoker's spells (Dota 2's Invoker: Quas = Water, Wex = Air, Exort = Fire). Each one's "cast" is the move he makes
 ## when it goes off; "desc" is its card text.
@@ -567,8 +599,8 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			s = "Confuse you (your next chant is read backwards)"
 		"blind":
 			s = "Blind you (%d turns)" % m.turns
-		"bleed":
-			s = "Bleed %d" % m.n
+		"poison":
+			s = "Poison you (%d)" % m.n
 		"freeze":
 			s = "Freeze %d of your Essence" % m.n
 		"ethereal":
@@ -576,7 +608,14 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 		"empower":
 			s = "Empower +%d" % m.n + (" one of them, at random" if m.get("who", "self") == "random" else "")
 		"summon":
-			s = "Call %d %s" % [m.n, E[m.id].name] if m.has("id") else "Call %d random small slime%s" % [m.n, "" if m.n == 1 else "s"]
+			if m.has("list"):
+				s = "Call %d %s%s" % [m.n, E[m.list[0]].name, "" if m.n == 1 else "s"]
+			else:
+				s = "Call %d %s" % [m.n, E[m.id].name] if m.has("id") else "Call %d random small slime%s" % [m.n, "" if m.n == 1 else "s"]
+		"steal_spell":
+			s = "Steal one of your spells (at random) and wrap it in a cocoon: break the cocoon to get it back"
+		"hold":
+			s = "Nothing: it just hangs there"
 		"toll":
 			s = "Toll: your next chant holds at most %d Essence" % PlayerState.TOLL_CAP
 		"invert":

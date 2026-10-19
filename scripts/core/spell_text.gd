@@ -20,6 +20,8 @@ static func card_text(s: Dictionary) -> String:
 		lines.append("Durability %d." % int(s.get("durability_left", Fight.base_durability(s))))
 	if s.get("exhaust", false):
 		lines.append("Exhaust.")
+	if s.get("trinity", false):
+		lines.append("Trinity.")
 	return "\n".join(lines)
 
 
@@ -42,6 +44,8 @@ static func describe(s: Dictionary) -> String:
 		text += " Exhaust."
 	if s.get("ephemeral", false):
 		text += " Ephemeral."
+	if s.get("trinity", false):
+		text += " Trinity."
 	return text
 
 
@@ -119,8 +123,6 @@ static func describe_op(e: Dictionary, same := false) -> String:
 			if e.has("per_chant"):
 				return "apply %d Burn to %s for every %d %s in your chant" % [n, t, int(e.get("per", 1)), _el(e.per_chant)]
 			return "apply %d Burn to %s" % [n, t]
-		"poison":
-			return "apply %d Poison to %s" % [n, t]
 		"stoke":
 			return "double %s Burn" % ts
 		"weak":
@@ -211,8 +213,6 @@ static func describe_op(e: Dictionary, same := false) -> String:
 			return "give 1 Durability to a spell (a broken one is mended)"
 		"daze":
 			return "apply %d Dazed to %s" % [n, t]
-		"poison_retort":
-			return "each time you're hit until your next turn, apply %d Poison to all enemies" % n
 		"heal_per_extension":
 			return "heal %d HP for each Extension it causes" % n
 		"infuse_upcoming":
@@ -230,7 +230,7 @@ static func describe_op(e: Dictionary, same := false) -> String:
 		"cleanse":
 			if int(e.get("lasting_per", 0)) > 0:
 				return "Cleanse all your debuffs. Gain %d Lasting Shield for each one cleansed" % int(e.lasting_per)
-			return {"all": "Cleanse all your debuffs", "blind": "Cure Blind", "bleed": "Cure Bleed", "confuse": "Cure Confuse",
+			return {"all": "Cleanse all your debuffs", "blind": "Cure Blind", "poison": "Cure Poison", "confuse": "Cure Confuse",
 				"silence": "Cure Silence", "frozen": "thaw your Frozen Essence", "lock": "break 1 Lock"}[e.get("what", "all")]
 		"copy_last":
 			return "repeat your last spell this turn"
@@ -265,7 +265,6 @@ static func describe_op(e: Dictionary, same := false) -> String:
 		"passive":
 			return {"burn_bonus": "your Burn +%d" % n,
 				"thorns": "gain %d Thorns for the whole fight" % n,
-				"strike_poison": "your Release applies %d Poison to every enemy it hits" % n,
 				"strike_burn": "your Release applies %d Burn to every enemy it hits" % n,
 				"refund_air": "Refund %d Air each chant" % n,
 				"echo_first": "your first spell each turn is cast twice",

@@ -110,21 +110,6 @@
    "rarity": "common"
   },
   {
-   "id": "taint",
-   "name": "Taint",
-   "pattern": "A",
-   "effects": [
-    {
-     "op": "poison",
-     "n": 1,
-     "target": "target"
-    }
-   ],
-   "flavor": "Something foul rides the breeze.",
-   "rarity": "common",
-   "durability": 1
-  },
-  {
    "id": "fire_ball",
    "name": "Fire Ball",
    "pattern": "FF",
@@ -261,21 +246,6 @@
    ],
    "flavor": "Shaves the big ones down to size.",
    "rarity": "common"
-  },
-  {
-   "id": "miasma",
-   "name": "Miasma",
-   "pattern": "AA",
-   "effects": [
-    {
-     "op": "poison",
-     "n": 2,
-     "target": "target"
-    }
-   ],
-   "flavor": "A choking cloud settles on it.",
-   "rarity": "common",
-   "durability": 1
   },
   {
    "id": "gust",
@@ -737,21 +707,6 @@
    "rarity": "rare"
   },
   {
-   "id": "blight_wind",
-   "name": "Blight Wind",
-   "pattern": "WAA",
-   "effects": [
-    {
-     "op": "poison",
-     "n": 1,
-     "target": "all"
-    }
-   ],
-   "flavor": "Sickness on the wind, for everyone.",
-   "rarity": "legendary",
-   "cooldown": 1
-  },
-  {
    "id": "backdraft",
    "name": "Backdraft",
    "pattern": "AFF",
@@ -887,11 +842,6 @@
      "op": "daze",
      "n": 2,
      "target": "target"
-    },
-    {
-     "op": "poison",
-     "n": 1,
-     "target": "target"
     }
    ],
    "flavor": "The flood answers.",
@@ -922,7 +872,7 @@
    "effects": [
     {
      "op": "cleanse",
-     "what": "bleed"
+     "what": "poison"
     },
     {
      "op": "heal",
@@ -1282,20 +1232,6 @@
    "flavor": "A crown that sets something alight each turn.",
    "power": true,
    "rarity": "rare"
-  },
-  {
-   "id": "venom_coat",
-   "name": "Venom Coat",
-   "pattern": "AAF",
-   "effects": [
-    {
-     "op": "poison_retort",
-     "n": 1
-    }
-   ],
-   "flavor": "Every enemy your chant touches is poisoned.",
-   "rarity": "rare",
-   "durability": 1
   },
   {
    "id": "echo_chamber",
@@ -2060,21 +1996,6 @@
    "rarity": "rare"
   },
   {
-   "id": "scalding_rain",
-   "name": "Scalding Rain",
-   "pattern": "FW",
-   "effects": [
-    {
-     "op": "poison",
-     "n": 1,
-     "target": "all"
-    }
-   ],
-   "flavor": "Hot, wet and vile.",
-   "rarity": "rare",
-   "cooldown": 2
-  },
-  {
    "id": "searing_brand",
    "name": "Daub",
    "pattern": "FF",
@@ -2128,21 +2049,6 @@
    ],
    "flavor": "Look up. Then don't.",
    "rarity": "rare"
-  },
-  {
-   "id": "brine",
-   "name": "Brine",
-   "pattern": "WW",
-   "effects": [
-    {
-     "op": "poison",
-     "n": 1,
-     "target": "target"
-    }
-   ],
-   "flavor": "Salt in every wound.",
-   "rarity": "common",
-   "cooldown": 2
   },
   {
    "id": "quiet_wind",
@@ -2280,22 +2186,6 @@
    ],
    "flavor": "Thrown up, coming down somewhere.",
    "rarity": "common"
-  },
-  {
-   "id": "steam_vent",
-   "name": "Steam Vent",
-   "pattern": "WF",
-   "effects": [
-    {
-     "op": "poison",
-     "n": 1,
-     "target": "all"
-    }
-   ],
-   "flavor": "Keep the lid on and it seeps out.",
-   "rarity": "rare",
-   "anti": true,
-   "cooldown": 2
   },
   {
    "id": "fog_of_war",
@@ -2470,11 +2360,6 @@
     {
      "op": "freeze",
      "turns": 1,
-     "target": "target"
-    },
-    {
-     "op": "poison",
-     "n": 1,
      "target": "target"
     }
    ],
@@ -2970,11 +2855,6 @@
     {
      "op": "expose",
      "n": 2
-    },
-    {
-     "op": "poison",
-     "n": 2,
-     "target": "target"
     }
    ],
    "flavor": "Sealed in, picked apart.",
@@ -3137,11 +3017,6 @@
    "pattern": "AFAF",
    "effects": [
     {
-     "op": "poison",
-     "n": 1,
-     "target": "all"
-    },
-    {
      "op": "burn",
      "n": 2,
      "target": "all"
@@ -3295,11 +3170,6 @@
      "op": "burn",
      "n": 3,
      "target": "all"
-    },
-    {
-     "op": "poison",
-     "n": 2,
-     "target": "all"
     }
    ],
    "flavor": "There is nothing after this. Use it well.",
@@ -3424,6 +3294,72 @@
    "flavor": "Stand your ground, and the ground stands with you.",
    "power": true,
    "rarity": "rare"
+  },
+  {
+   "id": "trinity_first",
+   "name": "Trinity - First Fragment",
+   "pattern": "FF",
+   "effects": [
+    {
+     "op": "pluck",
+     "n": 1,
+     "target": "target"
+    }
+   ],
+   "trinity": true,
+   "flavor": "Cast all three Fragments in one turn and they become one.",
+   "rarity": "common"
+  },
+  {
+   "id": "trinity_second",
+   "name": "Trinity - Second Fragment",
+   "pattern": "WW",
+   "effects": [
+    {
+     "op": "shield",
+     "n": 1
+    }
+   ],
+   "trinity": true,
+   "flavor": "Cast all three Fragments in one turn and they become one.",
+   "rarity": "common"
+  },
+  {
+   "id": "trinity_third",
+   "name": "Trinity - Third Fragment",
+   "pattern": "AA",
+   "effects": [
+    {
+     "op": "heal",
+     "n": 1
+    }
+   ],
+   "trinity": true,
+   "flavor": "Cast all three Fragments in one turn and they become one.",
+   "rarity": "common"
+  },
+  {
+   "id": "trinity",
+   "name": "Trinity",
+   "pattern": "FWA",
+   "effects": [
+    {
+     "op": "pluck",
+     "n": 3,
+     "target": "target"
+    },
+    {
+     "op": "shield",
+     "n": 3
+    },
+    {
+     "op": "heal",
+     "n": 3
+    }
+   ],
+   "hidden": true,
+   "flavor": "Three pieces of one thing, whole again.",
+   "rarity": "legendary"
   }
  ]
 }

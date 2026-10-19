@@ -27,12 +27,10 @@ func run(t: SceneTree) -> void:
 	# 1. the fight: statuses, bottles, charged artifacts, Burn / Poison marks, seals on cards
 	var f := run.make_fight(["stone_knight", "ashling", "gale_sprite"])
 	f.enemies[1].burn = 2
-	f.enemies[2].poison = 2
 	f.enemies[0].burn = 1
-	f.enemies[0].poison = 1
 	f.player.shield = 5
 	f.player.aegis = 1
-	f.player.bleed = 2
+	f.player.poison = 2
 	f.player.thorns_turn = 2
 	f.player.kindling_charged = true
 	f.player.echo_casts = 7

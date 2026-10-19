@@ -165,7 +165,7 @@ var _pause_overlay: Control
 ## Ops that already play their own sound elsewhere (strike-via-pluck, move, infuse/duplicate via
 ## "chant_changed", summon_spells via "loadout_changed") are left out so they don't double up.
 const EFFECT_SFX := {
-	"strike": "sfx_damage_hit", "burn": "sfx_burn_apply", "poison": "sfx_poison_apply",
+	"strike": "sfx_damage_hit", "burn": "sfx_burn_apply",
 	"stoke": "sfx_burn_apply", "weak": "sfx_weaken_apply", "freeze": "sfx_freeze_apply",
 	"expose": "sfx_expose_apply", "ethereal": "sfx_ethereal_apply", "shield": "sfx_shield_up",
 	"heal": "sfx_heal", "aegis": "sfx_aegis_up", "thorns": "sfx_shield_up", "draw": "sfx_draw_element",
@@ -3560,7 +3560,7 @@ func _seed_revival() -> void:
 ## The picture names to try for each of your statuses (the first that exists is used; Puppet art first, the older intent pictures as a fallback).
 const STATUS_ART_NAMES := {"shield": ["icon_armor_shield"], "thorns": ["status_thorns"], "silence": ["status_silenced"], "aegis": ["status_aegis"],
 	"echo": ["status_echo_ready"], "overload": ["status_overload"], "ethereal": ["status_ethereal", "intent_ethereal"],
-	"bleed": ["status_bleed", "intent_bleed"], "confuse": ["status_confuse", "intent_confuse"], "blind": ["status_blind", "intent_blind"],
+	"poison": ["status_poison", "intent_poison"], "confuse": ["status_confuse", "intent_confuse"], "blind": ["status_blind", "intent_blind"],
 	"frail": ["status_frail", "intent_frail"], "lock": ["status_toll", "intent_toll"], "vulnerable": ["status_vulnerable"],
 	"brittle": ["status_brittle"], "disarmed": ["status_disarmed"]}
 ## A Power's badge picture, by the theme of its dissolve (fire / water / wind use the Essence balls).
@@ -3596,8 +3596,8 @@ func _status_badges() -> Array:
 		out.append(["👻 Ethereal", Color(0.75, 0.7, 1.0), "ethereal"])
 	if p.echo_next:
 		out.append(["🔔 Echo ready", Color(0.85, 0.6, 1.0), "echo"])
-	if p.bleed > 0:
-		out.append(["🩸 Bleed %d" % p.bleed, Color(1.0, 0.25, 0.3), "bleed"])
+	if p.poison > 0:
+		out.append(["🧪 Poison %d" % p.poison, Color(0.55, 0.9, 0.3), "poison"])
 	if p.confuse_turns > 0:
 		out.append(["🌀 Confused %d" % p.confuse_turns, Color(0.8, 0.4, 1.0), "confuse"])
 	if p.blind_turns > 0:
@@ -3644,7 +3644,7 @@ const POWER_THEMES := {
 }
 const POWER_THEME_OF := {"kindle": "fire", "ember_crown": "fire", "pyromancy": "fire", "avatar_of_flame": "fire",
 	"rising_tide": "water", "trade_winds": "wind", "storm_crown": "wind", "echo_chamber": "wind", "attunement": "wind",
-	"thorn_mantle": "thorn", "venom_coat": "venom", "world_tree_blessing": "leaf",
+	"thorn_mantle": "thorn", "world_tree_blessing": "leaf",
 	"cauterize": "shadow", "stillness": "shadow", "frailty": "shadow", "grimoire": "page"}
 
 
@@ -3736,7 +3736,7 @@ func _power_fly(sp: Dictionary) -> void:
 
 ## status keyword -> art by name (UiSkin looks in assets/New/ ...)
 const STATUS_ART := {"shield": "icon_armor_shield", "thorns": "status_thorns", "silence": "status_silenced", "aegis": "status_aegis", "evasion": "status_aegis",
-	"echo": "status_echo_ready", "overload": "status_overload", "ethereal": "intent_ethereal", "bleed": "intent_bleed",
+	"echo": "status_echo_ready", "overload": "status_overload", "ethereal": "intent_ethereal", "poison": "intent_poison",
 	"confuse": "intent_confuse", "blind": "intent_blind", "frail": "intent_frail", "lock": "intent_toll"}
 
 
@@ -3995,7 +3995,7 @@ func _update_hover_info(d: float, m := Vector2(-1, -1)) -> void:
 				text = chip.get_meta("info", "")
 				anchor = chip.get_global_rect()
 				break
-			# its HP: every status on it explained (Power, Burn, Poison, armour, passives...)
+			# its HP: every status on it explained (Power, Burn, armour, passives...)
 			if v.hp_hovered(m):
 				key = "hp:%d" % v.get_instance_id()
 				text = v.info_text()
@@ -4878,6 +4878,17 @@ func _anim_event(ev: Dictionary) -> void:
 			Audio.play("elem_pickup")
 			_refresh_all()
 			await _wait(0.35)
+		"trinity":
+			# the three Fragments rise into a triangle and whirl into Trinity
+			var froms := []
+			for s in ev.parts:
+				var c := _card_for(s.id)
+				froms.append(c.global_position if c else Vector2(960, 760))
+				if c:
+					c.modulate.a = 0.0
+			await TrinityScene.play(self, ev.parts, froms, ev.result)
+			_build_spells()
+			_refresh_all()
 		"loadout_changed":
 			Audio.play("discovery_unlock")
 			_build_spells()
@@ -4997,8 +5008,6 @@ func _anim_event(ev: Dictionary) -> void:
 				v.hit_flash()
 			if ev.get("burn", false):
 				Audio.play("sfx_burn_tick")
-			if ev.get("poison", false):
-				Audio.play("sfx_poison_tick")
 			_refresh_all()
 			await _wait(0.5)
 		"annihilate":
@@ -5040,6 +5049,16 @@ func _anim_event(ev: Dictionary) -> void:
 			_sync_views()
 			_refresh_all()
 			await _wait(0.2)
+		"laser":
+			await _eye_laser(ev.enemy)
+		"veil_falls":
+			Audio.play("boss_phase_change")
+			_sync_views()
+			_refresh_all()
+			_callout("[i]The veil falls away. Something underneath unfolds its legs.[/i]", Vector2(960, 600), Color(0.75, 0.5, 1.0), 2.4)
+			await _wait(1.4)
+		"spider_steal":
+			await _spider_steal(ev.enemy, ev.spell)
 		"boss_phase":
 			Audio.play("boss_phase_change")
 		"boss_defeat":
@@ -5143,8 +5162,8 @@ func _anim_event(ev: Dictionary) -> void:
 			_shake(5.0)
 			_refresh_all()
 			await _wait(0.25)
-		"bleed_tick":
-			Audio.play("sfx_bleed_tick")
+		"poison_tick":
+			Audio.play("sfx_poison_tick")
 			_refresh_all()
 			await _wait(0.15)
 		_:
@@ -5781,6 +5800,16 @@ func _talk() -> void:
 	gate = old_gate
 	_talking = false
 	_refresh_all()
+	_hypnotize_opening()
+
+
+## The Veiled Eyes: as the fight starts its human eyes shine brightly, and from then on it shows no intent.
+func _hypnotize_opening() -> void:
+	for v in _views.values():
+		if v.enemy.has_passive("veiled") and is_instance_valid(v.creature):
+			v.creature.hypnotize()
+			Audio.play("spell_glow")
+			_callout("[i]The beautiful eyes hypnotize you, concealing their intentions.[/i]", Vector2(960, 600), Color(0.75, 0.5, 1.0), 3.2)
 
 
 ## One thing you can say: its Essence cost on the left, the words, and a green tick at the right end once its whole
@@ -6413,6 +6442,76 @@ func _effect_landed(ev: Dictionary) -> void:
 		_float_text(text, _player_point() + Vector2(-40, -40), Color(0.6, 0.9, 1))
 
 
+## The Veiled Eyes' laser: a violet beam from its eyes to you (the hit lands right after).
+func _eye_laser(e: EnemyState) -> void:
+	var v: EnemyView = _views.get(e)
+	if v == null or not is_instance_valid(v.creature):
+		return
+	var cr := v.creature
+	var from := cr.global_position + Vector2(cr.size.x * 0.5, cr.size.y * (0.5 if e.phase < 2 else 0.4))
+	var to := _player_point()
+	Audio.play("spell_glow")
+	var fx := Vfx.make(_fx, 80)
+	fx.shaker = _shake
+	for k in 2:
+		var gap := Vector2(-22.0 if k == 0 else 22.0, 0)
+		fx.beam(from + gap, to, Color(0.7, 0.35, 1.0), 0.32, 14.0)
+		fx.beam(from + gap, to, Color(1.0, 0.85, 1.0), 0.32, 5.0)
+	fx.glow(from, 90, Color(0.75, 0.4, 1.0, 0.9), 0.35)
+	fx.glow(to, 120, Color(0.75, 0.4, 1.0, 0.8), 0.3, 0.1)
+	fx.shake(6.0, 0.1)
+	await _wait(0.22)
+
+
+## The theft: it is pulled up out of sight, drops on its thread right in front of you, picks one of your spells
+## up, is pulled up again with it, and comes back down to its place (the cocoon appears next).
+func _spider_steal(e: EnemyState, sp: Dictionary) -> void:
+	var v: EnemyView = _views.get(e)
+	var card := _card_for(sp.id)
+	if v == null or not is_instance_valid(v.creature):
+		return
+	var cr := v.creature
+	var home := cr.global_position
+	var z := cr.z_index
+	cr.z_index = 120
+	Audio.play("elem_pickup")
+	var up := cr.create_tween()
+	up.tween_property(cr, "global_position:y", -cr.size.y - 40.0, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	await up.finished
+	var grab := Vector2(960, 700)
+	if card:
+		grab = card.global_position + Vector2(card.size.x * card.scale.x / 2.0, 0)
+	cr.global_position = Vector2(grab.x - cr.size.x / 2.0, -cr.size.y - 40.0)
+	var down := cr.create_tween()
+	down.tween_property(cr, "global_position:y", grab.y - cr.size.y * 0.85, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	await down.finished
+	cr.hit(0.4)  # (it snatches)
+	var ghost: SpellCard = null
+	if card:
+		ghost = SpellCard.make(sp)
+		ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ghost.z_index = 119
+		_fx.add_child(ghost)
+		ghost.global_position = card.global_position
+		ghost.scale = card.scale
+		card.modulate.a = 0.0
+	Audio.play("elem_remove")
+	await _wait(0.2)
+	var off := cr.create_tween().set_parallel()
+	off.tween_property(cr, "global_position:y", -cr.size.y - 300.0, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	if ghost:
+		off.tween_property(ghost, "global_position:y", -400.0, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		off.tween_property(ghost, "rotation", 0.5, 0.45)
+	await off.finished
+	if ghost:
+		ghost.queue_free()
+	cr.global_position = Vector2(home.x, -cr.size.y - 40.0)
+	var back := cr.create_tween()
+	back.tween_property(cr, "global_position:y", home.y, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await back.finished
+	cr.z_index = z
+
+
 ## Where what lands on you lands: the middle of the HP tray (Puppet), the Keeper's panel otherwise.
 func _player_point() -> Vector2:
 	if _puppet_hud:
@@ -6429,8 +6528,6 @@ func _effect_words(e: Dictionary) -> String:
 			return ""
 		"burn":
 			return "Burn %d" % n
-		"poison":
-			return "Poison %d" % n
 		"weak":
 			return "Weakened"
 		"freeze":

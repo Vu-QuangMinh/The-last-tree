@@ -8,16 +8,16 @@ const POWER_EXTRA := 10
 const DEFAULT_SPELLS := ["coup_de_grace", "thorn_dart", "hawks_eye", "ember", "droplet", "whisper", "updraft", "flare",
 	"tide_pool", "cyclone", "fan_the_flames", "steam", "scald", "mist_veil", "rain", "inferno", "glacier",
 	"tempest", "thermal_burst", "whirlpool", "alchemy", "clear_sight", "bandage", "kindle",
-	"spark_word", "spring_word", "breath_word", "firestorm", "storm_front", "leech", "searing_mist", "blight_wind",
+	"spark_word", "spring_word", "breath_word", "firestorm", "storm_front", "leech", "searing_mist",
 	"resonance", "steam_cloud", "tide_thief", "sirens_call", "maelstrom_grasp", "annihilate",
 	"meteor", "tidal_wave", "hurricane", "supernova", "deluge", "grimoire",
 	# the second batch of spells (all but the new Legendaries, which are unlocked with Seedlings)
 	"drizzle", "breeze", "tinder", "spark_shower", "zephyr", "ashfall", "summoning_word",
 	"smolder", "calm_waters", "still_air", "wisp", "splash", "flame_lash", "steam_burst", "quench",
 	"tide_ward", "mist_step", "ember_gust", "rain_song", "whirl", "wild_flame", "wellspring_rite", "gale_call",
-	"twin_comets", "undercurrent", "crosswind", "scalding_rain", "searing_brand", "cold_snap", "hailstone",
-	"cinder_rain", "brine", "quiet_wind", "tidecaller", "ash_and_ember", "water_whip", "thieving_wind",
-	"kindled_heart", "mirror_pool", "updraft_lance", "steam_vent", "fog_of_war", "heat_haze",
+	"twin_comets", "undercurrent", "crosswind", "searing_brand", "cold_snap", "hailstone",
+	"cinder_rain", "quiet_wind", "tidecaller", "ash_and_ember", "water_whip", "thieving_wind",
+	"kindled_heart", "mirror_pool", "updraft_lance", "fog_of_war", "heat_haze",
 	"hush_of_rain", "smoke_signal", "ripplewind", "coal_toss", "spray", "flamecaller", "tsunami_ward", "thunderhead",
 	"lava_flow", "frostbite", "tempest_veil", "ember_storm", "healing_rain", "sky_lance", "witch_fire", "stormcaller",
 	"molten_core", "silent_tide", "windless_night", "cinder_shield", "gale_slash", "corrode", "wind_shear",
@@ -25,7 +25,7 @@ const DEFAULT_SPELLS := ["coup_de_grace", "thorn_dart", "hawks_eye", "ember", "d
 	"ice_lance", "grave_wind", "sunlit_grove", "dustdevil", "glacial_spike", "inferno_lance", "maelstrom_ward",
 	"storm_legion", "phoenix_dive", "tidal_surge", "wildfire_pact", "moon_tide", "cyclone_edge", "ember_chorus",
 	"winter_gale", "forge_fire", "gust_front", "blood_moon", "firestorm_herald", "storm_sermon", "sunfall",
-	"arcane_barrage"]
+	"arcane_barrage", "trinity_first", "trinity_second", "trinity_third"]
 
 var path := "user://save.json"  # tests point this elsewhere
 var data := {}

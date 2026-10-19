@@ -96,7 +96,7 @@ const LESSONS := [
 const END_STEPS := [
 	{"say": "Well done! A run is 3 acts. Each act is a map you climb one room at a time: fights, elites, unknown rooms, a merchant, treasure and campfires, with a boss at the top.", "focus": "none", "then": "tap"},
 	{"say": "After each fight you learn a new spell. Before each fight you choose which 5 spells to bring. Bosses give Legendary spells and relics that add Essence every turn.", "focus": "none", "then": "tap"},
-	{"say": "There's more to discover: Burn and Poison, Armour, Targeted spells, spells that change your chant, cursed artifacts… Press F1 any time to open the Wiki: every rule is in there. Good luck, Keeper!", "focus": "none", "then": "tap"},
+	{"say": "There's more to discover: Burn, Armour, Targeted spells, spells that change your chant, cursed artifacts… Press F1 any time to open the Wiki: every rule is in there. Good luck, Keeper!", "focus": "none", "then": "tap"},
 ]
 
 var db: SpellDB

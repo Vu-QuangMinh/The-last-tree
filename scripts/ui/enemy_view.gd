@@ -270,7 +270,7 @@ func refresh(preview: Dictionary) -> void:
 	var e := enemy
 	for c in _intent_slot.get_children():
 		c.queue_free()
-	if not e.intent.is_empty():
+	if not e.intent.is_empty() and not e.def.get("hidden_intent", false):  # (the Veiled Eyes hide theirs: only its eyes tell)
 		var chip := IntentChip.make(e)
 		# the fight screen shows our own hover panel instead of the built-in tooltip (see FightScreen._update_hover_info)
 		chip.set_meta("info", chip.tooltip_text)
@@ -315,7 +315,6 @@ func refresh(preview: Dictionary) -> void:
 		icon.armored = e.armor[i]
 		icon.wall = e.parts[i] != ""
 		icon.burning = e.is_lit(i)
-		icon.poisoned = e.is_poisoned(i)
 		icon.ghost = ghosts.has(i)
 		if move_mode:
 			icon.highlight = i == move_pick
@@ -647,8 +646,6 @@ func info_text() -> String:
 	if e.burn > 0:
 		var gone := names.slice(e.size() - mini(e.burn, e.size()))
 		lines.append("• Burn %d: at the start of its turn it loses its %d rightmost Essence (%s), then the Burn is gone." % [e.burn, gone.size(), ", ".join(gone)])
-	if e.poison > 0:
-		lines.append("• Poison %d: it grows by 1 every turn. Once it reaches the Essence left (%d), it dies, armour or not." % [e.poison, e.size()])
 	for s in e.describe_statuses():
 		if s.begins_with("Burn") or s.begins_with("Poison"):
 			continue

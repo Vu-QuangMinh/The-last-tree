@@ -57,27 +57,6 @@ func test_burn_takes_the_rightmost_then_is_gone() -> void:
 	assert_eq(e.hp_text(), "FWAWF")
 
 
-func test_poison_grows_each_turn_and_kills_when_it_catches_up() -> void:
-	var e := _enemy("FWAWF")
-	e.armor = [true, true, true, true, true]  # (armour doesn't help)
-	e.poison = 3
-	assert_true(not e.is_dead(), "Poison 3, 5 Essence left")
-	e.begin_turn()
-	assert_eq(e.poison, 4, "+1 every turn")
-	assert_eq(e.hp_text(), "FWAWF", "it doesn't eat Essence")
-	assert_true(not e.is_dead())
-	e.begin_turn()
-	assert_true(e.is_dead(), "Poison 5 = 5 Essence left: it dies")
-
-
-func test_poison_kills_the_moment_the_essence_drops_to_it() -> void:
-	var e := _enemy("FWA")
-	e.poison = 2
-	assert_true(not e.is_dead())
-	e.remove_right(1)  # (a spell or the Release takes one)
-	assert_true(e.is_dead(), "Poison 2, 2 Essence left: dead at once")
-
-
 func test_wildcard_matches_any_element() -> void:
 	assert_eq(Chant.occurrences("F?F", "FWFAFFF"), [0, 4])
 	assert_eq(Chant.occurrences("F?F", "FF"), [])
