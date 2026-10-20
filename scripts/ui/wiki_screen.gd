@@ -135,7 +135,7 @@ static func _content() -> Dictionary:
 		["Armour", "Armoured Essence (grey ring) count for matching but are not removed that turn. F (F) W hit by FFW leaves F."],
 		["Repaint", "Repaint N gives you a paint brush: paint N enemy Essence, on any enemies, into the colour shown, for the rest of the fight. Painted Any {?}, any Essence in your chant hits it."],
 		["Self-Repaint", "Self-Repaint N paints N Essence of this turn's chant into the colour shown. An Any {?} in the chant fits every spot of a spell's pattern and hits any enemy Essence. New matches wake more spells; none go back to sleep."],
-		["Confused and Blind", "Confused: your next chant is read backwards and the preview is off. Blind: some enemy Essence show as {?}; they still match normally."],
+		["Hypnotized and Blind", "Hypnotized: you can't see what any enemy intends to do that turn. Blind: some enemy Essence show as {?}; they still match normally."],
 		["Warded and Ethereal enemies", "Warded enemies can only be struck by chants of 4 or more Essence. An Ethereal enemy can't be touched by the chant that turn."],
 	]
 	c["Spells"] = [

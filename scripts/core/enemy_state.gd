@@ -13,6 +13,7 @@ var id := ""
 var name := ""
 var elements: Array = []  # element letters
 var armor: Array = []  # bool per element
+var painted: Array = []  # bool per element: repainted by a spell (stolen, it becomes an Any Essence in your bag)
 var dmg_bonus := 0
 var lit: Array = []  # (legacy, kept in step with elements; unused)
 var acting_part := ""  # which part is acting right now ("L" / "R": one of her walls; "": the enemy itself)
@@ -61,6 +62,7 @@ func setup(p_def: Dictionary, extra: Array = []) -> void:
 	armor.resize(elements.size())
 	armor.fill(false)
 	lit.clear()
+	painted.clear()
 	_fix_lit()
 	is_boss = def.get("boss", false)
 	is_elite = def.get("elite", false)
@@ -130,11 +132,13 @@ func grow_wall(side: String, els: Array) -> void:
 			elements.push_front(el)
 			armor.push_front(false)
 			lit.push_front(false)
+			painted.push_front(false)
 			parts.push_front("L")
 		else:
 			elements.append(el)
 			armor.append(false)
 			lit.append(false)
+			painted.append(false)
 			parts.append("R")
 
 
@@ -157,6 +161,16 @@ func _fix_lit() -> void:
 		parts.append("")
 	if parts.size() > elements.size():
 		parts.resize(elements.size())
+	while painted.size() < elements.size():
+		painted.append(false)
+	if painted.size() > elements.size():
+		painted.resize(elements.size())
+
+
+## Was this Essence repainted by a spell?
+func is_painted(i: int) -> bool:
+	_fix_lit()
+	return i >= 0 and i < painted.size() and painted[i]
 
 
 ## Burn: add n to its Burn. Returns n.
@@ -190,6 +204,7 @@ func _remove_at(i: int) -> String:
 	elements.remove_at(i)
 	armor.remove_at(i)
 	lit.remove_at(i)
+	painted.remove_at(i)
 	parts.remove_at(i)
 	return el
 
@@ -264,6 +279,7 @@ func rotate_left() -> void:
 		elements.append(elements.pop_front())
 		armor.append(armor.pop_front())
 		lit.append(lit.pop_front())
+		painted.append(painted.pop_front())
 		parts.append(parts.pop_front())
 
 
@@ -273,6 +289,7 @@ func rotate_right() -> void:
 		elements.push_front(elements.pop_back())
 		armor.push_front(armor.pop_back())
 		lit.push_front(lit.pop_back())
+		painted.push_front(painted.pop_back())
 		parts.push_front(parts.pop_back())
 
 
@@ -288,26 +305,34 @@ func swap_first_two() -> void:
 		var l: bool = lit[0]
 		lit[0] = lit[1]
 		lit[1] = l
+		var pn: bool = painted[0]
+		painted[0] = painted[1]
+		painted[1] = pn
 		var pt: String = parts[0]
 		parts[0] = parts[1]
 		parts[1] = pt
 
 
 func convert(pos: String, to: String, from := "") -> void:
+	_fix_lit()
 	match pos:
 		"first":
 			if not elements.is_empty():
 				elements[0] = to
+				painted[0] = false
 		"last":
 			if not elements.is_empty():
 				elements[-1] = to
+				painted[-1] = false
 		"first2":
 			for i in mini(2, elements.size()):
 				elements[i] = to
+				painted[i] = false
 		"all":
 			for i in elements.size():
 				if from == "" or elements[i] == from:
 					elements[i] = to
+					painted[i] = false
 
 
 ## Take the element at `from` and put it so it ends up at index `to` (armour moves with it).
@@ -318,15 +343,18 @@ func move_element(from: int, to: int) -> void:
 	var el: String = elements[from]
 	var ar: bool = armor[from]
 	var li: bool = lit[from]
+	var pn: bool = painted[from]
 	elements.remove_at(from)
 	armor.remove_at(from)
 	lit.remove_at(from)
+	painted.remove_at(from)
 	var pa: String = parts[from]
 	parts.remove_at(from)
 	to = clampi(to, 0, elements.size())
 	elements.insert(to, el)
 	armor.insert(to, ar)
 	lit.insert(to, li)
+	painted.insert(to, pn)
 	parts.insert(to, pa)
 
 
@@ -335,6 +363,7 @@ func insert_front(el: String) -> void:
 	elements.push_front(el)
 	armor.push_front(false)
 	lit.push_front(false)
+	painted.push_front(false)
 	parts.push_front("")
 
 
@@ -346,6 +375,7 @@ func append(el: String, is_mend := true) -> bool:
 	elements.append(el)
 	armor.append(false)
 	lit.append(false)
+	painted.append(false)
 	parts.append("")
 	return true
 
@@ -386,6 +416,7 @@ func reset_hp(hp: String) -> void:
 	armor.resize(elements.size())
 	armor.fill(false)
 	lit.clear()
+	painted.clear()
 	_fix_lit()
 	burn = 0
 	freeze_turns = 0

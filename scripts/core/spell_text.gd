@@ -21,11 +21,9 @@ static func card_text(s: Dictionary) -> String:
 	if int(s.get("cooldown", 0)) > 0:
 		lines.append("Cooldown %d." % s.cooldown)
 	if Fight.base_durability(s) > 0 or s.has("durability_left"):
-		lines.append("Durability %d." % int(s.get("durability_left", Fight.base_durability(s))))
+		lines.append(_durability(s))
 	if s.get("exhaust", false):
 		lines.append("Exhaust.")
-	if s.get("trinity", false):
-		lines.append("Trinity.")
 	return "\n".join(lines)
 
 
@@ -43,14 +41,21 @@ static func describe(s: Dictionary) -> String:
 	elif s.get("power", false):
 		text = "Power: " + text + " Lasts the whole fight."
 	elif Fight.base_durability(s) > 0:
-		text += " Durability %d." % int(s.get("durability_left", Fight.base_durability(s)))
+		text += " " + _durability(s)
 	if s.get("exhaust", false):
 		text += " Exhaust."
 	if s.get("ephemeral", false):
 		text += " Ephemeral."
-	if s.get("trinity", false):
-		text += " Trinity."
 	return text
+
+
+## "Durability 3." on a card outside a fight; in a fight, what's left of it: "Durability 2/3.", "Durability 0/3 (broken)."
+static func _durability(s: Dictionary) -> String:
+	if not s.has("durability_left"):
+		return "Durability %d." % Fight.base_durability(s)
+	var left := int(s.durability_left)
+	var most := maxi(int(s.get("durability_max", Fight.base_durability(s))), left)
+	return "Durability %d/%d%s." % [left, most, " (broken)" if left <= 0 else ""]
 
 
 static func sentence(e: Dictionary, same := false) -> String:
@@ -413,7 +418,7 @@ static func describe_op(e: Dictionary, same := false) -> String:
 		"cleanse":
 			if int(e.get("lasting_per", 0)) > 0:
 				return "Cleanse all your debuffs. Gain %d Lasting Shield for each one" % int(e.lasting_per)
-			return {"all": "Cleanse all your debuffs", "blind": "Cure Blind", "poison": "Cure Poison", "confuse": "Cure Confuse",
+			return {"all": "Cleanse all your debuffs", "blind": "Cure Blind", "poison": "Cure Poison", "confuse": "Cure Hypnotize",
 				"silence": "Cure Silence", "frozen": "thaw your Frozen Essence", "lock": "break 1 Lock"}[e.get("what", "all")]
 		"copy_last":
 			return "repeat your last spell this turn"

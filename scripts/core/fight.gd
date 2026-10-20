@@ -184,9 +184,11 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 			for i in e.size():
 				if not e.armor[i]:
 					free.append(i)
-			var el: String = e.pluck(free[rng.randi() % free.size()])
+			var at: int = free[rng.randi() % free.size()]
+			var painted: bool = e.is_painted(at)
+			var el: String = e.pluck(at)
 			if el != "":
-				player.add_element(el if el != "?" else _random_element())
+				player.add_element("?" if painted else (el if el != "?" else _random_element()))  # (repainted: an Any Essence)
 				_log("The Mysterious Hand steals a %s from %s." % [Elements.NAMES.get(el, "Essence"), e.name])
 	player.dmg_taken_mult = 1.25 if has_artifact("glass_heart") else 1.0
 	var start_n := PlayerState.START_ELEMENTS + (int(_an("wind_chime")) if has_artifact("wind_chime") else 0)
@@ -352,29 +354,34 @@ func _roll_next_draw(upcoming: int) -> void:
 			player.next_draw.append({"el": ch, "temp": false})
 		return
 	var n := PlayerState.BASE_DRAW - player.overload + player.passive("draw_bonus")
+	var extra := {}  # artifact id -> how many more random Essence it gives (they go to the tray, from that artifact)
 	if has_artifact("second_wind") and player.hp < player.max_hp / 2.0:
-		n += int(_an("second_wind"))
+		extra["second_wind"] = int(_an("second_wind"))
 	if has_artifact("heartwood_seed"):
-		n += 1
+		extra["heartwood_seed"] = 1
 	if has_artifact("blood_pact"):
-		n += 1
+		extra["blood_pact"] = 1
 	if has_artifact("withered_idol"):
-		n += 2
+		extra["withered_idol"] = 2
 	if has_artifact("lucky_acorn") and rng.randf() < _an("lucky_acorn"):
-		n += 1
+		extra["lucky_acorn"] = 1
 	player.overload = 0
 	for i in maxi(0, n):
 		player.next_draw.append({"el": _draw_element(), "temp": false})
+	for id in extra:
+		for i in int(extra[id]):
+			player.next_draw.append({"el": _draw_element(), "temp": false, "from": id})
 	for i in player.passive("attune"):  # Attunement: 1 more of the Essence you picked, every turn
 		player.next_draw.append({"el": player.passives.get("attune_el", "F"), "temp": false})
 	for h in HEARTS:
 		if has_artifact(h):
-			player.next_draw.append({"el": HEARTS[h], "temp": false})
+			player.next_draw.append({"el": HEARTS[h], "temp": false, "from": h})
 	if upcoming == 3:
 		for em in EMBLEMS:
 			if has_artifact(em):
 				for i in int(_an(em)):
-					player.next_draw.append({"el": EMBLEMS[em], "temp": false})
+					player.next_draw.append({"el": EMBLEMS[em], "temp": false, "from": em})
+	anim.call({"type": "next_rolled", "turn": upcoming})  # (the screen shows what the artifacts gave: into the tray)
 
 
 ## Start of your turn (not the first): Poison bites, receive the previewed draw, Powers tick.
@@ -405,10 +412,8 @@ func begin_player_turn() -> void:
 # ------------------------------------------------------------------ preview
 
 ## What the Release would do with this chant: {removed: {enemy: matched}, dies: [enemy], spells: {id: n}}.
-## raw: the chant as built from your stock (Confuse reverses it); pass raw = false for an already spoken chant.
+## raw: the chant as built from your stock; pass raw = false for an already spoken chant.
 func preview(c: String, raw := true) -> Dictionary:
-	if raw and player.confuse_turns > 0:
-		c = c.reverse()
 	var removed := {}
 	var dies := []
 	var extra: int = (1 if has_artifact("glass_heart") else 0) + turn_ctx.get("amplify", 0)
@@ -465,9 +470,6 @@ func cast_chant(stock_indices: Array) -> void:
 		if e.hexed:
 			player.take_effect(2.0)
 			_log("The hex burns you for 2.")
-	if player.confuse_turns > 0:
-		c = c.reverse()
-		_log("Confused: your chant is read backwards (%s)." % c)
 	chant.clear()
 	for ch in c:
 		chant.append(ch)
@@ -664,6 +666,14 @@ func durability_left(spell: Dictionary) -> int:
 	if base <= 0:
 		return -1
 	return int(player.durability.get(spell.id, base + player.passive("durability_bonus")))
+
+
+## A spell's full Durability this fight (with the Handyman's bonus; 1 for a spell Desperate Measure gave Durability to).
+func durability_max(spell: Dictionary) -> int:
+	var base := base_durability(spell)
+	if base <= 0:
+		return 1 if player.durability.has(spell.id) else -1
+	return base + player.passive("durability_bonus")
 
 
 ## One point of Durability off (a cast, or a Hammer hit). Returns true if that broke it.
@@ -891,6 +901,7 @@ func _split(e: EnemyState) -> void:
 	e.elements = e.elements.slice(0, half)
 	e.armor = e.armor.slice(0, half)
 	e.lit = e.lit.slice(0, half)
+	e.painted = e.painted.slice(0, half)
 	e.def.split_done = true
 	enemies.insert(enemies.find(e) + 1, twin)
 	twin.fresh = true
@@ -1051,6 +1062,8 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 					continue
 				var was: String = e.elements[got[1]]
 				e.elements[got[1]] = to
+				e.is_painted(got[1])  # (makes sure the flags line up)
+				e.painted[got[1]] = true
 				_log("%s repaints %s's %s: it's %s now." % [spell.name, e.name, Elements.NAMES.get(was, "Essence"), "an Any Essence" if to == "?" else Elements.NAMES[to]])
 				await anim.call({"type": "paint", "enemy": e, "index": got[1], "was": was, "to": to})
 		"wild_move":
@@ -1094,6 +1107,8 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 					if not e.is_dead() and i < e.size() and e.elements[i] != to:
 						var was: String = e.elements[i]
 						e.elements[i] = to
+						e.is_painted(i)
+						e.painted[i] = true
 						_log("%s repaints %s's %s: it's %s now." % [spell.name, e.name, Elements.NAMES.get(was, "Essence"), "an Any Essence" if to == "?" else Elements.NAMES[to]])
 						await anim.call({"type": "paint", "enemy": e, "index": i, "was": was, "to": to})
 				else:
@@ -1433,17 +1448,20 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 						if e.is_dead() or not e.armor.has(false):
 							break
 						var idx: int = await picker.call(spell, e)
+						var painted: bool = e.is_painted(idx)
 						var el: String = e.pluck(idx)
 						if el != "":
-							taken.append(el)
+							taken.append("?" if painted else el)  # (a repainted Essence comes to you as an Any Essence)
 				else:
 					for i in eff.n:  # (only that kind: you choose which)
 						var idx: int = await _pick_of(spell, e, eff.el)
 						if idx < 0:
 							break
-						taken.append(e.pluck(idx))
+						var painted: bool = e.is_painted(idx)
+						var el: String = e.pluck(idx)
+						taken.append("?" if painted else el)
 				for el in taken:
-					var got: String = el if el != "?" else _random_element()  # a stolen Any Essence settles on one element
+					var got: String = el  # (a stolen Any Essence stays Any: it fits every element in your chant)
 					if eff.get("when", "now") == "next":
 						player.next_draw.append({"el": got, "temp": true})  # Soul Siphon: Conjured next turn
 					else:
@@ -2140,10 +2158,10 @@ func _rebirths() -> void:
 			e.set_meta("say_first", ["Very well, mortal.", "I have not been pushed this far in a while.", "Let me show you the pinnacle of Wizardry."])
 
 
-## The Handyman: in every phase each hand has 2 lives. At 0 Essence a hand goes down: with a life left it lies there
+## The Handyman: in phases 1 and 2 each hand has 2 lives. At 0 Essence a hand goes down: with a life left it lies there
 ## a turn and gets back up (the angel wings and an hourglass); out of lives it stays down. Once every hand is out of
-## lives, two new hands join and the fallen ones get back up too, for the next phase. In his last stand, once every
-## hand is out of lives, they go limp for good and he shows himself.
+## lives, two new hands join and the fallen ones get back up too, for the next phase. His last stand: all six hands
+## rise at once (the fallen four with them, no rest), 1 life each; once they're all down, he shows himself.
 const HAND_DOWN := 2  # a fallen hand gets back up at the start of your turn after next (a turn's rest)
 
 
@@ -2166,13 +2184,22 @@ func _handyman_step() -> void:
 			_log("%s goes down, out of lives." % e.name)
 	var hands := enemies.filter(func(x): return x.has_passive("hand"))
 	if hm.phase < 3 and not hands.is_empty() and hands.all(func(x): return x.knocked and x.lives <= 0):
-		for x in hands:
-			x.lives = 2
-			_hand_down(x)  # (they get back up for the next phase, after the usual rest)
 		if hm.phase == 1:
+			for x in hands:
+				x.lives = 2
+				_hand_down(x)  # (they get back up for the next phase, after the usual rest)
 			_hm_phase(2, ["hand_hammer", "hand_crossbow"], "The Handyman reaches out with two more hands!")
 		else:
-			_hm_phase(3, ["hand_spear", "hand_shield"], "Two last hands, a spear and a shield: the Handyman makes his last stand!")
+			for x in hands:  # (his last stand: the fallen four are up again at once, with the two new ones)
+				x.lives = 1
+				x.knocked = false
+				x.revive_in = 0
+				x.reset_hp(String(x.def.hp))
+				x.move_index = 0
+				x.fresh = true
+				_plan(x)
+			_hm_phase(3, ["hand_spear", "hand_shield"], "\"No, this can't be. More!!!!\" All six hands rise for the Handyman's last stand!",
+				hands.map(func(x): return x.id))
 	elif hm.phase >= 3 and not hands.is_empty() and hands.all(func(x): return x.knocked and x.lives <= 0):
 		for x in hands:
 			enemies.erase(x)  # (his last stand is over: they go limp for good)
@@ -2188,12 +2215,18 @@ func _handyman_step() -> void:
 		anim.call({"type": "spawn", "enemy": body})
 
 
-func _hm_phase(n: int, ids: Array, line: String) -> void:
+func _hm_phase(n: int, ids: Array, line: String, risen: Array = []) -> void:
 	hm.phase = n
 	hm.kills = 0
+	# his hands are down: he speaks, then the new ones burst out (the screen holds them back until he's done); in his
+	# last stand the risen four are held back too, so all six come out together
+	var lines := ["Very well.", "How about...", "THESE!"] if n == 2 else ["No, this can't be.", "More!!!!"]
+	anim.call({"type": "hm_new_hands", "ids": ids + risen, "lines": lines})
 	for id in ids:
 		var h := _spawn(id, [])
 		h.fresh = true
+		if n == 3:
+			h.lives = 1
 		_plan(h)
 		anim.call({"type": "spawn", "enemy": h})
 	_log(line)
@@ -2389,6 +2422,7 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				var hurt := alive().filter(func(x): return x.size() < int(m.get("cap", 999)))
 				hurt.sort_custom(func(a, b): return a.size() < b.size())
 				targets = hurt.slice(0, 1)
+			var gains := []  # [{enemy, index, el}]: each new Essence (the screen flies a ball of light from e to it)
 			for t in targets:
 				for i in m.n:
 					if t.size() >= int(m.get("cap", 999)):
@@ -2399,7 +2433,8 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 					elif el == "own":
 						el = t.def.hp[0]  # (its own element)
 					t.append(el)
-			await anim.call({"type": "mend", "enemy": e})
+					gains.append({"enemy": t, "index": t.size() - 1, "el": el})
+			await anim.call({"type": "mend", "enemy": e, "gains": gains})
 		"shuffle":
 			e.rotate_left()
 		"silence":
@@ -2490,8 +2525,10 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				taken_items.append({"uid": s.uid, "el": s.el})
 			_log("%s steals your Essence onto its hide." % e.name)
 		"confuse":
+			# Hypnotize (internally "confuse"): next turn you can't see what any enemy intends
 			if not has_artifact("calm_stone"):
 				player.confuse_turns = 1
+				_log("%s hypnotizes you: you can't see what the enemies intend." % e.name)
 				await anim.call({"type": "confuse"})
 		"blind":
 			if not has_artifact("keen_eye"):

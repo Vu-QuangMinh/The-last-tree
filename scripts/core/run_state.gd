@@ -232,6 +232,13 @@ func encounter_ids() -> Array:
 	return ids
 
 
+## Test mode: swap the encounter being prepared for these enemies (their extra Essence rolled the usual way).
+func set_encounter(ids: Array) -> void:
+	encounter = ids.duplicate()
+	encounter_name = ""
+	encounter_extra = ids.map(func(id): return EnemyDefs.extra_for(id, act, depth(), rng, ids.size()))
+
+
 ## Exactly the Essence an enemy of this encounter will start the fight with.
 func encounter_hp(i: int) -> Array:
 	var hp: Array = Array(EnemyDefs.get_def(encounter[i]).hp.split(""))

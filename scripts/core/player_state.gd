@@ -174,7 +174,7 @@ func describe_statuses() -> Array:
 	if poison > 0:
 		out.append("Poison %d" % poison)
 	if confuse_turns > 0:
-		out.append("Confused: your chant is read backwards")
+		out.append("Hypnotized: you can't see what the enemies intend")
 	if blind_turns > 0:
 		out.append("Blind: some enemy Essence are hidden")
 	if toll > 0:

@@ -59,12 +59,21 @@ func test_power_leaves_row_for_the_fight() -> void:
 	assert_true(f.usable_spells().is_empty(), "slot stays empty")
 
 
-func test_confuse_reads_backwards() -> void:
+func test_hypnotize_leaves_the_chant_alone() -> void:
+	# Hypnotize (internally "confuse") only hides the enemies' intents: the chant is read as it is
 	var f := _fight(["ashling"], [], "WF")
-	_set_hp(f.enemies[0], "FWAAAA")
+	_set_hp(f.enemies[0], "WFAAAA")
 	f.player.confuse_turns = 1
 	f.cast(_all(2))
-	assert_eq(f.enemies[0].hp_text(), "AAAA", "WF read as FW")
+	assert_eq(f.enemies[0].hp_text(), "AAAA", "WF read as WF")
+
+
+func test_trinity_spells_cant_be_fused() -> void:
+	var run := RunState.new()
+	run.setup(db, [], [], 4)
+	for id in ["trinity", "trinity_first", "trinity_second", "trinity_third"]:
+		run.learn_spell(id)
+		assert_true(not run.can_fuse(id), "%s can't be fused" % id)
 
 
 func test_steal_adds_to_enemy_hp() -> void:
@@ -935,6 +944,27 @@ func test_steal_any_puts_the_chosen_element_in_your_bag() -> void:
 	assert_eq(f.player.stock.size(), before + 1)
 	assert_eq(f.player.stock[-1].el, "A", "stolen into the bag, not the chant")
 	assert_eq(f.chant_string(), "AAA")
+
+
+func test_a_stolen_repainted_essence_is_any_in_your_bag() -> void:
+	var f := _fight(["ashling"], ["spray", "thieving_wind"], "WAAAA")
+	var e: EnemyState = f.enemies[0]
+	_set_hp(e, "FWFWF")
+	f.painter = func(_s): return [0, 3]
+	f.cast_chant(_all(5))
+	f.resolve_spell("spray")
+	assert_eq(e.hp_text(), "FWF?F")
+	e.rotate_right()  # (the painted mark moves with its Essence)
+	assert_true(e.is_painted(4) and not e.is_painted(3))
+	f.picker = func(_s, _e): return 4
+	f.resolve_spell("thieving_wind", 0)
+	assert_eq(e.hp_text(), "FFWF")
+	assert_eq(f.player.stock[-1].el, "?", "a repainted Essence comes to you as Any")
+	e.elements[0] = "W"
+	e.convert("first", "A")
+	assert_true(not e.is_painted(0))
+	assert_eq(Chant.occurrences("FWA", "F?A"), [0], "an Any in the chant fits every element")
+	assert_true(Chant.breaks_lock("WW", "A?W"), "and it can break a lock")
 
 
 func test_steal_a_specific_element() -> void:
@@ -1863,15 +1893,10 @@ func test_handyman() -> void:
 	assert_eq(f.hm.phase, 3)
 	assert_eq(f.enemies.size(), 6)
 	var last := f.enemies.filter(func(e): return e.id in ["hand_spear", "hand_shield"])
-	assert_eq(last.map(func(e): return e.size()), [3, 3])
-	f._hands_back()
-	f._hands_back()
-	# last stand: each hand still has 2 lives; with every hand out of lives he shows himself (1 Essence, 999)
-	for e in f.enemies.duplicate():
-		_knock(f, e)
-	f._hands_back()
-	f._hands_back()
-	assert_eq(f.alive().size(), 6, "first life: all six hands get back up")
+	assert_eq(last.map(func(e): return e.size()), [5, 5])
+	# last stand: all six are up at once (no rest), 5 Essence and 1 life each; with all down he shows himself
+	assert_eq(f.alive().size(), 6, "all six hands rise together")
+	assert_true(f.enemies.all(func(e): return e.lives == 1 and e.size() == 5 and not e.knocked))
 	for e in f.enemies.duplicate():
 		_knock(f, e)
 	f._hands_back()
@@ -2248,3 +2273,16 @@ func test_fusion_one_enemy_first_then_all() -> void:
 	run.setup(db, ["desperate_measure"], [], 4)
 	run.learn_spell("desperate_measure")
 	assert_true(not run.can_fuse("desperate_measure"), "Desperate Measure can't be fused")
+
+
+
+func test_durability_shows_left_out_of_full() -> void:
+	var sp: Dictionary = db.get_spell("whirlpool").duplicate()  # (Durability 3)
+	assert_true(SpellText.card_text(sp).contains("Durability 3."), "outside a fight: just the number")
+	sp.durability_left = 2
+	sp.durability_max = 3
+	assert_true(SpellText.card_text(sp).contains("Durability 2/3."), "in a fight: what's left, out of how much")
+	sp.durability_left = 0
+	assert_true(SpellText.card_text(sp).contains("Durability 0/3 (broken)."), "worn out: broken")
+	var f := _fight(["ashling"], ["whirlpool"], "")
+	assert_eq(f.durability_max(db.get_spell("whirlpool")), 3)

@@ -50,6 +50,14 @@ func update_charges(p: PlayerState) -> void:
 
 
 ## An artifact that just did something: it grows, shines, and goes back to its size (one that works again and again).
+## Where an artifact's chip is on screen (its centre), or null if it isn't shown.
+func chip_center(id: String) -> Variant:
+	for c in get_children():
+		if c is ArtifactChip and c.id == id:
+			return (c as Control).get_global_rect().get_center()
+	return null
+
+
 func flash(id: String) -> void:
 	for c in get_children():
 		if c is ArtifactChip and c.id == id:

@@ -37,6 +37,7 @@ var zoom := 1.0
 var _count: Label
 var _rules: RichTextLabel
 var durability_left := -1  # in a fight: the Durability it has left (-1: not shown / no Durability)
+var durability_max := -1  # in a fight: its full Durability (the "3" of "2/3")
 var _name_l: Label
 var _pat: HBoxContainer
 var _tag_l: Label
@@ -667,6 +668,8 @@ func refresh() -> void:
 		# Durability left changes during a fight: redraw the rules when it does
 		var sp := spell.duplicate()
 		sp.durability_left = durability_left
+		if durability_max > 0:
+			sp.durability_max = durability_max
 		var t := "[center]" + Keywords.colorize(SpellText.card_text(sp), true, false, _zi(23)) + "[/center]"
 		if t != _rules.text:
 			_rules.text = t
@@ -685,8 +688,12 @@ func refresh() -> void:
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if charges > 0 else Control.CURSOR_ARROW
 	_box.border_color = border
 	_box.set_border_width_all(_zi(bw))
+	var glow := Color(1.4, 1.2, 0.7) if charges > 0 else (Color(1.25, 1.1, 0.78) if fires > 0 and state == "" else Color.WHITE)
 	if _art != null:  # the wooden frame glows golden when the chant would wake the spell, brighter once it is charged
-		_art.modulate_color = Color(1.4, 1.2, 0.7) if charges > 0 else (Color(1.25, 1.1, 0.78) if fires > 0 and state == "" else Color.WHITE)
+		_art.modulate_color = glow
+	var split = get_meta("split_node") if has_meta("split_node") else null  # (Puppet: a Hammer-cracked card is a picture cut into planks over it)
+	if is_instance_valid(split):
+		split.modulate = glow  # (the planks light up gold too, or a cracked card would never look awake)
 	modulate = Color(1, 1, 1, 0.45) if state == "used" else (Color(0.55, 0.55, 0.55, 0.8) if state == "spent" else Color.WHITE)
 	if state == "broken":
 		modulate = Color(0.5, 0.5, 0.52, 0.9)  # (broken: greyed out further than a spent one, under its cracks)

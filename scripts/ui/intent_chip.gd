@@ -62,11 +62,11 @@ const INFO := {
 	"drain_essence": ["Drain", "Takes Essence out of your bag."],
 	"disarm": ["Disarm", "Your next Release does nothing."],
 	"invert_spells": ["Inversion", "Some of your spells flip: a spell becomes an anti-spell, an anti-spell a spell."],
-	"charge": ["Charging", "Something big is coming when the hourglass runs out."],
+	"charge": ["Charging", ""],
 	"ignite_spell": ["Ignite", "Sets one of your spells on fire for your next turn: casting it burns you for 5 HP."],
 	"lock": ["Lock", "Locks one of your spells. Chant the lock's symbols, unbroken, to break it."],
 	"steal": ["Steal", "Takes Essence from your bag and adds it to its own."],
-	"confuse": ["Confuse", "Your next chant is read backwards, and there's no preview."],
+	"confuse": ["Hypnotize", "Next turn you can't see what any enemy intends to do."],
 	"blind": ["Blind", "Some enemy Essence show as ?. They still match normally."],
 	"poison": ["Poison", "At the start of your turn you lose that much HP, then Poison goes down by 1."],
 	"freeze": ["Freeze", "Freezes some of your Essence: they can't be used next turn."],
@@ -188,8 +188,11 @@ func build(e: EnemyState, move := {}) -> void:
 		var info: Array = INFO.get(m.kind, [m.kind.capitalize(), ""])
 		var what := EnemyDefs.describe_move(_single(m), e.dmg_bonus) if m.kind != "attack" else _attack_words(m, e)
 		if m.kind == "charge":
-			what = "Charging: %d turn%s left, then it hits for %d" % [m.left, "" if m.left == 1 else "s", charge_damage(e)]
-		lines.append("%s [color=#%s][b]%s[/b][/color]: %s\n[color=#b8c2b8]%s[/color]" % [UiSkin.inline(ART.get(m.kind, ""), look[0], 24), (look[1] as Color).lightened(0.35).to_html(false), info[0], Keywords.colorize(what), info[1]])
+			what = "Deal %d damage when the hourglass hits 0" % charge_damage(e)
+		var line := "%s [color=#%s][b]%s[/b][/color]: %s" % [UiSkin.inline(ART.get(m.kind, ""), look[0], 24), (look[1] as Color).lightened(0.35).to_html(false), info[0], Keywords.colorize(what)]
+		if String(info[1]) != "":
+			line += "\n[color=#b8c2b8]%s[/color]" % info[1]
+		lines.append(line)
 		m = m.get("also", {})
 	if e.redirect_to != null and is_instance_valid(e.redirect_to):
 		var who := "itself" if e.redirect_to == e else e.redirect_to.name

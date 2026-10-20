@@ -3309,7 +3309,8 @@
    ],
    "trinity": true,
    "flavor": "Cast all three Fragments in one turn and they become one.",
-   "rarity": "common"
+   "rarity": "common",
+   "no_fuse": true
   },
   {
    "id": "trinity_second",
@@ -3323,7 +3324,8 @@
    ],
    "trinity": true,
    "flavor": "Cast all three Fragments in one turn and they become one.",
-   "rarity": "common"
+   "rarity": "common",
+   "no_fuse": true
   },
   {
    "id": "trinity_third",
@@ -3337,7 +3339,8 @@
    ],
    "trinity": true,
    "flavor": "Cast all three Fragments in one turn and they become one.",
-   "rarity": "common"
+   "rarity": "common",
+   "no_fuse": true
   },
   {
    "id": "trinity",
@@ -3360,7 +3363,8 @@
    ],
    "hidden": true,
    "flavor": "Three pieces of one thing, whole again.",
-   "rarity": "legendary"
+   "rarity": "legendary",
+   "no_fuse": true
   }
  ]
 }

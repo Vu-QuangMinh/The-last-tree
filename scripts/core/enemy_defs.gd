@@ -3,7 +3,7 @@ extends RefCounted
 ## Every enemy: Essence pattern (elements, left to right), moves (cycled in order), passives.
 ## Moves are used in the listed order, looping. Normal enemies mix offence, defence and utility.
 ## Move kinds: attack {n, hits}, armor {pos}, mend {el, n, who: self/ally/all}, shuffle, silence {turns}, frail {turns},
-## lock {len}, steal {n}, confuse, blind {turns}, poison {n}, freeze {n}, ethereal, empower {n}, brittle {turns},
+## lock {len}, steal {n}, confuse (Hypnotize: you can't see the enemies' intents next turn), blind {turns}, poison {n}, freeze {n}, ethereal, empower {n}, brittle {turns},
 ## summon {id, n}, toll, invert, hex, mimic. A move may carry `also` (a second move done the same turn).
 
 const E := {
@@ -182,9 +182,9 @@ const E := {
 		"flavor": "It knows which spell is closest to breaking."},
 	"hand_crossbow": {"name": "Crossbow Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🏹", "hp": "FFWAF", "moves": [{"kind": "charge", "left": 1, "n": 20, "turns": 2},
 		{"kind": "charge", "left": 0, "hit": true}], "flavor": "Slow to load. Not slow to hurt."},
-	"hand_spear": {"name": "Spear Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🔱", "hp": "AAA", "moves": [{"kind": "attack", "n": 8}],
+	"hand_spear": {"name": "Spear Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🔱", "hp": "AAFWW", "moves": [{"kind": "attack", "n": 8}],
 		"flavor": "The last hands are the sharpest."},
-	"hand_shield": {"name": "Shield Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🛡", "hp": "FFF", "moves": [{"kind": "armor", "pos": -1, "who": "random"}],
+	"hand_shield": {"name": "Shield Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🛡", "hp": "WAFAW", "moves": [{"kind": "armor", "pos": -1, "who": "random"}],
 		"flavor": "Always covering for one of the others."},
 	"woodcutter": {"name": "The Woodcutter", "act": 0, "boss": true, "hp": "FWAFWAFFWAWFA",
 		"moves": [{"kind": "attack", "n": 8}, {"kind": "summon", "id": "ashling", "n": 1}, {"kind": "armor", "pos": 0, "also": {"kind": "attack", "n": 4}}],
@@ -236,7 +236,7 @@ const PASSIVE_TEXT := {
 	"thorns": "Thorns 2: you lose 2 HP whenever your Release hits it.",
 	"burn_immune": "Fireproof: Burn has no effect on it.",
 	"slime_burst": "Burst: when it dies, two small slimes pop out.",
-	"hand": "A hand with 2 lives: at 0 Essence it goes down for a turn, then is resurrected whole. Out of lives, it stays down until every hand is; then they all rise for his next phase (after his last stand, he shows himself).",
+	"hand": "A hand with 2 lives: at 0 Essence it goes down for a turn, then is resurrected whole. Out of lives, it stays down until every hand is; then they all rise for his next phase. In his last stand all six hands rise at once with 1 life each (then he shows himself).",
 	"handyman": "The Handyman himself: 1 Essence, out in the open at last.",
 	"invoker": "Good Ol' Wizard: every turn he conjures 3 spells. On his turn he casts every one your chant matched, or else the one it came closest to.",
 	"invoker_rebirth": "Second wind: at 0 Essence he rises again with 10 more, and starts chanting Quas, Wex or Exort, one a turn: each strips that Essence (Water, Air, Fire) from his spells for the rest of the fight.",
@@ -548,7 +548,7 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 				s = "Armour 1 Essence of one of them, at random"
 		"mend":
 			var el: String = "random Essence" if m.el == "random" else ("Essence" if m.el == "own" else Elements.NAMES[m.el])
-			s = "Mend +%d %s%s" % [m.n, el, {"self": "", "ally": " on an ally", "all": " on every enemy", "weakest": " on the most hurt of them", "random_hurt": " on one of them at random (a hurt one first)"}[m.get("who", "self")]]
+			s = "Mend +%d %s%s" % [m.n, el, {"self": "", "ally": " on an ally", "all": " on every enemy", "weakest": " on the most hurt of them", "random_hurt": " on one of them at random"}[m.get("who", "self")]]
 		"shuffle":
 			s = "Shuffle its Essence"
 		"silence":
@@ -596,7 +596,7 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 		"steal":
 			s = "Steal %d of your Essence" % m.n
 		"confuse":
-			s = "Confuse you (your next chant is read backwards)"
+			s = "Hypnotize you (next turn you can't see what any enemy intends)"
 		"blind":
 			s = "Blind you (%d turns)" % m.turns
 		"poison":
