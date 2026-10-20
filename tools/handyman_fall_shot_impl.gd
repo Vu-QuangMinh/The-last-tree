@@ -51,6 +51,13 @@ func run(t: SceneTree) -> void:
 	_shot(root, out + "/hf_6_pulled.png")
 	await t.create_timer(1.5).timeout
 	_shot(root, out + "/hf_7_laststand.png")
+	# the last stand: every hand shatters, and he shows himself
+	for e in f.enemies.filter(func(x): return x.has_passive("hand")):
+		_knock(f, e.id)
+		await t.create_timer(0.3).timeout
+	for k in 4:
+		await t.create_timer(0.8).timeout
+		_shot(root, out + "/hf_8_phase3_%d.png" % k)
 	print("alive ", f.alive().map(func(e): return "%s:%d" % [e.id, e.size()]), " phase ", f.hm.phase)
 	t.quit()
 

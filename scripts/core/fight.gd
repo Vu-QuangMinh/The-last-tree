@@ -1828,8 +1828,8 @@ func _enemy_phase() -> void:
 			return
 		if e.is_dead():
 			continue
-		if e.def.get("inert", false) or e.has_passive("handyman"):
-			continue  # (a cocoon: it just hangs there; the Handyman, crying with his hands pulled back, only waits to be finished)
+		if e.def.get("inert", false):
+			continue  # (a cocoon: it just hangs there)
 		if e.fresh:
 			# it arrived during your turn: this time it only shows what it's going to do
 			e.fresh = false
@@ -1878,9 +1878,6 @@ func _enemy_phase() -> void:
 
 ## Moves are used strictly in the listed order, looping (a boss switches to its second list at half HP).
 func _plan(e: EnemyState) -> void:
-	if e.has_passive("handyman"):
-		e.intent = {}  # (he never acts: see _enemy_phase)
-		return
 	if e.def.get("invokes", false):
 		_invoker_plan(e)
 		return
@@ -2130,7 +2127,11 @@ func _hm_side(id: String) -> String:
 
 
 func _handyman_step() -> void:
-	if hm.is_empty() or hm.phase >= 2:
+	if hm.is_empty() or hm.phase >= 3:
+		return
+	if hm.phase == 2:  # the last stand: a hand out of Essence shatters for good (Fight._cleanup removes it); with none left he shows himself
+		if not enemies.any(func(x): return x.has_passive("hand")):
+			_hm_phase3()
 		return
 	for e in enemies.duplicate():
 		if not e.has_passive("hand") or not e.is_dead() or e.knocked:
@@ -2154,9 +2155,21 @@ func _handyman_step() -> void:
 		_hm_last_stand(hands)
 
 
+## Phase 3: every hand is gone. Only his body is left: 1 Essence, and an intent to hit you for 999.
+func _hm_phase3() -> void:
+	hm.phase = 3
+	hm.body = true
+	var body := _spawn("handyman", [])
+	body.reset_hp(_random_element())
+	body.fresh = true
+	_plan(body)
+	_log("Out of hands, the Handyman shows himself!")
+	anim.call({"type": "boss_phase"})
+	anim.call({"type": "spawn", "enemy": body})
+
+
 func _hm_last_stand(hands: Array) -> void:
 	hm.phase = 2
-	hm.body = true
 	for x in hands:
 		x.knocked = false
 		x.fallen = false
@@ -2164,9 +2177,6 @@ func _hm_last_stand(hands: Array) -> void:
 		x.move_index = 0
 		x.fresh = true
 		_plan(x)
-	var body := _spawn("handyman", [])
-	body.reset_hp(_random_element())
-	_plan(body)
 	_log("Every hand has fallen. The Handyman cries, shakes, and pulls them all back up!")
 	anim.call({"type": "boss_phase"})
 	anim.call({"type": "hm_rally"})

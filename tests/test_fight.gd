@@ -1839,18 +1839,23 @@ func test_handyman() -> void:
 	assert_eq(f.hm.phase, 1, "the spear is still up")
 	_knock(f, f.enemies.filter(func(e): return e.id == "hand_spear")[0])
 	assert_eq(f.hm.phase, 2)
-	assert_eq(f.alive().size(), 7)
+	assert_eq(f.alive().size(), 6)
 	for e in f.enemies.filter(func(x): return x.id != "handyman"):
 		assert_eq(e.size(), 2)
 		assert_true(not e.knocked and not e.fallen)
-	var body: EnemyState = f.alive().filter(func(e): return e.id == "handyman")[0]
-	assert_eq(body.size(), 1)
-	assert_true(body.intent.is_empty(), "he does not act")
-	# clearing all of them is the win; in the last stand a hand that is out of Essence is gone for good
-	for e in f.enemies.filter(func(x): return x.id != "handyman"):
+	assert_eq(f.alive().size(), 6, "he is not out yet: only the six hands")
+	# the last stand: a hand out of Essence is gone for good; with none left he shows himself (1 Essence, 999)
+	for e in f.enemies.filter(func(x): return x.has_passive("hand")):
+		assert_true(not f.over)
 		_knock(f, e)
-	assert_true(not f.over, "he is still there")
-	assert_eq(f.enemies.size(), 1)
+	assert_eq(f.hm.phase, 3)
+	assert_eq(f.enemies.size(), 1, "only him")
+	var body: EnemyState = f.alive()[0]
+	assert_eq(body.id, "handyman")
+	assert_eq(body.size(), 1)
+	assert_eq(body.intent.n, 999)
+	assert_true(body.fresh, "he shows his intent first: you get a turn to finish him")
+	assert_true(not f.over)
 	body.elements.clear()
 	f._cleanup()
 	assert_true(f.won, "and that's the fight")
