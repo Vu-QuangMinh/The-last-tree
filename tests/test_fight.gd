@@ -1792,40 +1792,27 @@ func test_handyman() -> void:
 	assert_eq(f.enemies.map(func(e): return e.id), ["hand_sword", "hand_tweezer"], "he starts as two hands")
 	assert_true("handyman" in EnemyDefs.BOSSES[1])
 	var sword: EnemyState = f.enemies[0]
-	assert_eq(sword.size(), 5)
-	# a fallen hand isn't killed: no win; it lies down a turn (wings + hourglass), then rises whole
+	assert_eq(sword.size(), 10, "each hand has 10 Essence")
+	# a knocked-out hand isn't killed: no win; it drops and lies on the floor, and the next hand of its side grows
 	_knock(f, sword)
-	assert_true(not f.over, "not won: the hand is only down")
-	assert_true(sword in f.enemies and sword.knocked)
-	assert_eq(sword.intent.kind, "revive")
-	assert_eq(sword.intent.left, 2)
-	_knock(f, f.enemies[1])
-	assert_true(not f.over, "both down at once still isn't a win")
-	f._hands_back()
-	assert_true(sword.knocked, "a turn's rest first")
-	assert_eq(sword.intent.left, 1)
-	f._hands_back()
-	assert_eq(sword.size(), 5, "back whole")
-	assert_true(not sword.knocked)
-	# second life gone: it stays down until the other one is out of lives too; then two more hands, and both rise
-	_knock(f, f.enemies[0])
-	assert_eq(f.enemies[0].revive_in, 0, "out of lives: down")
-	f._hands_back()
-	f._hands_back()
-	assert_true(f.enemies[0].knocked, "still down")
-	assert_eq(f.hm.phase, 1)
-	_knock(f, f.enemies[1])
-	assert_eq(f.hm.phase, 2)
-	assert_eq(f.enemies.size(), 4)
-	var ids := f.enemies.map(func(e): return e.id)
-	assert_true("hand_hammer" in ids and "hand_crossbow" in ids)
-	assert_eq(f.enemies[0].intent.kind, "revive", "the old hands rise again for the new phase")
-	f._hands_back()
-	f._hands_back()
-	assert_true(not f.enemies[0].knocked and not f.enemies[1].knocked)
+	assert_true(not f.over, "not won: the hand is only knocked off")
+	assert_true(sword in f.enemies and sword.knocked and sword.fallen)
+	assert_eq(f.alive().map(func(e): return e.id), ["hand_tweezer", "hand_crossbow"], "two hands at a time, one on each side")
+	# the crossbow: 1, then it fires
+	var bow: EnemyState = f.enemies.filter(func(e): return e.id == "hand_crossbow")[0]
+	assert_eq(bow.size(), 10)
+	assert_eq(bow.intent.kind, "charge")
+	assert_eq(bow.intent.left, 1)
+	f._do_move(bow, bow.intent)
+	f._plan(bow)
+	assert_eq(bow.intent.left, 0)
+	assert_true(bow.intent.get("hit", false), "it fires next")
+	# the tweezer falls: the hammer grows on the right
+	_knock(f, f.enemies.filter(func(e): return e.id == "hand_tweezer")[0])
+	var hammer: EnemyState = f.enemies.filter(func(e): return e.id == "hand_hammer")[0]
+	assert_eq(hammer.size(), 10)
 	# the hammer goes for the most-cast spell, and sticks to it: 3 hits break it
 	f.cast_counts = {"water_wall": 3, "fire_ball": 1}
-	var hammer: EnemyState = f.enemies.filter(func(e): return e.id == "hand_hammer")[0]
 	f._do_move(hammer, {"kind": "hammer_spell"})
 	assert_eq(f.hammer_target, "water_wall")
 	f.cast_counts["fire_ball"] = 9
@@ -1840,47 +1827,30 @@ func test_handyman() -> void:
 	f.loadout[0].fleeting = true
 	f._do_move(hammer, {"kind": "hammer_spell"})
 	assert_true(f.broken.has("fire_ball"), "Fleeting: first hit")
-	# the crossbow: 1, then it fires (knocked out: it starts over)
-	var bow: EnemyState = f.enemies.filter(func(e): return e.id == "hand_crossbow")[0]
-	assert_eq(bow.intent.kind, "charge")
-	assert_eq(bow.intent.left, 1)
-	f._do_move(bow, bow.intent)
-	f._plan(bow)
-	assert_eq(bow.intent.left, 0)
-	assert_true(bow.intent.get("hit", false), "it fires next")
+	# the crossbow falls: the spear grows on the left (left: sword, crossbow, spear), and the hammer's fall brings the shield
 	_knock(f, bow)
-	f._hands_back()
-	f._hands_back()
-	assert_eq(bow.intent.left, 1, "resurrected: loading again")
-	# every hand out of lives (the bow has one left): the last two hands, 3 Essence each
-	for e in f.enemies.duplicate():
-		_knock(f, e)
-	f._hands_back()
-	f._hands_back()
-	assert_eq(f.hm.phase, 2, "the others still had a life")
-	for e in f.enemies.filter(func(x): return not x.knocked):
-		_knock(f, e)
-	assert_eq(f.hm.phase, 3)
+	_knock(f, hammer)
+	assert_eq(f.alive().map(func(e): return e.id), ["hand_spear", "hand_shield"])
+	assert_eq(f.alive().size(), 2, "still only two hands at a time")
+	assert_eq(f.hm.phase, 1)
 	assert_eq(f.enemies.size(), 6)
-	var last := f.enemies.filter(func(e): return e.id in ["hand_spear", "hand_shield"])
-	assert_eq(last.map(func(e): return e.size()), [3, 3])
-	f._hands_back()
-	f._hands_back()
-	# last stand: each hand still has 2 lives; with every hand out of lives he shows himself (1 Essence, 999)
-	for e in f.enemies.duplicate():
-		_knock(f, e)
-	f._hands_back()
-	f._hands_back()
-	assert_eq(f.alive().size(), 6, "first life: all six hands get back up")
-	for e in f.enemies.duplicate():
-		_knock(f, e)
-	f._hands_back()
-	assert_eq(f.alive().size(), 1, "only him")
-	var body: EnemyState = f.alive()[0]
-	assert_eq(body.id, "handyman")
+	# the last two fall: all six lie on the floor, and he pulls them up for his last stand (2 Essence each, 1 for him)
+	_knock(f, f.enemies.filter(func(e): return e.id == "hand_shield")[0])
+	assert_eq(f.hm.phase, 1, "the spear is still up")
+	_knock(f, f.enemies.filter(func(e): return e.id == "hand_spear")[0])
+	assert_eq(f.hm.phase, 2)
+	assert_eq(f.alive().size(), 7)
+	for e in f.enemies.filter(func(x): return x.id != "handyman"):
+		assert_eq(e.size(), 2)
+		assert_true(not e.knocked and not e.fallen)
+	var body: EnemyState = f.alive().filter(func(e): return e.id == "handyman")[0]
 	assert_eq(body.size(), 1)
-	assert_eq(body.intent.n, 999)
-	assert_true(body.fresh, "he shows his intent first: you get a turn to finish him")
+	assert_true(body.intent.is_empty(), "he does not act")
+	# clearing all of them is the win; in the last stand a hand that is out of Essence is gone for good
+	for e in f.enemies.filter(func(x): return x.id != "handyman"):
+		_knock(f, e)
+	assert_true(not f.over, "he is still there")
+	assert_eq(f.enemies.size(), 1)
 	body.elements.clear()
 	f._cleanup()
 	assert_true(f.won, "and that's the fight")

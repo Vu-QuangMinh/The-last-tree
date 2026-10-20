@@ -35,6 +35,7 @@ var _spell_ids := ""
 var _spell_cards: Array = []
 var _holder: Control
 var _px := 30.0  # the size of one Essence orb now
+var _px_layout := 40.0  # the Essence size the number of rows is worked out for (see _layout_free)
 var _max_n := 0  # the most Essence this enemy has had in this view: its orb size and its rows follow that, never its Essence now (the bar must not reflow as it is hurt)
 var _ghost := false  # a hand of the Handyman that is not in the fight yet: only its folded arm shows (HandymanStage)
 var _rig_view := false  # a Handyman hand or his body (see _raise_text)
@@ -265,7 +266,7 @@ func refresh(preview: Dictionary) -> void:
 	if _ghost:
 		return
 	creature.modulate = Color(1, 1, 1, 0.4) if enemy.knocked and not creature.has_rig() else Color.WHITE  # (a hand's arm fades and folds by itself: Creature._draw_arm)
-	_hp_row.visible = not enemy.knocked  # (a fallen hand has no HP bar: it can't be targeted)
+	_hp_row.visible = not enemy.knocked and not creature.drop_hold  # (a fallen hand has no HP bar: it can't be targeted; nor does one that waits on the floor to be pulled up)
 	if _spell_row != null:
 		_refresh_invoked(preview.get("invoke", {}).get(enemy, []))
 	var e := enemy
@@ -293,7 +294,7 @@ func refresh(preview: Dictionary) -> void:
 			ghosts[i] = true
 		seen += 1
 	var mask := fight.hidden_mask(e)
-	_max_n = maxi(_max_n, e.size())
+	_max_n = maxi(_max_n, maxi(e.size(), str(e.def.get("hp2", "")).length()))  # (an enemy with a second phase starts out sized for the bigger row: its rows never change at the phase change)
 	var px := 38.0 if _max_n <= 7 else 30.0
 	if _rig_view and creature.has_rig():
 		px = 30.0  # (the hands hang close to each other: their name and Essence are smaller)
@@ -307,6 +308,11 @@ func refresh(preview: Dictionary) -> void:
 		if walled:
 			px = 34.0
 	_px = px
+	_px_layout = 48.0 if _max_n <= 6 else 40.0  # (the rows are worked out for the biggest the Essence ever get, in pick / move mode: so they are the same in every mode)
+	if _rig_view and creature.has_rig():
+		_px_layout = 38.0
+	if walled:
+		_px_layout = 34.0
 	e._fix_lit()
 	# an enemy behind walls (Bramble Matron): each wall is a hedge with its own Essence under it, hers stack in a
 	# framed block in the middle. Still one row, in order: left wall, her, right wall.
@@ -405,10 +411,15 @@ func _layout_free() -> void:
 	var top := b.end.y + 5.0
 	var row_w := w  # (a long row of Essence, usually a boss's, is laid out wider so that it never takes more than two lines)
 	var step := _px + 2.0
-	var n := maxi(_max_n, _hp_row.get_child_count())  # (rows are worked out from the most Essence it ever had: the number of rows stays put)
-	if n * step > 2.0 * w:
-		row_w = ceilf(n / 2.0) * step + 4.0
-	var rows := maxi(1, ceili(n * step / row_w))
+	var live := 0
+	for ic in _hp_row.get_children():
+		if not ic.is_queued_for_deletion():  # (the old icons of a refresh still hang in the row for a moment: they must not count)
+			live += 1
+	var n := maxi(_max_n, live)  # (rows are worked out from the most Essence it ever had: the number of rows stays put)
+	# one row or two, decided for the biggest Essence (pick / move mode), so that it is the same in every mode and every phase
+	var rows := 1 if n * (_px_layout + 2.0) <= w else 2
+	if rows == 2:
+		row_w = ceilf(n / 2.0) * step + 4.0  # (exactly as wide as two rows of the Essence as they are now: it cannot fall back to one)
 	_hp_row.custom_minimum_size.y = rows * _px + (rows - 1) * 4.0  # (and it keeps its height: what hangs under it does not jump)
 	var row_x := (w - row_w) / 2.0 + dx
 	if _hp_row.position != Vector2(row_x, top) or _hp_row.size.x != row_w:

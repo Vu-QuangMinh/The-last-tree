@@ -34,10 +34,11 @@ OVERLAP = 0.0  # pt: how far each piece reaches over the elbow line into the oth
 DOT = (0.14, 0.12, 0.13)  # the fill of the black marker dots
 
 # arm name -> (enemy id, side (-1 left shoulder, +1 right), layer: 0 lowest ... the body is above them all)
+# (the side is checked against page 2 below: a left arm's upper stick points left from its shoulder; 2026-10-20 the user swapped them round:
+# left = Spear, Crossbow, Sword; right = Shield, Hammer, Tweezer. The layer is the draw order on its side: the outermost arm at the back)
 ARMS = {
-    "Spear": ("hand_spear", -1, 0), "Crossbow": ("hand_crossbow", 1, 0),
-    "Shield": ("hand_shield", -1, 1), "Hammer": ("hand_hammer", 1, 1),
-    "Tweezer": ("hand_tweezer", -1, 2), "Sword": ("hand_sword", 1, 2),
+    "Spear": ("hand_spear", -1, 0), "Crossbow": ("hand_crossbow", -1, 1), "Sword": ("hand_sword", -1, 2),
+    "Shield": ("hand_shield", 1, 0), "Hammer": ("hand_hammer", 1, 1), "Tweezer": ("hand_tweezer", 1, 2),
 }
 
 doc = pymupdf.open(SRC)
@@ -463,6 +464,47 @@ def sig_of(d):
     return (tuple(round(v, 2) for v in d["fill"]), len(d["items"]), round(abs(a) / 2.0, 1)), (cx, cy)
 
 
+sigs2 = {}  # signature -> [centre] of the drawings of page 2
+for _i, _d in enumerate(dr):
+    _sg, _cen = sig_of(_d)
+    if _sg is not None:
+        sigs2.setdefault(_sg, []).append(_cen)
+
+
+def shift_by_paths(ids3):
+    """How far a page-3 piece lies from its drawing on page 2 (it was only moved): ((dx, dy) in pt, number of paths that agree). Every path of the
+    piece votes with the shift to each page-2 path that looks like it (same colour, segments, area); the shift most of them agree on wins."""
+    votes = {}
+    for i in ids3:
+        sg, cen = sig_of(C3.dr[i])
+        for c2 in sigs2.get(sg, []) if sg is not None else []:
+            key = (round(cen[0] - c2[0]), round(cen[1] - c2[1]))
+            votes[key] = votes.get(key, 0) + 1
+    if not votes:
+        return (0.0, 0.0), 0
+    best = max(votes, key=lambda k: votes[k] + votes.get((k[0] + 1, k[1]), 0) + votes.get((k[0] - 1, k[1]), 0) + votes.get((k[0], k[1] + 1), 0) + votes.get((k[0], k[1] - 1), 0))
+    sx = sy = w = 0.0
+    for i in ids3:
+        sg, cen = sig_of(C3.dr[i])
+        for c2 in sigs2.get(sg, []) if sg is not None else []:
+            if abs(cen[0] - c2[0] - best[0]) <= 1.5 and abs(cen[1] - c2[1] - best[1]) <= 1.5:
+                sx += cen[0] - c2[0]
+                sy += cen[1] - c2[1]
+                w += 1
+    return ((sx / w, sy / w), int(w)) if w else ((0.0, 0.0), 0)
+
+
+def skin_centre(ids3, tx, ty):
+    """The middle of the skin-coloured (orange) paint of a page-3 piece, on page 2's coordinates (it is the hand)."""
+    r = C3.bbox(ids3)
+    clip = pymupdf.Rect(r.x0 - 2, r.y0 - 2, r.x1 + 2, r.y1 + 2)
+    im = np.array(C3.render(set(ids3), clip, 1.0)).astype(int)
+    m = (im[:, :, 3] > 200) & (im[:, :, 0] > 215) & (im[:, :, 1] > 130) & (im[:, :, 1] < 200) & (im[:, :, 2] > 90) & (im[:, :, 2] < 160)
+    ys, xs = np.where(m)
+    assert len(xs) > 300, "no skin-coloured paint on the piece"
+    return pymupdf.Point(clip.x0 + xs.mean() - tx, clip.y0 + ys.mean() - ty)
+
+
 full4 = C4.render(set(range(len(C4.dr))), pymupdf.Rect(0, 0, 1920, 1080), 0.5)
 map4, n4 = ndi.label(ndi.binary_dilation(np.array(full4.getchannel("A")) > 8, iterations=3))
 sigs4 = {}  # signature -> [(blob, (x, y))]
@@ -478,8 +520,9 @@ for i, d in enumerate(C4.dr):
 composite = max(blob_size4, key=blob_size4.get)  # (the body with all six arms)
 
 
-def fit_piece(ids3, blob):
-    """Turn + move that carry a page-3 piece onto its copy in `blob` of page 4: (angle, tx, ty, matched pairs, rms)."""
+def fit_piece(ids3, blob, sigs=None):
+    """Turn + move that carry a page-3 piece onto its copy in `blob` of page 4 (or of the page `sigs` describes): (angle, tx, ty, matched pairs, rms)."""
+    sigs = sigs4 if sigs is None else sigs
     mine = {}
     for i in ids3:
         sg, cen = sig_of(C3.dr[i])
@@ -489,7 +532,7 @@ def fit_piece(ids3, blob):
     for sg, cs in mine.items():
         if len(cs) != 1:
             continue
-        there = [c for (k, c) in sigs4.get(sg, []) if k == blob]
+        there = [t[1] for t in sigs.get(sg, []) if t[0] == blob]
         if len(there) == 1:
             P.append(cs[0])
             Q.append(there[0])
@@ -538,6 +581,29 @@ def blob_of_arm(ids):
     return max(count, key=count.get)
 
 
+# ---- page 1: the idle pose ------------------------------------------------------------------------------------------------------
+# Page 1 shows the Handyman with all six arms in the pose they hang in while he stands there (the hands only sway a little about it). The arms are
+# the same drawings as on page 3, turned and moved: found again by their paths (as for page 4), one fit per piece. The directions of the two sticks
+# there are the arms' rest directions; the hand marker is then where the hand stands at idle.
+C1 = PageCtx(0)
+sigs1 = {}  # signature -> [(0, centre, paint operator)]
+for _i, _d in enumerate(C1.dr):
+    _sg, _cen = sig_of(_d)
+    if _sg is not None:
+        sigs1.setdefault(_sg, []).append((0, _cen, _i))
+
+# the body on page 1: it only moved (found by its paths, like the arms' lower pieces), so the shoulder sockets moved with it
+_votes = {}
+for _i in body_ids:
+    _sg, _cen = sig_of(dr[_i])
+    for _t in sigs1.get(_sg, []) if _sg is not None else []:
+        _k = (round(_t[1][0] - _cen[0]), round(_t[1][1] - _cen[1]))
+        _votes[_k] = _votes.get(_k, 0) + 1
+_best = max(_votes, key=_votes.get)
+assert _votes[_best] > 100, ("the body of page 1 not found", _best, _votes[_best])
+socket_i = {k: (centre(d).x + _best[0], centre(d).y + _best[1]) for k, d in sockets.items()}
+print("body moved by", _best, "on page 1 (%d paths agree); sockets there:" % _votes[_best], socket_i)
+
 out = {}
 for n, (eid, sd, layer) in ARMS.items():
     sh = centre(pivots[(n, 1)])
@@ -545,31 +611,22 @@ for n, (eid, sd, layer) in ARMS.items():
     ax, ay = el.x - sh.x, el.y - sh.y
     ln = math.hypot(ax, ay)
     ux, uy = ax / ln, ay / ln
-    ids = [i for i in runs[n] if i not in marker and not is_stray(i)]
-    upper, lower = [], []
-    for i in ids:
-        c = centre(i)
-        t = (c.x - el.x) * ux + (c.y - el.y) * uy  # along the upper arm, 0 at the elbow
-        if t < 0:
-            upper.append(i)
-        else:
-            lower.append(i)
-    # a little overlap: paths whose box straddles the elbow line go into both pieces
-    for i in ids:
-        r = dr[i]["rect"]
-        pts = [(r.x0, r.y0), (r.x1, r.y0), (r.x0, r.y1), (r.x1, r.y1)]
-        ts = [(px - el.x) * ux + (py - el.y) * uy for px, py in pts]
-        if min(ts) < -OVERLAP and max(ts) > OVERLAP:
-            if i not in upper:
-                upper.append(i)
-            if i not in lower:
-                lower.append(i)
-    upper.sort()
-    lower.sort()
-    box = bbox(lower)
-    hit = [g for g in greens if pymupdf.Rect(box).contains(centre(g))]
-    assert len(hit) == 1, (n, hit)
-    hand = centre(hit[0])
+    assert (ux < 0) == (sd < 0), (n, "page 2 shows this arm on the other side than ARMS says", ux)
+    # (page 2 only says where the pivots and the hand marker are: the pieces themselves are page 3's. How far page 3's lower piece was moved from
+    # page 2 is found from the paths the two pages share, which also does not care how the arms lie on page 2 or in what order they were drawn.)
+    p2 = pieces3[(n, 2)]
+    (tx, ty), votes = shift_by_paths(p2)
+    assert votes >= 30, (n, "too few paths of the lower piece of page 3 found on page 2", votes)
+    box3 = pymupdf.Rect(C3.bbox(p2))
+    box3 = pymupdf.Rect(box3.x0 - 3, box3.y0 - 3, box3.x1 + 3, box3.y1 + 3)
+    hit = [g for g in greens if box3.contains(pymupdf.Point(centre(g).x + tx, centre(g).y + ty))]
+    if len(hit) == 1:
+        hand = centre(hit[0])
+    else:  # (the green circle was left off this hand on page 2: the hand is where the skin-coloured paint of the piece is)
+        assert not hit, (n, "more than one hand marker on the lower piece", hit)
+        hand = skin_centre(p2, tx, ty)
+        print("%-8s no hand marker on its hand on page 2: put it at the middle of the hand, page 2 (%.0f, %.0f)" % (n, hand.x, hand.y))
+    upper, lower = [], p2
     th1 = math.degrees(math.atan2(el.y - sh.y, el.x - sh.x))  # (y points down: clockwise on the screen)
     th2 = math.degrees(math.atan2(hand.y - el.y, hand.x - el.x))
     l2 = math.hypot(hand.x - el.x, hand.y - el.y) * R
@@ -580,8 +637,6 @@ for n, (eid, sd, layer) in ARMS.items():
     tip_s, tip_e = stick_ends(p1, sd)
     dir1 = (tip_e - tip_s) / np.linalg.norm(tip_e - tip_s)
     piv_s = tip_s + dir1 * INSET
-    (tx, ty), score = shift_between(lower, p2)
-    assert score > 0.85, (n, "the lower piece of page 3 does not match the one of page 2", score)
     el3 = pymupdf.Point(el.x + tx, el.y + ty)
     hand3 = pymupdf.Point(hand.x + tx, hand.y + ty)
     # the upper stick: turn it level, find the pin at its elbow end
@@ -610,14 +665,32 @@ for n, (eid, sd, layer) in ARMS.items():
     fold2 = math.atan2(h4[1] - e4l[1], h4[0] - e4l[0])
     print("%-8s folded: upper %.0f deg, lower %.0f deg  (pins %.1f pt apart there, fit rms %.2f / %.2f over %d / %d paths; rest th2 %.0f)" % (
         n, math.degrees(fold1), math.degrees(fold2), float(np.linalg.norm(e4 - e4l)), fit1[4], fit2[4], fit1[3], fit2[3], th2))
+    # (the lower piece is found on page 1 by its paths; the upper stick's paths are too alike between arms for that, so the upper stick is the line from
+    # the arm's shoulder socket, which is on the body, to the elbow pin the lower piece found)
+    fit2i = fit_piece(p2, 0, sigs1)
+    assert fit2i and fit2i[4] < 1.0, (n, "the lower arm of page 1 (idle) does not match page 3", fit2i)
+    sock_i = socket_i["L" if sd < 0 else "R"]
+    e_i = carry(fit2i, pin_l_pt)
+    h_i = carry(fit2i, (hand3.x, hand3.y))
+    th1 = math.degrees(math.atan2(e_i[1] - sock_i[1], e_i[0] - sock_i[0]))  # (the idle directions replace the page-2 ones)
+    th2 = math.degrees(math.atan2(h_i[1] - e_i[1], h_i[0] - e_i[0]))
+    idx = [t[2] for i in p2 for sg in [sig_of(C3.dr[i])[0]] if sg is not None and len(sigs1.get(sg, [])) == 1 for t in sigs1[sg]]
+    order = sum(idx) / len(idx)
+    print("%-8s idle: socket page1 (%.0f, %.0f) elbow (%.0f, %.0f): upper %.0f deg, %.0f pt (L1 %.0f pt)  lower %.0f deg  fit rms %.2f  paint order %.0f" % (
+        n, sock_i[0], sock_i[1], e_i[0], e_i[1], th1, math.hypot(e_i[0] - sock_i[0], e_i[1] - sock_i[1]), l1 / R, th2, fit2i[4], order))
     iu.save(os.path.join(ARM_DIR, "arm_%s_upper.png" % n.lower()))
     il.save(os.path.join(ARM_DIR, "arm_%s_lower.png" % n.lower()))
     su = find_slab(iu, pu_s[0] + 0.25 * l1, pu_e[0] - 0.25 * l1)
     sl = find_slab(il, pl_e[0] + 0.12 * l2, pl_e[0] + 0.5 * l2)
-    out[n] = {"id": eid, "side": sd, "layer": layer, "th1": math.radians(th1), "th2": math.radians(th2), "l1": l1, "l2": l2, "fold1": fold1, "fold2": fold2,
+    out[n] = {"id": eid, "side": sd, "layer": layer, "order": order, "th1": math.radians(th1), "th2": math.radians(th2), "l1": l1, "l2": l2, "fold1": fold1, "fold2": fold2,
               "u_pivot": pu_s, "u_slab": su, "l_pivot": pl_e, "l_slab": sl}
     print("%-8s upper %s lower %s  paths %d/%d  L1 %.0f L2 %.0f  slabs %.0f-%.0f / %.0f-%.0f  (elbow y off %.1f, hand y off %.1f)" % (
         n, iu.size, il.size, len(upper), len(lower), l1, l2, su[0], su[1], sl[0], sl[1], pu_e[1] - pu_s[1], pl_h[1] - pl_e[1]))
+
+
+for _rank, _n in enumerate(sorted(out, key=lambda k: out[k]["order"])):  # (the draw order of page 1: the arm painted last lies on top)
+    out[_n]["layer"] = _rank
+print("layers:", {k: v["layer"] for k, v in out.items()})
 
 
 def v2(p):

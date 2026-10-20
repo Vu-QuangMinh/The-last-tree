@@ -166,25 +166,23 @@ const E := {
 		"flavor": "A spark of the Good Ol' Wizard's forge, with a temper to match."},
 	"forge_spirit_b": {"name": "Forge Spirit", "act": 1, "member": true, "hp": "WAF", "moves": [{"kind": "attack", "n": 3}],
 		"flavor": "A spark of the Good Ol' Wizard's forge, with a temper to match."},
-	# The Handyman (an Act 1 boss). No real HP until the very end: his HANDS are what you fight. A hand at 0 Essence is
-	# only knocked down. In every phase each hand has 2 lives: with one left it lies down a turn and is
-	# resurrected (angel wings + hourglass); out of lives it stays down. Every hand out of lives -> 2 more hands
-	# (hammer, crossbow), and the fallen ones get back up too; again -> 2 more (spear, shield, 3 Essence each). With every
-	# hand out of lives in that last phase, he shows himself: 1 Essence, and an intent to hit you for 999.
-	# (Their rows were searched to overlap as little as possible: a chant aimed at one hand takes at most 2 off another.)
+	# The Handyman (an Act 1 boss). His HANDS are what you fight: two at a time, one on each side, 10 Essence each. A hand at 0
+	# Essence is knocked off and lies on the floor, and the next hand of that side grows in its place (left: sword, crossbow,
+	# spear; right: tweezer, hammer, shield). Once all six lie on the floor he cries, shakes and pulls them back up: now every
+	# hand has 2 Essence and he has 1. Clear them all to win.
 	"handyman": {"name": "The Handyman", "act": 1, "boss": true, "no_extra": true, "hp": "A", "passives": ["handyman"],
 		"moves": [{"kind": "attack", "n": 999}], "flavor": "Six hands, one job."},
-	"hand_sword": {"name": "Sword Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🗡", "hp": "WWWAF", "moves": [{"kind": "attack", "n": 5}],
+	"hand_sword": {"name": "Sword Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🗡", "hp": "WWWAFWAAFW", "moves": [{"kind": "attack", "n": 5}],
 		"flavor": "It swings, and swings, and swings."},
-	"hand_tweezer": {"name": "Tweezer Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🥢", "hp": "FAFWA", "moves": [{"kind": "steal", "n": 1}],
+	"hand_tweezer": {"name": "Tweezer Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🥢", "hp": "FAFWAFWAFA", "moves": [{"kind": "steal", "n": 1}],
 		"flavor": "Plucks Essence out of your bag and keeps it."},
-	"hand_hammer": {"name": "Hammer Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🔨", "hp": "AWFWA", "moves": [{"kind": "hammer_spell"}],
+	"hand_hammer": {"name": "Hammer Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🔨", "hp": "AWFWAAWFWF", "moves": [{"kind": "hammer_spell"}],
 		"flavor": "It knows which spell is closest to breaking."},
-	"hand_crossbow": {"name": "Crossbow Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🏹", "hp": "FFWAF", "moves": [{"kind": "charge", "left": 1, "n": 20, "turns": 2},
+	"hand_crossbow": {"name": "Crossbow Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🏹", "hp": "FFWAFAWFFW", "moves": [{"kind": "charge", "left": 1, "n": 20, "turns": 2},
 		{"kind": "charge", "left": 0, "hit": true}], "flavor": "Slow to load. Not slow to hurt."},
-	"hand_spear": {"name": "Spear Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🔱", "hp": "AAA", "moves": [{"kind": "attack", "n": 8}],
+	"hand_spear": {"name": "Spear Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🔱", "hp": "AAAFWAAFWA", "moves": [{"kind": "attack", "n": 8}],
 		"flavor": "The last hands are the sharpest."},
-	"hand_shield": {"name": "Shield Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🛡", "hp": "FFF", "moves": [{"kind": "armor", "pos": -1, "who": "random"}],
+	"hand_shield": {"name": "Shield Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🛡", "hp": "FFFWAFFWAW", "moves": [{"kind": "armor", "pos": -1, "who": "random"}],
 		"flavor": "Always covering for one of the others."},
 	"woodcutter": {"name": "The Woodcutter", "act": 0, "boss": true, "hp": "FWAFWAFFWAWFA",
 		"moves": [{"kind": "attack", "n": 8}, {"kind": "summon", "id": "ashling", "n": 1}, {"kind": "armor", "pos": 0, "also": {"kind": "attack", "n": 4}}],
@@ -236,8 +234,8 @@ const PASSIVE_TEXT := {
 	"thorns": "Thorns 2: you lose 2 HP whenever your Release hits it.",
 	"burn_immune": "Fireproof: Burn has no effect on it.",
 	"slime_burst": "Burst: when it dies, two small slimes pop out.",
-	"hand": "A hand with 2 lives: at 0 Essence it goes down for a turn, then is resurrected whole. Out of lives, it stays down until every hand is; then they all rise for his next phase (after his last stand, he shows himself).",
-	"handyman": "The Handyman himself: 1 Essence, out in the open at last.",
+	"hand": "A hand with 10 Essence: knocked out, it drops off and lies on the floor, and the next hand grows in its place. Once every hand has fallen, he pulls them all back up for his last stand, 2 Essence each.",
+	"handyman": "The Handyman himself: 1 Essence. Once his hands are all down he cries, shakes, and takes them back. Every Essence of his hands and his own has to go to win.",
 	"invoker": "Good Ol' Wizard: every turn he conjures 3 spells. On his turn he casts every one your chant matched, or else the one it came closest to.",
 	"invoker_rebirth": "Second wind: at 0 Essence he rises again with 10 more, and starts chanting Quas, Wex or Exort, one a turn: each strips that Essence (Water, Air, Fire) from his spells for the rest of the fight.",
 	"yinyang_split": "Split: when it dies, it splits into two Yin Yang Cubs (10 Essence each), one white and one black.",

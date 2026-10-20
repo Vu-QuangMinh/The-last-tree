@@ -177,14 +177,43 @@ const EFFECT_SFX := {
 	"curse": "sfx_weaken_apply",
 	"barrage": "sfx_magic_hit",  # (a volley of arcane bolts: Arcane Barrage, Elemental Fury, ...)
 }
-## op -> the shared sound of what it does (SFX/Spell SFX/spellfx_<group>.wav, made by tools/make_spell_sfx.py, chosen in the SFX Test screen). It plays instead of
-## the EFFECT_SFX sound above when the file exists; the ops that have no sound above get one here.
+## op -> the shared sound of what it does (SFX/Spell SFX/spellfx_<group>.wav, made by tools/make_spell_sfx.py, chosen in the SFX Test screen). Every effect of every card
+## plays the sound of its group when it lands; when the group has no sound (Heal, or the game's older sound was chosen) the EFFECT_SFX sound above plays instead.
 const EFFECT_FX := {
-	"strike": "remove_essence", "barrage": "magic_bolt", "burn": "burn", "stoke": "stoke", "weak": "weaken", "vulnerable": "vulnerable", "freeze": "freeze", "daze": "daze",
-	"ethereal": "ethereal", "shield": "shield", "thorns": "thorns", "aegis": "evasion", "heal": "heal", "max_hp": "max_hp", "cleanse": "cleanse", "expose": "repaint",
-	"convert": "transmute", "transmute": "transmute", "draw": "gain_essence", "sacrifice": "lose_hp", "amplify": "amplify", "shatter": "break_armour", "execute": "execute",
-	"purge": "purge", "curse": "curse", "passive": "power", "temp_seal": "seal",
+	"strike": "remove_essence", "random_hit": "remove_essence", "barrage": "magic_bolt", "pluck": "snipe",
+	"burn": "burn", "stoke": "stoke", "weak": "weaken", "vulnerable": "vulnerable", "freeze": "freeze", "daze": "daze", "ethereal": "ethereal", "curse": "curse",
+	"shield": "shield", "thorns": "thorns", "thorn_guard": "thorns", "aegis": "evasion",
+	"max_hp": "max_hp", "cleanse": "cleanse", "unbind": "cleanse",
+	"expose": "repaint", "wild_repaint": "repaint", "self_repaint": "repaint",
+	"infuse": "infuse", "infuse_upcoming": "infuse", "rearrange": "rearrange", "wild_move": "rearrange", "move": "rearrange", "duplicate": "duplicate", "echo_next": "duplicate",
+	"conjure": "conjure", "summon_spells": "conjure", "steal": "steal", "execute": "execute", "purge": "purge", "purge_all": "purge", "annihilate": "purge",
+	"convert": "transmute", "transmute": "transmute", "draw": "gain_essence", "sacrifice": "lose_hp", "amplify": "amplify", "shatter": "break_armour", "temp_seal": "seal",
+	"passive": "power", "each_turn": "power", "retain": "refund",
 }
+## The shots of a barrage: one sound each, a beat apart (a little different each, so that it does not sound like one sample played again and again), each enemy
+## flinching as it is hit. Runs on its own while the step goes on.
+func _volley(targets: Array, group: String, fallback: String) -> void:
+	var step := 0.11
+	for i in targets.size():
+		if not is_inside_tree():
+			return
+		var sfx: String = ("spellfx_" + group) if group != "" else fallback
+		if sfx != "":
+			Audio.play(sfx, randf_range(-1.5, 0.5), randf_range(0.93, 1.1), 0.0, false)
+		var v: EnemyView = _views.get(targets[i])
+		if v != null and is_instance_valid(v):
+			v.hit_flash()
+		await get_tree().create_timer(step).timeout
+
+
+## The sound of an effect group (SFX/Spell SFX/spellfx_<group>.wav); `fallback` plays when the group has none (or `group` is empty).
+func _play_fx(group: String, fallback: String) -> void:
+	if group != "" and Audio.has_sfx("spellfx_" + group):
+		Audio.play("spellfx_" + group)
+	elif fallback != "":
+		Audio.play(fallback)
+
+
 ## Element letter -> sfx name, comet leaving the chant (a whoosh) and comet landing on an enemy (an impact).
 const LAUNCH_SFX := {"F": "element_fire", "W": "element_water", "A": "element_wind"}
 const IMPACT_SFX := {"F": "fire", "W": "water", "A": "air"}
@@ -2195,8 +2224,52 @@ func _card_zoom(card: SpellCard, big: bool) -> void:
 
 ## A Handyman hand that has just been brought down but is not yet marked knocked out (that happens a moment later, in Fight._handyman_step):
 ## its view must not go away (and be built again, reaching out, a moment after).
+var _rally_hold := false  # the Handyman's last stand has begun but he has not pulled his hands up yet: they stay on the floor
+const RALLY_QUAKE := 2.4  # seconds his body shakes before the hands are pulled up
+const RALLY_GAP := 0.6  # seconds between one hand being pulled up and the next
+
+
+## The Handyman's last stand: every hand lies on the floor. He turns to the crying face and shakes his whole body hard, then his own
+## Essence steps out and he sucks the six hands up to his shoulders.
+func _hm_rally_scene() -> void:
+	var hands := func() -> Array:
+		return _views.values().filter(func(v): return is_instance_valid(v) and is_instance_valid(v.creature) and v.creature.has_rig())
+	if _hm_stage == null or not is_instance_valid(_hm_stage):
+		_sync_views()
+		_refresh_all()
+		return
+	_rally_hold = true
+	for v in hands.call():
+		v.creature.drop_hold = true  # (the fight state already has them up: the arms wait on the floor)
+	_quake_body(RALLY_QUAKE)
+	_refresh_all()
+	await _wait(1.0)
+	_sync_views()  # (his body steps out, with its one Essence: the shake goes on)
+	_refresh_all()
+	_quake_body(RALLY_QUAKE - 1.0)
+	await _wait(RALLY_QUAKE - 1.0)
+	_rally_hold = false
+	for v in hands.call():  # (he pulls the hands up one after another)
+		v.creature.drop_hold = false
+		_refresh_all()
+		Audio.play("enemy_spawn")
+		await _wait(RALLY_GAP)
+	await _wait(1.0)
+
+
+## His body shakes hard for `t` seconds, crying: the plain picture of it and, if it already stands there as an enemy, its view.
+func _quake_body(t: float) -> void:
+	if _hm_stage != null and is_instance_valid(_hm_stage):
+		_hm_stage.rally_quake(t)
+	for e in _views:
+		var v: EnemyView = _views[e]
+		if e.id == "handyman" and is_instance_valid(v) and is_instance_valid(v.creature):
+			v.creature.sad_forever = true
+			v.creature.quake = t
+
+
 func _hand_going_down(e: EnemyState) -> bool:
-	return e.has_passive("hand") and fight != null and not fight.hm.is_empty() and int(fight.hm.phase) < 3 and fight.enemies.has(e)
+	return e.has_passive("hand") and fight != null and not fight.hm.is_empty() and int(fight.hm.phase) < 2 and fight.enemies.has(e)
 
 
 func _sync_views() -> void:
@@ -2216,6 +2289,11 @@ func _sync_views() -> void:
 			else:
 				PuppetShatter.spawn(self, old.creature)
 	var had := _views.keys()
+	var drops := {}  # hand -> how far down on the floor its arm was (the view is rebuilt, the fall goes on from there)
+	for e in _views:
+		var ov: EnemyView = _views[e]
+		if is_instance_valid(ov) and is_instance_valid(ov.creature) and ov.creature.has_rig():
+			drops[e] = ov.creature._drop_t
 	if hm:
 		if _hm_stage == null or not is_instance_valid(_hm_stage):
 			for c in _enemy_row.get_children():
@@ -2246,7 +2324,8 @@ func _sync_views() -> void:
 			_hm_stage.add_body(v)
 			body_out = true
 		else:
-			_hm_stage.add_hand(e, v, not (e in had))
+			_hm_stage.add_hand(e, v, not (e in had), float(drops.get(e, -1.0)))
+			v.creature.drop_hold = _rally_hold
 		_views[e] = v
 		if e == _spider_away:
 			_hold_spider_up(v)
@@ -3221,8 +3300,8 @@ func _auto_fill() -> void:
 			woken += 1
 	var taken: Array = []
 	for k in chant.length():
-		for i in usable:
-			if not taken.has(i) and fight.player.stock[i].el == chant[k]:
+		for i in _usable_stock():  # (looked up afresh for every Essence: the bag changes while this plays)
+			if i < fight.player.stock.size() and not taken.has(i) and fight.player.stock[i].el == chant[k]:  # (the bag can shrink while this plays: the Tweezer Hand steals from it)
 				taken.append(i)
 				_add_stock_index(i)
 				break
@@ -3236,6 +3315,8 @@ func _auto_fill() -> void:
 func _auto_ball() -> void:
 	if busy or _auto_busy or phase != "build":
 		return
+	_auto_busy = true  # (Auto-fill must not start while the new Essence are still rolling into the bag)
+	get_tree().create_timer(0.8).timeout.connect(func(): _auto_busy = false)
 	var p := fight.player
 	var need := 10 - p.stock.size()
 	if need <= 0:
@@ -4935,12 +5016,6 @@ func _cull_dead() -> void:
 				old.queue_free()
 
 
-## The card's own sound (Spell Card SFX/spell_<id>.wav), when it has one: it plays as the card lights up.
-func _spell_sound(id: String) -> void:
-	if Audio.has_sfx("spell_" + id):
-		Audio.play("spell_" + id)
-
-
 func _anim_event(ev: Dictionary) -> void:
 	match ev.type:
 		"conjure_split":
@@ -5025,12 +5100,13 @@ func _anim_event(ev: Dictionary) -> void:
 				var splash := PaintSplash.new()
 				var ic: Control = pv._hp_icons[ev.index] if ev.index < pv._hp_icons.size() else null
 				splash.el = String(ev.get("to", "?"))
-				splash.radius = (ic.size.x if ic else 40.0) * 0.62
-				splash.position = pv.hp_point(ev.index) - _fx.global_position
+				splash.radius = (ic.size.x if ic else 40.0) * 0.31  # (half the size it was)
+				var at: Vector2 = ic.get_global_rect().get_center() if is_instance_valid(ic) and ic.is_inside_tree() else pv.hp_point(ev.index)  # (right on the Essence just painted)
+				splash.position = at - _fx.global_position
 				_fx.add_child(splash)
-				Audio.play("sfx_expose_apply")
+				_play_fx("repaint", "sfx_expose_apply")  # (the Repaint group: every brush stroke makes it)
 				splash.play(_refresh_all)  # the icon underneath turns Any while the paint covers it
-				await _wait(0.5)
+				await _wait(0.25)
 			else:
 				_refresh_all()
 		"strike":
@@ -5044,7 +5120,7 @@ func _anim_event(ev: Dictionary) -> void:
 		"chant_step":
 			await _release_step(ev)
 		"chant_changed":
-			Audio.play("elem_pickup")
+			_play_fx(String(ev.get("fx", "")), "elem_pickup")  # (a repainted chant Essence: the Repaint group, not the pick-up click)
 			_refresh_all()
 			await _wait(0.35)
 		"trinity":
@@ -5109,13 +5185,11 @@ func _anim_event(ev: Dictionary) -> void:
 				if c:
 					c.create_tween().tween_property(c, "modulate:a", 0.0, 0.25)
 				Audio.play("spell_glow")
-				_spell_sound(ev.spell.id)
 				return
 			if ev.spell.get("power", false):
 				await _power_fly(ev.spell)
 				return
 			Audio.play("spell_glow")
-			_spell_sound(ev.spell.id)
 			# the card lifts and glows (its text is right there on the card)
 			var card := _card_for(ev.spell.id)
 			if card:
@@ -5158,6 +5232,13 @@ func _anim_event(ev: Dictionary) -> void:
 			if snd == "sfx_magic_hit" and not UiSkin.is_puppet():
 				snd = "sfx_damage_hit"  # (the magic hit sound is Puppet art)
 			var fx_group: String = EFFECT_FX.get(ev.op, "")
+			if ev.op == "barrage" and ev.targets.size() > 1:  # a volley (Elemental Fury: 6 shots): every shot has its own sound, one after the other
+				_volley(ev.targets, fx_group if Audio.has_sfx("spellfx_" + fx_group) else "", snd)
+				snd = ""
+				fx_group = ""
+			if fx_group == "repaint":
+				snd = ""
+				fx_group = ""  # (every stroke of the brush made the Repaint sound already: it does not play once more at the end)
 			if fx_group == "shield" and ev.get("eff", {}).get("lasting", false):
 				fx_group = "lasting_shield"
 			if fx_group != "" and Audio.has_sfx("spellfx_" + fx_group):
@@ -5167,7 +5248,7 @@ func _anim_event(ev: Dictionary) -> void:
 			_effect_landed(ev)
 			_sync_views()
 			_refresh_all()
-			await _wait(0.3)
+			await _wait(maxf(0.3, 0.11 * ev.targets.size()) if ev.op == "barrage" else 0.3)  # (a volley lasts as long as its shots)
 		"enemy_turn":
 			await _enemy_turn_start(ev)
 		"enemy_done":
@@ -5242,6 +5323,8 @@ func _anim_event(ev: Dictionary) -> void:
 			Audio.play("boss_phase_change")
 		"boss_defeat":
 			Audio.play("boss_defeat")
+		"hm_rally":
+			await _hm_rally_scene()
 		"spawn":
 			Audio.play("enemy_spawn")
 			_sync_views()
@@ -5250,7 +5333,15 @@ func _anim_event(ev: Dictionary) -> void:
 				cocoon_view.modulate.a = 0.0  # (no first frame in its place: it is let down from above)
 			_refresh_all()
 			if cocoon_view != null:
-				await _drop_view_in(cocoon_view)
+				var dropped := [false]
+				(func():
+					await _drop_view_in(cocoon_view)
+					dropped[0] = true).call()
+				if _spider_away != null:  # the spider follows the cocoon down a second after it
+					await _wait(1.0)
+					await _spider_return(_spider_away)
+				while not dropped[0]:
+					await get_tree().process_frame
 			await _wait(0.25)
 		"spider_return":
 			await _spider_return(ev.enemy)
@@ -5707,10 +5798,19 @@ func _hourglass_dust(e: EnemyState) -> void:
 func _hammer_fx(ev: Dictionary) -> void:
 	var card := _card_for(ev.id)
 	var v: EnemyView = _views.get(ev.enemy)
-	if v and v.creature.has_rig():  # (the Hammer Hand swings its hammer at the card)
+	var cr: Creature = v.creature if v else null
+	var reached := card != null and cr != null and cr.has_rig() and Creature.POKE_TIP.has(ev.enemy.id)
+	if reached:  # (the Hammer Hand's arm reaches over the screen and brings the hammer down ON the card)
+		cr.tip_z = PuppetStage.CEILING_Z + 3
+		cr.poke_target = card.global_position + card.size * card.scale / 2.0
+		var reach := create_tween()
+		reach.tween_property(cr, "poke", 1.0, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		await reach.finished
+		_hammer_retreat(cr)
+	elif v and v.creature.has_rig():  # (no art to reach with: it swings in place)
 		_arm_swing(v.creature, 1.0)
 		await _wait(0.23)
-	if card and v:
+	if card and v and not reached:
 		var from := v.creature.global_position + v.creature.size / 2.0
 		var to := card.global_position + card.size * card.scale / 2.0
 		Comet.launch(_fx, from, to, Color(0.75, 0.62, 0.5))
@@ -5744,6 +5844,19 @@ func _hammer_fx(ev: Dictionary) -> void:
 	tw.tween_property(card, "position", home, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	Vfx.make(_fx, 70).burst(card.global_position + card.size * card.scale / 2.0, 10, Color(0.9, 0.95, 1.0), Vector2(60, 200), Vector2(0.2, 0.45), Vector2(2, 4), Vfx.SHARD)
 	await _wait(0.35)
+
+
+## After the blow the hammer stays on the card a moment, then the arm goes back to its place.
+func _hammer_retreat(cr: Creature) -> void:
+	await _wait(0.5)
+	if not is_instance_valid(cr):
+		return
+	var back := create_tween()
+	back.tween_property(cr, "poke", 0.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await back.finished
+	if is_instance_valid(cr):
+		cr.poke = 0.0
+		cr.tip_z = 0
 
 
 ## A picture of a spell card (as it is, without cracks), with 8 px of margin: (texture, margin).
@@ -5968,6 +6081,8 @@ func _talk() -> void:
 		if node == tree and Audio.voice_busy():  # his first line: the buttons wait until he has said it (the later ones can be answered at once, which cuts him off)
 			var lock: Array = []
 			for b in col.find_children("*", "Button", true, false):
+				if b == go:
+					continue  # (Engage! is never locked: you may cut him off and fight at once)
 				lock.append([b, b.disabled])
 				b.disabled = true
 			_unlock_after_voice(lock)
@@ -6708,7 +6823,9 @@ func _eye_laser(e: EnemyState) -> void:
 		return
 	var cr := v.creature
 	var from := cr.global_position + Vector2(cr.size.x * 0.5, cr.size.y * (0.5 if e.phase < 2 else 0.4))
-	var to := _player_point()
+	if cr._puppet:
+		from = cr.veil_eyes_point()  # (its purple eyes are at the same height in both phases)
+	var to := _attack_point()
 	Audio.play("spell_glow")
 	var fx := Vfx.make(_fx, 80)
 	fx.shaker = _shake
@@ -6754,27 +6871,40 @@ func _spider_steal(e: EnemyState, sp: Dictionary) -> void:
 	down.tween_property(cr, "global_position:y", grab.y - cr.size.y * 0.85, 0.4 * slow).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	await down.finished
 	cr.hit(0.4)  # (it snatches)
+	# it changes its stance (the legs fold in and down) and the card is taken into them, in front of its fangs
+	var pose := cr.create_tween().set_parallel()
+	pose.tween_property(cr, "steal_pose", 1.0, 0.3 * slow).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	var ghost: SpellCard = null
 	if card:
 		ghost = SpellCard.make(sp)
 		ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		ghost.z_index = 119
+		ghost.z_index = 119  # (behind the spider: its legs are over the card's edges)
 		_fx.add_child(ghost)
 		ghost.global_position = card.global_position
 		ghost.scale = card.scale
 		card.modulate.a = 0.0
+		var spot: Array = cr.steal_card_spot()
+		var want := float(spot[1]) / maxf(1.0, ghost.size.x)
+		pose.tween_property(ghost, "global_position", spot[0], 0.3 * slow).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		pose.tween_property(ghost, "scale", Vector2(want, want), 0.3 * slow).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	Audio.play("elem_remove")
+	await pose.finished
 	await _wait(0.2 * slow)
+	# it is pulled up with the card
 	var off := cr.create_tween().set_parallel()
+	var lift: float = (-cr.size.y - 300.0) - cr.global_position.y
 	off.tween_property(cr, "global_position:y", -cr.size.y - 300.0, 0.45 * slow).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	if ghost:
-		off.tween_property(ghost, "global_position:y", -400.0, 0.45 * slow).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		off.tween_property(ghost, "rotation", 0.5, 0.45 * slow)
+		off.tween_property(ghost, "global_position:y", ghost.global_position.y + lift, 0.45 * slow).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)  # (the card rides up with it)
 	await off.finished
 	if ghost:
 		ghost.queue_free()
+	cr.steal_pose = 0.0
 	cr.z_index = z
 	_spider_away = e  # (it stays up there: the cocoon is let down first, then the spider comes back, see _spider_return)
+	# up there, out of sight, it rolls the card into a cocoon: the rolling sound plays right through, and only then is the cocoon let down
+	Audio.play("sfx_cocoon_roll")
+	await _wait(maxf(1.0, Audio.get_sfx_length("sfx_cocoon_roll")))
 
 
 ## How much slower the spiders and their cocoons move than the rest (their durations are multiplied by this): half the speed.
@@ -6828,6 +6958,8 @@ func _drop_view_in(v: EnemyView) -> void:
 
 ## The spider comes back down to its place after the cocoon has been let down.
 func _spider_return(e: EnemyState) -> void:
+	if e != _spider_away:
+		return  # (it has come back already: the cocoon's drop called for it)
 	_spider_away = null
 	var v: EnemyView = _views.get(e)
 	if v == null or not is_instance_valid(v.creature):
@@ -6849,6 +6981,13 @@ func _player_point() -> Vector2:
 	if _puppet_hud:
 		return _player_panel.get_global_rect().get_center()
 	return _player_panel.global_position + Vector2(240, 50)
+
+
+## Where the enemies' attacks land: the middle of your Chant bar (they used to go for the HP bar; the HP still drops, and its bar still cracks on a block).
+func _attack_point() -> Vector2:
+	if is_instance_valid(_chant_panel) and _chant_panel.is_inside_tree():
+		return _chant_panel.get_global_rect().get_center()
+	return _player_point()
 
 
 func _effect_words(e: Dictionary) -> String:
@@ -6952,7 +7091,7 @@ func _move_words(m: Dictionary, e: EnemyState) -> String:
 ## The attacker lunges at you: slash marks, a shake, and the HP bar (or the Shield glass) takes the hit.
 func _enemy_attack(ev: Dictionary) -> void:
 	var v: EnemyView = _views.get(ev.enemy)
-	var target := _hp_bar.global_position + Vector2(_hp_bar.size.x * 0.6, _hp_bar.size.y / 2.0)
+	var target := _attack_point()
 	var hedge: HedgeWall = v.hedges_by_side.get(ev.get("part", ""), null) if v else null
 	if is_instance_valid(hedge):
 		# one of the Matron's walls attacks: the hedge itself lunges
@@ -6966,6 +7105,12 @@ func _enemy_attack(ev: Dictionary) -> void:
 		tw.tween_property(hedge, "offset", Vector2.ZERO, 0.2)
 		tw.parallel().tween_property(hedge, "squash", 1.0, 0.2)
 		await _wait(0.2)
+	elif v and v.creature.has_rig() and ev.enemy.id == "hand_spear":
+		target = await _spear_stab(v, float(ev.n))  # (the spear thrusts up into your HP bar: the hit lands there)
+	elif v and v.creature.has_rig() and ev.enemy.id == "hand_sword":
+		target = await _sword_slash(v, float(ev.n))  # (the blade cuts across your HP bar: the hit lands there)
+	elif v and v.creature.has_rig() and ev.enemy.id == "hand_crossbow" and _arrow_tex() != null:
+		target = await _arrow_shot(v, float(ev.n))  # (the bolt flies up and sticks in your HP bar: the hit lands there)
 	elif v and v.creature.has_rig():
 		# a Handyman hand: the arm winds back and swings down at you (about its shoulder and its elbow)
 		_arm_swing(v.creature, 1.0)
@@ -7006,6 +7151,155 @@ func _enemy_attack(ev: Dictionary) -> void:
 		_float_text("Blocked!", target + Vector2(-40, -70), Color(0.6, 0.85, 1))
 	_refresh_all()
 	await _wait(0.6)
+
+
+## The Sword Hand strikes: its arm reaches up over the screen to your HP bar, the blade held back at one side, then cuts across the part of the bar the
+## hit takes away. Returns the point the blade lands on (the caller plays the impact and the damage there).
+func _sword_slash(v: EnemyView, dmg: float) -> Vector2:
+	var cr: Creature = v.creature
+	var target := _hp_bar.get_global_rect().get_center() + Vector2(-20.0, 0.0)  # (the whole bar, not the part this hit took: that part moves with your HP, and so would the cut; 20 px to the left of the middle)
+	cr.tip_z = PuppetStage.CEILING_Z + 3
+	cr.poke_target = target + Vector2(-110.0, -45.0)  # (wound up: above and behind the bar)
+	var reach := create_tween()
+	reach.tween_property(cr, "poke", 1.0, 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	await reach.finished
+	await _wait(0.15)
+	var cut := create_tween()  # (the cut: fast, down and across the bar)
+	cut.tween_property(cr, "poke_target", target + Vector2(110.0, 25.0), 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await cut.finished
+	_hammer_retreat(cr)
+	return target
+
+
+const ARROW_LEN := 210.0  # px on the screen (the picture is 420 long, head on the left)
+const ARROW_STAY := 1.0  # seconds it stays stuck in the HP bar
+
+
+func _arrow_tex() -> Texture2D:
+	var path := Creature.enemy_path("handyman/arrow.png", 1)
+	return load(path) as Texture2D if path != "" else null
+
+
+## Where the bolt sticks in the HP bar: the middle of the part the hit has just taken away (HP is already down when the attack plays).
+func _arrow_target(dmg: float) -> Vector2:
+	var r := _hp_bar.get_global_rect()
+	var mx := maxf(1.0, fight.player.max_hp)
+	var frac := clampf((clampf(fight.player.hp, 0.0, mx) + dmg * 0.5) / mx, 0.03, 0.97)
+	return Vector2(r.position.x + r.size.x * frac, r.position.y + r.size.y * 0.5)
+
+
+## The Crossbow Hand fires: the bolt lies on the bow; the whole hand (arm, hand and bow) turns together with the bolt until it points at your HP bar, aims
+## there for a second, then the bolt flies and sticks in the bar; a second later it is gone. Returns the point it hit (the caller plays the impact there).
+const ARROW_NOCK := 70.0  # px from the hand along the bow: where the bolt lies
+func _arrow_shot(v: EnemyView, dmg: float) -> Vector2:
+	var tex := _arrow_tex()
+	var cr: Creature = v.creature
+	var sc := ARROW_LEN / float(tex.get_width())
+	var arrow := Sprite2D.new()
+	arrow.texture = tex
+	arrow.z_as_relative = false
+	arrow.z_index = 300
+	arrow.modulate.a = 0.0
+	var hand := cr.hand_global()
+	var bow := float(Creature.AIM_BOW["hand_crossbow"])
+	var rest_dir := float(cr._rig.theta2) + bow  # (where the bow points while it idles)
+	var target := _arrow_target(dmg)
+	var aim_dir := (target - hand).angle()
+	arrow.global_position = hand + Vector2.from_angle(rest_dir) * ARROW_NOCK
+	arrow.rotation = rest_dir + PI  # (the head is on the left of the picture)
+	arrow.scale = Vector2(sc, sc) * 0.8
+	add_child(arrow)
+	var tw := arrow.create_tween()
+	tw.tween_property(arrow, "modulate:a", 1.0, 0.2)
+	tw.parallel().tween_property(arrow, "scale", Vector2(sc, sc), 0.2)
+	await _wait(0.3)  # (it lies on the bow a moment)
+	var fin := [rest_dir]  # (the direction the bolt ends up pointing in)
+	var turn := create_tween()  # (arm, hand, bow and bolt turn as one, then hold the aim for a second, trembling a little)
+	turn.tween_method(func(u: float) -> void:
+		if not is_instance_valid(cr) or not is_instance_valid(arrow):
+			return
+		var k := smoothstep(0.0, 0.35, u)  # (0.35 s of turning, then the hold)
+		cr.aim_dir = (target - cr.hand_global()).angle()  # (the hand moves as the arm turns: aim from where it is now)
+		cr.aim = k
+		var d := lerp_angle(rest_dir, cr.aim_dir, k) + (sin(u * 60.0) * 0.015 if u > 0.4 else 0.0)
+		fin[0] = d
+		arrow.global_position = cr.hand_global() + Vector2.from_angle(d) * ARROW_NOCK
+		arrow.rotation = d + PI, 0.0, 1.35, 1.35)
+	await _wait(1.35)
+	aim_dir = cr.aim_dir
+	var aim_rot: float = float(fin[0]) + PI
+	var dir := Vector2.from_angle(aim_dir)
+	var stuck := target + dir * 12.0 - dir * ARROW_LEN * 0.5  # (the head goes in a little past the surface)
+	var from := arrow.global_position
+	_arm_swing(cr, 0.4)  # (the bow kicks)
+	var fly := arrow.create_tween()
+	fly.tween_property(arrow, "global_position", from + (stuck - from), 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await _wait(0.3)
+	var wob := arrow.create_tween()  # (it shudders in the wood)
+	wob.tween_property(arrow, "rotation", aim_rot + 0.07, 0.05)
+	wob.tween_property(arrow, "rotation", aim_rot - 0.05, 0.07)
+	wob.tween_property(arrow, "rotation", aim_rot, 0.08)
+	var gone := arrow.create_tween()
+	gone.tween_interval(ARROW_STAY)
+	gone.tween_property(arrow, "modulate:a", 0.0, 0.25)
+	gone.tween_callback(arrow.queue_free)
+	_aim_release(cr)
+	return target
+
+
+## The bow comes back from its aim.
+func _aim_release(cr: Creature) -> void:
+	await _wait(0.4)
+	if not is_instance_valid(cr):
+		return
+	var back := create_tween()
+	back.tween_property(cr, "aim", 0.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await back.finished
+	if is_instance_valid(cr):
+		cr.aim = 0.0
+		cr.aim_dir = INF
+
+
+## The Spear Hand strikes: the spear reaches up below your HP bar, then thrusts up into the part of the bar the hit takes away.
+func _spear_stab(v: EnemyView, dmg: float) -> Vector2:
+	var cr: Creature = v.creature
+	var target := _hp_bar.get_global_rect().get_center()
+	cr.tip_z = PuppetStage.CEILING_Z + 3
+	var turn := create_tween()  # (the arm turns until the point of the spear aims straight at the bar)
+	turn.tween_method(func(u: float) -> void:
+		if is_instance_valid(cr):
+			cr.aim_dir = (target - (cr.hand_global() - cr.lunge)).angle()
+			cr.aim = smoothstep(0.0, 1.0, u), 0.0, 1.0, 0.5)
+	await turn.finished
+	var dist := (target - (cr.hand_global() - cr.lunge)).length()
+	var dir := Vector2.from_angle(cr.aim_dir)
+	var far := maxf(0.0, dist - SPEAR_TIP_LEN + 15.0)  # (until the point is a little way in)
+	var back := create_tween()  # (pulls back a little)
+	back.tween_property(cr, "lunge", -dir * 40.0, 0.25).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	await back.finished
+	await _wait(0.15)
+	var stab := create_tween()  # (the thrust: fast, straight along the spear)
+	stab.tween_property(cr, "lunge", dir * far, 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await stab.finished
+	_spear_back(cr)
+	return target
+
+
+const SPEAR_TIP_LEN := 232.0  # px from the Spear Hand's hand to the point of its spear
+
+
+func _spear_back(cr: Creature) -> void:
+	await _wait(0.5)
+	if not is_instance_valid(cr):
+		return
+	var back := create_tween().set_parallel()
+	back.tween_property(cr, "lunge", Vector2.ZERO, 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	back.tween_property(cr, "aim", 0.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await back.finished
+	if is_instance_valid(cr):
+		cr.aim = 0.0
+		cr.aim_dir = INF
+		cr.tip_z = 0
 
 
 ## A Handyman hand that is down for good breaks like the other puppets. Its arm is not one picture, so the arm is drawn once, as it stands,
@@ -7056,6 +7350,9 @@ func _steal_fx(ev: Dictionary, v: EnemyView) -> void:
 	if v and v.creature.has_rig() and Creature.POKE_TIP.has(ev.enemy.id) and not items.is_empty():
 		await _steal_poke(ev, v, items)  # (the Tweezer Hand reaches into the bag for each Essence)
 		return
+	if v and v.creature.has_rig() and Creature.POKE_TIP.has(ev.enemy.id) and items.is_empty():
+		await _steal_nothing(thief, v)  # (the Tweezer Hand grabs at the empty bag three times)
+		return
 	if v and v.creature.has_rig():
 		_arm_swing(v.creature, 0.6)
 	if items.is_empty():
@@ -7076,6 +7373,41 @@ func _steal_fx(ev: Dictionary, v: EnemyView) -> void:
 		_steal_orb(String(it.el), from, to, k * 0.2, v)
 	_float_text("%s steals %s" % [thief, ", ".join(names)], _stock_row.global_position + Vector2(260, -40), Color(1, 0.55, 0.45))
 	await _wait(0.2 * items.size() + 0.75)
+	_sync_views()
+	_refresh_all()
+
+
+## The bag is empty: the Tweezer Hand reaches down into it and snaps at three different places, comes up with nothing, the Handyman's face cries, a line says
+## so, and the arm goes back.
+func _steal_nothing(thief: String, v: EnemyView) -> void:
+	var cr: Creature = v.creature
+	cr.tip_z = PuppetStage.CEILING_Z + 3
+	var base := _stock_row.global_position
+	var spots := [Vector2(140.0, 34.0), Vector2(380.0, 34.0), Vector2(260.0, 34.0)]
+	for k in spots.size():
+		if not is_instance_valid(cr):
+			return
+		cr.poke_target = base + spots[k]
+		var reach := create_tween()
+		reach.tween_property(cr, "poke", 1.0, 0.35 if k == 0 else 0.22).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		await reach.finished
+		Audio.play("sfx_steal_miss" if Audio.has_sfx("sfx_steal_miss") else "elem_pickup", 0.0, randf_range(0.97, 1.03))  # (the tweezers snap shut on nothing: fx_evasion_2, once per grab)
+		await _wait(0.2)
+		if k < spots.size() - 1:
+			var lift := create_tween()  # (up a little, and over to the next place)
+			lift.tween_property(cr, "poke", 0.55, 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			await lift.finished
+	if is_instance_valid(cr):
+		get_tree().call_group("handyman_body", "cry", 2.0)
+	_float_text("%s finds nothing to steal" % thief, base + Vector2(300, -30), Color(0.8, 0.8, 0.85))
+	await _wait(0.9)
+	if is_instance_valid(cr):
+		var back := create_tween()
+		back.tween_property(cr, "poke", 0.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		await back.finished
+	if is_instance_valid(cr):
+		cr.poke = 0.0
+		cr.tip_z = 0
 	_sync_views()
 	_refresh_all()
 
@@ -7195,11 +7527,13 @@ func _enemy_move_fx(ev: Dictionary) -> void:
 		await _wait(0.23)
 	if kind in Fight.AT_PLAYER and v:
 		var from := v.creature.global_position + v.creature.size / 2.0
-		var to := _player_point()
+		var to := _attack_point()
 		var comet := Comet.launch(_fx, from, to, (look[1] as Color).lightened(0.3))
 		comet.rise = 60.0
 		await _wait(0.45)
 		_shake(4.0)
+	elif v and v.creature.has_rig():
+		v.creature.flash = 0.7  # (a hand of the Handyman that charges or buffs only glows: hit_flash would make it blink and his face cry as if it had been struck)
 	elif v:
 		v.hit_flash()
 	_sync_views()

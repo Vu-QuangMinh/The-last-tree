@@ -61,45 +61,19 @@ func socket(side: int) -> Vector2:
 	return sq.position + f * sq.size
 
 
-## The six places where the hands' names stand, in one row (x from the middle of the row, three on each side, evenly spaced; y of the
-## hand marker: the name is just above it, the Essence just under it, so the names are level and so are the Essence). The sticks of each arm are
-## stretched until its hand marker is there. Outermost slot = the highest arm of its side, so the arms do not cross.
-const SLOT_X := {"hand_spear": -690.0, "hand_shield": -460.0, "hand_tweezer": -230.0, "hand_sword": 230.0, "hand_hammer": 460.0, "hand_crossbow": 690.0}
-const SLOT_Y := 430.0
-
-
+## Where a hand stands: its idle pose, page 1 of Handyman.pdf. The upper stick leaves the shoulder socket along `theta1`, the lower one the elbow along
+## `theta2`, both at their PDF length (the arms are never stretched), so the hand marker (its name just above, its Essence just under) is where the page
+## has the hand. The hands only sway a little about it (Creature._draw_arm).
 func slot_of(id: String) -> Vector2:
-	return Vector2(SLOT_X[id], SLOT_Y)
-
-
-## How long the arm's two sticks must be (px of the art) for its hand marker to reach `slot_of(id)`, and the direction of its lower stick:
-## (upper length, lower length, lower angle). With the rest directions it is two equations in two lengths; when that asks for a stick
-## shorter than it can be made (the hand is too near), the upper stick stays as short as it goes and the lower one turns to meet the slot.
-func reach_of(id: String) -> Vector3:
 	var arm: Dictionary = HandymanRig.ARMS[id]
-	var t := (slot_of(id) - socket(arm.side)) / HandymanRig.SCALE
-	var u1 := Vector2.from_angle(arm.theta1)
-	var slab_u: Vector2 = arm.upper_slab
-	var slab_l: Vector2 = arm.lower_slab
-	var lo_a: float = float(arm.l1) - 0.8 * (slab_u.y - slab_u.x)
-	var lo_b: float = float(arm.l2) - 0.8 * (slab_l.y - slab_l.x)
-	var best := Vector3(lo_a, lo_b, arm.theta2)
-	var best_cost := INF
-	var far := 0.0
-	var a := lo_a
-	while a <= lo_a + 900.0:  # (the upper length that leaves the lower stick closest to its rest direction)
-		var f := t - u1 * a
-		var len := f.length()
-		far = maxf(far, len)
-		if len >= lo_b:
-			var cost := absf(angle_difference(f.angle(), arm.theta2))
-			if cost < best_cost:
-				best_cost = cost
-				best = Vector3(a, len, f.angle())
-		a += 2.0
-	if best_cost == INF:
-		push_warning("HandymanStage: %s cannot reach its slot (the lower stick would be %.0f, the shortest is %.0f)" % [id, far, lo_b])
-	return best
+	return socket(arm.side) + Creature.arm_hand(arm, Vector2(arm.l1, arm.l2), arm.theta2) * HandymanRig.SCALE
+
+
+func _apply_reach(c: Creature, _id: String) -> void:
+	c.reach = Vector2.ZERO  # (as cut)
+	c.reach_angle = INF
+	c.reach_upper = INF
+	c.floor_dy = VIEW.y - slot_of(_id).y  # (how far below the hand marker the floor is)
 
 
 ## Where the top left corner of a hand's view goes: the middle of its Creature's box on its slot.
@@ -107,19 +81,20 @@ func view_position(id: String) -> Vector2:
 	return slot_of(id) - Vector2(VIEW.x / 2.0, VIEW.y - CREATURE_H / 2.0)
 
 
-func add_hand(e: EnemyState, v: EnemyView, reach: bool) -> void:
+## `drop`: how far down on the floor the hand's arm already was (-1: it has no view yet).
+func add_hand(e: EnemyState, v: EnemyView, reach: bool, drop := -1.0) -> void:
 	var arm: Dictionary = HandymanRig.ARMS[e.id]
 	drop_ghost(e.id)
 	add_child(v)
 	v.size = VIEW
 	v.position = view_position(e.id)
-	var r := reach_of(e.id)
-	v.creature.reach = Vector2(r.x, r.y)
-	v.creature.reach_angle = r.z
+	_apply_reach(v.creature, e.id)
 	v.set_meta("layer", arm.layer)
 	_sort_layers()
-	if e.knocked:
-		v.creature._fold_t = 1.0  # (still folded: the view was rebuilt)
+	if drop >= 0.0:
+		v.creature._drop_t = drop  # (the view was rebuilt: a falling arm keeps falling, a rising one keeps rising)
+	elif e.fallen:
+		v.creature._drop_t = 1.0  # (already lying there)
 	elif reach:  # a hand that joins mid-fight unfolds from where it lay, behind him
 		v.creature._fold_t = 1.0
 
@@ -145,9 +120,7 @@ func sync_ghosts(live_ids: Array, phase: int, fight: Fight) -> void:
 			add_child(v)
 			v.size = VIEW
 			v.position = view_position(id)
-			var r := reach_of(id)
-			v.creature.reach = Vector2(r.x, r.y)
-			v.creature.reach_angle = r.z
+			_apply_reach(v.creature, id)
 			v.creature._fold_t = 1.0
 			v.set_meta("layer", HandymanRig.ARMS[id].layer)
 			_ghosts[id] = v
@@ -181,6 +154,13 @@ func _sort_layers() -> void:
 		move_child(views[i], i)
 	if _body != null:
 		move_child(_body, views.size())
+
+
+## His last stand begins: the plain picture of his body cries and shakes hard for `t` seconds.
+func rally_quake(t: float) -> void:
+	if _body != null:
+		_body.sad_forever = true
+		_body.quake = t
 
 
 func set_real(real: bool) -> void:

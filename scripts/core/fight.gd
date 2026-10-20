@@ -155,14 +155,17 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 	depth = p_depth
 	player.reset_fight()
 	enemies.clear()
+	hm = {}
 	for i in enemy_ids.size():
 		if BossTalk.TREES.has(enemy_ids[i]):
 			talk_id = enemy_ids[i]
 		if enemy_ids[i] == "handyman":
-			# the Handyman starts as two hands (he himself only shows up at the very end)
-			hm = {"phase": 1, "kills": 0, "body": false}
-			_spawn("hand_sword", [])
-			_spawn("hand_tweezer", [])
+			# the Handyman starts as two hands, one on each side (he himself only shows up for the last stand; once only, whatever the list says)
+			if not hm.is_empty():
+				continue
+			hm = {"phase": 1, "body": false, "next": {"left": 1, "right": 1}}
+			_spawn(HM_HANDS.left[0], [])
+			_spawn(HM_HANDS.right[0], [])
 			continue
 		_spawn(enemy_ids[i], preset_extra[i] if i < preset_extra.size() else null)
 	if has_artifact("thornbark"):
@@ -388,7 +391,6 @@ func begin_player_turn() -> void:
 		player.heal(_an("mending_moss"))
 	player.thorns_turn = 0
 	player.thorn_guard = false
-	_hands_back()
 	if has_artifact("iron_bark"):
 		player.lasting += _an("iron_bark")  # Iron Bark: Lasting Shield every turn
 	player.shield = 0.0  # Shield lasts until your next turn starts (it doesn't build up from turn to turn)
@@ -1074,7 +1076,7 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 					if chant[i] != to:
 						_log("%s repaints a %s in the chant: %s." % [spell.name, Elements.NAMES[chant[i]], Elements.NAMES[to]])
 						chant[i] = to
-						await anim.call({"type": "chant_changed"})
+						await anim.call({"type": "chant_changed", "fx": "repaint"})
 				elif got.size() == 3 and got[0] == "enemy" and int(got[1]) >= 0 and int(got[1]) < enemies.size():
 					var e: EnemyState = enemies[int(got[1])]
 					var i := int(got[2])
@@ -1096,7 +1098,7 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 					continue
 				_log("%s repaints a %s in the chant: %s." % [spell.name, Elements.NAMES[chant[i]], Elements.NAMES[to]])
 				chant[i] = to
-				await anim.call({"type": "chant_changed"})
+				await anim.call({"type": "chant_changed", "fx": "repaint"})
 		"ethereal":
 			if eff.target == "self":
 				player.ethereal = true
@@ -1826,8 +1828,8 @@ func _enemy_phase() -> void:
 			return
 		if e.is_dead():
 			continue
-		if e.def.get("inert", false):
-			continue  # (a cocoon: it just hangs there)
+		if e.def.get("inert", false) or e.has_passive("handyman"):
+			continue  # (a cocoon: it just hangs there; the Handyman, crying with his hands pulled back, only waits to be finished)
 		if e.fresh:
 			# it arrived during your turn: this time it only shows what it's going to do
 			e.fresh = false
@@ -1876,6 +1878,9 @@ func _enemy_phase() -> void:
 
 ## Moves are used strictly in the listed order, looping (a boss switches to its second list at half HP).
 func _plan(e: EnemyState) -> void:
+	if e.has_passive("handyman"):
+		e.intent = {}  # (he never acts: see _enemy_phase)
+		return
 	if e.def.get("invokes", false):
 		_invoker_plan(e)
 		return
@@ -2113,86 +2118,58 @@ func _rebirths() -> void:
 			e.set_meta("say_first", ["Very well, mortal.", "I have not been pushed this far in a while.", "Let me show you the pinnacle of Wizardry."])
 
 
-## The Handyman: in every phase each hand has 2 lives. At 0 Essence a hand goes down: with a life left it lies there
-## a turn and gets back up (the angel wings and an hourglass); out of lives it stays down. Once every hand is out of
-## lives, two new hands join and the fallen ones get back up too, for the next phase. In his last stand, once every
-## hand is out of lives, they go limp for good and he shows himself.
-const HAND_DOWN := 2  # a fallen hand gets back up at the start of your turn after next (a turn's rest)
+## The Handyman. Phase 1: two hands at a time, one on each side, 10 Essence each. A hand at 0 Essence is knocked off and lies on the
+## floor for good (this phase), and the next hand of its side grows in its place. Once all six lie there, phase 2 (his last stand):
+## he cries, shakes, and pulls every hand back up with 2 Essence each, and he shows himself with 1. Clear them all to win.
+const HM_HANDS := {"left": ["hand_sword", "hand_crossbow", "hand_spear"], "right": ["hand_tweezer", "hand_hammer", "hand_shield"]}  # (the sides are the ones of Handyman.pdf)
+const HM_LAST_STAND_ESSENCE := 2  # a hand's Essence once he has pulled it back up
+
+
+func _hm_side(id: String) -> String:
+	return "left" if id in HM_HANDS.left else "right"
 
 
 func _handyman_step() -> void:
-	if hm.is_empty():
+	if hm.is_empty() or hm.phase >= 2:
 		return
 	for e in enemies.duplicate():
 		if not e.has_passive("hand") or not e.is_dead() or e.knocked:
 			continue
 		e.charge_dmg = -1
 		e.knocked = true
-		e.lives -= 1
-		hm.kills += 1
-		if e.lives > 0:
-			_hand_down(e)
-			_log("%s goes down. It will rise again." % e.name)
-		else:
-			e.revive_in = 0
-			e.intent = {}
-			_log("%s goes down, out of lives." % e.name)
+		e.fallen = true
+		e.set_meta("ko_fresh", true)  # (the view plays the knock-out grunt once: Creature._handy_ko_watch)
+		e.intent = {}
+		_log("%s is knocked off and falls to the floor." % e.name)
+		var side := _hm_side(e.id)
+		var n: int = hm.next[side]
+		if n < HM_HANDS[side].size():  # the next hand of that side grows where it fell off
+			hm.next[side] = n + 1
+			var h := _spawn(HM_HANDS[side][n], [])
+			h.fresh = true
+			_plan(h)
+			anim.call({"type": "spawn", "enemy": h})
 	var hands := enemies.filter(func(x): return x.has_passive("hand"))
-	if hm.phase < 3 and not hands.is_empty() and hands.all(func(x): return x.knocked and x.lives <= 0):
-		for x in hands:
-			x.lives = 2
-			_hand_down(x)  # (they get back up for the next phase, after the usual rest)
-		if hm.phase == 1:
-			_hm_phase(2, ["hand_hammer", "hand_crossbow"], "The Handyman reaches out with two more hands!")
-		else:
-			_hm_phase(3, ["hand_spear", "hand_shield"], "Two last hands, a spear and a shield: the Handyman makes his last stand!")
-	elif hm.phase >= 3 and not hands.is_empty() and hands.all(func(x): return x.knocked and x.lives <= 0):
-		for x in hands:
-			enemies.erase(x)  # (his last stand is over: they go limp for good)
-		_log("Every hand goes limp for good.")
-	if hm.phase == 3 and not hm.body and not enemies.any(func(x): return x.has_passive("hand")):
-		hm.body = true
-		var body := _spawn("handyman", [])
-		body.reset_hp(_random_element())
-		body.fresh = true
-		_plan(body)
-		_log("Out of hands, the Handyman shows himself!")
-		anim.call({"type": "boss_phase"})
-		anim.call({"type": "spawn", "enemy": body})
+	if not hands.is_empty() and hands.size() == 6 and hands.all(func(x): return x.knocked):
+		_hm_last_stand(hands)
 
 
-func _hm_phase(n: int, ids: Array, line: String) -> void:
-	hm.phase = n
-	hm.kills = 0
-	for id in ids:
-		var h := _spawn(id, [])
-		h.fresh = true
-		_plan(h)
-		anim.call({"type": "spawn", "enemy": h})
-	_log(line)
+func _hm_last_stand(hands: Array) -> void:
+	hm.phase = 2
+	hm.body = true
+	for x in hands:
+		x.knocked = false
+		x.fallen = false
+		x.reset_hp(String(x.def.hp).substr(0, HM_LAST_STAND_ESSENCE))
+		x.move_index = 0
+		x.fresh = true
+		_plan(x)
+	var body := _spawn("handyman", [])
+	body.reset_hp(_random_element())
+	_plan(body)
+	_log("Every hand has fallen. The Handyman cries, shakes, and pulls them all back up!")
 	anim.call({"type": "boss_phase"})
-
-
-func _hand_down(e: EnemyState) -> void:
-	e.revive_in = HAND_DOWN
-	e.intent = {"kind": "revive", "left": HAND_DOWN}
-
-
-## Start of your turn: fallen hands count down, and get back up whole (the Crossbow starts loading again).
-func _hands_back() -> void:
-	for e in enemies:
-		if not e.knocked or e.revive_in <= 0:
-			continue
-		e.revive_in -= 1
-		if e.revive_in > 0:
-			e.intent = {"kind": "revive", "left": e.revive_in}
-			continue
-		e.knocked = false
-		e.reset_hp(String(e.def.hp))
-		e.move_index = 0
-		_plan(e)
-		_log("%s is resurrected." % e.name)
-		anim.call({"type": "revive", "enemy": e})
+	anim.call({"type": "hm_rally"})
 
 
 ## The Hammer Hand: it always goes for the spell it can break with the fewest hits (a tie: the one you've cast most
