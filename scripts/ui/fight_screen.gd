@@ -134,6 +134,7 @@ var _hp_bar: HpBar
 var _hp_label: Label
 var _shield_box: HBoxContainer  # the Shield (and Lasting) amount, beside your HP
 var _shield_label: Label
+var _lasting_label: Label  # Puppet HUD: "Lasting N" under the HP bar
 var _pstatus: RichTextLabel
 var _status_row: HFlowContainer  # your statuses, as bright badges above the HP bar
 var _bottle_row: HBoxContainer  # your bottles, under the HP bar
@@ -266,13 +267,16 @@ func _ready() -> void:
 	add_child(_info)
 	_arts = _make_arts()
 	add_child(_arts)
-	if UiSkin.is_puppet():  # Puppet Stage: the Act / Floor / Turn line is written in the top frame (see _place_top_hud)
-		_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	if UiSkin.is_puppet():  # Puppet Stage: the Act / Floor / Turn line is written on the hanging sign (see _rebuild_character_panel)
+		_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_info.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		_info.size = Vector2(232, 30)
+		_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_info.size = PuppetTopHud.ACT_TEXT.size
 		_info.add_theme_font_size_override("font_size", PuppetTopHud.ACT_PX)
-		_info.add_theme_color_override("font_color", Color(0.137, 0.122, 0.125))
-		_info.z_index = PuppetStage.CEILING_Z + 3
+		_info.add_theme_color_override("font_color", Color(0.30, 0.17, 0.07))
+		var bold := UiTheme.cut("bold")
+		if bold != null:
+			_info.add_theme_font_override("font", bold)
 	# top-right: coming next
 	var np := PanelContainer.new()
 	np.add_theme_stylebox_override("panel", UiTheme.panel_box(0.85, 10))
@@ -455,6 +459,8 @@ func _ready() -> void:
 	if _stage != null and (map_mode or arrive):
 		_build_spellbook_button()
 		_start_down.call_deferred()
+	else:
+		_show_act_sign.call_deferred(true)  # (a fight that simply starts: the sign drops now and goes up after 10 s)
 
 
 # ------------------------------------------------------------------ Puppet Stage, between fights
@@ -463,7 +469,7 @@ func _ready() -> void:
 ## it, the bottles, the artifacts).
 func _hud_nodes() -> Array:
 	var out: Array = []
-	for n in [_spell_row, _chant_panel, _bag_panel, _status_row, _debuff_board]:  # (the top frame with the Act line, HP, bottles and artifacts, and the Menu button, always stay at the top)
+	for n in [_spell_row, _chant_panel, _bag_panel, _top_layer]:  # (the Menu button and the Act sign stay where they are; the debuffs go up, see _set_hud_shift)
 		if n != null and is_instance_valid(n):
 			out.append(n)
 	return out
@@ -475,8 +481,9 @@ func _set_hud_shift(v: float) -> void:
 	for n in _hud_nodes():
 		n.position.y += d
 	var k_up := clampf(v / HUD_DOWN, 0.0, 1.0)
-	if _top_layer != null:  # the char panel goes up off the screen, the Menu button goes to the top left corner (and back)
-		_top_layer.position.y = -k_up * TOP_LIFT
+	for n in [_status_row, _debuff_board]:  # (the debuffs leave over the top edge: they stand at the top left)
+		if n != null and is_instance_valid(n):
+			n.position.y -= d / HUD_DOWN * DEBUFF_LIFT
 	if _menu_btn != null:
 		_menu_btn.position = PuppetTopHud.MENU.position.lerp(MENU_TOP_AT, k_up)
 	if _book_btn != null:
@@ -506,7 +513,7 @@ func _start_down() -> void:
 func _set_info(text: String) -> void:
 	_info.text = text
 	if UiSkin.is_puppet():
-		_info.visible = _top_frame != null  # (it stands in the top frame)
+		_info.visible = _act_sign != null  # (it stands on the hanging sign)
 
 
 ## The Act / Floor / Turn line is as tall as the 19 px text it replaced (capital letters of that font are about 14 px).
@@ -516,6 +523,7 @@ const INFO_CAP := 14.0
 ## The HUD sinks, the Spellbook button comes up in the place of the HP bar.
 func _hud_down(secs := 0.9) -> void:
 	busy = true
+	_lift_act_sign(true)
 	_set_info("Act %d · Floor %d" % [run.act, run.floor_no()])
 	if _book_btn == null:
 		_build_spellbook_button()
@@ -529,6 +537,7 @@ var _hud_tw: Tween
 
 ## The HUD comes up from below the screen. `free_input`: the fight can be played once it is up (false when it is raised early, while the stage is still being set).
 func _hud_up(secs := 0.8, free_input := true) -> void:
+	_show_act_sign()  # (the fight begins: the Act sign drops; _arrive starts its countdown once everything is out)
 	if _hud_tw != null and _hud_tw.is_valid():
 		_hud_tw.kill()
 	_hud_tw = create_tween()
@@ -610,12 +619,14 @@ func _arrive() -> void:
 		await _hud_up()
 		if tw.is_running():
 			await tw.finished
+		_show_act_sign(true)
 		await get_tree().create_timer(0.6).timeout  # (the cards have landed)
 		_talk()
 		return
 	_hud_up()
 	if tw.is_running():
 		await tw.finished
+	_show_act_sign(true)  # (the props and the enemies are out: the sign goes up after 10 s)
 
 
 const ENEMY_UP := -1500.0  # how far above their places the enemies hang while they are out of sight (their ropes go straight up behind the ceiling)
@@ -947,20 +958,19 @@ func _fit_enemy_lift() -> void:
 ## HP bar with the heart / HP and Shield under it, the bottles' frame (up to 5), the artifacts' frame (ten slots), the Leaves under them, and
 ## the statuses (small icons, up to 22 at once: 14 kinds + 8 Powers, two rows) above the HP bar. Everything stands on the screen itself;
 ## `_player_panel` is only a marker the effects that land on you fly to.
-const TOP_LIFT := 160.0  # how far the char panel is lifted (off the top of the screen)
+const DEBUFF_LIFT := 400.0  # how far the debuff board is lifted (off the top of the screen) while the HUD is down
 const MENU_TOP_AT := Vector2(1426.0, 1001.0)  # the Menu button between fights: level with Begin the fight, to its left
-const BOTTLE_PX := 44.0  # a bottle / an artifact in the top frame
+const BOTTLE_PX := 44.0  # a bottle / an artifact in its slot frame
 const ART_PX := 44.0
-const ART_STEP := 46.0
-const ART_INNER_MAX := 1100.0  # the artifacts squeeze together past this width (the top frame has room for ten of them side by side)
-const SLOT_PAD := 12.0  # inside a slot frame, left and right of the items
-const TOP_MAX_W := 1880.0  # the widest the top frame may be: the screen, 20 px in on each side
-const SLOT_GAP := 15.0  # between the tray and the bottles' frame, and between the two slot frames
+const ART_STEP := 48.0  # the artifacts' slots are this far apart, five to a row
+const ART_ROW := 5
+const ART_ROW_GAP := 2.0
+const BOTTLE_STEP := 50.2  # the bottles' slots: five fit the frame
 var _menu_btn: Button
-var _debuff_board: NinePatchRect  # Puppet Stage: the red board left of the Chant frame that holds the debuffs (it stretches to fit their icons)
-var _top_layer: Control  # holds everything of the char panel (the top frame): it is lifted off the screen between fights
-var _top_frame: NinePatchRect  # Puppet Stage: the one frame at the top that holds the Act line, HP, Shield, the HP tray, the bottles and the artifacts
-var _top_dx := 0.0  # how far it stands from the page's place (it is centred on the screen and grows with the bottles and artifacts)
+var _debuff_board: NinePatchRect  # Puppet Stage: the red board at the top left that holds the debuffs (it stretches to fit their icons)
+var _top_layer: Control  # holds everything of the char panel (HP, bottles, artifacts): it sinks with the HUD between fights
+var _act_sign: Control  # Puppet Stage: the hanging sign with the Act / Floor / Turn line: it drops at the start of a fight and goes back up after a while
+var _act_sign_gen := 0  # (every drop and every lift counts: a countdown that belongs to an older one does nothing)
 
 
 func _rebuild_character_panel() -> void:
@@ -972,13 +982,11 @@ func _rebuild_character_panel() -> void:
 	_player_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_player_panel)
 	old.queue_free()
-	_top_frame = _hud_frame("hud_frame", Rect2(PuppetTopHud.FRAME_AT, Vector2(PuppetTopHud.FRAME_W, PuppetTopHud.FRAME_H)), int(PuppetTopHud.FRAME_MARGINS.x), int(PuppetTopHud.FRAME_MARGINS.y))
-	_top_frame.z_index = PuppetStage.CEILING_Z + 1  # (over the curtain)
-	_bottles_frame = _nine_frame("bottle_board", Rect2(0, PuppetTopHud.SLOT_Y, 89.0, PuppetTopHud.SLOT_H), PuppetTopHud.BOARD_MARGINS)
+	_bottles_frame = _nine_frame("slot_board", PuppetTopHud.BOTTLES, PuppetTopHud.SLOT_MARGINS)
 	_bottles_frame.z_index = PuppetStage.CEILING_Z + 2
-	_arts_frame = _nine_frame("bottle_board", Rect2(0, PuppetTopHud.SLOT_Y, 89.0, PuppetTopHud.SLOT_H), PuppetTopHud.BOARD_MARGINS)
+	_arts_frame = _nine_frame("slot_board", PuppetTopHud.ARTIFACTS, PuppetTopHud.SLOT_MARGINS)
 	_arts_frame.z_index = PuppetStage.CEILING_Z + 2
-	_hp_bar = BlockHpBar.new()  # (20 square blocks in a tray; the numbers stand to the right of it)
+	_hp_bar = StripeHpBar.new()  # (16 candy stripes in a bar that ends in a ring; the numbers stand in the ring)
 	_hp_bar.custom_minimum_size = PuppetTopHud.TRAY.size
 	_hp_bar.position = PuppetTopHud.TRAY.position
 	_hp_bar.size = PuppetTopHud.TRAY.size
@@ -987,32 +995,36 @@ func _rebuild_character_panel() -> void:
 	var heart := UiSkin.icon("icon_heart", 24)
 	if heart != null:
 		heart.z_index = PuppetStage.CEILING_Z + 3
+		heart.visible = false  # (the ring of the HP bar holds the numbers now)
 		add_child(heart)
 		_heart = heart
 	var hp_font := UiTheme.cut("bold")
 	_hp_label = UiTheme.label("", PuppetTopHud.HP_PX, Color(0.831, 0.255, 0.153))
 	if hp_font != null:
 		_hp_label.add_theme_font_override("font", hp_font)
-	_hp_label.size = Vector2(112, 24)
-	_hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER  # (centred on the heart)
+	_hp_label.size = PuppetTopHud.RING_TEXT
+	_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER  # (centred in the ring, top line)
 	_hp_label.clip_text = true
 	_hp_label.z_index = PuppetStage.CEILING_Z + 3
 	add_child(_hp_label)
 	_shield_box = HBoxContainer.new()
 	_shield_box.z_index = PuppetStage.CEILING_Z + 3
-	_shield_box.custom_minimum_size = Vector2(0, 24)
-	_shield_box.add_theme_constant_override("separation", 6)
+	_shield_box.custom_minimum_size = PuppetTopHud.RING_TEXT
+	_shield_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	_shield_box.visible = false
-	var shield_pic := UiSkin.icon("icon_armor_shield", 24)
-	if shield_pic != null:
-		_shield_box.add_child(shield_pic)
-	_shield_label = UiTheme.label("", PuppetTopHud.SHIELD_PX, Color(0.698, 0.847, 0.953))
+	_shield_label = UiTheme.label("", PuppetTopHud.SHIELD_PX, Color(0.31, 0.49, 0.56))  # (the ring's second line: the Shield, blue-grey like the page's)
 	if hp_font != null:
 		_shield_label.add_theme_font_override("font", hp_font)
 	_shield_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_shield_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER  # (centred on the shield)
+	_shield_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_shield_box.add_child(_shield_label)
 	add_child(_shield_box)
+	_lasting_label = UiTheme.label("", PuppetTopHud.LASTING_PX, Color(0.698, 0.847, 0.953))  # (under the bar: "Lasting 4")
+	if hp_font != null:
+		_lasting_label.add_theme_font_override("font", hp_font)
+	_lasting_label.z_index = PuppetStage.CEILING_Z + 3
+	add_child(_lasting_label)
 	_bottle_row = HBoxContainer.new()
 	_bottle_row.add_theme_constant_override("separation", 0)
 	_bottle_row.z_index = PuppetStage.CEILING_Z + 3
@@ -1028,9 +1040,10 @@ func _rebuild_character_panel() -> void:
 	_top_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_top_layer)
 	move_child(_top_layer, _stage.get_index() + 1)
-	for n in [_top_frame, _bottles_frame, _arts_frame, _hp_bar, _heart, _hp_label, _shield_box, _bottle_row, _arts, _info, _player_panel]:
+	for n in [_bottles_frame, _arts_frame, _hp_bar, _heart, _hp_label, _shield_box, _lasting_label, _bottle_row, _arts, _player_panel]:
 		if n != null:
 			n.reparent(_top_layer, false)
+	_build_act_sign()
 	_status_row = HFlowContainer.new()
 	_status_row.add_theme_constant_override("h_separation", STATUS_GAP)
 	_status_row.add_theme_constant_override("v_separation", STATUS_GAP)
@@ -1046,8 +1059,9 @@ func _make_arts() -> ArtifactBar:
 	bar.position = Vector2(28, 52)
 	if UiSkin.is_puppet():
 		bar.chip_px = ART_PX
-		bar.row_width = ART_INNER_MAX
+		bar.row_width = ART_STEP * (ART_ROW - 1) + ART_PX + 4.0  # (five to a row, the next ones wrap to a second row)
 		bar.slot_step = ART_STEP
+		bar.per_row = ART_ROW
 		bar.z_index = PuppetStage.CEILING_Z + 3
 	return bar
 
@@ -1068,72 +1082,38 @@ func _nine_frame(tex_name: String, r: Rect2, m: Array) -> NinePatchRect:
 	return f
 
 
-## A painted frame of the HUD (3 slices: caps at the two ends), put just above the stage so it is behind the pieces that stand on it.
-func _hud_frame(tex_name: String, r: Rect2, cap_l: int, cap_r := -1) -> NinePatchRect:
-	var f := NinePatchRect.new()
-	f.texture = UiSkin.tex(tex_name)
-	f.patch_margin_left = cap_l
-	f.patch_margin_right = cap_l if cap_r < 0 else cap_r
-	f.position = r.position
-	f.size = r.size
-	f.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(f)
-	move_child(f, _stage.get_index() + 1)
-	return f
-
-
-## The top frame holds what you carry: with no bottle or no artifact, that slot frame is not there and the big frame is shorter. It is centred on the screen
-## (it grows with the items, to both sides), and everything in it stands where the PDF has it, shifted by the same amount.
+## The bottle frame (one row of five) and the artifact frame (two rows of five) stand where the PDF has them, bottom left. A frame is only there when you carry something;
+## a sixth bottle widens the bottle frame, a third row of artifacts makes the artifact frame taller (upwards: its bottom is the page's).
 func _fit_hud_frames() -> void:
-	if not _puppet_hud or _top_frame == null:
+	if not _puppet_hud or _bottles_frame == null:
 		return
 	var T = PuppetTopHud
 	var nb: int = fight.player.bottles.size()
 	var na: int = _arts.artifacts.size()
-	var b_w: float = maxf(T.SLOT_MIN_W, 2.0 * SLOT_PAD + nb * BOTTLE_PX) if nb > 0 else 0.0
-	var a_step: float = ART_STEP
-	var inner := 0.0
-	if na > 0:
-		# the frame never grows past the screen's room (up to the Menu button): with many items the artifacts squeeze together
-		var room: float = TOP_MAX_W - (T.TRAY.end.x - T.FRAME_AT.x) - T.FRAME_PAD_RIGHT - (SLOT_GAP + b_w if nb > 0 else 0.0) - SLOT_GAP - 2.0 * SLOT_PAD
-		var inner_max := clampf(minf(ART_INNER_MAX, room), ART_PX + 20.0, ART_INNER_MAX)
-		a_step = minf(ART_STEP, (inner_max - ART_PX) / maxf(1.0, na - 1.0))
-		inner = (na - 1) * a_step + ART_PX
-	var a_w: float = maxf(T.SLOT_MIN_W, 2.0 * SLOT_PAD + inner) if na > 0 else 0.0
-	var left_w: float = T.TRAY.end.x - T.FRAME_AT.x
-	var w: float = left_w + T.FRAME_PAD_RIGHT + (SLOT_GAP + b_w if nb > 0 else 0.0) + (SLOT_GAP + a_w if na > 0 else 0.0)
-	var x := clampf(960.0 - w / 2.0, 20.0, maxf(20.0, 1900.0 - w))
-	_top_dx = x - T.FRAME_AT.x
-	_top_frame.position = Vector2(x, T.FRAME_AT.y)
-	_top_frame.size = Vector2(w, T.FRAME_H)
-	var dx := _top_dx
-	var cx: float = x + left_w
 	_bottles_frame.visible = nb > 0
 	_bottle_row.visible = nb > 0
 	if nb > 0:
-		cx += SLOT_GAP
-		_bottles_frame.position = Vector2(cx, T.SLOT_Y)
-		_bottles_frame.size = Vector2(b_w, T.SLOT_H)
-		_bottle_row.position = Vector2(cx + (b_w - nb * BOTTLE_PX) / 2.0, T.SLOT_Y + (T.SLOT_H - BOTTLE_PX) / 2.0)
-		cx += b_w
+		var b_w: float = maxf(T.BOTTLES.size.x, 2.0 * T.SLOT_PAD.x + nb * BOTTLE_STEP)
+		_bottles_frame.position = T.BOTTLES.position
+		_bottles_frame.size = Vector2(b_w, T.BOTTLES.size.y)
+		_bottle_row.position = Vector2(T.BOTTLES.position.x + T.SLOT_PAD.x + (BOTTLE_STEP - BOTTLE_PX) / 2.0, T.BOTTLES.position.y + (T.BOTTLES.size.y - BOTTLE_PX) / 2.0)
 	_arts_frame.visible = na > 0
 	_arts.visible = na > 0
 	if na > 0:
-		cx += SLOT_GAP
-		_arts_frame.position = Vector2(cx, T.SLOT_Y)
-		_arts_frame.size = Vector2(a_w, T.SLOT_H)
-		_arts.position = Vector2(cx + (a_w - inner) / 2.0, T.SLOT_Y + (T.SLOT_H - ART_PX) / 2.0)
-		if absf(a_step - _arts.slot_step) > 0.01 or absf(inner + 4.0 - _arts.row_width) > 0.5:  # (the squeeze changed: the bar lays its chips out again)
-			_arts.row_width = inner + 4.0
-			_arts.slot_step = a_step
-			_arts.refresh()
-	_info.position = T.ACT_AT + Vector2(dx, -1.0)
-	_hp_bar.position = T.TRAY.position + Vector2(dx, 0.0)
+		var rows: int = ceili(float(na) / ART_ROW)
+		var a_h: float = T.BOTTLES.size.y if rows <= 1 else T.ARTIFACTS.size.y + (rows - 2) * (ART_PX + ART_ROW_GAP)
+		var a_y: float = T.ARTIFACTS.end.y - a_h if rows > 2 else T.ARTIFACTS.position.y
+		_arts_frame.position = Vector2(T.ARTIFACTS.position.x, a_y)
+		_arts_frame.size = Vector2(T.ARTIFACTS.size.x, a_h)
+		var inner_h: float = rows * ART_PX + (rows - 1) * ART_ROW_GAP
+		_arts.position = Vector2(T.ARTIFACTS.position.x + (T.ARTIFACTS.size.x - (ART_STEP * (ART_ROW - 1) + ART_PX)) / 2.0, a_y + (a_h - inner_h) / 2.0)
+	_hp_bar.position = T.TRAY.position
 	_player_panel.position = _hp_bar.position
 	if _heart != null:
-		_heart.position = Vector2(T.HEART_AT.x + dx, T.TRAY.position.y)  # (its top is the tray's top)
-	_hp_label.position = Vector2(T.HP_TEXT_AT.x + dx, T.TRAY.position.y)
-	_shield_box.position = Vector2(T.SHIELD_AT.x + dx, T.TRAY.end.y - 24.0)  # (its bottom is the tray's bottom)
+		_heart.position = T.HEART_AT
+	_hp_label.position = T.RING_HP_AT
+	_shield_box.position = T.RING_SHIELD_AT
+	_lasting_label.position = T.LASTING_AT
 
 
 const STATUS_CHIP := 52.0  # as tall as an orb of the Bag
@@ -1141,7 +1121,7 @@ const STATUS_GAP := 4
 const DEBUFF_PAD := 22.0
 
 
-## The debuff board holds exactly the icons you have: it grows left and up from the Chant frame's corner as they come (six to a row), and is gone when there are none.
+## The debuff board holds exactly the icons you have: it grows right from its corner at the top left as they come, and is gone when there are none.
 func _fit_debuff_board(n: int) -> void:
 	if _debuff_board == null:
 		return
@@ -1149,17 +1129,84 @@ func _fit_debuff_board(n: int) -> void:
 	_status_row.visible = n > 0
 	if n <= 0:
 		return
-	var h: float = PuppetTopHud.DEBUFF_MIN.y  # (as tall as the Chant frame: one row)
-	var room: float = PuppetTopHud.DEBUFF_RIGHT - 30.0 - 2.0 * DEBUFF_PAD
+	var h: float = PuppetTopHud.DEBUFF_MIN.y  # (one row)
+	var room: float = PuppetTopHud.DEBUFF_MAX_RIGHT - PuppetTopHud.DEBUFF_AT.x - 2.0 * DEBUFF_PAD
 	var step := minf(STATUS_CHIP + STATUS_GAP, (room - STATUS_CHIP) / maxf(1.0, n - 1.0))  # (a very long row squeezes together)
 	var inner_w := (n - 1) * step + STATUS_CHIP
 	var w := maxf(2.0 * DEBUFF_PAD + inner_w, 64.0)
 	_debuff_board.size = Vector2(w, h)
-	_debuff_board.position = Vector2(PuppetTopHud.DEBUFF_RIGHT - w, PuppetTopHud.DEBUFF_BOTTOM - h + _hud_shift)
+	var lift: float = -clampf(_hud_shift / HUD_DOWN, 0.0, 1.0) * DEBUFF_LIFT
+	_debuff_board.position = PuppetTopHud.DEBUFF_AT + Vector2(0.0, lift)
 	_status_row.add_theme_constant_override("h_separation", int(floor(step - STATUS_CHIP)))
 	_status_row.custom_minimum_size = Vector2(inner_w, STATUS_CHIP)
 	_status_row.size = Vector2(inner_w, STATUS_CHIP)
 	_status_row.position = _debuff_board.position + Vector2((w - inner_w) / 2.0, (h - STATUS_CHIP) / 2.0)
+
+
+## The hanging sign with the Act / Floor / Turn line (Stage/Shared/hanging_sign.png at the place the PDF gives it). It waits hidden above the screen, so the
+## first frame never shows it in its place.
+func _build_act_sign() -> void:
+	var T = PuppetTopHud
+	_act_sign = Control.new()
+	_act_sign.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_act_sign.position = T.ACT_SIGN.position + Vector2(0.0, -_act_sign_up())
+	_act_sign.size = T.ACT_SIGN.size
+	_act_sign.z_index = PuppetStage.CEILING_Z - 1  # (under the ceiling: its chains hang from behind the valance)
+	var pic := TextureRect.new()
+	pic.texture = load(UiSkin.theme_dir() + "Stage/Shared/hanging_sign.png")
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_SCALE
+	pic.size = T.ACT_SIGN.size
+	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_act_sign.add_child(pic)
+	_info.reparent(_act_sign, false)
+	_info.position = T.ACT_TEXT.position - T.ACT_SIGN.position
+	_act_sign.visible = false
+	add_child(_act_sign)
+
+
+func _act_sign_up() -> float:
+	return PuppetTopHud.ACT_SIGN.end.y + 20.0  # (far enough up that all of it is above the screen)
+
+
+## The sign drops on its chains (a bounce, like the Victory sign). `from_arrival`: the props and the enemies are out, so it goes back up
+## `PuppetTopHud.ACT_SHOWN` seconds from now (a drop that is only the fight starting leaves the countdown to the arrival).
+func _show_act_sign(from_arrival := false) -> void:
+	if _act_sign == null or map_mode or not is_inside_tree():
+		return
+	var rest: float = PuppetTopHud.ACT_SIGN.position.y
+	if not _act_sign.visible:
+		_act_sign.visible = true
+		var tw := create_tween()
+		tw.tween_property(_act_sign, "position:y", rest, 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_property(_act_sign, "position:y", rest - 38.0, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(_act_sign, "position:y", rest, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_property(_act_sign, "position:y", rest - 12.0, 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(_act_sign, "position:y", rest, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		_act_sign_gen += 1
+	if from_arrival:
+		var gen := _act_sign_gen
+		await get_tree().create_timer(PuppetTopHud.ACT_SHOWN).timeout
+		if gen == _act_sign_gen and is_inside_tree():
+			_lift_act_sign()
+
+
+## The sign goes back up behind the valance (at once when `now`).
+func _lift_act_sign(now := false) -> void:
+	if _act_sign == null or not _act_sign.visible:
+		return
+	_act_sign_gen += 1
+	var up: float = PuppetTopHud.ACT_SIGN.position.y - _act_sign_up()
+	if now:
+		_act_sign.position.y = up
+		_act_sign.visible = false
+		return
+	var gen := _act_sign_gen
+	var tw := create_tween()
+	tw.tween_property(_act_sign, "position:y", up, 0.7).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	await tw.finished
+	if gen == _act_sign_gen and is_instance_valid(_act_sign):
+		_act_sign.visible = false
 
 
 func _refresh_coin() -> void:
@@ -1387,6 +1434,9 @@ func _build_strips_puppet() -> void:
 	sp.add_child(inner)
 	_machine = SlotMachine.new()
 	_machine.build()
+	_machine.behind.show_behind_parent = true  # (the tube comes out from under the Bag strip)
+	sp.add_child(_machine.behind)
+	sp.move_child(_machine.behind, 0)
 	inner.add_child(_machine.back)
 	_stock_row = Control.new()
 	_stock_row.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -2360,25 +2410,34 @@ func cursor_zone(p: Vector2) -> String:
 func _place_hp_texts() -> void:
 	if not _puppet_hud or _heart == null:
 		return
-	_hp_label.size = Vector2(112, 26)  # (left aligned at the page's place: see _fit_hud_frames)
+	_hp_label.size = PuppetTopHud.RING_TEXT  # (in the ring: see _fit_hud_frames)
 
 
 func _refresh_all() -> void:
 	var p := fight.player
-	_set_info(("Act %d · Floor %d" % [run.act, run.floor_no()]) if map_mode else ("Act %d · Floor %d · Turn %d" % [run.act, run.floor_no(), fight.turn]))
+	_set_info(("Act %d · Floor %d" % [run.act, run.floor_no()]) if map_mode else ("Act %d · Floor %d
+Turn %d" % [run.act, run.floor_no(), fight.turn]))  # (two lines on the sign)
 	_hp_bar.set_values(p.hp, p.max_hp, p.shield + p.lasting)
 	if _danger:
 		_danger.target = DangerVignette.strength(p.hp, p.max_hp)
-	_hp_label.text = ("HP%d/%d" if _puppet_hud else "HP %d / %d") % [maxf(0, p.hp), p.max_hp]
-	# Shield isn't a status badge: it's the blue glass on the HP bar, and its amount goes beside your HP (its own small badge)
-	var has_pic := _shield_box.get_child_count() > 1
-	var shield_text := ""
-	if p.shield > 0.0:
-		shield_text = ("%d" if has_pic else "Shield %d") % p.shield
-	if p.lasting > 0.0:
-		shield_text += ("  Lasting %d" % p.lasting) if shield_text != "" else "Lasting %d" % p.lasting
-	_shield_label.text = shield_text
-	_shield_box.visible = shield_text != ""
+	_hp_label.text = ("%d/%d" if _puppet_hud else "HP %d / %d") % [maxf(0, p.hp), p.max_hp]
+	if _puppet_hud:
+		# the ring of the bar holds HP and Shield (blue stripes on the bar are Shield and Lasting together); "Lasting N" stands under the bar
+		var total: float = p.shield + p.lasting
+		_shield_label.text = "%d" % total
+		_shield_box.visible = total > 0.0
+		_lasting_label.text = "Lasting %d" % p.lasting
+		_lasting_label.visible = p.lasting > 0.0
+	else:
+		# Shield isn't a status badge: it's the blue glass on the HP bar, and its amount goes beside your HP (its own small badge)
+		var has_pic := _shield_box.get_child_count() > 1
+		var shield_text := ""
+		if p.shield > 0.0:
+			shield_text = ("%d" if has_pic else "Shield %d") % p.shield
+		if p.lasting > 0.0:
+			shield_text += ("  Lasting %d" % p.lasting) if shield_text != "" else "Lasting %d" % p.lasting
+		_shield_label.text = shield_text
+		_shield_box.visible = shield_text != ""
 	_place_hp_texts()
 	_refresh_statuses()
 	_refresh_bottles()
@@ -3622,6 +3681,7 @@ func _charge_count() -> int:
 func _finish() -> void:
 	busy = true
 	var dillo: Array = fight.enemies.filter(func(e): return e.has_passive("armadillo") and e.is_dead())
+	_lift_act_sign()
 	if fight.won and not dillo.is_empty():
 		await _armadillo_ending(dillo[0])
 	if fight.won and stage_flow and _stage != null:  # Puppet Stage: the Victory sign drops from behind the ceiling, the HUD sinks
@@ -3957,9 +4017,9 @@ func _refresh_bottles() -> void:
 	var n_shown: int = bs.size() if UiSkin.is_new() else maxi(run.bottle_slots() if run else Bottles.BASE_SLOTS, bs.size())
 	var chip_px := 64.0 if n_shown <= 3 else (52.0 if n_shown == 4 else 44.0)  # (five bottles must not push the frame out of the panel, nor squeeze the HP text)
 	_bottle_row.add_theme_constant_override("separation", 6 if n_shown <= 3 else 0)
-	if _puppet_hud:  # (the top frame's slot frame holds them 44 px each)
+	if _puppet_hud:  # (the bottle frame's five slots hold them 44 px each)
 		chip_px = BOTTLE_PX
-		_bottle_row.add_theme_constant_override("separation", 0)
+		_bottle_row.add_theme_constant_override("separation", int(BOTTLE_STEP - BOTTLE_PX))
 	for i in n_shown:
 		var chip := BottleChip.make(bs[i] if i < bs.size() else "", i, true, chip_px)
 		chip.used.connect(_on_bottle)
@@ -7182,9 +7242,11 @@ func _arrow_tex() -> Texture2D:
 
 ## Where the bolt sticks in the HP bar: the middle of the part the hit has just taken away (HP is already down when the attack plays).
 func _arrow_target(dmg: float) -> Vector2:
-	var r := _hp_bar.get_global_rect()
 	var mx := maxf(1.0, fight.player.max_hp)
 	var frac := clampf((clampf(fight.player.hp, 0.0, mx) + dmg * 0.5) / mx, 0.03, 0.97)
+	if _hp_bar is StripeHpBar:
+		return _hp_bar.point_at(frac)  # (the bar's window starts after the ring)
+	var r := _hp_bar.get_global_rect()
 	return Vector2(r.position.x + r.size.x * frac, r.position.y + r.size.y * 0.5)
 
 

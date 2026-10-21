@@ -1,32 +1,26 @@
-class_name BlockHpBar
+class_name StripeHpBar
 extends HpBar
-## Puppet Stage: your HP as 20 square blocks in a wooden tray, two rows of ten, each block 5% of your maximum HP (a partly lost block still
-## stands until all of it is gone). Lose HP and the blocks from the end break into five pieces that fall and bounce, like the puppets; gain
-## HP and new blocks are set in. The Shield is blue blocks set on top of the last red ones: when it breaks the red blocks show under it
-## again, when it grows more blue blocks are put on.
+## Puppet Stage: your HP as the 16 candy stripes of the painted bar (UI/Hp/hp_piece_NN.png, already clipped to the bar's window), so every stripe is
+## 1/16 of your maximum HP (a partly lost stripe still stands until all of it is gone). Lose HP and the stripes from the right end break into five
+## pieces that fall and bounce, like the puppets, leaving the dark track empty; gain HP and new stripes are set in. The Shield is blue stripes
+## (hp_shield_NN.png) laid over the last HP stripes: when it breaks the red / white ones show under it again, when it grows more blue ones are put on.
+## All pictures share one canvas (tools/export_hp_bar.py), so each is drawn at the same place.
 
-const COLS := 10
-const ROWS := 2
-const COUNT := COLS * ROWS
-const PAD := 8.0
-const GAP := 2.0
+const COUNT := 16
 const GRAVITY := 2200.0
-const RED := Color(0.80, 0.17, 0.12)
 const BLUE := Color(0.28, 0.58, 0.98)
-const TRAY := Color(0.17, 0.10, 0.06)
-const TRAY_EDGE := Color(0.42, 0.26, 0.13)
-const CELL := Color(0.09, 0.05, 0.03)
+const RED := Color(0.80, 0.17, 0.12)
+const TRACK := Color(0.19, 0.11, 0.10)
+## The canvas of the pictures in design px (the bar's box on the page); the frame picture is 2 px per pt.
+const CANVAS := Vector2(276.0, 57.0)
+## The window the stripes lie in (design px on the canvas), for the plain fallback drawing and for where a bolt sticks.
+const WINDOW := Rect2(59.4, 13.2, 202.4, 19.5)
 
-## The painted tray (UI/Hp/hp_tray.png, 2712 x 575): its 20 cells are 226 px squares, 267 px apart, 41 px from the edge (measured on the picture).
-const ART_W := 2712.0
-const ART_H := 575.0
-const ART_PAD := 41.0
-const ART_CELL := 226.0
-const ART_PITCH := 267.0
+static var _used := {}  # picture -> the box that is drawn in it (in canvas px)
 
-var _have: Array[int] = []  # per block: 0 none, 1 red, 2 blue (what stands there now)
-var _drop: Array[float] = []  # per block: 1 -> 0 while its top piece is being set in (a negative number is a wait)
-var _pieces: Array[Dictionary] = []  # the broken bits: {poly, pos, v, rot, w, col, age, floor, bounces}
+var _have: Array[int] = []  # per stripe: 0 none, 1 HP, 2 shield (what stands there now)
+var _drop: Array[float] = []  # per stripe: 1 -> 0 while it is being set in (a number above 1 is a wait)
+var _pieces: Array[Dictionary] = []  # the broken bits: {poly, uv, pos, v, rot, w, tex, age, floor, bounces, rest}
 var _blue_flash := 0.0
 
 
@@ -37,29 +31,32 @@ func _ready() -> void:
 	_drop.fill(0.0)
 
 
-## The block size that fits the control's width.
-func _block() -> float:
-	if _painted():
-		return ART_CELL * size.x / ART_W
-	return (size.x - 2.0 * PAD - (COLS - 1) * GAP) / COLS
+## Design px of the canvas -> px of this control.
+func _k() -> float:
+	return size.x / CANVAS.x
 
 
-func _cell_pos(i: int) -> Vector2:
-	if _painted():
-		var k := size.x / ART_W
-		return Vector2(ART_PAD + (i % COLS) * ART_PITCH, ART_PAD + (i / COLS) * ART_PITCH) * k
-	var b := _block()
-	return Vector2(PAD + (i % COLS) * (b + GAP), PAD + (i / COLS) * (b + GAP))
-
-
-## True when the painted tray and blocks are there (Puppet theme art); otherwise everything is drawn in code.
 func _painted() -> bool:
-	return UiSkin.tex("hp_tray") != null and UiSkin.tex("hp_block_red") != null
+	return UiSkin.tex("hp_bar_frame") != null and UiSkin.tex("hp_piece_00") != null
 
 
-## The picture of a block (red / blue) or of one of its two shards.
-func _pic(col: Color, shard := "") -> Texture2D:
-	return UiSkin.tex("hp_%s_%s%s" % ["shard" if shard != "" else "block", "blue" if col == BLUE else "red", "_" + shard if shard != "" else ""])
+func _piece(k: int, shield: bool) -> Texture2D:
+	return UiSkin.tex("hp_%s_%02d" % ["shield" if shield else "piece", k])
+
+
+## Where in the canvas (design px) a stripe's picture really draws something.
+func _box(tex: Texture2D) -> Rect2:
+	if not _used.has(tex):
+		var r := tex.get_image().get_used_rect()
+		var k := CANVAS.x / float(tex.get_width())
+		_used[tex] = Rect2(Vector2(r.position) * k, Vector2(r.size) * k)
+	return _used[tex]
+
+
+## The screen point (global) of the bar at a fraction of its window, for a bolt that sticks there.
+func point_at(frac: float) -> Vector2:
+	var k := _k()
+	return get_global_transform() * (Vector2(WINDOW.position.x + WINDOW.size.x * clampf(frac, 0.0, 1.0), WINDOW.position.y + WINDOW.size.y * 0.5) * k)
 
 
 func _want(p_hp: float, p_max: float, p_shield: float) -> Array[int]:
@@ -72,7 +69,7 @@ func _want(p_hp: float, p_max: float, p_shield: float) -> Array[int]:
 	for i in n_hp:
 		out[i] = 1
 	for k in n_sh:
-		out[n_hp - 1 - k] = 2  # (the shield sits on the last HP blocks)
+		out[n_hp - 1 - k] = 2  # (the shield sits on the last HP stripes)
 	return out
 
 
@@ -97,7 +94,7 @@ func set_values(p_hp: float, p_max: float, p_shield: float) -> void:
 		if old == nw:
 			continue
 		if old > 0 and (nw == 0 or (old == 2 and nw == 1)):
-			_shatter(i, BLUE if old == 2 else RED)
+			_shatter(i, old == 2)
 			broke = true
 		if nw > old and (old == 0 or (old == 1 and nw == 2)):
 			_drop[i] = 1.0 + delay / 0.28  # (set in one after the other, left to right; a drop lasts 0.28 s)
@@ -110,45 +107,49 @@ func set_values(p_hp: float, p_max: float, p_shield: float) -> void:
 		Audio.play("wooden_ball_hole", 0.0, randf_range(0.95, 1.1), 0.06)
 
 
-## Shield took a hit: the blue blocks flash.
+## Shield took a hit: the blue stripes flash.
 func crack() -> void:
 	_blue_flash = 1.0
 
 
-## A block breaks into five pieces: the square is cut from a point near its middle to its four corners, and one of the four triangles is cut in two.
-func _shatter(i: int, col: Color) -> void:
-	var b := _block()
-	var o := _cell_pos(i)
-	var c := Vector2(b, b) * Vector2(randf_range(0.35, 0.65), randf_range(0.35, 0.65))
-	var corners := [Vector2(0, 0), Vector2(b, 0), Vector2(b, b), Vector2(0, b)]
+## A stripe breaks into five pieces: its box is cut from a point near its middle to its four corners, and one of the four triangles is cut in two.
+## Each piece carries its part of the stripe's own picture.
+func _shatter(i: int, blue: bool) -> void:
+	var tex := _piece(i, blue) if _painted() else null
+	var k := _k()
+	var box := _box(tex) if tex != null else Rect2(WINDOW.position + Vector2(WINDOW.size.x * float(i) / COUNT, 0.0), Vector2(WINDOW.size.x / COUNT, WINDOW.size.y))
+	var o := box.position * k
+	var s := box.size * k
+	var c := o + s * Vector2(randf_range(0.35, 0.65), randf_range(0.35, 0.65))
+	var corners := [o, o + Vector2(s.x, 0), o + s, o + Vector2(0, s.y)]
 	var polys: Array = []
 	var split := randi() % 4
-	for k in 4:
-		var a: Vector2 = corners[k]
-		var d: Vector2 = corners[(k + 1) % 4]
-		if k == split:
+	for n in 4:
+		var a: Vector2 = corners[n]
+		var d: Vector2 = corners[(n + 1) % 4]
+		if n == split:
 			var m := a.lerp(d, randf_range(0.35, 0.65))
 			polys.append([c, a, m])
 			polys.append([c, m, d])
 		else:
 			polys.append([c, a, d])
-	var mid := o + Vector2(b, b) / 2.0
-	var art := _painted()
+	var mid := o + s / 2.0
 	for poly in polys:
 		var cen := Vector2.ZERO
 		for p in poly:
 			cen += p
 		cen /= poly.size()
 		var local := PackedVector2Array()
+		var uv := PackedVector2Array()
 		for p in poly:
 			local.append(p - cen)
-		var world := o + cen
-		var dir := (world - mid)
+			uv.append(p / (CANVAS * k))
+		var dir: Vector2 = cen - mid
 		dir = dir.normalized() if dir.length() > 1.0 else Vector2.from_angle(randf() * TAU)
 		_pieces.append({
-			"poly": local, "pos": world, "v": dir * randf_range(120.0, 330.0) + Vector2(randf_range(-40.0, 40.0), -randf_range(160.0, 330.0)),
-			"rot": randf() * TAU, "w": randf_range(-10.0, 10.0), "col": col.lerp(Color.WHITE, randf_range(0.0, 0.12)),
-			"tex": _pic(col, "a" if randf() < 0.5 else "b") if art else null, "age": 0.0, "floor": size.y + randf_range(-6.0, 30.0), "bounces": 0, "rest": randf_range(0.35, 0.8),
+			"poly": local, "uv": uv, "pos": cen, "v": dir * randf_range(120.0, 330.0) + Vector2(randf_range(-40.0, 40.0), -randf_range(160.0, 330.0)),
+			"rot": randf() * TAU, "w": randf_range(-10.0, 10.0), "tex": tex, "col": BLUE if blue else RED, "age": 0.0,
+			"floor": size.y + randf_range(-6.0, 30.0), "bounces": 0, "rest": randf_range(0.35, 0.8),
 		})
 
 
@@ -180,97 +181,34 @@ func _process(d: float) -> void:
 	queue_redraw()
 
 
-func _face(col: Color, flash: float) -> Color:
-	return col.lerp(Color(1, 1, 1), clampf(flash, 0.0, 1.0) * 0.6)
-
-
-## One block: a bevelled square (light top edge, dark bottom edge).
-func _draw_block(at: Vector2, b: float, col: Color, flash := 0.0, scale_y := 1.0) -> void:
-	var r := Rect2(at, Vector2(b, b * scale_y))
-	draw_rect(r, _face(col.darkened(0.45), flash))
-	var inner := r.grow(-2.0)
-	draw_rect(inner, _face(col, flash))
-	draw_rect(Rect2(inner.position, Vector2(inner.size.x, 3.0)), _face(col.lightened(0.35), flash))  # (the lit top edge)
-	draw_rect(Rect2(inner.position, Vector2(3.0, inner.size.y)), _face(col.lightened(0.18), flash))
-	draw_rect(Rect2(inner.position + Vector2(0, inner.size.y - 3.0), Vector2(inner.size.x, 3.0)), _face(col.darkened(0.3), flash))
-	draw_rect(Rect2(inner.position + Vector2(inner.size.x - 3.0, 0), Vector2(3.0, inner.size.y)), _face(col.darkened(0.2), flash))
-
-
 func _draw() -> void:
-	var b := _block()
-	if _painted():
-		_draw_painted(b)
-		return
-	# the tray: dark wood, a lighter rim, and a dark cell for every block
-	draw_rect(Rect2(Vector2.ZERO, size), TRAY_EDGE)
-	draw_rect(Rect2(Vector2.ZERO, size).grow(-3.0), TRAY)
-	for i in COUNT:
-		var o := _cell_pos(i)
-		draw_rect(Rect2(o - Vector2(1, 1), Vector2(b + 2, b + 2)), CELL)
-	for c in range(1, COLS):  # the dividers between the cells: thin wooden slats
-		var x := PAD + c * (b + GAP) - GAP / 2.0
-		draw_line(Vector2(x, 3.0), Vector2(x, size.y - 3.0), TRAY_EDGE, 2.0)
-	draw_line(Vector2(3.0, PAD + b + GAP / 2.0), Vector2(size.x - 3.0, PAD + b + GAP / 2.0), TRAY_EDGE, 2.0)
-	# the blocks (a block being set in drops from above: it falls, squashes a little and settles)
-	for i in COUNT:
-		var st := _have[i]
-		if st == 0:
-			continue
-		var o := _cell_pos(i)
-		var dp := _drop[i]
-		if st == 2:
-			# the red block stays under the blue one, which may be on its way down
-			_draw_block(o, b, RED, 0.0)
-			if dp > 1.0:
-				continue  # (still waiting for its turn)
-			_draw_block(o + Vector2(0, -42.0 * dp * dp), b, BLUE, _blue_flash)
-		else:
-			if dp > 1.0:
+	var k := _k()
+	var art := _painted()
+	if art:
+		draw_texture_rect(UiSkin.tex("hp_bar_frame"), Rect2(Vector2.ZERO, CANVAS * k), false)
+	else:
+		draw_rect(Rect2(WINDOW.position * k, WINDOW.size * k), TRACK)
+	# the HP stripes, left to right (each lies a little over the one before it), then the Shield stripes over them. A stripe being set in drops from above.
+	for layer in [1, 2]:
+		for i in COUNT:
+			if _have[i] < layer or (layer == 2 and _have[i] != 2) or _drop[i] > 1.0:
 				continue
-			_draw_block(o + Vector2(0, -42.0 * dp * dp), b, RED, 0.0)
+			var at := Vector2(0.0, -42.0 * _drop[i] * _drop[i])
+			var tint := Color.WHITE.lerp(Color(1.6, 1.6, 1.6, 1.0), _blue_flash) if layer == 2 else Color.WHITE
+			if art:
+				draw_texture_rect(_piece(i, layer == 2), Rect2(at, CANVAS * k), false, tint)
+			else:
+				var cell := Rect2(WINDOW.position * k + Vector2(WINDOW.size.x * k * float(i) / COUNT, 0.0), Vector2(WINDOW.size.x * k / COUNT, WINDOW.size.y * k)).grow_individual(0, 0, -1, 0)
+				draw_rect(Rect2(cell.position + at, cell.size), tint * (BLUE if layer == 2 else RED))
 	# the broken bits
 	for pc in _pieces:
 		var fade := 1.0 if pc.bounces >= 0 else clampf(1.0 - (pc.age - pc.rest) / 0.5, 0.0, 1.0)
 		if fade <= 0.0:
 			continue
-		var pts := PackedVector2Array()
-		var xf := Transform2D(pc.rot, pc.pos)
-		for p in pc.poly:
-			pts.append(xf * p)
-		var col: Color = pc.col
-		draw_colored_polygon(pts, Color(col, fade))
-		var ring := pts.duplicate()
-		ring.append(pts[0])
-		draw_polyline(ring, Color(col.darkened(0.55), fade), 1.6)
-
-
-## The painted version of _draw: the tray picture, the wooden blocks (blue ones on the red ones) and the real shards of a broken block.
-func _draw_painted(b: float) -> void:
-	draw_texture_rect(UiSkin.tex("hp_tray"), Rect2(Vector2.ZERO, Vector2(size.x, size.x * ART_H / ART_W)), false)
-	for i in COUNT:
-		var st := _have[i]
-		if st == 0:
-			continue
-		var o := _cell_pos(i)
-		var dp := _drop[i]
-		if st == 2:
-			draw_texture_rect(_pic(RED), Rect2(o, Vector2(b, b)), false)
-			if dp > 1.0:
-				continue
-			var flash := Color(1, 1, 1, 1).lerp(Color(1.6, 1.6, 1.6, 1), _blue_flash)
-			draw_texture_rect(_pic(BLUE), Rect2(o + Vector2(0, -42.0 * dp * dp), Vector2(b, b)), false, flash)
-		else:
-			if dp > 1.0:
-				continue
-			draw_texture_rect(_pic(RED), Rect2(o + Vector2(0, -42.0 * dp * dp), Vector2(b, b)), false)
-	for pc in _pieces:
-		var tex: Texture2D = pc.get("tex")
-		if tex == null:
-			continue
-		var fade := 1.0 if pc.bounces >= 0 else clampf(1.0 - (pc.age - pc.rest) / 0.5, 0.0, 1.0)
-		if fade <= 0.0:
-			continue
-		var half := b * 0.3  # (a shard is about 60% of a block)
 		draw_set_transform(pc.pos, pc.rot, Vector2.ONE)
-		draw_texture_rect(tex, Rect2(Vector2(-half, -half), Vector2(half, half) * 2.0), false, Color(1, 1, 1, fade))
+		if pc.tex != null:
+			draw_colored_polygon(pc.poly, Color(1, 1, 1, fade), pc.uv, pc.tex)
+		else:
+			draw_colored_polygon(pc.poly, Color(pc.col, fade))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+

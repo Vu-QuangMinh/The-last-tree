@@ -5,7 +5,7 @@ func _crop(t: SceneTree, name: String) -> void:
 	await t.process_frame
 	var img: Image = t.root.get_texture().get_image()
 	var k := float(img.get_width()) / 1920.0
-	var r := Rect2i(Vector2i(int(40 * k), int(780 * k)), Vector2i(int(560 * k), int(300 * k)))
+	var r := Rect2i(Vector2i(int(430 * k), int(940 * k)), Vector2i(int(330 * k), int(110 * k)))
 	img.get_region(r).save_png("C:/temp/hp_%s.png" % name)
 
 
