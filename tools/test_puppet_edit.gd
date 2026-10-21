@@ -22,6 +22,7 @@ func _init() -> void:
 	vp.add_child(st)
 	await process_frame
 	var fails := 0
+	var start: Dictionary = st.verts.duplicate()
 	vp.push_input(_key(KEY_F4))
 	await process_frame
 	for n in S.EDIT_POINTS:
@@ -64,13 +65,13 @@ func _init() -> void:
 	# what was moved is saved: a fresh stage (the game started again) has the moved points
 	var moved: Dictionary = st.verts.duplicate()
 	var st2 = S.new()
-	if st2.verts != moved or moved == S.default_verts():
+	if st2.verts != moved or moved == start:
 		print("FAIL not persisted")
 		fails += 1
 	st2.free()
 	vp.push_input(_key(KEY_R))
 	await process_frame
-	if st.verts != S.default_verts():
+	if st.verts != start:  # (R: back to the points as they were when F4 was turned on)
 		print("FAIL reset")
 		fails += 1
 	vp.push_input(_key(KEY_F4))

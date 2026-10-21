@@ -1,13 +1,13 @@
 {
- "_about": "The stage's perspective points as they were when the F4 editor's R key was pressed: what R puts back, per act. (Act 1's are the points the user set with F4 on 2026-10-18 (back wall full width, floor and walls wider); default_verts() is only the fallback; Act 2 and 3 start from the same ones until they are tuned: press P in the F4 editor to print a set and paste it here.) What F4 changes is kept per act in user://puppet_stage_verts_act<N>.json.",
+ "_about": "The stage's perspective points, per act. The F4 editor writes here directly when the game runs from the project (so git carries them to everyone); an exported build keeps its own in user://puppet_stage_verts_act<N>.json. Act 1's are the user's F4 points of 2026-10-20.",
  "act1": {
   "top_l": [
-   -92.0,
-   -72.0
+   -58.0,
+   59.0
   ],
   "top_r": [
-   2012.0,
-   -72.0
+   1978.0,
+   59.0
   ],
   "back_top_l": [
    0.0,
@@ -27,11 +27,11 @@
   ],
   "front_l": [
    -150.0,
-   562.0
+   509.0
   ],
   "front_r": [
    2070.0,
-   562.0
+   509.0
   ],
   "low_top_l": [
    -147.0,
