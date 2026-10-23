@@ -45,7 +45,7 @@ func run(t: SceneTree) -> void:
 	for k in 3:
 		m.open_test_mode()
 		await t.create_timer(1.5).timeout
-		m.current.fight_requested.emit(m.current.state.enemies.duplicate(), m.current.state.spells.duplicate())
+		m.current.fight_requested.emit(m.current.state.enemies.duplicate(), m.current.state.spells.duplicate(), [], [])
 		await t.create_timer(7.0).timeout
 		_count(m, "test fight %d" % (k + 1))
 	print("--- Continue (a hand has fallen before each quit)")

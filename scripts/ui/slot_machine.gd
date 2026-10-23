@@ -16,10 +16,26 @@ const DROP_TIME := 0.36
 const TUBE_R := 76.0  # radius of the tube's bend (the centre line of the glass)
 const TUBE_X := 1769.2  # the centre line of the vertical part of the glass
 const TUBE_Y := 1015.8  # the centre line of the horizontal part
+## The lever as page 2 of Chant UI for puppet.pdf draws it, in page (screen) px: the ball, the stick and the hub (cut by tools/export_lever.py).
+const LEVER_BALL := Rect2(1825.0, 762.0, 14.0, 13.0)
+const LEVER_STICK := Rect2(1829.0, 776.0, 6.0, 51.0)
+const LEVER_HUB := Rect2(1828.0, 827.0, 14.0, 19.0)
+const LEVER_PIVOT := Vector2(1832.0, 836.5)  # the middle of the hub's cylinder: the stick swings about it
+const LEVER_PULL_DEG := 90.0  # the stick swings this far towards the player: it ends pointing straight at you
+const LEVER_DRIFT := 0.3  # (of its length) the tip sinks by this much at the end of the swing: the stick is seen a little from above
 
 var back := Control.new()
+var behind := Control.new()  # the tube: a child of the Bag strip that shows behind the strip itself (show_behind_parent)
 var front := Control.new()
 var busy := false  # a spin is going on: the preview must not touch the reels
+## New UI (NewUiLayout): the machine is the same, drawn `xs` times bigger with its origin at `xp` (strip px: back and front are scaled and moved, so every place below
+## goes through _x), the tube is a straight picture (no bend), the Essence come up out of the circle at `spawn_c`, the lever stands `lever_shift` further right.
+var xs := 1.0
+var xp := Vector2.ZERO
+var straight := false
+var spawn_c := Vector2.INF
+var lever_shift := Vector2.ZERO
+var over := Control.new()  # (straight tube: its clamp, over the Essence)
 
 var _lamps: Array = []
 var _lamp_on: Texture2D
@@ -28,19 +44,26 @@ var _boxes: Array = []  # a clipping box over each reel
 var _faces: Array = [null, null, null]  # the Essence icon standing on each reel
 var _strips: Array = [null, null, null]
 var _spin_tw: Array = [null, null, null]
-var _lever: TextureRect
+var _lever_stick: TextureRect
+var _lever_ball: TextureRect
 var _lever_tw: Tween
+var _lever_k := 0.0
 var _chase_tw: Tween
 var _flash_tw: Tween
 var _stopped := 0
 
 
 static func local(p: Vector2) -> Vector2:
-	return p - PuppetLayout.BAG_AT
+	return p + PuppetLayout.MACHINE_SHIFT - PuppetLayout.BAG_AT
+
+
+## A place of the machine's own (local) px -> strip px.
+func _x(l: Vector2) -> Vector2:
+	return xp + l * xs
 
 
 static func available() -> bool:
-	for n in ["slot_body", "slot_funnel_top", "slot_tube_glass_under", "slot_tube_glass", "slot_tube_metal", "slot_reel", "slot_lever", "slot_lamp_on", "slot_lamp_off",
+	for n in ["slot_body", "slot_funnel_top", "slot_tube_glass_under", "slot_tube_glass", "slot_tube_metal", "slot_reel", "slot_lever_ball", "slot_lever_stick", "slot_lever_hub", "slot_lamp_on", "slot_lamp_off",
 			"slot_port", "slot_port_ring"]:
 		if UiSkin.tex(n) == null:
 			return false
@@ -95,7 +118,7 @@ static func _screen(t: TextureRect) -> TextureRect:
 
 
 func build() -> void:
-	for c in [back, front]:
+	for c in [back, behind, front, over]:
 		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# a plain soft shadow behind the cabinet and its funnel: the machine stands apart from the stage behind it
 	var body: Rect2 = PuppetSlotMachine.BODY
@@ -104,17 +127,23 @@ func build() -> void:
 	back.add_child(_shadow(Rect2(top.position + Vector2(18.0, 8.0), top.size - Vector2(36.0, 16.0)), 40.0, 0.9))
 	# the glass under the Essence: Screen at 50 %. (The real Screen shader reads the screen behind it and, drawn below the Essence, makes them vanish in
 	# Compatibility; for these small bright patches over a dark floor "Add" at 50 % looks the same: screen(a, b) = a + b - a*b is almost a + b when b is small.)
-	var under := _art("slot_tube_glass_under", PuppetSlotMachine.TUBE_GLASS_UNDER)
-	var add := CanvasItemMaterial.new()
-	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	under.material = add
-	under.modulate.a = 0.5
-	back.add_child(under)
+	if not straight:
+		var under := _art("slot_tube_glass_under", PuppetSlotMachine.TUBE_GLASS_UNDER)
+		var add := CanvasItemMaterial.new()
+		add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		under.material = add
+		under.modulate.a = 0.5
+		behind.add_child(under)
 	# (no port hole in the Bag strip any more: the Essence roll straight out of the tube into the Bag)
 	front.add_child(_art("slot_funnel_top", PuppetSlotMachine.FUNNEL_TOP))
-	# the tube's glass over the Essence (Screen blend, 50 %: it only lightens, so they show through) and its metal (collars, clamps), under the cabinet
-	front.add_child(_screen(_art("slot_tube_glass", PuppetSlotMachine.TUBE_GLASS)))
-	front.add_child(_art("slot_tube_metal", PuppetSlotMachine.TUBE_METAL))
+	if straight:
+		# the straight tube (UI/SlotMachine/slot_tube_straight.png, 2 px per pt) lies behind the Bag strip and goes in under the cabinet; its clamp is over the Essence
+		behind.add_child(_strip_pic("slot_tube_straight", NewUiLayout.TUBE_AT))
+		over.add_child(_strip_pic("slot_tube_clamp", NewUiLayout.TUBE_CLAMP_AT))
+	else:
+		# the tube's glass over the Essence (Screen blend, 50 %: it only lightens, so they show through) and its metal (collars, clamps), under the cabinet
+		behind.add_child(_screen(_art("slot_tube_glass", PuppetSlotMachine.TUBE_GLASS)))
+		behind.add_child(_art("slot_tube_metal", PuppetSlotMachine.TUBE_METAL))
 	front.add_child(_art("slot_body", PuppetSlotMachine.BODY))
 	for i in 3:
 		var at := Vector2(PuppetSlotMachine.REEL_X[i], PuppetSlotMachine.REEL_Y)
@@ -138,32 +167,51 @@ func build() -> void:
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		front.add_child(l)
 		_lamps.append(l)
-	_lever = _art("slot_lever", PuppetSlotMachine.LEVER)
-	_lever.pivot_offset = PuppetSlotMachine.LEVER_HUB - PuppetSlotMachine.LEVER.position
-	front.add_child(_lever)
+	_build_lever()
 	set_lamps(false)
+	if xs != 1.0 or xp != Vector2.ZERO:
+		for c in [back, front]:
+			c.scale = Vector2.ONE * xs
+			c.position = xp
+
+
+## A picture placed at strip px (drawn at half its size: the pngs are 2 px per pt).
+static func _strip_pic(tex_name: String, at: Vector2) -> TextureRect:
+	var t := TextureRect.new()
+	t.texture = UiSkin.tex(tex_name)
+	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	t.stretch_mode = TextureRect.STRETCH_SCALE
+	t.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	t.position = at
+	t.size = t.texture.get_size() / 2.0
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return t
 
 
 # ------------------------------------------------------------------ places (Bag strip coordinates, centres)
 
 func reel_center(i: int) -> Vector2:
-	return local(Vector2(PuppetSlotMachine.REEL_X[i], PuppetSlotMachine.REEL_Y) + PuppetSlotMachine.REEL_SIZE / 2.0)
+	return _x(local(Vector2(PuppetSlotMachine.REEL_X[i], PuppetSlotMachine.REEL_Y) + PuppetSlotMachine.REEL_SIZE / 2.0))
 
 
 ## The mouth of the top funnel: where a bonus Essence goes in.
 func funnel_top_mouth() -> Vector2:
 	var r: Rect2 = PuppetSlotMachine.FUNNEL_TOP
-	return local(Vector2(r.position.x + r.size.x / 2.0, r.position.y + 14.0))
+	return _x(local(Vector2(r.position.x + r.size.x / 2.0, r.position.y + 14.0)))
 
 
 ## Where an Essence enters the tube: just under the cabinet, still hidden behind it (there is no bottom funnel: the tube starts right under the cabinet).
 func funnel_bottom_in() -> Vector2:
+	if straight:  # (the Essence fall down behind the cabinet into the tube's row)
+		return Vector2(1084.0, NewUiLayout.TUBE_ROW_Y)
 	var r: Rect2 = PuppetSlotMachine.BODY
 	return local(Vector2(TUBE_X, r.end.y - 6.0))
 
 
 ## The centre line of the tube, from just under the funnel to the cap at the Bag strip's edge.
 func tube_path() -> Array:
+	if straight:  # (straight left along the row, under the cabinet, through the tube, to the edge of the Bag strip)
+		return [Vector2(NewUiLayout.MOUTH_X, NewUiLayout.TUBE_ROW_Y)]
 	var pts: Array = [local(Vector2(TUBE_X, PuppetSlotMachine.BODY.end.y + 2.0))]
 	var c := Vector2(TUBE_X - TUBE_R, TUBE_Y - TUBE_R)  # centre of the bend
 	pts.append(local(Vector2(TUBE_X, c.y)))
@@ -175,23 +223,53 @@ func tube_path() -> Array:
 
 
 func port_center() -> Vector2:
+	if spawn_c != Vector2.INF:
+		return spawn_c
 	return local(PuppetSlotMachine.PORT_C)
 
 
 # ------------------------------------------------------------------ the lever
 
+## The lever stands on the right of the machine, as page 2 of the PDF draws it. It is pulled TOWARDS the player: seen from the front the stick swings about
+## its hub out of the screen, so it grows shorter until it points straight at you, and the ball on its end comes nearer (bigger).
+func _build_lever() -> void:
+	var tex := func(n: String, r: Rect2) -> TextureRect:  # (these are page positions: _art's local() adds the machine's shift, so take it off first)
+		return _art(n, Rect2(r.position - PuppetLayout.MACHINE_SHIFT + lever_shift, r.size))
+	_lever_stick = tex.call("slot_lever_stick", LEVER_STICK)
+	_lever_stick.pivot_offset = LEVER_PIVOT - LEVER_STICK.position
+	_lever_ball = tex.call("slot_lever_ball", LEVER_BALL)
+	_lever_ball.pivot_offset = LEVER_BALL.size / 2.0
+	front.add_child(_lever_stick)
+	front.add_child(tex.call("slot_lever_hub", LEVER_HUB))  # (the hub does not move)
+	front.add_child(_lever_ball)
+	_set_lever(0.0)
+
+
+## `k` 0 = the lever stands up, 1 = it is pulled all the way down.
+func _set_lever(k: float) -> void:
+	_lever_k = k
+	var a := deg_to_rad(LEVER_PULL_DEG) * k
+	var c := cos(a)
+	var near := sin(a)  # (how far the stick points out of the screen)
+	var ball_len: float = LEVER_PIVOT.y - LEVER_BALL.get_center().y
+	var drift := LEVER_DRIFT * near
+	_lever_stick.scale = Vector2(1.0 + 0.25 * near, c - drift)  # (a negative height turns the stick over the hub: it points down)
+	_lever_ball.scale = Vector2.ONE * (1.0 + 0.5 * near)
+	_lever_ball.position = LEVER_PIVOT + Vector2(0.0, -ball_len * (c - drift)) - LEVER_BALL.size / 2.0 - PuppetLayout.BAG_AT + lever_shift  # (the ball rides the tip)
+
+
 func lever_pull() -> void:
 	if _lever_tw != null and _lever_tw.is_valid():
 		_lever_tw.kill()
-	_lever_tw = _lever.create_tween()
-	_lever_tw.tween_property(_lever, "rotation", PuppetSlotMachine.LEVER_PULLED_ANGLE, 0.32).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	_lever_tw = front.create_tween()
+	_lever_tw.tween_method(_set_lever, _lever_k, 1.0, 0.32).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
 
 func lever_return() -> void:
 	if _lever_tw != null and _lever_tw.is_valid():
 		_lever_tw.kill()
-	_lever_tw = _lever.create_tween()
-	_lever_tw.tween_property(_lever, "rotation", 0.0, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_lever_tw = front.create_tween()
+	_lever_tw.tween_method(_set_lever, _lever_k, 0.0, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 # ------------------------------------------------------------------ the lamps

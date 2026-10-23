@@ -1,0 +1,275 @@
+20:06:13 4 to make (0 already done)
+20:06:15 starting the AnySFX backend
+20:07:38 [1/4] meteor                   pick 0 of 0.94 0.61 0.38 0.66  (75 s)  meteor falling from the sky, rising whistle, then huge impact explosion
+20:08:28 [2/4] supernova                pick 3 of 0.80 0.75 0.45 0.96  (50 s)  massive flood of water crashing down, rushing torrent, deep rumble
+20:09:18 [3/4] solar_flare              pick 0 of 0.88 0.44 0.73 0.81  (50 s)  blinding sun rays sweeping, bright rising hum, scorching light burst
+20:10:08 [4/4] droplet                  pick 1 of 0.68 0.69 0.64 0.68  (50 s)  single water drop landing, soft plink, then a gentle shimmer
+20:10:08 stopping the AnySFX backend
+20:10:38 209 to make (4 already done)
+20:10:40 starting the AnySFX backend
+20:11:39 [1/209] ember                    pick 1 of -0.33 0.47 -99.00 0.01  (56 s)  small flame igniting, soft crackle, a short pained grunt of fire
+20:12:29 [2/209] cinder                   pick 1 of 0.53 0.70 0.50 0.49  (50 s)  quick paintbrush dab, wet squelch
+20:13:19 [3/209] ripple                   pick 0 of 0.93 0.83 0.71 0.76  (50 s)  water ripples spreading, soft watery swirl
+20:14:10 [4/209] chill                    pick 3 of 0.04 0.04 0.71 1.01  (50 s)  ice cracking and shattering, then a cold glassy shimmer
+20:15:00 [5/209] whisper                  pick 2 of 0.68 0.42 1.04 1.00  (50 s)  soft breathy whisper of wind, faint airy swish
+20:15:50 [6/209] updraft                  pick 3 of 0.64 0.63 0.64 0.66  (50 s)  rising gust of wind, quick upward whoosh
+20:16:40 [7/209] fire_ball                pick 2 of -0.16 -0.70 0.72 0.19  (50 s)  fireball whoosh then a short explosion
+20:17:30 [8/209] coup_de_grace            pick 3 of 0.50 0.56 0.13 0.71  (50 s)  sharp blade slash, a final decisive hit
+20:18:20 [9/209] arcane_barrage           pick 3 of 0.16 0.33 0.31 0.73  (50 s)  rapid volley of magic bolts, three quick zaps
+20:19:12 [10/209] flare                    pick 0 of 0.80 0.44 0.60 0.36  (52 s)  bright flare ignite, hissing flame burst
+20:20:04 [11/209] water_wall               pick 3 of 0.89 0.70 1.03 1.08  (52 s)  wall of water rising, heavy splash, watery thud
+20:20:55 [12/209] tide_pool                pick 2 of 0.21 0.51 1.00 0.59  (50 s)  gentle water trickle in a pool, calm bubbling, soft heal chime
+20:21:45 [13/209] frost_nova               pick 1 of 0.65 0.68 0.57 0.38  (50 s)  icy burst spreading outwards, freezing crackle
+20:22:35 [14/209] tailwind                 pick 1 of 0.53 0.61 0.51 0.60  (50 s)  steady wind gust pushing from behind, soft whoosh
+20:23:25 [15/209] cyclone                  pick 3 of 0.02 0.39 0.18 0.69  (50 s)  spinning wind vortex, fast whirl and whoosh
+20:24:15 [16/209] gust                     pick 1 of 0.67 0.68 0.62 0.63  (50 s)  sharp gust of wind, quick whoosh and a dull sting
+20:25:05 [17/209] fan_the_flames           pick 0 of 1.34 1.09 1.29 -0.08  (50 s)  wind blowing on flames, fire roaring up
+20:25:55 [18/209] wildfire                 pick 3 of 0.69 1.25 1.16 1.34  (50 s)  wildfire spreading, crackling flames roaring
+20:26:46 [19/209] blowtorch                pick 3 of 0.48 0.13 0.19 0.56  (50 s)  blowtorch hiss, burning flame jet
+20:27:36 [20/209] phase_shift              pick 3 of 0.73 -0.16 0.79 0.87  (50 s)  magical phasing shimmer, quick spell pulse
+20:28:26 [21/209] steam                    pick 1 of 0.74 0.93 0.48 0.41  (50 s)  steam hiss release, soft puff of vapor
+20:29:16 [22/209] hot_spring               pick 0 of 0.94 0.88 0.76 0.80  (50 s)  hot spring bubbling, warm water, relaxing steam
+20:30:06 [23/209] scald                    pick 0 of 1.02 0.94 0.82 0.90  (50 s)  scalding steam burst, sharp hiss
+20:30:56 [24/209] boil                     pick 0 of 1.52 0.39 1.21 -99.00  (50 s)  water boiling, rolling bubbles, kettle steam
+20:31:46 [25/209] mist_veil                pick 0 of 1.08 0.86 1.01 0.83  (50 s)  soft ghostly mist wafting, airy ethereal whoosh
+20:32:36 [26/209] undertow                 pick 2 of 0.62 0.18 1.13 0.77  (50 s)  water dragging back, sucking current
+20:33:27 [27/209] rain                     pick 1 of 0.54 1.22 0.64 0.64  (50 s)  steady gentle rain falling, soft patter
+20:34:17 [28/209] inferno                  pick 3 of 0.24 0.44 0.75 0.82  (50 s)  roaring inferno, huge fire blast, deep rumble
+20:35:07 [29/209] glacier                  pick 0 of 0.90 0.81 0.67 0.64  (50 s)  giant ice forming, deep creaking and cracking, cold groan
+20:35:57 [30/209] tempest                  pick 2 of 1.09 1.08 1.15 0.79  (50 s)  howling storm wind, thunder rumble
+20:36:47 [31/209] annihilate               pick 3 of 0.37 1.08 0.64 1.21  (50 s)  reality tearing apart, deep dark boom, rising howl, then silence
+20:37:37 [32/209] thermal_burst            pick 2 of 0.59 0.89 0.96 0.29  (50 s)  hot explosion of steam and fire, two quick blasts
+20:38:28 [33/209] steam_cloud              pick 3 of 0.75 0.54 0.65 1.03  (50 s)  big cloud of steam hissing out, soft shield shimmer
+20:39:18 [34/209] firestorm                pick 0 of 0.59 0.48 0.36 0.46  (50 s)  firestorm roaring, many fire blasts, crackling inferno
+20:40:08 [35/209] kindling_wind            pick 2 of 1.32 1.50 1.53 0.83  (50 s)  wind fanning embers, flames flaring up with a magic hum
+20:40:58 [36/209] mistwalk                 pick 3 of -99.00 1.13 0.68 1.21  (50 s)  ghostly mist drifting, soft ethereal sigh, gentle heal chime
+20:41:48 [37/209] whirlpool                pick 0 of 1.06 0.93 0.97 0.89  (50 s)  swirling whirlpool, water spinning down a drain, gurgle
+20:42:38 [38/209] searing_mist             pick 3 of 0.10 0.34 0.48 0.80  (50 s)  hot scorching mist hissing, burning vapor
+20:43:28 [39/209] boiling_tide             pick 0 of 0.70 0.02 0.20 0.44  (50 s)  boiling wave crashing, steam and water slam
+20:44:19 [40/209] gale_force               pick 1 of 0.85 0.99 0.64 0.76  (50 s)  powerful vacuum suction, air rushing, deep whoosh
+20:45:09 [41/209] alchemy                  pick 0 of 0.39 0.35 0.34 -0.26  (50 s)  bubbling potion transforming, magic fizz, glass clink
+20:45:59 [42/209] storm_front              pick 1 of 0.81 1.10 0.27 0.19  (50 s)  thunderclap with rushing wind, magical shield forming
+20:46:49 [43/209] geyser                   pick 1 of 0.32 0.64 0.33 0.49  (50 s)  geyser erupting, water spray burst
+20:47:39 [44/209] recall                   pick 1 of -0.43 0.57 -0.06 -0.07  (50 s)  magical rewind, quick reverse chime, whoosh back
+20:48:29 [45/209] backdraft                pick 1 of 0.40 1.09 0.82 0.72  (50 s)  backdraft explosion, sudden fire gust, deep thump
+20:49:19 [46/209] tidal_wave               pick 0 of 0.56 0.39 0.52 0.13  (50 s)  big paintbrush swish, wet paint splashes, magical sparkle
+20:50:10 [47/209] hurricane                pick 1 of 0.45 1.37 1.33 0.69  (50 s)  hurricane howling wind, violent swirling storm
+20:51:00 [48/209] steam_engine             pick 2 of 0.97 0.42 1.30 1.21  (50 s)  steam engine chugging, pistons, hissing steam, a clank
+20:51:50 [49/209] aurora                   pick 0 of 1.08 1.01 0.99 0.91  (50 s)  shimmering magical aurora, soft ethereal choir-like chimes, healing glow
+20:52:40 [50/209] phoenix_rite             pick 1 of 0.36 0.76 -0.38 -0.52  (50 s)  phoenix wing flap, a warm flame whoosh, soft evasive swish
+20:53:30 [51/209] deluge                   pick 0 of 1.06 0.70 0.73 0.99  (50 s)  dark curse spell, ominous low drone, heavy weakening thud
+20:54:20 [52/209] clear_sight              pick 0 of 0.80 0.63 -0.04 0.80  (50 s)  clear bell chime, bright magical clarity, shimmering sparkle
+20:55:10 [53/209] bandage                  pick 2 of 0.13 0.10 0.72 0.14  (50 s)  cloth bandage wrapping, soft rustle, gentle heal chime
+20:56:01 [54/209] borrowed_breath          pick 1 of -0.02 0.88 0.30 0.60  (50 s)  soft inhale of breath, light airy swish
+20:56:51 [55/209] kindle                   pick 0 of 1.59 0.16 -1.14 1.15  (50 s)  fire catching and growing, crackling flames flaring
+20:57:41 [56/209] siphon                   pick 3 of 0.87 0.70 0.76 0.87  (50 s)  energy being sucked away, draining magic pull, whoosh
+20:58:31 [57/209] conjure_flame            pick 2 of 0.57 0.84 0.87 0.69  (50 s)  magic flame conjured, fire whoosh with a spell chime
+20:59:21 [58/209] summon_rain              pick 0 of 1.24 0.62 0.63 0.62  (50 s)  rain starting, magic water droplets, soft summoning shimmer
+21:00:13 [59/209] steady_mind              pick 2 of 1.07 0.92 1.21 0.98  (52 s)  calm low humming tone, soft breath, peaceful chime
+21:01:06 [60/209] unbind                   pick 2 of -0.26 -0.21 0.58 -0.32  (52 s)  chains snapping and breaking free, magic release chime
+21:01:56 [61/209] thorn_mantle             pick 0 of 0.61 0.48 0.52 -0.03  (50 s)  thorny vines growing, rustling leaves, sharp wooden spikes
+21:02:46 [62/209] cauterize                pick 0 of 0.55 0.27 0.48 0.35  (50 s)  searing hot metal on flesh, sizzling hiss
+21:03:36 [63/209] snuff_out                pick 2 of -0.09 -1.08 0.44 -0.35  (50 s)  candle flame snuffed, quick puff, sudden dark thud
+21:04:26 [64/209] graft                    pick 3 of 0.10 0.56 0.53 0.59  (50 s)  wet paint brush stroke, paint splash
+21:05:16 [65/209] alchemists_breath        pick 2 of 0.86 0.79 1.15 0.60  (50 s)  breath of fire, flame puff, small alchemical fizz
+21:06:06 [66/209] blood_price              pick 3 of 0.77 0.63 0.72 0.95  (50 s)  heartbeat thump, dark sacrifice pulse, a low gulp
+21:06:57 [67/209] ward                     pick 2 of 0.80 0.75 1.02 0.89  (50 s)  protective shield spell, bright ring chime, quick whoosh
+21:07:47 [68/209] scatter                  pick 0 of 1.15 1.01 -99.00 -99.00  (50 s)  gentle wind barrier swirling, soft shield hum
+21:08:37 [69/209] soak                     pick 0 of 0.34 -0.03 0.05 0.33  (50 s)  water spritz spray, soft wet splash
+21:09:27 [70/209] mimic                    pick 1 of 0.67 0.73 0.51 0.25  (50 s)  magical copy echo, spell doubling, two rapid chimes
+21:10:15 [71/209] riptide                  pick 2 of 0.85 0.79 1.10 0.56  (48 s)  fast water current pulling, whoosh and swirl
+21:11:04 [72/209] trade_winds              pick 2 of -0.15 0.94 1.18 0.21  (48 s)  warm steady breeze, soft blessing shimmer, gentle chimes
+21:11:54 [73/209] rising_tide              pick 2 of 1.02 0.78 1.45 0.55  (50 s)  water rising and surrounding, gurgling, heavy prison closing
+21:12:42 [74/209] ember_crown              pick 1 of 0.47 1.10 0.99 0.94  (48 s)  crown of fire igniting, soft flame whoosh, regal chime
+21:13:30 [75/209] echo_chamber             pick 2 of 0.70 0.75 0.80 0.59  (48 s)  echoing voice in a big hall, reverb shimmer, repeating chime
+21:14:12 [76/209] attunement               pick 1 of 0.80 0.87 0.75 0.76  (42 s)  three magical element tones blending, gentle glowing choice chime
+21:14:56 [77/209] frailty                  pick 0 of 0.68 0.47 0.24 0.44  (44 s)  paint stain splashing, wet drip, a fading drip
+21:15:42 [78/209] purify                   pick 2 of 0.42 0.66 0.76 0.02  (46 s)  bright cleansing chime, rushing clean water, sparkle
+21:16:24 [79/209] leech                    pick 2 of 0.33 0.70 0.94 0.15  (42 s)  blood draining, sinister slurp, a deep gulp
+21:17:09 [80/209] reforge                  pick 1 of 0.75 0.78 0.69 0.66  (44 s)  blacksmith hammer on anvil, metal ring, sparks
+21:17:51 [81/209] soul_siphon              pick 0 of -0.19 -0.96 -2.21 -3.34  (42 s)  devil's claw grabbing, dark hand tearing, spooky ghost wail
+21:18:33 [82/209] last_rites               pick 0 of 1.20 0.83 0.97 0.56  (42 s)  somber bell toll, executioner axe swing, final thud
+21:19:15 [83/209] broken_clock             pick 3 of 0.29 0.39 0.25 0.60  (42 s)  clock ticking and breaking, gears grinding, spring snap
+21:19:57 [84/209] stillness                pick 3 of 0.58 1.00 -0.08 1.29  (42 s)  sudden hush, time freezing, heavy silent hum
+21:20:39 [85/209] pyromancy                pick 0 of 0.64 0.56 0.45 0.18  (42 s)  pyromancer casting, rolling fire spell, crackling
+21:21:21 [86/209] decoy                    pick 3 of 0.36 0.02 0.23 0.46  (42 s)  sneaky swish, shadow illusion, ghostly mirror shimmer
+21:22:03 [87/209] storm_crown              pick 3 of -0.13 -0.03 0.07 0.30  (42 s)  thunder crackle, lightning snatch, electric zap
+21:22:46 [88/209] avatar_of_flame          pick 1 of 0.03 0.76 0.73 -0.67  (42 s)  giant flame avatar awakening, roaring fire, deep fiery growl
+21:23:28 [89/209] world_tree_blessing      pick 1 of 0.85 1.31 0.86 0.39  (42 s)  ancient tree blessing, wind in leaves, birdsong, magical choir shimmer
+21:24:10 [90/209] spark_word               pick 0 of 0.46 0.15 0.20 0.31  (42 s)  small magic spark, a fire spell word whispered, crackle
+21:24:52 [91/209] spring_word              pick 1 of 0.75 0.84 0.66 0.81  (42 s)  water spell word whispered, drip and a soft splash
+21:25:34 [92/209] breath_word              pick 1 of -99.00 1.09 -99.00 -99.00  (42 s)  wind spell word whispered, soft puff of air
+21:26:16 [93/209] resonance                pick 2 of 0.89 0.94 1.11 0.27  (42 s)  resonating bell hum, glowing chime echoing, soft heal
+21:26:58 [94/209] grimoire                 pick 2 of 0.70 0.70 0.80 0.69  (42 s)  old spellbook opening, pages flipping, magical shimmer
+21:27:40 [95/209] tide_thief               pick 2 of 0.17 0.69 0.70 0.28  (42 s)  cloaked hand snatching, water ripple, quick steal swish
+21:28:22 [96/209] sirens_call              pick 3 of 0.82 0.79 0.23 0.99  (42 s)  siren mermaid song fading, watery magic, ethereal pull
+21:29:05 [97/209] maelstrom_grasp          pick 2 of 0.91 1.01 1.02 0.74  (42 s)  giant whirlpool grabbing, rushing water, heavy pull
+21:29:47 [98/209] drizzle                  pick 1 of 0.63 0.98 0.66 -1.18  (42 s)  light drizzle rain, soft drops, gentle heal chime
+21:30:29 [99/209] breeze                   pick 1 of -99.00 1.57 -99.00 1.27  (42 s)  light breeze, rustling leaves, soft thorns rustle
+21:31:11 [100/209] tinder                   pick 3 of 0.01 -0.36 0.12 0.18  (42 s)  match strike, small flame lighting
+21:31:53 [101/209] spark_shower             pick 3 of -99.00 -0.26 0.06 0.98  (42 s)  shower of sparks, fizzling embers falling
+21:32:35 [102/209] zephyr                   pick 1 of 0.24 0.53 0.26 0.30  (42 s)  tiny paint flick, light wind, quick splat
+21:33:17 [103/209] ashfall                  pick 2 of -99.00 1.39 1.42 1.07  (42 s)  ash drifting down, soft hiss of embers, quiet fire
+21:33:59 [104/209] summoning_word           pick 0 of 0.82 0.26 0.51 0.37  (42 s)  spell word spoken, magic summoning shimmer, portal pop
+21:34:42 [105/209] smolder                  pick 1 of -4.73 0.66 -0.24 -2.93  (42 s)  burning ground, loud fire eruption, smoldering roar, heavy blast
+21:35:24 [106/209] calm_waters              pick 1 of 0.37 0.76 0.71 0.18  (42 s)  calm lake water, peaceful ripples, soft shield glow
+21:36:08 [107/209] still_air                pick 3 of 0.30 0.19 0.59 0.94  (44 s)  hushed air, soft healing breath, gentle sparkling chime
+21:36:50 [108/209] wisp                     pick 0 of 1.07 -0.73 0.56 0.98  (42 s)  will-o-wisp flutter, soft airy magic ping
+21:37:32 [109/209] splash                   pick 0 of 0.64 0.54 0.58 0.60  (42 s)  water splash, sharp pluck of a droplet
+21:38:14 [110/209] flame_lash               pick 3 of 0.16 0.47 0.44 0.64  (42 s)  whip of fire cracking, lashing flame, two hits
+21:38:56 [111/209] steam_burst              pick 2 of 0.57 0.55 0.89 0.64  (42 s)  sudden steam burst, hiss, soft shield thump
+21:39:38 [112/209] quench                   pick 2 of 0.71 0.38 0.73 0.57  (42 s)  hot metal quenched in water, loud sizzle hiss, soft heal
+21:40:21 [113/209] tide_ward                pick 3 of 0.53 0.63 0.54 0.77  (42 s)  water barrier splash, thorny prickle, protective ring
+21:41:03 [114/209] mist_step                pick 2 of 0.63 0.48 0.67 0.56  (42 s)  quick step in misty air, soft magic whoosh
+21:41:45 [115/209] ember_gust               pick 0 of 0.60 0.34 0.53 0.30  (42 s)  wind-blown embers, paint spatter, short splat
+21:42:27 [116/209] rain_song                pick 0 of 0.88 0.26 0.62 0.70  (42 s)  gentle rain and soft chime melody, healing water drops
+21:43:09 [117/209] whirl                    pick 1 of 0.23 0.71 0.65 0.68  (42 s)  quick whirl of wind, fast spin, rearranging swish
+21:43:51 [118/209] wild_flame               pick 3 of 0.68 0.15 -4.71 0.73  (42 s)  wild unstable fire, crackling flare, fire whoosh
+21:44:33 [119/209] wellspring_rite          pick 0 of 0.89 0.79 0.84 0.81  (42 s)  spring water bubbling up, gentle healing chime, soft splash
+21:45:15 [120/209] gale_call                pick 3 of 0.54 0.72 0.43 0.82  (42 s)  wind rising and calling, gust, spell summon chime
+21:45:57 [121/209] twin_comets              pick 3 of 0.71 0.60 0.90 1.16  (42 s)  two comets whooshing past, flame trails, double impact
+21:46:40 [122/209] undercurrent             pick 3 of 0.74 0.60 0.77 0.86  (42 s)  deep water current pulling, dark whoosh, steal swish
+21:47:22 [123/209] crosswind                pick 2 of 0.53 0.61 0.62 0.61  (42 s)  cutting crosswind gust, sharp whoosh, weakening sigh
+21:48:04 [124/209] searing_brand            pick 2 of 0.34 0.29 0.40 0.13  (42 s)  hot branding iron hiss, paint smear, burn sizzle
+21:48:46 [125/209] cold_snap                pick 1 of 0.31 0.60 0.53 0.52  (42 s)  freezing wind, sudden ice crystallizing, sharp frost crack
+21:49:28 [126/209] hailstone                pick 3 of 0.74 0.54 0.64 0.86  (42 s)  hailstones hitting hard ground, icy rattle
+21:50:10 [127/209] cinder_rain              pick 1 of 0.43 0.54 0.52 0.47  (42 s)  falling burning cinders, volley of small fire hits
+21:50:52 [128/209] quiet_wind               pick 1 of 0.92 1.22 -99.00 1.16  (42 s)  quiet wind, soft calm airy shield hum
+21:51:34 [129/209] phoenix_feather          pick 1 of -0.52 0.65 0.57 0.45  (42 s)  phoenix cry echo, warm fire whoosh, flame flutter
+21:52:17 [130/209] tidecaller               pick 3 of -99.00 0.41 0.84 1.19  (42 s)  calling the tide, wave rolling in, magical water chime
+21:52:59 [131/209] ash_and_ember            pick 1 of 0.15 0.62 -0.31 0.15  (42 s)  ember glow doubling, burning ash, fiery crackle swell
+21:53:41 [132/209] water_whip               pick 0 of 0.72 0.67 0.66 0.60  (42 s)  water whip crack, sharp snap, splash
+21:54:23 [133/209] thieving_wind            pick 0 of 0.38 -0.22 0.25 -0.21  (42 s)  sneaky wind snatching, quick swish grab
+21:55:05 [134/209] kindled_heart            pick 1 of 0.89 1.22 0.64 0.52  (42 s)  warm heartbeat, flame flickering, soft glowing pulse
+21:55:47 [135/209] mirror_pool              pick 2 of 1.01 0.74 1.07 0.76  (42 s)  still lake moonlight, soft ripple echo, calm twinkling chimes, doubled
+21:56:29 [136/209] updraft_lance            pick 1 of 0.82 0.87 0.75 -0.03  (42 s)  spear of wind piercing, whistling lance, double hit
+21:57:11 [137/209] fog_of_war               pick 2 of 0.50 0.40 0.84 0.53  (42 s)  thick fog rolling in, muffled eerie hush, disorienting hiss
+21:57:54 [138/209] heat_haze                pick 3 of 0.89 0.91 0.86 1.01  (42 s)  shimmering heat wave, warm sizzle, scorching air
+21:58:38 [139/209] hush_of_rain             pick 1 of 1.11 1.40 -99.00 -99.00  (44 s)  distant soft rain, quiet drops, gentle calm heal
+21:59:22 [140/209] smoke_signal             pick 1 of 0.24 0.84 0.34 0.75  (44 s)  smoke puff, quick fire crackle, spell chime
+22:00:04 [141/209] ripplewind               pick 1 of 1.00 1.38 1.15 0.68  (42 s)  wind rippling over water, soft swirl
+22:00:48 [142/209] coal_toss                pick 3 of 0.69 0.49 0.75 0.87  (44 s)  hot coal thrown, short whoosh, two quick fiery thumps
+22:01:34 [143/209] spray                    pick 1 of 0.38 0.42 0.39 0.39  (46 s)  water spray mist, quick paint spritz
+22:02:22 [144/209] flamecaller              pick 3 of 0.93 0.91 1.09 1.16  (48 s)  flames calling, whooshing fire, ominous spell chants, shadow shimmer
+22:03:12 [145/209] tsunami_ward             pick 1 of 0.74 1.10 0.76 0.84  (50 s)  huge wave wall, heavy rushing water, deep thud shield
+22:04:01 [146/209] thunderhead              pick 1 of 0.65 0.91 0.51 0.39  (48 s)  sniper rifle shot, clockwork trigger click, sharp crack
+22:04:51 [147/209] lava_flow                pick 3 of 0.63 0.61 0.53 0.81  (50 s)  molten lava bubbling and cooling, hissing steam, ice crack
+22:05:41 [148/209] frostbite                pick 0 of 0.92 0.16 0.85 0.70  (50 s)  icy bite, frost crackle, freezing creak
+22:06:29 [149/209] tempest_veil             pick 1 of 0.78 1.23 -99.00 0.95  (48 s)  storm wind swirling around, soft shield hum
+22:07:19 [150/209] ember_storm              pick 1 of -0.23 0.06 -0.34 -0.31  (50 s)  small embers swirling storm, many crackles, flame whoosh
+22:08:09 [151/209] healing_rain             pick 1 of 1.24 1.63 0.27 -0.21  (50 s)  warm healing rain, rain on leaves, glowing chime
+22:08:59 [152/209] sky_lance                pick 2 of 0.57 0.65 0.68 0.60  (50 s)  lance hurtling through the sky, high whistle, sharp pierce
+22:09:48 [153/209] witch_fire               pick 3 of 0.61 0.48 0.61 1.27  (48 s)  unholy dark fire igniting, evil crackle, cursed flame
+22:10:36 [154/209] stormcaller              pick 3 of 0.82 0.95 0.59 1.04  (48 s)  storm summoning, thunder rumble, spell summon shimmer
+22:11:26 [155/209] deep_freeze              pick 2 of 0.87 0.87 0.90 0.72  (50 s)  everything freezing solid, thick ice forming, deep frozen groan
+22:12:14 [156/209] molten_core              pick 2 of 0.45 0.64 0.69 0.50  (48 s)  molten lava core bubbling, low fiery rumble, burst
+22:13:04 [157/209] silent_tide              pick 3 of 0.33 0.71 0.77 0.96  (50 s)  silent heavy tide, hushed deep water, soft shield thump
+22:13:54 [158/209] windless_night           pick 2 of -0.16 -0.16 1.38 0.23  (50 s)  still night air, faint crickets, quiet protective hum
+22:14:42 [159/209] cinder_shield            pick 2 of -0.00 0.49 0.49 0.48  (48 s)  glowing hot shield forming, ember crackle, metal ring
+22:15:32 [160/209] gale_slash               pick 3 of 0.62 0.65 0.65 0.66  (50 s)  wind blade slash, sharp cutting whoosh
+22:16:23 [161/209] rainbow_bridge           pick 2 of 1.04 0.89 1.17 1.15  (50 s)  magical rainbow arc, rising sparkling glissando, summon chime
+22:17:17 [162/209] corrode                  pick 0 of 0.33 0.19 0.12 -0.14  (54 s)  acid corrosion fizz, eating metal, hiss
+22:18:11 [163/209] wind_shear               pick 2 of 0.66 0.54 0.67 0.59  (54 s)  sharp wind shear slice, double whoosh cut
+22:19:05 [164/209] hearth_song              pick 3 of 0.50 0.50 0.74 1.15  (54 s)  warm fireplace crackle, gentle hearth hum, healing glow
+22:19:59 [165/209] brimstone                pick 1 of 0.59 0.97 0.51 0.24  (54 s)  sulfur fire eruption, brimstone burst, burning hiss
+22:20:53 [166/209] undertow_grip            pick 0 of 1.02 0.49 0.61 0.55  (54 s)  dragging seasick sloshing water, groaning wave, shattering armor
+22:21:48 [167/209] mistral                  pick 2 of 0.61 0.75 0.78 0.70  (54 s)  strong wind with paint splatter, big splat
+22:22:42 [168/209] spirit_lantern           pick 3 of -0.00 0.45 0.89 1.00  (54 s)  spirit lantern flicker, ghostly whisper, soft summon chime
+22:23:36 [169/209] soothing_mist            pick 2 of 0.87 -99.00 1.05 0.49  (54 s)  soft soothing mist hiss, quiet calm heal
+22:24:30 [170/209] ashen_veil               pick 2 of 0.68 0.09 1.31 0.90  (54 s)  dark ash veil descending, ghostly whisper, soft hiss
+22:25:24 [171/209] ice_lance                pick 0 of 0.57 0.32 0.43 0.25  (54 s)  ice spear throw, piercing shards, freeze crack
+22:26:18 [172/209] grave_wind               pick 3 of 0.83 1.06 0.90 1.30  (54 s)  cold graveyard wind, ghostly moan, final blow
+22:27:13 [173/209] sunlit_grove             pick 0 of 1.47 1.41 1.24 1.18  (54 s)  birds singing in sunlit forest, rustling leaves, gentle heal
+22:28:07 [174/209] dustdevil                pick 1 of 0.91 1.06 0.49 0.40  (54 s)  small dust devil swirling, gritty whirl, paint splat
+22:29:01 [175/209] glacial_spike            pick 0 of 0.64 0.21 0.57 0.54  (54 s)  ice spike erupting from ground, sharp crystal crack, double hit
+22:29:55 [176/209] inferno_lance            pick 1 of 0.68 0.83 0.45 0.50  (54 s)  heavy rifle barrel firing, three loud fire shots
+22:30:49 [177/209] maelstrom_ward           pick 2 of 0.89 0.61 0.94 0.87  (54 s)  whirlpool barrier forming, heavy swirling water, shield thud
+22:31:43 [178/209] storm_legion             pick 3 of -2.68 -1.67 -3.26 -0.89  (54 s)  army of storm bolts, four rapid lightning strikes
+22:32:37 [179/209] steam_titan              pick 2 of 0.75 0.90 1.21 0.68  (54 s)  giant steam golem stomping, heavy hiss, deep metal clang
+22:33:32 [180/209] frozen_tomb              pick 1 of 0.57 0.78 0.40 0.49  (54 s)  tomb of ice sealing, freezing groan, paint splash
+22:34:26 [181/209] sky_sovereign            pick 2 of 1.10 -0.48 1.23 0.67  (54 s)  majestic sky wind, regal horn-like wind swell, spell summon
+22:35:20 [182/209] phoenix_dive             pick 1 of 0.57 0.61 -0.10 -0.33  (54 s)  phoenix diving from the sky, flame screech, whooshing fire impact
+22:36:14 [183/209] tidal_surge              pick 1 of -0.39 1.07 0.84 0.80  (54 s)  surging wave grabbing, pulling water, painful gulp
+22:37:08 [184/209] wildfire_pact            pick 1 of -0.01 0.83 0.01 0.22  (54 s)  fire pact igniting, demonic fire roar, burning crackle
+22:38:02 [185/209] moon_tide                pick 2 of 0.51 1.02 1.21 0.81  (54 s)  moonlit tide washing in, soft waves, glowing healing chimes
+22:38:57 [186/209] cyclone_edge             pick 0 of 0.76 0.61 0.52 0.68  (54 s)  spinning wind blades, cutting cyclone, sharp whirling slice
+22:39:51 [187/209] ember_chorus             pick 2 of 0.84 1.16 1.22 1.21  (54 s)  chorus of crackling embers, spell summoning chimes, flame choir
+22:40:45 [188/209] winter_gale              pick 0 of 1.36 1.05 0.93 1.13  (54 s)  freezing winter gale, icy howl, healing glow
+22:41:39 [189/209] forge_fire               pick 1 of 0.68 0.72 0.62 0.68  (54 s)  blacksmith forge, bellows blowing, hammer ring, thorny metal
+22:42:33 [190/209] gust_front               pick 0 of 0.81 0.68 0.63 0.81  (54 s)  sulfur pit, bubbling hot gases, fiery gust burst
+22:43:27 [191/209] blood_moon               pick 1 of 0.93 1.40 0.74 1.14  (54 s)  ominous blood moon, deep pulse, sharp double slash
+22:44:22 [192/209] heavens_gale             pick 1 of 1.01 1.15 0.81 0.89  (54 s)  heavenly wind, choir-like swell, grand summon chime, evasive swish
+22:45:12 [193/209] elemental_fury           pick 0 of 0.91 0.65 0.79 0.56  (50 s)  six rapid magic blasts of fire water and wind, furious barrage
+22:46:04 [194/209] tide_of_ages             pick 2 of 1.10 1.16 1.31 0.98  (52 s)  ancient tide, deep timeless wave, heavy shield and warm heal
+22:46:54 [195/209] firestorm_herald         pick 0 of 0.64 0.29 0.59 0.59  (50 s)  herald of fire, precise burning strike, white-hot sizzle
+22:47:44 [196/209] storm_sermon             pick 0 of 1.28 -0.02 1.12 1.07  (50 s)  deep thunder sermon, freezing wind, heavy exhale
+22:48:34 [197/209] sunfall                  pick 2 of 1.00 0.62 1.08 0.95  (50 s)  eclipse, sun falling, dark rumbling impact, shattering light
+22:49:25 [198/209] worlds_end               pick 2 of 0.65 0.40 0.72 0.64  (50 s)  world ending apocalypse, giant explosion, earth cracking, fire, deep boom
+22:50:15 [199/209] thorn_dart               pick 1 of 0.26 0.67 0.45 0.55  (50 s)  small thorn dart flying, quick whistle, pluck
+22:51:05 [200/209] hawks_eye                pick 0 of 0.91 0.58 0.15 0.65  (50 s)  hawk cry, scope focus click, rifle zoom, quick hit
+22:51:55 [201/209] handyman_power           pick 0 of 0.76 0.69 0.61 0.66  (50 s)  wooden puppet clockwork wind-up, creaking gears, wood hammer tap
+22:52:43 [202/209] disturbance              pick 3 of 0.86 0.98 0.74 1.27  (48 s)  dark ripple disturbance, mirrored echo, uneasy whoosh
+22:53:33 [203/209] perpetual_motion         pick 1 of 0.05 0.60 0.58 0.16  (50 s)  perpetual motion machine, steady ticking gears, ball rolling, clicks
+22:54:23 [204/209] desperate_measure        pick 1 of 0.79 0.84 0.61 0.83  (50 s)  desperate sacrifice, rising frantic heartbeat, fire burst, healing flash
+22:55:14 [205/209] braums_resolve           pick 1 of 0.43 0.79 0.56 0.55  (50 s)  heavy shield slam, lasting metal ring, steady resolve
+22:56:02 [206/209] trinity_first            pick 1 of 0.68 0.90 0.47 0.65  (48 s)  fire shard sound, small flame spark, quick hit
+22:56:50 [207/209] trinity_second           pick 3 of -0.07 0.57 0.15 0.57  (48 s)  water shard sound, droplet pluck, soft shield
+22:57:38 [208/209] trinity_third            pick 2 of -0.64 0.68 0.78 0.69  (48 s)  wind shard sound, light gust, small heal chime
+22:58:26 [209/209] trinity                  pick 1 of 1.15 1.17 0.84 1.03  (48 s)  three elemental shards combining, fire water and wind, bright magical chord
+22:58:26 stopping the AnySFX backend
+23:10:39 prepared 213 spells
+23:38:17 35 to make (213 already done)
+23:38:19 starting the AnySFX backend
+23:39:21 [1/35] fx_remove_essence        pick 0 of 0.69 0.59 0.48 0.55  (58 s)  sharp magical hit knocking a glass bead off, short crisp impact
+23:40:11 [2/35] fx_magic_bolt            pick 3 of 0.43 0.72 0.85 0.99  (50 s)  single quick arcane bolt zap, short sharp magical hit
+23:41:01 [3/35] fx_snipe                 pick 3 of 0.29 0.31 0.22 0.75  (50 s)  precise sniper shot, quick crack and a ping
+23:41:49 [4/35] fx_burn                  pick 3 of 1.01 0.30 0.56 1.28  (48 s)  flame igniting, hissing flare of fire catching
+23:42:37 [5/35] fx_stoke                 pick 1 of 0.82 0.83 0.78 0.73  (48 s)  flames flaring up doubled, fire swelling whoosh
+23:43:26 [6/35] fx_weaken                pick 3 of -99.00 0.31 0.62 0.66  (48 s)  weakening magic, drained descending sigh, soft sagging thud
+23:44:14 [7/35] fx_vulnerable            pick 0 of 0.71 0.39 0.54 0.49  (48 s)  brittle shell cracking, fragile glass crackle
+23:45:02 [8/35] fx_freeze                pick 2 of 0.61 0.66 0.90 0.57  (48 s)  freezing crackle, ice forming fast, frosty shimmer
+23:45:50 [9/35] fx_daze                  pick 2 of 0.71 0.74 1.17 0.85  (48 s)  dizzy ringing tone, wobbling woozy swirl
+23:46:38 [10/35] fx_ethereal              pick 1 of 0.55 0.77 0.75 -0.02  (48 s)  ghostly shimmer, airy phasing whoosh
+23:47:26 [11/35] fx_shield                pick 0 of 1.03 0.77 0.90 1.02  (48 s)  magic shield forming, bright ring and a soft thud
+23:48:15 [12/35] fx_lasting_shield        pick 3 of 0.87 0.43 0.99 1.12  (48 s)  heavy lasting barrier forming, deep solid hum, metal ring
+23:49:03 [13/35] fx_thorns                pick 2 of 0.01 0.47 0.67 -0.03  (48 s)  thorny vines sprouting, sharp prickly rustle
+23:49:51 [14/35] fx_evasion               pick 1 of 0.60 0.67 0.63 0.66  (48 s)  quick dodge swish, light sidestep whoosh
+23:50:39 [15/35] fx_heal                  pick 3 of 0.88 -0.46 0.55 1.03  (48 s)  warm healing chime, gentle glowing sparkle
+23:51:27 [16/35] fx_cleanse               pick 1 of 0.28 0.84 0.64 0.80  (48 s)  bright cleansing sparkle, water rinse, clear chime
+23:52:15 [17/35] fx_repaint               pick 2 of 0.41 0.49 0.57 0.53  (48 s)  wet paint brush stroke, paint splash onto a bead
+23:53:07 [18/35] fx_self_repaint          pick 0 of 0.37 0.26 -0.50 0.02  (52 s)  quick soft paint swish over own beads, wet brush
+23:53:57 [19/35] fx_infuse                pick 0 of 0.70 0.67 0.64 0.64  (50 s)  magical essence poured in, bubbling liquid drop, glow
+23:54:48 [20/35] fx_rearrange             pick 3 of 0.41 0.57 0.57 0.78  (50 s)  wooden beads sliding and swapping, quick clicks
+23:55:36 [21/35] fx_duplicate             pick 0 of 0.82 0.36 0.46 0.65  (48 s)  magical copy echo, double chime, shimmering clone
+23:56:24 [22/35] fx_conjure               pick 3 of 0.76 0.35 0.77 0.77  (48 s)  spell conjured from nothing, magical whoosh and sparkle, pop
+23:57:14 [23/35] fx_steal                 pick 3 of 0.58 0.60 0.59 0.63  (50 s)  quick snatch, grabbing swish, small pop
+23:58:06 [24/35] fx_execute               pick 0 of 0.69 0.60 0.55 0.61  (52 s)  final executioner blow, heavy slash and thud
+23:58:56 [25/35] fx_purge                 pick 2 of 0.54 0.98 1.06 0.73  (50 s)  sweeping vacuum clearing everything, big wipe whoosh
+23:59:46 [26/35] fx_transmute             pick 1 of 0.88 1.07 0.98 0.83  (50 s)  alchemical transformation, bubbling fizz, magical change chime
+00:00:37 [27/35] fx_gain_essence          pick 0 of 0.82 0.75 0.75 0.62  (50 s)  glowing orb appearing, soft magical pickup chime
+00:01:27 [28/35] fx_lose_hp               pick 1 of 0.17 1.17 0.66 1.02  (50 s)  dark sacrifice, heartbeat thump, painful gulp
+00:02:17 [29/35] fx_max_hp                pick 1 of 0.80 1.25 0.99 1.04  (50 s)  vitality swell, rising warm chime
+00:03:07 [30/35] fx_amplify               pick 3 of 0.79 0.49 0.55 0.99  (50 s)  power surge, rising hum, crackling energy
+00:03:57 [31/35] fx_break_armour          pick 3 of 0.55 0.53 0.52 0.64  (50 s)  armour breaking apart, metal crack, plates clattering
+00:04:49 [32/35] fx_seal                  pick 3 of -0.02 -0.13 -0.35 0.33  (52 s)  magic lock sealing, heavy click, wax stamp press
+00:05:42 [33/35] fx_power                 pick 1 of 0.35 1.07 0.93 0.98  (52 s)  passive power pulse, low magical throb, soft glow
+00:06:34 [34/35] fx_refund                pick 0 of 1.21 0.81 0.19 0.60  (52 s)  coin returned, quick rewind chime
+00:07:26 [35/35] fx_curse                 pick 3 of 1.05 0.91 1.19 1.31  (52 s)  dark curse whisper, ominous low drone, evil chime
+00:07:26 stopping the AnySFX backend
+00:18:56 10 to make (0 already done)
+00:18:58 starting the AnySFX backend
+00:19:59 [1/10] fx_cleanse               pick 2 of 0.57 0.79 0.96 0.40  (58 s)  holy blessing, soft angelic shimmer, gentle uplifting bells
+00:20:49 [2/10] fx_magic_bolt            pick 1 of 0.98 1.06 0.83 0.12  (50 s)  mystical spell bolt, sparkling arcane zap with a magical shimmer tail
+00:21:39 [3/10] fx_remove_essence        pick 1 of 0.65 0.67 0.56 0.67  (50 s)  wooden ball smashing, hard wood crack and splintering
+00:22:31 [4/10] fx_curse                 pick 0 of 1.24 0.91 0.76 1.18  (52 s)  clear shhh shushing sound, breathy ominous hiss
+00:23:22 [5/10] fx_rearrange             pick 3 of 0.72 0.35 0.70 0.90  (50 s)  deep hollow wooden balls knocking and sliding, low wood clacks
+00:24:12 [6/10] fx_repaint               pick 1 of 1.08 1.12 0.26 0.37  (50 s)  paintbrush scrubbing and smearing wet paint, then a paint splash
+00:25:00 [7/10] fx_snipe                 pick 1 of 0.56 0.89 0.77 0.48  (48 s)  sci-fi laser beam zap, high energy whine, no gunshot
+00:25:48 [8/10] fx_steal                 pick 3 of -0.50 0.06 -0.43 0.56  (48 s)  fast swishing whoosh whoosh, quick snatching swipes
+00:26:36 [9/10] fx_thorns                pick 3 of 0.76 0.62 0.51 0.92  (48 s)  heavy powerful slam, forceful retaliating crack, strong counter strike
+00:27:28 [10/10] tailwind                 pick 0 of 0.84 0.53 0.76 0.77  (52 s)  strong tailwind gust, wind blast pushing from behind, airy whoosh
+00:27:28 stopping the AnySFX backend
+00:32:21 1 to make (0 already done)
+00:32:23 starting the AnySFX backend
+00:33:22 [1/1] fx_magic_bolt            pick 3 of 1.13 1.03 0.99 1.13  (56 s)  deep low magical bolt whoosh, dark arcane thump, bass energy
+00:33:22 stopping the AnySFX backend

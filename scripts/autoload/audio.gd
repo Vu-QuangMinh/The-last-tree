@@ -206,14 +206,25 @@ func stop_voice() -> void:
 
 ## Is there a sound called `name` (in the theme's SFX or the global ones, in any sub-folder)?
 func has_sfx(name: String) -> bool:
+	if _silenced.has(name):
+		return false
 	return _override.has(name) or ResourceLoader.exists(_sfx_path(UiSkin.theme_dir() + "SFX/", name)) or ResourceLoader.exists(_sfx_path(GLOBAL_SFX_DIR, name))
 
 
 var _override := {}  # sound name -> a stream that plays instead of the file (the SFX Test screen installs a new sample while the game runs)
 
 
+var _silenced := {}  # sound names that have no sound now, whatever file is still imported (the SFX Test screen chose the game's older sound instead)
+
+
 func set_override(name: String, stream: AudioStream) -> void:
 	_override[name] = stream
+	_silenced.erase(name)
+
+
+func silence(name: String) -> void:
+	_override.erase(name)
+	_silenced[name] = true
 
 
 ## A .wav (16 bit PCM) read straight from the disk, outside the imported resources (null when it cannot be read).
@@ -248,7 +259,9 @@ func wav_from_file(path: String) -> AudioStreamWAV:
 
 ## One-shot SFX. Safe to call for a name that has no file yet (it just stays silent).
 ## from: start this many seconds into the sound (to skip the silence some recordings begin with).
-func play(name: String, volume_db := 0.0, pitch := 1.0, from := 0.0) -> void:
+func play(name: String, volume_db := 0.0, pitch := 1.0, from := 0.0, stackable := true) -> void:  # (stackable false: a volley of the same sound, every shot is heard at full level)
+	if _silenced.has(name):
+		return
 	var s: AudioStream = _override.get(name, null)
 	if s == null:
 		s = _load(_sfx_path(UiSkin.theme_dir() + "SFX/", name), true)  # (the theme's own sound, if it has one)
@@ -256,7 +269,7 @@ func play(name: String, volume_db := 0.0, pitch := 1.0, from := 0.0) -> void:
 		s = _load(_sfx_path(GLOBAL_SFX_DIR, name))
 	if s == null:
 		return
-	var stack := _stack_gain(name, maxf(0.0, s.get_length() - from) / maxf(0.1, pitch))
+	var stack := _stack_gain(name, maxf(0.0, s.get_length() - from) / maxf(0.1, pitch)) if stackable else 0.0
 	if stack < -100.0:
 		return
 	var p: AudioStreamPlayer = _pool[_pool_i]

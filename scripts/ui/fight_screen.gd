@@ -136,7 +136,7 @@ var _shield_box: HBoxContainer  # the Shield (and Lasting) amount, beside your H
 var _shield_label: Label
 var _lasting_label: Label  # Puppet HUD: "Lasting N" under the HP bar
 var _pstatus: RichTextLabel
-var _status_row: HFlowContainer  # your statuses, as bright badges above the HP bar
+var _status_row: Control  # your statuses, as bright badges above the HP bar
 var _bottle_row: HBoxContainer  # your bottles, under the HP bar
 var _arts: ArtifactBar
 var _bottle_from := Vector2.ZERO
@@ -241,6 +241,7 @@ func setup(p_run: RunState, p_fight: Fight) -> void:
 
 func _ready() -> void:
 	add_to_group("fight_screen")  # (the bars of the screens laid over it leave the artifacts to this one)
+	_nu_ui = UiSkin.is_new_ui()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UiTheme.get_theme()
 	_backdrop = Backdrop.new()
@@ -433,14 +434,18 @@ func _ready() -> void:
 	menu_btn.position = Vector2(1920 - 150, 1024)
 	if UiSkin.is_puppet():  # (its plate, at the place the HUD layout gives it)
 		menu_btn.text = "Menu"
-		menu_btn.custom_minimum_size = PuppetTopHud.MENU.size
-		menu_btn.size = PuppetTopHud.MENU.size
-		menu_btn.position = PuppetTopHud.MENU.position  # (bottom left of the Chant frame, always)
+		menu_btn.custom_minimum_size = _menu_rest().size
+		menu_btn.size = _menu_rest().size
+		menu_btn.position = _menu_rest().position  # (bottom left of the Chant frame, always)
 		menu_btn.z_index = PuppetStage.CEILING_Z + 1  # (over the curtain at the top of the stage)
 		_menu_btn = menu_btn
 	UiTheme.use_menu_style(menu_btn)
 	UiTheme.use_heading_font(menu_btn)
-	add_child(menu_btn)
+	if _nu_ui:
+		_style_nu_menu(menu_btn)
+		_top_layer.add_child(menu_btn)  # (it is part of the HUD: it sinks with it between fights, where the map has its own Menu button)
+	else:
+		add_child(menu_btn)
 	_build_spells()
 	_sync_views()
 	_refresh_all()
@@ -481,16 +486,21 @@ func _set_hud_shift(v: float) -> void:
 	for n in _hud_nodes():
 		n.position.y += d
 	var k_up := clampf(v / HUD_DOWN, 0.0, 1.0)
-	for n in [_status_row, _debuff_board]:  # (the debuffs leave over the top edge: they stand at the top left)
+	for n in ([] if _nu_ui else [_status_row, _debuff_board]):  # (the debuffs leave over the top edge: they stand at the top left; New UI: they sink with the HUD)
 		if n != null and is_instance_valid(n):
 			n.position.y -= d / HUD_DOWN * DEBUFF_LIFT
 	if _menu_btn != null:
-		_menu_btn.position = PuppetTopHud.MENU.position.lerp(MENU_TOP_AT, k_up)
+		_menu_btn.position = _menu_rest().position if _nu_ui else _menu_rest().position.lerp(MENU_TOP_AT, k_up)
 	if _book_btn != null:
 		var k := clampf(v / HUD_DOWN, 0.0, 1.0)
 		_book_btn.visible = k > 0.02 and not hold_hud
 		_book_btn.modulate.a = clampf((k - 0.4) / 0.6, 0.0, 1.0)  # (it appears as the cards sink into it)
 		_book_btn.mouse_filter = Control.MOUSE_FILTER_STOP if k > 0.95 else Control.MOUSE_FILTER_IGNORE
+
+
+## Where the Menu button stands during a fight.
+func _menu_rest() -> Rect2:
+	return NewUiLayout.MENU_BTN if _nu_ui else PuppetTopHud.MENU
 
 
 func get_stage() -> PuppetStage:
@@ -511,6 +521,10 @@ func _start_down() -> void:
 ## The Act / Floor / Turn line: a Label, or (Puppet Stage) the wooden letters on the hanging sign, centred on the Label's old spot; the Label stays hidden
 ## unless the theme has no such art.
 func _set_info(text: String) -> void:
+	if _nu_ui:  # ("Act 1 · Floor 5\nTurn 2" -> "Act 1 - Floor 5 - Turn 2")
+		_info.text = text.replace("\r", "").replace("\n", " - ").replace(" · ", " - ").replace("Act ", "Act")  # (as the page writes it: "Act1 - Floor 5 - Turn 2")
+		_info.visible = true
+		return
 	_info.text = text
 	if UiSkin.is_puppet():
 		_info.visible = _act_sign != null  # (it stands on the hanging sign)
@@ -881,6 +895,8 @@ var _bag_order: Array = []  # Puppet Stage: the uids of the Bag's balls in the o
 var _resort := false  # (set while the sorted order is being walked into: its balls swap with a lift and one sound)
 var _resort_wait := false  # a launch just ended: the balls wait a moment before they swap into their types
 var _machine: SlotMachine  # Puppet Stage: the slot machine
+var _nu_ui := false  # the New UI theme (NewUiLayout): the Puppet look, a HUD laid out as page 2 of the Chant UI PDF, no machine (fixed when the fight is built)
+var _nu_back: NewUiLayout.Back  # New UI: the dark blocks, the slots and the debuff circles
 var _spawned_once := false  # the first launch of a fight counts as a spawn: the lever is pulled for it
 var _bonus_from := Vector2.INF  # where the next bonus Essence comes from (a screen point: the card, the bottle...); INF: it pops up over the top funnel
 var _reel_shown: Array = []  # the Essence the reels show (next turn's draw)
@@ -974,6 +990,9 @@ var _act_sign_gen := 0  # (every drop and every lift counts: a countdown that be
 
 
 func _rebuild_character_panel() -> void:
+	if _nu_ui:
+		_rebuild_character_panel_nu()
+		return
 	_puppet_hud = true
 	var old := _player_panel
 	_player_panel = Control.new()
@@ -1053,11 +1072,99 @@ func _rebuild_character_panel() -> void:
 	_pstatus = RichTextLabel.new()  # (not shown: statuses are icons)
 
 
+## New UI: the HUD of page 2 of the Chant UI PDF. Everything stands on the screen itself (in _top_layer, which sinks with the HUD between fights); `_player_panel` is
+## only a marker the effects that land on you fly to.
+func _rebuild_character_panel_nu() -> void:
+	var L = NewUiLayout
+	_puppet_hud = true
+	var old := _player_panel
+	_player_panel = Control.new()
+	_player_panel.position = L.HP_BAR.position
+	_player_panel.size = L.HP_BAR.size
+	_player_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_player_panel)
+	old.queue_free()
+	_nu_back = L.Back.new()
+	_nu_back.size = Vector2(1920.0, 1080.0)  # (it draws on the whole screen: a Control of size 0 that is redrawn while its parent shakes drops out of the picture for a frame or two)
+	add_child(_nu_back)
+	_hp_bar = L.Bar.new()
+	_hp_bar.position = L.HP_BAR.position
+	_hp_bar.size = L.HP_BAR.size
+	_hp_bar.custom_minimum_size = L.HP_BAR.size
+	_hp_bar.z_index = 1
+	add_child(_hp_bar)
+	var hp_font := UiTheme.cut("boldoblique")
+	if hp_font == null:
+		hp_font = UiTheme.cut("bold")
+	_hp_label = UiTheme.label("", L.HP_PX, Color.WHITE)
+	if hp_font != null:
+		_hp_label.add_theme_font_override("font", hp_font)
+	_hp_label.size = Vector2(110.0, L.HP_BAR.size.y)
+	_hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_hp_label.z_index = 2
+	add_child(_hp_label)
+	_shield_box = HBoxContainer.new()
+	_shield_box.z_index = 2
+	_shield_box.custom_minimum_size = Vector2(60.0, L.HP_BAR.size.y)
+	_shield_box.alignment = BoxContainer.ALIGNMENT_END
+	_shield_box.visible = false
+	_shield_label = UiTheme.label("", L.HP_PX, Color.WHITE)
+	if hp_font != null:
+		_shield_label.add_theme_font_override("font", hp_font)
+	_shield_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_shield_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_shield_box.add_child(_shield_label)
+	add_child(_shield_box)
+	_lasting_label = UiTheme.label("", 14, Color(0.698, 0.847, 0.953))  # (under the bar, at its right end: "Lasting 4")
+	if hp_font != null:
+		_lasting_label.add_theme_font_override("font", hp_font)
+	_lasting_label.z_index = 2
+	add_child(_lasting_label)
+	_bottle_row = HBoxContainer.new()
+	_bottle_row.add_theme_constant_override("separation", 0)
+	_bottle_row.z_index = 2
+	add_child(_bottle_row)
+	_top_layer = Control.new()
+	_top_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_top_layer)
+	move_child(_top_layer, _stage.get_index() + 1)
+	for n in [_nu_back, _hp_bar, _hp_label, _shield_box, _lasting_label, _bottle_row, _arts, _player_panel]:
+		n.reparent(_top_layer, false)
+	_info.reparent(_top_layer, false)  # (no hanging sign: the Act / Floor / Turn line is written on the second tab of the HUD, always shown)
+	_info.position = L.ACT_TEXT.position
+	_info.size = L.ACT_TEXT.size
+	_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_info.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_info.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_info.add_theme_font_size_override("font_size", 18)
+	_info.add_theme_color_override("font_color", Color.WHITE)
+	var oblique := UiTheme.cut("oblique")
+	if oblique != null:
+		_info.add_theme_font_override("font", oblique)
+	_info.z_index = 4
+	_info.visible = true
+	_status_row = Control.new()  # (the debuff icons stand on the green circles of _nu_back, placed by _fit_debuff_board)
+	_status_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_status_row.position = L.DEBUFF_AT
+	_status_row.size = Vector2(L.DEBUFF_COLS * L.DEBUFF_STEP, L.DEBUFF_PX)
+	_status_row.z_index = 1
+	_top_layer.add_child(_status_row)
+	_fit_debuff_board(0)
+	_pstatus = RichTextLabel.new()  # (not shown: statuses are icons)
+
+
 ## The artifact bar of the top frame (Puppet) or of the corner (the other themes).
 func _make_arts() -> ArtifactBar:
 	var bar := ArtifactBar.make(fight.artifacts, fight.artifact_plus)
 	bar.position = Vector2(28, 52)
-	if UiSkin.is_puppet():
+	if _nu_ui:  # (ten slots in two rows of five, as the page has them)
+		bar.chip_px = NewUiLayout.ART_PX
+		bar.row_width = NewUiLayout.ART_CELL.x * NewUiLayout.ART_COLS
+		bar.slot_step = NewUiLayout.ART_CELL.x
+		bar.per_row = NewUiLayout.ART_COLS
+		bar.row_gap = NewUiLayout.ART_CELL.y - NewUiLayout.ART_PX
+		bar.z_index = 3
+	elif UiSkin.is_puppet():
 		bar.chip_px = ART_PX
 		bar.row_width = ART_STEP * (ART_ROW - 1) + ART_PX + 4.0  # (five to a row, the next ones wrap to a second row)
 		bar.slot_step = ART_STEP
@@ -1085,6 +1192,9 @@ func _nine_frame(tex_name: String, r: Rect2, m: Array) -> NinePatchRect:
 ## The bottle frame (one row of five) and the artifact frame (two rows of five) stand where the PDF has them, bottom left. A frame is only there when you carry something;
 ## a sixth bottle widens the bottle frame, a third row of artifacts makes the artifact frame taller (upwards: its bottom is the page's).
 func _fit_hud_frames() -> void:
+	if _nu_ui and _puppet_hud:
+		_fit_hud_nu()
+		return
 	if not _puppet_hud or _bottles_frame == null:
 		return
 	var T = PuppetTopHud
@@ -1116,6 +1226,54 @@ func _fit_hud_frames() -> void:
 	_lasting_label.position = T.LASTING_AT
 
 
+## New UI: the Menu button is the word MENU on the first tab of the HUD: no plate of its own, the tab (drawn by NewUiLayout.Back) gets lighter under the mouse and darker when pressed.
+func _style_nu_menu(b: Button) -> void:
+	for st in ["normal", "hover", "pressed", "disabled", "focus"]:
+		b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	b.text = "MENU"
+	var bold := UiTheme.cut("bold")
+	if bold != null:
+		b.add_theme_font_override("font", bold)
+	b.add_theme_font_size_override("font_size", 18)
+	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		b.add_theme_color_override(c, Color.WHITE)
+	b.flat = true
+	b.focus_mode = Control.FOCUS_NONE
+	b.z_index = 4
+	b.mouse_entered.connect(func() -> void: _nu_menu_state(1))
+	b.mouse_exited.connect(func() -> void: _nu_menu_state(0))
+	b.button_down.connect(func() -> void: _nu_menu_state(2))
+	b.button_up.connect(func() -> void: _nu_menu_state(1 if b.is_hovered() else 0))
+
+
+func _nu_menu_state(k: int) -> void:
+	if _nu_back != null:
+		_nu_back.menu_state = k
+		_nu_back.queue_redraw()
+
+
+## New UI: the artifacts and bottles stand in their slots, the HP numbers on the bar (red = HP, blue = Shield and Lasting after it).
+func _fit_hud_nu() -> void:
+	var L = NewUiLayout
+	_arts.visible = true
+	_arts.position = L.ART_AT + (L.ART_CELL - Vector2.ONE * L.ART_PX) / 2.0
+	_bottle_row.visible = true
+	_bottle_row.position = L.BOTTLE_AT + (L.BOTTLE_CELL - Vector2.ONE * L.BOTTLE_PX) / 2.0
+	var bar := _hp_bar as NewUiLayout.Bar
+	var parts := bar.parts()
+	var fill: Rect2 = Rect2(L.HP_BAR.position + L.HP_FILL.position, L.HP_FILL.size)  # (the pill the liquid is in, on the screen)
+	_hp_label.position = fill.position + Vector2(30.0, 0.0)  # (clear of the left clamp)
+	_hp_label.size = Vector2(110.0, fill.size.y)
+	var end_x: float = fill.position.x + parts.x  # (the Shield lies over the end of the HP: its number stands at the end of the HP)
+	_shield_box.custom_minimum_size = Vector2(60.0, fill.size.y)
+	_shield_box.position = Vector2(maxf(end_x - 12.0 - 60.0, _hp_label.position.x + 80.0), fill.position.y)
+	_shield_box.size = _shield_box.custom_minimum_size
+	_lasting_label.size = Vector2(160.0, 20.0)
+	_lasting_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_lasting_label.position = Vector2(L.HP_BAR.end.x - _lasting_label.size.x, L.HP_BAR.position.y - 22.0)  # (above the tube, its right end level with the tube's)
+	_player_panel.position = L.HP_BAR.position
+
+
 const STATUS_CHIP := 52.0  # as tall as an orb of the Bag
 const STATUS_GAP := 4
 const DEBUFF_PAD := 22.0
@@ -1123,6 +1281,18 @@ const DEBUFF_PAD := 22.0
 
 ## The debuff board holds exactly the icons you have: it grows right from its corner at the top left as they come, and is gone when there are none.
 func _fit_debuff_board(n: int) -> void:
+	if _nu_ui:
+		_nu_back.debuffs = n
+		_nu_back.queue_redraw()
+		var rows := maxi(1, ceili(n / float(NewUiLayout.DEBUFF_COLS)))
+		var k := 0
+		for chip: Control in _status_row.get_children():
+			if chip.is_queued_for_deletion():  # (the icons of the last refresh are still there until the end of the frame)
+				continue
+			chip.size = Vector2.ONE * NewUiLayout.DEBUFF_PX
+			chip.position = NewUiLayout.debuff_slot(k, rows) - NewUiLayout.DEBUFF_AT
+			k += 1
+		return
 	if _debuff_board == null:
 		return
 	_debuff_board.visible = n > 0
@@ -1215,6 +1385,10 @@ func _refresh_coin() -> void:
 
 
 ## Statuses as small icons: a coloured frame, the picture (or its emoji), the amount in the corner; hover for the words.
+func _status_px() -> float:
+	return NewUiLayout.DEBUFF_PX if _nu_ui else STATUS_CHIP
+
+
 func _refresh_statuses_compact() -> void:
 	for c in _status_row.get_children():
 		c.queue_free()
@@ -1222,17 +1396,17 @@ func _refresh_statuses_compact() -> void:
 	for b in _status_badges():
 		var id := String(b[2])
 		var chip := TipPanel.new()
-		chip.custom_minimum_size = Vector2(STATUS_CHIP, STATUS_CHIP)
+		chip.custom_minimum_size = Vector2(_status_px(), _status_px())
 		chip.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 		var holder := Control.new()
 		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		chip.add_child(holder)
-		var icon: Control = UiSkin.icon(_badge_art_name(b), STATUS_CHIP)
+		var icon: Control = UiSkin.icon(_badge_art_name(b), _status_px())
 		if icon != null:
 			chip.hover_tex = icon.texture
 			chip.hover_left = true  # (its board appears to the left of the icon: the Chant strip stays in view)
 		if id.begins_with("attune_"):
-			icon = ElementIcon.make(id.substr(7), STATUS_CHIP - 4.0)
+			icon = ElementIcon.make(id.substr(7), _status_px() - 4.0)
 		if icon == null:  # (no picture: the emoji that leads its words)
 			var em := UiTheme.label(String(b[0]).get_slice(" ", 0), 24, Color.WHITE)
 			em.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1251,7 +1425,7 @@ func _refresh_statuses_compact() -> void:
 			n.add_theme_constant_override("outline_size", 6)
 			n.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
 			n.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			n.position = Vector2(STATUS_CHIP - 8.0 - 12.0 * digits.length(), STATUS_CHIP - 30.0)
+			n.position = Vector2(_status_px() - 8.0 - 12.0 * digits.length(), _status_px() - 30.0)
 			holder.add_child(n)
 		var tip: String = Keywords.K.get(id, [0, 0, ""])[2]
 		chip.tooltip_text = b[3] if b.size() > 3 else (Keywords.tooltip(b[0], tip) if tip != "" else String(b[0]))
@@ -1290,6 +1464,8 @@ func _place_spell_row() -> void:
 	for c in _spell_row.get_children():
 		h = maxf(h, maxf(c.custom_minimum_size.y, c.get_combined_minimum_size().y))  # (a wordy card is taller than its nominal height: it must not reach down over the chant)
 	_spell_row.position.y = _chant_panel.position.y - 5.0 - h
+	if _nu_ui:
+		_spell_row.position.y = NewUiLayout.SPELL_BOTTOM - (SpellCard.H * float(_cards[0].base_scale) if not _cards.is_empty() else h) + _hud_shift  # (the cards' bottom edge is where the page has it; while the HUD is sunk below the screen the row sinks with it, and _set_hud_shift brings it up with the rest)
 
 
 ## The sound of an Essence you move: "grab" (it leaves the bag / is picked up), "place" (it drops into the chant), "remove" (it goes back).
@@ -1374,9 +1550,9 @@ func _build_strips_puppet() -> void:
 	var cap := PuppetLayout.CAP
 	var margins := [int(cap.x), 0, int(cap.y), 0]  # (3 slices: a cap at each end, a plain middle, no stretch in height)
 	var cp := PanelContainer.new()
-	cp.add_theme_stylebox_override("panel", UiSkin.box("chant_frame", margins))
+	cp.add_theme_stylebox_override("panel", StyleBoxEmpty.new() if _nu_ui else UiSkin.box("chant_frame", margins))  # (New UI: the dark block of the page is the Chant strip)
 	_chant_panel = cp
-	cp.position = PuppetLayout.BAG_AT + PuppetLayout.CHANT_AT
+	cp.position = _bag_at() + PuppetLayout.CHANT_AT
 	cp.custom_minimum_size = PuppetLayout.FRAME_CHANT
 	var cin := Control.new()
 	cin.custom_minimum_size = PuppetLayout.FRAME_CHANT
@@ -1425,7 +1601,7 @@ func _build_strips_puppet() -> void:
 	# and the port's ring on top of them.
 	var sp := PanelContainer.new()
 	_bag_panel = sp
-	sp.add_theme_stylebox_override("panel", UiSkin.box("bag_frame", margins))
+	sp.add_theme_stylebox_override("panel", StyleBoxEmpty.new() if _nu_ui else UiSkin.box("bag_frame", margins))  # (New UI: the Bag tray is drawn in NewUiLayout.Back)
 	sp.position = cp.position - PuppetLayout.CHANT_AT
 	sp.custom_minimum_size = PuppetLayout.FRAME_BAG
 	var inner := Control.new()
@@ -1433,6 +1609,12 @@ func _build_strips_puppet() -> void:
 	inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sp.add_child(inner)
 	_machine = SlotMachine.new()
+	if _nu_ui:  # (the same machine, bigger, at the right end of the Bag strip, with a straight tube: see NewUiLayout)
+		_machine.xs = NewUiLayout.MACHINE_SCALE
+		_machine.xp = NewUiLayout.MACHINE_POS
+		_machine.straight = true
+		_machine.spawn_c = Vector2(NewUiLayout.MOUTH_X, NewUiLayout.TUBE_ROW_Y)
+		_machine.lever_shift = NewUiLayout.LEVER_SHIFT
 	_machine.build()
 	_machine.behind.show_behind_parent = true  # (the tube comes out from under the Bag strip)
 	sp.add_child(_machine.behind)
@@ -1443,8 +1625,15 @@ func _build_strips_puppet() -> void:
 	_stock_row.custom_minimum_size = Vector2(1100.0, PuppetLayout.FRAME_BAG.y)
 	_stock_row.size = _stock_row.custom_minimum_size
 	inner.add_child(_stock_row)
+	if _nu_ui:
+		inner.add_child(_machine.over)  # (the tube's clamp, over the Essence)
 	inner.add_child(_machine.front)
 	add_child(sp)
+
+
+## The Bag strip's top-left on the screen.
+func _bag_at() -> Vector2:
+	return NewUiLayout.BAG_AT if _nu_ui else PuppetLayout.BAG_AT
 
 
 func _place(c: Control, r: Rect2) -> void:
@@ -1462,7 +1651,7 @@ func _bag_slot(k: int, n: int) -> Vector2:
 	if not _circus_strips():
 		return Vector2(minf(_stock_row.size.x - BAG_PX, k * (BAG_PX + BAG_GAP)), 0)
 	if _puppet_strips():
-		var proom := PuppetLayout.REST_END - PuppetLayout.REST_X - BAG_PX
+		var proom := (NewUiLayout.REST_END if _nu_ui else PuppetLayout.REST_END) - PuppetLayout.REST_X - BAG_PX
 		var pstep := minf(PuppetLayout.RING_STEP, proom / maxf(1.0, n - 1))
 		return Vector2(PuppetLayout.REST_X + minf(k * pstep, proom), PuppetLayout.AXIS_Y - BAG_PX / 2.0)
 	var room := ChantLayout.REST_END - ChantLayout.REST_X - BAG_PX
@@ -1835,6 +2024,7 @@ func _roll_ball(balls: Array, j: int, from_x: float, t: float, delay: float) -> 
 ## a refund, the ones of a spawn beyond the third) does not touch the reels: it flies from its source into the top funnel, falls through the machine, and takes the same
 ## way out. An Essence that a spell gives for NEXT turn materializes in the tray on top of the machine and lies there; at the next spawn it goes down with the others.
 const SLOT_TUBE_SPEED := 470.0  # px/s of an Essence inside the machine and the tube
+const NU_TUBE_SPEED := 620.0  # (New UI: the Essence run on along the Bag tray at this speed, see _nu_roll)
 const SLOT_BALL_SCALE := 0.92  # an Essence is drawn this big inside the glass
 
 
@@ -1872,16 +2062,32 @@ func _path_point(pts: Array, at: float) -> Vector2:
 ## starts in the bottom funnel), "from" (it flies from `from_local` into the top funnel first), "tray" (it lay in the tray at `from_local` and slips into the funnel)
 ## or "pop" (it pops up over the top funnel), then it falls through the machine,
 ## goes down the tube, shrinks into the cap at the Bag strip's edge and comes up out of the port. Returns when it is up (seconds from now).
+## New UI: how long an Essence's trip takes from the start of `mode` until it has come up out of the circle (see _slot_route).
+func _slot_route_time(mode: String, from_local: Vector2) -> float:
+	var m := _machine
+	var pts: Array = [from_local, m.funnel_bottom_in()] if mode == "reel" else [m.funnel_top_mouth(), m.funnel_bottom_in()]
+	if mode == "reel":
+		pts = [from_local, Vector2(from_local.x, NewUiLayout.TUBE_ROW_Y)]
+	pts.append_array(m.tube_path())
+	var total := 0.0
+	for i in pts.size() - 1:
+		total += pts[i].distance_to(pts[i + 1])
+	var fly: float = {"from": 0.5, "pop": 0.28, "tray": 0.2}.get(mode, 0.0)
+	return fly + total / NU_TUBE_SPEED
+
+
 func _slot_route(ic: ElementIcon, delay: float, mode: String, from_local := Vector2.ZERO) -> float:
 	var m := _machine
 	var half := ic.size / 2.0
 	var row_y := PuppetLayout.AXIS_Y - BAG_PX / 2.0
 	var pts: Array = [from_local, m.funnel_bottom_in()] if mode == "reel" else [m.funnel_top_mouth(), m.funnel_bottom_in()]
+	if _nu_ui and mode == "reel":  # (New UI: straight down from its reel to the tube's row, so the three come to the tube in the order of the reels)
+		pts = [from_local, Vector2(from_local.x, NewUiLayout.TUBE_ROW_Y)]
 	pts.append_array(m.tube_path())
 	var total := 0.0
 	for i in pts.size() - 1:
 		total += pts[i].distance_to(pts[i + 1])
-	var dur := total / SLOT_TUBE_SPEED
+	var dur := total / (NU_TUBE_SPEED if _nu_ui else SLOT_TUBE_SPEED)
 	ic.position = Vector2(m.port_center().x + 400.0, row_y)  # (parked out of the way until its turn: it must not count as a ball in front of the others)
 	ic.rotation = 0.0
 	ic.modulate.a = 0.0
@@ -1936,6 +2142,8 @@ func _slot_route(ic: ElementIcon, delay: float, mode: String, from_local := Vect
 			ic.scale = Vector2.ONE * SLOT_BALL_SCALE, 0.0, 1.0, dur)
 	# out of the tube it keeps rolling, straight into the Bag strip (no hole: one continuous roll), growing to its full size; _roll_ball takes over from there
 	var tube_end: Vector2 = pts[pts.size() - 1]
+	if _nu_ui:  # (the tube is straight: the Essence runs out of its mouth into the Bag tray, where _nu_roll takes it on at the same speed)
+		return delay + fly + dur
 	var entry := Vector2(m.port_center().x, row_y + half.y)
 	var spin0 := -TAU * maxf(1.0, roundf(total / (PI * BAG_PX)))
 	var out_t := maxf(0.05, tube_end.distance_to(entry) / SLOT_TUBE_SPEED)
@@ -2139,45 +2347,60 @@ func _puppet_launch(balls: Array) -> void:
 			await get_tree().create_timer(0.25).timeout
 		_reel_shown = []
 		_reels_armed = false
-	var gap := 0.2
+	var gap := 0.26 if _nu_ui else 0.2  # (New UI: the orbs run one after another, 160 px apart)
 	var emerge: Array = []  # seconds from now until each ball comes up out of the port
 	emerge.resize(n)
 	emerge.fill(0.0)
 	var tray_k := 0
 	var extra_k := 0
 	var n_tray := role.count("tray")
+	# New UI: the balls come up out of the circle one after another, `gap` apart whatever way each one took (the next only starts when the one before has rolled away)
+	var nu_next := [0.0]
+	var pick_delay := func(default_d: float, mode: String, from_local: Vector2) -> float:
+		if not _nu_ui:
+			return default_d
+		var rt := _slot_route_time(mode, from_local)
+		var e: float = maxf(nu_next[0], rt)
+		nu_next[0] = e + gap
+		return e - rt
 	for j in order:
 		var ic = balls[j][0]  # (untyped: it may have been freed while the reels spun, e.g. the tutorial moved on)
 		if not is_instance_valid(ic) or role[j] == "preset":
 			continue
 		if role[j] == "reel":  # (the real ball falls from behind the cabinet into the bottom funnel; the faces on the reels are only pictures and stay until the next roll)
-			emerge[j] = _slot_route(ic, reel_of[j] * gap, "reel", _machine.reel_center(reel_of[j]))
+			var rc: Vector2 = _machine.reel_center(reel_of[j])
+			emerge[j] = _slot_route(ic, pick_delay.call(reel_of[j] * gap, "reel", rc), "reel", rc)
 		elif role[j] == "tray":  # it goes down with the others: it slips off the tray into the funnel (the real ball takes over from the one lying there)
 			var lying = twin_of[j]  # (untyped: it may have been freed meanwhile)
-			var d := 0.45 + tray_k * gap
-			tray_k += 1
 			_pending.erase(lying)
 			var at: Vector2 = (lying.position + lying.size / 2.0) if is_instance_valid(lying) else _machine.funnel_top_mouth()
+			var d: float = pick_delay.call(0.45 + tray_k * gap, "tray", at)
+			tray_k += 1
 			get_tree().create_timer(d).timeout.connect(func() -> void:
 				if is_instance_valid(lying):
 					lying.queue_free())
 			emerge[j] = _slot_route(ic, d, "tray", at)
 		else:
-			var d := (0.45 + (n_tray + extra_k) * gap) if spawn else extra_k * gap
+			var d0 := (0.45 + (n_tray + extra_k) * gap) if spawn else extra_k * gap
 			extra_k += 1
 			if from_pt != Vector2.INF and not spawn:
-				emerge[j] = _slot_route(ic, d, "from", from_pt - _stock_row.global_position)
+				var fl := from_pt - _stock_row.global_position
+				emerge[j] = _slot_route(ic, pick_delay.call(d0, "from", fl), "from", fl)
 			else:
-				emerge[j] = _slot_route(ic, d, "pop")
+				emerge[j] = _slot_route(ic, pick_delay.call(d0, "pop", Vector2.ZERO), "pop")
 	var port_x: float = _machine.port_center().x - BAG_PX / 2.0
 	var last_emerge := 0.0
 	var rollers: Array = []  # (the balls that roll in; the ones already in the Bag don't)
 	for j in order:
 		if role[j] != "preset":
 			rollers.append(balls[j])
+	var nu_b := _nu_brake(port_x, rollers.map(func(b): return b[1])) if _nu_ui and not rollers.is_empty() else 0.0
 	for r in rollers.size():
 		var j: int = balls.find(rollers[r])
 		last_emerge = maxf(last_emerge, float(emerge[j]))
+		if _nu_ui:
+			last_emerge = maxf(last_emerge, _nu_roll(rollers[r][0], rollers[r][1], float(emerge[j]), port_x, nu_b, NU_TUBE_SPEED))
+			continue
 		var dx := port_x - float(rollers[r][1].x)
 		_roll_ball(rollers, r, port_x, 0.25 + maxf(0.0, dx) / 820.0, float(emerge[j]))
 	_tube_hold_until = Time.get_ticks_msec() + int((last_emerge + 1.0) * 1000.0)  # the reels show the next draw again a second after the last ball is out
@@ -2189,6 +2412,65 @@ func _puppet_launch(balls: Array) -> void:
 		_roll_next_on_reels(last_emerge)  # (as soon as these balls are in the Bag, the lever is pulled for the next turn's draw)
 	if rollers.is_empty():
 		_resort_bag()  # (nothing rolled: nothing else will sort the Bag)
+
+
+## ---- New UI: the Essence of the machine run straight out of the tube into the Bag tray ----------------------------------------------------------------------------
+## The machine is the Puppet one (see SlotMachine, with `straight`): its Essence fall to the tube's row and run straight left through the tube; out of its mouth they go on along
+## the Bag tray at the same speed and slow to a stop at their places (_nu_roll). The Bag is not re-sorted: new orbs stay after the ones that are there.
+
+const NU_ROLL_SPEED := 820.0  # px/s of a rolling orb
+const NU_ROLL_ACCEL := 0.18  # seconds it takes to get up to speed
+const NU_ROLL_BRAKE := 150.0  # px: over the last stretch it slows smoothly to a stop
+
+
+## How long the last stretch of a launch's rolls is (the same for all of them, see _nu_roll): never more than 1.6 times the shortest way.
+func _nu_brake(from_x: float, homes: Array) -> float:
+	var shortest := 99999.0
+	for h in homes:
+		shortest = minf(shortest, from_x - float(h.x))
+	return clampf(shortest * 1.6, 24.0, NU_ROLL_BRAKE)
+
+
+## One orb rolls from `from_x` to `home` (the places along the Bag strip, so only x changes), `delay` seconds from now. Its speed is a smooth start, a steady run and a
+## smooth stop, and it spins by the distance it covers (whole turns, so it lies upright). The orbs of a launch all follow the same rule: x = home + soft(r), where r shrinks
+## at the same pace for all of them and soft() never changes faster than r, so an orb that comes later can never get closer to the one before it than the time between them
+## allows, and the Bag's places are further apart than an orb is wide. `b` = the length of the smooth stop (the same for the whole launch, see _nu_brake).
+## Returns when it is in place (seconds from now).
+func _nu_roll(ic: ElementIcon, home: Vector2, delay: float, from_x: float, b: float, v0 := 0.0) -> float:
+	var r0 := from_x - home.x
+	_launching += 1
+	var tw := ic.create_tween()
+	tw.tween_interval(delay)
+	var dur := 0.0
+	if r0 > 1.0:
+		var v := v0 if v0 > 0.0 else NU_ROLL_SPEED  # (v0: it comes in already running at that speed, no start-up)
+		var a := 0.0 if v0 > 0.0 else NU_ROLL_ACCEL
+		var big := r0 + b / 2.0  # (where the "head" starts: soft(big) = r0, so the orb starts exactly where it stands)
+		dur = big / v if a == 0.0 else ((a / 2.0 + big / v) if big >= v * a / 2.0 else sqrt(2.0 * a * big / v))
+		var turns := roundf(r0 / (PI * BAG_PX))
+		tw.tween_callback(func() -> void:
+			if is_instance_valid(ic):
+				ic.position.x = from_x
+				_ball_sound("roll", -8.0, randf_range(0.95, 1.05)))
+		tw.tween_method(func(u: float) -> void:
+			if not is_instance_valid(ic):
+				return
+			var s := v * u if a == 0.0 else (v * u * u / (2.0 * a) if u < a else v * (u - a / 2.0))
+			var r := maxf(0.0, big - s)
+			var soft := r * r / (2.0 * b) if r < b else r - b / 2.0
+			ic.position.x = home.x + soft
+			ic.rotation = -TAU * turns * clampf(1.0 - soft / r0, 0.0, 1.0), 0.0, dur, dur)
+	tw.tween_callback(func() -> void:
+		_launching -= 1
+		if is_instance_valid(ic):
+			ic.rotation = 0.0
+			ic.position = home
+			ic.remove_meta("rolling")
+			ic.mouse_filter = Control.MOUSE_FILTER_STOP
+			_ball_sound("hit", -6.0, randf_range(0.95, 1.08))
+		if _launching == 0:
+			_resort_bag())
+	return delay + dur
 
 
 ## The spell row. With many spells the cards shrink to fit the screen; hovering one brings it back to full size.
@@ -2239,9 +2521,13 @@ func _build_spells() -> void:
 	var gap := 10.0
 	var row_w := ROW_WIDTH
 	if _puppet_strips():  # (Puppet: the row is centred, and its right end stops at the Chant strip's: the cards must not cover the lottery machine)
-		row_w = minf(row_w, 2.0 * (PuppetLayout.BAG_AT.x + PuppetLayout.FRAME_CHANT.x - 960.0))
+		row_w = minf(row_w, 2.0 * (_bag_at().x + PuppetLayout.FRAME_CHANT.x - 960.0))
 	var fit := minf(1.0, (row_w - gap * maxf(0, n - 1)) / maxf(1.0, n * SpellCard.W))
-	_spell_row.add_theme_constant_override("separation", int(gap))
+	if _nu_ui:  # (New UI: the cards are the size the page draws them, 8.58 apart, around the middle of its row of eight; more than eight would shrink to fit)
+		gap = NewUiLayout.SPELL_GAP
+		fit = minf(NewUiLayout.SPELL_FIT, (ROW_WIDTH - gap * maxf(0, n - 1)) / maxf(1.0, n * SpellCard.W))
+		_spell_row.position.x = NewUiLayout.SPELL_CENTER_X - 960.0
+	_spell_row.add_theme_constant_override("separation", roundi(gap))
 	for s in fight.shown_spells():
 		var card := SpellCard.make(s)
 		card.clicked.connect(_on_card_clicked)
@@ -2373,9 +2659,11 @@ func _sync_views() -> void:
 		elif e.id == "handyman":
 			_hm_stage.add_body(v)
 			body_out = true
-		else:
+		elif HandymanRig.ARMS.has(e.id):
 			_hm_stage.add_hand(e, v, not (e in had), float(drops.get(e, -1.0)))
 			v.creature.drop_hold = _rally_hold
+		else:  # (Test mode can put any enemy beside the Handyman: only his own hands hang on his shoulders, the others stand in the row)
+			_enemy_row.add_child(v)
 		_views[e] = v
 		if e == _spider_away:
 			_hold_spider_up(v)
@@ -3268,7 +3556,7 @@ func _add_element(el: String) -> void:
 
 
 ## ---- Test mode: Auto-fill and Auto-ball ------------------------------------------------------------------------------------
-## Left of the Chant strip (Puppet: in the dark wood beside it).
+## Top left corner of the screen, side by side, so the rest of the screen stays exactly as in a real fight.
 func _build_test_buttons() -> void:
 	var specs := [
 		["Auto-fill", _auto_fill, "Test mode: builds the chant that wakes as many of your spells as the Essence in your bag can."],
@@ -3281,7 +3569,8 @@ func _build_test_buttons() -> void:
 		b.tooltip_text = specs[k][2]
 		b.custom_minimum_size = Vector2(112.0, 34.0)
 		b.size = Vector2(112.0, 34.0)
-		b.position = _chant_panel.position + Vector2(-124.0, 8.0 + 42.0 * k)
+		b.position = Vector2(8.0 + 120.0 * k, 8.0)
+		b.z_index = 200  # (over the top HUD: this corner is the test buttons' only)
 		add_child(b)
 		_test_btns.append(b)
 
@@ -4017,7 +4306,10 @@ func _refresh_bottles() -> void:
 	var n_shown: int = bs.size() if UiSkin.is_new() else maxi(run.bottle_slots() if run else Bottles.BASE_SLOTS, bs.size())
 	var chip_px := 64.0 if n_shown <= 3 else (52.0 if n_shown == 4 else 44.0)  # (five bottles must not push the frame out of the panel, nor squeeze the HP text)
 	_bottle_row.add_theme_constant_override("separation", 6 if n_shown <= 3 else 0)
-	if _puppet_hud:  # (the bottle frame's five slots hold them 44 px each)
+	if _nu_ui:  # (the five bottle slots of NewUiLayout)
+		chip_px = NewUiLayout.BOTTLE_PX
+		_bottle_row.add_theme_constant_override("separation", int(NewUiLayout.BOTTLE_CELL.x - NewUiLayout.BOTTLE_PX))
+	elif _puppet_hud:  # (the bottle frame's five slots hold them 44 px each)
 		chip_px = BOTTLE_PX
 		_bottle_row.add_theme_constant_override("separation", int(BOTTLE_STEP - BOTTLE_PX))
 	for i in n_shown:
@@ -4134,6 +4426,7 @@ func _open_pause_menu() -> void:
 	var pm := PauseMenu.open(self,
 		"Return to the Main Menu? " + saved if run_saved else "Abandon this run and return to the Main Menu?",
 		"Quit Behind the Curtain? " + saved if run_saved else "Quit Behind the Curtain?")
+	pm.world_keep = [_enemy_row, _fx]  # (a "Without UI" screenshot keeps the enemies and the effects on the stage)
 	pm.resumed.connect(_close_pause_menu)
 	pm.settings_closed.connect(_refresh_all)
 	pm.main_menu.connect(func(): menu_requested.emit())

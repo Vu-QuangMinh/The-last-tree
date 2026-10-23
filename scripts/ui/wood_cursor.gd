@@ -1,8 +1,8 @@
 class_name WoodCursor
 extends Control
 ## Puppet Stage: the mouse pointer is a carved wooden arrow (UI art "cursor_arrow", drawn pointing straight up, its tip is the hotspot).
-## Usually it lies slanted (pointing up-left, like a normal pointer); over an Essence of the Bag it turns to point straight up (at the chant),
-## over an Essence of the chant straight down (at the Bag). The turn is a short glide. The real pointer is made see-through while this shows
+## It always lies slanted (pointing up-left, like a normal pointer); it no longer turns over the Essences of the Bag and the chant (2026-10-20).
+## The real pointer is made see-through while this shows
 ## (and given back when the theme changes, or while a spell's own aim cursor hides the pointer).
 
 const SIZE_PX := 46.0
@@ -10,7 +10,7 @@ const SLANT := -PI / 4.0  # up-left
 const UP := 0.0
 const DOWN := PI
 
-## () -> the screen on show (a node), asked for `cursor_zone(global_pos) -> String` ("bag" / "chant" / "").
+## () -> the screen on show (not used for the angle any more: the arrow does not turn).
 var get_screen: Callable
 var _angle := SLANT
 var _hidden_os := false
@@ -43,15 +43,7 @@ func _process(d: float) -> void:
 	visible = on
 	if not on:
 		return
-	var want := SLANT
-	var screen = get_screen.call() if get_screen.is_valid() else null
-	if screen != null and is_instance_valid(screen) and screen.has_method("cursor_zone"):
-		match screen.cursor_zone(get_global_mouse_position()):
-			"bag":
-				want = UP
-			"chant":
-				want = DOWN
-	_angle = lerp_angle(_angle, want, clampf(d * 16.0, 0.0, 1.0))
+	_angle = lerp_angle(_angle, SLANT, clampf(d * 16.0, 0.0, 1.0))
 	queue_redraw()
 
 

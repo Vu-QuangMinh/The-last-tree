@@ -1,6 +1,6 @@
 class_name SfxTestScreen
 extends Control
-## SFX Test (Dev Mode): tabs for the groups of sounds (Spell Card, Spell SFX: what spells do, shared by many cards). Each spell card is listed with 4 play buttons under it, one for each sample the
+## SFX Test (Dev Mode): tabs for the groups of sounds (so far Spell SFX: what spells do, shared by many cards). Each spell card is listed with 4 play buttons under it, one for each sample the
 ## sound generator made (tools/make_spell_sfx.py keeps them in assets/Puppet/SFX/_Candidates/polished/). Clicking a sample plays it, turns its button orange and
 ## makes it the card's official sound (it is copied over assets/Puppet/SFX/Spell Card SFX/spell_<id>.wav, and plays in the game at once).
 ## Clicking the orange one again leaves no sample chosen: that card's sound has to be redone (the sound stays as it is meanwhile). Clicking the card turns it over:
@@ -9,10 +9,19 @@ extends Control
 signal back
 
 const SFX_DIR := "res://assets/Puppet/SFX/"
-const GROUPS := ["Spell Card", "Spell SFX"]
+const GROUPS := ["Spell SFX"]
 const ORANGE := Color(1.0, 0.55, 0.12)
 const CARD_ZOOM := 0.62
 const SAMPLES := 4
+const OLD := 9  # "chosen" value of Play 0: the sound the game already had before these samples (the generated one is taken away, the old one plays again)
+## The sound each effect group had in the game before it got samples (the EFFECT_SFX of FightScreen). Groups and cards that did not have one: Play 0 is grey.
+const OLD_SFX := {
+	"remove_essence": "sfx_damage_hit", "magic_bolt": "sfx_magic_hit", "burn": "sfx_burn_apply", "stoke": "sfx_burn_apply", "weaken": "sfx_weaken_apply",
+	"freeze": "sfx_freeze_apply", "ethereal": "sfx_ethereal_apply", "shield": "sfx_shield_up", "thorns": "sfx_shield_up", "evasion": "sfx_aegis_up",
+	"cleanse": "sfx_cleanse", "repaint": "sfx_expose_apply", "steal": "sfx_steal", "execute": "sfx_execute", "purge": "sfx_purge",
+	"transmute": "sfx_convert", "gain_essence": "sfx_draw_element", "lose_hp": "sfx_player_hit", "amplify": "sfx_amplify", "break_armour": "sfx_lock_break",
+	"curse": "sfx_weaken_apply", "power": "spell_glow",
+}
 
 var _tab := 0
 var _search: LineEdit
@@ -55,11 +64,11 @@ func _ready() -> void:
 		top.add_child(b)
 		_tab_buttons.append(b)
 	_search = LineEdit.new()
-	_search.placeholder_text = "search a card"
+	_search.placeholder_text = "search a group"
 	_search.custom_minimum_size = Vector2(300, 0)
 	_search.text_changed.connect(func(_t: String): _apply_filter())
 	top.add_child(_search)
-	_note = UiTheme.label("click a sample: it plays and becomes the card's official sound (orange = official)", 17, UiTheme.MUTED)
+	_note = UiTheme.label("click a sample: it plays and becomes the official sound (orange = official)", 17, UiTheme.MUTED)
 	_note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(_note)
 	top.add_child(UiTheme.button("Main menu", func(): back.emit(), 20))
@@ -81,8 +90,6 @@ func _show_tab(k: int) -> void:
 	_buttons.clear()
 	_faces.clear()
 	match GROUPS[k]:
-		"Spell Card":
-			_build_spell_cards()
 		"Spell SFX":
 			_build_effect_groups()
 
@@ -130,11 +137,11 @@ func _write_notes() -> void:
 func _official_path(key: String) -> String:
 	if key.begins_with("fx_"):
 		return ProjectSettings.globalize_path(SFX_DIR + "Spell SFX/spellfx_%s.wav" % key.trim_prefix("fx_"))
-	return ProjectSettings.globalize_path(SFX_DIR + "Spell Card SFX/spell_%s.wav" % key)
+	return ""
 
 
 func _sound_name(key: String) -> String:
-	return "spellfx_" + key.trim_prefix("fx_") if key.begins_with("fx_") else "spell_" + key
+	return "spellfx_" + key.trim_prefix("fx_")
 
 
 func _name_of(key: String) -> String:
@@ -143,13 +150,6 @@ func _name_of(key: String) -> String:
 
 func _sample_path(id: String, n: int) -> String:
 	return _candidates_dir() + "polished/%s_%d.wav" % [id, n]
-
-
-func _build_spell_cards() -> void:
-	var items: Array = []
-	for s in GameData.db.all_spells:
-		items.append({"key": s.id, "name": s.name, "spell": s})
-	_build_tiles(items)
 
 
 ## The effect groups (Burn, Shield, Heal ...): a plain panel with the group's name and what its sound is meant to be, in place of a card.
@@ -162,9 +162,9 @@ func _build_effect_groups() -> void:
 
 ## [group id, name, what it sounds like] -- the same groups as FX in tools/spell_sfx_prompts.py.
 const EFFECT_GROUPS := [
-	["remove_essence", "Remove Essence", "sharp magical hit knocking a glass bead off"],
-	["magic_bolt", "Magic Bolt", "a single quick arcane bolt (each shot of a volley)"],
-	["snipe", "Snipe", "precise sniper shot"],
+	["remove_essence", "Remove Essence", "a wooden ball smashing"],
+	["magic_bolt", "Magic Bolt", "a mystical spell bolt (each shot of a volley)"],
+	["snipe", "Snipe", "sci-fi laser zap"],
 	["burn", "Burn", "flame igniting"],
 	["stoke", "Double Burn", "flames flaring up doubled"],
 	["weaken", "Weaken", "drained descending sigh"],
@@ -174,17 +174,15 @@ const EFFECT_GROUPS := [
 	["ethereal", "Ethereal", "ghostly shimmer, phasing whoosh"],
 	["shield", "Shield", "magic shield forming"],
 	["lasting_shield", "Lasting Shield", "heavy lasting barrier, deep hum"],
-	["thorns", "Thorns", "thorny vines sprouting"],
+	["thorns", "Thorns", "a heavy retaliating slam"],
 	["evasion", "Evasion", "quick dodge swish"],
-	["heal", "Heal", "warm healing chime"],
-	["cleanse", "Cleanse", "bright cleansing sparkle"],
-	["repaint", "Repaint", "wet paint brush stroke and splash"],
-	["self_repaint", "Self-Repaint", "soft paint swish over own beads"],
+	["cleanse", "Cleanse", "holy blessing, angelic shimmer"],
+	["repaint", "Repaint", "brush scrub, wet paint, splash (also Self-Repaint)"],
 	["infuse", "Infuse", "essence poured in, bubbling drop"],
-	["rearrange", "Rearrange", "wooden beads sliding and swapping"],
+	["rearrange", "Rearrange", "deep wooden balls knocking"],
 	["duplicate", "Duplicate", "magical copy echo, double chime"],
 	["conjure", "Conjure", "a spell conjured from nothing"],
-	["steal", "Steal", "quick snatch, small pop"],
+	["steal", "Steal", "fast swishing whoosh whoosh"],
 	["execute", "Execute", "final executioner blow"],
 	["purge", "Purge Essence", "sweeping vacuum, big wipe"],
 	["transmute", "Transmute", "alchemical transformation"],
@@ -196,7 +194,7 @@ const EFFECT_GROUPS := [
 	["seal", "Seal", "magic lock sealing, wax stamp"],
 	["power", "Power", "passive power pulse"],
 	["refund", "Refund", "coin returned, quick rewind"],
-	["curse", "Curse", "dark curse whisper"],
+	["curse", "Curse", "a clear shhh, ominous hiss"],
 ]
 
 
@@ -223,13 +221,7 @@ func _build_tiles(items: Array) -> void:
 		var tile := VBoxContainer.new()
 		tile.add_theme_constant_override("separation", 3)
 		tile.set_meta("name", String(item.name).to_lower())
-		var card: Control
-		if item.has("spell"):
-			var sc := SpellCard.make(item.spell)
-			sc.zoom = CARD_ZOOM
-			card = sc
-		else:
-			card = _effect_face(String(item.name), String(item.text))
+		var card: Control = _effect_face(String(item.name), String(item.text))
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var holder := Control.new()  # (the card and its back, one over the other: clicking turns it over)
 		holder.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H) * CARD_ZOOM
@@ -259,13 +251,19 @@ func _build_tiles(items: Array) -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 3)
 		var bs: Array = []
-		for n in SAMPLES:
+		for k in SAMPLES + 1:  # (Play 0 first: the sound the game already has; then the 4 samples)
 			var b := Button.new()
-			b.text = "▶ %d" % (n + 1)
+			b.text = "▶%d" % k
 			b.focus_mode = Control.FOCUS_NONE
-			b.custom_minimum_size = Vector2(SpellCard.W * CARD_ZOOM / SAMPLES - 3.0, 32)
-			b.add_theme_font_size_override("font_size", 15)
-			b.pressed.connect(func(): _clicked(id, n))
+			b.custom_minimum_size = Vector2((SpellCard.W * CARD_ZOOM - 3.0 * SAMPLES) / (SAMPLES + 1), 32)
+			b.add_theme_font_size_override("font_size", 13)
+			var pick: int = OLD if k == 0 else k - 1
+			b.pressed.connect(func(): _clicked(id, pick))
+			if k == 0 and _old_sound(id) == "":
+				b.disabled = true
+				b.tooltip_text = "the game has no sound for this yet"
+			elif k == 0:
+				b.tooltip_text = "the sound the game already has (" + _old_sound(id) + ")"
 			row.add_child(b)
 			bs.append(b)
 		tile.add_child(row)
@@ -386,9 +384,12 @@ func _apply_filter() -> void:
 func _paint_buttons(id: String) -> void:
 	_paint_mark(id)
 	var official := int(_chosen.get(id, -1))
-	for n in SAMPLES:
-		var b: Button = _buttons[id][n]
-		if n == official:
+	for k in SAMPLES + 1:
+		var b: Button = _buttons[id][k]
+		if k == 0 and b.disabled:
+			b.modulate = Color(0.55, 0.55, 0.55, 0.7)  # (grey: nothing to play)
+			continue
+		if (k == 0 and official == OLD) or (k > 0 and k - 1 == official):
 			var sb := StyleBoxFlat.new()
 			sb.bg_color = ORANGE
 			sb.set_corner_radius_all(6)
@@ -403,6 +404,14 @@ func _paint_buttons(id: String) -> void:
 				b.remove_theme_color_override(c)
 
 
+## The sound the game already had for a card or group ("" when it has none).
+func _old_sound(key: String) -> String:
+	if not key.begins_with("fx_"):
+		return ""
+	var name: String = OLD_SFX.get(key.trim_prefix("fx_"), "")
+	return name if name != "" and Audio.has_sfx(name) else ""
+
+
 func _clicked(id: String, n: int) -> void:
 	if int(_chosen.get(id, -1)) == n:  # the orange one again: no sample is chosen, this sound has to be redone (it stays as it is until then)
 		_player.stop()
@@ -410,6 +419,22 @@ func _clicked(id: String, n: int) -> void:
 		_write_chosen()
 		_paint_buttons(id)
 		_note.text = "%s: no sample chosen, its sound has to be redone." % _name_of(id)
+		return
+	if n == OLD:  # Play 0: the game's own older sound plays, and it becomes the one the game uses (the generated one is put away; the samples stay for later)
+		var old := _old_sound(id)
+		if old == "":
+			return
+		_player.stop()
+		Audio.play(old)
+		var dest_old := _official_path(id)
+		for suffix in ["", ".import"]:
+			if FileAccess.file_exists(dest_old + suffix):
+				DirAccess.remove_absolute(dest_old + suffix)
+		Audio.silence(_sound_name(id))
+		_chosen[id] = OLD
+		_write_chosen()
+		_paint_buttons(id)
+		_note.text = "%s: the sound the game already had (%s) is now the official one." % [_name_of(id), old]
 		return
 	var stream := Audio.wav_from_file(_sample_path(id, n))
 	if stream == null:

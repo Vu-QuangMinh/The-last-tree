@@ -1,6 +1,6 @@
 """The Veiled Eyes (Act 2 boss, 2026-10-19): the user's cut pictures in Enemies/Act2/Veiled Eyes/ -> square canvases, bottom-aligned, in Enemies/Act2/.
-  Veiled Eyes Phase 1 / Phase 2 / Phase 2 Lit -> veiled_eyes.png / veiled_eyes_2.png / veiled_eyes_2_lit.png (all on the SAME canvas size, so the phase change
-  does not resize it); Spiderling -> spiderling.png (smaller on its canvas); Silk Cocoon -> spider_cocoon.png.
+  Veiled Eyes Phase 1 / Phase 2 / Phase 2 Lit -> veiled_eyes.png (+ veiled_eyes_lit.png, made here) / veiled_eyes_2.png / veiled_eyes_2_lit.png (all on the SAME canvas
+  size, so the phase change does not resize it; phase 1 is a tall veil scaled to the canvas height); Spiderling -> spiderling.png (smaller on its canvas); Silk Cocoon -> spider_cocoon.png.
 The unveiling animation (animation.pdf in the same folder) is made of the user's cut pieces, put on the same canvas at the place they have in phase 2 (found by
 template matching against Phase 2.png: head at (459, 575), left legs at (1, 469), right legs at (846, 482), all at scale 1; the veil-less ball unveiled.png at scale 1.08,
 (195, 0)): veiled_eyes_u_ball / _head / _legl / _legr.png. Creature plays them when the Veiled Eyes go from phase 1 to 2 (see Creature._draw_unveil).
@@ -8,7 +8,8 @@ Run:  python -I tools/import_veiled_eyes.py   (then Godot --headless --editor --
 import os
 import sys
 
-from PIL import Image
+import numpy as np
+from PIL import Image, ImageFilter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import asset_paths as AP
@@ -33,21 +34,37 @@ def main():
             ["Veiled Eyes Phase 1", "Veiled Eyes Phase 2", "Veiled Eyes Phase 2 Lit", "Spiderling", "Silk Cocoon"]}
     # phase 2 and its lit twin are one pose: they must land on the same pixels (the lit one is drawn over the other)
     p2, lit = pics["Veiled Eyes Phase 2"], pics["Veiled Eyes Phase 2 Lit"]
-    side = int(max(max(p.size) for n, p in pics.items() if n.startswith("Veiled")) * (1 + PAD * 2))
-    # phase 1 is scaled so that its ball is as big as the ball of phase 2 (the eyes are as far apart as in phase 2), and the two pairs of eyes lie on the same
-    # spot: its ropes then fit phase 2 too
-    P1_EYES = ((400, 505), (865, 495))  # (the human eyes in the cut picture of phase 1)
-    P2_EYES = ((470, 350), (860, 355))
-    k = (P2_EYES[1][0] - P2_EYES[0][0]) / float(P1_EYES[1][0] - P1_EYES[0][0])
+    side = int(max(max(p.size) for n, p in pics.items() if n.startswith("Veiled") and "Phase 1" not in n) * (1 + PAD * 2))  # (phase 1 does not set the canvas: the others keep their size)
+    # phase 1 (2026-10-20: a tall veiled ghost, no ball) is scaled to fill the canvas from the top almost to the floor: it is the tallest of the pictures
+    P1_EYES = ((481, 322), (768, 322))  # (the human eyes in the cut picture of phase 1, at scale 1)
     p1 = pics["Veiled Eyes Phase 1"]
+    k = side * (1 - PAD * 0.5 - 0.02) / float(p1.height)
     p1 = p1.resize((round(p1.width * k), round(p1.height * k)), Image.LANCZOS)
     ox2, oy2 = (side - p2.width) // 2, side - p2.height - int(side * PAD * 0.5)
-    mid2 = ((P2_EYES[0][0] + P2_EYES[1][0]) / 2 + ox2, (P2_EYES[0][1] + P2_EYES[1][1]) / 2 + oy2)
-    mid1 = ((P1_EYES[0][0] + P1_EYES[1][0]) / 2 * k, (P1_EYES[0][1] + P1_EYES[1][1]) / 2 * k)
-    ox1, oy1 = round(mid2[0] - mid1[0]), round(mid2[1] - mid1[1])
+    ox1, oy1 = (side - p1.width) // 2, side - p1.height - int(side * PAD * 0.5)
     c1 = Image.new("RGBA", (side, side), (0, 0, 0, 0))
     c1.alpha_composite(p1, (ox1, oy1))
     c1.save(os.path.join(OUT, "veiled_eyes.png"))
+    # its twin with the eyes glowing (laid over the dull ones by Creature): the violet of the eyes boosted, with a halo
+    lit1 = c1.copy()
+    arr = np.asarray(lit1).astype(float)
+    r_, g_, b_ = arr[..., 0], arr[..., 1], arr[..., 2]
+    iris = np.clip((b_ - g_ - 25) / 60.0, 0, 1) * (b_ > 100)
+    near = np.zeros(iris.shape)
+    yy, xx = np.mgrid[0:side, 0:side]
+    for (ex, ey) in P1_EYES:
+        cx, cy = ex * k + ox1, ey * k + oy1
+        near = np.maximum(near, ((xx - cx) ** 2 + (yy - cy) ** 2 < (70 * k) ** 2).astype(float))
+    iris *= near
+    # the eye: iris boosted; around it a wide violet halo (Creature lays this picture over the veil: the eyes shine through it)
+    eye = np.asarray(Image.fromarray((near * 255).astype("uint8")).filter(ImageFilter.GaussianBlur(6))).astype(float) / 255.0
+    halo = np.asarray(Image.fromarray((near * 255).astype("uint8")).filter(ImageFilter.GaussianBlur(26))).astype(float) / 255.0
+    a_h = np.clip(halo * 1.8, 0, 0.85) * (1 - eye * 0.7)  # (less over the eye itself, so that it stays clear)
+    for ch, col in enumerate((205, 120, 255)):
+        arr[..., ch] = np.clip(arr[..., ch] + iris * 70 + eye * 0.2 * (255 - arr[..., ch]), 0, 255)
+        arr[..., ch] = arr[..., ch] * (1 - a_h) + col * a_h
+    arr[..., 3] = np.maximum(arr[..., 3], np.clip(halo * 1.6, 0, 0.8) * 255)
+    Image.fromarray(arr.astype("uint8"), "RGBA").save(os.path.join(OUT, "veiled_eyes_lit.png"))
     put(p2, side).save(os.path.join(OUT, "veiled_eyes_2.png"))
     put(lit, side).save(os.path.join(OUT, "veiled_eyes_2_lit.png"))
     sp = pics["Spiderling"]
@@ -68,7 +85,7 @@ def main():
     # eye positions, as fractions of the canvas (picked off the pictures: phase 1 human eyes; phase 2 human eyes and the six spider eyes)
     def f(x, y, ox, oy):
         return "Vector2(%.4f, %.4f)" % ((x + ox) / side, (y + oy) / side)
-    print("p1 eyes  L", f(400 * k, 505 * k, ox1, oy1), "R", f(865 * k, 495 * k, ox1, oy1))
+    print("p1 eyes  L", f(P1_EYES[0][0] * k, P1_EYES[0][1] * k, ox1, oy1), "R", f(P1_EYES[1][0] * k, P1_EYES[1][1] * k, ox1, oy1), "radius", round(60 * k / side, 4))
     print("p2 eyes  L", f(470, 350, ox2, oy2), "R", f(860, 355, ox2, oy2))
     for k, (x, y) in {"outerL": (547, 745), "topL": (617, 717), "bigL": (607, 768), "topR": (716, 715), "outerR": (785, 742), "bigR": (718, 768)}.items():
         print("p2 spider", k, f(x, y, ox2, oy2))
