@@ -11,6 +11,7 @@ var col := Color.WHITE
 var dur := 0.42
 var rise := 140.0  # how high the arc climbs above the straight line
 var fizzle := false  # no target: it just rises and bursts
+var ease_out := false  # fast first, then slowing (a ball knocked away); off: slow lift-off, fast arrival
 var _t := 0.0
 var _done := false
 var _dust: Array = []  # [pos, vel, life, size]
@@ -34,6 +35,10 @@ func _ready() -> void:
 	_rng.randomize()
 
 
+func _eased() -> float:
+	return 1.0 - (1.0 - _t) * (1.0 - _t) if ease_out else _t * _t * (3.0 - 2.0 * _t)
+
+
 func _point(t: float) -> Vector2:
 	var ctrl := (from + to) / 2.0 + Vector2(0, -rise)
 	return from.lerp(ctrl, t).lerp(ctrl.lerp(to, t), t)
@@ -43,7 +48,7 @@ func _process(d: float) -> void:
 	if not _done:
 		_t = minf(1.0, _t + d / dur)
 		# ease in: slow lift-off, fast arrival
-		var head := _point(_t * _t * (3.0 - 2.0 * _t))
+		var head := _point(_eased())
 		for i in 3:
 			var v := Vector2(_rng.randf_range(-40, 40), _rng.randf_range(-20, 50))
 			_dust.append([head + Vector2(_rng.randf_range(-6, 6), _rng.randf_range(-6, 6)), v, 1.0, _rng.randf_range(2.0, 5.0)])
@@ -71,7 +76,7 @@ func _draw() -> void:
 		draw_circle(p[0], p[3] * p[2], c)
 	if _done:
 		return
-	var e := _t * _t * (3.0 - 2.0 * _t)
+	var e := _eased()
 	# tail: samples behind the head, thinner and fainter further back
 	var n := 14
 	for i in n:

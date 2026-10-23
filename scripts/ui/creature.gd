@@ -144,6 +144,15 @@ func setup(e: EnemyState) -> void:
 			_unveil_t = -1.0
 		if e.id == "anxious_armadillo":
 			_sad_tex = _puppet_tex("anxious_armadillo_sad", 2)
+		_pose_tex = {}
+		if e.id == "samurai":  # (one picture per stance: samurai_in_no_kamae / _ko_gasumi / _sha_no_kamae.png)
+			for pose in SAMURAI_POSES:
+				var pt := _puppet_tex("samurai_" + pose, 2)
+				if pt != null:
+					_pose_tex[pose] = pt
+			if _art.is_empty() and not _pose_tex.is_empty():
+				var any: Texture2D = _pose_tex.values()[0]
+				_art = {"angry": any, "normal": any, "hurt": any}
 		if e.id == "handyman":  # (his two faces: the smiling body above, and the crying one when a hand of his takes damage)
 			_sad_tex = _puppet_tex("handyman_sad", 1)
 			add_to_group("handyman_body")
@@ -419,6 +428,8 @@ func _draw() -> void:
 			var ep := c + Vector2(side * s * 0.25, eye_y)
 			draw_circle(ep, s * 0.13, Color(1, 1, 0.9))
 			draw_circle(ep + Vector2(side * 2, 2), s * 0.06, Color(0.1, 0.05, 0.05))
+	if enemy_id == "samurai" and not dead:
+		_draw_sword_stance(c, s)
 
 
 ## Ouch: eyes squeezed shut into "> <", brows pulled up in the middle, a small round "o" of a mouth, and a bead of
@@ -483,6 +494,29 @@ func _draw_pained_face(c: Vector2, s: float, eye_y: float) -> void:
 	draw_colored_polygon(PackedVector2Array([sd + Vector2(-s * 0.06, -s * 0.02), sd + Vector2(0, -s * 0.16), sd + Vector2(s * 0.06, -s * 0.02)]), Color(0.6, 0.85, 1.0, 0.9))
 
 
+## The Samurai without his pictures: a katana drawn over the stand-in body, held in the stance of his next move.
+## In no kamae: raised high over the head; Ko gasumi: level at head height, across the face; Sha no kamae: low and
+## trailing behind, ready to draw upward.
+func _draw_sword_stance(c: Vector2, s: float) -> void:
+	var hilt := c + Vector2(s * 0.35, -s * 0.2)
+	var ang := -PI * 0.62
+	match _pose():
+		"in_no_kamae":
+			hilt = c + Vector2(s * 0.15, -s * 0.95)
+			ang = -PI * 0.58
+		"ko_gasumi":
+			hilt = c + Vector2(s * 0.75, -s * 0.5)
+			ang = PI * 1.03
+		"sha_no_kamae":
+			hilt = c + Vector2(s * 0.45, s * 0.35)
+			ang = PI * 0.2
+	var dir := Vector2.from_angle(ang)
+	draw_line(hilt - dir * s * 0.35, hilt, Color(0.15, 0.1, 0.1), maxf(4.0, s * 0.1), true)  # the grip
+	draw_line(hilt - dir.orthogonal() * s * 0.1, hilt + dir.orthogonal() * s * 0.1, Color(0.75, 0.6, 0.25), maxf(3.0, s * 0.06), true)  # the guard
+	draw_line(hilt, hilt + dir * s * 1.5, Color(0.85, 0.88, 0.92), maxf(3.0, s * 0.06), true)  # the blade
+	draw_line(hilt + dir * s * 0.1, hilt + dir * s * 1.45, Color(1, 1, 1, 0.8), maxf(1.0, s * 0.02), true)  # its edge catching the light
+
+
 ## Puppet Stage: the side of the square the puppet's picture is drawn in. The Handyman's body is drawn at the size his arms were cut for.
 func _art_side() -> float:
 	if enemy_id == "handyman" and _puppet:
@@ -499,6 +533,13 @@ func has_rig() -> bool:
 var reach := Vector2.ZERO
 var sad_forever := false  # the Handyman's body, once every hand is down: he keeps the crying face (Face.pdf)
 var _sad_tex: Texture2D
+const SAMURAI_POSES := ["in_no_kamae", "ko_gasumi", "sha_no_kamae"]
+var _pose_tex := {}  # the Samurai: stance -> picture; he stands in the stance of the move he is about to make
+
+
+## The stance of the move this enemy is about to make ("" when it has none).
+func _pose() -> String:
+	return String(_enemy.intent.get("pose", "")) if _enemy != null else ""
 var _sad_t := 0.0  # seconds of crying left (a hand of his was hurt)
 var calm := false  # a folded arm that was never hurt (a hand not summoned yet): it lies still, no creaking
 var reach_angle := INF  # the lower stick's direction when it is not the rest one (INF: the rest one)
@@ -761,6 +802,8 @@ func _draw_art(blink_on: bool) -> void:
 	var tex: Texture2D = _art.get(face, _art.values()[0])
 	if _puppet and _enemy != null and _enemy.yin != "" and _art.has("yin_" + _enemy.yin):
 		tex = _art["yin_" + _enemy.yin]
+	if _pose_tex.has(_pose()):
+		tex = _pose_tex[_pose()]
 	if _sad_tex != null and (sad_forever or _sad_t > 0.0):
 		tex = _sad_tex
 	var veil2: bool = enemy_id == "veiled_eyes" and _veil_tex.size() == 2 and _veil_tex[0] != null and _enemy != null and _enemy.phase >= 2

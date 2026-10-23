@@ -2071,7 +2071,8 @@ func test_veiled_eyes_venom_veil_theft_and_brood() -> void:
 	var e: EnemyState = f.enemies[0]
 	assert_eq(e.size(), 15, "phase 1: exactly 15 Essence (no act bonus)")
 	assert_eq(e.dmg_bonus, 0, "and no act attack bonus")
-	assert_true(e.def.get("hidden_intent", false), "its intent is hidden")
+	assert_true(not e.def.get("hidden_intent", false), "its intent is shown")
+	assert_eq(e.name, "Violet Eyes")
 	assert_eq(String(e.intent.get("eyes", "")), "both", "it opens with the laser: both eyes light up")
 	# Envenomed: a hit that takes HP poisons you; one your Shield stops entirely doesn't
 	f.player.poison = 0
@@ -2123,3 +2124,53 @@ func test_veiled_eyes_venom_veil_theft_and_brood() -> void:
 	f._cleanup()
 	assert_eq(f.loadout.size(), before, "the spell comes back when the spider dies")
 	assert_true(f.over and f.won, "its brood scatters: the fight is won")
+
+
+func test_samurai_and_retainer() -> void:
+	var f := _fight(["samurai_retainer", "samurai"], [], "")
+	var r: EnemyState = f.enemies[0]
+	var s: EnemyState = f.enemies[1]
+	assert_eq([r.size(), s.size()], [7, 15], "exactly 7 and 15 Essence")
+	assert_eq(s.dmg_bonus, 0, "no act attack bonus: his slash is exactly 10")
+	assert_true(EnemyDefs.elites(2).has("samurai_pair"), "a mini boss of Act 2")
+	# Deflect: on the turn he shows it, the Release can't touch either of them
+	s.intent = s.def.moves[1]
+	var hit: Array = await f._strike(r.hp_text() + s.hp_text())
+	assert_true(hit.is_empty(), "nothing lands")
+	assert_eq([r.size(), s.size()], [7, 15])
+	s.intent = s.def.moves[2]
+	hit = await f._strike("AW")
+	assert_eq([hit, r.size()], [[r], 5], "only while Deflect is his intent")
+	# the bottle: cleansed and Impervious (no status sticks) through one turn of yours
+	s.weak_turns = 2
+	f._do_move(r, {"kind": "bottle", "who": "samurai"})
+	assert_eq([s.weak_turns, s.impervious], [0, 1])
+	assert_eq(s.ignite(3), 0, "no Burn on him")
+	# the gong and the fan
+	f._do_move(r, {"kind": "empower", "n": 1, "who": "samurai"})
+	assert_eq([s.power, r.power], [1, 0], "the gong is for the Samurai")
+	s.remove_right(4)
+	f._do_move(r, {"kind": "mend", "el": "random", "n": 2, "who": "samurai", "cap": 15})
+	assert_eq(s.size(), 13, "the fan: Mend 2 on him")
+
+
+func test_samurai_falls_first_and_the_retainer_yields() -> void:
+	var f := _fight(["samurai_retainer", "samurai"], [], "")
+	var r: EnemyState = f.enemies[0]
+	var s: EnemyState = f.enemies[1]
+	s.elements.clear()
+	s.armor.clear()
+	f._cleanup()
+	assert_true(r.has_meta("yielded"), "I yield")
+	assert_true(f.over and f.won, "the fight is over")
+
+
+func test_retainer_falls_first_and_the_samurai_swears_revenge() -> void:
+	var f := _fight(["samurai_retainer", "samurai"], [], "")
+	var r: EnemyState = f.enemies[0]
+	var s: EnemyState = f.enemies[1]
+	r.elements.clear()
+	r.armor.clear()
+	f._cleanup()
+	assert_eq(s.power, 5, "+5 Power at once")
+	assert_true(not f.over)

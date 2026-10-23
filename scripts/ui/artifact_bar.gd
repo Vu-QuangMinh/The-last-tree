@@ -8,6 +8,8 @@ var plus: Array = []  # upgraded ones
 var chip_px := 0.0
 var row_width := 0.0
 var slot_step := 0.0
+var per_row := 0  # (Puppet: this many to a row at full spacing, the next ones wrap onto a new row; 0 = one row that squeezes)
+const ROW_GAP := 2  # (between the wrapped rows: the top frame grows by the same, see FightScreen.ART_ROW_GAP)
 
 
 static func make(p_artifacts: Array, p_plus: Array = []) -> ArtifactBar:
@@ -31,7 +33,10 @@ func _ready() -> void:
 func refresh() -> void:
 	for c in get_children():
 		c.queue_free()
-	if chip_px > 0.0:
+	if chip_px > 0.0 and per_row > 0:
+		add_theme_constant_override("h_separation", int(floor(slot_step - chip_px)))
+		add_theme_constant_override("v_separation", ROW_GAP)
+	elif chip_px > 0.0:
 		var n := maxi(1, artifacts.size())
 		var step := minf(slot_step, (row_width - chip_px) / maxf(1.0, n - 1.0))
 		add_theme_constant_override("h_separation", int(floor(step - chip_px)))

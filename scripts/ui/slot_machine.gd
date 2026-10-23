@@ -17,6 +17,7 @@ const TUBE_R := 76.0  # radius of the tube's bend (the centre line of the glass)
 const TUBE_X := 1769.2  # the centre line of the vertical part of the glass
 const TUBE_Y := 1015.8  # the centre line of the horizontal part
 
+var behind := Control.new()  # (under the Bag strip itself: FightScreen expects it; empty here until the layer's art is committed)
 var back := Control.new()
 var front := Control.new()
 var busy := false  # a spin is going on: the preview must not touch the reels
@@ -95,7 +96,7 @@ static func _screen(t: TextureRect) -> TextureRect:
 
 
 func build() -> void:
-	for c in [back, front]:
+	for c in [behind, back, front]:
 		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# a plain soft shadow behind the cabinet and its funnel: the machine stands apart from the stage behind it
 	var body: Rect2 = PuppetSlotMachine.BODY

@@ -38,6 +38,7 @@ var weak25 := false  # Stillness (permanent)
 var freeze_turns := 0
 var no_mend := false  # Cauterize
 var ethereal := false  # from its own intent: your next chant can't touch it
+var impervious := 0  # Impervious: no status can be put on it (the Retainer's bottle); counts down at the end of your turn
 var phased := false  # from your spell: your spells remove double from it this turn
 var struck_this_turn := false
 var move_index := 0
@@ -160,6 +161,8 @@ func _fix_lit() -> void:
 
 ## Burn: add n to its Burn. Returns n.
 func ignite(n: int, _rng: RandomNumberGenerator = null) -> int:
+	if impervious > 0:
+		return 0  # (the Retainer's bottle: no status sticks)
 	if has_passive("burn_immune"):
 		return 0  # fireproof (Cinder Hound)
 	n = maxi(0, n)
@@ -406,6 +409,8 @@ func describe_statuses() -> Array:
 		out.append("Thorns %d (your Release hitting it hurts you %d)" % [thorns, thorns])
 	if dazed > 0:
 		out.append("Dazed %d (50%% chance to miss each attack; -1 after a miss)" % dazed)
+	if impervious > 0:
+		out.append("Impervious (no status can be put on it this turn)")
 	if power > 0:
 		out.append("Power %d (+%d damage per hit)" % [power, power])
 	if burn > 0:

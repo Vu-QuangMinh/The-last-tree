@@ -76,6 +76,8 @@ var hammer_hits := {}  # spell id -> Hammer hits taken (3 break it)
 var broken := {}  # spell id -> true: broken (worn out, or smashed by the Hammer), gone for the fight
 var hammered := {}  # spell id -> true: smashed by the Hammer: it leaves the row for the rest of the fight
 var exhausted: Array = []  # spell ids Exhausted this fight: gone for the rest of the run
+## Effects that put a status on an enemy: an Impervious one shrugs them off.
+const STATUS_OPS := ["burn", "stoke", "weak", "freeze", "ethereal", "disarm", "daze", "redirect", "curse"]
 const TRINITY_PARTS := ["trinity_first", "trinity_second", "trinity_third"]
 var trinity_cast := {}  # Trinity Fragments cast this turn (base id -> true)
 var trinity_formed := false  # the three became Trinity this fight (the run keeps it: see RunState.finish_fight)
@@ -830,7 +832,7 @@ func _strike(c: String) -> Array:
 		if k == 0:
 			continue
 		var at := Chant.find_hp(e.elements.slice(0, k), c)
-		plans.append({"enemy": e, "k": k, "at": at})
+		plans.append({"enemy": e, "k": k, "at": at, "deflect": _deflected(e)})
 	if plans.is_empty():
 		return []
 	var last_hit := 0
@@ -840,13 +842,16 @@ func _strike(c: String) -> Array:
 		var hits := []
 		for pl in plans:
 			if p >= pl.at and p < pl.at + pl.k:
-				hits.append([pl.enemy, p - pl.at])
+				hits.append([pl.enemy, p - pl.at, pl.deflect])  # (deflected: the Samurai's air slash cuts it out of the air)
 		# after the last element that hits anything, the rest of the chant has nothing left to fly at
 		await anim.call({"type": "chant_step", "pos": p, "hits": hits, "chant": c, "leftover": p > last_hit})
 	var hit := []
 	var extra := 1 if has_artifact("glass_heart") else 0
 	for pl in plans:
 		var e: EnemyState = pl.enemy
+		if pl.deflect:
+			_log("The Samurai's blade turns your Release away from %s." % e.name)
+			continue
 		var before: int = e.size()
 		var removed: Array = e.strike_prefix(pl.k)
 		if extra > 0 and not e.is_dead():
@@ -976,6 +981,8 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 		return
 	current_eff = eff
 	var targets := await _targets(eff, spell, tctx)
+	if eff.op in STATUS_OPS:
+		targets = targets.filter(func(x): return not (x is EnemyState and x.impervious > 0))  # (Impervious: no status sticks)
 	# Gain Essence: rolled before the show, so each orb flies in its own element's colour to its own slot
 	var drawn: Array[String] = []
 	if eff.op == "draw":
@@ -1764,6 +1771,8 @@ func end_player_turn() -> void:
 	charges.clear()
 	used.clear()
 	trinity_cast.clear()
+	for e in enemies:
+		e.impervious = maxi(0, e.impervious - 1)  # (the Retainer's bottle lasts through one turn of yours)
 	anti_broken.clear()
 	# conjured (Ephemeral) spells last until the end of the turn after they appear: those still here then expire, and
 	# merge back into the spell that conjured them
@@ -2254,10 +2263,40 @@ func talk_effect(fx: String) -> void:
 
 ## A support move's target: itself, or ("who": "random") any living enemy at random, itself included.
 func _random_one(e: EnemyState, m: Dictionary) -> EnemyState:
+	if m.get("who", "self") == "samurai":
+		return _samurai(e)
 	if m.get("who", "self") != "random":
 		return e
 	var pool := alive()
 	return pool[rng.randi() % pool.size()] if not pool.is_empty() else e
+
+
+## The Samurai's Deflect: on the turn he shows it (his intent), your Release can't touch him or his Retainer.
+func _deflected(e: EnemyState) -> bool:
+	if not (e.has_passive("avenger") or e.has_passive("retainer")):
+		return false
+	return alive().any(func(x): return x.has_passive("avenger") and String(x.intent.get("kind", "")) == "deflect")
+
+
+## The Samurai, for his Retainer's support moves (himself if the Samurai is gone).
+func _samurai(e: EnemyState) -> EnemyState:
+	for x in alive():
+		if x.has_passive("avenger"):
+			return x
+	return e
+
+
+## Every debuff on an enemy, gone (Cleanse; the Retainer's bottle).
+func _cleanse_enemy(t: EnemyState) -> void:
+	t.burn = 0
+	t.weak_turns = 0
+	t.weak25 = false
+	t.freeze_turns = 0
+	t.no_mend = false
+	t.phased = false
+	t.dazed = 0
+	t.disarmed = 0
+	t.redirect_to = null
 
 
 func _do_move(e: EnemyState, m: Dictionary) -> void:
@@ -2344,6 +2383,8 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				var hurt := alive().filter(func(x): return x.size() < int(m.get("cap", 999)))
 				var pool: Array = hurt if not hurt.is_empty() else alive()
 				targets = [pool[rng.randi() % pool.size()]]
+			elif who == "samurai":
+				targets = [_samurai(e)]
 			elif who == "weakest":
 				# the most hurt of them (itself included) that is still below the cap; nobody hurt: nothing
 				var hurt := alive().filter(func(x): return x.size() < int(m.get("cap", 999)))
@@ -2390,14 +2431,18 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 		"invoke":
 			await _invoke(e, m)
 		"cleanse_self":
-			e.burn = 0
-			e.weak_turns = 0
-			e.weak25 = false
-			e.freeze_turns = 0
-			e.no_mend = false
-			e.phased = false
+			_cleanse_enemy(e)
 			_log("%s cleanses himself." % e.name)
 			await anim.call({"type": "mend", "enemy": e})
+		"bottle":
+			# the Retainer's bottle: the Samurai is cleansed, and Impervious through your next turn
+			var t := _samurai(e)
+			_cleanse_enemy(t)
+			t.impervious = 1
+			_log("%s hands %s a bottle: cleansed, and Impervious for a turn." % [e.name, t.name])
+			await anim.call({"type": "mend", "enemy": t})
+		"deflect":
+			pass  # (his guard already did its work: it held through your turn, while it was his intent; see _deflected)
 		"drain_essence":
 			for k in m.n:
 				if player.stock.is_empty():
@@ -2589,6 +2634,8 @@ func _cleanup() -> void:
 		if _rage_check(e):
 			_plan(e)
 	for e in enemies.duplicate():
+		if e.has_meta("yielded"):
+			continue  # (the Retainer who yielded stays on the list: the screen shows him bowing out before the victory)
 		if e.is_dead() and e.has_passive("armadillo"):
 			# the Anxious Armadillo stays on the list, beaten: the screen plays his ending before the victory
 			if not (e.id in defeated):
@@ -2613,6 +2660,22 @@ func _cleanup() -> void:
 				defeated.append(e.id)
 			if e.has_passive("briar_walls") and not e.elements.is_empty():
 				_log("The walls fall with her.")
+			if e.has_passive("avenger"):
+				# the Samurai has fallen: his Retainer yields, and the fight is over
+				for r in alive().filter(func(x): return x.has_passive("retainer")):
+					r.set_meta("yielded", true)
+					r.elements.clear()
+					r.armor.clear()
+					if not (r.id in defeated):
+						defeated.append(r.id)
+					_log("%s yields." % r.name)
+			if e.has_passive("retainer"):
+				# his Retainer has fallen first: the Samurai swears revenge, +5 Power for the rest of the fight
+				for s in alive().filter(func(x): return x.has_passive("avenger")):
+					s.power += 5
+					s.dmg_bonus += 5
+					_log("%s swears revenge: Power +5." % s.name)
+					anim.call({"type": "speech_lines", "enemy": s, "lines": ["No! Tasuke!", "I will avenge you!"]})
 			if e.has_passive("last_gasp"):
 				player.poison += 2
 				_log("%s bursts: you are poisoned." % e.name)

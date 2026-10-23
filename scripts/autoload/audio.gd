@@ -248,7 +248,8 @@ func wav_from_file(path: String) -> AudioStreamWAV:
 
 ## One-shot SFX. Safe to call for a name that has no file yet (it just stays silent).
 ## from: start this many seconds into the sound (to skip the silence some recordings begin with).
-func play(name: String, volume_db := 0.0, pitch := 1.0, from := 0.0) -> void:
+## `stack` = false: the same sound played many times in a row (a barrage's shots) is not turned down as it piles up.
+func play(name: String, volume_db := 0.0, pitch := 1.0, from := 0.0, stack := true) -> void:
 	var s: AudioStream = _override.get(name, null)
 	if s == null:
 		s = _load(_sfx_path(UiSkin.theme_dir() + "SFX/", name), true)  # (the theme's own sound, if it has one)
@@ -256,13 +257,13 @@ func play(name: String, volume_db := 0.0, pitch := 1.0, from := 0.0) -> void:
 		s = _load(_sfx_path(GLOBAL_SFX_DIR, name))
 	if s == null:
 		return
-	var stack := _stack_gain(name, maxf(0.0, s.get_length() - from) / maxf(0.1, pitch))
-	if stack < -100.0:
+	var gain := _stack_gain(name, maxf(0.0, s.get_length() - from) / maxf(0.1, pitch)) if stack else 0.0
+	if gain < -100.0:
 		return
 	var p: AudioStreamPlayer = _pool[_pool_i]
 	_pool_i = (_pool_i + 1) % _pool.size()
 	p.stream = s
-	p.volume_db = _db(sfx_level * overall_level) + volume_db + stack
+	p.volume_db = _db(sfx_level * overall_level) + volume_db + gain
 	p.pitch_scale = pitch
 	p.play(from)
 

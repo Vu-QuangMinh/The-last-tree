@@ -2323,7 +2323,7 @@ func _hand_going_down(e: EnemyState) -> bool:
 
 
 func _sync_views() -> void:
-	var live := fight.enemies.filter(func(e): return not e.is_dead() or e.knocked or _hand_going_down(e) or e.has_passive("armadillo") or (e.has_passive("veil_falls") and e.phase == 1))  # (the Armadillo doesn't break: his ending plays; the Veiled Eyes do not break either: the veil falls and the same puppet unfolds)  # (a knocked-out hand stays in view)
+	var live := fight.enemies.filter(func(e): return not e.is_dead() or e.knocked or _hand_going_down(e) or e.has_passive("armadillo") or e.has_meta("yielded") or (e.has_passive("veil_falls") and e.phase == 1))  # (the Armadillo doesn't break: his ending plays; the Veiled Eyes do not break either: the veil falls and the same puppet unfolds)  # (a knocked-out hand stays in view)
 	var hm := not fight.hm.is_empty() and HandymanStage.available()  # (the Handyman fight with its art: hands on the body's shoulders)
 	var same := live.size() == _views.size() and live.all(func(e): return _views.has(e))
 	if same:
@@ -3684,6 +3684,8 @@ func _finish() -> void:
 	_lift_act_sign()
 	if fight.won and not dillo.is_empty():
 		await _armadillo_ending(dillo[0])
+	for r in fight.enemies.filter(func(e): return e.has_meta("yielded")):
+		await _retainer_yields(r)
 	if fight.won and stage_flow and _stage != null:  # Puppet Stage: the Victory sign drops from behind the ceiling, the HUD sinks
 		await get_tree().create_timer(0.5).timeout
 		var perfect_run: bool = fight.player.damage_taken <= 0.0
@@ -5063,7 +5065,7 @@ func _cull_dead() -> void:
 	if _enemy_row == null:
 		return
 	for e in _views.keys():
-		if e.is_dead() and not e.knocked and not _hand_going_down(e) and not e.has_passive("armadillo") and not (e.has_passive("veil_falls") and e.phase == 1):  # (the Veiled Eyes at 0 Essence do not break: the veil falls and the same puppet unfolds)
+		if e.is_dead() and not e.knocked and not _hand_going_down(e) and not e.has_passive("armadillo") and not e.has_meta("yielded") and not (e.has_passive("veil_falls") and e.phase == 1):  # (the Veiled Eyes at 0 Essence do not break: the veil falls and the same puppet unfolds)
 			var old: EnemyView = _views[e]
 			_views.erase(e)
 			if is_instance_valid(old):
@@ -6208,13 +6210,13 @@ func _talk() -> void:
 	_hypnotize_opening()
 
 
-## The Veiled Eyes: as the fight starts its human eyes shine brightly, and from then on it shows no intent.
+## Violet Eyes: as the fight starts its human eyes shine brightly.
 func _hypnotize_opening() -> void:
 	for v in _views.values():
-		if v.enemy.has_passive("veiled") and is_instance_valid(v.creature):
+		if v.enemy.id == "veiled_eyes" and is_instance_valid(v.creature):
 			v.creature.hypnotize()
 			Audio.play("spell_glow")
-			_callout_beside(v, "[i]The beautiful eyes hypnotize you, concealing their intentions.[/i]", Color(0.75, 0.5, 1.0), 3.2)
+			_callout_beside(v, "[i]The beautiful eyes hypnotize you.[/i]", Color(0.75, 0.5, 1.0), 3.2)
 
 
 func _unlock_after_voice(lock: Array) -> void:
@@ -6874,6 +6876,17 @@ func _effect_landed(ev: Dictionary) -> void:
 					_float_text(text, v.global_position + Vector2(110, 180), Color(1, 0.85, 0.5))
 	else:
 		_float_text(text, _player_point() + Vector2(-40, -40), Color(0.6, 0.9, 1))
+
+
+## The Samurai has fallen: his Retainer says so, kneels, and leaves the stage.
+func _retainer_yields(r: EnemyState) -> void:
+	await _speech(r, "I yield.", 1.6)
+	var v: EnemyView = _views.get(r)
+	if v != null and is_instance_valid(v):
+		var tw := v.create_tween().set_parallel()
+		tw.tween_property(v, "position:y", v.position.y + 40.0, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		tw.tween_property(v, "modulate:a", 0.0, 0.6)
+		await tw.finished
 
 
 ## The Veiled Eyes' laser: a violet beam from its eyes to you (the hit lands right after).
@@ -7582,6 +7595,8 @@ func _enemy_move_fx(ev: Dictionary) -> void:
 	if kind == "steal":
 		await _steal_fx(ev, v)
 		return
+	if String(ev.get("move", {}).get("sfx", "")) == "gong":
+		Audio.play("gong", -2.0)
 	var look: Array = IntentChip.LOOK.get(kind, ["✦", Color.WHITE])
 	var info: Array = IntentChip.INFO.get(kind, [kind.capitalize(), ""])
 	if v and v.creature.has_rig():  # (a Handyman hand: its arm acts it out, a little gentler than a blow)
@@ -7680,12 +7695,47 @@ func _release_step(ev: Dictionary) -> void:
 		var v: EnemyView = _views.get(h[0])
 		if v == null:
 			continue
+		if h.size() > 2 and h[2]:
+			_deflect_comet(from, v.hp_point(h[1]), col)
+			continue
 		var comet := Comet.launch(_fx, from, v.hp_point(h[1]), col)
 		var j: int = h[1]
 		comet.arrived.connect(func():
 			if is_instance_valid(v): v.pop(j)
 			Audio.play(impact))
 	await _wait(0.46)
+
+
+## The Samurai's Deflect: the chant Essence flies at its target as usual, but an air slash (a pale crescent) flies out
+## of his sword and meets it on the way: a clang, sparks, a tiny freeze and shake, and the ball bounces off it, mirrored
+## about the slash as a real deflection would be.
+func _deflect_comet(from: Vector2, target: Vector2, col: Color) -> void:
+	var meet := from.lerp(target, 0.62)
+	var comet := Comet.launch(_fx, from, meet, col)
+	var sword := meet + Vector2(0, -260)
+	for e in _views:
+		if e.has_passive("avenger") and is_instance_valid(_views[e]):
+			var r: Rect2 = _views[e].puppet_global_rect()
+			sword = r.position + Vector2(r.size.x * 0.3, r.size.y * 0.4)
+	CrescentSlash.launch(_fx, sword, meet, comet.dur)
+	# where it bounces: its way in at the moment of impact (the end of the comet's curve), reflected about the slash's
+	# face (the slash flies along its own normal)
+	var ctrl := (from + meet) / 2.0 + Vector2(0, -comet.rise)
+	var v_in := (meet - ctrl).normalized()
+	var n := (meet - sword).normalized()
+	var v_out := v_in - 2.0 * v_in.dot(n) * n
+	var away := meet + v_out * 460.0
+	comet.arrived.connect(func():
+		Audio.play("sword_clang", -3.0, randf_range(0.92, 1.08))
+		var fx := Vfx.make(_fx, 70)
+		fx.burst(meet, 14, Color(1.0, 0.95, 0.75), Vector2(160, 420), Vector2(0.15, 0.35), Vector2(2, 5), Vfx.SPARK)
+		fx.flash(Color(1, 1, 1, 0.12), 0.08)
+		_hitstop(0.05)  # (light: a blink of a freeze and a small shake)
+		_shake(3.0)
+		var bounce := Comet.launch(_fx, meet, away, col)
+		bounce.rise = 30.0
+		bounce.dur = 0.5
+		bounce.ease_out = true)
 
 
 func _wait(t: float) -> void:

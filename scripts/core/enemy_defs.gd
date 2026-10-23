@@ -96,6 +96,24 @@ const E := {
 		"flavor": "Fast, and hard to read."},
 	"lockwarden": {"name": "The Warden", "act": 2, "elite": true, "hp": "WFWAF", "moves": [{"kind": "lock", "len": 2}, {"kind": "attack", "n": 5}, {"kind": "attack", "n": 5}],
 		"flavor": "Chains your spells shut."},
+	# The Samurai and his Retainer, Tasuke (an Act 2 mini boss, met together; exact numbers: no act bonus).
+	# The Samurai: one slash for 10; Deflect (his sword held sideways: on the turn he shows it, your Release can't touch either of them,
+	# each Essence is cut out of the air by an air slash, but your spells still work); an Iai charge, 3 x 3.
+	# The Retainer looks after him: a bottle (cleanses him, and he is Impervious for a turn: no status can be put on
+	# him), the fan (Mend 2 random Essence), the gong (+1 Power for the rest of the fight).
+	# The Samurai falls first: the Retainer yields and the fight is won. The Retainer falls first: the Samurai swears
+	# revenge and gains 5 Power at once.
+	# His stance shows what is coming ("pose" on each move; the puppet's picture is samurai_<pose>.png): sword held high
+	# in In no kamae for the slash, Ko gasumi for the Deflect, Sha no kamae for the Iai charge.
+	"samurai_retainer": {"name": "Retainer", "act": 2, "elite": true, "member": true, "no_extra": true, "no_bonus": true, "hp": "AWFAWFW",
+		"passives": ["retainer"],
+		"moves": [{"kind": "bottle", "who": "samurai"}, {"kind": "mend", "el": "random", "n": 2, "who": "samurai", "cap": 15, "sfx": "fan"},
+			{"kind": "empower", "n": 1, "who": "samurai", "sfx": "gong"}],
+		"flavor": "He goes where his lord goes."},
+	"samurai": {"name": "The Samurai", "act": 2, "elite": true, "member": true, "no_extra": true, "no_bonus": true, "hp": "FAWWFAFWAAFWFAW",
+		"passives": ["avenger"],
+		"moves": [{"kind": "attack", "n": 10, "pose": "in_no_kamae"}, {"kind": "deflect", "pose": "ko_gasumi"}, {"kind": "attack", "n": 3, "hits": 3, "iai": true, "pose": "sha_no_kamae"}],
+		"flavor": "One cut, and it is over."},
 	"tide_colossus": {"name": "Tide Colossus", "act": 3, "elite": true, "retired": true, "hp": "WWWWFW", "moves": [{"kind": "mend", "el": "W", "n": 2, "who": "self"}, {"kind": "attack", "n": 8}],
 		"flavor": "A wave that stands up."},
 	# The Triplet (a mini boss of three separate enemies): one spirit of each element, each with its own cycle of moves.
@@ -192,15 +210,15 @@ const E := {
 		"moves": [{"kind": "poison", "n": 2}, {"kind": "summon", "id": "puddle_slime", "n": 1}, {"kind": "attack", "n": 7}],
 		"moves2": [{"kind": "lock", "len": 3}, {"kind": "mend", "el": "random", "n": 1, "who": "all"}, {"kind": "attack", "n": 5, "hits": 2}],
 		"flavor": "Rot, and everything it feeds."},
-	# The Veiled Eyes (an Act 2 boss). Phase 1: a ball hanging on a white thread, two violet human eyes behind a black
+	# Violet Eyes (an Act 2 boss; was the Veiled Eyes). Phase 1: a ball hanging on a white thread, two violet human eyes behind a black
 	# veil. Phase 2 (at 0 Essence the veil falls): the spider underneath, the human eyes on its back and 4 spider-eye
-	# dots. Its intent is never shown (hidden_intent): only its eyes light up, a turn ahead ("eyes" on each move).
+	# dots. Its intent is shown like anyone's; its eyes also light up, a turn ahead ("eyes" on each move).
 	# Phase 1 cycles laser (both eyes) / venom (right eye) / slashes (left eye); phase 2 counts its dots 0 -> 4 and
 	# starts at 1 (the theft): 1 steal a spell into a cocoon, 2 venom, 3 two spiderlings, 4 eight slashes, 0 the human
 	# eyes' laser (the only time they look straight at you). Envenomed: every hit that takes HP gives you 1 Poison.
 	# Its numbers are exactly these: no act bonus Essence (no_extra) and no act attack bonus (no_bonus).
-	"veiled_eyes": {"name": "The Veiled Eyes", "act": 2, "boss": true, "no_extra": true, "no_bonus": true, "hidden_intent": true,
-		"hp": "FWAAWFFAWWFAAFW", "hp2": "AWFFWAAFWWAFFAWWFAAW", "passives": ["envenomed", "veiled", "veil_falls"], "tint": Color(0.16, 0.12, 0.2),
+	"veiled_eyes": {"name": "Violet Eyes", "act": 2, "boss": true, "no_extra": true, "no_bonus": true,
+		"hp": "FWAAWFFAWWFAAFW", "hp2": "AWFFWAAFWWAFFAWWFAAW", "passives": ["envenomed", "veil_falls"], "tint": Color(0.16, 0.12, 0.2),
 		"moves": [{"kind": "attack", "n": 5, "eyes": "both", "laser": true}, {"kind": "poison", "n": 4, "eyes": "right"},
 			{"kind": "attack", "n": 1, "hits": 4, "eyes": "left"}],
 		"moves2": [{"kind": "steal_spell", "eyes": 1}, {"kind": "poison", "n": 5, "eyes": 2},
@@ -212,7 +230,7 @@ const E := {
 		"tint": Color(0.18, 0.14, 0.22), "moves": [{"kind": "attack", "n": 1, "hits": 2}], "flavor": "Small, fast, and very much its mother's."},
 	"spiderling_b": {"name": "Spiderling", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WWFAF", "passives": ["envenomed"],
 		"tint": Color(0.18, 0.14, 0.22), "moves": [{"kind": "attack", "n": 1, "hits": 2}], "flavor": "Small, fast, and very much its mother's."},
-	# the cocoon the Veiled Eyes wraps a stolen spell in: it does nothing; break it and the spell comes back
+	# the cocoon Violet Eyes wraps a stolen spell in: it does nothing; break it and the spell comes back
 	"spider_cocoon": {"name": "Silk Cocoon", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "inert": true, "hidden_intent": true,
 		"hp": "WAF", "passives": ["cocoon"], "tint": Color(0.92, 0.9, 0.86), "moves": [{"kind": "hold"}],
 		"flavor": "Something you need is wrapped up in there."},
@@ -228,6 +246,8 @@ const PASSIVE_TEXT := {
 	"overgrowth": "Overgrowth: if not struck during your turn, it grows a random Essence.",
 	"warded": "Warded: only chants of 4 or more Essence can strike it.",
 	"last_gasp": "Last Gasp: gives you Poison 2 when it dies.",
+	"retainer": "Loyal: if the Samurai falls first, his Retainer yields and the fight is over.",
+	"avenger": "Avenger: if his Retainer falls first, the Samurai gains 5 Power for the rest of the fight.",
 	"gem_crown": "Gem Crown: at the end of its turn, armours its first Essence if nothing is armoured (not when it has 1 left).",
 	"echo": "Echo: repeats each action twice.",
 	"briar_walls": "Briar Walls: she hides between two hedge walls (3 Essence each, the two ends of her row). They are part of her: leftmost and rightmost effects hit the ends of her row (a wall while it stands), random effects pick wall Essence first, and Snipe can reach anything. She regrows a fallen wall (she shows it first); with both up she sings (Power +1) or attacks. When her own Essence is gone, the walls fall with her.",
@@ -241,7 +261,6 @@ const PASSIVE_TEXT := {
 	"yinyang_split": "Split: when it dies, it splits into two Yin Yang Cubs (10 Essence each), one white and one black.",
 	"shield_rage": "Enraged: every time you gain Shield, it gains Power +1 (its attacks deal 1 more damage).",
 	"envenomed": "Envenomed: every hit that takes HP from you also gives you 1 Poison (hits your Shield stops don't).",
-	"veiled": "Hypnotic: its intentions are hidden. Watch its eyes: they light up a turn before it acts, and each light means a different move.",
 	"veil_falls": "The veil falls: at 0 Essence the veil drops and what is underneath fights on, with 20 more Essence and new moves.",
 	"cocoon": "Cocoon: a spell of yours is wrapped inside. Break it and the spell comes back (and it comes back anyway if you win).",
 	"rage_at_half": "Shield Wall: above half its Essence it guards and strikes in turn. At half or below it drops its shield and attacks twice every turn.",
@@ -351,16 +370,17 @@ static func normals(act: int) -> Array:
 
 
 ## The mini bosses of an act (only that act's own; "retired" ones are kept for old saves and the codex but never met).
-## Act 1: The Triplet, Enraged Rolling Bear, Bramble Matron. Act 2: Chairman, Blackwing, The Warden.
+## Act 1: The Triplet, Enraged Rolling Bear, Bramble Matron. Act 2: Chairman, Blackwing, The Warden, the Samurai and his Retainer.
 ## Act 3: Bottle Head, Fire Dragon, Mirror Knight. (Chairman, Blackwing, Bottle Head and Fire Dragon: not made yet.)
 static func elites(act: int) -> Array:
 	var out := E.keys().filter(func(k): return E[k].get("elite", false) and not E[k].get("member", false) and not E[k].get("retired", false) and E[k].act == act)
-	return out + ELITE_GROUPS.keys().filter(func(k): return ELITE_GROUPS[k].act == act)
+	return out + ELITE_GROUPS.keys().filter(func(k): return ELITE_GROUPS[k].act == act and not ELITE_GROUPS[k].get("wip", false))  # (wip: Test mode only)
 
 
 ## Mini bosses that are a group: always met together, left to right.
 const ELITE_GROUPS := {
 	"the_triplet": {"name": "The Triplet", "act": 1, "ids": ["triplet_fire", "triplet_water", "triplet_air"]},
+	"samurai_pair": {"name": "The Samurai and his Retainer", "act": 2, "ids": ["samurai_retainer", "samurai"]},
 }
 
 
@@ -546,7 +566,7 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 				s = "Armour 1 Essence of one of them, at random"
 		"mend":
 			var el: String = "random Essence" if m.el == "random" else ("Essence" if m.el == "own" else Elements.NAMES[m.el])
-			s = "Mend +%d %s%s" % [m.n, el, {"self": "", "ally": " on an ally", "all": " on every enemy", "weakest": " on the most hurt of them", "random_hurt": " on one of them at random (a hurt one first)"}[m.get("who", "self")]]
+			s = "Mend +%d %s%s" % [m.n, el, {"self": "", "ally": " on an ally", "all": " on every enemy", "weakest": " on the most hurt of them", "random_hurt": " on one of them at random (a hurt one first)", "samurai": " on the Samurai"}[m.get("who", "self")]]
 		"shuffle":
 			s = "Shuffle its Essence"
 		"silence":
@@ -566,6 +586,10 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 				s = "Cast the spell he chose this turn, and every one your chant contains" + ((", then chant %s (his spells lose every %s)" % [INVOKER_WORDS[m.word], Elements.NAMES[m.word]]) if m.has("word") else "")
 		"cleanse_self":
 			s = "Cleanse all its debuffs"
+		"bottle":
+			s = "Give the Samurai a bottle: cleanse him, and he is Impervious for a turn (no status can be put on him)"
+		"deflect":
+			s = "Deflect: this turn your Release can't touch him or his Retainer (your spells still work)"
 		"drain_essence":
 			s = "You lose %d random Essence from your bag" % m.n
 		"disarm":
@@ -604,7 +628,7 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 		"ethereal":
 			s = "Go Ethereal (your next chant can't touch it)"
 		"empower":
-			s = "Empower +%d" % m.n + (" one of them, at random" if m.get("who", "self") == "random" else "")
+			s = "Empower +%d" % m.n + {"random": " one of them, at random", "samurai": " the Samurai"}.get(m.get("who", "self"), "")
 		"summon":
 			if m.has("list"):
 				s = "Call %d %s%s" % [m.n, E[m.list[0]].name, "" if m.n == 1 else "s"]

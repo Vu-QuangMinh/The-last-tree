@@ -42,7 +42,7 @@ const LOOK := {
 	"silence": ["🔇", PURPLE], "lock": ["🔒", PURPLE], "steal": ["✋", PURPLE], "confuse": ["🌀", PURPLE],
 	"blind": ["🙈", PURPLE], "poison": ["🧪", PURPLE], "freeze": ["❄", PURPLE], "ethereal": ["👻", BLUE],
 	"empower": ["💪", BLUE], "summon": ["👤+", BLUE], "toll": ["⛓", PURPLE], "invert": ["🔄", PURPLE],
-	"hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "grow_thorns": ["🌵", GREEN], "revive": ["🪽", Color(0.85, 0.75, 0.4)], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE],
+	"hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "grow_thorns": ["🌵", GREEN], "revive": ["🪽", Color(0.85, 0.75, 0.4)], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE], "steal_spell": ["🕸", PURPLE], "deflect": ["🗡", BLUE], "bottle": ["🍶", GREEN],
 }
 
 
@@ -61,6 +61,9 @@ const INFO := {
 	"cleanse_self": ["Cleanse", "Removes every debuff on it."],
 	"drain_essence": ["Drain", "Takes Essence out of your bag."],
 	"disarm": ["Disarm", "Your next Release does nothing."],
+	"deflect": ["Deflect", "His sword held sideways: this turn your Release can't touch him or his Retainer. Each Essence bounces off his blade. Your spells still work."],
+	"bottle": ["Bottle", "Cleanses the Samurai, and he is Impervious for a turn: no status can be put on him."],
+	"steal_spell": ["Steal a spell", "Takes one of your spells at random and wraps it in a cocoon. Break the cocoon to get it back."],
 	"invert_spells": ["Inversion", "Some of your spells flip: a spell becomes an anti-spell, an anti-spell a spell."],
 	"charge": ["Charging", "Something big is coming when the hourglass runs out."],
 	"ignite_spell": ["Ignite", "Sets one of your spells on fire for your next turn: casting it burns you for 5 HP."],

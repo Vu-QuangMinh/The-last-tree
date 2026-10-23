@@ -272,7 +272,7 @@ func refresh(preview: Dictionary) -> void:
 	var e := enemy
 	for c in _intent_slot.get_children():
 		c.queue_free()
-	if not e.intent.is_empty() and not e.def.get("hidden_intent", false):  # (the Veiled Eyes hide theirs: only its eyes tell)
+	if not e.intent.is_empty() and not e.def.get("hidden_intent", false):  # (the Silk Cocoon has none to show)
 		var chip := IntentChip.make(e)
 		# the fight screen shows our own hover panel instead of the built-in tooltip (see FightScreen._update_hover_info)
 		chip.set_meta("info", chip.tooltip_text)

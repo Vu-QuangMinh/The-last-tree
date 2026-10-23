@@ -18,7 +18,7 @@ extends RefCounted
 const TREES := {
 	# (no words yet: just its entrance, then Engage! Its name stays "???": nothing ever reveals it before the fight)
 	"veiled_eyes": {
-		"name": "The Veiled Eyes", "who": "veiled_eyes_never",
+		"name": "Violet Eyes", "who": "veiled_eyes_never",
 		"opening": "Two haunting violet eyes pierce through a thin black veil. They look at you in desperation.",
 		"options": [],
 	},
