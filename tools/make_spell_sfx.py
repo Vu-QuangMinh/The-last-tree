@@ -1,19 +1,17 @@
-"""Spell card sound effects (2026-10-19): one sound per spell card, made with AnySFX (Stable Audio Open) from the short prompts in tools/spell_sfx_prompts.py.
+"""Sounds of what spells DO (Burn, Shield, Repaint ...), made with AnySFX (Stable Audio Open) from the short prompts in tools/spell_sfx_prompts.py (FX).
 
-For each spell id: POST /api/generate (4 variants of one prompt), pick the best variant by a few simple measures (_score), clean it up (_polish: trim silence, fades,
-loudness matched to the game's own sounds, peak limited) and write it to  assets/Puppet/SFX/Spell Card SFX/spell_<id>.wav.  All 4 variants are kept in
-assets/Puppet/SFX/_Candidates/<id>_<n>.wav (a .gdignore keeps Godot from importing them), so another variant can be chosen later without generating again.
+For each group "fx_<group>": POST /api/generate (4 variants of one prompt), pick the best variant by a few simple measures (_score), clean it up (polish: trim silence, fades,
+loudness matched to the game's own sounds, peak limited) and write it to  assets/Puppet/SFX/Spell SFX/spellfx_<group>.wav.  All 4 variants are kept in
+assets/Puppet/SFX/_Candidates/fx_<group>_<n>.wav (a .gdignore keeps Godot from importing them) and their polished copies in _Candidates/polished/, so another variant
+can be chosen later without generating again. The SFX Test screen of the game (scripts/ui/sfx_test_screen.gd) plays the polished candidates and makes the clicked one the
+official sound; it reads and writes _Candidates/chosen.json (key -> number of the chosen candidate, -1 = to redo, 9 = the sound the game already had).
+FightScreen.EFFECT_FX says which effect of a card plays which group.
 
-Besides the cards there are the sounds of what spells DO (Burn, Shield, Heal, Repaint ...: FX in spell_sfx_prompts.py), shared by many cards: their keys are "fx_<group>"
-(e.g. fx_burn) and they go to assets/Puppet/SFX/Spell SFX/spellfx_<group>.wav; their candidates are _Candidates/fx_<group>_<n>.wav.
 Run with AnySFX's python (it has numpy / soundfile / scipy), with the AnySFX backend running on port 8890 (this script starts it itself when it is not running, and stops
 only the process it started):
-  "D:/GitHub Projects/AnySFX/backend/.venv/Scripts/python.exe" tools/make_spell_sfx.py [--redo] [id ...]
-  ... --pick <id> <n>      use candidate n of <id> instead (nothing generated)
-  ... --prepare            (once, for what was made before) polish every kept candidate into _Candidates/polished/ and write chosen.json from the log
-The SFX Test screen of the game (scripts/ui/sfx_test_screen.gd) plays the polished candidates and makes the clicked one the official sound; it reads and writes
-_Candidates/chosen.json (spell id -> number of the chosen candidate).
-Done spells are skipped (unless --redo). Progress: tools/_spell_sfx_log.txt. Then Godot --headless --editor --quit once, to import the new sounds."""
+  "D:/GitHub Projects/AnySFX/backend/.venv/Scripts/python.exe" tools/make_spell_sfx.py [--redo] [fx_<group> ...]
+  ... --pick <key> <n>     use candidate n instead (nothing generated)
+Done groups are skipped (unless --redo). Progress: tools/_spell_sfx_log.txt. Then Godot --headless --editor --quit once, to import the new sounds."""
 import json
 import os
 import subprocess
@@ -30,7 +28,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
 SFX = os.path.join(ROOT, "assets", "Puppet", "SFX")
-OUT = os.path.join(SFX, "Spell Card SFX")
 OUT_FX = os.path.join(SFX, "Spell SFX")
 CAND = os.path.join(SFX, "_Candidates")
 ANYSFX = r"D:\GitHub Projects\AnySFX"
@@ -76,8 +73,8 @@ def start_backend():
     sys.exit("the AnySFX backend did not come up")
 
 
-def generate(prompt, duration, steps=100):
-    data = urllib.parse.urlencode({"prompt": prompt, "negative_prompt": NEGATIVE, "duration": duration, "steps": steps}).encode()
+def generate(prompt, duration, steps=100, extra_negative=""):
+    data = urllib.parse.urlencode({"prompt": prompt, "negative_prompt": NEGATIVE + (", " + extra_negative if extra_negative else ""), "duration": duration, "steps": steps}).encode()
     job = json.loads(urllib.request.urlopen(urllib.request.Request(URL + "/api/generate", data=data), timeout=60).read())["job_id"]
     while True:
         time.sleep(2)
@@ -185,17 +182,13 @@ def polish(a):
 
 
 def official_path(key):
-    """Where the official sound of a card (spell id) or of an effect group ("fx_<group>") is."""
-    if key.startswith("fx_"):
-        return os.path.join(OUT_FX, "spellfx_%s.wav" % key[3:])
-    return os.path.join(OUT, "spell_%s.wav" % key)
+    """Where the official sound of an effect group ("fx_<group>") is."""
+    return os.path.join(OUT_FX, "spellfx_%s.wav" % key[3:])
 
 
 def prompt_of(key):
-    from spell_sfx_prompts import FX, PROMPTS
-    if key.startswith("fx_"):
-        return FX[key[3:]][1], FX[key[3:]][2]
-    return PROMPTS[key]
+    from spell_sfx_prompts import FX
+    return FX[key[3:]][1], FX[key[3:]][2]
 
 
 def set_chosen(sid, n):
@@ -221,8 +214,7 @@ def write(path, a):
 # ------------------------------------------------------------------ main
 def main():
     args = [x for x in sys.argv[1:] if not x.startswith("--")]
-    from spell_sfx_prompts import FX, PROMPTS
-    os.makedirs(OUT, exist_ok=True)
+    from spell_sfx_prompts import FX
     os.makedirs(OUT_FX, exist_ok=True)
     os.makedirs(CAND, exist_ok=True)
     gd = os.path.join(CAND, ".gdignore")
@@ -248,7 +240,7 @@ def main():
         log("%s: candidate %d chosen" % (sid, n))
         return
     redo = "--redo" in sys.argv
-    ids = args or (list(PROMPTS) + ["fx_" + g for g in FX])
+    ids = args or ["fx_" + g for g in FX]
     todo = [i for i in ids if redo or not os.path.exists(official_path(i))]
     log("%d to make (%d already done)" % (len(todo), len(ids) - len(todo)))
     proc = start_backend()
@@ -257,7 +249,8 @@ def main():
             prompt, dur = prompt_of(sid)
             t0 = time.time()
             try:
-                files = generate(prompt, dur)
+                from spell_sfx_prompts import EXTRA_NEGATIVE
+                files = generate(prompt, dur, extra_negative=EXTRA_NEGATIVE.get(sid, ""))
             except Exception as exc:
                 log("%s FAILED: %s" % (sid, exc))
                 continue

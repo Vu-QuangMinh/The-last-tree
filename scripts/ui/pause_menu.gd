@@ -8,7 +8,10 @@ signal resumed
 signal main_menu
 signal settings_closed  # (the Show Hotkey setting may have changed: the host can refresh)
 
-var note_menu := "Abandon this run and return to the Main Menu?"
+const SHOT_DIR := "D:/GitHub Projects/The-last-tree/scrshot"
+
+var world_keep: Array = []  # nodes of the host that stay in a "Without UI" shot (the scenery is always kept)
+var note_menu :="Abandon this run and return to the Main Menu?"
 var note_quit := "Quit Behind the Curtain?"
 
 
@@ -47,6 +50,13 @@ func _ready() -> void:
 	paused.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER  # centred on the board
 	v.add_child(paused)
 	_add_button(v, "Resume", func(): resumed.emit())
+	var shot_box := VBoxContainer.new()  # (With UI / Without UI: shown under the Screenshot button once it is clicked)
+	shot_box.add_theme_constant_override("separation", 12)
+	shot_box.visible = false
+	_add_button(v, "Screenshot", func(): shot_box.visible = not shot_box.visible)
+	v.add_child(shot_box)
+	_add_button(shot_box, "With UI", func(): _screenshot(true))
+	_add_button(shot_box, "Without UI", func(): _screenshot(false))
 	_add_button(v, "Settings", func():
 		var s := SettingsScreen.new()
 		s.closed.connect(func():
@@ -61,6 +71,35 @@ func _unhandled_input(ev: InputEvent) -> void:
 	if ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_ESCAPE:
 		get_viewport().set_input_as_handled()
 		resumed.emit()
+
+
+## Takes a picture of the screen behind the menu and saves it in SHOT_DIR. The menu itself is hidden for the shot;
+## "without UI" hides the host's other children too, except the scenery (backdrop, stage) and `world_keep`.
+func _screenshot(with_ui: bool) -> void:
+	var hidden: Array = []
+	visible = false
+	if not with_ui:
+		for c in get_parent().get_children():
+			if c == self or not (c is CanvasItem) or not c.visible:
+				continue
+			if c in world_keep or c is Backdrop or c is PuppetStage or c is StageLights:
+				continue
+			c.visible = false
+			hidden.append(c)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var img := get_viewport().get_texture().get_image()
+	for c in hidden:
+		if is_instance_valid(c):
+			c.visible = true
+	visible = true
+	DirAccess.make_dir_recursive_absolute(SHOT_DIR)
+	var path := "%s/shot_%s_%s.png" % [SHOT_DIR, Time.get_datetime_string_from_system().replace(":", "-").replace("T", "_"), "ui" if with_ui else "no_ui"]
+	if img.save_png(path) == OK:
+		Events.toast.emit("Screenshot saved: " + path.get_file(), UiTheme.ACCENT)
+	else:
+		Events.toast.emit("Could not save the screenshot.", UiTheme.DANGER)
 
 
 func _add_button(v: VBoxContainer, text: String, on_press: Callable) -> void:

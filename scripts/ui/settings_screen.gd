@@ -38,6 +38,7 @@ func _build() -> void:
 	top.add_child(t)
 	top.add_child(UiTheme.button(UiTheme.hk("Close", "Esc"), func(): closed.emit(), 18))
 	v.add_child(UiTheme.heading("Look", 22, UiTheme.ACCENT))
+	v.add_child(_theme_row())
 	v.add_child(_font_row())
 	v.add_child(_tick_row("Show Hotkey", "show_hotkeys", true))
 	v.add_child(UiTheme.heading("Volume", 22, UiTheme.ACCENT))
@@ -52,6 +53,27 @@ func _build() -> void:
 	v.add_child(_tick_row("Dev Mode", "dev_mode", false))
 	if not Audio.preview_changed.is_connected(_on_preview_changed):
 		Audio.preview_changed.connect(_on_preview_changed)
+
+
+## Theme: Puppet (the HUD as it was) or New UI (the HUD of page 2 of Chant UI for puppet.pdf). Screens opened afterwards use it; a fight already on the screen keeps its own.
+func _theme_row() -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	var l := UiTheme.label("Theme", 18)
+	l.custom_minimum_size = Vector2(160, 0)
+	row.add_child(l)
+	var opt := OptionButton.new()
+	opt.custom_minimum_size = Vector2(280, 0)
+	for i in UiSkin.OPTIONS.size():
+		opt.add_item(UiSkin.LABELS[i])
+		if UiSkin.OPTIONS[i] == UiSkin.theme_id():
+			opt.select(i)
+	opt.item_selected.connect(func(i):
+		Audio.play("ui_click")
+		UiSkin.set_theme(UiSkin.OPTIONS[i])
+		_rebuild.call_deferred())
+	row.add_child(opt)
+	return row
 
 
 ## Font: Futura or Acherus for the whole game. Picking one rebuilds this screen in it; screens opened afterwards use it too.

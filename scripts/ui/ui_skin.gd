@@ -10,8 +10,8 @@ extends RefCounted
 ## root, in ROOTS' order) that holds <name>.png or <name>.jpg wins, so a picture can be moved between those folders freely.
 
 const ASSETS := "res://assets/"
-const OPTIONS := ["puppet", "new"]  # (only Puppet is offered to the player; "new" is for tools)
-const LABELS := ["Puppet Stage", "New"]
+const OPTIONS := ["puppet", "new_ui"]  # (what the player picks in Settings; "new" is for tools)
+const LABELS := ["Puppet", "New UI"]
 ## Puppet Stage theme: pieces that would clash with the stage (the painted stump under an enemy) are hidden.
 const PUPPET_HIDDEN := ["enemy_stand"]
 
@@ -21,15 +21,17 @@ static var _paths := {}  # name -> res:// path ("" = there is none)
 const FOLDERS := ["UI/Panels", "UI/Hp", "UI/SlotMachine", "UI/Machine", "UI/Hint", "UI/Buttons", "UI/Essence", "Icon/Intent", "Icon/Effect", "UI/Icons",
 	"Card", "UI/Numbers", "Card/Treasure", "Map", "UI/Fx", "Stage/Act1/Backdrop", "Stage/Act2/Backdrop", "Stage/Act3/Backdrop",
 	"Map/Rooms/Backgrounds", "Stage/Act1/Fx", "Stage/Act2/Fx", "Stage/Act3/Fx", "UI/Banners", "UI/Characters", "Icon/Artifact", "Icon/Bottle",
-	"Map/Rooms/Campfire", "Map/Rooms/Apothecary", "UI/Misc", "Fonts/Letters", "Stage/Shared", "UI"]
+	"Map/Rooms/Campfire", "Map/Rooms/Apothecary", "UI/Misc", "Fonts/Letters", "Stage/Shared", "UI/NewUi", "UI"]
 
 ## artifact id -> picture name, where they differ
 const ARTIFACT_ART := {"scholar_quill": "scholars_quill"}
 
 
-## "puppet" (or "new" while a tool has switched to it).
+## "puppet" or "new_ui" (the Setting; New UI is the Puppet look with the HUD of page 2 of Chant UI for puppet.pdf), or "new" while a tool has switched to it.
 static func theme_id() -> String:
-	return "new" if _tool_new else "puppet"
+	if _tool_new:
+		return "new"
+	return "new_ui" if str(SaveManager.setting("theme", "puppet")) == "new_ui" else "puppet"
 
 
 static var _tool_new := false  # set_theme("new"): a tool or test asking for the New look
@@ -55,13 +57,20 @@ static func is_circus() -> bool:
 	return is_puppet()
 
 
+## The Puppet look (the stage, the wooden art): Puppet and New UI both have it.
 static func is_puppet() -> bool:
-	return theme_id() == "puppet"
+	return theme_id() != "new"
+
+
+## New UI: the Puppet look with the HUD laid out as in NewUiLayout (no slot machine).
+static func is_new_ui() -> bool:
+	return theme_id() == "new_ui"
 
 
 static func set_theme(id: String) -> void:
 	_tool_new = id == "new"
-	SaveManager.set_setting("theme", "new" if _tool_new else "puppet")
+	if not _tool_new:
+		SaveManager.set_setting("theme", "new_ui" if id == "new_ui" else "puppet")
 	_tex.clear()  # the same name now means another picture
 	_paths.clear()
 	UiTheme.reset()  # the shared Theme is rebuilt for the next screen

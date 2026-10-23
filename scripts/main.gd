@@ -316,7 +316,7 @@ func open_test_mode() -> void:
 	var t := TestModeScreen.new()
 	t.setup(_test_state)
 	t.back.connect(show_menu)
-	t.fight_requested.connect(_test_fight)
+	t.fight_requested.connect(func(ids, spells, artifacts, bottles): _test_fight(ids, spells, Callable(), artifacts, bottles))
 	t.event_requested.connect(_test_event)
 	t.custom_requested.connect(_test_custom)
 	_swap(t)
@@ -348,10 +348,11 @@ func _test_custom(id: String) -> void:
 
 
 ## A test fight: the picked enemies against the picked spells, at full HP, then back to the test screen.
-func _test_fight(ids: Array, spells: Array, tweak := Callable()) -> void:
+func _test_fight(ids: Array, spells: Array, tweak := Callable(), artifacts := [], bottles := []) -> void:
 	var r := RunState.new()
 	r.setup(GameData.db, [], [], 0)
-	r.artifacts.clear()  # (no Seed of Life: it's a test)
+	r.artifacts = artifacts.duplicate()  # (no Seed of Life unless picked: it's a test)
+	r.player.bottles = bottles.duplicate()
 	r.spellbook = spells.duplicate()
 	r.loadout = spells.duplicate()
 	var top_act := 1

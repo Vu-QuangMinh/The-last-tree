@@ -1,233 +1,18 @@
-"""The sound of each spell card, for tools/make_spell_sfx.py: spell id -> (prompt, seconds).
-Prompts are short and only about the sound (the source, then one or two words on how it sounds): the model works best like that.
-Written from each card's name and, where the name did not say enough, from what the card does (data/spells.json, SpellText)."""
+"""The sounds of what spells do, for tools/make_spell_sfx.py (see FX below).
+Prompts are short and only about the sound (the source, then one or two words on how it sounds): the model works best like that."""
 
-PROMPTS = {
-    # ---- common, single and double Essence
-    "ember": ("small flame igniting, soft crackle, a short pained grunt of fire", 1.5),
-    "cinder": ("quick paintbrush dab, wet squelch", 1.2),
-    "droplet": ("single water drop landing, soft plink, then a gentle shimmer", 1.5),
-    "ripple": ("water ripples spreading, soft watery swirl", 1.8),
-    "chill": ("ice cracking and shattering, then a cold glassy shimmer", 2.0),
-    "whisper": ("soft breathy whisper of wind, faint airy swish", 1.5),
-    "updraft": ("rising gust of wind, quick upward whoosh", 1.5),
-    "fire_ball": ("fireball whoosh then a short explosion", 2.0),
-    "coup_de_grace": ("sharp blade slash, a final decisive hit", 1.5),
-    "arcane_barrage": ("rapid volley of magic bolts, three quick zaps", 2.0),
-    "flare": ("bright flare ignite, hissing flame burst", 1.8),
-    "water_wall": ("wall of water rising, heavy splash, watery thud", 2.0),
-    "tide_pool": ("gentle water trickle in a pool, calm bubbling, soft heal chime", 2.5),
-    "frost_nova": ("icy burst spreading outwards, freezing crackle", 2.2),
-    "tailwind": ("steady wind gust pushing from behind, soft whoosh", 1.8),
-    "cyclone": ("spinning wind vortex, fast whirl and whoosh", 2.2),
-    "gust": ("sharp gust of wind, quick whoosh and a dull sting", 1.5),
-    "fan_the_flames": ("wind blowing on flames, fire roaring up", 2.0),
-    "wildfire": ("wildfire spreading, crackling flames roaring", 2.5),
-    "blowtorch": ("blowtorch hiss, burning flame jet", 2.0),
-    "phase_shift": ("magical phasing shimmer, quick spell pulse", 1.8),
-    "steam": ("steam hiss release, soft puff of vapor", 2.0),
-    "hot_spring": ("hot spring bubbling, warm water, relaxing steam", 2.5),
-    "scald": ("scalding steam burst, sharp hiss", 1.6),
-    "boil": ("water boiling, rolling bubbles, kettle steam", 2.2),
-    "mist_veil": ("soft ghostly mist wafting, airy ethereal whoosh", 2.2),
-    "undertow": ("water dragging back, sucking current", 2.0),
-    "rain": ("steady gentle rain falling, soft patter", 2.5),
-    # ---- rare, triple Essence and more
-    "inferno": ("roaring inferno, huge fire blast, deep rumble", 3.0),
-    "glacier": ("giant ice forming, deep creaking and cracking, cold groan", 3.0),
-    "tempest": ("howling storm wind, thunder rumble", 3.0),
-    "annihilate": ("reality tearing apart, deep dark boom, rising howl, then silence", 4.0),
-    "thermal_burst": ("hot explosion of steam and fire, two quick blasts", 2.5),
-    "steam_cloud": ("big cloud of steam hissing out, soft shield shimmer", 2.5),
-    "firestorm": ("firestorm roaring, many fire blasts, crackling inferno", 3.5),
-    "kindling_wind": ("wind fanning embers, flames flaring up with a magic hum", 2.2),
-    "mistwalk": ("ghostly mist drifting, soft ethereal sigh, gentle heal chime", 2.5),
-    "whirlpool": ("swirling whirlpool, water spinning down a drain, gurgle", 3.0),
-    "searing_mist": ("hot scorching mist hissing, burning vapor", 2.2),
-    "boiling_tide": ("boiling wave crashing, steam and water slam", 2.5),
-    "gale_force": ("powerful vacuum suction, air rushing, deep whoosh", 2.5),
-    "alchemy": ("bubbling potion transforming, magic fizz, glass clink", 2.5),
-    "storm_front": ("thunderclap with rushing wind, magical shield forming", 2.5),
-    "geyser": ("geyser erupting, water spray burst", 2.5),
-    "recall": ("magical rewind, quick reverse chime, whoosh back", 1.8),
-    "backdraft": ("backdraft explosion, sudden fire gust, deep thump", 2.5),
-    "meteor": ("meteor falling from the sky, rising whistle, then huge impact explosion", 3.5),
-    "tidal_wave": ("big paintbrush swish, wet paint splashes, magical sparkle", 3.0),
-    "hurricane": ("hurricane howling wind, violent swirling storm", 4.0),
-    "steam_engine": ("steam engine chugging, pistons, hissing steam, a clank", 3.0),
-    "aurora": ("shimmering magical aurora, soft ethereal choir-like chimes, healing glow", 3.5),
-    "phoenix_rite": ("phoenix wing flap, a warm flame whoosh, soft evasive swish", 2.2),
-    "supernova": ("massive flood of water crashing down, rushing torrent, deep rumble", 4.0),
-    "deluge": ("dark curse spell, ominous low drone, heavy weakening thud", 3.0),
-    "clear_sight": ("clear bell chime, bright magical clarity, shimmering sparkle", 1.8),
-    "bandage": ("cloth bandage wrapping, soft rustle, gentle heal chime", 1.8),
-    "borrowed_breath": ("soft inhale of breath, light airy swish", 1.6),
-    "kindle": ("fire catching and growing, crackling flames flaring", 2.2),
-    "siphon": ("energy being sucked away, draining magic pull, whoosh", 2.2),
-    "conjure_flame": ("magic flame conjured, fire whoosh with a spell chime", 2.0),
-    "summon_rain": ("rain starting, magic water droplets, soft summoning shimmer", 2.2),
-    "steady_mind": ("calm low humming tone, soft breath, peaceful chime", 2.0),
-    "unbind": ("chains snapping and breaking free, magic release chime", 2.0),
-    "thorn_mantle": ("thorny vines growing, rustling leaves, sharp wooden spikes", 2.2),
-    "cauterize": ("searing hot metal on flesh, sizzling hiss", 1.8),
-    "snuff_out": ("candle flame snuffed, quick puff, sudden dark thud", 1.5),
-    "graft": ("wet paint brush stroke, paint splash", 1.4),
-    "alchemists_breath": ("breath of fire, flame puff, small alchemical fizz", 1.8),
-    "blood_price": ("heartbeat thump, dark sacrifice pulse, a low gulp", 2.0),
-    "ward": ("protective shield spell, bright ring chime, quick whoosh", 1.8),
-    "scatter": ("gentle wind barrier swirling, soft shield hum", 2.2),
-    "soak": ("water spritz spray, soft wet splash", 1.5),
-    "mimic": ("magical copy echo, spell doubling, two rapid chimes", 2.0),
-    "riptide": ("fast water current pulling, whoosh and swirl", 2.0),
-    "trade_winds": ("warm steady breeze, soft blessing shimmer, gentle chimes", 2.8),
-    "rising_tide": ("water rising and surrounding, gurgling, heavy prison closing", 3.0),
-    "ember_crown": ("crown of fire igniting, soft flame whoosh, regal chime", 2.5),
-    "echo_chamber": ("echoing voice in a big hall, reverb shimmer, repeating chime", 3.0),
-    "attunement": ("three magical element tones blending, gentle glowing choice chime", 3.0),
-    "frailty": ("paint stain splashing, wet drip, a fading drip", 2.0),
-    "purify": ("bright cleansing chime, rushing clean water, sparkle", 2.5),
-    "leech": ("blood draining, sinister slurp, a deep gulp", 2.0),
-    "reforge": ("blacksmith hammer on anvil, metal ring, sparks", 2.0),
-    "soul_siphon": ("devil's claw grabbing, dark hand tearing, spooky ghost wail", 2.8),
-    "last_rites": ("somber bell toll, executioner axe swing, final thud", 2.5),
-    "broken_clock": ("clock ticking and breaking, gears grinding, spring snap", 2.5),
-    "stillness": ("sudden hush, time freezing, heavy silent hum", 2.5),
-    "pyromancy": ("pyromancer casting, rolling fire spell, crackling", 2.4),
-    "decoy": ("sneaky swish, shadow illusion, ghostly mirror shimmer", 2.2),
-    "storm_crown": ("thunder crackle, lightning snatch, electric zap", 2.8),
-    "avatar_of_flame": ("giant flame avatar awakening, roaring fire, deep fiery growl", 4.0),
-    "world_tree_blessing": ("ancient tree blessing, wind in leaves, birdsong, magical choir shimmer", 4.0),
-    # ---- infuse, words and conjure
-    "spark_word": ("small magic spark, a fire spell word whispered, crackle", 1.6),
-    "spring_word": ("water spell word whispered, drip and a soft splash", 1.6),
-    "breath_word": ("wind spell word whispered, soft puff of air", 1.6),
-    "resonance": ("resonating bell hum, glowing chime echoing, soft heal", 2.5),
-    "grimoire": ("old spellbook opening, pages flipping, magical shimmer", 3.0),
-    "tide_thief": ("cloaked hand snatching, water ripple, quick steal swish", 2.2),
-    "sirens_call": ("siren mermaid song fading, watery magic, ethereal pull", 3.0),
-    "maelstrom_grasp": ("giant whirlpool grabbing, rushing water, heavy pull", 3.0),
-    "drizzle": ("light drizzle rain, soft drops, gentle heal chime", 2.2),
-    "breeze": ("light breeze, rustling leaves, soft thorns rustle", 1.8),
-    "tinder": ("match strike, small flame lighting", 1.4),
-    "spark_shower": ("shower of sparks, fizzling embers falling", 2.0),
-    "zephyr": ("tiny paint flick, light wind, quick splat", 1.2),
-    "ashfall": ("ash drifting down, soft hiss of embers, quiet fire", 2.5),
-    "summoning_word": ("spell word spoken, magic summoning shimmer, portal pop", 2.0),
-    "smolder": ("burning ground, loud fire eruption, smoldering roar, heavy blast", 4.0),
-    "calm_waters": ("calm lake water, peaceful ripples, soft shield glow", 3.0),
-    "still_air": ("hushed air, soft healing breath, gentle sparkling chime", 3.0),
-    "wisp": ("will-o-wisp flutter, soft airy magic ping", 1.6),
-    "splash": ("water splash, sharp pluck of a droplet", 1.4),
-    "flame_lash": ("whip of fire cracking, lashing flame, two hits", 1.8),
-    "steam_burst": ("sudden steam burst, hiss, soft shield thump", 1.8),
-    "quench": ("hot metal quenched in water, loud sizzle hiss, soft heal", 2.0),
-    "tide_ward": ("water barrier splash, thorny prickle, protective ring", 2.0),
-    "mist_step": ("quick step in misty air, soft magic whoosh", 1.5),
-    "ember_gust": ("wind-blown embers, paint spatter, short splat", 1.5),
-    "rain_song": ("gentle rain and soft chime melody, healing water drops", 2.8),
-    "whirl": ("quick whirl of wind, fast spin, rearranging swish", 1.6),
-    "wild_flame": ("wild unstable fire, crackling flare, fire whoosh", 2.2),
-    "wellspring_rite": ("spring water bubbling up, gentle healing chime, soft splash", 2.5),
-    "gale_call": ("wind rising and calling, gust, spell summon chime", 2.4),
-    "twin_comets": ("two comets whooshing past, flame trails, double impact", 2.5),
-    "undercurrent": ("deep water current pulling, dark whoosh, steal swish", 2.2),
-    "crosswind": ("cutting crosswind gust, sharp whoosh, weakening sigh", 2.0),
-    "searing_brand": ("hot branding iron hiss, paint smear, burn sizzle", 2.0),
-    "cold_snap": ("freezing wind, sudden ice crystallizing, sharp frost crack", 2.4),
-    "hailstone": ("hailstones hitting hard ground, icy rattle", 2.0),
-    "cinder_rain": ("falling burning cinders, volley of small fire hits", 2.5),
-    "quiet_wind": ("quiet wind, soft calm airy shield hum", 2.0),
-    "phoenix_feather": ("phoenix cry echo, warm fire whoosh, flame flutter", 2.8),
-    "tidecaller": ("calling the tide, wave rolling in, magical water chime", 2.5),
-    "ash_and_ember": ("ember glow doubling, burning ash, fiery crackle swell", 2.5),
-    "water_whip": ("water whip crack, sharp snap, splash", 1.6),
-    "thieving_wind": ("sneaky wind snatching, quick swish grab", 1.8),
-    "kindled_heart": ("warm heartbeat, flame flickering, soft glowing pulse", 2.2),
-    "mirror_pool": ("still lake moonlight, soft ripple echo, calm twinkling chimes, doubled", 3.5),
-    "updraft_lance": ("spear of wind piercing, whistling lance, double hit", 2.0),
-    "fog_of_war": ("thick fog rolling in, muffled eerie hush, disorienting hiss", 2.5),
-    "heat_haze": ("shimmering heat wave, warm sizzle, scorching air", 2.4),
-    "hush_of_rain": ("distant soft rain, quiet drops, gentle calm heal", 2.5),
-    "smoke_signal": ("smoke puff, quick fire crackle, spell chime", 1.8),
-    "ripplewind": ("wind rippling over water, soft swirl", 2.0),
-    "coal_toss": ("hot coal thrown, short whoosh, two quick fiery thumps", 1.8),
-    "spray": ("water spray mist, quick paint spritz", 1.4),
-    "flamecaller": ("flames calling, whooshing fire, ominous spell chants, shadow shimmer", 3.0),
-    "tsunami_ward": ("huge wave wall, heavy rushing water, deep thud shield", 3.0),
-    "thunderhead": ("sniper rifle shot, clockwork trigger click, sharp crack", 2.2),
-    "lava_flow": ("molten lava bubbling and cooling, hissing steam, ice crack", 3.0),
-    "frostbite": ("icy bite, frost crackle, freezing creak", 2.0),
-    "tempest_veil": ("storm wind swirling around, soft shield hum", 2.5),
-    "ember_storm": ("small embers swirling storm, many crackles, flame whoosh", 2.4),
-    "healing_rain": ("warm healing rain, rain on leaves, glowing chime", 3.0),
-    "sky_lance": ("lance hurtling through the sky, high whistle, sharp pierce", 2.0),
-    "witch_fire": ("unholy dark fire igniting, evil crackle, cursed flame", 3.0),
-    "stormcaller": ("storm summoning, thunder rumble, spell summon shimmer", 3.0),
-    "deep_freeze": ("everything freezing solid, thick ice forming, deep frozen groan", 3.5),
-    "molten_core": ("molten lava core bubbling, low fiery rumble, burst", 2.4),
-    "silent_tide": ("silent heavy tide, hushed deep water, soft shield thump", 2.5),
-    "windless_night": ("still night air, faint crickets, quiet protective hum", 2.5),
-    "cinder_shield": ("glowing hot shield forming, ember crackle, metal ring", 2.2),
-    "gale_slash": ("wind blade slash, sharp cutting whoosh", 1.6),
-    "rainbow_bridge": ("magical rainbow arc, rising sparkling glissando, summon chime", 3.5),
-    "corrode": ("acid corrosion fizz, eating metal, hiss", 2.2),
-    "wind_shear": ("sharp wind shear slice, double whoosh cut", 1.8),
-    "hearth_song": ("warm fireplace crackle, gentle hearth hum, healing glow", 3.0),
-    "brimstone": ("sulfur fire eruption, brimstone burst, burning hiss", 2.8),
-    "undertow_grip": ("dragging seasick sloshing water, groaning wave, shattering armor", 2.5),
-    "mistral": ("strong wind with paint splatter, big splat", 2.0),
-    "spirit_lantern": ("spirit lantern flicker, ghostly whisper, soft summon chime", 2.8),
-    "soothing_mist": ("soft soothing mist hiss, quiet calm heal", 2.0),
-    "ashen_veil": ("dark ash veil descending, ghostly whisper, soft hiss", 2.6),
-    "ice_lance": ("ice spear throw, piercing shards, freeze crack", 2.2),
-    "grave_wind": ("cold graveyard wind, ghostly moan, final blow", 2.5),
-    "sunlit_grove": ("birds singing in sunlit forest, rustling leaves, gentle heal", 3.0),
-    "dustdevil": ("small dust devil swirling, gritty whirl, paint splat", 2.2),
-    "glacial_spike": ("ice spike erupting from ground, sharp crystal crack, double hit", 2.4),
-    "inferno_lance": ("heavy rifle barrel firing, three loud fire shots", 2.5),
-    "maelstrom_ward": ("whirlpool barrier forming, heavy swirling water, shield thud", 3.0),
-    "storm_legion": ("army of storm bolts, four rapid lightning strikes", 3.0),
-    "steam_titan": ("giant steam golem stomping, heavy hiss, deep metal clang", 3.5),
-    "frozen_tomb": ("tomb of ice sealing, freezing groan, paint splash", 3.5),
-    "sky_sovereign": ("majestic sky wind, regal horn-like wind swell, spell summon", 3.5),
-    "phoenix_dive": ("phoenix diving from the sky, flame screech, whooshing fire impact", 3.0),
-    "tidal_surge": ("surging wave grabbing, pulling water, painful gulp", 2.5),
-    "wildfire_pact": ("fire pact igniting, demonic fire roar, burning crackle", 3.0),
-    "moon_tide": ("moonlit tide washing in, soft waves, glowing healing chimes", 3.0),
-    "cyclone_edge": ("spinning wind blades, cutting cyclone, sharp whirling slice", 2.5),
-    "ember_chorus": ("chorus of crackling embers, spell summoning chimes, flame choir", 3.2),
-    "winter_gale": ("freezing winter gale, icy howl, healing glow", 3.0),
-    "forge_fire": ("blacksmith forge, bellows blowing, hammer ring, thorny metal", 3.0),
-    "gust_front": ("sulfur pit, bubbling hot gases, fiery gust burst", 2.5),
-    "blood_moon": ("ominous blood moon, deep pulse, sharp double slash", 2.8),
-    "solar_flare": ("blinding sun rays sweeping, bright rising hum, scorching light burst", 4.0),
-    "heavens_gale": ("heavenly wind, choir-like swell, grand summon chime, evasive swish", 3.5),
-    "elemental_fury": ("six rapid magic blasts of fire water and wind, furious barrage", 3.5),
-    "tide_of_ages": ("ancient tide, deep timeless wave, heavy shield and warm heal", 3.5),
-    "firestorm_herald": ("herald of fire, precise burning strike, white-hot sizzle", 2.5),
-    "storm_sermon": ("deep thunder sermon, freezing wind, heavy exhale", 3.0),
-    "sunfall": ("eclipse, sun falling, dark rumbling impact, shattering light", 3.5),
-    "worlds_end": ("world ending apocalypse, giant explosion, earth cracking, fire, deep boom", 5.0),
-    "thorn_dart": ("small thorn dart flying, quick whistle, pluck", 1.4),
-    "hawks_eye": ("hawk cry, scope focus click, rifle zoom, quick hit", 2.0),
-    "handyman_power": ("wooden puppet clockwork wind-up, creaking gears, wood hammer tap", 2.4),
-    "disturbance": ("dark ripple disturbance, mirrored echo, uneasy whoosh", 3.0),
-    "perpetual_motion": ("perpetual motion machine, steady ticking gears, ball rolling, clicks", 3.0),
-    "desperate_measure": ("desperate sacrifice, rising frantic heartbeat, fire burst, healing flash", 3.5),
-    "braums_resolve": ("heavy shield slam, lasting metal ring, steady resolve", 2.5),
-    "trinity_first": ("fire shard sound, small flame spark, quick hit", 1.6),
-    "trinity_second": ("water shard sound, droplet pluck, soft shield", 1.6),
-    "trinity_third": ("wind shard sound, light gust, small heal chime", 1.6),
-    "trinity": ("three elemental shards combining, fire water and wind, bright magical chord", 3.5),
+
+## Words added to the negative prompt of one sound (what it must NOT sound like), by key.
+EXTRA_NEGATIVE = {
+    "fx_magic_bolt": "bell, chime, ringing, sparkle, glockenspiel, high pitched",
 }
-
 
 ## The sound of what spells DO, shared by many cards (Burn, Shield, Heal, Repaint ...): group id -> (name, prompt, seconds). Made into SFX/Spell SFX/spellfx_<id>.wav;
 ## the effect events of a fight play them (FightScreen.EFFECT_FX). The ops each one stands for are in the comment.
 FX = {
-    "remove_essence": ("Remove Essence", "sharp magical hit knocking a glass bead off, short crisp impact", 1.2),  # strike, random_hit
-    "magic_bolt": ("Magic Bolt", "single quick arcane bolt zap, short sharp magical hit", 0.8),  # barrage (each shot of a volley)
-    "snipe": ("Snipe", "precise sniper shot, quick crack and a ping", 1.2),  # pluck
+    "remove_essence": ("Remove Essence", "wooden ball smashing, hard wood crack and splintering", 1.3),  # strike, random_hit
+    "magic_bolt": ("Magic Bolt", "deep low magical bolt whoosh, dark arcane thump, bass energy", 1.2),  # barrage (each shot of a volley)
+    "snipe": ("Snipe", "sci-fi laser beam zap, high energy whine, no gunshot", 1.3),  # pluck
     "burn": ("Burn", "flame igniting, hissing flare of fire catching", 1.8),  # burn
     "stoke": ("Double Burn", "flames flaring up doubled, fire swelling whoosh", 1.8),  # stoke
     "weaken": ("Weaken", "weakening magic, drained descending sigh, soft sagging thud", 1.6),  # weak
@@ -237,17 +22,15 @@ FX = {
     "ethereal": ("Ethereal", "ghostly shimmer, airy phasing whoosh", 1.8),  # ethereal
     "shield": ("Shield", "magic shield forming, bright ring and a soft thud", 1.5),  # shield
     "lasting_shield": ("Lasting Shield", "heavy lasting barrier forming, deep solid hum, metal ring", 2.2),  # shield (Lasting)
-    "thorns": ("Thorns", "thorny vines sprouting, sharp prickly rustle", 1.6),  # thorns, thorn_guard
+    "thorns": ("Thorns", "heavy powerful slam, forceful retaliating crack, strong counter strike", 1.8),  # thorns, thorn_guard
     "evasion": ("Evasion", "quick dodge swish, light sidestep whoosh", 1.2),  # aegis
-    "heal": ("Heal", "warm healing chime, gentle glowing sparkle", 2.0),  # heal, heal_per_extension
-    "cleanse": ("Cleanse", "bright cleansing sparkle, water rinse, clear chime", 1.8),  # cleanse, unbind
-    "repaint": ("Repaint", "wet paint brush stroke, paint splash onto a bead", 1.5),  # expose, wild_repaint
-    "self_repaint": ("Self-Repaint", "quick soft paint swish over own beads, wet brush", 1.3),  # self_repaint
+    "cleanse": ("Cleanse", "holy blessing, soft angelic shimmer, gentle uplifting bells", 2.2),  # cleanse, unbind
+    "repaint": ("Repaint", "paintbrush scrubbing and smearing wet paint, then a paint splash", 2.0),  # expose, wild_repaint, self_repaint (the same sound)
     "infuse": ("Infuse", "magical essence poured in, bubbling liquid drop, glow", 1.6),  # infuse, infuse_upcoming
-    "rearrange": ("Rearrange", "wooden beads sliding and swapping, quick clicks", 1.4),  # rearrange, wild_move, move
+    "rearrange": ("Rearrange", "deep hollow wooden balls knocking and sliding, low wood clacks", 1.5),  # rearrange, wild_move, move
     "duplicate": ("Duplicate", "magical copy echo, double chime, shimmering clone", 1.8),  # duplicate, echo_next
     "conjure": ("Conjure", "spell conjured from nothing, magical whoosh and sparkle, pop", 1.8),  # conjure, summon_spells
-    "steal": ("Steal", "quick snatch, grabbing swish, small pop", 1.2),  # steal
+    "steal": ("Steal", "fast swishing whoosh whoosh, quick snatching swipes", 2.2),  # steal
     "execute": ("Execute", "final executioner blow, heavy slash and thud", 1.8),  # execute
     "purge": ("Purge Essence", "sweeping vacuum clearing everything, big wipe whoosh", 2.2),  # purge, purge_all, annihilate
     "transmute": ("Transmute", "alchemical transformation, bubbling fizz, magical change chime", 1.8),  # convert, transmute
@@ -259,5 +42,5 @@ FX = {
     "seal": ("Seal", "magic lock sealing, heavy click, wax stamp press", 1.4),  # temp_seal
     "power": ("Power", "passive power pulse, low magical throb, soft glow", 1.8),  # passive, each_turn
     "refund": ("Refund", "coin returned, quick rewind chime", 1.4),  # retain
-    "curse": ("Curse", "dark curse whisper, ominous low drone, evil chime", 2.0),  # curse
+    "curse": ("Curse", "clear shhh shushing sound, breathy ominous hiss", 1.8),  # curse
 }

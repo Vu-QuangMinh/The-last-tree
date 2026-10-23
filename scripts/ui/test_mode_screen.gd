@@ -4,13 +4,19 @@ extends Control
 ## back here with the same picks. You start with the 8 strongest spells (STRONGEST); drag spells from the list (or the random
 ## spell slot) into your active row, drag them out to take them away, drop one on another to switch them.
 
-signal fight_requested(enemy_ids: Array, spells: Array)
+signal fight_requested(enemy_ids: Array, spells: Array, artifacts: Array, bottles: Array)
 signal event_requested(event_id: String)  # the Events tab: straight into that "?" event
 signal custom_requested(test_id: String)  # the Custom tab: one of the hand-made test scenes
 signal back
 
 const MAX_ENEMIES := 5
 const MAX_SPELLS := 8
+const MAX_ARTIFACTS := 10
+const MAX_BOTTLES := 5  # (3 slots, 5 with the Bandolier)
+const KINDS := ["Spells", "Artifacts", "Bottles"]  # the tabs over the active row and the "All" list
+const TILE := Vector2(132, 112)  # an artifact / bottle tile in the rows
+const TIER_ORDER := {"common": 0, "rare": 1, "legendary": 2}
+const SAVE_PATH := "user://test_mode.json"
 const DRAG_START := 10.0
 const THUMB := 150  # an enemy thumbnail is a square this many px wide
 const ZOOM := 0.72  # the cards on this screen are drawn at this size
@@ -33,13 +39,53 @@ var _list: HFlowContainer  # every spell
 var _random_slot: Control  # the random spell (empty until you roll one)
 var _random_id := ""
 var _fight_btn: Button
+var _active_head: Label
+var _active_hint: Label
+var _list_head: Label
+var _kind_buttons: Array = []
+var _spell_only: Array = []  # the sorter and the random spell: only on the Spells tab
 var _press := {}  # {id, at, from: "list" / "random" / "active", card}
-var _float: SpellCard
+var _float: Control
 var _grab := Vector2.ZERO
 
 
 func setup(p_state: Dictionary) -> void:
 	state = p_state
+	if state.is_empty():
+		_load_state()
+
+
+## Your picks live in a file, so they are still there the next time the game starts.
+func _load_state() -> void:
+	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if f == null:
+		return
+	var d = JSON.parse_string(f.get_as_text())
+	if not (d is Dictionary):
+		return
+	for k in ["spells", "artifacts", "bottles", "enemies", "random"]:
+		if d.has(k):
+			state[k] = d[k]
+	for k in ["sort", "kind", "tab", "enemy_tab"]:
+		if d.has(k):
+			state[k] = int(d[k])
+	# whatever was removed from the game since is dropped
+	if state.has("spells"):
+		state.spells = state.spells.filter(func(id): return not GameData.db.get_spell(id).is_empty())
+	if state.has("artifacts"):
+		state.artifacts = state.artifacts.filter(func(id): return not Artifacts.get_def(id).is_empty())
+	if state.has("bottles"):
+		state.bottles = state.bottles.filter(func(id): return not Bottles.get_def(id).is_empty())
+	if state.has("enemies"):
+		state.enemies = state.enemies.filter(func(id): return EnemyDefs.E.has(id))
+	if state.get("random", "") != "" and GameData.db.get_spell(state.random).is_empty():
+		state.random = ""
+
+
+func _save_state() -> void:
+	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(state))
 
 
 func _ready() -> void:
@@ -50,6 +96,11 @@ func _ready() -> void:
 		state.spells = STRONGEST.filter(func(id): return not _db.get_spell(id).is_empty()).slice(0, MAX_SPELLS)
 	if not state.has("enemies"):
 		state.enemies = []
+	if not state.has("artifacts"):
+		state.artifacts = []
+	if not state.has("bottles"):
+		state.bottles = []
+	state.kind = clampi(int(state.get("kind", 0)), 0, KINDS.size() - 1)
 	if not state.has("sort"):
 		state.sort = 0
 	_random_id = state.get("random", "")
@@ -122,8 +173,15 @@ func _ready() -> void:
 	var ah := HBoxContainer.new()
 	ah.add_theme_constant_override("separation", 12)
 	av.add_child(ah)
-	ah.add_child(UiTheme.heading("Active spells", 22, UiTheme.ACCENT))
-	ah.add_child(UiTheme.label("drag spells in · drag them out to remove · drop on a spell to switch · up to 8", 15, UiTheme.MUTED))
+	for k in KINDS.size():
+		var kb := UiTheme.button(KINDS[k], func(): _set_kind(k), 17)
+		kb.toggle_mode = true
+		ah.add_child(kb)
+		_kind_buttons.append(kb)
+	_active_head = UiTheme.heading("", 22, UiTheme.ACCENT)
+	ah.add_child(_active_head)
+	_active_hint = UiTheme.label("", 15, UiTheme.MUTED)
+	ah.add_child(_active_hint)
 	_active_row = HBoxContainer.new()
 	_active_row.add_theme_constant_override("separation", 8)
 	_active_row.custom_minimum_size = Vector2(0, SpellCard.H * ZOOM)
@@ -137,8 +195,10 @@ func _ready() -> void:
 	var lh := HBoxContainer.new()
 	lh.add_theme_constant_override("separation", 14)
 	lv.add_child(lh)
-	lh.add_child(UiTheme.heading("All spells", 22, Color(0.85, 0.92, 0.8)))
-	lh.add_child(UiTheme.label("Sort by", 16, UiTheme.MUTED))
+	_list_head = UiTheme.heading("", 22, Color(0.85, 0.92, 0.8))
+	lh.add_child(_list_head)
+	var sort_lbl := UiTheme.label("Sort by", 16, UiTheme.MUTED)
+	lh.add_child(sort_lbl)
 	var sort := OptionButton.new()
 	for k in SORTS.size():
 		sort.add_item(SORTS[k], k)
@@ -148,16 +208,19 @@ func _ready() -> void:
 		state.sort = k
 		_build_list())
 	lh.add_child(sort)
+	_spell_only = [sort_lbl, sort]
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lh.add_child(spacer)
 	var roll := UiTheme.button("🎲 Random spell", _roll_random, 18)
 	roll.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	lh.add_child(roll)
+	_spell_only.append(roll)
 	_random_slot = PanelContainer.new()
 	_random_slot.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H) * ZOOM
 	_random_slot.add_theme_stylebox_override("panel", _slot_box())
 	lh.add_child(_random_slot)
+	_spell_only.append(_random_slot)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.custom_minimum_size = Vector2(1820, 160)
@@ -174,11 +237,12 @@ func _ready() -> void:
 	bh.alignment = BoxContainer.ALIGNMENT_END
 	root.add_child(bh)
 	bh.add_child(UiTheme.button("Main menu", func(): back.emit(), 20))
-	_fight_btn = UiTheme.button("Fight!", func(): fight_requested.emit(state.enemies.duplicate(), state.spells.duplicate()), 24)
+	_fight_btn = UiTheme.button("Fight!", func(): fight_requested.emit(state.enemies.duplicate(), state.spells.duplicate(), state.artifacts.duplicate(), state.bottles.duplicate()), 24)
 	_fight_btn.custom_minimum_size = Vector2(240, 54)
 	bh.add_child(_fight_btn)
 	_refresh()
 	_build_list()
+	_apply_kind()
 	var pages := [root, _events_page(), _custom_page()]
 	for k in TABS.size():
 		var b := UiTheme.button(TABS[k], func(): _show_tab(k), 22)
@@ -197,6 +261,7 @@ var _tab_buttons: Array = []
 
 func _show_tab(k: int) -> void:
 	state.tab = k
+	_save_state()
 	for i in _pages.size():
 		_pages[i].visible = i == k
 		_tab_buttons[i].set_pressed_no_signal(i == k)
@@ -376,25 +441,39 @@ func _refresh() -> void:
 		_enemy_row.add_child(b)
 	for c in _active_row.get_children():
 		c.queue_free()
-	for id in state.spells:
-		_active_row.add_child(_card(id, "active"))
-	for k in MAX_SPELLS - state.spells.size():
+	for id in _picks():
+		_active_row.add_child(_item(id, "active"))
+	for k in _max() - _picks().size():
 		var empty := Panel.new()
-		empty.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H) * ZOOM
+		empty.custom_minimum_size = _slot_size()
 		empty.add_theme_stylebox_override("panel", _slot_box())
 		empty.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_active_row.add_child(empty)
 	for c in _random_slot.get_children():
 		c.queue_free()
-	if _random_id != "":
+	if _random_id != "" and int(state.kind) == 0:
 		_random_slot.add_child(_card(_random_id, "random"))
 	_fight_btn.disabled = state.enemies.is_empty() or state.spells.is_empty()
+	_save_state()
 
 
 ## Every spell, in the order the sorter says (then by name).
 func _build_list() -> void:
 	for c in _list.get_children():
 		c.queue_free()
+	if int(state.kind) == 1:
+		var arts: Array = Artifacts.ALL.filter(func(a): return a.get("pool", "") != "none")
+		arts.sort_custom(func(a, b):
+			var ka: int = TIER_ORDER.get(a.get("tier", "common"), 9)
+			var kb: int = TIER_ORDER.get(b.get("tier", "common"), 9)
+			return ka < kb or (ka == kb and String(a.name) < String(b.name)))
+		for a in arts:
+			_list.add_child(_item(a.id, "list"))
+		return
+	if int(state.kind) == 2:
+		for b in Bottles.ALL:
+			_list.add_child(_item(b.id, "list"))
+		return
 	var spells: Array = _db.all_spells.duplicate()
 	var key := func(s: Dictionary):
 		match int(state.sort):
@@ -412,11 +491,104 @@ func _build_list() -> void:
 		_list.add_child(_card(s.id, "list"))
 
 
+## The picks of the open tab (the live array in state).
+func _picks() -> Array:
+	return [state.spells, state.artifacts, state.bottles][int(state.kind)]
+
+
+func _max() -> int:
+	return [MAX_SPELLS, MAX_ARTIFACTS, MAX_BOTTLES][int(state.kind)]
+
+
+func _slot_size() -> Vector2:
+	return Vector2(SpellCard.W, SpellCard.H) * ZOOM if int(state.kind) == 0 else TILE
+
+
+func _set_kind(k: int) -> void:
+	state.kind = k
+	_press = {}
+	_save_state()
+	_apply_kind()
+	_refresh()
+	_build_list()
+
+
+## Titles, hints and sizes for the open tab.
+func _apply_kind() -> void:
+	var k := int(state.kind)
+	var noun: String = KINDS[k].to_lower()
+	for i in _kind_buttons.size():
+		_kind_buttons[i].set_pressed_no_signal(i == k)
+		_kind_buttons[i].modulate = Color.WHITE if i == k else Color(0.65, 0.65, 0.65)
+	_active_head.text = "Active " + noun
+	_active_hint.text = "drag %s in · drag them out to remove · drop on one to switch · up to %d" % [noun, _max()]
+	_list_head.text = "All " + noun
+	_active_row.custom_minimum_size = Vector2(0, _slot_size().y)
+	for c in _spell_only:
+		c.visible = k == 0
+
+
+func _item(id: String, from: String) -> Control:
+	return _card(id, from) if int(state.kind) == 0 else _tile(id, from)
+
+
+## An artifact or a bottle as a small tile: its picture with the name under it (hover for what it does).
+func _tile(id: String, from: String) -> Control:
+	var is_art := int(state.kind) == 1
+	var d: Dictionary = Artifacts.get_def(id) if is_art else Bottles.get_def(id)
+	var col := Color.WHITE
+	if is_art:
+		col = ArtifactCard.CURSED_COL if d.get("aspect", "") == "Cursed" else ArtifactCard.TIER_COL.get(d.get("tier", "common"), Color.WHITE)
+	else:
+		col = d.get("color", Color.WHITE)
+	var p := PanelContainer.new()
+	p.custom_minimum_size = TILE
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.07, 0.08, 0.07, 0.9)
+	sb.border_color = Color(1.0, 0.85, 0.4) if from == "active" else Color(col, 0.5)
+	sb.set_border_width_all(3 if from == "active" else 2)
+	sb.set_corner_radius_all(10)
+	sb.set_content_margin_all(6)
+	p.add_theme_stylebox_override("panel", sb)
+	var v := VBoxContainer.new()
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_theme_constant_override("separation", 2)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(v)
+	var pic: Control
+	if is_art:
+		pic = UiSkin.artifact_icon(id, 56)
+		if pic == null:
+			pic = UiTheme.label(d.get("icon", "◆"), 40, Color.WHITE)
+			pic.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	else:
+		pic = BottleChip.make(id, -1, false, 56)
+		pic.ready.connect(func(): pic.mouse_filter = Control.MOUSE_FILTER_IGNORE)  # (the bottle sets its own filter when it enters the tree: a click on it must reach the tile)
+	pic.custom_minimum_size = Vector2(56 if not is_art else 0, 56)
+	v.add_child(pic)
+	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if pic is TextureRect:
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var lbl := UiTheme.label(d.get("name", id), 14, col)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(lbl)
+	p.tooltip_text = "%s\n%s" % [d.get("name", id), d.get("desc", "")]
+	p.set_meta("item_id", id)
+	p.mouse_default_cursor_shape = Control.CURSOR_DRAG
+	p.gui_input.connect(func(ev):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT and not is_instance_valid(_float):
+			_press = {"id": id, "at": ev.global_position, "from": from, "card": p})
+	return p
+
+
 func _card(id: String, from: String) -> SpellCard:
 	var card := SpellCard.make(_db.get_spell(id))
 	card.zoom = ZOOM  # (laid out smaller, so a lot of spells fit on the screen)
 	card.selected = from == "active"
-	card.set_meta("spell_id", id)
+	card.set_meta("item_id", id)
 	card.mouse_default_cursor_shape = Control.CURSOR_DRAG
 	card.gui_input.connect(func(ev):
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT and not is_instance_valid(_float):
@@ -457,16 +629,19 @@ func _input(ev: InputEvent) -> void:
 
 
 func _begin_drag(pointer: Vector2) -> void:
-	var src: SpellCard = _press.card
+	var src: Control = _press.card
 	if not is_instance_valid(src):
 		return
-	if is_instance_valid(src._zoom):
+	if src is SpellCard and is_instance_valid(src._zoom):
 		src._zoom.queue_free()
 		src._zoom = null
 	_grab = (pointer - src.global_position)
 	src.modulate.a = 0.35
-	_float = SpellCard.make(_db.get_spell(_press.id))
-	_float.is_zoom_copy = true
+	if int(state.kind) == 0:
+		_float = SpellCard.make(_db.get_spell(_press.id))
+		_float.is_zoom_copy = true
+	else:
+		_float = _tile(_press.id, "list")
 	_float.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_float.scale = Vector2(0.85, 0.85)
 	_float.z_index = 50
@@ -477,37 +652,39 @@ func _begin_drag(pointer: Vector2) -> void:
 
 ## A quick click: a spell from the list or the random slot goes into the row; an active one leaves it.
 func _click(p: Dictionary) -> void:
+	var picks := _picks()
 	if p.from == "active":
-		state.spells.erase(p.id)
-	elif not (p.id in state.spells):
-		if state.spells.size() >= MAX_SPELLS:
+		picks.erase(p.id)
+	elif not (p.id in picks):
+		if picks.size() >= _max():
 			Events.toast.emit("Your active row is full.", UiTheme.DANGER)
 			return
-		state.spells.append(p.id)
+		picks.append(p.id)
 	_refresh()
 
 
 func _drop(p: Dictionary, at: Vector2) -> void:
 	_float.queue_free()
 	_float = null
+	var picks := _picks()
 	var over_active := _active_zone.get_global_rect().has_point(at)
 	var onto := ""
 	for c in _active_row.get_children():
-		if c is SpellCard and c.get_global_rect().has_point(at):
-			onto = c.get_meta("spell_id")
+		if c.has_meta("item_id") and c.get_global_rect().has_point(at):
+			onto = c.get_meta("item_id")
 	if p.from == "active":
 		if not over_active:
-			state.spells.erase(p.id)  # dragged out: taken away
+			picks.erase(p.id)  # dragged out: taken away
 		elif onto != "" and onto != p.id:
-			var a: int = state.spells.find(p.id)
-			var b: int = state.spells.find(onto)
-			state.spells[a] = onto
-			state.spells[b] = p.id
-	elif over_active and not (p.id in state.spells):
+			var a: int = picks.find(p.id)
+			var b: int = picks.find(onto)
+			picks[a] = onto
+			picks[b] = p.id
+	elif over_active and not (p.id in picks):
 		if onto != "":
-			state.spells[state.spells.find(onto)] = p.id  # it takes that spell's place
-		elif state.spells.size() < MAX_SPELLS:
-			state.spells.append(p.id)
+			picks[picks.find(onto)] = p.id  # it takes that one's place
+		elif picks.size() < _max():
+			picks.append(p.id)
 		else:
 			Events.toast.emit("Your active row is full. Drop it on a spell to switch them.", UiTheme.DANGER)
 	Audio.play("loadout_swap")
