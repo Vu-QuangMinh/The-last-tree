@@ -359,9 +359,16 @@ var _edit_info: Label
 var _edit_layer: CanvasLayer  # (own layer: the enemy rows are Controls that would otherwise sit over the handles and eat their clicks)
 
 
-## What F4 changed is kept per act in a file of its own (user://), so it survives closing the game; R deletes it and puts back the act's defaults
-## (assets/Puppet/Stage/perspective_defaults.json; paste the numbers from P there to make a new set the defaults).
-static var save_path := ""  # ("" = one file per act: user://puppet_stage_verts_act<N>.json; a test sets its own)
+## What F4 changes is written straight into the project's assets/Puppet/Stage/perspective_defaults.json (under "act<N>"), so it goes
+## to git with everything else and whoever pulls gets the same stage. (An exported game can't write its own files: there it's kept in
+## user://puppet_stage_verts_act<N>.json instead.) R puts back the points as they were when F4 was turned on.
+const DEFAULTS_FILE := "res://assets/Puppet/Stage/perspective_defaults.json"
+static var save_path := ""  # (a test sets its own file: then nothing is written into the project)
+var _edit_start := {}  # the points when F4 was turned on (what R puts back)
+
+
+func _shared() -> bool:
+	return save_path == "" and not OS.has_feature("template")  # (run from the project, not an exported build)
 
 
 func _save_file() -> String:
@@ -376,9 +383,24 @@ func _load_verts() -> void:
 		for k in d:
 			if verts.has(k) and d[k] is Array and d[k].size() == 2:
 				verts[k] = Vector2(float(d[k][0]), float(d[k][1]))
+	if _shared():  # (points kept the old way, on this PC only: they move into the project file, so git carries them)
+		_save_verts()
+		DirAccess.remove_absolute(_save_file())
 
 
 func _save_verts() -> void:
+	if _shared():
+		var all = JSON.parse_string(FileAccess.get_file_as_string(DEFAULTS_FILE)) if FileAccess.file_exists(DEFAULTS_FILE) else {}
+		if not (all is Dictionary):
+			all = {}
+		var act := {}
+		for k in verts:
+			act[k] = [roundf(verts[k].x), roundf(verts[k].y)]
+		all["act%d" % act_no] = act
+		var out := FileAccess.open(DEFAULTS_FILE, FileAccess.WRITE)
+		if out != null:
+			out.store_string(JSON.stringify(all, " "))
+		return
 	if verts == act_defaults(act_no):
 		if FileAccess.file_exists(_save_file()):
 			DirAccess.remove_absolute(_save_file())
@@ -413,6 +435,8 @@ func _layout_handles() -> void:
 
 func _set_edit(on: bool) -> void:
 	_edit_on = on
+	if on:
+		_edit_start = verts.duplicate()
 	if on and _edit_btns.is_empty():
 		_edit_layer = CanvasLayer.new()
 		_edit_layer.layer = 100
@@ -479,7 +503,7 @@ func _update_edit_info() -> void:
 	if _edit_info == null:
 		return
 	if _edit_sel == "":
-		_edit_info.text = "F4: click a point, arrows move it (Shift = 10 px), P = print, R = reset"
+		_edit_info.text = "F4: click a point, arrows move it (Shift = 10 px), P = print, R = undo (since F4 was turned on)"
 	else:
 		_edit_info.text = "%s %s   |   %s %s" % [_edit_sel, verts[_edit_sel], _twin(_edit_sel), verts[_twin(_edit_sel)]]
 
@@ -525,7 +549,8 @@ func _input(ev: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 		KEY_R:
-			verts = act_defaults(act_no)  # (this act's saved defaults, not another act's)
+			if not _edit_start.is_empty():
+				verts = _edit_start.duplicate()  # (back to how they were when F4 was turned on)
 			_refresh_quads()
 			_layout_handles()
 			_save_verts()

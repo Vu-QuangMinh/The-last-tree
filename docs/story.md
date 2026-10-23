@@ -216,13 +216,16 @@ Act -1 has the following bosses:
 4) The hands  
 
 
-Boss spiders: Spider with set of 6 spider eyes and 1 pair of human eyes. Entrance: Two haunting violet eyes pierced through a thin black veil. It looks at you in desperation. Describe a circular ball hanging from a white thred with 2 violet human eyes and a black cloth over them phase 2. Phase 2 the cloth is moved away reveal a spider underneath
-Special status (always on for the spider): Envenomed: Each time it deals damage to you, apply 1 poison
-1) Has a move where its eyes shoot at you with laser: 5 damage
-2) Has a move where it it spit venom at you (3 poison)
-3) Slash at you with 1 damage 4 times. 
-This phase has 10HP.
-After you kill it, the cloth falls away and reveal a spider. Beside the move that it already have, it also have 3 more move
-1) Slash at you with 1 damage 8 times (This is when the 4 pairs of eyes light up.)
-2) Call 5 small spiders each with 2HP. These spider will also have envenomed and their only move is to slash at you 2 times 
-3) Pulled up out of the screen, then reappear right in front of the player and take pick a spell up. Then he will pull up and reappear again on the stage alongside with the cocoon with 3HP would appear. Killing this cocoon will return the spell. (The cocoon is also an enemy, need to space it out)
+Boss spiders: Spider with set of 6 spider eyes and 1 pair of human eyes. Entrance: Two haunting violet eyes pierced through a thin black veil. It looks at you in desperation. Describe: a circular ball hanging from a white thred with 2 violet human eyes and a black cloth over them phase 2. Phase 2 the cloth is moved away reveal a spider underneath
+Special status (always on for the spider): Envenomed: Each time it deals damage to you, apply 1 poison. This spider have the 2 human eyes on its back.
+When the fight start, the 2 human eye will shy brightly and the text will say: The beautiful eyes hypontized you, concealing their intention. This boss then will have no intention shown.
+1) Has a move where its eyes shoot at you with laser: 5 damage. Both eyes lights up for this (to show intention so it would be showing a turn earlier)
+2) Has a move where it it spit venom at you (4 poison) (The right eye light up)
+3) Slash at you with 1 damage 4 times. (the left eye light up)
+This phase has 15HP.
+After you kill it, the cloth falls away and reveal a spider. It would have 4 dots for eyes. Beside the move that it already have, it also have 3 more move. Each turn a pair of eye would light up and at each stage of eyes lighting up would correspond to a different attack. (The two human eyes looks around and move around periodically this time but wont light up, only the dots does)
+1) Slash at you with 1 damage 8 times (This is when the all 4 eyes light up.)
+2) Call 4 small spiders each with 3HP. These spider will also have envenomed and their only move is to slash at you 2 times (3 eye light up)
+3) Pulled up out of the screen, then reappear right in front of the player and take pick a spell up. Then he will pull up and reappear again on the stage alongside with the cocoon with 3HP would appear. Killing this cocoon will return the spell. (The cocoon is also an enemy, need to space it out) (3 eyes light up - Start the second phase with this one immediately)
+4) Poison 5 (2 eyes light up)
+5) 0 eyes light up: The 2 main eye light up and laser for 5. This is the only time in the 2nd phase that the human eyes look directly at you (during the intention and the attack)

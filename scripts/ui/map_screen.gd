@@ -228,8 +228,12 @@ func lower() -> void:
 	_lowering = true
 	_drop = false
 	_land_t = -1.0
+	# up far enough that the whole content is behind the valance, however tall the map is (a high act has many rows) and however far it has sunk (scrolled up): a fixed
+	# distance left the lower rooms hanging in the middle of the screen. The speed stays the same (1600 px/s), so a longer way takes longer.
+	var gone := -(_content.position.y + _content.size.y + 120.0)
+	var dist := minf(gone, -1200.0)
 	var tw := create_tween().set_parallel(true)
-	tw.tween_property(_world, "position:y", -1200.0, 0.75).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)  # (80 % of the old speed: 0.6 s before)
+	tw.tween_property(_world, "position:y", dist, maxf(0.75, absf(dist) / 1600.0)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)  # (80 % of the old speed: 0.6 s before)
 	for c in get_children():
 		if c is Label and c != null:
 			tw.tween_property(c, "modulate:a", 0.0, 0.375)

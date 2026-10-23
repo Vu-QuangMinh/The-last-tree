@@ -54,8 +54,15 @@ func _ready() -> void:
 	if HoverBoard.available():
 		theme = HoverBoard.bare_theme()
 		tooltip_text = Keywords.tooltip(b.get("name", id), b.get("desc", ""), "[color=#9aa89a]Bottle · %d Amber · %s[/color]" % [b.get("price", 0), how])  # (the big picture of the board stands for the small inline one)
-	mouse_entered.connect(func(): _box.border_color = hover)
-	mouse_exited.connect(func(): _box.border_color = idle)
+	# under the mouse the bottle grows a little, like the artifacts do (and a tiny click)
+	mouse_entered.connect(func():
+		_box.border_color = hover
+		Audio.play("ui_click", -14.0, 1.35)
+		pivot_offset = size / 2.0
+		create_tween().tween_property(self, "scale", Vector2(1.14, 1.14), 0.08))
+	mouse_exited.connect(func():
+		_box.border_color = idle
+		create_tween().tween_property(self, "scale", Vector2.ONE, 0.08))
 
 
 func _art_name() -> String:

@@ -8,6 +8,8 @@ var plus: Array = []  # upgraded ones
 var chip_px := 0.0
 var row_width := 0.0
 var slot_step := 0.0
+var per_row := 0  # (> 0: that many to a row, the next ones wrap to another row)
+var row_gap := 2.0  # px between two rows
 
 
 static func make(p_artifacts: Array, p_plus: Array = []) -> ArtifactBar:
@@ -32,9 +34,11 @@ func refresh() -> void:
 	for c in get_children():
 		c.queue_free()
 	if chip_px > 0.0:
-		var n := maxi(1, artifacts.size())
+		var n := maxi(1, artifacts.size() if per_row <= 0 else mini(artifacts.size(), per_row))
 		var step := minf(slot_step, (row_width - chip_px) / maxf(1.0, n - 1.0))
 		add_theme_constant_override("h_separation", int(floor(step - chip_px)))
+		if per_row > 0:
+			add_theme_constant_override("v_separation", int(row_gap))
 	for id in artifacts:
 		add_child(ArtifactChip.make(id, id in plus, chip_px if chip_px > 0.0 else ArtifactChip.SIZE))
 

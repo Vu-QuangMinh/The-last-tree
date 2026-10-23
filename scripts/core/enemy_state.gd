@@ -20,8 +20,7 @@ var acting_part := ""  # which part is acting right now ("L" / "R": one of her w
 var yin := ""  # the Yin Yang Beast's colour: "white" or "black" ("" for everyone else)
 var charge_dmg := -1
 var knocked := false
-var lives := 2  # a Handyman hand: times it can be knocked down this phase (then it stays down until the next one)
-var revive_in := 0  # a knocked-down hand: turns until it gets back up (0: it stays down)
+var fallen := false  # a Handyman hand knocked out in his first phase: it dropped off and lies on the floor (it is lifted back up for his last stand)
 var thorns := 0  # Thorns it has grown (the Anxious Armadillo): your Release hitting it hurts you this much
 var dazed := 0  # Dazed: 50% to miss each attack; it goes down by 1 after a miss
 var disarmed := 0  # Disarmed (your Deafening Blast): its attacks do nothing on its next turn
@@ -40,6 +39,7 @@ var weak25 := false  # Stillness (permanent)
 var freeze_turns := 0
 var no_mend := false  # Cauterize
 var ethereal := false  # from its own intent: your next chant can't touch it
+var impervious := 0  # Impervious: no status can be put on it (the Retainer's bottle); counts down at the end of your turn
 var phased := false  # from your spell: your spells remove double from it this turn
 var struck_this_turn := false
 var move_index := 0
@@ -175,6 +175,8 @@ func is_painted(i: int) -> bool:
 
 ## Burn: add n to its Burn. Returns n.
 func ignite(n: int, _rng: RandomNumberGenerator = null) -> int:
+	if impervious > 0:
+		return 0  # (the Retainer's bottle: no status sticks)
 	if has_passive("burn_immune"):
 		return 0  # fireproof (Cinder Hound)
 	n = maxi(0, n)
@@ -432,14 +434,14 @@ func end_turn() -> void:
 
 func describe_statuses() -> Array:
 	var out := []
-	if knocked:
-		out.append(("Down: resurrected in %d turn%s" % [revive_in, "" if revive_in == 1 else "s"]) if revive_in > 0 else "Down: it gets up only when every other hand is down too")
-	if disarmed > 0:
+	if disarmed > 0:  # (a fallen hand needs no status text: it is plainly lying on the floor)
 		out.append("Disarmed (its next attack does nothing)")
 	if thorns > 0:
 		out.append("Thorns %d (your Release hitting it hurts you %d)" % [thorns, thorns])
 	if dazed > 0:
 		out.append("Dazed %d (50%% chance to miss each attack; -1 after a miss)" % dazed)
+	if impervious > 0:
+		out.append("Impervious (no status can be put on it this turn)")
 	if power > 0:
 		out.append("Power %d (+%d damage per hit)" % [power, power])
 	if burn > 0:

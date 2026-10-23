@@ -49,10 +49,10 @@ func _ready() -> void:
 ## Splat, hold a moment, then fade out and free itself. `reveal` is called at the moment it fully covers the Essence.
 func play(reveal: Callable) -> void:
 	var tw := create_tween()
-	tw.tween_property(self, "grow", 1.0, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(self, "grow", 1.0, 0.07).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_callback(reveal)
-	tw.tween_interval(0.22)
-	tw.tween_property(self, "fade", 0.0, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_interval(0.08)
+	tw.tween_property(self, "fade", 0.0, 0.25).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	tw.tween_callback(queue_free)
 
 

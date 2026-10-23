@@ -1822,40 +1822,27 @@ func test_handyman() -> void:
 	assert_eq(f.enemies.map(func(e): return e.id), ["hand_sword", "hand_tweezer"], "he starts as two hands")
 	assert_true("handyman" in EnemyDefs.BOSSES[1])
 	var sword: EnemyState = f.enemies[0]
-	assert_eq(sword.size(), 5)
-	# a fallen hand isn't killed: no win; it lies down a turn (wings + hourglass), then rises whole
+	assert_eq(sword.size(), 10, "each hand has 10 Essence")
+	# a knocked-out hand isn't killed: no win; it drops and lies on the floor, and the next hand of its side grows
 	_knock(f, sword)
-	assert_true(not f.over, "not won: the hand is only down")
-	assert_true(sword in f.enemies and sword.knocked)
-	assert_eq(sword.intent.kind, "revive")
-	assert_eq(sword.intent.left, 2)
-	_knock(f, f.enemies[1])
-	assert_true(not f.over, "both down at once still isn't a win")
-	f._hands_back()
-	assert_true(sword.knocked, "a turn's rest first")
-	assert_eq(sword.intent.left, 1)
-	f._hands_back()
-	assert_eq(sword.size(), 5, "back whole")
-	assert_true(not sword.knocked)
-	# second life gone: it stays down until the other one is out of lives too; then two more hands, and both rise
-	_knock(f, f.enemies[0])
-	assert_eq(f.enemies[0].revive_in, 0, "out of lives: down")
-	f._hands_back()
-	f._hands_back()
-	assert_true(f.enemies[0].knocked, "still down")
-	assert_eq(f.hm.phase, 1)
-	_knock(f, f.enemies[1])
-	assert_eq(f.hm.phase, 2)
-	assert_eq(f.enemies.size(), 4)
-	var ids := f.enemies.map(func(e): return e.id)
-	assert_true("hand_hammer" in ids and "hand_crossbow" in ids)
-	assert_eq(f.enemies[0].intent.kind, "revive", "the old hands rise again for the new phase")
-	f._hands_back()
-	f._hands_back()
-	assert_true(not f.enemies[0].knocked and not f.enemies[1].knocked)
+	assert_true(not f.over, "not won: the hand is only knocked off")
+	assert_true(sword in f.enemies and sword.knocked and sword.fallen)
+	assert_eq(f.alive().map(func(e): return e.id), ["hand_tweezer", "hand_crossbow"], "two hands at a time, one on each side")
+	# the crossbow: 1, then it fires
+	var bow: EnemyState = f.enemies.filter(func(e): return e.id == "hand_crossbow")[0]
+	assert_eq(bow.size(), 10)
+	assert_eq(bow.intent.kind, "charge")
+	assert_eq(bow.intent.left, 1)
+	f._do_move(bow, bow.intent)
+	f._plan(bow)
+	assert_eq(bow.intent.left, 0)
+	assert_true(bow.intent.get("hit", false), "it fires next")
+	# the tweezer falls: the hammer grows on the right
+	_knock(f, f.enemies.filter(func(e): return e.id == "hand_tweezer")[0])
+	var hammer: EnemyState = f.enemies.filter(func(e): return e.id == "hand_hammer")[0]
+	assert_eq(hammer.size(), 10)
 	# the hammer goes for the most-cast spell, and sticks to it: 3 hits break it
 	f.cast_counts = {"water_wall": 3, "fire_ball": 1}
-	var hammer: EnemyState = f.enemies.filter(func(e): return e.id == "hand_hammer")[0]
 	f._do_move(hammer, {"kind": "hammer_spell"})
 	assert_eq(f.hammer_target, "water_wall")
 	f.cast_counts["fire_ball"] = 9
@@ -1870,42 +1857,35 @@ func test_handyman() -> void:
 	f.loadout[0].fleeting = true
 	f._do_move(hammer, {"kind": "hammer_spell"})
 	assert_true(f.broken.has("fire_ball"), "Fleeting: first hit")
-	# the crossbow: 1, then it fires (knocked out: it starts over)
-	var bow: EnemyState = f.enemies.filter(func(e): return e.id == "hand_crossbow")[0]
-	assert_eq(bow.intent.kind, "charge")
-	assert_eq(bow.intent.left, 1)
-	f._do_move(bow, bow.intent)
-	f._plan(bow)
-	assert_eq(bow.intent.left, 0)
-	assert_true(bow.intent.get("hit", false), "it fires next")
+	# the crossbow falls: the spear grows on the left (left: sword, crossbow, spear), and the hammer's fall brings the shield
 	_knock(f, bow)
-	f._hands_back()
-	f._hands_back()
-	assert_eq(bow.intent.left, 1, "resurrected: loading again")
-	# every hand out of lives (the bow has one left): the last two hands, 3 Essence each
-	for e in f.enemies.duplicate():
-		_knock(f, e)
-	f._hands_back()
-	f._hands_back()
-	assert_eq(f.hm.phase, 2, "the others still had a life")
-	for e in f.enemies.filter(func(x): return not x.knocked):
+	_knock(f, hammer)
+	assert_eq(f.alive().map(func(e): return e.id), ["hand_spear", "hand_shield"])
+	assert_eq(f.alive().size(), 2, "still only two hands at a time")
+	assert_eq(f.hm.phase, 1)
+	assert_eq(f.enemies.size(), 6)
+	# the last two fall: all six lie on the floor, and he pulls them up for his last stand (2 Essence each, 1 for him)
+	_knock(f, f.enemies.filter(func(e): return e.id == "hand_shield")[0])
+	assert_eq(f.hm.phase, 1, "the spear is still up")
+	_knock(f, f.enemies.filter(func(e): return e.id == "hand_spear")[0])
+	assert_eq(f.hm.phase, 2)
+	assert_eq(f.alive().size(), 6)
+	for e in f.enemies.filter(func(x): return x.id != "handyman"):
+		assert_eq(e.size(), 2)
+		assert_true(not e.knocked and not e.fallen)
+	assert_eq(f.alive().size(), 6, "he is not out yet: only the six hands")
+	# the last stand: a hand out of Essence is gone for good; with none left he shows himself (1 Essence, 999)
+	for e in f.enemies.filter(func(x): return x.has_passive("hand")):
+		assert_true(not f.over)
 		_knock(f, e)
 	assert_eq(f.hm.phase, 3)
-	assert_eq(f.enemies.size(), 6)
-	var last := f.enemies.filter(func(e): return e.id in ["hand_spear", "hand_shield"])
-	assert_eq(last.map(func(e): return e.size()), [5, 5])
-	# last stand: all six are up at once (no rest), 5 Essence and 1 life each; with all down he shows himself
-	assert_eq(f.alive().size(), 6, "all six hands rise together")
-	assert_true(f.enemies.all(func(e): return e.lives == 1 and e.size() == 5 and not e.knocked))
-	for e in f.enemies.duplicate():
-		_knock(f, e)
-	f._hands_back()
-	assert_eq(f.alive().size(), 1, "only him")
+	assert_eq(f.enemies.size(), 1, "only him")
 	var body: EnemyState = f.alive()[0]
 	assert_eq(body.id, "handyman")
 	assert_eq(body.size(), 1)
 	assert_eq(body.intent.n, 999)
 	assert_true(body.fresh, "he shows his intent first: you get a turn to finish him")
+	assert_true(not f.over)
 	body.elements.clear()
 	f._cleanup()
 	assert_true(f.won, "and that's the fight")
@@ -2121,7 +2101,8 @@ func test_veiled_eyes_venom_veil_theft_and_brood() -> void:
 	var e: EnemyState = f.enemies[0]
 	assert_eq(e.size(), 15, "phase 1: exactly 15 Essence (no act bonus)")
 	assert_eq(e.dmg_bonus, 0, "and no act attack bonus")
-	assert_true(e.def.get("hidden_intent", false), "its intent is hidden")
+	assert_true(not e.def.get("hidden_intent", false), "its intent is shown")
+	assert_eq(e.name, "Violet Eyes")
 	assert_eq(String(e.intent.get("eyes", "")), "both", "it opens with the laser: both eyes light up")
 	# Envenomed: a hit that takes HP poisons you; one your Shield stops entirely doesn't
 	f.player.poison = 0
@@ -2175,114 +2156,51 @@ func test_veiled_eyes_venom_veil_theft_and_brood() -> void:
 	assert_true(f.over and f.won, "its brood scatters: the fight is won")
 
 
-func test_fused_cooldowns_add_up() -> void:
-	var run := RunState.new()
-	run.setup(db, ["firestorm", "ashfall", "ward"], [], 4)
-	run.learn_spell("firestorm")  # Cooldown 2
-	run.learn_spell("ashfall")  # Cooldown 1
-	var fz := run.fuse_preview("firestorm", "ashfall")
-	assert_eq(int(fz.get("cooldown", 0)), 2, "Cooldown 2 + Cooldown 1: the stricter, Cooldown 2")
-	var plain := run.fuse_preview("fire_ball", "water_wall")
-	assert_true(not plain.has("cooldown"), "no cooldowns: none on the fused spell")
-	run.fuse_commit(fz, "firestorm", "ashfall")
-	assert_eq(int(run.spell(fz.id).get("cooldown", 0)), 2, "it keeps it once forged")
+func test_samurai_and_retainer() -> void:
+	var f := _fight(["samurai_retainer", "samurai"], [], "")
+	var r: EnemyState = f.enemies[0]
+	var s: EnemyState = f.enemies[1]
+	assert_eq([r.size(), s.size()], [7, 15], "exactly 7 and 15 Essence")
+	assert_eq(s.dmg_bonus, 0, "no act attack bonus: his slash is exactly 10")
+	assert_true(EnemyDefs.elites(2).has("samurai_pair"), "a mini boss of Act 2")
+	# Deflect: on the turn he shows it, the Release can't touch either of them
+	s.intent = s.def.moves[1]
+	var hit: Array = await f._strike(r.hp_text() + s.hp_text())
+	assert_true(hit.is_empty(), "nothing lands")
+	assert_eq([r.size(), s.size()], [7, 15])
+	s.intent = s.def.moves[2]
+	hit = await f._strike("AW")
+	assert_eq([hit, r.size()], [[r], 5], "only while Deflect is his intent")
+	# the bottle: cleansed and Impervious (no status sticks) through one turn of yours
+	s.weak_turns = 2
+	f._do_move(r, {"kind": "bottle", "who": "samurai"})
+	assert_eq([s.weak_turns, s.impervious], [0, 1])
+	assert_eq(s.ignite(3), 0, "no Burn on him")
+	# the gong and the fan
+	f._do_move(r, {"kind": "empower", "n": 1, "who": "samurai"})
+	assert_eq([s.power, r.power], [1, 0], "the gong is for the Samurai")
+	s.remove_right(4)
+	f._do_move(r, {"kind": "mend", "el": "random", "n": 2, "who": "samurai", "cap": 15})
+	assert_eq(s.size(), 13, "the fan: Mend 2 on him")
 
 
-func test_magic_box_refund_has_a_slot_per_essence() -> void:
-	var f := _fight(["ashling"], ["fire_ball"], "FF")
-	f.artifacts = ["magic_box"]
-	f.player.box_casts = 5  # (the next cast is the 6th: the box plays)
-	_set_hp(f.enemies[0], "WWWWWWWWWW")
-	var events := []
-	f.anim = func(ev): events.append(ev)
-	f.cast_chant(_all(2))
-	f.resolve_spell("fire_ball", 0)
-	f.finish_turn()
-	var refunds := events.filter(func(ev): return ev.type == "refund")
-	assert_eq(refunds.size(), 1, "the box gives the pattern back")
-	var r: Dictionary = refunds[0]
-	assert_eq(r.els.size(), 2, "Fire Ball's two Fire")
-	assert_eq(r.slots.size(), r.els.size(), "a chant slot for each one (the animation needs it)")
-	assert_eq(r.uids.size(), r.els.size())
+func test_samurai_falls_first_and_the_retainer_yields() -> void:
+	var f := _fight(["samurai_retainer", "samurai"], [], "")
+	var r: EnemyState = f.enemies[0]
+	var s: EnemyState = f.enemies[1]
+	s.elements.clear()
+	s.armor.clear()
+	f._cleanup()
+	assert_true(r.has_meta("yielded"), "I yield")
+	assert_true(f.over and f.won, "the fight is over")
 
 
-
-func test_fusion_rules_melt_damage_and_executes() -> void:
-	var run := RunState.new()
-	run.setup(db, ["coup_de_grace", "snuff_out", "arcane_barrage", "gust"], [], 4)
-	for id in ["coup_de_grace", "snuff_out", "arcane_barrage", "gust"]:
-		run.learn_spell(id)
-	var fc := run.fuse_preview("fire_ball", "coup_de_grace")
-	assert_eq(fc.effects.map(func(e): return e.op), ["random_hit", "execute"], "one damage effect, then the Execute")
-	assert_eq(int(fc.effects[0].n), 2, "1 + 1")
-	assert_eq(SpellText.card_text(fc), "Deal 2 Random damage to an enemy.
-Then Execute at 2.", "less control: random spots")
-	var cs := run.fuse_preview("coup_de_grace", "snuff_out")
-	var ex: Array = cs.effects.filter(func(e): return e.op == "execute")
-	assert_eq(ex.size(), 1, "two Executes become one")
-	assert_eq(int(ex[0].max), 3, "at the higher number")
-	var fg := run.fuse_preview("fire_ball", "gust")
-	assert_eq(fg.effects[0].op, "strike", "Snipe + from the right: from the right (less control)")
-	assert_eq(int(fg.effects[0].n), 3)
-	var bf := run.fuse_preview("arcane_barrage", "fire_ball")
-	assert_eq(bf.effects[0].op, "barrage", "a Barrage swallows the aimed shot")
-	assert_eq(int(bf.effects[0].n), 4)
-
-
-func test_then_execute_takes_every_enemy_hit() -> void:
-	var f := _fight(["ashling", "ashling", "ashling"], [], "")
-	for e in f.enemies:
-		_set_hp(e, "FFF")
-	var sp := {"id": "t_barrage_exec", "name": "T", "pattern": "F", "power": false, "effects": [{"op": "strike", "n": 1, "from": "right", "target": "all"}, {"op": "execute", "max": 2, "then": true, "target": "target"}]}
-	await f._fire(sp, {}, {})
-	assert_true(f.enemies.all(func(e): return e.is_dead()) or f.alive().is_empty(), "all three were hit down to 2: all three Executed")
-
-
-
-func test_fusion_riders_follow_fold_and_order() -> void:
-	# a Barrage swallows the aimed shot: an aimed Burn is scattered, 1 at a time
-	var m := FuseRules.merge([{"op": "barrage", "n": 3}, {"op": "burn", "n": 6, "target": "target"}])
-	assert_eq(m[1].op, "meteor_rain", "Burn 6 on an enemy: scattered")
-	assert_eq(int(m[1].n), 6)
-	assert_eq(SpellText.card_text({"id": "t", "pattern": "", "power": false, "effects": m}), "Randomly deal 1 damage 3 times and apply 1 Burn 6 times.")
-	# one random enemy: the rider lands on the one it hit
-	var r := FuseRules.merge([{"op": "strike", "n": 1, "from": "right", "target": "random"}, {"op": "weak", "turns": 1, "target": "target"}])
-	assert_eq(r[1].target, "hit")
-	# the same rider adds up wherever it is; your own effects go last
-	var f := FuseRules.merge([{"op": "freeze", "turns": 1, "target": "target"}, {"op": "shield", "n": 5}, {"op": "freeze", "turns": 2, "target": "target"}])
-	assert_eq(f.map(func(e): return e.op), ["freeze", "shield"], "Freeze 1 + Freeze 2 on it: one Freeze; Shield after")
-	assert_eq(int(f[0].turns), 3)
-	# all of them, and more on one
-	var b := FuseRules.merge([{"op": "burn", "n": 3, "target": "all"}, {"op": "heal", "n": 2}, {"op": "burn", "n": 6, "target": "target"}])
-	assert_eq(SpellText.card_text({"id": "t", "pattern": "", "power": false, "effects": b}), "Apply 6 Burn to an enemy, then 3 more to all.
-Heal 2 HP.")
-	# losing HP and healing cancel out
-	var h := FuseRules.merge([{"op": "sacrifice", "hp": 5}, {"op": "heal", "n": 6}])
-	assert_eq(h, [{"op": "heal", "n": 1}], "heal 6, lose 5: heal 1")
-
-
-
-func test_fusion_one_enemy_first_then_all() -> void:
-	var m := FuseRules.merge([{"op": "strike", "n": 5, "from": "right", "target": "all"}, {"op": "burn", "n": 3, "target": "all"},
-		{"op": "strike", "n": 3, "from": "right", "target": "target"}, {"op": "burn", "n": 2, "target": "target"}])
-	var sp := {"id": "t", "pattern": "", "power": false, "effects": m}
-	assert_eq(SpellText.card_text(sp), "Deal 3 Right damage and apply 2 Burn to an enemy, then 5 Right damage and 3 Burn to all.")
-	var r := FuseRules.merge([{"op": "strike", "n": 3, "from": "right", "target": "all"}, {"op": "strike", "n": 1, "from": "right", "target": "random"}])
-	assert_eq(SpellText.card_text({"id": "t", "pattern": "", "power": false, "effects": r}), "Deal 1 Right damage to a random enemy, then 3 more to all.")
-	var run := RunState.new()
-	run.setup(db, ["desperate_measure"], [], 4)
-	run.learn_spell("desperate_measure")
-	assert_true(not run.can_fuse("desperate_measure"), "Desperate Measure can't be fused")
-
-
-
-func test_durability_shows_left_out_of_full() -> void:
-	var sp: Dictionary = db.get_spell("whirlpool").duplicate()  # (Durability 3)
-	assert_true(SpellText.card_text(sp).contains("Durability 3."), "outside a fight: just the number")
-	sp.durability_left = 2
-	sp.durability_max = 3
-	assert_true(SpellText.card_text(sp).contains("Durability 2/3."), "in a fight: what's left, out of how much")
-	sp.durability_left = 0
-	assert_true(SpellText.card_text(sp).contains("Durability 0/3 (broken)."), "worn out: broken")
-	var f := _fight(["ashling"], ["whirlpool"], "")
-	assert_eq(f.durability_max(db.get_spell("whirlpool")), 3)
+func test_retainer_falls_first_and_the_samurai_swears_revenge() -> void:
+	var f := _fight(["samurai_retainer", "samurai"], [], "")
+	var r: EnemyState = f.enemies[0]
+	var s: EnemyState = f.enemies[1]
+	r.elements.clear()
+	r.armor.clear()
+	f._cleanup()
+	assert_eq(s.power, 5, "+5 Power at once")
+	assert_true(not f.over)

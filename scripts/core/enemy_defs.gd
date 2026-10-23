@@ -96,6 +96,24 @@ const E := {
 		"flavor": "Fast, and hard to read."},
 	"lockwarden": {"name": "The Warden", "act": 2, "elite": true, "hp": "WFWAF", "moves": [{"kind": "lock", "len": 2}, {"kind": "attack", "n": 5}, {"kind": "attack", "n": 5}],
 		"flavor": "Chains your spells shut."},
+	# The Samurai and his Retainer, Tasuke (an Act 2 mini boss, met together; exact numbers: no act bonus).
+	# The Samurai: one slash for 10; Deflect (his sword held sideways: on the turn he shows it, your Release can't touch either of them,
+	# each Essence is cut out of the air by an air slash, but your spells still work); an Iai charge, 3 x 3.
+	# The Retainer looks after him: a bottle (cleanses him, and he is Impervious for a turn: no status can be put on
+	# him), the fan (Mend 2 random Essence), the gong (+1 Power for the rest of the fight).
+	# The Samurai falls first: the Retainer yields and the fight is won. The Retainer falls first: the Samurai swears
+	# revenge and gains 5 Power at once.
+	# His stance shows what is coming ("pose" on each move; the puppet's picture is samurai_<pose>.png): sword held high
+	# in In no kamae for the slash, Ko gasumi for the Deflect, Sha no kamae for the Iai charge.
+	"samurai_retainer": {"name": "Retainer", "act": 2, "elite": true, "member": true, "no_extra": true, "no_bonus": true, "hp": "AWFAWFW",
+		"passives": ["retainer"],
+		"moves": [{"kind": "bottle", "who": "samurai"}, {"kind": "mend", "el": "random", "n": 2, "who": "samurai", "cap": 15, "sfx": "fan"},
+			{"kind": "empower", "n": 1, "who": "samurai", "sfx": "gong"}],
+		"flavor": "He goes where his lord goes."},
+	"samurai": {"name": "The Samurai", "act": 2, "elite": true, "member": true, "no_extra": true, "no_bonus": true, "hp": "FAWWFAFWAAFWFAW",
+		"passives": ["avenger"],
+		"moves": [{"kind": "attack", "n": 10, "pose": "in_no_kamae"}, {"kind": "deflect", "pose": "ko_gasumi"}, {"kind": "attack", "n": 3, "hits": 3, "iai": true, "pose": "sha_no_kamae"}],
+		"flavor": "One cut, and it is over."},
 	"tide_colossus": {"name": "Tide Colossus", "act": 3, "elite": true, "retired": true, "hp": "WWWWFW", "moves": [{"kind": "mend", "el": "W", "n": 2, "who": "self"}, {"kind": "attack", "n": 8}],
 		"flavor": "A wave that stands up."},
 	# The Triplet (a mini boss of three separate enemies): one spirit of each element, each with its own cycle of moves.
@@ -166,25 +184,23 @@ const E := {
 		"flavor": "A spark of the Good Ol' Wizard's forge, with a temper to match."},
 	"forge_spirit_b": {"name": "Forge Spirit", "act": 1, "member": true, "hp": "WAF", "moves": [{"kind": "attack", "n": 3}],
 		"flavor": "A spark of the Good Ol' Wizard's forge, with a temper to match."},
-	# The Handyman (an Act 1 boss). No real HP until the very end: his HANDS are what you fight. A hand at 0 Essence is
-	# only knocked down. In every phase each hand has 2 lives: with one left it lies down a turn and is
-	# resurrected (angel wings + hourglass); out of lives it stays down. Every hand out of lives -> 2 more hands
-	# (hammer, crossbow), and the fallen ones get back up too; again -> 2 more (spear, shield, 3 Essence each). With every
-	# hand out of lives in that last phase, he shows himself: 1 Essence, and an intent to hit you for 999.
-	# (Their rows were searched to overlap as little as possible: a chant aimed at one hand takes at most 2 off another.)
+	# The Handyman (an Act 1 boss). His HANDS are what you fight: two at a time, one on each side, 10 Essence each. A hand at 0
+	# Essence is knocked off and lies on the floor, and the next hand of that side grows in its place (left: sword, crossbow,
+	# spear; right: tweezer, hammer, shield). Once all six lie on the floor he cries, shakes and pulls them back up: now every
+	# hand has 2 Essence and he has 1. Clear them all to win.
 	"handyman": {"name": "The Handyman", "act": 1, "boss": true, "no_extra": true, "hp": "A", "passives": ["handyman"],
 		"moves": [{"kind": "attack", "n": 999}], "flavor": "Six hands, one job."},
-	"hand_sword": {"name": "Sword Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🗡", "hp": "WWWAF", "moves": [{"kind": "attack", "n": 5}],
+	"hand_sword": {"name": "Sword Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🗡", "hp": "WWWAFWAAFW", "moves": [{"kind": "attack", "n": 5}],
 		"flavor": "It swings, and swings, and swings."},
-	"hand_tweezer": {"name": "Tweezer Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🥢", "hp": "FAFWA", "moves": [{"kind": "steal", "n": 1}],
+	"hand_tweezer": {"name": "Tweezer Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🥢", "hp": "FAFWAFWAFA", "moves": [{"kind": "steal", "n": 1}],
 		"flavor": "Plucks Essence out of your bag and keeps it."},
-	"hand_hammer": {"name": "Hammer Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🔨", "hp": "AWFWA", "moves": [{"kind": "hammer_spell"}],
+	"hand_hammer": {"name": "Hammer Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🔨", "hp": "AWFWAAWFWF", "moves": [{"kind": "hammer_spell"}],
 		"flavor": "It knows which spell is closest to breaking."},
-	"hand_crossbow": {"name": "Crossbow Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🏹", "hp": "FFWAF", "moves": [{"kind": "charge", "left": 1, "n": 20, "turns": 2},
+	"hand_crossbow": {"name": "Crossbow Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🏹", "hp": "FFWAFAWFFW", "moves": [{"kind": "charge", "left": 1, "n": 20, "turns": 2},
 		{"kind": "charge", "left": 0, "hit": true}], "flavor": "Slow to load. Not slow to hurt."},
-	"hand_spear": {"name": "Spear Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🔱", "hp": "AAFWW", "moves": [{"kind": "attack", "n": 8}],
+	"hand_spear": {"name": "Spear Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🔱", "hp": "AAAFWAAFWA", "moves": [{"kind": "attack", "n": 8}],
 		"flavor": "The last hands are the sharpest."},
-	"hand_shield": {"name": "Shield Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🛡", "hp": "WAFAW", "moves": [{"kind": "armor", "pos": -1, "who": "random"}],
+	"hand_shield": {"name": "Shield Hand", "act": 1, "member": true, "boss": true, "no_extra": true, "passives": ["hand"], "tint": Color(0.86, 0.7, 0.55), "tool": "🛡", "hp": "FFFWAFFWAW", "moves": [{"kind": "armor", "pos": -1, "who": "random"}],
 		"flavor": "Always covering for one of the others."},
 	"woodcutter": {"name": "The Woodcutter", "act": 0, "boss": true, "hp": "FWAFWAFFWAWFA",
 		"moves": [{"kind": "attack", "n": 8}, {"kind": "summon", "id": "ashling", "n": 1}, {"kind": "armor", "pos": 0, "also": {"kind": "attack", "n": 4}}],
@@ -194,15 +210,15 @@ const E := {
 		"moves": [{"kind": "poison", "n": 2}, {"kind": "summon", "id": "puddle_slime", "n": 1}, {"kind": "attack", "n": 7}],
 		"moves2": [{"kind": "lock", "len": 3}, {"kind": "mend", "el": "random", "n": 1, "who": "all"}, {"kind": "attack", "n": 5, "hits": 2}],
 		"flavor": "Rot, and everything it feeds."},
-	# The Veiled Eyes (an Act 2 boss). Phase 1: a ball hanging on a white thread, two violet human eyes behind a black
+	# Violet Eyes (an Act 2 boss; was the Veiled Eyes). Phase 1: a ball hanging on a white thread, two violet human eyes behind a black
 	# veil. Phase 2 (at 0 Essence the veil falls): the spider underneath, the human eyes on its back and 4 spider-eye
-	# dots. Its intent is never shown (hidden_intent): only its eyes light up, a turn ahead ("eyes" on each move).
+	# dots. Its intent is shown like anyone's; its eyes also light up, a turn ahead ("eyes" on each move).
 	# Phase 1 cycles laser (both eyes) / venom (right eye) / slashes (left eye); phase 2 counts its dots 0 -> 4 and
 	# starts at 1 (the theft): 1 steal a spell into a cocoon, 2 venom, 3 two spiderlings, 4 eight slashes, 0 the human
 	# eyes' laser (the only time they look straight at you). Envenomed: every hit that takes HP gives you 1 Poison.
 	# Its numbers are exactly these: no act bonus Essence (no_extra) and no act attack bonus (no_bonus).
-	"veiled_eyes": {"name": "The Veiled Eyes", "act": 2, "boss": true, "no_extra": true, "no_bonus": true, "hidden_intent": true,
-		"hp": "FWAAWFFAWWFAAFW", "hp2": "AWFFWAAFWWAFFAWWFAAW", "passives": ["envenomed", "veiled", "veil_falls"], "tint": Color(0.16, 0.12, 0.2),
+	"veiled_eyes": {"name": "Violet Eyes", "act": 2, "boss": true, "no_extra": true, "no_bonus": true,
+		"hp": "FWAAWFFAWWFAAFW", "hp2": "AWFFWAAFWWAFFAWWFAAW", "passives": ["envenomed", "veil_falls"], "tint": Color(0.16, 0.12, 0.2),
 		"moves": [{"kind": "attack", "n": 5, "eyes": "both", "laser": true}, {"kind": "poison", "n": 4, "eyes": "right"},
 			{"kind": "attack", "n": 1, "hits": 4, "eyes": "left"}],
 		"moves2": [{"kind": "steal_spell", "eyes": 1}, {"kind": "poison", "n": 5, "eyes": 2},
@@ -214,7 +230,7 @@ const E := {
 		"tint": Color(0.18, 0.14, 0.22), "moves": [{"kind": "attack", "n": 1, "hits": 2}], "flavor": "Small, fast, and very much its mother's."},
 	"spiderling_b": {"name": "Spiderling", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WWFAF", "passives": ["envenomed"],
 		"tint": Color(0.18, 0.14, 0.22), "moves": [{"kind": "attack", "n": 1, "hits": 2}], "flavor": "Small, fast, and very much its mother's."},
-	# the cocoon the Veiled Eyes wraps a stolen spell in: it does nothing; break it and the spell comes back
+	# the cocoon Violet Eyes wraps a stolen spell in: it does nothing; break it and the spell comes back
 	"spider_cocoon": {"name": "Silk Cocoon", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "inert": true, "hidden_intent": true,
 		"hp": "WAF", "passives": ["cocoon"], "tint": Color(0.92, 0.9, 0.86), "moves": [{"kind": "hold"}],
 		"flavor": "Something you need is wrapped up in there."},
@@ -230,20 +246,21 @@ const PASSIVE_TEXT := {
 	"overgrowth": "Overgrowth: if not struck during your turn, it grows a random Essence.",
 	"warded": "Warded: only chants of 4 or more Essence can strike it.",
 	"last_gasp": "Last Gasp: gives you Poison 2 when it dies.",
+	"retainer": "Loyal: if the Samurai falls first, his Retainer yields and the fight is over.",
+	"avenger": "Avenger: if his Retainer falls first, the Samurai gains 5 Power for the rest of the fight.",
 	"gem_crown": "Gem Crown: at the end of its turn, armours its first Essence if nothing is armoured (not when it has 1 left).",
 	"echo": "Echo: repeats each action twice.",
 	"briar_walls": "Briar Walls: she hides between two hedge walls (3 Essence each, the two ends of her row). They are part of her: leftmost and rightmost effects hit the ends of her row (a wall while it stands), random effects pick wall Essence first, and Snipe can reach anything. She regrows a fallen wall (she shows it first); with both up she sings (Power +1) or attacks. When her own Essence is gone, the walls fall with her.",
 	"thorns": "Thorns 2: you lose 2 HP whenever your Release hits it.",
 	"burn_immune": "Fireproof: Burn has no effect on it.",
 	"slime_burst": "Burst: when it dies, two small slimes pop out.",
-	"hand": "A hand with 2 lives: at 0 Essence it goes down for a turn, then is resurrected whole. Out of lives, it stays down until every hand is; then they all rise for his next phase. In his last stand all six hands rise at once with 1 life each (then he shows himself).",
-	"handyman": "The Handyman himself: 1 Essence, out in the open at last.",
+	"hand": "A hand with 10 Essence: knocked out, it drops off and lies on the floor, and the next hand grows in its place. Once every hand has fallen, he pulls them all back up for his last stand, 2 Essence each; those hands shatter for good when beaten.",
+	"handyman": "The Handyman himself: 1 Essence. Once his hands are all down he cries, shakes, and takes them back; when those are beaten too he shows himself: 1 Essence, and a 999 blow.",
 	"invoker": "Good Ol' Wizard: every turn he conjures 3 spells. On his turn he casts every one your chant matched, or else the one it came closest to.",
 	"invoker_rebirth": "Second wind: at 0 Essence he rises again with 10 more, and starts chanting Quas, Wex or Exort, one a turn: each strips that Essence (Water, Air, Fire) from his spells for the rest of the fight.",
 	"yinyang_split": "Split: when it dies, it splits into two Yin Yang Cubs (10 Essence each), one white and one black.",
 	"shield_rage": "Enraged: every time you gain Shield, it gains Power +1 (its attacks deal 1 more damage).",
 	"envenomed": "Envenomed: every hit that takes HP from you also gives you 1 Poison (hits your Shield stops don't).",
-	"veiled": "Hypnotic: its intentions are hidden. Watch its eyes: they light up a turn before it acts, and each light means a different move.",
 	"veil_falls": "The veil falls: at 0 Essence the veil drops and what is underneath fights on, with 20 more Essence and new moves.",
 	"cocoon": "Cocoon: a spell of yours is wrapped inside. Break it and the spell comes back (and it comes back anyway if you win).",
 	"rage_at_half": "Shield Wall: above half its Essence it guards and strikes in turn. At half or below it drops its shield and attacks twice every turn.",
@@ -353,16 +370,17 @@ static func normals(act: int) -> Array:
 
 
 ## The mini bosses of an act (only that act's own; "retired" ones are kept for old saves and the codex but never met).
-## Act 1: The Triplet, Enraged Rolling Bear, Bramble Matron. Act 2: Chairman, Blackwing, The Warden.
+## Act 1: The Triplet, Enraged Rolling Bear, Bramble Matron. Act 2: Chairman, Blackwing, The Warden, the Samurai and his Retainer.
 ## Act 3: Bottle Head, Fire Dragon, Mirror Knight. (Chairman, Blackwing, Bottle Head and Fire Dragon: not made yet.)
 static func elites(act: int) -> Array:
 	var out := E.keys().filter(func(k): return E[k].get("elite", false) and not E[k].get("member", false) and not E[k].get("retired", false) and E[k].act == act)
-	return out + ELITE_GROUPS.keys().filter(func(k): return ELITE_GROUPS[k].act == act)
+	return out + ELITE_GROUPS.keys().filter(func(k): return ELITE_GROUPS[k].act == act and not ELITE_GROUPS[k].get("wip", false))  # (wip: Test mode only)
 
 
 ## Mini bosses that are a group: always met together, left to right.
 const ELITE_GROUPS := {
 	"the_triplet": {"name": "The Triplet", "act": 1, "ids": ["triplet_fire", "triplet_water", "triplet_air"]},
+	"samurai_pair": {"name": "The Samurai and his Retainer", "act": 2, "ids": ["samurai_retainer", "samurai"]},
 }
 
 
@@ -548,7 +566,7 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 				s = "Armour 1 Essence of one of them, at random"
 		"mend":
 			var el: String = "random Essence" if m.el == "random" else ("Essence" if m.el == "own" else Elements.NAMES[m.el])
-			s = "Mend +%d %s%s" % [m.n, el, {"self": "", "ally": " on an ally", "all": " on every enemy", "weakest": " on the most hurt of them", "random_hurt": " on one of them at random"}[m.get("who", "self")]]
+			s = "Mend +%d %s%s" % [m.n, el, {"self": "", "ally": " on an ally", "all": " on every enemy", "weakest": " on the most hurt of them", "random_hurt": " on one of them at random (a hurt one first)", "samurai": " on the Samurai"}[m.get("who", "self")]]
 		"shuffle":
 			s = "Shuffle its Essence"
 		"silence":
@@ -568,6 +586,10 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 				s = "Cast the spell he chose this turn, and every one your chant contains" + ((", then chant %s (his spells lose every %s)" % [INVOKER_WORDS[m.word], Elements.NAMES[m.word]]) if m.has("word") else "")
 		"cleanse_self":
 			s = "Cleanse all its debuffs"
+		"bottle":
+			s = "Give the Samurai a bottle: cleanse him, and he is Impervious for a turn (no status can be put on him)"
+		"deflect":
+			s = "Deflect: this turn your Release can't touch him or his Retainer (your spells still work)"
 		"drain_essence":
 			s = "You lose %d random Essence from your bag" % m.n
 		"disarm":
@@ -606,7 +628,7 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 		"ethereal":
 			s = "Go Ethereal (your next chant can't touch it)"
 		"empower":
-			s = "Empower +%d" % m.n + (" one of them, at random" if m.get("who", "self") == "random" else "")
+			s = "Empower +%d" % m.n + {"random": " one of them, at random", "samurai": " the Samurai"}.get(m.get("who", "self"), "")
 		"summon":
 			if m.has("list"):
 				s = "Call %d %s%s" % [m.n, E[m.list[0]].name, "" if m.n == 1 else "s"]

@@ -19,7 +19,7 @@ sys.path.insert(0, HERE)
 import asset_paths as AP
 
 IMAGESET = r"D:\GitHub Projects\ImageSet"
-SET_NAME = "Puppet Essence Relief"
+SET_NAME = "Puppet Essence Engraved"
 ESS = os.path.join(AP.PUPPET, "UI", "Essence")
 STYLE = os.path.join(ESS, "essence_relief_style.txt")
 PROMPTS = os.path.join(ESS, "essence_relief_prompts.txt")
@@ -50,8 +50,28 @@ def generate(objs, redo=False):
 
 
 def newest(name):
-    found = sorted(glob.glob(os.path.join(glob.escape(os.path.join(IMAGESET, "output", SET_NAME)), glob.escape(name) + "_*.png")), key=os.path.getmtime)
+    found = []
+    for root in (IMAGESET, r"E:\GitHub\ImageSet"):  # (ImageSet may write its output under either root)
+        found += glob.glob(os.path.join(glob.escape(os.path.join(root, "output", SET_NAME)), glob.escape(name) + "_*.png"))
+    found.sort(key=os.path.getmtime)
     return found[-1] if found else None
+
+
+def circle_cut(src):
+    """The ball as a round cut-out: the circle that fits the non-white part of the picture, 1.5 px soft edge, trimmed."""
+    import numpy as np
+    from PIL import Image, ImageDraw, ImageFilter
+    im = Image.open(src).convert("RGBA")
+    a = np.array(im.convert("RGB")).astype(int)
+    ys, xs = np.where((765 - a.sum(axis=2)) > 150)
+    x0, x1, y0, y1 = xs.min(), xs.max(), ys.min(), ys.max()
+    cx, cy, r = (x0 + x1) / 2.0, (y0 + y1) / 2.0, ((x1 - x0) + (y1 - y0)) / 4.0 - 2.0
+    big = 4
+    m = Image.new("L", (im.width * big, im.height * big), 0)
+    ImageDraw.Draw(m).ellipse([(cx - r) * big, (cy - r) * big, (cx + r) * big, (cy + r) * big], fill=255)
+    m = m.resize(im.size, Image.LANCZOS).filter(ImageFilter.GaussianBlur(0.6))
+    im.putalpha(m)
+    return im.crop(m.point(lambda v: 255 if v > 8 else 0).getbbox())
 
 
 def main():
@@ -70,7 +90,7 @@ def main():
     old = os.path.join(AP.PUPPET, "UI", "_Source", "Essence")
     os.makedirs(old, exist_ok=True)
     for name, src in files.items():
-        im = ui.cut(src)
+        im = circle_cut(src)  # (the ball is a perfect circle: cut by its outline, BiRefNet bit chunks out of the pale blue one)
         k = 128 / max(im.size)
         im = im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.LANCZOS)
         dst = os.path.join(ESS, TARGET[name] + ".png")
