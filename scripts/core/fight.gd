@@ -1000,6 +1000,13 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 	var targets := await _targets(eff, spell, tctx)
 	if eff.op in STATUS_OPS:
 		targets = targets.filter(func(x): return not (x is EnemyState and x.impervious > 0))  # (Impervious: no status sticks)
+	if eff.op in HIT_OPS:
+		# who this spell's damage has hit so far ("then Execute" looks at every one of them)
+		if not tctx.has("_hit"):
+			tctx["_hit"] = []
+		for t in targets:
+			if not (t in tctx._hit):
+				tctx._hit.append(t)
 	# Gain Essence: rolled before the show, so each orb flies in its own element's colour to its own slot
 	var drawn: Array[String] = []
 	if eff.op == "draw":
