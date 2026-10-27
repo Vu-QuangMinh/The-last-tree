@@ -143,6 +143,18 @@ const E := {
 		"flavor": "A hedge that sings."},
 	"mirror_knight": {"name": "Mirror Knight", "act": 3, "elite": true, "hp": "WAFWAF", "moves": [{"kind": "armor", "pos": 0, "also": {"kind": "attack", "n": 5}}, {"kind": "shuffle", "also": {"kind": "attack", "n": 7}}],
 		"flavor": "Its guard is where you least expect."},
+	# The Winter Wyvern (Act 3 mini boss): its head, tail and wings are separate pieces that move, but the Essence row is the wyvern's
+	# alone; the wings have none. The wings stay open; a move with `wing: front` Armours its next Essence, and the wing folds down over
+	# the Armoured Essence when yours flies at it (FightScreen._release_step). `pose` only tells the picture what to do (see DragonRig):
+	# head = bite / up, tail = sweep / slam. The Fireball is planted one turn and explodes on the next one.
+	"winter_wyvern": {"name": "Winter Wyvern", "act": 3, "elite": true, "hp": "FFAWFFAWFA", "passives": ["dragon"],
+		"moves": [{"kind": "attack", "n": 6, "pose": {"head": "bite"}},
+			{"kind": "attack", "n": 3, "hits": 2, "pose": {"tail": "sweep", "wing": "front"}},
+			{"kind": "fireball", "n": 10, "pose": {"head": "up"}},
+			{"kind": "fireball_blast", "pose": {"head": "up", "wing": "front"}},
+			{"kind": "empower", "n": 2, "pose": {"head": "up"}},
+			{"kind": "attack", "n": 5, "also": {"kind": "freeze", "n": 2}, "pose": {"tail": "slam", "wing": "front"}}],
+		"flavor": "Wings spread, then fire."},
 	"void_archon": {"name": "Void Archon", "act": 3, "elite": true, "retired": true, "hp": "AFWAFWA", "moves": [{"kind": "blind", "turns": 2, "also": {"kind": "attack", "n": 5}}, {"kind": "lock", "len": 2}, {"kind": "attack", "n": 4, "hits": 3}],
 		"flavor": "It steals the light, then the words."},
 	# ---------------- bosses (moves2 = second phase, at half HP)
@@ -252,6 +264,7 @@ const PASSIVE_TEXT := {
 	"echo": "Echo: repeats each action twice.",
 	"briar_walls": "Briar Walls: she hides between two hedge walls (3 Essence each, the two ends of her row). They are part of her: leftmost and rightmost effects hit the ends of her row (a wall while it stands), random effects pick wall Essence first, and Snipe can reach anything. She regrows a fallen wall (she shows it first); with both up she sings (Power +1) or attacks. When her own Essence is gone, the walls fall with her.",
 	"thorns": "Thorns 2: you lose 2 HP whenever your Release hits it.",
+	"dragon": "Winter Wyvern: its wings have no Essence. Some of its moves Armour its next Essence under a wing, and the wing folds down over it when your Essence flies at it. A Fireball it spits hovers for a turn, then explodes.",
 	"burn_immune": "Fireproof: Burn has no effect on it.",
 	"slime_burst": "Burst: when it dies, two small slimes pop out.",
 	"hand": "A hand with 10 Essence: knocked out, it drops off and lies on the floor, and the next hand grows in its place. Once every hand has fallen, he pulls them all back up for his last stand, 2 Essence each; those hands shatter for good when beaten.",
@@ -317,6 +330,7 @@ const BIOS := {
 	"forge_spirit": "Hot, small, and very eager to prove itself.",
 	"handyman": "A tinkerer with too many hands and a tool in each. He never shows himself until there's nothing left to hide behind.",
 	"bramble_matron": "A druid wrapped in a living hedge. Her two walls do the fighting while she sings them stronger. Cut the walls, or Snipe her straight through them.",
+	"winter_wyvern": "A frost wyvern with wings spread. Its tail sweeps or slams, its head bites or rears up to spit a hovering fireball or roar itself angrier, and when your Essence flies at an Essence it has Armoured, a wing folds down to guard it.",
 	"mirror_knight": "Its guard is always exactly where you didn't aim. Rude, but fair.",
 	"void_archon": "Steals the light, then your words, then your patience.",
 	"woodcutter": "He came for the last tree, and he brought friends and an axe. Mostly the axe.",
@@ -371,7 +385,7 @@ static func normals(act: int) -> Array:
 
 ## The mini bosses of an act (only that act's own; "retired" ones are kept for old saves and the codex but never met).
 ## Act 1: The Triplet, Enraged Rolling Bear, Bramble Matron. Act 2: Chairman, Blackwing, The Warden, the Samurai and his Retainer.
-## Act 3: Bottle Head, Fire Dragon, Mirror Knight. (Chairman, Blackwing, Bottle Head and Fire Dragon: not made yet.)
+## Act 3: Bottle Head, Winter Wyvern, Mirror Knight. (Chairman, Blackwing and Bottle Head: not made yet.)
 static func elites(act: int) -> Array:
 	var out := E.keys().filter(func(k): return E[k].get("elite", false) and not E[k].get("member", false) and not E[k].get("retired", false) and E[k].act == act)
 	return out + ELITE_GROUPS.keys().filter(func(k): return ELITE_GROUPS[k].act == act and not ELITE_GROUPS[k].get("wip", false))  # (wip: Test mode only)
@@ -602,6 +616,10 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			s = "Gain %d Thorns (your Release hitting it hurts you that much)" % int(m.n)
 		"revive":
 			s = "Resurrected in %d turn%s" % [int(m.left), "" if int(m.left) == 1 else "s"]
+		"fireball":
+			s = "Spit a Fireball: it hovers, and explodes next turn for %d" % (int(m.n) + bonus)
+		"fireball_blast":
+			s = "The Fireball explodes"
 		"charge":
 			if not full and int(m.get("left", 1)) == 0:
 				s = "Fires at the end of this turn"
@@ -658,4 +676,6 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			s = "Frail you (%d turn%s: you take 25%% more damage)" % [m.turns, "" if m.turns == 1 else "s"]
 	if m.has("also"):
 		s += " + " + describe_move(m.also, bonus, full)
+	if m.get("pose", {}).get("wing", "") == "front":
+		s += " + its wing guards it: Armour its next Essence"
 	return s

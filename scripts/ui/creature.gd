@@ -27,6 +27,7 @@ var _orbs: Array = []  # the Invoker's words so far: their Essence orbit him for
 var _art_tip := 0.0  # the tilt the picture was last drawn with, and how far the jolt of a hit moved it sideways (for the rope mode's rivets)
 var _art_shake_x := 0.0
 var _art_xf := Transform2D.IDENTITY  # the puppet's own transform in this Control (its feet, its tip), for pieces drawn on their own
+var _dragon: DragonRig  # the Winter Wyvern's pieces (null: the single picture is used)
 var _floaters: Array = []  # [texture, centre fraction, phase] of the loose pieces hovering by the puppet (FLOATERS)
 var _unveil_tex: Array = []  # [ball without its veil, head, left legs, right legs] of the Veiled Eyes' unveiling (see _draw_unveil)
 var _unveil_t := -1.0  # -1: not playing; 0 .. UNVEIL_DUR: seconds into the unveiling
@@ -163,6 +164,7 @@ func setup(e: EnemyState) -> void:
 				var ft := _puppet_tex(f[0], int(e.def.get("act", 1)))
 				if ft != null:
 					_floaters.append([ft, f[1], f[2]])
+		_dragon = DragonRig.load_rig(int(e.def.get("act", 3))) if e.id == "winter_wyvern" and _puppet else null
 		_rig = {}
 		_rig_tex = []
 		if HandymanRig.ARMS.has(e.id):
@@ -301,6 +303,8 @@ func _process(d: float) -> void:
 		_yin_rot = move_toward(_yin_rot, _yin_target, d * TAU)
 	bob += d * 2.0
 	_spider_tick(d)
+	if _dragon != null:
+		_dragon.tick(d, _enemy, dead)
 	if not _rig.is_empty():
 		var folded := _enemy != null and _enemy.knocked and not _enemy.fallen
 		var lying := _enemy != null and (_enemy.fallen or drop_hold)
@@ -820,7 +824,7 @@ func _draw_art(blink_on: bool) -> void:
 	if _shake > 0.0:
 		c += Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake) * 0.5)
 	_art_shake_x = c.x - size.x / 2.0
-	if _puppet and not dead and steal_pose <= 0.0:  # (carrying a card it hangs in the air: no shadow over the card)
+	if _puppet and not dead and steal_pose <= 0.0 and _dragon == null:  # (carrying a card it hangs in the air: no shadow over the card)
 		_draw_puppet_shadow(_unveil_tex[0] if unveiling and _unveil_t < UNVEIL_LEGS[0] else tex, Vector2(c.x, size.y), side)  # (the spider's shadow only once its legs are out)
 	if _puppet:  # a puppet doesn't bob: it rocks on its base, and tips back when it is hit
 		var tip := 0.0 if dead else (0.0 if enemy_id == "handyman" else sin(bob * 0.5) * 0.04) - 0.16 * minf(hurt / 0.4, 1.0)  # (the Handyman's body does not rock: six arms hang on its shoulders)
@@ -842,6 +846,8 @@ func _draw_art(blink_on: bool) -> void:
 		_draw_steal_pose(Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side)), side, mod)
 	elif enemy_id == "veiled_eyes" and _puppet and not dead and not veil2:
 		_draw_curtain(tex, Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side)), mod)  # (the veil of phase 1 sways like a curtain)
+	elif _dragon != null and _puppet:
+		_dragon.draw(self, _art_xf, side * DRAGON_W, mod)  # (its pieces, feet on the same line as the single picture's)
 	else:
 		draw_texture_rect(tex, Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side)), false, mod)
 	if enemy_id == "veiled_eyes" and _puppet and not dead and not unveiling:
@@ -855,6 +861,44 @@ func _draw_art(blink_on: bool) -> void:
 			draw_texture_rect(ft, Rect2(at - ft.get_size() * k * 0.5, ft.get_size() * k), false, mod)
 	if _puppet:
 		draw_set_transform(Vector2.ZERO)
+
+
+const DRAGON_W := 2.6  # the Winter Wyvern's width on the screen, in art squares (it lies wide and low)
+
+
+## The Winter Wyvern acts its move out (the lunge, the slam, the roar): see DragonRig.play.
+func dragon_fx() -> void:
+	if _dragon != null:
+		_dragon.play(_enemy)
+
+
+## Your Essence is flying at one of its Armoured Essence: a wing folds down over it (side 1: the front of its row, -1: the rear).
+func dragon_guard(side: int) -> void:
+	if _dragon != null:
+		_dragon.guard(side)
+
+
+## The Winter Wyvern's hovering Fireball, for FightScreen to fly into your HP bar: its place on the screen, its width there, its pictures; hide it when it leaves.
+func dragon_ball_point() -> Vector2:
+	return get_global_transform() * _dragon.ball_point() if _dragon != null else global_position
+
+
+func dragon_ball_width() -> float:
+	return _dragon.ball_width() * get_global_transform().get_scale().x if _dragon != null else 0.0
+
+
+func dragon_fx_tex(name: String) -> Texture2D:
+	return _dragon.fx_tex.get(name) if _dragon != null else null
+
+
+func dragon_hide_ball() -> void:
+	if _dragon != null:
+		_dragon.hide_ball()
+
+
+## Seconds from the start of the Winter Wyvern's attack until the blow lands (0: not the dragon).
+func dragon_hit_time() -> float:
+	return _dragon.hit_time(_enemy) if _dragon != null and _enemy != null else 0.0
 
 
 ## Puppet Stage: the shadow the spotlight throws on the floor: its own silhouette lying flat BEHIND the puppet (up the screen from its

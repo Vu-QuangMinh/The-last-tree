@@ -7481,7 +7481,10 @@ func _enemy_attack(ev: Dictionary) -> void:
 		# a Handyman hand: the arm winds back and swings down at you (about its shoulder and its elbow)
 		_arm_swing(v.creature, 1.0)
 		await _wait(0.23)
+	elif v and ev.enemy.id == "winter_wyvern" and ev.enemy.intent.get("kind", "") == "fireball_blast" and v.creature.dragon_fx_tex("fireball") != null:
+		target = await _fireball_fly(v)  # (the Fireball flies into your HP bar and explodes there: the damage lands there)
 	elif v:
+		v.creature.dragon_fx()
 		var c := v.creature
 		var home := c.position
 		var toward := (target - (c.global_position + c.size / 2.0)).normalized() * 70.0
@@ -7495,7 +7498,7 @@ func _enemy_attack(ev: Dictionary) -> void:
 		tw.tween_interval(0.12 * sl)
 		tw.tween_property(c, "position", home, 0.2 * sl)
 		tw.parallel().tween_property(c, "scale", Vector2.ONE, 0.2 * sl)
-		await _wait(0.2 * sl)
+		await _wait(maxf(0.2 * sl, c.dragon_hit_time()))  # (the Winter Wyvern's bite or slam takes longer to land)
 	var blocked: bool = ev.get("blocked", false)
 	ImpactFx.burst(_fx, target, blocked and ev.n == 0)
 	Audio.play("sfx_player_hit" if ev.n > 0 else "release_armour_block")
@@ -7517,6 +7520,55 @@ func _enemy_attack(ev: Dictionary) -> void:
 		_float_text("Blocked!", target + Vector2(-40, -70), Color(0.6, 0.85, 1))
 	_refresh_all()
 	await _wait(0.6)
+
+
+## The Winter Wyvern's Fireball leaves its hover, curves across the stage into your HP bar and bursts there. Returns the point it burst at.
+func _fireball_fly(v: EnemyView) -> Vector2:
+	var cr: Creature = v.creature
+	var target := _hp_bar.get_global_rect().get_center()
+	var ft: Texture2D = cr.dragon_fx_tex("fireball")
+	var from := cr.dragon_ball_point()
+	var sc0 := cr.dragon_ball_width() / float(ft.get_width())
+	cr.dragon_hide_ball()
+	var ball := Sprite2D.new()
+	ball.texture = ft
+	ball.z_as_relative = false
+	ball.z_index = 300
+	ball.global_position = from
+	ball.scale = Vector2(sc0, sc0)
+	add_child(ball)
+	Audio.play(LAUNCH_SFX.get("F", "elem_pickup"))
+	var mid := (from + target) * 0.5 + Vector2(0.0, -140.0)  # (it arcs up and over, then drops on the bar)
+	var tw := create_tween()
+	tw.tween_method(func(u: float) -> void:
+		if not is_instance_valid(ball):
+			return
+		var k := u * u * (3.0 - 2.0 * u) * 0.35 + u * 0.65  # (slow to leave, quick to land)
+		var p := from.lerp(mid, k).lerp(mid.lerp(target, k), k)
+		var dir := (p - ball.global_position)
+		if dir.length() > 0.5:
+			ball.rotation = dir.angle() + PI  # (its flame tail is on the right of the picture)
+		ball.global_position = p
+		ball.scale = Vector2(sc0, sc0) * (1.0 + 0.4 * k), 0.0, 1.0, 0.62)
+	await _wait(0.62)
+	if is_instance_valid(ball):
+		ball.queue_free()
+	var bt: Texture2D = cr.dragon_fx_tex("burst")
+	if bt != null:
+		var star := Sprite2D.new()
+		star.texture = bt
+		star.z_as_relative = false
+		star.z_index = 300
+		star.global_position = target
+		var s0 := 150.0 / float(bt.get_width())
+		star.scale = Vector2(s0, s0)
+		add_child(star)
+		var tb := star.create_tween()
+		tb.tween_property(star, "scale", Vector2(s0, s0) * 2.6, 0.4).set_ease(Tween.EASE_OUT)
+		tb.parallel().tween_property(star, "modulate:a", 0.0, 0.4)
+		tb.tween_callback(star.queue_free)
+	Audio.play(IMPACT_SFX.get("F", "sfx_damage_hit"))
+	return target
 
 
 ## The Sword Hand strikes: its arm reaches up over the screen to your HP bar, the blade held back at one side, then cuts across the part of the bar the
@@ -7906,9 +7958,10 @@ func _enemy_move_fx(ev: Dictionary) -> void:
 		v.creature.flash = 0.7  # (a hand of the Handyman that charges or buffs only glows: hit_flash would make it blink and his face cry as if it had been struck)
 	elif v:
 		v.hit_flash()
+		v.creature.dragon_fx()  # (the Winter Wyvern's Fireball / roar)
 	_sync_views()
 	_refresh_all()
-	await _wait(0.5)
+	await _wait((1.8 if kind == "empower" else 0.9) if ev.enemy.id == "winter_wyvern" else 0.5)
 
 
 ## A violent, building earthquake: the whole screen shakes harder and harder for `dur` seconds.
@@ -7993,6 +8046,9 @@ func _release_step(ev: Dictionary) -> void:
 			continue
 		var comet := Comet.launch(_fx, from, v.hp_point(h[1]), col)
 		var j: int = h[1]
+		var target: EnemyState = h[0]
+		if target.id == "winter_wyvern" and j < target.armor.size() and target.armor[j]:
+			v.creature.dragon_guard(1 if j * 2 < target.size() else -1)  # (a wing folds down over the Essence your Essence is flying at)
 		comet.arrived.connect(func():
 			if is_instance_valid(v): v.pop(j)
 			Audio.play(impact))

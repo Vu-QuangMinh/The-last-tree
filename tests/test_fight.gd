@@ -2174,3 +2174,21 @@ func test_retainer_falls_first_and_the_samurai_swears_revenge() -> void:
 	f._cleanup()
 	assert_eq(s.power, 5, "+5 Power at once")
 	assert_true(not f.over)
+
+
+func test_winter_wyvern_fireball_and_wing() -> void:
+	var f := _fight(["winter_wyvern"], [], "WFWA")
+	f.player.hp = 99
+	var e: EnemyState = f.enemies[0]
+	for m in e.def.moves:
+		assert_true(EnemyDefs.describe_move(m) != "", "every move reads: " + String(m.kind))
+	f._do_move(e, {"kind": "fireball", "n": 10})
+	assert_eq(e.fireball, 10, "the Fireball hovers")
+	var hp: int = f.player.hp
+	f._do_move(e, {"kind": "fireball_blast", "pose": {"wing": "front"}})
+	assert_eq(e.fireball, 0, "it went off")
+	assert_true(f.player.hp < hp, "and hurt")
+	assert_true(e.armor.has(true), "a wing in front Armours its next Essence")
+	var armed: int = e.armor.count(true)
+	f._do_move(e, {"kind": "attack", "n": 1, "pose": {"wing": "back"}})
+	assert_eq(e.armor.count(true), armed, "a wing behind it does not")

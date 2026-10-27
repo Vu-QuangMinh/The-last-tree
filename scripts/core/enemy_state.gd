@@ -18,6 +18,7 @@ var lit: Array = []  # (legacy, kept in step with elements; unused)
 var acting_part := ""  # which part is acting right now ("L" / "R": one of her walls; "": the enemy itself)
 var yin := ""  # the Yin Yang Beast's colour: "white" or "black" ("" for everyone else)
 var charge_dmg := -1
+var fireball := 0  # the Winter Wyvern's Fireball hovering over it: the hit it will land next turn (0: none)
 var knocked := false
 var fallen := false  # a Handyman hand knocked out in his first phase: it dropped off and lies on the floor (it is lifted back up for his last stand)
 var thorns := 0  # Thorns it has grown (the Anxious Armadillo): your Release hitting it hurts you this much

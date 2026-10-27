@@ -107,7 +107,7 @@ On your very first run, the 2nd fight of Act 2. 20 HP, gains 2 Thorns a turn, ne
 ### Mini bosses
 - **Act 1:** the Triplet, Enraged Rolling Bear, Bramble Matron.
 - **Act 2:** Chairman, Blackwing, the Warden.
-- **Act 3:** Bottle Head, Fire Dragon, Mirror Knight.
+- **Act 3:** Bottle Head, Winter Wyvern, Mirror Knight.
 
 ---
 

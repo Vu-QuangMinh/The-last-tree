@@ -2320,6 +2320,10 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 		if m.has("also") and not over and not e.is_dead():
 			await _do_move(e, m.also)
 		return
+	if m.get("pose", {}).get("wing", "") == "front":
+		var guard := e.armor.find(false)  # (the Winter Wyvern's wing guards it)
+		if guard >= 0:
+			e.set_armor(guard)
 	var taken_items: Array = []  # a steal: [{uid, el}] of the Essence it took from your bag (for the animation)
 	match m.kind:
 		"attack":
@@ -2467,6 +2471,14 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 					_log("%s's charge fizzles out." % e.name)
 			else:
 				await anim.call({"type": "charge_tick", "enemy": e})
+		"fireball":
+			e.fireball = int(m.n)
+			_log("%s spits a Fireball: it explodes next turn." % e.name)
+		"fireball_blast":
+			var blast := e.fireball
+			e.fireball = 0
+			if blast > 0:
+				await _do_move(e, {"kind": "attack", "n": blast})
 		"ignite_spell":
 			var cands := usable_spells().filter(func(s): return not player.ignited.has(s.id))
 			for k in int(m.get("n", 1)):
