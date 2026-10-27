@@ -6,6 +6,7 @@ extends VBoxContainer
 signal clicked(view: EnemyView)
 signal hp_clicked(view: EnemyView, index: int)  # index == size() means "the end"
 
+const FIREBALL_LIFT := 150.0  # how far above the floor line the Fire Dragon's fireball hangs
 var enemy: EnemyState
 var fight: Fight
 var creature: Creature
@@ -103,6 +104,12 @@ func setup(e: EnemyState, f: Fight) -> void:
 	creature.setup(e)
 	creature.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	creature.offset_top = -PUPPET_TOP if UiSkin.is_puppet() else 22  # models stay below the intent bubble (Puppet Stage: the bubble is at its side)
+	if e.def.get("dragon", "") == "fireball":
+		# the Dragon's fireball hangs in mid-air above the wing, smaller; its Essence go on top of it (see _layout_free)
+		creature.offset_top += 40.0 - FIREBALL_LIFT
+		creature.offset_bottom -= FIREBALL_LIFT
+		creature.offset_left += 50.0
+		creature.offset_right -= 50.0
 	holder.add_child(creature)
 	if e.def.get("invokes", false):
 		_spell_row = Control.new()
@@ -270,6 +277,7 @@ func refresh(preview: Dictionary) -> void:
 	if _spell_row != null:
 		_refresh_invoked(preview.get("invoke", {}).get(enemy, []))
 	var e := enemy
+	_show_wing(e.winged and not e.is_dead())
 	for c in _intent_slot.get_children():
 		c.queue_free()
 	if not e.intent.is_empty() and not e.def.get("hidden_intent", false):  # (the Silk Cocoon has none to show)
@@ -425,18 +433,54 @@ func _layout_free() -> void:
 	if _hp_row.position != Vector2(row_x, top) or _hp_row.size.x != row_w:
 		_hp_row.position = Vector2(row_x, top)
 		_hp_row.size = Vector2(row_w, 0.0)
+	if enemy.def.get("dragon", "") == "fireball":
+		# (the fireball: its Essence bar sits on top of it, its name above that)
+		var hp_h := _hp_row.get_combined_minimum_size().y
+		_hp_row.position = Vector2(row_x, b.position.y - hp_h - 4.0)
+		_name.position = Vector2(dx, _hp_row.position.y - nh - 1.0)
+		_status.position = Vector2(5.0 + dx, b.end.y + 4.0)
+		_status.size.x = w - 10.0
+		return
 	var below := top + _hp_row.get_combined_minimum_size().y + 2.0
 	_status.position = Vector2(5.0 + dx, below)
 	_status.size.x = w - 10.0
 
 
 ## Puppet Stage: the intent bubble stands left of the puppet (its pointer 4 px off the painted part), centred on the puppet's height.
+## The Fire Dragon's wing folded over this part: it goes dark under it, with the wing drawn over it (a stand-in until the
+## wing has its own art: a big wing sign and a dark veil).
+var _wing_mark: Label
+
+
+func _show_wing(on: bool) -> void:
+	if creature == null:
+		return
+	if on and _wing_mark == null:
+		_wing_mark = Label.new()
+		_wing_mark.text = "🪽"
+		_wing_mark.add_theme_font_size_override("font_size", 96)
+		_wing_mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_wing_mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_wing_mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_wing_mark.tooltip_text = "Under the wing: nothing you do can touch it this turn."
+		_holder.add_child(_wing_mark)
+	if _wing_mark != null:
+		_wing_mark.visible = on
+		var b := _puppet_rect()
+		_wing_mark.position = b.position
+		_wing_mark.size = b.size
+	creature.self_modulate = Color(0.5, 0.5, 0.58) if on else Color.WHITE
+
+
 func _place_chip(chip: Control) -> void:
 	if is_instance_valid(chip) and not chip.is_queued_for_deletion():
 		var b := _puppet_rect()
 		if _rig_view and creature.has_rig():  # (a hand: the names stand in a row, so the bubble goes above its hand, not beside it)
 			var hand_y := creature.size.y / 2.0 - PUPPET_TOP  # (the hand marker: the bubble stands above it, clear of the reticle)
 			chip.position = Vector2(b.get_center().x - chip.size.x / 2.0, hand_y - 28.0 - chip.size.y)
+			return
+		if enemy.def.get("dragon", "") == "head":
+			chip.position = Vector2(b.end.x + 4.0, b.get_center().y - chip.size.y / 2.0)  # (the Dragon's head: its bubble at the right end of the stage)
 			return
 		chip.position = Vector2(b.position.x - 4.0 - chip.size.x, b.get_center().y - chip.size.y / 2.0)
 

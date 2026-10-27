@@ -234,6 +234,25 @@ const E := {
 	"spider_cocoon": {"name": "Silk Cocoon", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "inert": true, "hidden_intent": true,
 		"hp": "WAF", "passives": ["cocoon"], "tint": Color(0.92, 0.9, 0.86), "moves": [{"kind": "hold"}],
 		"flavor": "Something you need is wrapped up in there."},
+	# The Fire Dragon (an Act 3 mini boss, the user's design, 2026-10-26). It lies across the stage: tail on the left,
+	# head on the right, one wing on its back. Head and tail are separate enemies (20 Essence each, both must fall), each
+	# with its own intent at its own end of the stage. Every turn the wing folds over one of them, at random and shown
+	# ahead (Fight.wing_fold): that part can't be touched by anything you do that turn (even when the other part is dead,
+	# the wing keeps folding back and forth). Each part picks its move at random ("random_moves").
+	"dragon_tail": {"name": "Dragon's Tail", "act": 3, "elite": true, "member": true, "no_extra": true, "no_bonus": true, "random_moves": true,
+		"dragon": "tail", "hp": "FAFWFAWFAFWFAFWAFAWF", "tint": Color(0.93, 0.5, 0.2),
+		"moves": [{"kind": "attack", "n": 10, "name": "Slap"}, {"kind": "attack", "n": 2, "name": "Thrash", "also": {"kind": "stun", "turns": 1}}],
+		"flavor": "It sweeps the stage clean."},
+	"dragon_head": {"name": "Dragon's Head", "act": 3, "elite": true, "member": true, "no_extra": true, "no_bonus": true, "random_moves": true,
+		"dragon": "head", "hp": "FWFAFFWAFWFAFFAWFWAF", "tint": Color(0.97, 0.62, 0.25),
+		"moves": [{"kind": "attack", "n": 2, "hits": 3, "name": "Bite"}, {"kind": "empower", "n": 2, "name": "Howl"},
+			{"kind": "summon", "id": "dragon_fireball", "n": 1, "name": "Fireball"}],
+		"flavor": "It smiles in its sleep. It is not asleep."},
+	# the Dragon's fireball: it hangs in mid-air above the wing (the wing can't cover it). Its intent shows at once;
+	# a turn later it bursts and Ignites ALL your spells, and is gone.
+	"dragon_fireball": {"name": "Fireball", "act": 3, "member": true, "no_extra": true, "no_bonus": true, "dragon": "fireball",
+		"hp": "FFFFF", "tint": Color(1.0, 0.45, 0.1), "moves": [{"kind": "ignite_spell", "all": true, "turns": 1, "burst": true}],
+		"flavor": "Pop it before it pops."},
 	"last_winter": {"name": "The Last Winter", "act": 3, "boss": true, "hp": "WWAWFAWWAFAWWAFWAW",
 		"moves": [{"kind": "freeze", "n": 2}, {"kind": "attack", "n": 8}, {"kind": "confuse"}, {"kind": "attack", "n": 7}],
 		"moves2": [{"kind": "lock", "len": 3}, {"kind": "summon", "id": "storm_imp", "n": 2}, {"kind": "attack", "n": 6, "hits": 2}],
@@ -381,6 +400,7 @@ static func elites(act: int) -> Array:
 const ELITE_GROUPS := {
 	"the_triplet": {"name": "The Triplet", "act": 1, "ids": ["triplet_fire", "triplet_water", "triplet_air"]},
 	"samurai_pair": {"name": "The Samurai and his Retainer", "act": 2, "ids": ["samurai_retainer", "samurai"]},
+	"fire_dragon": {"name": "The Fire Dragon", "act": 3, "ids": ["dragon_tail", "dragon_head"]},
 }
 
 
@@ -612,7 +632,12 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			else:
 				s = "Charging: %d turn%s left" % [m.left, "" if m.left == 1 else "s"]
 		"ignite_spell":
-			s = "Ignite one of your spells for your next turn (casting it burns you for %d)" % Fight.IGNITE_DAMAGE
+			if m.get("all", false):
+				s = "Burst: Ignite ALL your spells for your next turn (casting one burns you for %d)" % Fight.IGNITE_DAMAGE
+			else:
+				s = "Ignite one of your spells for your next turn (casting it burns you for %d)" % Fight.IGNITE_DAMAGE
+		"stun":
+			s = "Stun you: next turn you can't chant or cast (only Pass and bottles)"
 		"lock":
 			s = "Lock one of your spells (%d symbols)" % m.len
 		"steal":
@@ -658,4 +683,6 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			s = "Frail you (%d turn%s: you take 25%% more damage)" % [m.turns, "" if m.turns == 1 else "s"]
 	if m.has("also"):
 		s += " + " + describe_move(m.also, bonus, full)
+	if m.has("name"):
+		s = "%s: %s" % [m.name, s]  # (a named move: the Dragon's Slap, Thrash, Bite...)
 	return s

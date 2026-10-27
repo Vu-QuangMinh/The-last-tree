@@ -39,6 +39,7 @@ var weak25 := false  # Stillness (permanent)
 var freeze_turns := 0
 var no_mend := false  # Cauterize
 var ethereal := false  # from its own intent: your next chant can't touch it
+var winged := false  # the Fire Dragon's wing is folded over it: nothing you do can touch it this turn
 var impervious := 0  # Impervious: no status can be put on it (the Retainer's bottle); counts down at the end of your turn
 var phased := false  # from your spell: your spells remove double from it this turn
 var struck_this_turn := false
@@ -456,6 +457,8 @@ func describe_statuses() -> Array:
 		out.append("Cauterized (can't mend)")
 	if ethereal:
 		out.append("Ethereal (your chant can't touch it)")
+	if winged:
+		out.append("Under the wing (nothing you do can touch it this turn)")
 	if phased:
 		out.append("Phased (your spells remove double)")
 	return out

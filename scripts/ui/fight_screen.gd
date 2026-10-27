@@ -2860,7 +2860,7 @@ Turn %d" % [run.act, run.floor_no(), fight.turn]))  # (two lines on the sign)
 	_end_btn.text = "Pass" if _puppet_strips() else UiTheme.hk("Pass", "E")
 	if phase == "build":
 		_cast_btn.text = "Chant" if _puppet_strips() else UiTheme.hk("Chant", "Enter")
-		_cast_btn.disabled = busy or chant_idx.is_empty()
+		_cast_btn.disabled = busy or chant_idx.is_empty() or fight.player.stun_turns > 0
 	else:
 		_cast_btn.text = "Release" if _puppet_strips() else UiTheme.hk("Release", "E")
 		_cast_btn.disabled = busy or aiming or move_view != null or pick_view != null or chant_mode != ""
@@ -2868,7 +2868,9 @@ Turn %d" % [run.act, run.floor_no(), fight.turn]))  # (two lines on the sign)
 		b.disabled = busy or _auto_busy or phase != "build" or aiming or move_view != null or pick_view != null or chant_mode != "" or fight.over
 	var live_spells := fight.charges.size() > 0 and phase == "spells"
 	if not aiming and not busy and move_view == null and pick_view == null and chant_mode == "":
-		if phase == "build":
+		if phase == "build" and fight.player.stun_turns > 0:
+			_prompt.text = "You are Stunned: you can't chant or cast this turn. Pass, or drink a bottle."
+		elif phase == "build":
 			_prompt.text = "" if chant != "" else "Build a chant: when it is Released, enemies lose the longest start of their Essence found in it. Matching spells come alive."
 		elif live_spells:
 			_prompt.text = "Your spells are alive: click them to cast, in any order."
@@ -3527,7 +3529,7 @@ func _end_build_drag() -> void:
 	var p := fight.player
 	var back := {}  # a chant element let go away from the chant: it flies home to the bag
 	if src.kind == "stock":
-		if res.inside and chant_idx.size() < p.chant_slots() and _allowed("add", p.stock[src.i].el):
+		if res.inside and chant_idx.size() < p.chant_slots() and p.stun_turns == 0 and _allowed("add", p.stock[src.i].el):
 			# (the tutorial's scripted chant is built left to right, so there it always goes on the end)
 			var at: int = res.to if gate.call("insert", null) else chant_idx.size()
 			chant_idx.insert(clampi(at, 0, chant_idx.size()), src.i)
@@ -3549,8 +3551,8 @@ func _end_build_drag() -> void:
 
 
 func _toggle_stock(i: int) -> void:
-	if busy or phase != "build" or i < 0:
-		return
+	if busy or phase != "build" or i < 0 or fight.player.stun_turns > 0:
+		return  # (Stunned: the bag stays shut)
 	if i in chant_idx:
 		_remove_from_chant(chant_idx.find(i))
 	elif not fight.player.stock[i].frozen and chant_idx.size() < fight.player.chant_slots():
@@ -4147,6 +4149,8 @@ func _status_badges() -> Array:
 		out.append(["🌵 Thorns %d" % th, Color(0.5, 0.85, 0.25), "thorns"])
 	if p.ethereal:
 		out.append(["👻 Ethereal", Color(0.75, 0.7, 1.0), "ethereal"])
+	if p.stun_turns > 0:
+		out.append(["💫 Stunned", Color(1.0, 0.85, 0.3), "stun"])
 	if p.echo_next:
 		out.append(["🔔 Echo ready", Color(0.85, 0.6, 1.0), "echo"])
 	if p.poison > 0:

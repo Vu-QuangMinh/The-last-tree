@@ -2204,3 +2204,65 @@ func test_retainer_falls_first_and_the_samurai_swears_revenge() -> void:
 	f._cleanup()
 	assert_eq(s.power, 5, "+5 Power at once")
 	assert_true(not f.over)
+
+
+func test_fire_dragon_wing_covers_one_part() -> void:
+	var f := _fight(["dragon_tail", "dragon_head"], ["fire_ball"], "FF")
+	var tail: EnemyState = f.enemies[0]
+	var head: EnemyState = f.enemies[1]
+	assert_eq([tail.def.dragon, head.def.dragon], ["tail", "head"], "tail on the left, head on the right")
+	assert_eq(tail.size(), 20)
+	assert_eq(head.size(), 20)
+	assert_true(f.wing_fold in ["head", "tail"], "the wing is folded from the first turn")
+	assert_true(tail.winged != head.winged, "exactly one part is under the wing")
+	# fold it over the head: the chant and the spells can only reach the tail
+	f.wing_fold = "head"
+	head.winged = true
+	tail.winged = false
+	_set_hp(tail, "FFW")
+	_set_hp(head, "FFW")
+	var pv := f.preview("FF")
+	assert_true(pv.removed.has(tail) and not pv.removed.has(head), "the chant can't touch the part under the wing")
+	assert_eq(f.target_candidates(), [0], "a spell can't aim at it either")
+	assert_eq(f.hittable(), [tail])
+
+
+func test_fire_dragon_moves() -> void:
+	var f := _fight(["dragon_tail", "dragon_head"], ["fire_ball", "water_wall"], "FF")
+	var tail: EnemyState = f.enemies[0]
+	var head: EnemyState = f.enemies[1]
+	# Thrash: 2 damage and you are stunned: no chant, no spell
+	var hp := f.player.hp
+	f._do_move(tail, tail.def.moves[1])
+	assert_eq(f.player.hp, hp - 2.0)
+	assert_eq(f.player.stun_turns, 1)
+	f.cast_chant(_all(2))
+	assert_eq(f.player.stock.size(), 2, "stunned: the chant isn't spoken")
+	f.player.stun_turns = 0
+	# Fireball: it hangs between the tail and the head, then bursts and Ignites ALL your spells
+	f._do_move(head, head.def.moves[2])
+	assert_eq(f.enemies.size(), 3)
+	var ball: EnemyState = f.enemies[1]
+	assert_eq(ball.def.dragon, "fireball", "between tail and head")
+	assert_eq(ball.size(), 5)
+	assert_true(ball.fresh, "it shows its intent at once and acts a turn later")
+	f._plan(head)
+	assert_true(head.intent.kind != "summon", "no second fireball while one hangs there")
+	f._do_move(ball, ball.intent)
+	assert_true(f.player.ignited.has("fire_ball") and f.player.ignited.has("water_wall"), "every spell is on fire")
+	assert_true(ball.is_dead(), "the fireball is spent")
+
+
+func test_fire_dragon_needs_both_parts_down() -> void:
+	var f := _fight(["dragon_tail", "dragon_head"], [], "")
+	var tail: EnemyState = f.enemies[0]
+	var head: EnemyState = f.enemies[1]
+	f._do_move(head, head.def.moves[2])
+	_set_hp(tail, "")
+	f._check_end()
+	assert_true(not f.over, "one part down is not enough")
+	_set_hp(head, "")
+	f._check_end()
+	assert_true(f.over and f.won, "both down: won, and its fireball fizzles out with it")
+	assert_true("fire_dragon" in EnemyDefs.elites(3))
+	assert_eq(EnemyDefs.ids_of("fire_dragon"), ["dragon_tail", "dragon_head"])
