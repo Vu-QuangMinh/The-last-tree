@@ -275,7 +275,7 @@ func play(name: String, volume_db := 0.0, pitch := 1.0, from := 0.0, stackable :
 	var p: AudioStreamPlayer = _pool[_pool_i]
 	_pool_i = (_pool_i + 1) % _pool.size()
 	p.stream = s
-	p.volume_db = _db(sfx_level * overall_level) + volume_db + gain
+	p.volume_db = _db(sfx_level * overall_level) + volume_db + stack
 	p.pitch_scale = pitch
 	p.play(from)
 

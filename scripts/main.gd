@@ -712,9 +712,16 @@ func _show_event(ev: Dictionary) -> void:
 	if ev.get("id", "") == "apothecary" and UiSkin.tex("apothecary_bg") != null:
 		_show_apothecary(ev, pick)  # (New theme: the painted clearing, where you click what you want to do)
 		return
-	var s := _message(ev.title, ev.text, labels, Color(0.8, 0.7, 1))
+	var s := MessageScreen.new()  # (each option a card; the ones you can't afford greyed out)
+	s.title = ev.title
+	s.body = ev.text
+	s.buttons = labels
+	s.title_color = Color(0.8, 0.7, 1)
+	s.act = run.act
+	s.cards = true
 	s.disabled = ev.options.map(func(o): return not run.can_choose(o))
 	s.pressed.connect(pick)
+	_put(s)
 
 
 ## The Upside-Down Pool: pick a spell from your spellbook; it pays half your HP and plays inverted for the run.
@@ -817,7 +824,41 @@ func _show_loadout(ids: Array) -> void:
 		_stage_encounter(ids, l)
 		return
 	l.confirmed.connect(func(): _start_fight(ids))
+	if _test_mode and run.current_kind() in ["boss", "elite"]:
+		_add_encounter_picker(l, ids)
 	_put(l)
+
+
+## Test mode, a boss or elite room: a dropdown on the preparation screen to face any boss / mini boss instead (every
+## act's, this act's first). Picking one rebuilds the screen with it.
+func _add_encounter_picker(l: LoadoutScreen, ids: Array) -> void:
+	var kind := run.current_kind()
+	var acts: Array = [run.act] + [1, 2, 3].filter(func(a): return a != run.act)
+	var picks := []  # [label, ids]
+	for a in acts:
+		var pool: Array = EnemyDefs.BOSSES.get(a, []) if kind == "boss" else EnemyDefs.elites(a)
+		for id in pool:
+			picks.append(["Act %d · %s" % [a, EnemyDefs.name_of(id)], EnemyDefs.ids_of(id)])
+	var box := PanelContainer.new()
+	box.add_theme_stylebox_override("panel", UiTheme.panel_box(0.92, 10))
+	box.position = Vector2(720, 80)  # (top centre: clear of the encounter panel and the Leaves in the corner)
+	box.z_index = 50
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	box.add_child(row)
+	row.add_child(UiTheme.label("Test: face", 18, Color(1, 0.85, 0.5)))
+	var opt := OptionButton.new()
+	opt.custom_minimum_size = Vector2(320, 40)
+	for i in picks.size():
+		opt.add_item(picks[i][0], i)
+		if picks[i][1] == ids:
+			opt.select(i)
+	opt.item_selected.connect(func(i: int):
+		var chosen: Array = picks[i][1]
+		run.set_encounter(chosen)
+		_show_loadout(chosen))
+	row.add_child(opt)
+	l.add_child(box)
 
 
 ## Puppet Stage: the fight is built as soon as the encounter board comes up. The old set of props is cleared away and the new one brought in, and the

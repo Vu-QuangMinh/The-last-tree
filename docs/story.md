@@ -5,6 +5,48 @@ Canon comes from the user. Lines marked **(?)** are open questions, not canon.
 
 ---
 
+## At a glance: bosses and mini bosses
+
+**Who made it:** ✍️ = designed by you · ⚙️ = auto-generated (a placeholder from the first build, 2026-09-27, not from you) · ❓ = in the game with a detailed design, but not in your notes: please confirm it's yours.
+**In game:** ✅ playable now · ❌ not made yet · 💤 in the code but never met.
+
+### Bosses
+
+| Act | Boss | Who made it | In game |
+|---|---|---|---|
+| 1 | The Handyman | ✍️ | ✅ |
+| 1 | The Good Ol' Wizard (was the Invoker) | ✍️ | ✅ |
+| 1 | The Masked (King Malfatti in disguise) | ✍️ | ❌ |
+| 1 | Yin Yang Beast | ❓ (added 2026-10-07) | ✅ (not in your Act 1 list) |
+| 2 | The Headless Pianist (Ludwig) | ✍️ | ❌ |
+| 2 | The Skinwalker | ✍️ (name only, no design yet) | ❌ |
+| 2 | Violet Eyes (the spider) | ✍️ | ✅ (your notes put it in Act -1 (?)) |
+| 2 | The Blightmother | ⚙️ | ✅ (not in your list) |
+| 2 | The Anxious Armadillo (first run only, fight 2) | ✍️ | ✅ |
+| 3 | King Malfatti (final boss; was Master Penn) | ✍️ | ❌ |
+| 3 | The Last Winter | ⚙️ | ✅ (the current Act 3 boss; not in your list) |
+| — | Darklord Zakarim (speech only, moving to another boss) | ✍️ | ❌ |
+| 0 / -1 (secret) | Modified Armadillo, Nila the Witch / Darkblade, Adam the First Sinner, the Hands | ✍️ | ❌ |
+| 0 | The Woodcutter | ⚙️ | 💤 |
+
+### Mini bosses
+
+| Act | Mini boss | Who made it | In game |
+|---|---|---|---|
+| 1 | The Triplet (Ember, Ripple and Zephyr Sprites) | ✍️ | ✅ |
+| 1 | Enraged Rolling Bear | ✍️ | ✅ |
+| 1 | Bramble Matron (the Bramble Witch) | ✍️ | ✅ |
+| 2 | Chairman | ✍️ (name only) | ❌ |
+| 2 | Blackwing | ✍️ (name only) | ❌ |
+| 2 | The Warden (was Lockwarden) | ⚙️ (you kept it) | ✅ |
+| 2 | The Samurai and his Retainer | ❓ (added 2026-10-23) | ✅ (not in your list) |
+| 3 | Bottle Head | ✍️ (name only) | ❌ |
+| 3 | Fire Dragon | ✍️ (designed, see below) | ✅ (stand-in art) |
+| 3 | Mirror Knight | ⚙️ (you kept it) | ✅ |
+| 2-3 | Storm Rider, Tide Colossus, Void Archon | ⚙️ | 💤 (retired) |
+
+---
+
 ## 1. The world
 
 1. **V, the Outside God**, created the universe for their own entertainment. V lives outside it.
@@ -17,15 +59,15 @@ Canon comes from the user. Lines marked **(?)** are open questions, not canon.
 ## 2. The Cut Strings (the first rebellion)
 
 ### The four
-The rebels called themselves **the Cut Strings**. The Hands call them **the Sinners** (Isaac is "the First Sinner").
+The rebels called themselves **the Cut Strings**. The Hands call them **the Sinners** (Adam is "the First Sinner").
 - **Nila the Darkblade**, best friend of Princess Elise.
-- **Isaac**, the merchant's son.
+- **Adam**, the merchant's son.
 - **Ludwig the Pianist** (formerly Jaeler). He and Elise love each other.
 - **Princess Elise.**
 
 ### The code
 They obtained the **admin code** to the source code. Knowing the Hands would change it if they suspected anything, they feigned ignorance and split it into **4 parts**:
-1. **The first half of the digits:** Isaac wrote it on the back of his family photo: *"Dad, don't look for me. But if you do: xxx. Love, Isaac."* (The code never changes. Older note: the back reads "Isaac 093", the digits coloured black, blue, yellow. Which wording is final (?))
+1. **The first half of the digits:** Adam wrote it on the back of his family photo: *"Dad, don't look for me. But if you do: xxx. Love, Adam."* (The code never changes. Older note: the back reads "Adam 093", the digits coloured black, blue, yellow. Which wording is final (?))
 2. **The second half of the digits:** Elise told it to her father, King Malfatti, who hid it in his last masterpiece (?).
 3. **The colours:** Nila hid them in the **Magic Box** (the Good Ol' Wizard has it now).
 4. **The music:** Ludwig hid it in his **secret sheet music** (Für Elise).
@@ -38,7 +80,7 @@ They obtained the **admin code** to the source code. Knowing the Hands would cha
 They were caught but **not deleted**: they still serve a purpose, mostly torture, as an example to everyone else and as entertainment for the Hands.
 - **Nila** had her eyes and ears removed. She was promised that if she can make it out of there, she will be let go. (Act 0.)
 - **Ludwig** had his head and arms removed, but is still allowed upstairs (Act 2). One of his hands became the Handyman's Tweezer Hand (its sleeve is the same black suit cloth as the Pianist's).
-- **Isaac** was turned into the worst monster possible (the secret boss of Act 0).
+- **Adam** was turned into the worst monster possible (the secret boss of Act 0).
 - **Princess Elise** was the only one not caught at once. Ludwig pushed her away from the fight: *"Be free, Elise, my heart and soul. Be free, for me."* She jumped into the source code and **deleted herself**. The Hands can recreate her, but only as a shell; there is no soul left.
 - So the Hands kept Malfatti's bargain **to the letter**: Elise is "safe", and he is "with her forever", but only with an empty shell.
 
@@ -50,7 +92,7 @@ Knivel comes into the story later. After Nila disappeared, he went to find her (
 ## 3. The way down: the admin key and the secret act
 
 - At the end of Act 2 there is always a choice: go **upstairs** (the normal Act 2 boss) or **downstairs**.
-- Downstairs asks for the **Admin Key**. The right key opens the secret **Act 0** (Nila, Isaac, and the Hands as its final boss). A wrong key: *"Access denied, transported to the next stage"*, and you start Act 3 instead.
+- Downstairs asks for the **Admin Key**. The right key opens the secret **Act 0** (Nila, Adam, and the Hands as its final boss). A wrong key: *"Access denied, transported to the next stage"*, and you start Act 3 instead.
 - The key is built from the 4 parts above (2 halves of the digits, the colours, the music). What the final key looks like (6 numbers? numbers and colours?) (?).
 
 ---
@@ -58,12 +100,12 @@ Knivel comes into the story later. After Nila disappeared, he went to find her (
 ## 4. Characters and bosses
 
 ### The Merchant
-His son Isaac is the First Sinner, locked away below. He wants you to help free him. He has 3 quests (in any order):
+His son Adam is the First Sinner, locked away below. He wants you to help free him. He has 3 quests (in any order):
 - a **blanket** (from the Bramble Witch / Bramble Matron),
 - a **chair** (from the Chairman),
 - a **bottle** (from Bottle Head).
 
-When all 3 are done he gets drunk and gives you a permanent 10% discount, and you can steal his **family picture**: a dad (him), a wife, and a son deleted from the picture (a black silhouette). Isaac's note and digits are on the back.
+When all 3 are done he gets drunk and gives you a permanent 10% discount, and you can steal his **family picture**: a dad (him), a wife, and a son deleted from the picture (a black silhouette). Adam's note and digits are on the back.
 
 ### The Handyman (Act 1 boss)
 A twisted, sadistic, loyal servant of the Hands. He is rewarded with the hands of characters who acted out of line (the Pianist's hand among them). He enjoys the violence and is proud of his loyalty. Laughs "Hehe, hehehe" and "Muahahahah".
@@ -98,11 +140,23 @@ No longer the final boss. His speech moves to another boss (which one (?)). The 
 ### The Anxious Armadillo (Act 2, once ever)
 On your very first run, the 2nd fight of Act 2. 20 HP, gains 2 Thorns a turn, never attacks. Beaten, he doesn't break: he turns sad and begs ("Stop, please." / "It hurts." / "I can't take this anymore."), tries to hop off to the right (about 10 s), his string tugs him up ("Oh no." / "Oh @##%#, @$%@ me, #@%$." / "No no no NO!"), then yanks him off the top of the screen, from where he keeps begging ("Please, let me go." / "I won't do it again." / "I swear." / "Please, have some mercy." / "Aaaagrggghrgh!"). Then 5 s of silence and the usual victory. (In game.)
 
+### The Fire Dragon (Act 3 mini boss)
+A friendly-looking cartoon dragon lying down: **head on the right, tail on the left**, one wing on its back. Three parts that move separately: **head, tail, wing**.
+- **The wing** folds either **forward** (toward the head) or **backward** (toward the tail). The part it folds toward can't be damaged that turn.
+- **The head** and **the tail** take damage separately: **20 HP each**. You must kill **both** to win.
+- **Tail moves:**
+  - **Slap:** 10 damage.
+  - **Thrash:** 2 damage, and you are **stunned** next turn. You still get your new Essence, but you can't cast. The only things you can press are Pass and bottles.
+- **Head moves:**
+  - **Bite:** 2 damage, 3 times.
+  - **Howl:** +2 Power.
+  - **Fireball:** it spits a fireball that hangs in mid-air above the wing (the wing can't protect it). The fireball has 5 HP, with its HP bar drawn on top of it. Its intent shows at once: 1 turn after it appears, it **Ignites ALL your spells**.
+
 ### Bosses by act
 - **Act 1:** the Handyman, the Good Ol' Wizard, the Masked.
 - **Act 2:** the Headless Pianist, the Skinwalker, (third boss (?)).
 - **Act 3:** King Malfatti (final boss).
-- **Act 0 (secret):** Nila the Darkblade (dead Knivel in her room), Isaac (the monster), the Hands (final boss).
+- **Act 0 (secret):** Nila the Darkblade (dead Knivel in her room), Adam (the monster), the Hands (final boss).
 
 ### Mini bosses
 - **Act 1:** the Triplet, Enraged Rolling Bear, Bramble Matron.
@@ -212,7 +266,7 @@ Act -1 has the following bosses:
 
 1) Modified Armadillo
 2) Nila The Witch
-3) Isaac the first Sinner
+3) Adam the first Sinner
 4) The hands  
 
 

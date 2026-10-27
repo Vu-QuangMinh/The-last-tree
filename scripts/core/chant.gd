@@ -57,4 +57,4 @@ static func first_index(pattern: String, chant: String) -> int:
 
 ## Whether a lock pattern appears unbroken in the chant.
 static func breaks_lock(lock: String, chant: String) -> bool:
-	return lock != "" and chant.contains(lock)
+	return lock != "" and (chant.contains(lock) or ("?" in chant and first_index(lock, chant) >= 0))  # (an Any Essence fits)

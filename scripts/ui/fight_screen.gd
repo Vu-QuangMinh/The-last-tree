@@ -35,9 +35,6 @@ var auto_release := false  # the Release always waits for the player now (it's t
 var help_override: Callable = Callable()
 var _clicks: Array = []  # times (s) of recent clicks that didn't move the game on
 var _last_help := -99.0
-const IDLE_HELP := 15.0  # seconds with no click or key while the game waits for you
-var _idle := 0.0
-var _idle_helped := false
 var _help_panel: Control
 signal blocked(action: String)
 var fight: Fight
@@ -1558,7 +1555,7 @@ func _build_strips_puppet() -> void:
 	cin.custom_minimum_size = PuppetLayout.FRAME_CHANT
 	cin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cp.add_child(cin)
-	# what the chant row says ("3 Essence", Toll, Confused...): just above the strip
+	# what the chant row says ("3 Essence", Toll, Hypnotized...): just above the strip
 	_chant_note = UiTheme.label("", 15, Color.WHITE)
 	_chant_note.position = Vector2(PuppetLayout.RING_X0, -26)
 	_chant_note.z_index = 5  # (over the spell cards that now stand right on the strip)
@@ -1849,12 +1846,12 @@ func _refund_flight(ev: Dictionary) -> void:
 	for u in uids:
 		_flying[u] = true
 	_refresh_stock()
-	var by_home: Array = range(ev.els.size())
+	var by_home: Array = range(mini(ev.els.size(), uids.size()))  # (never more than there are new Essence)
 	by_home.sort_custom(func(x: int, y: int) -> bool: return float(_bag_target.get(uids[x], Vector2.ZERO).x) < float(_bag_target.get(uids[y], Vector2.ZERO).x))
 	for k in by_home.size():
 		var i: int = by_home[k]
 		var uid: int = uids[i]
-		var slot: int = clampi(int(ev.slots[i]), 0, maxi(0, fight.chant.size() - 1))
+		var slot: int = clampi(int(ev.slots[i]) if i < ev.slots.size() else fight.chant.size() - 1, 0, maxi(0, fight.chant.size() - 1))
 		_flying.erase(uid)
 		var real: ElementIcon = _bag_icons.get(uid)
 		if real != null and is_instance_valid(real):
@@ -2207,6 +2204,31 @@ func _tray_center(k: int) -> Vector2:
 	return Vector2(x, mouth.y - BAG_PX * TRAY_SCALE * 0.42 - row * step * 0.8)
 
 
+## Artifacts that give Essence for next turn: each one shines up briefly, then a ball of light flies from it to the tray
+## on top of the machine and materializes there (like a spell's "gain Essence next turn"). Shown once per Essence.
+func _stash_artifact_draws(for_turn: int) -> void:
+	if not _puppet_strips() or _stock_row == null or _arts == null:
+		return
+	var by_art := {}
+	for d in fight.player.next_draw:
+		if d.has("from") and not d.get("shown", false):
+			d.shown = true
+			if not by_art.has(d.from):
+				by_art[d.from] = []
+			by_art[d.from].append(d.el)
+	for id in by_art:
+		_arts.flash(id)
+		var at = _arts.chip_center(id)
+		if at == null:
+			continue
+		await _wait(0.25)  # (it shines up first)
+		var before := _pending.size()
+		_stash_to_machine({"drawn": by_art[id], "eff": {"op": "draw", "n": by_art[id].size(), "when": "next"}}, at)
+		for k in range(before, _pending.size()):
+			_pending[k].set_meta("for_turn", for_turn)
+		await _wait(0.2)
+
+
 func _stash_to_machine(ev: Dictionary, from: Vector2) -> float:
 	var els: Array = ev.get("drawn", [])
 	if els.is_empty():
@@ -2269,7 +2291,7 @@ func _puppet_launch(balls: Array) -> void:
 					break
 	var twin_of := {}
 	if spawn:
-		var pool: Array = _pending.filter(func(c): return is_instance_valid(c))
+		var pool: Array = _pending.filter(func(c): return is_instance_valid(c) and int(c.get_meta("for_turn", fight.turn)) <= fight.turn)  # (not the ones already lying there for the turn after)
 		for j in n:
 			if role[j] != "extra":
 				continue
@@ -2508,6 +2530,7 @@ func _fit_bottom() -> void:
 
 
 const ROW_WIDTH := 1860.0
+const SPELL_ROW_LEFT := 20.0  # (Puppet: how far left a long spell row may reach)
 
 
 func _build_spells() -> void:
@@ -2516,10 +2539,12 @@ func _build_spells() -> void:
 		c.queue_free()
 	_spell_row.size.x = 1920.0
 	_spell_row.position.x = 0.0
+	_spell_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_cards.clear()
 	var n := fight.shown_spells().size()
 	var gap := 10.0
 	var row_w := ROW_WIDTH
+	var full_w := n * SpellCard.W + gap * maxf(0, n - 1)
 	if _puppet_strips():  # (Puppet: the row is centred, and its right end stops at the Chant strip's: the cards must not cover the lottery machine)
 		row_w = minf(row_w, 2.0 * (_bag_at().x + PuppetLayout.FRAME_CHANT.x - 960.0))
 	var fit := minf(1.0, (row_w - gap * maxf(0, n - 1)) / maxf(1.0, n * SpellCard.W))
@@ -2608,6 +2633,9 @@ func _hand_going_down(e: EnemyState) -> bool:
 	return e.has_passive("hand") and fight != null and not fight.hm.is_empty() and int(fight.hm.phase) < 2 and fight.enemies.has(e)
 
 
+var _hm_hold: Array = []  # the Handyman's new hands, kept off the stage while he speaks (ids)
+
+
 func _sync_views() -> void:
 	var live := fight.enemies.filter(func(e): return not e.is_dead() or e.knocked or _hand_going_down(e) or e.has_passive("armadillo") or e.has_meta("yielded") or (e.has_passive("veil_falls") and e.phase == 1))  # (the Armadillo doesn't break: his ending plays; the Veiled Eyes do not break either: the veil falls and the same puppet unfolds)  # (a knocked-out hand stays in view)
 	var hm := not fight.hm.is_empty() and HandymanStage.available()  # (the Handyman fight with its art: hands on the body's shoulders)
@@ -2670,6 +2698,24 @@ func _sync_views() -> void:
 	if hm:
 		_hm_stage.set_real(body_out or fight.enemies.any(func(e): return e.id == "handyman" and e.is_dead()))  # (he is down for good: his plain picture must not stand there again after he has shattered)
 		_hm_stage.sync_ghosts(live.map(func(e): return e.id), int(fight.hm.phase), fight)
+	else:
+		_space_enemy_row()
+
+
+## The gap between the enemies: as wide as the stage allows (up to ENEMY_GAP_MAX), so an intent bubble (it sits beside
+## its enemy) never lands on its neighbour's model or cards (the Wizard's floating spells); 20 px when the row is full.
+const ENEMY_GAP_MAX := 150.0
+
+
+func _space_enemy_row() -> void:
+	var views := _enemy_row.get_children().filter(func(c): return c is EnemyView)
+	if views.size() < 2:
+		return
+	var total := 0.0
+	for v in views:
+		total += (v as Control).custom_minimum_size.x
+	var gap := clampf((1840.0 - total) / float(views.size() - 1), 20.0, ENEMY_GAP_MAX)
+	_enemy_row.add_theme_constant_override("separation", int(gap))
 
 
 func _chant_string() -> String:
@@ -2744,11 +2790,10 @@ Turn %d" % [run.act, run.floor_no(), fight.turn]))  # (two lines on the sign)
 	_sync_tube()  # (after the stock: at a new turn the stock takes the waiting balls out first)
 	var chant := _chant_string()
 	var pv := {}
-	if p.confuse_turns <= 0:
-		if phase == "build" and chant != "":
-			pv = fight.preview(chant)
-		elif phase == "spells" and _step_pos < 0 and not _released:
-			pv = fight.preview(fight.chant_string(), false)
+	if phase == "build" and chant != "":
+		pv = fight.preview(chant)
+	elif phase == "spells" and _step_pos < 0 and not _released:
+		pv = fight.preview(fight.chant_string(), false)
 	if phase == "build" and not pv.has("invoke"):
 		# nothing chanted yet: the Invoker still shows which of his spells he'd cast (the closest)
 		var inv := {}
@@ -2766,6 +2811,7 @@ Turn %d" % [run.act, run.floor_no(), fight.turn]))  # (two lines on the sign)
 		var s: Dictionary = card.spell
 		var dl := fight.durability_left(s)
 		card.durability_left = maxi(0, dl) if dl >= 0 or Fight.base_durability(s) > 0 else -1  # (the card shows what's left)
+		card.durability_max = fight.durability_max(s)  # (out of how much: "Durability 2/3")
 		card.state = ""
 		card.state_text = ""
 		card.ignited = p.ignited.has(s.id)
@@ -2814,7 +2860,7 @@ Turn %d" % [run.act, run.floor_no(), fight.turn]))  # (two lines on the sign)
 	_end_btn.text = "Pass" if _puppet_strips() else UiTheme.hk("Pass", "E")
 	if phase == "build":
 		_cast_btn.text = "Chant" if _puppet_strips() else UiTheme.hk("Chant", "Enter")
-		_cast_btn.disabled = busy or chant_idx.is_empty()
+		_cast_btn.disabled = busy or chant_idx.is_empty() or fight.player.stun_turns > 0
 	else:
 		_cast_btn.text = "Release" if _puppet_strips() else UiTheme.hk("Release", "E")
 		_cast_btn.disabled = busy or aiming or move_view != null or pick_view != null or chant_mode != ""
@@ -2822,7 +2868,9 @@ Turn %d" % [run.act, run.floor_no(), fight.turn]))  # (two lines on the sign)
 		b.disabled = busy or _auto_busy or phase != "build" or aiming or move_view != null or pick_view != null or chant_mode != "" or fight.over
 	var live_spells := fight.charges.size() > 0 and phase == "spells"
 	if not aiming and not busy and move_view == null and pick_view == null and chant_mode == "":
-		if phase == "build":
+		if phase == "build" and fight.player.stun_turns > 0:
+			_prompt.text = "You are Stunned: you can't chant or cast this turn. Pass, or drink a bottle."
+		elif phase == "build":
 			_prompt.text = "" if chant != "" else "Build a chant: when it is Released, enemies lose the longest start of their Essence found in it. Matching spells come alive."
 		elif live_spells:
 			_prompt.text = "Your spells are alive: click them to cast, in any order."
@@ -2894,13 +2942,13 @@ func _refresh_chant() -> void:
 		_chant_row.add_child(slot)
 	var note := "%d Essence" % chant_idx.size()
 	if _puppet_strips():
-		note = ""  # (Puppet Stage: no plain count; only what needs saying: a Toll, the chant is spoken, Confused)
+		note = ""  # (Puppet Stage: no plain count; only what needs saying: a Toll, the chant is spoken, Hypnotized)
 	if p.toll > 0:
 		note = "%d / %d Essence (Toll)" % [chant_idx.size(), slots]
 	if phase == "spells":
 		note = "Chanted (%d). It is Released when your spells are done." % shown.size()
 	if p.confuse_turns > 0 and phase == "build":
-		note += ("" if note == "" else "   ·   ") + "CONFUSED: this chant will be read backwards, and there is no preview"
+		note += ("" if note == "" else "   ·   ") + "HYPNOTIZED: you can't see what the enemies intend"
 	_chant_note.text = note
 	_chant_note.tooltip_text = note
 
@@ -3230,9 +3278,6 @@ func _input(ev: InputEvent) -> void:
 	if not _steal_drag.is_empty() and ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT and not ev.pressed:
 		_end_steal_drag(ev.global_position)
 		return
-	if (ev is InputEventMouseButton or ev is InputEventKey) and ev.pressed:
-		_idle = 0.0
-		_idle_helped = false
 	# Infuse: the element taken from the card follows the mouse; let go over the chant to place it
 	if _infuse_dragging and is_instance_valid(_drag):
 		if ev is InputEventMouseMotion:
@@ -3260,8 +3305,9 @@ func _input(ev: InputEvent) -> void:
 	var now := Time.get_ticks_msec() / 1000.0
 	_clicks.append(now)
 	_clicks = _clicks.filter(func(t): return now - t < 3.0)
-	# 5 clicks in 3 seconds without the game moving on: the player is probably lost
-	if _clicks.size() >= 5 and now - _last_help > 7.0:
+	# 5 clicks in 3 seconds without the game moving on: the player is probably lost (the tutorial only: a normal fight has
+	# no help popup)
+	if help_override.is_valid() and _clicks.size() >= 5 and now - _last_help > 7.0:
 		_last_help = now
 		_clicks.clear()
 		_show_help()
@@ -3483,7 +3529,7 @@ func _end_build_drag() -> void:
 	var p := fight.player
 	var back := {}  # a chant element let go away from the chant: it flies home to the bag
 	if src.kind == "stock":
-		if res.inside and chant_idx.size() < p.chant_slots() and _allowed("add", p.stock[src.i].el):
+		if res.inside and chant_idx.size() < p.chant_slots() and p.stun_turns == 0 and _allowed("add", p.stock[src.i].el):
 			# (the tutorial's scripted chant is built left to right, so there it always goes on the end)
 			var at: int = res.to if gate.call("insert", null) else chant_idx.size()
 			chant_idx.insert(clampi(at, 0, chant_idx.size()), src.i)
@@ -3505,8 +3551,8 @@ func _end_build_drag() -> void:
 
 
 func _toggle_stock(i: int) -> void:
-	if busy or phase != "build" or i < 0:
-		return
+	if busy or phase != "build" or i < 0 or fight.player.stun_turns > 0:
+		return  # (Stunned: the bag stays shut)
 	if i in chant_idx:
 		_remove_from_chant(chant_idx.find(i))
 	elif not fight.player.stock[i].frozen and chant_idx.size() < fight.player.chant_slots():
@@ -3553,6 +3599,8 @@ func _add_element(el: String) -> void:
 			pick = i
 	if pick >= 0:
 		_add_stock_index(pick)
+	elif el != "?":
+		_add_element("?")  # (none of that left: an Any Essence fits as any element)
 
 
 ## ---- Test mode: Auto-fill and Auto-ball ------------------------------------------------------------------------------------
@@ -3879,8 +3927,8 @@ func _on_card_clicked(card: SpellCard) -> void:
 			_prepicked = {fight.enemies[got[0]]: got[1]}
 		else:
 			var cands := fight.target_candidates()
-			if cands.size() == 1:
-				target = cands[0]
+			if cands.size() <= _max_picks(spell):
+				target = cands[0]  # (no more enemies than it picks: it hits them all, nothing to choose)
 			else:
 				target = await _aim(card, _card_point(card), cands, "%s: choose a target  ·  click, or Tab + Enter  ·  right-click to put it back" % spell.name, true)
 				if target < 0:
@@ -4101,12 +4149,14 @@ func _status_badges() -> Array:
 		out.append(["🌵 Thorns %d" % th, Color(0.5, 0.85, 0.25), "thorns"])
 	if p.ethereal:
 		out.append(["👻 Ethereal", Color(0.75, 0.7, 1.0), "ethereal"])
+	if p.stun_turns > 0:
+		out.append(["💫 Stunned", Color(1.0, 0.85, 0.3), "stun"])
 	if p.echo_next:
 		out.append(["🔔 Echo ready", Color(0.85, 0.6, 1.0), "echo"])
 	if p.poison > 0:
 		out.append(["🧪 Poison %d" % p.poison, Color(0.55, 0.9, 0.3), "poison"])
 	if p.confuse_turns > 0:
-		out.append(["🌀 Confused %d" % p.confuse_turns, Color(0.8, 0.4, 1.0), "confuse"])
+		out.append(["🌀 Hypnotized %d" % p.confuse_turns, Color(0.8, 0.4, 1.0), "confuse"])
 	if p.blind_turns > 0:
 		out.append(["🙈 Blind %d" % p.blind_turns, Color(0.7, 0.72, 0.78), "blind"])
 	if p.frail_turns > 0:
@@ -4604,17 +4654,11 @@ func _process(_d: float) -> void:
 	if _puppet_strips():
 		_drag_feedback()
 	_pulse_release()
+	# what the artifacts give for next turn: once the HUD is up and no ball is moving, it flies to the tray (each once)
+	if _puppet_strips() and _machine_ready and not _hud_hidden() and phase == "build" and not busy and _spawned_once 			and fight.player.next_draw.any(func(d): return d.has("from") and not d.get("shown", false)):
+		_stash_artifact_draws(fight.turn + 1)
 	if _puppet_strips():
 		_fit_enemy_lift()
-	# idle while it's your move: the Seedling pops up once to help (not in the tutorial, which has its coach)
-	if not busy and not rope_mode and not fight.over and not help_override.is_valid() and _pause_overlay == null:
-		_idle += _d
-		if _idle >= IDLE_HELP and not _idle_helped:
-			_idle_helped = true
-			_last_help = Time.get_ticks_msec() / 1000.0
-			_show_help()
-	else:
-		_idle = 0.0
 	if aiming:
 		# the enemy under the mouse becomes the highlighted target
 		var m := get_global_mouse_position()
@@ -4674,8 +4718,8 @@ func _choose_target(spell: Dictionary, cands: Array) -> int:
 		if not got.is_empty():
 			_prepicked = {fight.enemies[got[0]]: got[1]}
 			return got[0]
-	if cands.size() == 1:
-		return cands[0]
+	if cands.size() <= _max_picks(spell):
+		return cands[0]  # (no more enemies than it picks: nothing to choose)
 	var card: SpellCard = null
 	for c in _cards:
 		if c.spell.id == spell.id:
@@ -5439,6 +5483,8 @@ func _anim_event(ev: Dictionary) -> void:
 			await _wait(0.3)
 		"refund":
 			await _refund_flight(ev)
+		"next_rolled":
+			pass  # (what the artifacts gave flies to the tray once the balls of this turn are in: see _process)
 		"artifact_used":
 			_arts.flash(ev.id)
 			Audio.play("spell_glow")
@@ -5638,7 +5684,10 @@ func _anim_event(ev: Dictionary) -> void:
 			Audio.play("sfx_mend")
 			_sync_views()
 			_refresh_all()
-			await _wait(0.2)
+			if not ev.get("gains", []).is_empty():
+				await _mend_light(ev.enemy, ev.gains)
+			else:
+				await _wait(0.2)
 		"stolen":
 			# the stolen orbs fly from the enemy into your elements
 			var v: EnemyView = _views.get(ev.enemy)
@@ -5774,6 +5823,8 @@ func _anim_event(ev: Dictionary) -> void:
 				iv.flash_invoked(ev.idx)
 			Audio.play("spell_glow")
 			await _wait(0.45)
+		"hm_new_hands":
+			await _hm_new_hands(ev.ids, ev.lines)
 		"speech":
 			await _speech(ev.enemy, ev.text)
 		"speech_lines":
@@ -6374,6 +6425,7 @@ func _talk() -> void:
 	var said := ""
 	var prefix := ""  # (something he says before his answer: "You are a master of this element as well, I see.")
 	var chosen := [null]
+	var given: Array = []  # artifacts you were given while talking: you get them once the talk is over
 	while true:
 		for c in col.get_children():
 			col.remove_child(c)  # (gone right away, so the box measures only what's new)
@@ -6458,23 +6510,10 @@ func _talk() -> void:
 			Audio.play("elem_pickup", -4.0)
 		BossTalk.mark_seen(o.id)
 		prefix = ""
-		var new_bar := func() -> void:
-			var old_bar := _arts
-			_arts = _make_arts()
-			_arts.position = old_bar.position
-			_top_layer.add_child(_arts)
-			old_bar.queue_free()
-			_fit_hud_frames()
 		for fx in o.get("effects", []):
 			var f := String(fx)
 			if f.begins_with("artifact:"):
-				var aid := f.get_slice(":", 1)
-				run.gain_artifact(aid)
-				Audio.play("artifact_get")
-				Events.toast.emit("Got %s" % Artifacts.view(aid).name, UiTheme.ACCENT)
-				if not test_mode and Artifacts.get_def(aid).get("unlock_by", "") != "" and SaveManager.unlock_artifact(aid):
-					Events.toast.emit("%s unlocked" % Artifacts.view(aid).name, Color(1, 0.85, 0.4))  # (and in the pool for good)
-				new_bar.call()
+				given.append(f.get_slice(":", 1))  # (handed over when the talk is over, not mid-conversation)
 			elif f == "engage":
 				pass
 			else:
@@ -6500,6 +6539,21 @@ func _talk() -> void:
 	gate = old_gate
 	_talking = false
 	_refresh_all()
+	# what you were given while talking: yours now, at the end of the talk
+	for aid in given:
+		run.gain_artifact(aid)
+		Audio.play("artifact_get")
+		Events.toast.emit("Got %s" % Artifacts.view(aid).name, UiTheme.ACCENT)
+		if not test_mode and Artifacts.get_def(aid).get("unlock_by", "") != "" and SaveManager.unlock_artifact(aid):
+			Events.toast.emit("%s unlocked" % Artifacts.view(aid).name, Color(1, 0.85, 0.4))  # (and in the pool for good)
+	if not given.is_empty():
+		var old_bar := _arts
+		_arts = _make_arts()
+		_arts.position = old_bar.position
+		_top_layer.add_child(_arts)
+		old_bar.queue_free()
+		_fit_hud_frames()
+		_refresh_all()
 	_hypnotize_opening()
 
 
@@ -6561,6 +6615,33 @@ func _speech(e: EnemyState, text: String, hold := 1.0) -> void:
 	var v: EnemyView = _views.get(e)
 	if v == null or not is_instance_valid(v):
 		return
+	await _speech_bubble(func(): return v.creature.global_position + Vector2(v.creature.size.x * 0.75, 10.0), text, hold)
+
+
+## The Handyman, his first two hands down: "Very well." "How about..." "THESE!" from his body, and only then do his
+## next two hands burst out of his shoulders, the stage shaking as they unfold.
+func _hm_new_hands(ids: Array, lines: Array) -> void:
+	_hm_hold = ids.duplicate()
+	_sync_views()
+	var head := func() -> Vector2:
+		if _hm_stage != null and is_instance_valid(_hm_stage):
+			var sq := _hm_stage.body_square()
+			return _hm_stage.global_position + sq.position + Vector2(sq.size.x * 0.72, sq.size.y * 0.12)
+		return Vector2(1060, 160)
+	for line in lines:
+		await _speech_bubble(head, line, 0.6 + String(line).split(" ").size() / 3.0)
+	_hm_hold.clear()
+	_sync_views()
+	_refresh_all()
+	Audio.play("boss_phase_change")
+	_shake(16.0)  # (the impact of the arms unfolding)
+	await _wait(0.18)
+	_shake(12.0)
+	await _wait(0.5)
+
+
+## An enemy's black speech bubble at head_at() (asked once the bubble has its size), held `hold` seconds.
+func _speech_bubble(head_at: Callable, text: String, hold := 1.0) -> void:
 	var bubble := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.07, 0.06, 0.08, 0.96)  # (enemies speak in black bubbles)
@@ -6579,7 +6660,7 @@ func _speech(e: EnemyState, text: String, hold := 1.0) -> void:
 	bubble.add_child(l)
 	_fx.add_child(bubble)
 	await get_tree().process_frame
-	var head := v.creature.global_position + Vector2(v.creature.size.x * 0.75, 10.0)
+	var head: Vector2 = head_at.call()
 	bubble.global_position = head - Vector2(0, bubble.size.y)
 	bubble.pivot_offset = Vector2(0, bubble.size.y)
 	bubble.scale = Vector2(0.3, 0.3)
@@ -7340,6 +7421,42 @@ func _spider_return(e: EnemyState) -> void:
 	await back.finished
 	if is_instance_valid(cr):
 		_lift_creature(cr, 0.0)
+
+
+## Mend: a ball of light flies from the enemy that mends to each new Essence (in its own or an ally's row), the same comet as
+## a spell's "gain Essence next turn"; each new Essence appears as its ball lands.
+func _mend_light(caster: EnemyState, gains: Array) -> void:
+	var cv: EnemyView = _views.get(caster)
+	if cv == null or not is_instance_valid(cv.creature):
+		await _wait(0.2)
+		return
+	await get_tree().process_frame  # (the rows were just rebuilt: let them lay out first)
+	var from := cv.creature.get_global_rect().get_center()
+	var dests := []
+	var i := 0
+	for g in gains:
+		var tv: EnemyView = _views.get(g.enemy)
+		if tv == null or int(g.index) >= tv._hp_icons.size():
+			continue
+		var icon: Control = tv._hp_icons[int(g.index)]
+		var at := tv.hp_point(int(g.index))
+		dests.append({"body": at, "row": at, "el": g.el, "px": icon.size.x, "ghost": false})
+		icon.modulate.a = 0.0  # (it shows when its ball lands)
+		var tw := icon.create_tween()
+		tw.tween_interval(i * 0.13 + 0.62)
+		tw.tween_property(icon, "modulate:a", 1.0, 0.25)
+		i += 1
+	if dests.is_empty():
+		await _wait(0.2)
+		return
+	var dur := SpellFx.play(_fx, "draw", {"op": "draw", "n": dests.size()}, from, dests, Color.WHITE, Vector2.ZERO, _shake, _hitstop)
+	await _wait(maxf(dur, 0.62 + dests.size() * 0.13 + 0.25))
+
+
+## How many different enemies a spell picks: 2 for "2 different enemies" (Glacial Spike), else 1. With no more enemies
+## than that, it just hits them all: no aiming.
+func _max_picks(spell: Dictionary) -> int:
+	return 2 if spell.get("effects", []).any(func(e): return e.get("target", "") == "two") else 1
 
 
 ## Where what lands on you lands: the middle of the HP tray (Puppet), the Keeper's panel otherwise.

@@ -59,12 +59,21 @@ func test_power_leaves_row_for_the_fight() -> void:
 	assert_true(f.usable_spells().is_empty(), "slot stays empty")
 
 
-func test_confuse_reads_backwards() -> void:
+func test_hypnotize_leaves_the_chant_alone() -> void:
+	# Hypnotize (internally "confuse") only hides the enemies' intents: the chant is read as it is
 	var f := _fight(["ashling"], [], "WF")
-	_set_hp(f.enemies[0], "FWAAAA")
+	_set_hp(f.enemies[0], "WFAAAA")
 	f.player.confuse_turns = 1
 	f.cast(_all(2))
-	assert_eq(f.enemies[0].hp_text(), "AAAA", "WF read as FW")
+	assert_eq(f.enemies[0].hp_text(), "AAAA", "WF read as WF")
+
+
+func test_trinity_spells_cant_be_fused() -> void:
+	var run := RunState.new()
+	run.setup(db, [], [], 4)
+	for id in ["trinity", "trinity_first", "trinity_second", "trinity_third"]:
+		run.learn_spell(id)
+		assert_true(not run.can_fuse(id), "%s can't be fused" % id)
 
 
 func test_steal_adds_to_enemy_hp() -> void:
@@ -236,7 +245,7 @@ func test_arcane_barrage_removes_3_random_essence() -> void:
 	f.cast_chant(_all(3))
 	f.resolve_spell("arcane_barrage")
 	assert_eq(f.enemies[0].size() + f.enemies[1].size(), 5, "3 of the 8 gone")
-	assert_eq(SpellText.card_text(db.get_spell("arcane_barrage")), "Remove 1 random enemy Essence, 3 times.")
+	assert_eq(SpellText.card_text(db.get_spell("arcane_barrage")), "Randomly deal 1 damage 3 times.")
 
 
 func test_seals_shorten_a_spell_down_to_every_chant() -> void:
@@ -634,9 +643,9 @@ func test_new_commons() -> void:
 	u.resolve_spell("unbind", 0)
 	assert_eq(u.player.hp, 34.0)
 	assert_true(u.player.silenced.is_empty() and u.player.ignited.is_empty())
-	assert_eq(SpellText.card_text(db.get_spell("coup_de_grace")), "Remove 1 random Essence of an enemy.
-Then if it has 2 or fewer Essence, Execute it.")
-	assert_eq(SpellText.card_text(db.get_spell("updraft_lance")), "Remove 2 random enemies' rightmost Essence.")
+	assert_eq(SpellText.card_text(db.get_spell("coup_de_grace")), "Deal 1 Random damage to an enemy.
+Then Execute at 2.")
+	assert_eq(SpellText.card_text(db.get_spell("updraft_lance")), "Deal 1 Right damage to 2 random enemies.")
 
 
 func test_durability_and_the_handyman_power() -> void:
@@ -937,6 +946,27 @@ func test_steal_any_puts_the_chosen_element_in_your_bag() -> void:
 	assert_eq(f.chant_string(), "AAA")
 
 
+func test_a_stolen_repainted_essence_is_any_in_your_bag() -> void:
+	var f := _fight(["ashling"], ["spray", "thieving_wind"], "WAAAA")
+	var e: EnemyState = f.enemies[0]
+	_set_hp(e, "FWFWF")
+	f.painter = func(_s): return [0, 3]
+	f.cast_chant(_all(5))
+	f.resolve_spell("spray")
+	assert_eq(e.hp_text(), "FWF?F")
+	e.rotate_right()  # (the painted mark moves with its Essence)
+	assert_true(e.is_painted(4) and not e.is_painted(3))
+	f.picker = func(_s, _e): return 4
+	f.resolve_spell("thieving_wind", 0)
+	assert_eq(e.hp_text(), "FFWF")
+	assert_eq(f.player.stock[-1].el, "?", "a repainted Essence comes to you as Any")
+	e.elements[0] = "W"
+	e.convert("first", "A")
+	assert_true(not e.is_painted(0))
+	assert_eq(Chant.occurrences("FWA", "F?A"), [0], "an Any in the chant fits every element")
+	assert_true(Chant.breaks_lock("WW", "A?W"), "and it can break a lock")
+
+
 func test_steal_a_specific_element() -> void:
 	var f := _fight(["ashling"], ["undercurrent"], "WW")
 	_set_hp(f.enemies[0], "FWFWF")
@@ -1028,7 +1058,7 @@ func test_thermal_burst_hits_two_different_enemies() -> void:
 	assert_eq(f.enemies[2].size(), 3, "second target: a different enemy")
 	assert_eq(f.enemies[1].size(), 5)
 	assert_true(not (0 in asked[0]), "the second pick can't be the first target again")
-	assert_eq(SpellText.card_text(db.get_spell("thermal_burst")), "Remove 2 leftmost Essence of 2 enemies.")
+	assert_eq(SpellText.card_text(db.get_spell("thermal_burst")), "Deal 2 Left damage to 2 different enemies.")
 
 
 func test_anti_spell_comes_alive_unless_its_pattern_is_chanted() -> void:
@@ -1868,7 +1898,7 @@ func test_ashen_veil_leaves_you_vulnerable() -> void:
 	f.enemies[0].dmg_bonus = 0
 	f._plan(f.enemies[0])
 	f.player.hp = 50
-	assert_true(SpellText.card_text(db.get_spell("ashen_veil")).contains("Apply 2 Vulnerable to yourself"))
+	assert_true(SpellText.card_text(db.get_spell("ashen_veil")).contains("Gain 2 Vulnerable"))
 	f.cast_chant(_all(3))
 	f.resolve_spell("ashen_veil")
 	assert_eq(f.player.vulnerable, 2)
@@ -2185,10 +2215,72 @@ func test_winter_wyvern_fireball_and_wing() -> void:
 	f._do_move(e, {"kind": "fireball", "n": 10})
 	assert_eq(e.fireball, 10, "the Fireball hovers")
 	var hp: int = f.player.hp
-	f._do_move(e, {"kind": "fireball_blast", "pose": {"wing": "front"}})
+	f._do_move(e, {"kind": "fireball_blast", "parts": {"wing": "front"}})
 	assert_eq(e.fireball, 0, "it went off")
 	assert_true(f.player.hp < hp, "and hurt")
 	assert_true(e.armor.has(true), "a wing in front Armours its next Essence")
 	var armed: int = e.armor.count(true)
-	f._do_move(e, {"kind": "attack", "n": 1, "pose": {"wing": "back"}})
+	f._do_move(e, {"kind": "attack", "n": 1, "parts": {"wing": "back"}})
 	assert_eq(e.armor.count(true), armed, "a wing behind it does not")
+
+
+func test_fire_dragon_wing_covers_one_part() -> void:
+	var f := _fight(["dragon_tail", "dragon_head"], ["fire_ball"], "FF")
+	var tail: EnemyState = f.enemies[0]
+	var head: EnemyState = f.enemies[1]
+	assert_eq([tail.def.dragon, head.def.dragon], ["tail", "head"], "tail on the left, head on the right")
+	assert_eq(tail.size(), 20)
+	assert_eq(head.size(), 20)
+	assert_true(f.wing_fold in ["head", "tail"], "the wing is folded from the first turn")
+	assert_true(tail.winged != head.winged, "exactly one part is under the wing")
+	# fold it over the head: the chant and the spells can only reach the tail
+	f.wing_fold = "head"
+	head.winged = true
+	tail.winged = false
+	_set_hp(tail, "FFW")
+	_set_hp(head, "FFW")
+	var pv := f.preview("FF")
+	assert_true(pv.removed.has(tail) and not pv.removed.has(head), "the chant can't touch the part under the wing")
+	assert_eq(f.target_candidates(), [0], "a spell can't aim at it either")
+	assert_eq(f.hittable(), [tail])
+
+
+func test_fire_dragon_moves() -> void:
+	var f := _fight(["dragon_tail", "dragon_head"], ["fire_ball", "water_wall"], "FF")
+	var tail: EnemyState = f.enemies[0]
+	var head: EnemyState = f.enemies[1]
+	# Thrash: 2 damage and you are stunned: no chant, no spell
+	var hp := f.player.hp
+	f._do_move(tail, tail.def.moves[1])
+	assert_eq(f.player.hp, hp - 2.0)
+	assert_eq(f.player.stun_turns, 1)
+	f.cast_chant(_all(2))
+	assert_eq(f.player.stock.size(), 2, "stunned: the chant isn't spoken")
+	f.player.stun_turns = 0
+	# Fireball: it hangs between the tail and the head, then bursts and Ignites ALL your spells
+	f._do_move(head, head.def.moves[2])
+	assert_eq(f.enemies.size(), 3)
+	var ball: EnemyState = f.enemies[1]
+	assert_eq(ball.def.dragon, "fireball", "between tail and head")
+	assert_eq(ball.size(), 5)
+	assert_true(ball.fresh, "it shows its intent at once and acts a turn later")
+	f._plan(head)
+	assert_true(head.intent.kind != "summon", "no second fireball while one hangs there")
+	f._do_move(ball, ball.intent)
+	assert_true(f.player.ignited.has("fire_ball") and f.player.ignited.has("water_wall"), "every spell is on fire")
+	assert_true(ball.is_dead(), "the fireball is spent")
+
+
+func test_fire_dragon_needs_both_parts_down() -> void:
+	var f := _fight(["dragon_tail", "dragon_head"], [], "")
+	var tail: EnemyState = f.enemies[0]
+	var head: EnemyState = f.enemies[1]
+	f._do_move(head, head.def.moves[2])
+	_set_hp(tail, "")
+	f._check_end()
+	assert_true(not f.over, "one part down is not enough")
+	_set_hp(head, "")
+	f._check_end()
+	assert_true(f.over and f.won, "both down: won, and its fireball fizzles out with it")
+	assert_true("fire_dragon" in EnemyDefs.elites(3))
+	assert_eq(EnemyDefs.ids_of("fire_dragon"), ["dragon_tail", "dragon_head"])

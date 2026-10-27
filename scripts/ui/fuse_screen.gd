@@ -308,7 +308,7 @@ func _other_ids() -> Array:
 
 
 ## What the new pattern means for your other spells: an anti-spell whose pattern is inside it would be broken
-## every time you cast the new spell; an active spell whose pattern is inside it wakes along with it. (BBCode.)
+## every time you cast the new spell. (BBCode.)
 func _pattern_notes(sp: Dictionary) -> String:
 	var p: String = sp.get("pattern", "")
 	var lines := [Keywords.colorize("The new spell is ready. Fuse them when you're happy, or swap a spell out.")]
@@ -319,8 +319,6 @@ func _pattern_notes(sp: Dictionary) -> String:
 				if String(pat) != "" and not Chant.occurrences(String(pat), p).is_empty():
 					lines.append("[color=#ff7a6b]⚠ Its pattern contains %s's pattern: chanting it would break %s.[/color]" % [o.name.xml_escape(), o.name.xml_escape()])
 					break
-		elif id in run.loadout and String(o.pattern) != "" and not Chant.occurrences(String(o.pattern), p).is_empty():
-			lines.append(Keywords.colorize("✦ Chanting it also wakes %s." % o.name))
 	return "\n".join(lines)
 
 

@@ -24,7 +24,6 @@ const LEVER_PIVOT := Vector2(1832.0, 836.5)  # the middle of the hub's cylinder:
 const LEVER_PULL_DEG := 90.0  # the stick swings this far towards the player: it ends pointing straight at you
 const LEVER_DRIFT := 0.3  # (of its length) the tip sinks by this much at the end of the swing: the stick is seen a little from above
 
-var behind := Control.new()  # (under the Bag strip itself: FightScreen expects it; empty here until the layer's art is committed)
 var back := Control.new()
 var behind := Control.new()  # the tube: a child of the Bag strip that shows behind the strip itself (show_behind_parent)
 var front := Control.new()

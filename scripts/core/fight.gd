@@ -31,7 +31,7 @@ const LENSES := {"flame_lens": "F", "tide_lens": "W", "gale_lens": "A"}
 const REDIRECT_DMG_PER_ELEMENT := 3.0
 ## Moves aimed at you. When an intent is redirected, attacks hit the new target and these fizzle.
 const IGNITE_DAMAGE := 5  # casting an Ignited spell burns you this much (the Ember Sprite)
-const AT_PLAYER := ["disarm", "drain_essence", "invert_spells", "ignite_spell", "silence", "lock", "steal", "confuse", "blind", "poison", "freeze", "toll", "invert", "hex", "mimic", "frail", "brittle"]
+const AT_PLAYER := ["disarm", "drain_essence", "invert_spells", "ignite_spell", "silence", "lock", "steal", "confuse", "blind", "poison", "freeze", "toll", "invert", "hex", "mimic", "frail", "brittle", "stun"]
 
 var rng := RandomNumberGenerator.new()
 var db: SpellDB
@@ -46,6 +46,7 @@ var turn := 0
 var over := false
 var won := false
 var last_chant := ""
+var wing_fold := ""  # the Fire Dragon's wing this turn: "head" or "tail" (that part can't be touched), "" = no dragon
 var defeated: Array = []  # enemy ids killed (for the codex)
 var blind_masks := {}  # EnemyState -> Array[bool] hidden positions
 var lines: Array = []
@@ -189,9 +190,11 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 			for i in e.size():
 				if not e.armor[i]:
 					free.append(i)
-			var el: String = e.pluck(free[rng.randi() % free.size()])
+			var at: int = free[rng.randi() % free.size()]
+			var painted: bool = e.is_painted(at)
+			var el: String = e.pluck(at)
 			if el != "":
-				player.add_element(el if el != "?" else _random_element())
+				player.add_element("?" if painted else (el if el != "?" else _random_element()))  # (repainted: an Any Essence)
 				_log("The Mysterious Hand steals a %s from %s." % [Elements.NAMES.get(el, "Essence"), e.name])
 	player.dmg_taken_mult = 1.25 if has_artifact("glass_heart") else 1.0
 	var start_n := PlayerState.START_ELEMENTS + (int(_an("wind_chime")) if has_artifact("wind_chime") else 0)
@@ -213,6 +216,7 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 	turn = 1
 	for e in enemies:
 		_plan(e)
+	_fold_wing()
 	_log("The fight begins.")
 
 
@@ -259,6 +263,11 @@ func _wall_essence(n: int) -> Array:
 
 func alive() -> Array:
 	return enemies.filter(func(e): return not e.is_dead())
+
+
+## The living enemies you can touch right now (not one under the Fire Dragon's wing).
+func hittable() -> Array:
+	return enemies.filter(func(e): return not e.is_dead() and not e.winged)
 
 
 func active_spells() -> Array:
@@ -357,29 +366,34 @@ func _roll_next_draw(upcoming: int) -> void:
 			player.next_draw.append({"el": ch, "temp": false})
 		return
 	var n := PlayerState.BASE_DRAW - player.overload + player.passive("draw_bonus")
+	var extra := {}  # artifact id -> how many more random Essence it gives (they go to the tray, from that artifact)
 	if has_artifact("second_wind") and player.hp < player.max_hp / 2.0:
-		n += int(_an("second_wind"))
+		extra["second_wind"] = int(_an("second_wind"))
 	if has_artifact("heartwood_seed"):
-		n += 1
+		extra["heartwood_seed"] = 1
 	if has_artifact("blood_pact"):
-		n += 1
+		extra["blood_pact"] = 1
 	if has_artifact("withered_idol"):
-		n += 2
+		extra["withered_idol"] = 2
 	if has_artifact("lucky_acorn") and rng.randf() < _an("lucky_acorn"):
-		n += 1
+		extra["lucky_acorn"] = 1
 	player.overload = 0
 	for i in maxi(0, n):
 		player.next_draw.append({"el": _draw_element(), "temp": false})
+	for id in extra:
+		for i in int(extra[id]):
+			player.next_draw.append({"el": _draw_element(), "temp": false, "from": id})
 	for i in player.passive("attune"):  # Attunement: 1 more of the Essence you picked, every turn
 		player.next_draw.append({"el": player.passives.get("attune_el", "F"), "temp": false})
 	for h in HEARTS:
 		if has_artifact(h):
-			player.next_draw.append({"el": HEARTS[h], "temp": false})
+			player.next_draw.append({"el": HEARTS[h], "temp": false, "from": h})
 	if upcoming == 3:
 		for em in EMBLEMS:
 			if has_artifact(em):
 				for i in int(_an(em)):
-					player.next_draw.append({"el": EMBLEMS[em], "temp": false})
+					player.next_draw.append({"el": EMBLEMS[em], "temp": false, "from": em})
+	anim.call({"type": "next_rolled", "turn": upcoming})  # (the screen shows what the artifacts gave: into the tray)
 
 
 ## Start of your turn (not the first): Poison bites, receive the previewed draw, Powers tick.
@@ -409,15 +423,13 @@ func begin_player_turn() -> void:
 # ------------------------------------------------------------------ preview
 
 ## What the Release would do with this chant: {removed: {enemy: matched}, dies: [enemy], spells: {id: n}}.
-## raw: the chant as built from your stock (Confuse reverses it); pass raw = false for an already spoken chant.
+## raw: the chant as built from your stock; pass raw = false for an already spoken chant.
 func preview(c: String, raw := true) -> Dictionary:
-	if raw and player.confuse_turns > 0:
-		c = c.reverse()
 	var removed := {}
 	var dies := []
 	var extra: int = (1 if has_artifact("glass_heart") else 0) + turn_ctx.get("amplify", 0)
 	for e in alive():
-		if e.ethereal or (e.has_passive("warded") and c.length() < 4):
+		if e.ethereal or e.winged or (e.has_passive("warded") and c.length() < 4):
 			continue
 		var k := Chant.prefix_match(e.elements, c)
 		if k == 0:
@@ -453,8 +465,8 @@ func preview(c: String, raw := true) -> Dictionary:
 
 ## Speak the chant made of these stock entries (in this order). Nothing is struck yet: matched spells gain charges.
 func cast_chant(stock_indices: Array) -> void:
-	if over or stock_indices.is_empty():
-		return
+	if over or stock_indices.is_empty() or player.stun_turns > 0:
+		return  # (Stunned: no chant this turn)
 	var entries := []
 	for i in stock_indices:
 		entries.append(player.stock[i])
@@ -469,9 +481,6 @@ func cast_chant(stock_indices: Array) -> void:
 		if e.hexed:
 			player.take_effect(2.0)
 			_log("The hex burns you for 2.")
-	if player.confuse_turns > 0:
-		c = c.reverse()
-		_log("Confused: your chant is read backwards (%s)." % c)
 	chant.clear()
 	for ch in c:
 		chant.append(ch)
@@ -562,7 +571,7 @@ func has_valid_move() -> bool:
 func target_candidates() -> Array:
 	var out := []
 	for i in enemies.size():
-		if not enemies[i].is_dead():
+		if not enemies[i].is_dead() and not enemies[i].winged:
 			out.append(i)
 	return out
 
@@ -576,7 +585,7 @@ func _find_spell(id: String) -> Dictionary:
 
 ## Cast one charge of a living spell. target_idx: the enemy for "target" effects (-1: ask the chooser).
 func resolve_spell(id: String, target_idx := -1) -> void:
-	if over or charges.get(id, 0) <= 0:
+	if over or charges.get(id, 0) <= 0 or player.stun_turns > 0:
 		return
 	var spell := _find_spell(id)
 	used[id] = used.get(id, 0) + 1
@@ -623,8 +632,13 @@ func resolve_spell(id: String, target_idx := -1) -> void:
 			# the Magic Box: this spell's pattern comes back to your bag after the Release
 			if not turn_ctx.has("box_refund"):
 				turn_ctx.box_refund = []
-			for ch in String(spell.get("pattern", "")):
+				turn_ctx.box_slots = []
+			var pat := String(spell.get("pattern", ""))
+			var at := Chant.first_index(pat, chant_string()) if pat != "" else -1  # (where it sits in the chant: the animation flies them from there)
+			for k in pat.length():
+				var ch := pat[k]
 				turn_ctx.box_refund.append(ch if ch != "?" else _random_element())
+				turn_ctx.box_slots.append(at + k if at >= 0 else maxi(0, chant.size() - 1))
 			_log("The Magic Box plays a note: %s's Essence will come back after the Release." % spell.name)
 	for t in times:
 		if over:
@@ -663,6 +677,14 @@ func durability_left(spell: Dictionary) -> int:
 	if base <= 0:
 		return -1
 	return int(player.durability.get(spell.id, base + player.passive("durability_bonus")))
+
+
+## A spell's full Durability this fight (with the Handyman's bonus; 1 for a spell Desperate Measure gave Durability to).
+func durability_max(spell: Dictionary) -> int:
+	var base := base_durability(spell)
+	if base <= 0:
+		return 1 if player.durability.has(spell.id) else -1
+	return base + player.passive("durability_bonus")
 
 
 ## One point of Durability off (a cast, or a Hammer hit). Returns true if that broke it.
@@ -768,6 +790,7 @@ func finish_turn() -> void:
 				player.add_element(el if el != "?" else _random_element())
 		var back := _lens_refunds(chant)
 		back.append_array(turn_ctx.get("box_refund", []))  # (the Magic Box)
+		refund_slots.append_array(turn_ctx.get("box_slots", []))  # (one chant slot per refunded Essence, for the animation)
 		for k in player.passive("refund_air"):
 			back.append("A")  # Storm Crown: Air comes back after every Release
 			refund_slots.append(maxi(0, chant.size() - 1))
@@ -824,7 +847,7 @@ func pass_turn() -> void:
 func _strike(c: String) -> Array:
 	var plans := []
 	for e in alive():
-		if e.ethereal:
+		if e.ethereal or e.winged:
 			continue
 		if e.has_passive("warded") and c.length() < 4:
 			continue
@@ -892,6 +915,7 @@ func _split(e: EnemyState) -> void:
 	e.elements = e.elements.slice(0, half)
 	e.armor = e.armor.slice(0, half)
 	e.lit = e.lit.slice(0, half)
+	e.painted = e.painted.slice(0, half)
 	e.def.split_done = true
 	enemies.insert(enemies.find(e) + 1, twin)
 	twin.fresh = true
@@ -983,6 +1007,13 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 	var targets := await _targets(eff, spell, tctx)
 	if eff.op in STATUS_OPS:
 		targets = targets.filter(func(x): return not (x is EnemyState and x.impervious > 0))  # (Impervious: no status sticks)
+	if eff.op in HIT_OPS:
+		# who this spell's damage has hit so far ("then Execute" looks at every one of them)
+		if not tctx.has("_hit"):
+			tctx["_hit"] = []
+		for t in targets:
+			if not (t in tctx._hit):
+				tctx._hit.append(t)
 	# Gain Essence: rolled before the show, so each orb flies in its own element's colour to its own slot
 	var drawn: Array[String] = []
 	if eff.op == "draw":
@@ -1047,6 +1078,8 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 					continue
 				var was: String = e.elements[got[1]]
 				e.elements[got[1]] = to
+				e.is_painted(got[1])  # (makes sure the flags line up)
+				e.painted[got[1]] = true
 				_log("%s repaints %s's %s: it's %s now." % [spell.name, e.name, Elements.NAMES.get(was, "Essence"), "an Any Essence" if to == "?" else Elements.NAMES[to]])
 				await anim.call({"type": "paint", "enemy": e, "index": got[1], "was": was, "to": to})
 		"wild_move":
@@ -1090,6 +1123,8 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 					if not e.is_dead() and i < e.size() and e.elements[i] != to:
 						var was: String = e.elements[i]
 						e.elements[i] = to
+						e.is_painted(i)
+						e.painted[i] = true
 						_log("%s repaints %s's %s: it's %s now." % [spell.name, e.name, Elements.NAMES.get(was, "Essence"), "an Any Essence" if to == "?" else Elements.NAMES[to]])
 						await anim.call({"type": "paint", "enemy": e, "index": i, "was": was, "to": to})
 				else:
@@ -1191,11 +1226,15 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 				if pool.is_empty():
 					break
 				var t: EnemyState = pool[rng.randi() % pool.size()]
+				if eff.get("what", "burn") == "poison":
+					t.poison += 1 + player.passive("poison_bonus")  # (a fused spell's Poison, scattered at random)
+					anim.call({"type": "effect", "op": "poison", "eff": {"op": "poison", "n": 1}, "targets": [t]})
+					continue
 				await anim.call({"type": "meteor", "enemy": t})  # (one fireball at a time)
 				t.ignite(1, rng)
 				await _burned(1)
 				anim.call({"type": "meteor_hit", "enemy": t})
-			_log("%s rains fire: Burn 1, %d times." % [spell.name, eff.n])
+			_log("%s scatters %s: 1, %d times." % [spell.name, "Poison" if eff.get("what", "burn") == "poison" else "Burn", eff.n])
 		"disarm":
 			for e in targets:
 				e.disarmed = maxi(e.disarmed, int(eff.get("turns", 1)))
@@ -1425,17 +1464,20 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 						if e.is_dead() or not e.armor.has(false):
 							break
 						var idx: int = await picker.call(spell, e)
+						var painted: bool = e.is_painted(idx)
 						var el: String = e.pluck(idx)
 						if el != "":
-							taken.append(el)
+							taken.append("?" if painted else el)  # (a repainted Essence comes to you as an Any Essence)
 				else:
 					for i in eff.n:  # (only that kind: you choose which)
 						var idx: int = await _pick_of(spell, e, eff.el)
 						if idx < 0:
 							break
-						taken.append(e.pluck(idx))
+						var painted: bool = e.is_painted(idx)
+						var el: String = e.pluck(idx)
+						taken.append("?" if painted else el)
 				for el in taken:
-					var got: String = el if el != "?" else _random_element()  # a stolen Any Essence settles on one element
+					var got: String = el  # (a stolen Any Essence stays Any: it fits every element in your chant)
 					if eff.get("when", "now") == "next":
 						player.next_draw.append({"el": got, "temp": true})  # Soul Siphon: Conjured next turn
 					else:
@@ -1581,14 +1623,24 @@ func _burn_amount(n: int) -> int:
 	return n
 
 
+## Damage effects: the enemies they hit are remembered for this cast (see "then Execute").
+const HIT_OPS := ["strike", "random_hit", "barrage", "pluck", "purge", "purge_all", "siphon"]
+
+
 func _targets(eff: Dictionary, spell: Dictionary, tctx: Dictionary) -> Array:
+	if eff.get("target", "") == "hit":
+		# (a fused spell's rider whose damage went random: it lands on whoever that damage hit)
+		return tctx.get("_hit", []).filter(func(x): return not x.is_dead())
+	if eff.op == "execute" and eff.get("then", false) and tctx.has("_hit"):
+		# "then Execute at X": every enemy this spell's damage hit (all of them for a Barrage or an all-enemy hit)
+		return tctx._hit.filter(func(x): return not x.is_dead())
 	var t: String = eff.get("target", "")
-	var live := alive()
+	var live := hittable()  # (one under the Fire Dragon's wing can't be touched)
 	if live.is_empty():
 		return []
 	match t:
 		"target":
-			if not tctx.has("target") or tctx.target.is_dead():
+			if not tctx.has("target") or tctx.target.is_dead() or tctx.target.winged:
 				var cands := target_candidates()
 				var idx: int = await chooser.call(spell, cands)
 				tctx.target = enemies[idx]
@@ -1806,6 +1858,7 @@ func end_player_turn() -> void:
 		if player.cooldowns[s] <= 0:
 			player.cooldowns.erase(s)
 	player.disarmed_turns = maxi(0, player.disarmed_turns - 1)
+	player.stun_turns = maxi(0, player.stun_turns - 1)
 	for s in player.ignited.keys():
 		player.ignited[s] -= 1
 		if player.ignited[s] <= 0:
@@ -1827,6 +1880,7 @@ func end_player_turn() -> void:
 			e.keep_intent = false
 			continue
 		_plan(e)
+	_fold_wing()
 	await anim.call({"type": "intents_shown"})
 	await begin_player_turn()
 
@@ -1886,6 +1940,18 @@ func _enemy_phase() -> void:
 
 
 ## Moves are used strictly in the listed order, looping (a boss switches to its second list at half HP).
+## The Fire Dragon's wing: every turn it folds over its head or its tail, at random (even over a part that's already dead:
+## it keeps going back and forth). The part under it can't be touched by anything you do this turn. Shown with the intents.
+func _fold_wing() -> void:
+	var parts := enemies.filter(func(e): return e.def.get("dragon", "") in ["head", "tail"])
+	if parts.is_empty():
+		wing_fold = ""
+		return
+	wing_fold = "head" if rng.randf() < 0.5 else "tail"
+	for e in parts:
+		e.winged = not e.is_dead() and e.def.dragon == wing_fold
+
+
 func _plan(e: EnemyState) -> void:
 	if e.def.get("invokes", false):
 		_invoker_plan(e)
@@ -1909,6 +1975,11 @@ func _plan(e: EnemyState) -> void:
 	_rage_check(e)
 	if e.phase == 2 and e.def.has("moves2"):
 		moves = e.def.moves2
+	if e.def.get("random_moves", false):
+		# (the Fire Dragon's head and tail: any of their moves, at random; no second fireball while one still hangs there)
+		var pool := moves.filter(func(m): return not (m.kind == "summon" and (alive().size() >= MAX_ENEMIES or alive().any(func(x): return x.def.get("dragon", "") == "fireball"))))
+		e.intent = pool[rng.randi() % pool.size()]
+		return
 	e.intent = moves[e.move_index % moves.size()]
 	e.move_index += 1
 	if e.intent.kind == "charge" and e.intent.has("n"):
@@ -2320,7 +2391,7 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 		if m.has("also") and not over and not e.is_dead():
 			await _do_move(e, m.also)
 		return
-	if m.get("pose", {}).get("wing", "") == "front":
+	if m.get("parts", {}).get("wing", "") == "front":
 		var guard := e.armor.find(false)  # (the Winter Wyvern's wing guards it)
 		if guard >= 0:
 			e.set_armor(guard)
@@ -2394,6 +2465,7 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				var hurt := alive().filter(func(x): return x.size() < int(m.get("cap", 999)))
 				hurt.sort_custom(func(a, b): return a.size() < b.size())
 				targets = hurt.slice(0, 1)
+			var gains := []  # [{enemy, index, el}]: each new Essence (the screen flies a ball of light from e to it)
 			for t in targets:
 				for i in m.n:
 					if t.size() >= int(m.get("cap", 999)):
@@ -2404,7 +2476,8 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 					elif el == "own":
 						el = t.def.hp[0]  # (its own element)
 					t.append(el)
-			await anim.call({"type": "mend", "enemy": e})
+					gains.append({"enemy": t, "index": t.size() - 1, "el": el})
+			await anim.call({"type": "mend", "enemy": e, "gains": gains})
 		"shuffle":
 			e.rotate_left()
 		"silence":
@@ -2481,6 +2554,11 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				await _do_move(e, {"kind": "attack", "n": blast})
 		"ignite_spell":
 			var cands := usable_spells().filter(func(s): return not player.ignited.has(s.id))
+			if m.get("all", false):
+				for s in cands:
+					player.ignited[s.id] = m.turns  # (the Dragon's fireball bursts: every spell is on fire)
+				_log("%s bursts: all your spells are on fire next turn (casting one burns you for %d)." % [e.name, IGNITE_DAMAGE])
+				cands = []
 			for k in int(m.get("n", 1)):
 				if cands.is_empty():
 					break
@@ -2488,6 +2566,13 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				player.ignited[s.id] = m.turns
 				_log("%s sets %s on fire: casting it next turn burns you for %d." % [e.name, s.name, IGNITE_DAMAGE])
 			await anim.call({"type": "ignite_spell"})
+			if m.get("burst", false):
+				e.elements.clear()  # (the fireball is spent: it's gone)
+				e.armor.clear()
+				e.lit.clear()
+		"stun":
+			player.stun_turns = maxi(player.stun_turns, int(m.get("turns", 1)))
+			_log("%s stuns you: next turn you can't chant or cast." % e.name)
 		"lock":
 			var cands := active_spells().filter(func(s): return not player.locks.has(s.id))
 			if not cands.is_empty():
@@ -2507,8 +2592,10 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				taken_items.append({"uid": s.uid, "el": s.el})
 			_log("%s steals your Essence onto its hide." % e.name)
 		"confuse":
+			# Hypnotize (internally "confuse"): next turn you can't see what any enemy intends
 			if not has_artifact("calm_stone"):
 				player.confuse_turns = 1
+				_log("%s hypnotizes you: you can't see what the enemies intend." % e.name)
 				await anim.call({"type": "confuse"})
 		"blind":
 			if not has_artifact("keen_eye"):
@@ -2562,6 +2649,13 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				if alive().size() < MAX_ENEMIES:
 					var sid: String = m.list[i % m.list.size()] if m.has("list") else (m.id if m.has("id") else m.ids[rng.randi() % m.ids.size()])
 					var add := _spawn(sid)
+					if m.get("flank", false) and e in enemies:
+						# (the Wizard's Forge Spirits: one on each side of him, the first on his left)
+						enemies.erase(add)
+						enemies.insert(enemies.find(e) + (0 if i % 2 == 0 else 1), add)
+					elif add.def.get("dragon", "") == "fireball" and e in enemies:
+						enemies.erase(add)  # (the Dragon's fireball: between its tail and its head, above the wing)
+						enemies.insert(enemies.find(e), add)
 					add.fresh = true
 					_plan(add)
 					await anim.call({"type": "spawn", "enemy": add})
@@ -2727,7 +2821,15 @@ func _check_end() -> void:
 	if player.is_dead():
 		over = true
 		won = false
-	elif alive().is_empty() and not enemies.any(func(x): return x.knocked):
+		return
+	var dragon := enemies.filter(func(x): return x.def.get("dragon", "") in ["head", "tail"])
+	if not dragon.is_empty() and dragon.all(func(x): return x.is_dead()):
+		for x in alive():
+			if x.def.get("dragon", "") == "fireball":
+				x.elements.clear()  # (the Dragon is down: its fireball fizzles out with it)
+				x.armor.clear()
+				x.lit.clear()
+	if alive().is_empty() and not enemies.any(func(x): return x.knocked):
 		over = true
 		won = true
 

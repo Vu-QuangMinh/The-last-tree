@@ -8,8 +8,14 @@ const GREEN := Color(0.25, 0.65, 0.35)
 const PURPLE := Color(0.55, 0.3, 0.8)
 const GREY := Color(0.45, 0.47, 0.52)
 
+## Puppet Stage: the bubble stands right of its enemy and points left at it (the Fire Dragon's head, at the right end of the stage).
+var point_left := false
+
+
 func _draw() -> void:
 	if not _hb.is_empty():  # Puppet Stage: a cap, a stretchy middle, a cap with the pointer (it points right, at its enemy)
+		if point_left:
+			draw_set_transform(Vector2(size.x, 0.0), 0.0, Vector2(-1.0, 1.0))  # (mirrored: the pointer on the left)
 		var l: Texture2D = _hb["left"]
 		var r: Texture2D = _hb["right"]
 		var m: Texture2D = _hb["mid"]
@@ -42,7 +48,7 @@ const LOOK := {
 	"silence": ["🔇", PURPLE], "lock": ["🔒", PURPLE], "steal": ["✋", PURPLE], "confuse": ["🌀", PURPLE],
 	"blind": ["🙈", PURPLE], "poison": ["🧪", PURPLE], "freeze": ["❄", PURPLE], "ethereal": ["👻", BLUE],
 	"empower": ["💪", BLUE], "summon": ["👤+", BLUE], "toll": ["⛓", PURPLE], "invert": ["🔄", PURPLE],
-	"hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "fireball": ["☄", RED], "fireball_blast": ["💥", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "grow_thorns": ["🌵", GREEN], "revive": ["🪽", Color(0.85, 0.75, 0.4)], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE], "steal_spell": ["🕸", PURPLE], "deflect": ["🗡", BLUE], "bottle": ["🍶", GREEN],
+	"hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "fireball": ["☄", RED], "fireball_blast": ["💥", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "stun": ["💫", PURPLE], "grow_thorns": ["🌵", GREEN], "revive": ["🪽", Color(0.85, 0.75, 0.4)], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE], "steal_spell": ["🕸", PURPLE], "deflect": ["🗡", BLUE], "bottle": ["🍶", GREEN],
 }
 
 
@@ -65,17 +71,18 @@ const INFO := {
 	"bottle": ["Bottle", "Cleanses the Samurai, and he is Impervious for a turn: no status can be put on him."],
 	"steal_spell": ["Steal a spell", "Takes one of your spells at random and wraps it in a cocoon. Break the cocoon to get it back."],
 	"invert_spells": ["Inversion", "Some of your spells flip: a spell becomes an anti-spell, an anti-spell a spell."],
-	"charge": ["Charging", "Something big is coming when the hourglass runs out."],
-	"fireball": ["Fireball", "A fireball hovers by the dragon for a turn, then explodes on you."],
+	"charge": ["Charging", ""],
+	"fireball": ["Fireball", "A fireball hovers by the wyvern for a turn, then flies into your HP bar and explodes."],
 	"fireball_blast": ["Explosion", "The hovering fireball explodes."],
 	"ignite_spell": ["Ignite", "Sets one of your spells on fire for your next turn: casting it burns you for 5 HP."],
 	"lock": ["Lock", "Locks one of your spells. Chant the lock's symbols, unbroken, to break it."],
 	"steal": ["Steal", "Takes Essence from your bag and adds it to its own."],
-	"confuse": ["Confuse", "Your next chant is read backwards, and there's no preview."],
+	"confuse": ["Hypnotize", "Next turn you can't see what any enemy intends to do."],
 	"blind": ["Blind", "Some enemy Essence show as ?. They still match normally."],
 	"poison": ["Poison", "At the start of your turn you lose that much HP, then Poison goes down by 1."],
 	"freeze": ["Freeze", "Freezes some of your Essence: they can't be used next turn."],
 	"ethereal": ["Ethereal", "Your next chant can't touch it."],
+	"stun": ["Stun", "Next turn you can't chant or cast: you can only Pass or drink a bottle."],
 	"empower": ["Empower", "Its attacks deal more damage from now on."],
 	"summon": ["Summon", "Calls more enemies into the fight."],
 	"toll": ["Toll", "Your next chant holds at most 5 Essence."],
@@ -101,7 +108,7 @@ const ART := {"attack": "intent_attack", "armor": "intent_armor", "freeze": "int
 	"poison": "intent_poison", "blind": "intent_blind", "confuse": "intent_confuse", "mend": "intent_mend", "shuffle": "intent_shuffle",
 	"silence": "intent_silence", "lock": "intent_lock", "ethereal": "intent_ethereal", "empower": "intent_empower", "toll": "intent_toll",
 	"invert": "intent_invert", "hex": "intent_hex", "mimic": "intent_mimic", "frail": "intent_frail", "hammer_spell": "intent_hammer_spell",
-	"invert_spells": "intent_invert_spells", "invoke": "intent_invoke", "stunned": "intent_stunned", "sing": "intent_sing", "ignite_spell": "intent_ignite_spell", "charge": "intent_charge", "revive": "intent_revive",
+	"invert_spells": "intent_invert_spells", "invoke": "intent_invoke", "stunned": "intent_stunned", "stun": "intent_stunned", "sing": "intent_sing", "ignite_spell": "intent_ignite_spell", "charge": "intent_charge", "revive": "intent_revive",
 	"grow_thorns": "intent_grow_thorns", "hold": "intent_hold", "cleanse_self": "intent_cleanse_self", "drain_essence": "intent_drain_essence", "disarm": "intent_disarm", "brittle": "intent_brittle", "regrow": "intent_regrow"}
 
 
@@ -147,8 +154,12 @@ func build(e: EnemyState, move := {}) -> void:
 		var hl: Texture2D = _hb["left"]
 		var hr: Texture2D = _hb["right"]
 		var hs := StyleBoxEmpty.new()
+		point_left = e.def.get("dragon", "") == "head"
 		hs.content_margin_left = hl.get_width() + 4.0
 		hs.content_margin_right = hr.get_width() + 2.0  # (the right piece holds the pointer: the content ends before it)
+		if point_left:
+			hs.content_margin_left = hr.get_width() + 2.0
+			hs.content_margin_right = hl.get_width() + 4.0
 		hs.content_margin_top = 0.0
 		hs.content_margin_bottom = 0.0
 		bubble = hs
@@ -193,8 +204,11 @@ func build(e: EnemyState, move := {}) -> void:
 		var info: Array = INFO.get(m.kind, [m.kind.capitalize(), ""])
 		var what := EnemyDefs.describe_move(_single(m), e.dmg_bonus) if m.kind != "attack" else _attack_words(m, e)
 		if m.kind == "charge":
-			what = "Charging: %d turn%s left, then it hits for %d" % [m.left, "" if m.left == 1 else "s", charge_damage(e)]
-		lines.append("%s [color=#%s][b]%s[/b][/color]: %s\n[color=#b8c2b8]%s[/color]" % [UiSkin.inline(ART.get(m.kind, ""), look[0], 24), (look[1] as Color).lightened(0.35).to_html(false), info[0], Keywords.colorize(what), info[1]])
+			what = "Deal %d damage when the hourglass hits 0" % charge_damage(e)
+		var line := "%s [color=#%s][b]%s[/b][/color]: %s" % [UiSkin.inline(ART.get(m.kind, ""), look[0], 24), (look[1] as Color).lightened(0.35).to_html(false), info[0], Keywords.colorize(what)]
+		if String(info[1]) != "":
+			line += "\n[color=#b8c2b8]%s[/color]" % info[1]
+		lines.append(line)
 		m = m.get("also", {})
 	if e.redirect_to != null and is_instance_valid(e.redirect_to):
 		var who := "itself" if e.redirect_to == e else e.redirect_to.name

@@ -232,6 +232,13 @@ func encounter_ids() -> Array:
 	return ids
 
 
+## Test mode: swap the encounter being prepared for these enemies (their extra Essence rolled the usual way).
+func set_encounter(ids: Array) -> void:
+	encounter = ids.duplicate()
+	encounter_name = ""
+	encounter_extra = ids.map(func(id): return EnemyDefs.extra_for(id, act, depth(), rng, ids.size()))
+
+
 ## Exactly the Essence an enemy of this encounter will start the fight with.
 func encounter_hp(i: int) -> Array:
 	var hp: Array = Array(EnemyDefs.get_def(encounter[i]).hp.split(""))
@@ -505,7 +512,7 @@ func rest() -> float:
 ## campfire) or fused already.
 func can_fuse(id: String) -> bool:
 	var s := spell(id)
-	return not s.is_empty() and not s.get("power", false) and not s.get("fused", false) and not s.get("anti", false)
+	return not s.is_empty() and not s.get("power", false) and not s.get("fused", false) and not s.get("anti", false) and not s.get("no_fuse", false)
 
 
 ## Two spells can be fused together if both are anti-spells or neither is.
@@ -542,12 +549,19 @@ func fuse_preview(id_a: String, id_b: String, drop := -1) -> Dictionary:
 	var order := ["common", "rare", "legendary"]
 	var rarity: String = order[maxi(order.find(a.rarity), order.find(b.rarity))]
 	var effects: Array = a.effects.duplicate(true) + b.effects.duplicate(true)
+	if not (a.get("anti", false) and b.get("anti", false)):
+		var key := [id_a, id_b]
+		key.sort()
+		effects = FuseRules.merge(effects, "|".join(key))  # (an override for this pair, if one was hand-made)
 	var s := {
 		"id": "fused_%d" % (_fuse_count + 1), "name": fusion_name(id_a, id_b, a.name, b.name),
 		"pattern": "", "effects": effects, "rarity": rarity,
 		"flavor": "Forged at a campfire from %s and %s." % [a.name, b.name],
 		"fused": true, "fused_from": [a.name, b.name],
 	}
+	var cd := maxi(int(a.get("cooldown", 0)), int(b.get("cooldown", 0)))
+	if cd > 0:
+		s.cooldown = cd  # (both have one: the stricter, Cooldown 1 + Cooldown 2 = Cooldown 2; Durability keeps the lower)
 	if a.get("anti", false) and b.get("anti", false):
 		# the mirror of a spell fusion: a spell needs one pattern AND then the other; a fused anti-spell keeps both
 		# patterns, one row each, and EITHER one in your chant breaks it. It does both effects. (Nothing to shoot.)

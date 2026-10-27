@@ -35,6 +35,7 @@ var each_turn: Array = []  # [{spell, effects}]
 var silenced := {}  # spell id -> turns
 var cooldowns := {}  # spell id -> turns before it can be cast again (Cooldown N)
 var disarmed_turns := 0  # Disarmed (the Invoker's Deafening Blast): your Release does nothing
+var stun_turns := 0  # Stunned (the Dragon's Thrash): you can't chant or cast; only Pass and bottles
 var ignited := {}  # spell id -> turns: casting it burns you (the Ember Sprite)
 var locks := {}  # spell id -> pattern
 var used_powers := {}  # spell id -> true
@@ -89,6 +90,7 @@ func reset_fight() -> void:
 	cooldowns.clear()
 	ignited.clear()
 	disarmed_turns = 0
+	stun_turns = 0
 	locks.clear()
 	used_powers.clear()
 	durability.clear()
@@ -174,7 +176,7 @@ func describe_statuses() -> Array:
 	if poison > 0:
 		out.append("Poison %d" % poison)
 	if confuse_turns > 0:
-		out.append("Confused: your chant is read backwards")
+		out.append("Hypnotized: you can't see what the enemies intend")
 	if blind_turns > 0:
 		out.append("Blind: some enemy Essence are hidden")
 	if toll > 0:
@@ -187,6 +189,8 @@ func describe_statuses() -> Array:
 		out.append("Brittle %d (you gain 25%% less Shield)" % brittle_turns)
 	if disarmed_turns > 0:
 		out.append("Disarmed (your Release does nothing this turn)")
+	if stun_turns > 0:
+		out.append("Stunned (you can't chant or cast this turn: only Pass and bottles)")
 	if overload > 0:
 		out.append("Overload: %d fewer Essence next turn" % overload)
 	return out

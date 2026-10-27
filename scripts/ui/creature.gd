@@ -48,7 +48,8 @@ const ART_FORMS := {"yin_yang_beast": "res://assets/enemies/yin_yang_%s_%d.webp"
 ## Puppet Stage: every enemy that has a cut-out in Puppet/Enemies/Act1..3/ (named after its id, or the PUPPET_FILES entry) is drawn from that
 ## one picture instead of its procedural body; it rocks on its base instead of bobbing, and tips back when hit.
 const ENEMY_ACTS := [1, 2, 3]
-const PUPPET_FILES := {"triplet_fire": "triplet_fire", "triplet_water": "triplet_water", "triplet_air": "triplet_air", "spiderling_a": "spiderling", "spiderling_b": "spiderling"}
+const PUPPET_FILES := {"triplet_fire": "triplet_fire", "triplet_water": "triplet_water", "triplet_air": "triplet_air", "spiderling_a": "spiderling", "spiderling_b": "spiderling",
+	"forge_spirit_b": "forge_spirit"}  # (the Wizard's second Forge Spirit: the same puppet)
 ## Loose pieces that hover next to a puppet instead of being painted on it: [file in Enemies/Act<n>/, centre as a fraction of the picture's square, phase].
 ## The Invoker's three orbs float above his open palm (cut off his hand by tools/import_act1_fix.py), each bobbing on its own beat.
 const FLOATERS := {"invoker": [["invoker/orb_fire", Vector2(0.7274, 0.4508), 0.0], ["invoker/orb_water", Vector2(0.7640, 0.3995), 2.1], ["invoker/orb_wind", Vector2(0.7953, 0.4555), 4.2]]}
@@ -62,6 +63,7 @@ const SHAPES := {
 	"stone_knight": 2, "warded_golem": 2, "lockwarden": 2, "woodcutter": 2, "invoker": 2, "forge_spirit": 1, "yin_yang_beast": 4, "yin_yang_clone": 4, "inverter": 2, "mimic_chest": 3,
 	"cinder_hound": 4, "blinding_beetle": 4, "bramble_matron": 5, "mirror_knight": 2, "void_archon": 1, "pickpocket_imp": 4, "overgrowth_vine": 5, "shrine_maiden": 5,
 	"tidecaller": 5, "hexer": 5, "toll_keeper": 5, "frost_hex": 5, "ashling": 1, "last_winter": 1,
+	"dragon_tail": 4, "dragon_head": 4, "dragon_fireball": 1,  # (the Fire Dragon: stand-ins until its pieces are drawn)
 }
 
 
