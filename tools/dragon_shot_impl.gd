@@ -11,58 +11,44 @@ func run(t: SceneTree) -> void:
 	var gd = root.get_node("GameData")
 	var run := RunState.new()
 	run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
-	var f := run.make_fight(["winter_wyvern"])
+	var f := run.make_fight(["wyvern_head", "wyvern_tail"])
 	var fs := FightScreen.new()
 	fs.setup(run, f)
 	root.add_child(fs)
 	await t.create_timer(3.0).timeout
-	var d: EnemyState = f.enemies[0]
-	_shot(root, out + "/dragon_idle.png")
-	var moves: Array = d.def.moves
-	for i in moves.size():
-		d.intent = moves[i]
-		d.fireball = 10 if moves[i].kind == "fireball_blast" else 0
+	var head: EnemyState = f.enemies[0]
+	var tail: EnemyState = f.enemies[1]
+	_shot(root, out + "/wyvern_idle.png")
+	# the wing over the head, then over the tail
+	for who in [head, tail]:
+		f.wing_fold = who.def.dragon
+		head.winged = who == head
+		tail.winged = who == tail
 		fs._sync_views()
-		fs._refresh_all()
-		await t.create_timer(1.3).timeout
-		_shot(root, out + "/dragon_%d.png" % i)
-		fs._views[d].creature.dragon_fx()
-		var steps := [0.25, 0.2, 0.2, 0.2]  # (the wing stays open in every move)
-		for k in steps.size():
-			await t.create_timer(steps[k]).timeout
-			_shot(root, out + "/dragon_%d_fx%d.png" % [i, k])
-		print(i, " ", EnemyDefs.describe_move(moves[i]), "  hit at ", fs._views[d].creature.dragon_hit_time())
-		await t.create_timer(1.0).timeout
-	# the wing folding down over the front, then over the back (your Essence flies at an Armoured one)
-	d.intent = {"kind": "attack", "n": 1}
-	d.fireball = 0
-	fs._sync_views()
-	await t.create_timer(0.5).timeout
-	for side in [1, -1]:
-		fs._views[d].creature.dragon_guard(side)
-		for k in 9:
-			await t.create_timer(0.07).timeout
-			_shot(root, out + "/guard%d_%d.png" % [1 if side > 0 else 2, k])
-		await t.create_timer(1.5).timeout
-	# the Fireball goes off: it flies into the HP bar and bursts there (frames every 0.15 s)
-	d.intent = moves[3]
-	d.fireball = 10
-	fs._sync_views()
-	await t.create_timer(1.2).timeout
-	fs._enemy_attack({"enemy": d, "n": 10, "blocked": false})
-	d.fireball = 0
-	for k in 8:
-		await t.create_timer(0.15).timeout
-		_shot(root, out + "/ball_%d.png" % k)
-	await t.create_timer(1.5).timeout
-	# the roar: two slow waves (frames every 0.3 s)
-	d.intent = moves[4]
-	fs._sync_views()
+		await t.create_timer(1.2).timeout
+		_shot(root, out + "/wyvern_wing_%s.png" % who.def.dragon)
+	head.winged = false
+	tail.winged = false
 	await t.create_timer(1.0).timeout
-	fs._views[d].creature.dragon_fx()
-	for k in 6:
-		await t.create_timer(0.3).timeout
-		_shot(root, out + "/roar_%d.png" % k)
+	# every move of each part: the intent shown, then the move acted out
+	for who in [head, tail]:
+		var moves: Array = who.def.moves
+		for i in moves.size():
+			who.intent = moves[i]
+			fs._sync_views()
+			fs._refresh_all()
+			await t.create_timer(1.2).timeout
+			_shot(root, out + "/wyvern_%s_%d.png" % [who.def.dragon, i])
+			fs._views[who].creature.dragon_fx()
+			for k in 3:
+				await t.create_timer(0.3).timeout
+				_shot(root, out + "/wyvern_%s_%d_fx%d.png" % [who.def.dragon, i, k])
+			await t.create_timer(1.0).timeout
+	# the Fireball between them
+	f._do_move(head, head.def.moves[2])
+	fs._sync_views()
+	await t.create_timer(1.5).timeout
+	_shot(root, out + "/wyvern_fireball.png")
 	print("done")
 
 

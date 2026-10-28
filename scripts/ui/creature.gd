@@ -27,6 +27,8 @@ var _orbs: Array = []  # the Invoker's words so far: their Essence orbit him for
 var _art_tip := 0.0  # the tilt the picture was last drawn with, and how far the jolt of a hit moved it sideways (for the rope mode's rivets)
 var _art_shake_x := 0.0
 var _art_xf := Transform2D.IDENTITY  # the puppet's own transform in this Control (its feet, its tip), for pieces drawn on their own
+var _ret: RetainerRig  # the Retainer's front arm and what it carries (null: the finished pictures are used)
+var _samurai: SamuraiRig  # the Samurai's pieces (null: the single picture is used)
 var _dragon: DragonRig  # the Winter Wyvern's pieces (null: the single picture is used)
 var _floaters: Array = []  # [texture, centre fraction, phase] of the loose pieces hovering by the puppet (FLOATERS)
 var _unveil_tex: Array = []  # [ball without its veil, head, left legs, right legs] of the Veiled Eyes' unveiling (see _draw_unveil)
@@ -48,7 +50,8 @@ const ART_FORMS := {"yin_yang_beast": "res://assets/enemies/yin_yang_%s_%d.webp"
 ## Puppet Stage: every enemy that has a cut-out in Puppet/Enemies/Act1..3/ (named after its id, or the PUPPET_FILES entry) is drawn from that
 ## one picture instead of its procedural body; it rocks on its base instead of bobbing, and tips back when hit.
 const ENEMY_ACTS := [1, 2, 3]
-const PUPPET_FILES := {"triplet_fire": "triplet_fire", "triplet_water": "triplet_water", "triplet_air": "triplet_air", "spiderling_a": "spiderling", "spiderling_b": "spiderling",
+const PUPPET_FILES := {"wyvern_head": "winter_wyvern", "wyvern_tail": "winter_wyvern", "wyvern_fireball": "dragon/fireball",  # (the wyvern's parts are drawn from DragonRig; the file only says it has art)
+	"triplet_fire": "triplet_fire", "triplet_water": "triplet_water", "triplet_air": "triplet_air", "spiderling_a": "spiderling", "spiderling_b": "spiderling",
 	"forge_spirit_b": "forge_spirit"}  # (the Wizard's second Forge Spirit: the same puppet)
 ## Loose pieces that hover next to a puppet instead of being painted on it: [file in Enemies/Act<n>/, centre as a fraction of the picture's square, phase].
 ## The Invoker's three orbs float above his open palm (cut off his hand by tools/import_act1_fix.py), each bobbing on its own beat.
@@ -63,7 +66,7 @@ const SHAPES := {
 	"stone_knight": 2, "warded_golem": 2, "lockwarden": 2, "woodcutter": 2, "invoker": 2, "forge_spirit": 1, "yin_yang_beast": 4, "yin_yang_clone": 4, "inverter": 2, "mimic_chest": 3,
 	"cinder_hound": 4, "blinding_beetle": 4, "bramble_matron": 5, "mirror_knight": 2, "void_archon": 1, "pickpocket_imp": 4, "overgrowth_vine": 5, "shrine_maiden": 5,
 	"tidecaller": 5, "hexer": 5, "toll_keeper": 5, "frost_hex": 5, "ashling": 1, "last_winter": 1,
-	"dragon_tail": 4, "dragon_head": 4, "dragon_fireball": 1,  # (the Fire Dragon: stand-ins until its pieces are drawn)
+	"dragon_tail": 4, "dragon_head": 4, "dragon_fireball": 1, "wyvern_tail": 4, "wyvern_head": 4, "wyvern_fireball": 1,  # (the Fire Dragon and the Winter Wyvern: stand-ins until its pieces are drawn)
 }
 
 
@@ -166,7 +169,14 @@ func setup(e: EnemyState) -> void:
 				var ft := _puppet_tex(f[0], int(e.def.get("act", 1)))
 				if ft != null:
 					_floaters.append([ft, f[1], f[2]])
-		_dragon = DragonRig.load_rig(int(e.def.get("act", 3))) if e.id == "winter_wyvern" and _puppet else null
+		_samurai = SamuraiRig.load_rig(2) if e.id == "samurai" and _puppet else null
+		_ret = RetainerRig.load_rig(2) if e.id == "samurai_retainer" and _puppet else null
+		if e.id == "samurai_retainer":  # (his poses: one finished picture each; the one without a pose is the idle one)
+			for p in RETAINER_POSES:
+				var rt := _puppet_tex("samurai_retainer_" + p, 2)
+				if rt != null:
+					_pose_tex[p] = rt
+		_dragon = DragonRig.for_part(e, self) if e.def.has("rig_part") and _puppet else null
 		_rig = {}
 		_rig_tex = []
 		if HandymanRig.ARMS.has(e.id):
@@ -305,8 +315,12 @@ func _process(d: float) -> void:
 		_yin_rot = move_toward(_yin_rot, _yin_target, d * TAU)
 	bob += d * 2.0
 	_spider_tick(d)
+	if _samurai != null:
+		_samurai.tick(d, _pose(), dead)
+	if _ret != null:
+		_ret.tick(d, "fan" if _ret_key() == "fan" else "bottle")
 	if _dragon != null:
-		_dragon.tick(d, _enemy, dead)
+		_dragon.tick(d)
 	if not _rig.is_empty():
 		var folded := _enemy != null and _enemy.knocked and not _enemy.fallen
 		var lying := _enemy != null and (_enemy.fallen or drop_hold)
@@ -527,7 +541,7 @@ func _draw_sword_stance(c: Vector2, s: float) -> void:
 func _art_side() -> float:
 	if enemy_id == "handyman" and _puppet:
 		return HandymanRig.BODY_PX * HandymanRig.SCALE
-	return minf(size.x, size.y) * 0.88 * big
+	return minf(size.x, size.y) * 0.88 * big * (RETAINER_BIG if enemy_id == "samurai_retainer" and _puppet else 1.0)
 
 
 func has_rig() -> bool:
@@ -540,6 +554,61 @@ var reach := Vector2.ZERO
 var sad_forever := false  # the Handyman's body, once every hand is down: he keeps the crying face (Face.pdf)
 var _sad_tex: Texture2D
 const SAMURAI_POSES := ["in_no_kamae", "ko_gasumi", "sha_no_kamae"]
+const SAMURAI_H := 1.725  # the Samurai's height (helmet to feet, idle), in art squares
+const RETAINER_BIG := 1.015  # his pictures are a square with a small man in it: drawn this much bigger than the other puppets' squares
+const RETAINER_CANVAS := 1500  # (the finished pictures of the Retainer are this many layout px wide)
+const RETAINER_POSES := ["gong", "gong2", "yield"]  # (finished pictures; the rest is RetainerRig)
+var _ret_pose := ""  # the Retainer acting a move out: the picture shown (empty: the one of his intent)
+
+
+## The Retainer acts his move out: the bottle held out, the fan waved, the gong struck (a script of [picture, seconds]). Returns how long it takes.
+func retainer_play(kind: String) -> float:
+	if _ret != null and kind == "bottle":
+		_ret.play_throw()
+		return RetainerRig.throw_time() + RetainerRig.BACK_TIME
+	if _ret != null and kind == "mend":
+		return _ret.play_fan()
+	var script: Array = {"empower": [["gong", 0.45], ["gong2", 0.55]]}.get(kind, [])
+	var total := 0.0
+	for s in script:
+		total += float(s[1])
+	_run_ret_script(script)
+	return total
+
+
+func _run_ret_script(script: Array) -> void:
+	for s in script:
+		_ret_pose = s[0]
+		await get_tree().create_timer(float(s[1])).timeout
+		if not is_instance_valid(self):
+			return
+	_ret_pose = ""
+
+
+## The picture the Retainer shows now: the one he is acting out, else the one of his intent.
+func _ret_key() -> String:
+	return _ret_pose if _ret_pose != "" else _pose()
+
+
+## The bottle in his hand, for FightScreen to throw: [its place on the screen, its width there].
+func retainer_bottle() -> Array:
+	if _ret == null:
+		return [global_position + size * 0.5, 60.0]
+	return [get_global_transform() * _ret.bottle_center, _ret.bottle_px * get_global_transform().get_scale().x]
+
+
+## The Retainer kneels: "I yield."
+func retainer_yield() -> void:
+	_ret_pose = "yield"
+
+
+## The Samurai swings: returns the seconds until the blow lands (see SamuraiRig.strike).
+func samurai_strike(hit: int, hits: int) -> float:
+	return _samurai.strike(hit, hits) if _samurai != null else 0.0
+
+
+func has_samurai() -> bool:
+	return _samurai != null
 var _pose_tex := {}  # the Samurai: stance -> picture; he stands in the stance of the move he is about to make
 
 
@@ -810,6 +879,8 @@ func _draw_art(blink_on: bool) -> void:
 		tex = _art["yin_" + _enemy.yin]
 	if _pose_tex.has(_pose()):
 		tex = _pose_tex[_pose()]
+	if _ret_pose != "" and _pose_tex.has(_ret_pose):
+		tex = _pose_tex[_ret_pose]  # (the Retainer acting a move out)
 	if _sad_tex != null and (sad_forever or _sad_t > 0.0):
 		tex = _sad_tex
 	var veil2: bool = enemy_id == "veiled_eyes" and _veil_tex.size() == 2 and _veil_tex[0] != null and _enemy != null and _enemy.phase >= 2
@@ -848,8 +919,13 @@ func _draw_art(blink_on: bool) -> void:
 		_draw_steal_pose(Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side)), side, mod)
 	elif enemy_id == "veiled_eyes" and _puppet and not dead and not veil2:
 		_draw_curtain(tex, Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side)), mod)  # (the veil of phase 1 sways like a curtain)
+	elif _ret != null and _puppet and not (_ret_key() in RETAINER_POSES):
+		var rk := side / float(RETAINER_CANVAS)  # (his pieces on the same ground line and body place as the finished pictures' square)
+		_ret.draw(self, _art_xf * Transform2D(0.0, Vector2.ONE, 0.0, Vector2(10.0 * rk, -40.0 * rk)), rk, mod)
+	elif _samurai != null and _puppet:
+		_samurai.draw(self, _art_xf, side * SAMURAI_H / _samurai.height_px(), mod)  # (his pieces, feet on the same line as the single picture's)
 	elif _dragon != null and _puppet:
-		_dragon.draw(self, _art_xf, side * DRAGON_W, mod)  # (its pieces, feet on the same line as the single picture's)
+		_dragon.draw_part(self, _art_xf, mod, _enemy.def.rig_part)  # (its part of the pieces, feet on the same line as the single picture's)
 	else:
 		draw_texture_rect(tex, Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side)), false, mod)
 	if enemy_id == "veiled_eyes" and _puppet and not dead and not unveiling:
@@ -865,19 +941,10 @@ func _draw_art(blink_on: bool) -> void:
 		draw_set_transform(Vector2.ZERO)
 
 
-const DRAGON_W := 2.6  # the Winter Wyvern's width on the screen, in art squares (it lies wide and low)
-
-
 ## The Winter Wyvern acts its move out (the lunge, the slam, the roar): see DragonRig.play.
 func dragon_fx() -> void:
 	if _dragon != null:
 		_dragon.play(_enemy)
-
-
-## Your Essence is flying at one of its Armoured Essence: a wing folds down over it (side 1: the front of its row, -1: the rear).
-func dragon_guard(side: int) -> void:
-	if _dragon != null:
-		_dragon.guard(side)
 
 
 ## The Winter Wyvern's hovering Fireball, for FightScreen to fly into your HP bar: its place on the screen, its width there, its pictures; hide it when it leaves.

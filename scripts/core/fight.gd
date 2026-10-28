@@ -2391,10 +2391,6 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 		if m.has("also") and not over and not e.is_dead():
 			await _do_move(e, m.also)
 		return
-	if m.get("parts", {}).get("wing", "") == "front":
-		var guard := e.armor.find(false)  # (the Winter Wyvern's wing guards it)
-		if guard >= 0:
-			e.set_armor(guard)
 	var taken_items: Array = []  # a steal: [{uid, el}] of the Essence it took from your bag (for the animation)
 	match m.kind:
 		"attack":
@@ -2419,7 +2415,7 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				var lost := player.take_attack(dmg)
 				var blocked := player.aegis < aegis_before or player.shield + player.lasting < shield_before
 				_log("%s attacks for %d." % [e.name, lost])
-				await anim.call({"type": "attack", "enemy": e, "n": lost, "blocked": blocked, "part": e.acting_part})
+				await anim.call({"type": "attack", "enemy": e, "n": lost, "blocked": blocked, "part": e.acting_part, "hit": h, "hits": int(m.get("hits", 1))})
 				if lost > 0.0 and e.has_passive("envenomed"):
 					player.poison += 1  # Envenomed: only a hit that takes HP (Shield stopping it all doesn't count)
 					_log("%s's venom gets in: Poison +1." % e.name)
@@ -2655,7 +2651,7 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 						enemies.insert(enemies.find(e) + (0 if i % 2 == 0 else 1), add)
 					elif add.def.get("dragon", "") == "fireball" and e in enemies:
 						enemies.erase(add)  # (the Dragon's fireball: between its tail and its head, above the wing)
-						enemies.insert(enemies.find(e), add)
+						enemies.insert(enemies.find(e) + (1 if e.def.get("head_left", false) else 0), add)
 					add.fresh = true
 					_plan(add)
 					await anim.call({"type": "spawn", "enemy": add})

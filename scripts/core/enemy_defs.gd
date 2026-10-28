@@ -96,7 +96,8 @@ const E := {
 		"flavor": "Fast, and hard to read."},
 	"lockwarden": {"name": "The Warden", "act": 2, "elite": true, "hp": "WFWAF", "moves": [{"kind": "lock", "len": 2}, {"kind": "attack", "n": 5}, {"kind": "attack", "n": 5}],
 		"flavor": "Chains your spells shut."},
-	# The Samurai and his Retainer, Tasuke (an Act 2 mini boss, met together; exact numbers: no act bonus).
+	# The Samurai and his Retainer, Tasuke (an Act 2 mini boss, met together; exact numbers: no act bonus). The Samurai stands on the LEFT and the Retainer
+	# on the RIGHT (his arms in the pictures reach out to the left, toward the Samurai: the bottle flies that way).
 	# The Samurai: one slash for 10; Deflect (his sword held sideways: on the turn he shows it, your Release can't touch either of them,
 	# each Essence is cut out of the air by an air slash, but your spells still work); an Iai charge, 3 x 3.
 	# The Retainer looks after him: a bottle (cleanses him, and he is Impervious for a turn: no status can be put on
@@ -107,8 +108,8 @@ const E := {
 	# in In no kamae for the slash, Ko gasumi for the Deflect, Sha no kamae for the Iai charge.
 	"samurai_retainer": {"name": "Retainer", "act": 2, "elite": true, "member": true, "no_extra": true, "no_bonus": true, "hp": "AWFAWFW",
 		"passives": ["retainer"],
-		"moves": [{"kind": "bottle", "who": "samurai"}, {"kind": "mend", "el": "random", "n": 2, "who": "samurai", "cap": 15, "sfx": "fan"},
-			{"kind": "empower", "n": 1, "who": "samurai", "sfx": "gong"}],
+		"moves": [{"kind": "bottle", "who": "samurai", "pose": "bottle"}, {"kind": "mend", "el": "random", "n": 2, "who": "samurai", "cap": 15, "sfx": "fan", "pose": "fan"},
+			{"kind": "empower", "n": 1, "who": "samurai", "sfx": "gong", "pose": "gong"}],
 		"flavor": "He goes where his lord goes."},
 	"samurai": {"name": "The Samurai", "act": 2, "elite": true, "member": true, "no_extra": true, "no_bonus": true, "hp": "FAWWFAFWAAFWFAW",
 		"passives": ["avenger"],
@@ -143,18 +144,6 @@ const E := {
 		"flavor": "A hedge that sings."},
 	"mirror_knight": {"name": "Mirror Knight", "act": 3, "elite": true, "hp": "WAFWAF", "moves": [{"kind": "armor", "pos": 0, "also": {"kind": "attack", "n": 5}}, {"kind": "shuffle", "also": {"kind": "attack", "n": 7}}],
 		"flavor": "Its guard is where you least expect."},
-	# The Winter Wyvern (Act 3 mini boss): its head, tail and wings are separate pieces that move, but the Essence row is the wyvern's
-	# alone; the wings have none. The wings stay open; a move with `wing: front` Armours its next Essence, and the wing folds down over
-	# the Armoured Essence when yours flies at it (FightScreen._release_step). `parts` only tells the picture what to do (see DragonRig):
-	# head = bite / up, tail = sweep / slam. The Fireball is planted one turn and explodes on the next one.
-	"winter_wyvern": {"name": "Winter Wyvern", "act": 3, "elite": true, "hp": "FFAWFFAWFA", "passives": ["dragon"],
-		"moves": [{"kind": "attack", "n": 6, "parts": {"head": "bite"}},
-			{"kind": "attack", "n": 3, "hits": 2, "parts": {"tail": "sweep", "wing": "front"}},
-			{"kind": "fireball", "n": 10, "parts": {"head": "up"}},
-			{"kind": "fireball_blast", "parts": {"head": "up", "wing": "front"}},
-			{"kind": "empower", "n": 2, "parts": {"head": "up"}},
-			{"kind": "attack", "n": 5, "also": {"kind": "freeze", "n": 2}, "parts": {"tail": "slam", "wing": "front"}}],
-		"flavor": "Wings spread, then fire."},
 	"void_archon": {"name": "Void Archon", "act": 3, "elite": true, "retired": true, "hp": "AFWAFWA", "moves": [{"kind": "blind", "turns": 2, "also": {"kind": "attack", "n": 5}}, {"kind": "lock", "len": 2}, {"kind": "attack", "n": 4, "hits": 3}],
 		"flavor": "It steals the light, then the words."},
 	# ---------------- bosses (moves2 = second phase, at half HP)
@@ -256,10 +245,28 @@ const E := {
 		"moves": [{"kind": "attack", "n": 10, "name": "Slap"}, {"kind": "attack", "n": 2, "name": "Thrash", "also": {"kind": "stun", "turns": 1}}],
 		"flavor": "It sweeps the stage clean."},
 	"dragon_head": {"name": "Dragon's Head", "act": 3, "elite": true, "member": true, "no_extra": true, "no_bonus": true, "random_moves": true,
-		"dragon": "head", "hp": "FWFAFFWAFWFAFFAWFWAF", "tint": Color(0.97, 0.62, 0.25),
+		"dragon": "head", "bubble_right": true, "hp": "FWFAFFWAFWFAFFAWFWAF", "tint": Color(0.97, 0.62, 0.25),
 		"moves": [{"kind": "attack", "n": 2, "hits": 3, "name": "Bite"}, {"kind": "empower", "n": 2, "name": "Howl"},
 			{"kind": "summon", "id": "dragon_fireball", "n": 1, "name": "Fireball"}],
 		"flavor": "It smiles in its sleep. It is not asleep."},
+	# The Winter Wyvern (Act 3 mini boss) uses the Fire Dragon's mechanics (user decision 2026-10-31): separate head and tail (20 Essence
+	# each, both must fall), the wing folds over one of them every turn, random moves, a hovering Fireball that Ignites all your spells.
+	# Its pictures are the user's own (Dragon2/Dragon.pdf, see DragonRig): `rig_part` says which part of the one rig this enemy draws, `parts` what
+	# the picture does for the move. It faces left, so its head stands on the LEFT (`head_left`: the Fireball appears on the head's right) and its
+	# tail on the right (`bubble_right`: the intent bubble stands at the right end of the stage); both views are `wide`, so the pieces fit.
+	"wyvern_head": {"name": "Wyvern's Head", "act": 3, "elite": true, "member": true, "no_extra": true, "no_bonus": true, "random_moves": true,
+		"dragon": "head", "rig_part": "head", "head_left": true, "wide": true, "hp": "FWFAFFWAFWFAFFAWFWAF", "tint": Color(0.62, 0.85, 1.0),
+		"moves": [{"kind": "attack", "n": 2, "hits": 3, "name": "Bite", "parts": {"head": "bite"}}, {"kind": "empower", "n": 2, "name": "Howl", "parts": {"head": "up"}},
+			{"kind": "summon", "id": "wyvern_fireball", "n": 1, "name": "Fireball", "parts": {"head": "up"}}],
+		"flavor": "Wings spread, then fire."},
+	"wyvern_tail": {"name": "Wyvern's Tail", "act": 3, "elite": true, "member": true, "no_extra": true, "no_bonus": true, "random_moves": true,
+		"dragon": "tail", "rig_part": "tail", "bubble_right": true, "wide": true, "hp": "FAFWFAWFAFWFAFWAFAWF", "tint": Color(0.55, 0.8, 0.95),
+		"moves": [{"kind": "attack", "n": 10, "name": "Slap", "parts": {"tail": "slam"}},
+			{"kind": "attack", "n": 2, "name": "Thrash", "also": {"kind": "stun", "turns": 1}, "parts": {"tail": "sweep"}}],
+		"flavor": "It sweeps the stage clean."},
+	"wyvern_fireball": {"name": "Fireball", "act": 3, "member": true, "no_extra": true, "no_bonus": true, "dragon": "fireball",
+		"hp": "FFFFF", "tint": Color(1.0, 0.45, 0.1), "moves": [{"kind": "ignite_spell", "all": true, "turns": 1, "burst": true}],
+		"flavor": "Pop it before it pops."},
 	# the Dragon's fireball: it hangs in mid-air above the wing (the wing can't cover it). Its intent shows at once;
 	# a turn later it bursts and Ignites ALL your spells, and is gone.
 	"dragon_fireball": {"name": "Fireball", "act": 3, "member": true, "no_extra": true, "no_bonus": true, "dragon": "fireball",
@@ -283,7 +290,6 @@ const PASSIVE_TEXT := {
 	"echo": "Echo: repeats each action twice.",
 	"briar_walls": "Briar Walls: she hides between two hedge walls (3 Essence each, the two ends of her row). They are part of her: leftmost and rightmost effects hit the ends of her row (a wall while it stands), random effects pick wall Essence first, and Snipe can reach anything. She regrows a fallen wall (she shows it first); with both up she sings (Power +1) or attacks. When her own Essence is gone, the walls fall with her.",
 	"thorns": "Thorns 2: you lose 2 HP whenever your Release hits it.",
-	"dragon": "Winter Wyvern: its wings have no Essence. Some of its moves Armour its next Essence under a wing, and the wing folds down over it when your Essence flies at it. A Fireball it spits hovers for a turn, then explodes.",
 	"burn_immune": "Fireproof: Burn has no effect on it.",
 	"slime_burst": "Burst: when it dies, two small slimes pop out.",
 	"hand": "A hand with 10 Essence: knocked out, it drops off and lies on the floor, and the next hand grows in its place. Once every hand has fallen, he pulls them all back up for his last stand, 2 Essence each; those hands shatter for good when beaten.",
@@ -349,7 +355,6 @@ const BIOS := {
 	"forge_spirit": "Hot, small, and very eager to prove itself.",
 	"handyman": "A tinkerer with too many hands and a tool in each. He never shows himself until there's nothing left to hide behind.",
 	"bramble_matron": "A druid wrapped in a living hedge. Her two walls do the fighting while she sings them stronger. Cut the walls, or Snipe her straight through them.",
-	"winter_wyvern": "A frost wyvern with wings spread. Its tail sweeps or slams, its head bites or rears up to spit a hovering fireball or roar itself angrier, and when your Essence flies at an Essence it has Armoured, a wing folds down to guard it.",
 	"mirror_knight": "Its guard is always exactly where you didn't aim. Rude, but fair.",
 	"void_archon": "Steals the light, then your words, then your patience.",
 	"woodcutter": "He came for the last tree, and he brought friends and an axe. Mostly the axe.",
@@ -413,8 +418,9 @@ static func elites(act: int) -> Array:
 ## Mini bosses that are a group: always met together, left to right.
 const ELITE_GROUPS := {
 	"the_triplet": {"name": "The Triplet", "act": 1, "ids": ["triplet_fire", "triplet_water", "triplet_air"]},
-	"samurai_pair": {"name": "The Samurai and his Retainer", "act": 2, "ids": ["samurai_retainer", "samurai"]},
+	"samurai_pair": {"name": "The Samurai and his Retainer", "act": 2, "ids": ["samurai", "samurai_retainer"]},
 	"fire_dragon": {"name": "The Fire Dragon", "act": 3, "ids": ["dragon_tail", "dragon_head"]},
+	"winter_wyvern": {"name": "The Winter Wyvern", "act": 3, "ids": ["wyvern_head", "wyvern_tail"]},
 }
 
 
@@ -701,8 +707,6 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			s = "Frail you (%d turn%s: you take 25%% more damage)" % [m.turns, "" if m.turns == 1 else "s"]
 	if m.has("also"):
 		s += " + " + describe_move(m.also, bonus, full)
-	if m.get("parts", {}).get("wing", "") == "front":
-		s += " + its wing guards it: Armour its next Essence"
 	if m.has("name"):
 		s = "%s: %s" % [m.name, s]  # (a named move: the Dragon's Slap, Thrash, Bite...)
 	return s

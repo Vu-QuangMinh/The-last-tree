@@ -2206,24 +2206,6 @@ func test_retainer_falls_first_and_the_samurai_swears_revenge() -> void:
 	assert_true(not f.over)
 
 
-func test_winter_wyvern_fireball_and_wing() -> void:
-	var f := _fight(["winter_wyvern"], [], "WFWA")
-	f.player.hp = 99
-	var e: EnemyState = f.enemies[0]
-	for m in e.def.moves:
-		assert_true(EnemyDefs.describe_move(m) != "", "every move reads: " + String(m.kind))
-	f._do_move(e, {"kind": "fireball", "n": 10})
-	assert_eq(e.fireball, 10, "the Fireball hovers")
-	var hp: int = f.player.hp
-	f._do_move(e, {"kind": "fireball_blast", "parts": {"wing": "front"}})
-	assert_eq(e.fireball, 0, "it went off")
-	assert_true(f.player.hp < hp, "and hurt")
-	assert_true(e.armor.has(true), "a wing in front Armours its next Essence")
-	var armed: int = e.armor.count(true)
-	f._do_move(e, {"kind": "attack", "n": 1, "parts": {"wing": "back"}})
-	assert_eq(e.armor.count(true), armed, "a wing behind it does not")
-
-
 func test_fire_dragon_wing_covers_one_part() -> void:
 	var f := _fight(["dragon_tail", "dragon_head"], ["fire_ball"], "FF")
 	var tail: EnemyState = f.enemies[0]
@@ -2284,3 +2266,35 @@ func test_fire_dragon_needs_both_parts_down() -> void:
 	assert_true(f.over and f.won, "both down: won, and its fireball fizzles out with it")
 	assert_true("fire_dragon" in EnemyDefs.elites(3))
 	assert_eq(EnemyDefs.ids_of("fire_dragon"), ["dragon_tail", "dragon_head"])
+
+
+func test_winter_wyvern_uses_fire_dragon_mechanics() -> void:
+	assert_true("winter_wyvern" in EnemyDefs.elites(3))
+	assert_eq(EnemyDefs.ids_of("winter_wyvern"), ["wyvern_head", "wyvern_tail"])
+	var f := _fight(["wyvern_head", "wyvern_tail"], ["fire_ball"], "FF")
+	var head: EnemyState = f.enemies[0]
+	var tail: EnemyState = f.enemies[1]
+	assert_true(f.wing_fold in ["head", "tail"] and tail.winged != head.winged, "the wing covers exactly one part")
+	f._do_move(head, head.def.moves[2])
+	var ball: EnemyState = f.enemies[1]
+	assert_eq(ball.def.dragon, "fireball", "the Fireball hangs between head and tail")
+	assert_eq(f.enemies[2], tail, "the head faces left: head, Fireball, tail")
+	f._do_move(ball, ball.intent)
+	assert_true(f.player.ignited.has("fire_ball"), "it Ignites your spells")
+	_set_hp(tail, "")
+	_set_hp(head, "")
+	f._check_end()
+	assert_true(f.over and f.won, "both parts down: won")
+
+
+func test_samurai_rig_data_is_consistent() -> void:
+	for seq in SamuraiRig.SEQ:
+		var frames: Array = SamuraiRig.SEQ[seq]
+		for fr in frames:
+			assert_true(SamuraiLayout.FRAMES.has(fr), "frame %s is in the layout" % fr)
+		assert_eq(SamuraiRig.STEP[seq].size(), frames.size() - 1, "%s: one duration per step" % seq)
+		assert_true(SamuraiRig.READY[seq] < frames.size(), "%s: the ready frame exists" % seq)
+		for h in SamuraiRig.HITS.get(seq, []):
+			assert_true(h >= SamuraiRig.READY[seq] and h < frames.size(), "%s: a blow lands after the stance is ready" % seq)
+	assert_eq(SamuraiRig.HITS.sha_no_kamae.size(), EnemyDefs.E.samurai.moves[2].hits, "one hit frame per blow of the Iai charge")
+	assert_eq(EnemyDefs.ids_of("samurai_pair"), ["samurai", "samurai_retainer"], "the Samurai on the left, his Retainer on the right")

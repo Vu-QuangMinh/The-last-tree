@@ -7252,8 +7252,47 @@ func _effect_landed(ev: Dictionary) -> void:
 		_float_text(text, _player_point() + Vector2(-40, -40), Color(0.6, 0.9, 1))
 
 
+## The Retainer's support moves: the hand goes down and comes up fast and the bottle flies to the Samurai, the fan waves, the gong is struck (see Creature.retainer_play).
+func _retainer_acts(v: EnemyView, ev: Dictionary) -> void:
+	var wait := v.creature.retainer_play(String(ev.kind))
+	if ev.kind == "bottle":
+		await _wait(RetainerRig.release_time())  # (the hand goes down, stops, and starts to come up: the bottle leaves it now)
+		_throw_bottle(v)
+		wait -= RetainerRig.release_time()
+	await _wait(maxf(0.1, wait - 0.5))
+
+
+## The bottle leaves the Retainer's hand and curves over to the Samurai (an arc, as if thrown).
+func _throw_bottle(v: EnemyView) -> void:
+	var target: EnemyView = null
+	for e in _views:
+		if is_instance_valid(_views[e]) and e.has_passive("avenger") and not e.is_dead():
+			target = _views[e]
+	var path := Creature.enemy_path("samurai_bottle.png", 2)
+	if target == null or path == "":
+		return
+	var held: Array = v.creature.retainer_bottle()
+	var from: Vector2 = held[0]
+	var to := target.creature.global_position + target.creature.size * Vector2(0.5, 0.4)
+	var bottle := Sprite2D.new()
+	bottle.texture = load(path)
+	var k: float = float(held[1]) / float(bottle.texture.get_width())
+	bottle.scale = Vector2.ONE * k
+	bottle.global_position = from
+	_fx.add_child(bottle)
+	var arc := maxf(70.0, absf(from.x - to.x) * 0.25)
+	var tw := create_tween()
+	tw.tween_method(func(q: float): bottle.global_position = from.lerp(to, q) + Vector2(0.0, -arc * sin(q * PI)), 0.0, 1.0, 0.65)
+	tw.parallel().tween_property(bottle, "rotation", -TAU * 1.5, 0.65)
+	await tw.finished
+	bottle.queue_free()
+
+
 ## The Samurai has fallen: his Retainer says so, kneels, and leaves the stage.
 func _retainer_yields(r: EnemyState) -> void:
+	var rv: EnemyView = _views.get(r)
+	if rv != null and is_instance_valid(rv):
+		rv.creature.retainer_yield()
 	await _speech(r, "I yield.", 1.6)
 	var v: EnemyView = _views.get(r)
 	if v != null and is_instance_valid(v):
@@ -7594,12 +7633,12 @@ func _enemy_attack(ev: Dictionary) -> void:
 		target = await _sword_slash(v, float(ev.n))  # (the blade cuts across your HP bar: the hit lands there)
 	elif v and v.creature.has_rig() and ev.enemy.id == "hand_crossbow" and _arrow_tex() != null:
 		target = await _arrow_shot(v, float(ev.n))  # (the bolt flies up and sticks in your HP bar: the hit lands there)
+	elif v and v.creature.has_samurai():
+		await _wait(v.creature.samurai_strike(int(ev.get("hit", 0)), int(ev.get("hits", 1))))  # (the swing plays; the blow lands when his sword comes down)
 	elif v and v.creature.has_rig():
 		# a Handyman hand: the arm winds back and swings down at you (about its shoulder and its elbow)
 		_arm_swing(v.creature, 1.0)
 		await _wait(0.23)
-	elif v and ev.enemy.id == "winter_wyvern" and ev.enemy.intent.get("kind", "") == "fireball_blast" and v.creature.dragon_fx_tex("fireball") != null:
-		target = await _fireball_fly(v)  # (the Fireball flies into your HP bar and explodes there: the damage lands there)
 	elif v:
 		v.creature.dragon_fx()
 		var c := v.creature
@@ -8073,12 +8112,14 @@ func _enemy_move_fx(ev: Dictionary) -> void:
 		_shake(4.0)
 	elif v and v.creature.has_rig():
 		v.creature.flash = 0.7  # (a hand of the Handyman that charges or buffs only glows: hit_flash would make it blink and his face cry as if it had been struck)
+	elif v and ev.enemy.id == "samurai_retainer":
+		await _retainer_acts(v, ev)
 	elif v:
 		v.hit_flash()
 		v.creature.dragon_fx()  # (the Winter Wyvern's Fireball / roar)
 	_sync_views()
 	_refresh_all()
-	await _wait((1.8 if kind == "empower" else 0.9) if ev.enemy.id == "winter_wyvern" else 0.5)
+	await _wait(0.5)
 
 
 ## A violent, building earthquake: the whole screen shakes harder and harder for `dur` seconds.
@@ -8164,8 +8205,6 @@ func _release_step(ev: Dictionary) -> void:
 		var comet := Comet.launch(_fx, from, v.hp_point(h[1]), col)
 		var j: int = h[1]
 		var target: EnemyState = h[0]
-		if target.id == "winter_wyvern" and j < target.armor.size() and target.armor[j]:
-			v.creature.dragon_guard(1 if j * 2 < target.size() else -1)  # (a wing folds down over the Essence your Essence is flying at)
 		comet.arrived.connect(func():
 			if is_instance_valid(v): v.pop(j)
 			Audio.play(impact))

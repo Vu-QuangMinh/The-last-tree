@@ -6,6 +6,7 @@ extends VBoxContainer
 signal clicked(view: EnemyView)
 signal hp_clicked(view: EnemyView, index: int)  # index == size() means "the end"
 
+const WYVERN_VIEW_W := 560.0  # (+ the 20 px between two views = DragonRig.SPACING)
 const FIREBALL_LIFT := 150.0  # how far above the floor line the Fire Dragon's fireball hangs
 var enemy: EnemyState
 var fight: Fight
@@ -50,6 +51,8 @@ func setup(e: EnemyState, f: Fight) -> void:
 	custom_minimum_size = Vector2(300, 470)
 	if enemy != null and enemy.has_passive("briar_walls"):
 		custom_minimum_size.x = 640.0  # room for her two hedges beside her own Essence
+	if enemy != null and enemy.def.get("wide", false):
+		custom_minimum_size.x = WYVERN_VIEW_W  # (the Winter Wyvern's head and tail: the pieces of its one picture stand this far apart, see DragonRig)
 	if enemy != null and enemy.def.get("invokes", false):
 		custom_minimum_size.x = 860.0  # room for his spell cards on either side of him
 	alignment = BoxContainer.ALIGNMENT_END
@@ -453,7 +456,7 @@ var _wing_mark: Label
 
 
 func _show_wing(on: bool) -> void:
-	if creature == null:
+	if creature == null or enemy.def.has("rig_part"):  # (the Winter Wyvern's wing is in its picture: DragonRig folds it over the part)
 		return
 	if on and _wing_mark == null:
 		_wing_mark = Label.new()
@@ -479,7 +482,7 @@ func _place_chip(chip: Control) -> void:
 			var hand_y := creature.size.y / 2.0 - PUPPET_TOP  # (the hand marker: the bubble stands above it, clear of the reticle)
 			chip.position = Vector2(b.get_center().x - chip.size.x / 2.0, hand_y - 28.0 - chip.size.y)
 			return
-		if enemy.def.get("dragon", "") == "head":
+		if enemy.def.get("bubble_right", false):
 			chip.position = Vector2(b.end.x + 4.0, b.get_center().y - chip.size.y / 2.0)  # (the Dragon's head: its bubble at the right end of the stage)
 			return
 		chip.position = Vector2(b.position.x - 4.0 - chip.size.x, b.get_center().y - chip.size.y / 2.0)

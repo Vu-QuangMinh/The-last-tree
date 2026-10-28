@@ -154,7 +154,7 @@ func build(e: EnemyState, move := {}) -> void:
 		var hl: Texture2D = _hb["left"]
 		var hr: Texture2D = _hb["right"]
 		var hs := StyleBoxEmpty.new()
-		point_left = e.def.get("dragon", "") == "head"
+		point_left = e.def.get("bubble_right", false)
 		hs.content_margin_left = hl.get_width() + 4.0
 		hs.content_margin_right = hr.get_width() + 2.0  # (the right piece holds the pointer: the content ends before it)
 		if point_left:
@@ -322,6 +322,16 @@ func _part(glyph: String, num: String, col: Color, kind := "") -> Control:
 			row.add_child(sword)
 			row.add_child(digits)
 			return row
+	if kind == "bottle" and UiSkin.is_puppet():
+		var bp := Creature.enemy_path("samurai_bottle.png", 2)  # (the Retainer's own bottle, small)
+		if bp != "":
+			var bottle := TextureRect.new()
+			bottle.texture = load(bp)
+			bottle.custom_minimum_size = Vector2(26.0, 33.0)
+			bottle.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			bottle.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			bottle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			return bottle
 	var art := UiSkin.icon(ART.get(kind, ""), 30)
 	if art != null:
 		# New theme: the painted icon straight on the bubble, number beside it
