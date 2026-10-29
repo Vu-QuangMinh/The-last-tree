@@ -5423,6 +5423,9 @@ func _redirector(spell: Dictionary, src: EnemyState, cands: Array) -> int:
 
 ## Animation hook from the fight.
 ## Every event of the fight, then: an enemy that has no Essence left breaks at once (not at the end of the turn).
+var _reforming := {}  # EnemyState -> PuppetShatter: a boss pulling itself back together (see "reform")
+
+
 func _anim(ev: Dictionary) -> void:
 	await _anim_event(ev)
 	_cull_dead()
@@ -5433,7 +5436,7 @@ func _cull_dead() -> void:
 	if _enemy_row == null:
 		return
 	for e in _views.keys():
-		if e.is_dead() and not e.knocked and not _hand_going_down(e) and not e.has_passive("armadillo") and not e.has_meta("yielded") and not (e.has_passive("veil_falls") and e.phase == 1):  # (the Veiled Eyes at 0 Essence do not break: the veil falls and the same puppet unfolds)
+		if e.is_dead() and not e.knocked and not _hand_going_down(e) and not e.has_passive("armadillo") and not e.has_meta("yielded") and not (e.has_passive("veil_falls") and e.phase == 1) and not (e.has_passive("invoker_rebirth") and e.phase == 1):  # (the Veiled Eyes at 0 Essence do not break: the veil falls and the same puppet unfolds; the Invoker rises again: his own burst-and-reform plays)
 			var old: EnemyView = _views[e]
 			_views.erase(e)
 			if is_instance_valid(old):
@@ -5870,10 +5873,14 @@ func _anim_event(ev: Dictionary) -> void:
 				var fx := PuppetShatter.spawn_reform(self, rv.creature)
 				if fx != null:
 					rv.creature.visible = false
+					_reforming[ev.enemy] = fx
 					await fx.reformed
+					_reforming.erase(ev.enemy)
 					if is_instance_valid(rv) and is_instance_valid(rv.creature):
 						rv.creature.visible = true
 		"speech_lines":
+			if is_instance_valid(_reforming.get(ev.enemy)):
+				await _reforming[ev.enemy].reformed  # (he speaks once he is whole again)
 			# a few sentences, one bubble each, held long enough to read (about 3 words a second, plus a moment)
 			for line in ev.lines:
 				await _speech(ev.enemy, line, 1.0 + String(line).split(" ").size() / 3.0)

@@ -285,7 +285,7 @@ func refresh(preview: Dictionary) -> void:
 	_show_wing(e.winged and not e.is_dead())
 	for c in _intent_slot.get_children():
 		c.queue_free()
-	if not e.intent.is_empty() and not e.def.get("hidden_intent", false):  # (the Silk Cocoon has none to show)
+	if not e.intent.is_empty() and not e.def.get("hidden_intent", false):  # (the Silk Cocoon has none to show; the Invoker's glowing card says it)
 		var chip := IntentChip.make(e)
 		# the fight screen shows our own hover panel instead of the built-in tooltip (see FightScreen._update_hover_info)
 		chip.set_meta("info", chip.tooltip_text)

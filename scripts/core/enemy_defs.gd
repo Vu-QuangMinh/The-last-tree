@@ -178,7 +178,7 @@ const E := {
 	# from then on chants Quas / Wex / Exort, one a turn: that Essence is stripped from his spells' patterns for the rest
 	# of the fight (they get easier to set off).
 	"invoker": {"name": "Good Ol' Wizard", "act": 1, "boss": true, "hp": "FWAFWAFWAFWAFWAFWAFW", "hp2": "AWFAWFAWFAWFAWF",
-		"invokes": true, "passives": ["invoker", "invoker_rebirth"], "tint": Color(0.5, 0.3, 0.72),
+		"invokes": true, "hidden_intent": true, "passives": ["invoker", "invoker_rebirth"], "tint": Color(0.5, 0.3, 0.72),
 		"moves": [{"kind": "invoke"}],
 		"flavor": "Ten spells, three words, no patience."},
 	# (two Forge Spirits come at once: their rows share no start, so one chant can't take both down)
