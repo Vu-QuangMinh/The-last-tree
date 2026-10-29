@@ -555,7 +555,7 @@ var sad_forever := false  # the Handyman's body, once every hand is down: he kee
 var _sad_tex: Texture2D
 const SAMURAI_POSES := ["in_no_kamae", "ko_gasumi", "sha_no_kamae"]
 const SAMURAI_H := 1.725  # the Samurai's height (helmet to feet, idle), in art squares
-const RETAINER_BIG := 1.015  # his pictures are a square with a small man in it: drawn this much bigger than the other puppets' squares
+const RETAINER_BIG := 1.4  # his pictures are a square with a small man in it: drawn this much bigger than the other puppets' squares
 const RETAINER_CANVAS := 1500  # (the finished pictures of the Retainer are this many layout px wide)
 const RETAINER_POSES := ["gong", "gong2", "yield"]  # (finished pictures; the rest is RetainerRig)
 var _ret_pose := ""  # the Retainer acting a move out: the picture shown (empty: the one of his intent)

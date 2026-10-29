@@ -4,7 +4,7 @@ with their own matrices: the idle pose, a two-frame idle sway and the three stan
 An ARM is a chain: the upper arm turns about its shoulder (a point of the body), the forearm turns about the elbow (the ball of the upper arm, which sits in
 the forearm's socket). The shoulder, the elbows and the sockets are SOLVED from the PDF (the point that stays put in every frame), and every frame stores the
 two angles and scales, so the arm in between two frames is still joined at the shoulder and the elbow (see SamuraiRig).
-The Retainer is the same: his body (the picture of 401 x 1403) is fixed; his front arm turns about the shoulder and carries the bottle / the fan (and the sliver,
+The Retainer is the same: his body (the picture of 984 x 1644) is fixed; his front arm turns about the shoulder and carries the bottle / the fan (and the sliver,
 his thumb) at the hand. Bottle (idle), lower (the hand lowered before the throw), fan 1 / fan 2 are those; the gong poses and the kneeling pose are finished pictures.
 Pictures are found by SIZE (the PDF was saved again and the xref numbers changed once already).
 Output (never into samurai/: that folder is the user's own):
@@ -36,7 +36,7 @@ LAYOUT_R = os.path.join(HERE, "..", "scripts", "ui", "retainer_layout.gd")
 SAMURAI_BY_SIZE = {(533, 881): "body", (228, 147): "back", (248, 390): "thigh_l", (247, 392): "thigh_r", (226, 105): "foot_l", (225, 104): "foot_r",
 	(238, 141): "arm_l", (239, 141): "arm_r", (313, 651): "sword_long_a", (309, 652): "sword_long_b", (312, 408): "sword_short_a", (309, 416): "sword_short_b"}
 SHIN = (134, 252)  # two pictures of the same size: the one that stands further left in the idle pose is the left shin
-RETAINER_BY_SIZE = {(401, 1403): "body", (417, 558): "arm_back", (68, 46): "sliver", (530, 668): "bottle", (603, 198): "arm_front", (368, 536): "fan",
+RETAINER_BY_SIZE = {(984, 1644): "body", (417, 558): "arm_back", (68, 46): "sliver", (1371, 2566): "bottle", (603, 198): "arm_front", (368, 536): "fan",
 	(1234, 1047): "mallet_arm", (720, 566): "gong", (668, 1318): "yield"}
 FORES = ["sword_long_a", "sword_long_b", "sword_short_a", "sword_short_b"]
 PREVIEW = 1.0 / 4.149  # page points -> pixels of the 2000 px wide preview in which the rows were read
@@ -302,14 +302,13 @@ def main() -> None:
 	pose_names = ["bottle", "lower", "fan1", "fan2", "gong", "gong2"]
 	rfr = {}
 	rplace = {}
-	# the pictures of a frame are consecutive in the page's order; a frame starts with his back arm (or the mallet arm of the gong poses)
+	# the pictures of a pose are the ones nearest (across the page) to its body; paint order = the page's order
 	run = [(k, i) for k, i in enumerate(infos) if i["xref"] in rname and i["bbox"][1] > 4200 and rname[i["xref"]] != "yield"]
-	runs = []
+	bodies_x = [(k, (i["bbox"][0] + i["bbox"][2]) / 2) for k, i in rbodies]
+	runs = [[] for _ in bodies_x]
 	for k, i in run:
-		if rname[i["xref"]] in ("arm_back", "mallet_arm") or not runs:
-			runs.append([])
-		runs[-1].append((k, i))
-	assert len(runs) == 6, [len(r) for r in runs]
+		cx = (i["bbox"][0] + i["bbox"][2]) / 2
+		runs[min(range(len(bodies_x)), key=lambda n: abs(bodies_x[n][1] - cx))].append((k, i))
 	for n, mine in enumerate(runs):
 		bk, bi = next((k, i) for k, i in mine if i["xref"] == rb_x)
 		mine.sort(key=lambda t: t[0])
