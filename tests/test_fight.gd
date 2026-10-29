@@ -464,11 +464,24 @@ func test_spells_wait_for_the_player_after_the_chant() -> void:
 func test_move_lets_you_place_an_element() -> void:
 	var f := _fight(["ashling"], ["updraft"], "A")
 	_set_hp(f.enemies[0], "FWAWW")
-	var moves := [[2, 0], [4, 1]]  # pick up the A, put it first; then the last W goes second
+	var moves := [[2, 0, 0, 0], [4, 1, 0, 0]]  # pick up the A, put it first; then the last W goes second
 	f.mover = func(_s, _e): return moves.pop_front()
 	f.cast_chant([0])
 	f.resolve_spell("updraft", 0)
 	assert_eq(f.enemies[0].hp_text(), "AWFWW", "Updraft: Rearrange 2")
+
+
+func test_rearrange_can_move_onto_another_enemy() -> void:
+	var f := _fight(["ashling", "iceling"], ["updraft"], "A")
+	_set_hp(f.enemies[0], "FW")
+	_set_hp(f.enemies[1], "AAA")
+	var moves := [[1, 0, 0, 1], [0, 4, 0, 1]]  # its W goes to the front of the other's row; then its last Essence to the end
+	f.mover = func(_s, _e): return moves.pop_front()
+	f.cast_chant([0])
+	f.resolve_spell("updraft", 0)
+	assert_eq(f.enemies[1].hp_text(), "WAAAF", "both moved onto the second enemy")
+	assert_true(f.enemies[0].is_dead(), "taking an enemy's last Essence defeats it")
+	assert_eq(f.db.get_spell("dustdevil").effects.size(), 1, "Dustdevil: Rearrange 2 only")
 
 
 func test_redirect_turns_an_attack_on_itself() -> void:
@@ -1589,9 +1602,13 @@ func test_invoker() -> void:
 	assert_eq(f.invoke_picks(e, "AAF"), [2], "nothing matched: just his choice")
 	assert_eq(f.invoke_picks(e, ""), [2], "whatever you chant (or not)")
 	# he picks one he hasn't cast yet
-	e.cast_ids = ["inv_sun_strike", "inv_cold_snap"]
+	e.conjured[0].spent = true
+	e.conjured[1].spent = true
 	f._pick_next(e)
 	assert_eq(e.invoke_next, 2, "the only one not cast yet")
+	assert_eq(f.invoke_picks(e, "FFFWWW"), [2], "a cast spell can't go off again")
+	e.conjured[0].erase("spent")
+	e.conjured[1].erase("spent")
 	# his Power shows on the cards
 	assert_eq(Fight.invoker_desc(e.conjured[0], e), "Deal %d damage to you." % (10 + e.dmg_bonus))
 	e.dmg_bonus += 2
@@ -1610,6 +1627,11 @@ func test_invoker() -> void:
 	assert_eq(f.alive().size(), 1, "not dead yet")
 	assert_eq(e.phase, 2)
 	assert_eq(e.size(), 15, "phase 2: 15 Essence")
+	# his first turn risen: he only speaks
+	var hp0 := f.player.hp
+	f._do_move(e, e.intent)
+	assert_eq(f.player.hp, hp0, "no spell on the turn he rises")
+	assert_true(e.stripped.is_empty())
 	f._plan(e)
 	assert_true(e.intent.has("word"))
 	var w: String = e.intent.word
@@ -1618,6 +1640,21 @@ func test_invoker() -> void:
 	assert_true(w in e.stripped)
 	for sp in e.conjured:
 		assert_true(not String(sp.pattern).contains(w), "every %s is gone from %s" % [w, sp.name])
+
+
+func test_invoker_keeps_his_spells_until_all_are_cast() -> void:
+	var f := _fight(["invoker"], ["fire_ball"], "")
+	var e: EnemyState = f.enemies[0]
+	f.player.hp = 999
+	var first := e.conjured.map(func(s): return s.id)
+	for turn in 3:
+		f.heard = ""
+		f._do_move(e, e.intent)
+		assert_eq(e.conjured.filter(func(s): return s.get("spent", false)).size(), turn + 1, "one cast per turn")
+		f._plan(e)
+		if turn < 2:
+			assert_eq(e.conjured.map(func(s): return s.id), first, "he keeps the same set")
+	assert_true(e.conjured.all(func(s): return not s.get("spent", false)), "all three cast: a new set")
 
 
 func test_invoker_spell_effects() -> void:

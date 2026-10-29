@@ -362,6 +362,27 @@ func move_element(from: int, to: int) -> void:
 	parts.insert(to, pa)
 
 
+## Rearrange onto another enemy: lift the Essence at `i` out of this row, armour and paint with it.
+func lift_out(i: int) -> Dictionary:
+	if i < 0 or i >= elements.size():
+		return {}
+	_fix_lit()
+	var got := {"el": elements[i], "armor": armor[i], "painted": painted[i]}
+	_remove_at(i)
+	return got
+
+
+## ... and set it into this row at `at` (it belongs to the enemy itself, never to a wall).
+func set_in(at: int, got: Dictionary) -> void:
+	_fix_lit()
+	at = clampi(at, 0, elements.size())
+	elements.insert(at, got.el)
+	armor.insert(at, got.armor)
+	lit.insert(at, false)
+	painted.insert(at, got.painted)
+	parts.insert(at, "")
+
+
 func insert_front(el: String) -> void:
 	_fix_lit()
 	elements.push_front(el)

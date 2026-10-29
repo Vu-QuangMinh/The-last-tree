@@ -102,8 +102,7 @@
    "effects": [
     {
      "op": "move",
-     "n": 2,
-     "target": "target"
+     "n": 2
     }
    ],
    "flavor": "Lift one Essence and set it down where you like.",
@@ -414,8 +413,7 @@
    "effects": [
     {
      "op": "move",
-     "n": 2,
-     "target": "target"
+     "n": 2
     }
    ],
    "flavor": "The current rearranges everything.",
@@ -1155,8 +1153,7 @@
    "effects": [
     {
      "op": "move",
-     "n": 1,
-     "target": "target"
+     "n": 1
     },
     {
      "op": "weak",
@@ -2752,11 +2749,6 @@
    "effects": [
     {
      "op": "move",
-     "n": 2,
-     "target": "target"
-    },
-    {
-     "op": "expose",
      "n": 2
     }
    ],

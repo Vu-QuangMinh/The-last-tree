@@ -286,17 +286,21 @@ func _effect_value(e: Dictionary) -> float:
 
 
 ## Move an armoured element to the end; otherwise bring forward an element you hold plenty of.
-func _pick_move(f: Fight, e: EnemyState) -> Array:
+func _pick_move(f: Fight, hint: EnemyState) -> Array:
+	var e: EnemyState = hint if hint != null else f.target_candidates().map(func(k): return f.enemies[k]).front()
+	if e == null:
+		return []
+	var ei := f.enemies.find(e)
 	var i := e.armor.find(true)
 	if i >= 0 and i < e.size() - 1:
-		return [i, e.size() - 1]
+		return [i, e.size() - 1, ei, ei]
 	var best := ""
 	for el in Elements.ALL:
 		if best == "" or f.player.count_usable(el) > f.player.count_usable(best):
 			best = el
 	var j := e.elements.find(best, 1)
 	if j > 0 and e.elements[0] != best:
-		return [j, 0]
+		return [j, 0, ei, ei]
 	return []
 
 

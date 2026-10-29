@@ -2,7 +2,8 @@ class_name Fight
 extends RefCounted
 ## One encounter. UI-agnostic: the screen (or the balance sim) supplies these async callbacks:
 ##   chooser:     (spell, candidates: Array[int]) -> int        target enemy, when one wasn't given up front
-##   mover:       (spell, enemy) -> [from, to]                   Move: rearrange an enemy's HP ([] skips)
+##   mover:       (spell, enemy) -> [from, to] / [from, to, from enemy index, to enemy index]   Rearrange: move one
+##                enemy Essence, within its row or onto another enemy's row ([] skips). enemy: the spell's target, or null
 ##   picker:      (spell, enemy) -> int                          Pluck: which HP element to remove
 ##   painter:     (spell) -> [enemy, index]                      Expose: which Essence becomes Any ([] = none left)
 ##   redirector:  (spell, source, candidates) -> int             Misdirection: who the intent hits instead
@@ -1427,14 +1428,33 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 				_log("%s joins your active spells." % s.name)
 			await anim.call({"type": "loadout_changed"})
 		"move":
-			for e in targets:
-				for i in eff.n:
-					if e.is_dead() or e.size() < 2:
-						break
-					var mv: Array = await mover.call(spell, e)
-					if mv.size() == 2:
-						e.move_element(mv[0], mv[1])
-						await anim.call({"type": "effect", "op": "move", "targets": [e]})
+			# Rearrange n: each move takes any enemy's Essence and puts it anywhere, in its own row or another
+			# enemy's (taking an enemy's last Essence defeats it)
+			var hint: EnemyState = targets[0] if not targets.is_empty() else null
+			for i in eff.n:
+				if over or not _can_rearrange():
+					break
+				var mv: Array = await mover.call(spell, hint)
+				if mv.size() == 2 and hint != null and not hint.is_dead():
+					hint.move_element(mv[0], mv[1])
+					await anim.call({"type": "effect", "op": "move", "targets": [hint]})
+				elif mv.size() == 4 and int(mv[2]) >= 0 and int(mv[2]) < enemies.size() and int(mv[3]) >= 0 and int(mv[3]) < enemies.size():
+					var src: EnemyState = enemies[int(mv[2])]
+					var dst: EnemyState = enemies[int(mv[3])]
+					if src == dst:
+						src.move_element(int(mv[0]), int(mv[1]))
+						await anim.call({"type": "effect", "op": "move", "targets": [src]})
+					else:
+						var got := src.lift_out(int(mv[0]))
+						if got.is_empty():
+							break
+						dst.set_in(int(mv[1]), got)
+						_log("%s moves %s's %s onto %s." % [spell.name, src.name, Elements.NAMES.get(got.el, "Essence"), dst.name])
+						await anim.call({"type": "effect", "op": "move", "targets": [src, dst]})
+						if src.is_dead():
+							_log("%s has no Essence left!" % src.name)
+				else:
+					break
 		"steal":
 			# take elements out of the enemy's HP and into your elements (Instant Steal: into this turn's chant)
 			for e in targets:
@@ -1683,6 +1703,14 @@ func _targets(eff: Dictionary, spell: Dictionary, tctx: Dictionary) -> Array:
 			out.append(e)
 		return out
 	return []
+
+
+## Rearrange has something to do: an Essence that can go somewhere else (in its own row or onto another enemy).
+func _can_rearrange() -> bool:
+	var live := hittable().filter(func(x): return not x.has_passive("briar_walls") or not x.has_walls())
+	if live.size() >= 2:
+		return true
+	return live.size() == 1 and live[0].size() >= 2
 
 
 func _cleanse(what: String) -> void:
@@ -2074,9 +2102,22 @@ func _shield_gained(got: float) -> void:
 			_log("%s is enraged by your Shield: Power %d." % [e.name, e.power])
 
 
-## The Invoker conjures 3 new spells (no repeats), stripped of the Essence his words took. In his second wind his
-## intent also says the word he'll chant after casting (one he hasn't said yet).
+## The Invoker keeps his 3 spells until he has cast every one of them; then he conjures 3 new ones (no repeats), with a
+## line to go with them. Each is stripped of the Essence his words took. In his second wind his intent also says the
+## word he'll chant after casting (one he hasn't said yet).
 func _invoker_plan(e: EnemyState) -> void:
+	if e.conjured.is_empty() or e.conjured.all(func(s): return s.get("spent", false)):
+		_invoker_summon(e)
+	_strip_conjured(e)
+	_pick_next(e)
+	e.intent = {"kind": "invoke"}
+	if e.phase == 2:
+		var left := ["W", "A", "F"].filter(func(x): return not (x in e.stripped))
+		if not left.is_empty():
+			e.intent.word = left[rng.randi() % left.size()]
+
+
+func _invoker_summon(e: EnemyState) -> void:
 	var pool := EnemyDefs.INVOKER_SPELLS.duplicate(true)
 	e.conjured.clear()
 	for k in mini(invoke_count, pool.size()):
@@ -2088,13 +2129,8 @@ func _invoker_plan(e: EnemyState) -> void:
 		sp.base = sp.pattern
 		sp.rank = rng.randf()
 		e.conjured.append(sp)
-	_strip_conjured(e)
-	_pick_next(e)
-	e.intent = {"kind": "invoke"}
-	if e.phase == 2:
-		var left := ["W", "A", "F"].filter(func(x): return not (x in e.stripped))
-		if not left.is_empty():
-			e.intent.word = left[rng.randi() % left.size()]
+	var lines := EnemyDefs.INVOKER_SUMMON_LINES
+	anim.call({"type": "invoker_summon", "enemy": e, "line": lines[randi() % lines.size()]})  # (randi: the line doesn't touch the fight's own dice)
 
 
 func _strip_conjured(e: EnemyState) -> void:
@@ -2112,14 +2148,12 @@ func _strip_conjured(e: EnemyState) -> void:
 		sp.lit = lit
 
 
-## The spell the Invoker casts this turn whatever you chant: one he hasn't cast yet this fight (random among them), or
-## any of them once he has cast them all.
+## The spell the Invoker casts this turn whatever you chant: one of this set he hasn't cast yet (random among them).
 func _pick_next(e: EnemyState) -> void:
-	var fresh := []
+	var pool := []
 	for i in e.conjured.size():
-		if not (e.conjured[i].id in e.cast_ids):
-			fresh.append(i)
-	var pool: Array = fresh if not fresh.is_empty() else range(e.conjured.size())
+		if not e.conjured[i].get("spent", false):
+			pool.append(i)
 	e.invoke_next = pool[rng.randi() % pool.size()] if not pool.is_empty() else -1
 
 
@@ -2127,6 +2161,8 @@ func _pick_next(e: EnemyState) -> void:
 func invoke_picks(e: EnemyState, c: String) -> Array:
 	var out := []
 	for i in e.conjured.size():
+		if e.conjured[i].get("spent", false):
+			continue  # (cast already: gone from his side until his next set)
 		if i == e.invoke_next or _missing(String(e.conjured[i].pattern), c) == 0:
 			out.append(i)
 	return out
@@ -2154,10 +2190,15 @@ func _missing(p: String, c: String) -> int:
 
 ## His turn: he casts what your chant set off, then (second wind) chants his word.
 func _invoke(e: EnemyState, m: Dictionary) -> void:
+	if e.has_meta("catch_breath"):
+		# (just risen for his second wind: this turn he only speaks; he casts from the next one)
+		e.remove_meta("catch_breath")
+		_log("%s gathers himself." % e.name)
+		return
 	var picks := invoke_picks(e, heard)
 	if e.invoke_all:
 		e.invoke_all = false
-		picks = range(e.conjured.size())  # (gold dust: all of them, whatever you chanted)
+		picks = range(e.conjured.size()).filter(func(i): return not e.conjured[i].get("spent", false))  # (gold dust: all he has left, whatever you chanted)
 	for i in picks:
 		if over or e.is_dead():
 			return
@@ -2166,12 +2207,13 @@ func _invoke(e: EnemyState, m: Dictionary) -> void:
 			e.cast_ids.append(sp.id)
 		_log("%s casts %s!" % [e.name, sp.name])
 		await anim.call({"type": "invoke", "enemy": e, "idx": i})
+		sp.spent = true  # (cast: it leaves his side; once all three are, he conjures a new set)
 		await _do_move(e, sp.cast)
 	if m.has("word") and not over and not e.is_dead():
 		e.stripped.append(m.word)
 		_strip_conjured(e)
 		_log("%s chants \"%s!\" His spells lose every %s." % [e.name, EnemyDefs.INVOKER_WORDS[m.word], Elements.NAMES[m.word]])
-		await anim.call({"type": "speech", "enemy": e, "text": EnemyDefs.INVOKER_WORDS[m.word] + "!"})
+		await anim.call({"type": "speech", "enemy": e, "text": EnemyDefs.INVOKER_CHANTS[m.word]})
 
 
 ## The Invoker at 0 Essence the first time: he rises again with his second row, and starts chanting.
@@ -2192,7 +2234,9 @@ func _rebirths() -> void:
 			e.reset_hp(String(e.def.hp2))
 			_log("%s rises again!" % e.name)
 			anim.call({"type": "boss_phase"})
-			e.set_meta("say_first", ["Very well, mortal.", "I have not been pushed this far in a while.", "Let me show you the pinnacle of Wizardry."])
+			anim.call({"type": "reform", "enemy": e})  # (he bursts into pieces, and they fly back into him)
+			e.set_meta("say_first", ["You have improved, but can you withstand the might of wizardry?"])
+			e.set_meta("catch_breath", true)  # (his next turn he only says it: no spell yet)
 
 
 ## The Handyman. Phase 1: two hands at a time, one on each side, 10 Essence each. A hand at 0 Essence is knocked off and lies on the

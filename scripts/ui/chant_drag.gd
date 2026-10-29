@@ -8,6 +8,11 @@ extends Control
 
 ## from = its index in `els`, to = where it lands (its index once the others close up). (-1, -1) = skipped.
 signal dropped(from: int, to: int)
+## Free drop (Rearrange on the enemies): the held one was let go away from this row, at `at` (screen coordinates).
+## The fight screen drops it onto another row there, or calls float_back().
+signal dropped_out(from: int, at: Vector2)
+## Free drop: the held one is being carried, at `at` (screen coordinates), so other rows can open a gap under it.
+signal carried(at: Vector2)
 
 var els: Array = []  # element letters, in order
 var live: Array = []  # per element: can it be grabbed
@@ -30,6 +35,9 @@ var _keyboard := false
 var _key_i := 0
 var _t := 0.0
 var external := false
+## Rearrange on the enemies: the held one goes wherever the mouse goes, and may be let go over another enemy's row.
+var free_drop := false
+var _guest := -1  # free drop: a gap opened for an Essence carried in from another row (-1: none)
 var _pointer := Vector2.ZERO  # the mouse, in screen coordinates (fed by the fight screen as it moves)
 
 
@@ -54,6 +62,30 @@ func held_center() -> Vector2:
 	return global_position + Vector2(_x[_held] + px / 2.0, px / 2.0)
 
 
+## The zone over the row where letting go lands it in the row (a little wider and taller than the row itself).
+func _zone() -> Rect2:
+	return Rect2(Vector2(-px * 0.6, -px * 0.7), Vector2(size.x + px * 1.2, px * 1.75))
+
+
+## Free drop: an Essence from another row is carried over `at` (screen coordinates): open a gap for it here, or
+## close up when it is away. Returns where it would land (-1: not over this row).
+func set_guest(at: Vector2) -> int:
+	var m := at - global_position
+	var g := -1
+	if _held < 0 and _zone().has_point(m):
+		g = clampi(roundi((m.x - px / 2.0) / (px + sep)), 0, els.size())
+	if g != _guest and g >= 0:
+		Audio.play("ui_tab_target", -8.0)
+	_guest = g
+	return g
+
+
+## Free drop: it was let go nowhere useful: it floats back to its spot.
+func float_back() -> void:
+	_held = -1
+	_gap = -1
+
+
 ## inside: dropped over the chant (to = where it lands). Outside: let go away from the chant.
 func external_result() -> Dictionary:
 	return {"inside": _gap >= 0, "to": _gap}
@@ -63,8 +95,7 @@ func _update_external() -> void:
 	_mouse = _pointer - global_position
 	# (not much taller than the row: the Bag lies right under the chant, and letting go over it must send the Essence home)
 	# (a ball let go just under the rings, over the strip's lower edge or the Bag, goes home: the zone ends a hair under the row)
-	var zone := Rect2(Vector2(-px * 0.6, -px * 0.7), Vector2(size.x + px * 1.2, px * 1.75))
-	if zone.has_point(_mouse):
+	if _zone().has_point(_mouse):
 		_gap = _gap_at(_mouse.x - _grab_dx)
 	else:
 		_gap = -1  # away from the chant: the others close up
@@ -95,10 +126,11 @@ func _targets() -> Array:
 	var out := []
 	out.resize(els.size())
 	var k := 0
+	var open := _gap if _held >= 0 else _guest
 	for i in els.size():
 		if i == _held:
 			continue
-		if k == _gap:
+		if k == open:
 			k += 1
 		out[i] = _slot_x(k)
 		k += 1
@@ -132,6 +164,8 @@ func _place_icons(d: float) -> void:
 		if external and i == _held:
 			ic.position = _mouse - Vector2(px, px) / 2.0  # in your hand, wherever the mouse goes
 			ic.modulate.a = 1.0 if _gap >= 0 else 0.65  # fainter away from the chant: letting go there takes it back
+		elif free_drop and i == _held and not _keyboard:
+			ic.position = _mouse - Vector2(_grab_dx, px / 2.0 - lift)  # (it can be carried off the row, onto another enemy)
 		var wig := 0.0
 		var sc := 1.0
 		if i == _held:
@@ -145,7 +179,7 @@ func _place_icons(d: float) -> void:
 		wig += clampf(_v[i] * 0.0012, -0.25, 0.25)
 		ic.rotation = wig
 		ic.scale = Vector2(sc, sc)
-		ic.z_index = (50 if external else 1) if i == _held else 0  # the one in your hand passes over everything
+		ic.z_index = (50 if external or free_drop else 1) if i == _held else 0  # the one in your hand passes over everything
 		ic.highlight = live[i] and (i == _held or (_held < 0 and i == _key_i and _keyboard))
 
 
@@ -197,11 +231,18 @@ func _gui_input(ev: InputEvent) -> void:
 					Audio.play("elem_pickup")
 				accept_event()
 		elif not ev.pressed and _held >= 0 and not _keyboard:
-			_drop()
+			if free_drop and _gap < 0:
+				dropped_out.emit(_held, global_position + ev.position)  # (let go off its row: the screen looks for another row there)
+			else:
+				_drop()
 			accept_event()
 	elif ev is InputEventMouseMotion and _held >= 0 and not _keyboard:
 		_mouse = ev.position
 		var g := _gap_at(_mouse.x - _grab_dx)
+		if free_drop:
+			if not _zone().has_point(_mouse):
+				g = -1  # (carried off its row: the others close up)
+			carried.emit(global_position + _mouse)
 		if g != _gap:
 			_gap = g
 			Audio.play("ui_tab_target", -8.0)

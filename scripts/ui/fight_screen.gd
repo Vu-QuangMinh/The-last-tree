@@ -2705,6 +2705,7 @@ func _sync_views() -> void:
 ## The gap between the enemies: as wide as the stage allows (up to ENEMY_GAP_MAX), so an intent bubble (it sits beside
 ## its enemy) never lands on its neighbour's model or cards (the Wizard's floating spells); 20 px when the row is full.
 const ENEMY_GAP_MAX := 150.0
+const SAMURAI_GAP := -110.0
 
 
 func _space_enemy_row() -> void:
@@ -2715,6 +2716,8 @@ func _space_enemy_row() -> void:
 	for v in views:
 		total += (v as Control).custom_minimum_size.x
 	var gap := clampf((1840.0 - total) / float(views.size() - 1), 20.0, ENEMY_GAP_MAX)
+	if views.all(func(v): return v.enemy.has_passive("avenger") or v.enemy.has_passive("retainer")):
+		gap = SAMURAI_GAP  # (the Samurai and his Retainer stand side by side, their puppets may overlap a little)
 	_enemy_row.add_theme_constant_override("separation", int(gap))
 
 
@@ -3326,7 +3329,7 @@ func situation_help() -> String:
 	if pick_view != null:
 		return "Choose which of %s's Essence to knock off: click one of its orbs (or Tab to switch, Enter to confirm)." % pick_view.enemy.name
 	if move_view != null:
-		return "Rearranging %s: grab one of its Essence and drag it to another spot in its row. Right-click skips." % move_view.enemy.name
+		return "Rearranging: grab an enemy's Essence and drag it to another spot, in its row or onto another enemy. Right-click skips."
 	if chant_mode == "insert":
 		return "Place the new Essence: it's the glowing one in your chant. Drag it to where it should go (or Left / Right, then Enter)."
 	if chant_mode == "arrange":
@@ -4730,38 +4733,65 @@ func _choose_target(spell: Dictionary, cands: Array) -> int:
 	return await _aim(card, from, cands, "%s: %s  ·  click, or Tab + Enter" % [spell.name, what], false)
 
 
-## Rearrange: grab an Essence of this enemy's row and drag it to another spot, the way you rearrange your chant
-## (the others slide aside). Tab + Left / Right + Enter works too; Esc / right-click skips.
-## (Behind walls, the Bramble Matron's row is split up: there it's click one, then click where it goes.)
-var _edrag: ChantDrag  # the enemy row being rearranged
+## Rearrange: every enemy's row comes alive. Grab an Essence and drag it to another spot in its row (the others
+## slide aside), or carry it onto another enemy's row and let go there (taking an enemy's last Essence defeats it).
+## Tab + Left / Right + Enter works too (in the first row); Esc / right-click skips.
+## (The Bramble Matron's row is split up while her walls stand: she sits it out.)
+## Returns [from, to, from enemy index, to enemy index], or [] to skip.
+var _edrag: ChantDrag  # the row the keyboard moves in
 
 
-func _mover(spell: Dictionary, e: EnemyState) -> Array:
-	var v: EnemyView = _views.get(e)
-	if v == null:
+func _mover(spell: Dictionary, _hint: EnemyState) -> Array:
+	var rows: Array[EnemyView] = []
+	for x in fight.hittable():
+		var xv: EnemyView = _views.get(x)
+		if xv != null and not (x.has_passive("briar_walls") and x.has_walls()):
+			rows.append(xv)
+	if rows.is_empty():
 		return []
-	move_view = v
-	v.move_mode = true
-	v.move_pick = -1
-	var walled := e.has_passive("briar_walls")
-	_prompt.text = ("%s: click an Essence of %s to pick it up  ·  right-click to skip" if walled else
-		"%s: grab an Essence of %s and drag it to another spot  ·  Tab + Left / Right + Enter  ·  right-click to skip") % [spell.name, e.name]
+	for v in rows:
+		v.move_mode = true
+		v.move_pick = -1
+	move_view = rows[0]
+	_prompt.text = "%s: drag an Essence to another spot, in its own row or onto another enemy  ·  right-click to skip" % spell.name
 	_refresh_all()
-	if not walled:
-		await get_tree().process_frame  # (the row grows for the move: lay it out first)
-		_edrag = v.begin_row_drag(self)
-		_edrag.dropped.connect(func(from, to): _move_done.emit([from, to]))
-	var pair: Array = await _move_done
-	if is_instance_valid(_edrag):
-		await _wait(0.25)  # (let the dropped one settle)
-		_edrag.queue_free()
-		v.end_row_drag()
+	await get_tree().process_frame  # (the rows grow for the move: lay them out first)
+	var drags := {}  # EnemyView -> ChantDrag
+	for v in rows:
+		var d: ChantDrag = v.begin_row_drag(self)
+		d.free_drop = true
+		drags[v] = d
+	for v in rows:
+		var d: ChantDrag = drags[v]
+		var src: int = fight.enemies.find(v.enemy)
+		d.dropped.connect(func(from, to): _move_done.emit([from, to, src, src]))
+		d.carried.connect(func(at):
+			for o in drags.values():
+				if o != d:
+					o.set_guest(at))
+		d.dropped_out.connect(func(from, at):
+			for ov in drags:
+				var o: ChantDrag = drags[ov]
+				if o != d:
+					var to := o.set_guest(at)
+					if to >= 0:
+						_move_done.emit([from, to, src, fight.enemies.find(ov.enemy)])
+						return
+			d.float_back())  # (let go away from every row: it goes back where it was)
+	_edrag = drags[rows[0]]
+	var mv: Array = await _move_done
+	await _wait(0.25)  # (let the dropped one settle)
+	for v in rows:
+		if is_instance_valid(drags[v]):
+			drags[v].queue_free()
+		if is_instance_valid(v):
+			v.end_row_drag()
+			v.move_mode = false
+			v.move_pick = -1
 	_edrag = null
-	v.move_mode = false
-	v.move_pick = -1
 	move_view = null
 	_refresh_all()
-	return pair
+	return mv
 
 
 ## Pluck: choose which element of this enemy's HP to remove. Click it, or Tab through and Enter.
@@ -5082,7 +5112,8 @@ func _on_hp_clicked(v: EnemyView, index: int) -> void:
 		_prompt.text = "Click an Essence to pick it up  ·  right-click to skip"
 		v.refresh({})
 		return
-	_move_done.emit([v.move_pick, index])
+	var vi: int = fight.enemies.find(v.enemy)
+	_move_done.emit([v.move_pick, index, vi, vi])
 
 
 func _emit_chant_done(i: int) -> void:
@@ -5826,7 +5857,22 @@ func _anim_event(ev: Dictionary) -> void:
 		"hm_new_hands":
 			await _hm_new_hands(ev.ids, ev.lines)
 		"speech":
-			await _speech(ev.enemy, ev.text)
+			await _speech(ev.enemy, ev.text, float(ev.get("hold", 1.5)))
+		"invoker_summon":
+			# a new set of spells: his line, and the cards buzz in out of him (see EnemyView._refresh_invoked)
+			Audio.play("spell_glow")
+			_refresh_all()
+			await _speech(ev.enemy, ev.line, 1.5)
+		"reform":
+			# rising for his second phase: he bursts into pieces and they are pulled back into him along the same paths
+			var rv: EnemyView = _views.get(ev.enemy)
+			if rv != null and is_instance_valid(rv.creature):
+				var fx := PuppetShatter.spawn_reform(self, rv.creature)
+				if fx != null:
+					rv.creature.visible = false
+					await fx.reformed
+					if is_instance_valid(rv) and is_instance_valid(rv.creature):
+						rv.creature.visible = true
 		"speech_lines":
 			# a few sentences, one bubble each, held long enough to read (about 3 words a second, plus a moment)
 			for line in ev.lines:

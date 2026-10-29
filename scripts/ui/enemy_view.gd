@@ -141,6 +141,8 @@ func setup(e: EnemyState, f: Fight) -> void:
 	_name.add_theme_font_size_override("normal_font_size", 20)
 	_name.text = "[center]" + e.name.replace("Enraged", "[color=#b57bff]Enraged[/color]") + "[/center]"
 	add_child(_name)
+	if e.has_passive("avenger") or e.has_passive("retainer"):
+		_name.visible = false  # (the Samurai and his Retainer: no name over them)
 	_hp_row = HFlowContainer.new()
 	_hp_row.alignment = FlowContainer.ALIGNMENT_CENTER
 	_hp_row.add_theme_constant_override("h_separation", 2)
@@ -373,7 +375,7 @@ func refresh(preview: Dictionary) -> void:
 		(_link.skull_cell if walled else _hp_row).add_child(sk)
 	var st := e.describe_statuses()
 	for p in e.def.get("passives", []):
-		if not (p in EnemyDefs.HIDDEN_PASSIVES) and p != "shield_rage" and not (p == "hand" and _rig_view):  # ("Enraged" is in its name, in purple; a hand's "A hand" line would only take room: hover its Essence)
+		if not (p in EnemyDefs.HIDDEN_PASSIVES) and not (p in ["shield_rage", "avenger", "retainer"]) and not (p == "hand" and _rig_view):  # ("Enraged" is in its name, in purple; a hand's "A hand" line would only take room: hover its Essence)
 			st.append(EnemyDefs.PASSIVE_TEXT[p].get_slice(":", 0))
 	_status.text = "[center]" + " · ".join(st.map(func(s): return _status_bbcode(s.get_slice(" (", 0)))) + "[/center]"
 	tooltip_text = ""  # (in a fight only the intent bubble explains anything: see FightScreen._update_hover_info)
@@ -408,6 +410,9 @@ func puppet_global_rect() -> Rect2:
 	return Rect2(_intent_slot.global_position + b.position, b.size)
 
 
+const PAIR_ROW_SHIFT := 50.0
+
+
 ## Puppet Stage: the name sits right on the puppet's head, its Essence 5 px under its feet, its statuses under them.
 func _layout_free() -> void:
 	if not _free_layout or creature == null or not is_instance_valid(_name):
@@ -432,7 +437,8 @@ func _layout_free() -> void:
 	if rows == 2:
 		row_w = ceilf(n / 2.0) * step + 4.0  # (exactly as wide as two rows of the Essence as they are now: it cannot fall back to one)
 	_hp_row.custom_minimum_size.y = rows * _px + (rows - 1) * 4.0  # (and it keeps its height: what hangs under it does not jump)
-	var row_x := (w - row_w) / 2.0 + dx
+	# (the Samurai and his Retainer stand so close that their rows would run together: each slides out to its own side)
+	var row_x := (w - row_w) / 2.0 + dx + (-PAIR_ROW_SHIFT if enemy.has_passive("avenger") else (PAIR_ROW_SHIFT if enemy.has_passive("retainer") else 0.0))
 	if _hp_row.position != Vector2(row_x, top) or _hp_row.size.x != row_w:
 		_hp_row.position = Vector2(row_x, top)
 		_hp_row.size = Vector2(row_w, 0.0)
@@ -519,7 +525,7 @@ func _process(d: float) -> void:
 	_float_t += d
 	for i in _spell_cards.size():
 		var c = _spell_cards[i]  # (untyped: a card may have been freed)
-		if is_instance_valid(c) and c.has_meta("home"):
+		if is_instance_valid(c) and c.has_meta("home") and not c.has_meta("arriving"):
 			var ph := i * 2.1
 			c.position = (c.get_meta("home") as Vector2) + Vector2(sin(_float_t * 1.4 + ph) * 2.5, sin(_float_t * 2.2 + ph) * 6.0)
 
@@ -544,8 +550,18 @@ func _refresh_invoked(picks: Array) -> void:
 			card.set_meta("home", card.position)
 			_spell_row.add_child(card)
 			_spell_cards.append(card)
+		if fresh and is_inside_tree():
+			# a new set: each card buzzes into being out of him (static, as a conjured spell does), then looks like any card
+			var from := creature.global_position + creature.size / 2.0
+			for card in _spell_cards:
+				card.set_meta("arriving", true)  # (it doesn't float while it flies in)
+				(func():
+					await card.static_in(from, 0.6)
+					if is_instance_valid(card):
+						card.remove_meta("arriving")).call()
 	for i in _spell_cards.size():
 		var card: SpellCard = _spell_cards[i]
+		card.visible = not enemy.conjured[i].get("spent", false)  # (cast: gone until his next set)
 		card.fires = 1 if i in picks else 0
 		card.refresh()
 

@@ -172,10 +172,11 @@ const E := {
 			{"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 2}},
 			{"kind": "charge", "left": 3, "n": 10}, {"kind": "charge", "left": 2}, {"kind": "charge", "left": 1, "hit": true}],
 		"flavor": "Half a beast, all the temper."},
-	# The Invoker (an Act 1 boss): he never attacks. Each turn he conjures 3 of his 10 spells (no repeats) as cards on his
-	# side; on his turn he casts every one your chant matched, or else the one it came closest to (ties: random). At 0
-	# Essence he rises again with 15 more, and from then on chants Quas / Wex / Exort, one a turn: that Essence is
-	# stripped from his spells' patterns for the rest of the fight (they get easier to set off).
+	# The Invoker (an Act 1 boss): he never attacks. He conjures 3 of his 10 spells (no repeats) as cards on his side and
+	# keeps them: each turn he casts one he chose, plus every one your chant matched; a cast spell leaves his side, and
+	# once all three are gone he conjures a new set. At 0 Essence he rises again with 15 more, takes a turn to speak, and
+	# from then on chants Quas / Wex / Exort, one a turn: that Essence is stripped from his spells' patterns for the rest
+	# of the fight (they get easier to set off).
 	"invoker": {"name": "Good Ol' Wizard", "act": 1, "boss": true, "hp": "FWAFWAFWAFWAFWAFWAFW", "hp2": "AWFAWFAWFAWFAWF",
 		"invokes": true, "passives": ["invoker", "invoker_rebirth"], "tint": Color(0.5, 0.3, 0.72),
 		"moves": [{"kind": "invoke"}],
@@ -373,6 +374,14 @@ const HIDDEN_PASSIVES := ["yinyang_split", "invoker_rebirth", "armadillo", "veil
 ## The Invoker's spells (Dota 2's Invoker: Quas = Water, Wex = Air, Exort = Fire). Each one's "cast" is the move he makes
 ## when it goes off; "desc" is its card text.
 const INVOKER_WORDS := {"W": "Quas", "A": "Wex", "F": "Exort"}
+## What he says as he chants each word (his second wind).
+const INVOKER_CHANTS := {
+	"W": "The icy touch of the primordial void, come to me: Quas!",
+	"A": "Spirit of the wind, come, I beckon you: Wex!",
+	"F": "Essence of fire, heed my call: Exort!",
+}
+## One of these each time he conjures a new set of spells.
+const INVOKER_SUMMON_LINES := ["Knowledge is power!", "Behold, the pinnacle of wizardry!", "Concentration!", "More!", "Boundless knowledge!", "I challenge you!"]
 const INVOKER_SPELLS := [
 	{"id": "inv_cold_snap", "name": "Cold Snap", "pattern": "WWW", "kind": "damage", "desc_fmt": "Deal %d damage to you, 4 times.", "dmg": [1],
 		"cast": {"kind": "attack", "n": 1, "hits": 4}},

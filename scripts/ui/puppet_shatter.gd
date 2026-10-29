@@ -12,6 +12,85 @@ const EDGE := Color(0.2, 0.11, 0.05)
 var _pieces: Array[Dictionary] = []  # {node, v, w, floor, bounces, rest, age}
 var _t := 0.0
 
+## Reform (a boss rising for its second phase): the same burst, then the pieces lie still a moment and are pulled back up
+## into the puppet along the very paths they fell by (the flight is worked out first and played forward, then backward).
+signal reformed
+const STEP := 1.0 / 60.0
+const HOLD := 0.45  # (seconds the pieces lie on the floor before they fly back)
+var _reform := false
+var _track: Array = []  # per step: [[position, rotation] per piece]
+
+
+## Break `creature`'s puppet and pull it back together (see `reformed`). null when it has no cut-out.
+static func spawn_reform(host: Node, creature: Creature) -> PuppetShatter:
+	var tex := creature.puppet_tex()
+	if tex == null or not creature.is_inside_tree():
+		return null
+	var fx := PuppetShatter.new()
+	fx.z_index = 2
+	fx._reform = true
+	host.add_child(fx)
+	fx.setup(tex, creature.puppet_art_rect(), creature.global_position.y + creature.size.y)
+	fx._record()
+	Audio.play("wooden_ball_colide", 0.0, 0.7)
+	return fx
+
+
+## The flight worked out step by step (the same throw, gravity and bounces as a death), until every piece lies still.
+func _record() -> void:
+	var sim: Array = []
+	for pc in _pieces:
+		var n: Node2D = pc.node
+		sim.append({"p": n.position, "r": n.rotation, "v": pc.v, "w": pc.w, "floor": pc.floor, "bounces": 0})
+	_track = [sim.map(func(s): return [s.p, s.r])]
+	for k in 300:  # (5 s at most)
+		var still := true
+		for s in sim:
+			if s.bounces < 0:
+				continue
+			still = false
+			s.v.y += GRAVITY * STEP
+			s.p += s.v * STEP
+			s.r += s.w * STEP
+			if s.p.y >= s.floor and s.v.y > 0.0:
+				s.p.y = s.floor
+				s.bounces += 1
+				if s.bounces >= 3 or absf(s.v.y) < 140.0:
+					s.bounces = -1
+				else:
+					s.v = Vector2(s.v.x * 0.55, -s.v.y * 0.35)
+					s.w *= 0.5
+		_track.append(sim.map(func(s): return [s.p, s.r]))
+		if still:
+			break
+
+
+func _play_reform(d: float) -> void:
+	_t += d
+	var last := _track.size() - 1
+	var dur := last * STEP
+	var k: float
+	if _t < dur:
+		k = _t / STEP  # out: the burst, as it fell
+	elif _t < dur + HOLD:
+		k = last  # lying on the floor
+	elif _t < dur * 1.6 + HOLD:
+		var r := (_t - dur - HOLD) / (dur * 0.6)
+		k = last * (1.0 - r * r)  # back in along the same paths, slow at first, then sucked in fast
+	else:
+		reformed.emit()
+		queue_free()
+		return
+	var i := clampi(int(k), 0, last)
+	var j := mini(i + 1, last)
+	var f := k - i
+	for m in _pieces.size():
+		var n: Node2D = _pieces[m].node
+		var a: Array = _track[i][m]
+		var b: Array = _track[j][m]
+		n.position = (a[0] as Vector2).lerp(b[0], f)
+		n.rotation = lerpf(a[1], b[1], f)
+
 
 ## Break `creature`'s puppet where it stands (does nothing when it has no cut-out).
 static func spawn(host: Node, creature: Creature) -> void:
@@ -145,6 +224,9 @@ func _area(poly: PackedVector2Array) -> float:
 
 
 func _process(d: float) -> void:
+	if _reform:
+		_play_reform(d)
+		return
 	_t += d
 	var alive := false
 	for pc in _pieces:

@@ -754,18 +754,24 @@ class _Quad extends Control:
 	func _draw() -> void:
 		if tex == null:
 			return
+		# the whole grid in ONE draw call (a polygon per cell was 576 draw calls per picture, every frame)
 		var h := _homography()
 		var n := PuppetStage.GRID
+		var pts := PackedVector2Array()
+		var uvs := PackedVector2Array()
+		var cols := PackedColorArray()
+		for iy in n + 1:
+			for ix in n + 1:
+				var u := Vector2(ix, iy) / float(n)
+				pts.append(_map(h, u))
+				uvs.append(u)
+				cols.append(tint)
+		var idx := PackedInt32Array()
 		for iy in n:
 			for ix in n:
-				var uv := [Vector2(ix, iy), Vector2(ix + 1, iy), Vector2(ix + 1, iy + 1), Vector2(ix, iy + 1)]
-				var pts := PackedVector2Array()
-				var uvs := PackedVector2Array()
-				for c in uv:
-					var u: Vector2 = c / float(n)
-					pts.append(_map(h, u))
-					uvs.append(u)
-				draw_polygon(pts, PackedColorArray([tint, tint, tint, tint]), uvs, tex)
+				var a := iy * (n + 1) + ix
+				idx.append_array([a, a + 1, a + n + 2, a, a + n + 2, a + n + 1])
+		RenderingServer.canvas_item_add_triangle_array(get_canvas_item(), idx, pts, cols, uvs, PackedInt32Array(), PackedFloat32Array(), tex.get_rid())
 
 	## unit square -> quad (Heckbert)
 	func _homography() -> Array:
