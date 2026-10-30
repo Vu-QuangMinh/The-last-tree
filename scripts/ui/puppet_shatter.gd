@@ -16,7 +16,9 @@ var _t := 0.0
 ## into the puppet along the very paths they fell by (the flight is worked out first and played forward, then backward).
 signal reformed
 const STEP := 1.0 / 60.0
-const HOLD := 0.45  # (seconds the pieces lie on the floor before they fly back)
+const HOLD := 2.0  # seconds the pieces lie still on the floor
+const SHAKE := 1.0  # then they shake, harder and harder
+const BACK := 1.6  # then they are pulled back in (the whole thing: about 5.5 to 6 s)
 var _reform := false
 var _track: Array = []  # per step: [[position, rotation] per piece]
 
@@ -43,7 +45,7 @@ func _record() -> void:
 		var n: Node2D = pc.node
 		sim.append({"p": n.position, "r": n.rotation, "v": pc.v, "w": pc.w, "floor": pc.floor, "bounces": 0})
 	_track = [sim.map(func(s): return [s.p, s.r])]
-	for k in 300:  # (5 s at most)
+	for k in 150:  # (2.5 s at most)
 		var still := true
 		for s in sim:
 			if s.bounces < 0:
@@ -70,12 +72,19 @@ func _play_reform(d: float) -> void:
 	var last := _track.size() - 1
 	var dur := last * STEP
 	var k: float
+	var shake := 0.0
 	if _t < dur:
 		k = _t / STEP  # out: the burst, as it fell
 	elif _t < dur + HOLD:
 		k = last  # lying on the floor
-	elif _t < dur * 1.6 + HOLD:
-		var r := (_t - dur - HOLD) / (dur * 0.6)
+	elif _t < dur + HOLD + SHAKE:
+		k = last
+		shake = (_t - dur - HOLD) / SHAKE  # (stirring: a tremble that grows)
+		if not has_meta("rattled"):
+			set_meta("rattled", true)
+			Audio.play("wooden_ball_colide", -6.0, 0.5)
+	elif _t < dur + HOLD + SHAKE + BACK:
+		var r := (_t - dur - HOLD - SHAKE) / BACK
 		k = last * (1.0 - r * r)  # back in along the same paths, slow at first, then sucked in fast
 	else:
 		reformed.emit()
@@ -90,6 +99,9 @@ func _play_reform(d: float) -> void:
 		var b: Array = _track[j][m]
 		n.position = (a[0] as Vector2).lerp(b[0], f)
 		n.rotation = lerpf(a[1], b[1], f)
+		if shake > 0.0:
+			n.position += Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 0.3)) * 5.0 * shake
+			n.rotation += randf_range(-1.0, 1.0) * 0.12 * shake
 
 
 ## Break `creature`'s puppet where it stands (does nothing when it has no cut-out).

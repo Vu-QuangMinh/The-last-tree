@@ -41,6 +41,8 @@ func run(t: SceneTree) -> void:
 		done[0] = true).call()
 	var k := 0
 	var shards := 0
+	var t_reform := -1
+	var shots := 0
 	while not done[0] and k < 400:
 		await t.create_timer(0.1).timeout
 		for n in fs.find_children("*", "Label", true, false):
@@ -52,6 +54,12 @@ func run(t: SceneTree) -> void:
 				c.set_meta("seen", true)
 				shards += 1
 				print("REFORM started, pieces=", c._pieces.size())
-				root.get_texture().get_image().save_png("%s/real_reform.png" % out)
+				t_reform = Time.get_ticks_msec()
+		if t_reform > 0 and fs._reforming.is_empty():
+			print("REFORM took %.1f s" % ((Time.get_ticks_msec() - t_reform) / 1000.0))
+			t_reform = -1
+		if t_reform > 0 and shots < 30 and k % 3 == 0:
+			root.get_texture().get_image().get_region(Rect2i(500, 150, 600, 450)).save_png("%s/rf_%02d.png" % [out, shots])
+			shots += 1
 		k += 1
 	print("END phase=%d creature_visible=%s reforms=%d" % [e.phase, fs._views[e].creature.visible, shards])

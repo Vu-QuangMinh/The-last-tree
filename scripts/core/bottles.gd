@@ -41,6 +41,8 @@ const ALL := [
 		"effects": [{"op": "random_hit", "n": 2, "target": "target"}]},
 	{"id": "shatter_salts", "color": Color(0.92, 0.92, 0.85), "name": "Shatter Salts", "icon": "🔨", "price": 24, "desc": "All enemies lose their armour.",
 		"effects": [{"op": "shatter", "target": "all"}]},
+	{"id": "broken_bottle", "color": Color(0.55, 0.6, 0.5), "name": "Broken Bottle", "icon": "🍾", "price": 0, "no_offer": true, "desc": "Deal 1 Left damage to an enemy.",
+		"effects": [{"op": "strike", "n": 1, "from": "left", "target": "target"}]},
 	{"id": "blast_flask", "color": Color(1.0, 0.35, 0.2), "name": "Blast Flask", "icon": "💣", "price": 52, "desc": "Remove 1 random Essence of all enemies.",
 		"effects": [{"op": "random_hit", "n": 1, "target": "all"}]},
 	# ---- spells
@@ -78,7 +80,7 @@ static func needs_target(id: String) -> bool:
 
 ## n different random bottles (never two of the same in one offer).
 static func random(rng: RandomNumberGenerator, n := 1) -> Array:
-	var pool := ALL.duplicate()
+	var pool := ALL.filter(func(b): return not b.get("no_offer", false))
 	var out := []
 	while out.size() < n and not pool.is_empty():
 		var pick: Dictionary = pool[rng.randi() % pool.size()]

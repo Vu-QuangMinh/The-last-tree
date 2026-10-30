@@ -44,6 +44,7 @@ var durability := {}  # spell id -> Durability left this fight (only spells with
 var kindling_chants := 0  # Kindling Stone: spells cast since it last set an enemy alight
 var kindling_charged := false
 var box_casts := 0  # Magic Box: spells cast so far (every 6th one's pattern is Refunded)
+var lute_casts := 0  # A Nice Lute: spells cast so far (every 10th one Weakens all enemies)
 var echo_casts := 0  # Echo Shell: spells cast since it last charged
 var echo_charged := false
 var echo_chamber_on := false  # Echo Chamber: this turn's chant was short, so the next spell is cast twice (then it's off)

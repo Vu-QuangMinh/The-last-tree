@@ -141,8 +141,7 @@ func setup(e: EnemyState, f: Fight) -> void:
 	_name.add_theme_font_size_override("normal_font_size", 20)
 	_name.text = "[center]" + e.name.replace("Enraged", "[color=#b57bff]Enraged[/color]") + "[/center]"
 	add_child(_name)
-	if e.has_passive("avenger") or e.has_passive("retainer"):
-		_name.visible = false  # (the Samurai and his Retainer: no name over them)
+	_name.visible = false  # (no names over the enemies in a fight; only while you talk to a boss, see set_talk)
 	_hp_row = HFlowContainer.new()
 	_hp_row.alignment = FlowContainer.ALIGNMENT_CENTER
 	_hp_row.add_theme_constant_override("h_separation", 2)
@@ -308,24 +307,14 @@ func refresh(preview: Dictionary) -> void:
 		seen += 1
 	var mask := fight.hidden_mask(e)
 	_max_n = maxi(_max_n, maxi(e.size(), str(e.def.get("hp2", "")).length()))  # (an enemy with a second phase starts out sized for the bigger row: its rows never change at the phase change)
-	var px := 38.0 if _max_n <= 7 else 30.0
-	if _rig_view and creature.has_rig():
-		px = 30.0  # (the hands hang close to each other: their name and Essence are smaller)
+	var px := ORB_PX  # (every enemy's Essence the same size, in every mode: it never shrinks or grows)
 	var walled := e.has_passive("briar_walls")
 	if walled:
-		px = 30.0
-	if move_mode or pick_mode or keep_big:
-		px = 48.0 if _max_n <= 6 else 40.0
-		if _rig_view and creature.has_rig():
-			px = 38.0
-		if walled:
+		px = 30.0  # (the Bramble Matron's hedges keep their own layout)
+		if move_mode or pick_mode or keep_big:
 			px = 34.0
 	_px = px
-	_px_layout = 48.0 if _max_n <= 6 else 40.0  # (the rows are worked out for the biggest the Essence ever get, in pick / move mode: so they are the same in every mode)
-	if _rig_view and creature.has_rig():
-		_px_layout = 38.0
-	if walled:
-		_px_layout = 34.0
+	_px_layout = px
 	e._fix_lit()
 	# an enemy behind walls (Bramble Matron): each wall is a hedge with its own Essence under it, hers stack in a
 	# framed block in the middle. Still one row, in order: left wall, her, right wall.
@@ -373,10 +362,7 @@ func refresh(preview: Dictionary) -> void:
 			sk.add_theme_color_override("font_outline_color", Color.BLACK)
 		sk.tooltip_text = "Your chant would defeat it."
 		(_link.skull_cell if walled else _hp_row).add_child(sk)
-	var st := e.describe_statuses()
-	for p in e.def.get("passives", []):
-		if not (p in EnemyDefs.HIDDEN_PASSIVES) and not (p in ["shield_rage", "avenger", "retainer"]) and not (p == "hand" and _rig_view):  # ("Enraged" is in its name, in purple; a hand's "A hand" line would only take room: hover its Essence)
-			st.append(EnemyDefs.PASSIVE_TEXT[p].get_slice(":", 0))
+	var st := e.describe_statuses()  # (its statuses only: what it always does (its passives) is told when you hover it)
 	_status.text = "[center]" + " · ".join(st.map(func(s): return _status_bbcode(s.get_slice(" (", 0)))) + "[/center]"
 	tooltip_text = ""  # (in a fight only the intent bubble explains anything: see FightScreen._update_hover_info)
 	creature.tooltip_text = ""
@@ -411,6 +397,8 @@ func puppet_global_rect() -> Rect2:
 
 
 const PAIR_ROW_SHIFT := 50.0
+const ORB_PX := 38.0  # an enemy's Essence orb, always this size
+const ROW_MAX := 10  # at most this many Essence in a row (two rows: 20)
 
 
 ## Puppet Stage: the name sits right on the puppet's head, its Essence 5 px under its feet, its statuses under them.
@@ -432,10 +420,10 @@ func _layout_free() -> void:
 		if not ic.is_queued_for_deletion():  # (the old icons of a refresh still hang in the row for a moment: they must not count)
 			live += 1
 	var n := maxi(_max_n, live)  # (rows are worked out from the most Essence it ever had: the number of rows stays put)
-	# one row or two, decided for the biggest Essence (pick / move mode), so that it is the same in every mode and every phase
-	var rows := 1 if n * (_px_layout + 2.0) <= w else 2
-	if rows == 2:
-		row_w = ceilf(n / 2.0) * step + 4.0  # (exactly as wide as two rows of the Essence as they are now: it cannot fall back to one)
+	# rows of at most ROW_MAX, worked out from the most it ever had, so the rows stay put as it is hurt
+	var row_max := int(enemy.def.get("hp_row", ROW_MAX))  # (the Yin Yang Beast: 2 rows of 6; its Cubs: 2 rows of 5)
+	var rows := maxi(1, ceili(n / float(row_max)))
+	row_w = mini(maxi(n, 1), row_max) * step + 4.0
 	_hp_row.custom_minimum_size.y = rows * _px + (rows - 1) * 4.0  # (and it keeps its height: what hangs under it does not jump)
 	# (the Samurai and his Retainer stand so close that their rows would run together: each slides out to its own side)
 	var row_x := (w - row_w) / 2.0 + dx + (-PAIR_ROW_SHIFT if enemy.has_passive("avenger") else (PAIR_ROW_SHIFT if enemy.has_passive("retainer") else 0.0))
@@ -587,6 +575,7 @@ func set_talk(on: bool, fade := 0.0, talk_name := "") -> void:
 	# its name: what you know of it so far ("???" until you've asked who it is), its real name once you Engage
 	if _name != null:
 		_name.text = talk_name if on and talk_name != "" else enemy.name
+		_name.visible = on
 	for n in [_intent_slot, _hp_row, _status, _link, _spell_row]:
 		if n == null or not is_instance_valid(n):
 			continue

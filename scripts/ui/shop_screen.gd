@@ -4,6 +4,7 @@ extends Control
 
 signal leave
 signal upgrade_requested
+signal quest_changed  # (his favours moved on: save them)
 
 ## Puppet Stage: laid over the stage (no backdrop). The curtains are already open: the cart rolls in, the merchant walks after it, the spell cards lie down on the
 ## floor and spring up, the artifacts and bottles are let down on ropes. All the numbers below are the places in Merchant.pdf (1920 x 1080) or knobs to tune.
@@ -52,6 +53,7 @@ const SHADOW_SHIFT := Vector2(14.0, 11.0)  # a hanging frame's shadow on the bac
 
 var run: RunState
 var stock: Array = []
+var quest := {"done": 0, "open": false}  # his favours (see MerchantQuests), shared with the save
 var _amber: Label
 var _grid: HFlowContainer
 var _stage: PuppetStage
@@ -73,6 +75,15 @@ var _gen := 0
 var _ground := 650.0  # where the cart and the merchant stand (the floor's front edge, less the margin)
 var _t := 0.0
 signal _arrive
+var _title_row: HBoxContainer
+var _mark: Label  # "!" a favour to ask, "?" one you can hand over: click it (or him) to talk
+var _picture: Button  # (once he's drunk) his family picture on the counter
+var _dlg: Control  # the conversation box, while it's open
+var _dlg_lines: Array = []
+var _dlg_choices: Array = []  # [[button text, Callable], ...] under the last line
+var _dlg_i := 0
+var _dlg_text: Label
+var _dlg_row: HBoxContainer
 
 
 func setup(p_run: RunState, p_stock: Array) -> void:
@@ -100,15 +111,15 @@ func _ready() -> void:
 	v.add_theme_constant_override("separation", 16)
 	add_child(v)
 	var portrait: TextureRect = UiSkin.icon("merchant_portrait", 64) if UiSkin.is_puppet() else null
+	_title_row = HBoxContainer.new()
+	_title_row.add_theme_constant_override("separation", 14)
+	v.add_child(_title_row)
 	if portrait != null:  # Puppet: his round portrait instead of the cart
-		var title_row := HBoxContainer.new()
-		title_row.add_theme_constant_override("separation", 14)
 		portrait.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		title_row.add_child(portrait)
-		title_row.add_child(UiTheme.heading("The Merchant", 40, Color.WHITE))
-		v.add_child(title_row)
+		_title_row.add_child(portrait)
+		_title_row.add_child(UiTheme.heading("The Merchant", 40, Color.WHITE))
 	else:
-		v.add_child(UiTheme.heading("🛒 The Merchant", 40, Color.WHITE))
+		_title_row.add_child(UiTheme.heading("🛒 The Merchant", 40, Color.WHITE))
 	v.add_child(UiTheme.label("A badger with a very large backpack. \"Everything's for sale, friend. Even the backpack. Not the badger.\"", 20, UiTheme.MUTED))
 	_amber = UiTheme.label("", 26, Color(1, 0.8, 0.35))
 	v.add_child(_amber)
@@ -146,9 +157,13 @@ func _leave_button() -> Button:
 
 
 ## New theme: the merchant himself stands above the Leave button (behind the goods, so they never get covered).
+## Click him (or the mark over his head) to talk. Once he's drunk he sits on his chair: his own picture ("merchant_drunk").
 func _place_merchant(leave_btn: Control, behind: Control) -> void:
 	var t := UiSkin.tex("merchant_full") if UiSkin.tex("merchant_full") != null else UiSkin.tex("merchant_portrait")  # (Puppet: the whole merchant)
+	if MerchantQuests.is_drunk(quest) and UiSkin.tex("merchant_drunk") != null:
+		t = UiSkin.tex("merchant_drunk")
 	if t == null or not is_instance_valid(leave_btn):
+		_add_talk(null)  # (no picture of him: the mark and a Talk button go by his name)
 		return
 	await get_tree().process_frame
 	var r := TextureRect.new()
@@ -161,6 +176,156 @@ func _place_merchant(leave_btn: Control, behind: Control) -> void:
 	var lb := leave_btn.get_global_rect()
 	r.position = Vector2(lb.get_center().x - r.size.x / 2.0, lb.position.y - r.size.y - 6.0) - global_position  # (centred over the Leave button)
 	add_child(r)  # (over the goods: nothing hides him; he stands in the free corner)
+	_add_talk(r)
+
+
+## The quest mark over his head (or by his name), clicking him to talk, and (once he's drunk) the picture on his counter.
+func _add_talk(him: TextureRect, head := Vector2.INF) -> void:  # (`head`: the stage shop says where the mark goes)
+	_mark = UiTheme.heading("!", 72, Color(1.0, 0.85, 0.2))
+	_mark.add_theme_color_override("font_outline_color", Color(0.25, 0.12, 0.02))
+	_mark.add_theme_constant_override("outline_size", 10)
+	_mark.mouse_filter = Control.MOUSE_FILTER_STOP
+	_mark.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_mark.gui_input.connect(_on_talk_click)
+	if him != null:
+		him.mouse_filter = Control.MOUSE_FILTER_STOP
+		him.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		him.tooltip_text = "Talk to the merchant"
+		him.gui_input.connect(_on_talk_click)
+		_mark.position = head if head != Vector2.INF else Vector2(him.position.x + him.size.x / 2.0 + 40.0, him.position.y - 50.0)  # (by his head, clear of the goods above)
+		add_child(_mark)
+		var y0 := _mark.position.y
+		var bob := _mark.create_tween().set_loops()
+		bob.tween_property(_mark, "position:y", y0 - 12.0, 0.5).set_trans(Tween.TRANS_SINE)
+		bob.tween_property(_mark, "position:y", y0, 0.5).set_trans(Tween.TRANS_SINE)
+	else:
+		_title_row.add_child(UiTheme.button("Talk", _talk, 20))
+		_title_row.add_child(_mark)
+	if MerchantQuests.is_drunk(quest) and not ("family_picture" in run.artifacts):
+		_picture = UiTheme.button("🖼", _picture_click, 34)
+		_picture.tooltip_text = "A small framed picture"
+		if him != null:
+			_picture.position = Vector2(head.x - 150.0, _ground - 70.0) if head != Vector2.INF else Vector2(him.position.x - 80.0, him.position.y + him.size.y - 90.0)
+			add_child(_picture)
+		else:
+			_title_row.add_child(_picture)
+	_update_mark()
+
+
+func _on_talk_click(ev: InputEvent) -> void:
+	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+		_talk()
+
+
+func _update_mark() -> void:
+	if _mark != null:
+		var m := MerchantQuests.mark(quest, run.artifacts, run.merchant_talked == run.room_key())
+		_mark.text = m
+		_mark.visible = m != ""
+	if _picture != null and "family_picture" in run.artifacts:
+		_picture.queue_free()
+		_picture = null
+
+
+## Talking to him: one favour a visit, asked for or handed over (see MerchantQuests).
+func _talk() -> void:
+	if _dlg != null:
+		return
+	var n := int(quest.get("done", 0))
+	match MerchantQuests.mode(quest, run.artifacts, run.merchant_talked == run.room_key()):
+		"ask":
+			_dialog(MerchantQuests.ASK[n], [[MerchantQuests.ACCEPT[n], func():
+				MerchantQuests.accept(quest)
+				run.merchant_talked = run.room_key()
+				quest_changed.emit()
+				Audio.play("discovery_unlock")
+				_dialog([MerchantQuests.ACCEPTED[n]])], [MerchantQuests.DECLINE, _close_dialog]])
+		"return":
+			_dialog(MerchantQuests.SEE[n], [[MerchantQuests.HAND_OVER[n], func():
+				MerchantQuests.complete(quest)
+				run.merchant_reward(n, stock)
+				run.merchant_talked = run.room_key()
+				quest_changed.emit()
+				Audio.play("artifact_get")
+				_refresh()
+				_dialog(MerchantQuests.THANKS[n])], [MerchantQuests.KEEP, _close_dialog]])
+		"remind":
+			_dialog([MerchantQuests.REMIND[n]])
+		"drunk":
+			_dialog([MerchantQuests.DRUNK[randi() % MerchantQuests.DRUNK.size()]])
+		_:
+			_dialog([MerchantQuests.LATER])
+
+
+## His drunken nap: the picture by his elbow.
+func _picture_click() -> void:
+	if _dlg != null:
+		return
+	_dialog([MerchantQuests.PICTURE], [[MerchantQuests.STEAL, func():
+		_close_dialog()
+		run.gain_artifact("family_picture")  # (the "You found an artifact!" card shows it, back and all)
+		_update_mark()], [MerchantQuests.LEAVE_IT, _close_dialog]])
+
+
+## The conversation box: his lines one at a time (Next), then the choices under the last one (or Goodbye).
+func _dialog(lines: Array, choices: Array = []) -> void:
+	_close_dialog()
+	_dlg_lines = lines
+	_dlg_choices = choices
+	_dlg_i = 0
+	_dlg = Control.new()
+	_dlg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_dlg.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_dlg)
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.45)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_dlg.add_child(dim)
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", UiTheme.panel_box(0.97, 16))
+	p.position = Vector2(360, 700)
+	p.custom_minimum_size = Vector2(1200, 220)
+	_dlg.add_child(p)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 14)
+	p.add_child(vb)
+	vb.add_child(UiTheme.heading("The Merchant", 28, Color(1, 0.85, 0.45)))
+	_dlg_text = UiTheme.label("", 24, Color.WHITE)
+	_dlg_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_dlg_text.custom_minimum_size = Vector2(1160, 0)
+	vb.add_child(_dlg_text)
+	_dlg_row = HBoxContainer.new()
+	_dlg_row.alignment = BoxContainer.ALIGNMENT_END
+	_dlg_row.add_theme_constant_override("separation", 16)
+	vb.add_child(_dlg_row)
+	_dialog_step()
+
+
+func _dialog_step() -> void:
+	_dlg_text.text = String(_dlg_lines[_dlg_i])
+	for c in _dlg_row.get_children():
+		c.queue_free()
+	if _dlg_i < _dlg_lines.size() - 1:
+		_dlg_row.add_child(UiTheme.button("Next", _dialog_next, 20))
+		return
+	if _dlg_choices.is_empty():
+		_dlg_row.add_child(UiTheme.button("Goodbye", _close_dialog, 20))
+		return
+	for ch in _dlg_choices:
+		_dlg_row.add_child(UiTheme.button(String(ch[0]), ch[1], 20))
+
+
+func _dialog_next() -> void:
+	_dlg_i += 1
+	_dialog_step()
+
+
+func _close_dialog() -> void:
+	if _dlg != null:
+		_dlg.queue_free()
+		_dlg = null
+	_update_mark()
 
 var _panels: Array = []  # the stretchable frames (everything but the spell cards)
 var _boxes: Array = []  # each item: its picture or card, then its Buy button
@@ -298,9 +463,10 @@ func _refresh() -> void:
 		var sold: bool = it.get("sold", false)
 		var full: bool = it.kind == "bottle" and run.player.bottles.size() >= run.bottle_slots()
 		var none: bool = it.kind == "upgrade" and run.upgradable().is_empty()
-		var label := "Sold" if sold else ("Bottle slots full" if full else ("Nothing to seal" if none else "Buy · %d Leaves" % it.price))
+		var price := run.shop_price(it)
+		var label := "Sold" if sold else ("Bottle slots full" if full else ("Nothing to seal" if none else ("Take · free" if price == 0 else "Buy · %d Leaves" % price)))
 		var btn := UiTheme.button(label, func(): _buy(i), 18)
-		btn.disabled = sold or full or none or run.amber < it.price
+		btn.disabled = sold or full or none or run.amber < price
 		box.add_child(btn)
 		_boxes.append(box)
 		if on_stage:
@@ -342,9 +508,10 @@ func _buy(i: int) -> void:
 		return
 	if it.kind == "bottle" and run.player.bottles.size() >= run.bottle_slots():
 		return
-	if not run.pay(it.price):
+	if not run.pay(run.shop_price(it)):
 		return
 	Audio.play("shop_buy", -2.0, randf_range(0.97, 1.03))  # (coins; the same for everything bought)
+	run.free_pick.erase(it.kind)  # (his thanks for a favour: one free, then the usual prices)
 	match it.kind:
 		"spell":
 			run.learn_spell(it.spell.id)
@@ -422,6 +589,8 @@ func _ready_stage() -> void:
 	_merchant = _pic_rect("merchant_full.png", MERCHANT_RECT, _world)
 	if _merchant != null:
 		_merchant.pivot_offset = Vector2(MERCHANT_RECT.size.x / 2.0, MERCHANT_RECT.size.y * MERCHANT_FEET)
+		if MerchantQuests.is_drunk(quest) and UiSkin.tex("merchant_drunk") != null:
+			_merchant.texture = UiSkin.tex("merchant_drunk")  # (once he's drunk he sits on his chair)
 	add_child(_leaves_pill())
 	var leave_btn := _leave_button()
 	leave_btn.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
@@ -433,9 +602,11 @@ func _ready_stage() -> void:
 	_set_cart_x(CART_FROM if intro else 0.0)
 	_set_merchant_x(MERCHANT_FROM if intro else 0.0)
 	if intro:
+		_arrive.connect(_add_talk_stage, CONNECT_ONE_SHOT)  # (the favour mark and clicking him to talk: once he has stopped)
 		_arrive_walk()
 	else:
 		_arrived = true
+		_add_talk_stage.call_deferred()
 	_refresh()
 
 
@@ -500,6 +671,15 @@ func _set_merchant_x(off: float) -> void:
 	_merchant.scale = Vector2.ONE * SHOP_SCALE
 	_merchant.position = feet - _merchant.pivot_offset + Vector2(0.0, -absf(sin(ph)) * 8.0)
 	_merchant.rotation = sin(ph) * 0.035
+
+
+## Talking to him on the stage: he takes clicks, and the favour mark floats over his head.
+func _add_talk_stage() -> void:
+	if _merchant == null:
+		return
+	var feet_pdf := Vector2(MERCHANT_RECT.position.x + MERCHANT_RECT.size.x / 2.0, MERCHANT_RECT.position.y + MERCHANT_RECT.size.y * MERCHANT_FEET)
+	var feet := Vector2(PDF_GROUND.x + (feet_pdf.x - PDF_GROUND.x) * SHOP_SCALE, _ground - (PDF_GROUND.y - feet_pdf.y) * SHOP_SCALE)
+	_add_talk(_merchant, Vector2(feet.x - 24.0, feet.y - MERCHANT_RECT.size.y * 0.73 * SHOP_SCALE - 100.0))
 
 
 ## One of his boots comes down: quieter while he is far off the screen, the two boot sounds alternate, never quite the same pitch twice.
