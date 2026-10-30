@@ -661,7 +661,11 @@ func _enter_room(kind: String) -> void:
 			_room_bg = EVENT_BG.get(ev.get("id", ""), "")
 			_show_event(ev)
 		"shop":
-			_show_shop(run.shop_stock())
+			var q := _merchant_quest()
+			if run.merchant_talked != run.room_key():
+				MerchantQuests.visit(q)  # (a new visit: after his third favour he sits drunk on his chair from now on)
+				_save_quest()
+			_show_shop(run.shop_stock(MerchantQuests.DISCOUNT if MerchantQuests.is_drunk(q) else 0.0))
 		"rest":
 			_show_rest()
 		"treasure":
@@ -684,6 +688,23 @@ func _enter_room(kind: String) -> void:
 func _show_event(ev: Dictionary) -> void:
 	var labels: Array = ev.options.map(func(o): return o.label)
 	var pick := func(i: int):
+		var o: Dictionary = ev.options[i]
+		if o.has("next"):
+			# a second page: its own words and options (the Bard: "Can I have it?")
+			var page := ev.duplicate()
+			page.text = o.next.text
+			page.options = o.next.options
+			_show_event(page)
+			return
+		if o.get("minigame", "") == "farm":
+			_farm_game(ev)
+			return
+		if o.has("outcomes"):
+			if o.get("pick_bottle", false):
+				_event_bottle_pick(ev, o)
+			else:
+				_event_result(ev, o, -1)
+			return
 		match ev.options[i].get("do", ""):
 			"upgrade_artifact":
 				_tinker(ev.options[i])
@@ -693,6 +714,9 @@ func _show_event(ev: Dictionary) -> void:
 				return
 			"invert_spell":
 				_invert_pick(ev)
+				return
+			"note_swap":
+				_note_pick(ev)
 				return
 		var res: Dictionary = run.choose_event_option(ev.options[i])
 		if run.player.is_dead():
@@ -724,6 +748,84 @@ func _show_event(ev: Dictionary) -> void:
 	_put(s)
 
 
+## A rewritten event's choice: roll what happens, and say it (only the outcome's own words). Then the bottles that
+## didn't fit (swap screen), then the fight it started, or the map.
+func _event_result(ev: Dictionary, opt: Dictionary, bottle_at: int) -> void:
+	var res := run.event_outcome(opt, bottle_at)
+	if run.player.is_dead():
+		run.over = true
+		_end_run()
+		return
+	var shown: Control = ArtifactCard.make(Artifacts.view(res.artifact, false)) if res.has("artifact") else null
+	var after := _message(ev.title, res.text, ["Fight!" if res.has("fight") else "Continue"], Color(0.8, 0.7, 1), shown)
+	after.pressed.connect(func(_k):
+		var go_on := func():
+			if res.has("fight"):
+				run.current_node()["as"] = res.fight.kind
+				var ids: Array = res.fight.ids
+				if ids.is_empty():
+					ids = run.encounter_ids()
+				else:
+					run.set_encounter(ids)
+				_show_loadout(ids)
+			else:
+				show_map()
+		if res.overflow.is_empty():
+			go_on.call()
+		else:
+			_bottle_swap(res.overflow, go_on))
+
+
+## The Farmer's Farm: the shooting in the wheat, then the farmer's tally (and your Leaves).
+func _farm_game(ev: Dictionary) -> void:
+	var g := FarmGame.new()
+	g.act = run.act
+	if UiSkin.is_puppet() and not _on_stage():
+		# (always on the stage, like a fight: from the test rooms too, where events otherwise have no stage)
+		var base := _new_fight_screen(run.make_fight([]))
+		base.map_mode = true
+		_swap(base)
+		g.on_stage = true
+		_set_overlay(g)
+	else:
+		_put(g)
+	g.finished.connect(func(gob, hob, fai):
+		var res := run.farm_reward(gob, hob, fai)
+		var after := _message(ev.title, res.text, ["Continue"], Color(0.8, 0.7, 1))
+		after.pressed.connect(func(_k): show_map()))
+
+
+## The Hollow Stump: which of your bottles goes in? (Changing your mind takes you back to the event.)
+func _event_bottle_pick(ev: Dictionary, opt: Dictionary) -> void:
+	var names: Array = run.player.bottles.map(func(b): var d := Bottles.get_def(b); return "%s: %s" % [d.get("name", b), d.get("desc", "")])
+	var s := MessageScreen.new()
+	s.title = ev.title
+	s.body = "Which bottle do you throw in?"
+	s.buttons = names + ["Keep my bottles"]
+	s.title_color = Color(0.8, 0.7, 1)
+	s.act = run.act
+	s.cards = true
+	s.pressed.connect(func(i):
+		if i >= run.player.bottles.size():
+			_show_event(ev)
+		else:
+			_event_result(ev, opt, i))
+	_put(s)
+
+
+## More bottles than slots: drag them in and out until you like what you carry. The rest stay behind.
+func _bottle_swap(extra: Array, then: Callable) -> void:
+	var s := BottleSwapScreen.new()
+	s.slots = run.bottle_slots()
+	s.mine = run.player.bottles.duplicate()
+	s.found = extra.duplicate()
+	s.act = run.act
+	s.done.connect(func(kept):
+		run.player.bottles = kept.duplicate()
+		then.call())
+	_put(s)
+
+
 ## The Upside-Down Pool: pick a spell from your spellbook; it pays half your HP and plays inverted for the run.
 func _invert_pick(ev: Dictionary) -> void:
 	var ids := run.invertible_spells()
@@ -734,6 +836,21 @@ func _invert_pick(ev: Dictionary) -> void:
 			return
 		var text := run.invert_spell(ids[i])
 		var after := _message(ev.title, text, ["Continue"], Color(0.8, 0.7, 1), SpellCard.make(run.spell(ids[i])))
+		after.pressed.connect(func(_k): show_map()))
+
+
+## A Note to Yourself: pick which of your spells goes into the note (for a later run); you take the one already in it.
+func _note_pick(ev: Dictionary) -> void:
+	var ids := run.storable_spells()
+	var held: Dictionary = run.db.get_spell(run.note_spell_id())
+	var ch := _choice(ev.title, "The note holds %s. Choose one of your spells to leave in it, for a later run." % held.name, ids.map(func(id): return run.spell(id)), [], false)
+	ch.chosen.connect(func(i):
+		if i < 0:
+			show_map()
+			return
+		var left: String = run.spell(ids[i]).name
+		var took := run.note_swap(ids[i])
+		var after := _message(ev.title, "You take %s, and leave %s in the note." % [run.db.get_spell(took).name, left], ["Continue"], Color(0.8, 0.7, 1), SpellCard.make(run.spell(took)))
 		after.pressed.connect(func(_k): show_map()))
 
 
@@ -791,9 +908,24 @@ func _barter() -> void:
 				show_map())))
 
 
+var _test_quest := {"done": 0, "open": false}  # (Test mode: the merchant's quests on a scratch copy, never the real save)
+
+
+## The merchant's quest state: the saved one, or Test mode's scratch copy.
+func _merchant_quest() -> Dictionary:
+	return _test_quest if _test_mode else SaveManager.merchant()
+
+
+func _save_quest() -> void:
+	if not _test_mode:
+		SaveManager.save_game()
+
+
 func _show_shop(stock: Array) -> void:
 	var sh := ShopScreen.new()
 	sh.setup(run, stock)
+	sh.quest = _merchant_quest()
+	sh.quest_changed.connect(_save_quest)
 	sh.leave.connect(show_map)
 	sh.upgrade_requested.connect(func():
 		var ids := run.upgradable()
@@ -1085,7 +1217,12 @@ func _after_fight(f: Fight) -> void:
 				if i >= 0:
 					run.learn_spell(offer[i].id)
 				go.call()))
-	if kind == "elite":
+	var dropped := f.drops.filter(func(aid): return not (aid in run.artifacts))
+	for aid in dropped:
+		steps.append(func(go):
+			run.gain_artifact(aid)  # (a sure drop, instead of the elite's choice: its card pops up)
+			go.call())
+	if kind == "elite" and dropped.is_empty():
 		var ao := run.artifact_offer(3)
 		if not ao.is_empty():
 			steps.append(func(go):

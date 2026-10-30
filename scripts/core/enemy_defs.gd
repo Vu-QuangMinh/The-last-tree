@@ -31,7 +31,7 @@ const E := {
 		"flavor": "Its wings steal your words."},
 	"cinder_hound": {"name": "Cinder Hound", "act": 1, "tier": 2.5, "hp": "FFAFFWFFAF", "moves": [{"kind": "attack", "n": 6}], "passives": ["burn_immune"],
 		"flavor": "Flame Essence burns under its skin like tattoos."},
-	"mirror_fairy": {"name": "Mirror Fairy", "act": 1, "tier": 2.5, "hp": "AWFWAAWFWA", "moves": [{"kind": "confuse"}, {"kind": "attack", "n": 6}],
+	"mirror_fairy": {"name": "Mirror Fairy", "act": 1, "tier": 2.5, "hp": "AWFWAAWFWA", "size": 3.0, "passives": ["mirror_deflect"], "moves": [{"kind": "confuse"}, {"kind": "attack", "n": 6}],
 		"flavor": "A fairy's face in a mirror, her hands gripping it from behind."},
 	"yeti": {"name": "Yeti", "act": 1, "tier": 2.5, "hp": "WWAWWAWWAWWA", "moves": [{"kind": "freeze", "n": 2}, {"kind": "attack", "n": 7}],
 		"flavor": "Big, white and very cold."},
@@ -147,30 +147,25 @@ const E := {
 	"void_archon": {"name": "Void Archon", "act": 3, "elite": true, "retired": true, "hp": "AFWAFWA", "moves": [{"kind": "blind", "turns": 2, "also": {"kind": "attack", "n": 5}}, {"kind": "lock", "len": 2}, {"kind": "attack", "n": 4, "hits": 3}],
 		"flavor": "It steals the light, then the words."},
 	# ---------------- bosses (moves2 = second phase, at half HP)
-	# The Yin Yang Beast (an Act 1 boss): black and white. Inversion (3 of your spells flip: spell <-> anti-spell, and it
-	# turns the other colour) -> Roar (silence 2 spells for 3 turns, a small hit) -> a 3-turn Charge (an hourglass), then a big hit.
-	# While it charges, each spell of its own colour you cast (white: spells, black: anti-spells) raises the hit by 5
-	# (one of the other colour doesn't change it). None of that is told in the fight: the Codex explains it.
-	# When it dies it splits into two clones (one white, one black, out of step) that do the same at a smaller size.
-	"yin_yang_beast": {"name": "Yin Yang Beast", "act": 1, "boss": true, "hp": "FWAFWAFWAFWAFWAFWAFWAFWAFWAFWA", "yin": "white",
-		"passives": ["yinyang_split"],
-		"moves": [{"kind": "invert_spells", "n": 3}, {"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 5}},
-			{"kind": "charge", "left": 3, "n": 30}, {"kind": "charge", "left": 2}, {"kind": "charge", "left": 1, "hit": true}],
+	# The Yin Yang Beast (an Act 1 boss), in three stages. Each one starts by inverting your spells at once (random ones:
+	# a spell becomes an anti-spell, an anti-spell a spell), then takes its turns.
+	#   1. Black, 12 Essence (2 rows of 6): inverts 3. Roar (silence 2 spells for your next turn, a 5 hit) <-> a 3 x 3 attack.
+	#      Every anti-spell you cast gives it +1 Power (+1 damage per hit).
+	#   2. At 0 it rises again as the White one (pieces of the white puppet burst out and fly back), 12 Essence: inverts 3,
+	#      same moves; every normal spell you cast gives it +1 Power.
+	#   3. At 0 again it falls apart into two Cubs, 10 Essence each (2 rows of 5): each inverts 1 at once, then one attacks
+	#      2 x 2 while the other silences, and they swap every turn. The white Cub grows on your spells, the black one on
+	#      your anti-spells.
+	"yin_yang_beast": {"name": "Yin Yang Beast", "act": 1, "boss": true, "hp": "FWAFWAWAFWAF", "hp2": "AWFAWFFAWFAW", "yin": "black",
+		"passives": ["yinyang_split", "yy_rebirth"], "flip": 3, "hp_row": 6,
+		"moves": [{"kind": "silence", "turns": 1, "n": 2, "also": {"kind": "attack", "n": 5}}, {"kind": "attack", "n": 3, "hits": 3}],
 		"flavor": "Two halves of one temper."},
-	# The Cubs both flip a spell first. Then the white one charges while the black one roars every turn (silence 2,
-	# hit for 2); once the white one's hit lands they swap, and so on.
 	# Their rows share no two-Essence run (the white one's pairs: FF FW WW WA AA AF; the black one's: AW WF FA), so a
 	# chant aimed deep into one only ever takes a single Essence off the other.
 	"yin_yang_clone": {"name": "Yin Yang Cub", "act": 1, "member": true, "hp": "FFWWAAFFWW", "hp_black": "AWFAWFAWFA", "yin": "white",
-		"opener": [{"kind": "invert_spells", "n": 1}],
-		"moves": [{"kind": "charge", "left": 3, "n": 10}, {"kind": "charge", "left": 2}, {"kind": "charge", "left": 1, "hit": true},
-			{"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 2}},
-			{"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 2}},
-			{"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 2}}],
-		"moves_black": [{"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 2}},
-			{"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 2}},
-			{"kind": "silence", "turns": 3, "n": 2, "also": {"kind": "attack", "n": 2}},
-			{"kind": "charge", "left": 3, "n": 10}, {"kind": "charge", "left": 2}, {"kind": "charge", "left": 1, "hit": true}],
+		"flip": 1, "hp_row": 5,
+		"moves": [{"kind": "attack", "n": 2, "hits": 2}, {"kind": "silence", "turns": 3, "n": 2}],
+		"moves_black": [{"kind": "silence", "turns": 3, "n": 2}, {"kind": "attack", "n": 2, "hits": 2}],
 		"flavor": "Half a beast, all the temper."},
 	# The Invoker (an Act 1 boss): he never attacks. He conjures 3 of his 10 spells (no repeats) as cards on his side and
 	# keeps them: each turn he casts one he chose, plus every one your chant matched; a cast spell leaves his side, and
@@ -280,6 +275,7 @@ const E := {
 }
 
 const PASSIVE_TEXT := {
+	"mirror_deflect": "Mirror: a spell you aim at her has a 50% chance to bounce off her mirror and do nothing.",
 	"burning_hide": "Burning Hide: you take 1 damage whenever your Release hits it.",
 	"split": "Split: struck but not killed, it splits its remaining Essence into two enemies (once).",
 	"overgrowth": "Overgrowth: if not struck during your turn, it grows a random Essence.",
@@ -297,7 +293,7 @@ const PASSIVE_TEXT := {
 	"handyman": "The Handyman himself: 1 Essence. Once his hands are all down he cries, shakes, and takes them back; when those are beaten too he shows himself: 1 Essence, and a 999 blow.",
 	"invoker": "Good Ol' Wizard: every turn he conjures 3 spells. On his turn he casts every one your chant matched, or else the one it came closest to.",
 	"invoker_rebirth": "Second wind: at 0 Essence he rises again with 10 more, and starts chanting Quas, Wex or Exort, one a turn: each strips that Essence (Water, Air, Fire) from his spells for the rest of the fight.",
-	"yinyang_split": "Split: when it dies, it splits into two Yin Yang Cubs (10 Essence each), one white and one black.",
+	"yinyang_split": "Split: when it dies for good, it splits into two Yin Yang Cubs (10 Essence each), one white and one black.",
 	"shield_rage": "Enraged: every time you gain Shield, it gains Power +1 (its attacks deal 1 more damage).",
 	"envenomed": "Envenomed: every hit that takes HP from you also gives you 1 Poison (hits your Shield stops don't).",
 	"veil_falls": "The veil falls: at 0 Essence the veil drops and what is underneath fights on, with 20 more Essence and new moves.",
@@ -350,7 +346,7 @@ const BIOS := {
 	"triplet_water": "The calm one of the Triplet. Calm like a frozen lake.",
 	"triplet_air": "The quiet one of the Triplet. It prefers that you be quiet too.",
 	"enraged_bear": "The Rolling Bear, but someone woke it up. Red-furred, huge, and it takes your shields personally.",
-	"yin_yang_beast": "A beast of black and white that turns your words inside out, then charges.",
+	"yin_yang_beast": "A beast of black and white that turns your words inside out. Black, it feeds on your anti-spells; white, on your spells. It gets back up once.",
 	"yin_yang_clone": "What's left when the Yin Yang Beast falls apart: two smaller, angrier halves.",
 	"invoker": "A sorcerer who remembers every spell ever cast. He never swings a fist: he just reads your chant back at you.",
 	"forge_spirit": "Hot, small, and very eager to prove itself.",
@@ -369,7 +365,7 @@ const BIOS := {
 
 const BOSSES := {1: ["yin_yang_beast", "invoker", "handyman"], 2: ["blightmother", "veiled_eyes"], 3: ["last_winter"]}
 ## Passives the fight never tells you about (only the Codex does, once you've beaten it).
-const HIDDEN_PASSIVES := ["yinyang_split", "invoker_rebirth", "armadillo", "veil_falls"]
+const HIDDEN_PASSIVES := ["yinyang_split", "yy_rebirth", "invoker_rebirth", "armadillo", "veil_falls"]
 
 ## The Invoker's spells (Dota 2's Invoker: Quas = Water, Wex = Air, Exort = Fire). Each one's "cast" is the move he makes
 ## when it goes off; "desc" is its card text.
@@ -382,26 +378,28 @@ const INVOKER_CHANTS := {
 }
 ## One of these each time he conjures a new set of spells.
 const INVOKER_SUMMON_LINES := ["Knowledge is power!", "Behold, the pinnacle of wizardry!", "Concentration!", "More!", "Boundless knowledge!", "I challenge you!"]
+## His spells cost 2 Essence: the pattern they had without its middle one (Ice Wall and Deafening Blast share WF, so
+## they never come in the same set).
 const INVOKER_SPELLS := [
-	{"id": "inv_cold_snap", "name": "Cold Snap", "pattern": "WWW", "kind": "damage", "desc_fmt": "Deal %d damage to you, 4 times.", "dmg": [1],
+	{"id": "inv_cold_snap", "name": "Cold Snap", "pattern": "WW", "kind": "damage", "desc_fmt": "Deal %d damage to you, 4 times.", "dmg": [1],
 		"cast": {"kind": "attack", "n": 1, "hits": 4}},
-	{"id": "inv_ghost_walk", "name": "Ghost Walk", "pattern": "WWA", "kind": "utility", "desc": "He cleanses all his debuffs.",
+	{"id": "inv_ghost_walk", "name": "Ghost Walk", "pattern": "WA", "kind": "utility", "desc": "He cleanses all his debuffs.",
 		"cast": {"kind": "cleanse_self"}},
-	{"id": "inv_ice_wall", "name": "Ice Wall", "pattern": "WWF", "kind": "defense", "desc": "He Armours 3 of his Essence.",
+	{"id": "inv_ice_wall", "name": "Ice Wall", "pattern": "WF", "kind": "defense", "desc": "He Armours 3 of his Essence.",
 		"cast": {"kind": "armor", "pos": -1, "count": 3}},
-	{"id": "inv_emp", "name": "EMP", "pattern": "AAA", "kind": "utility", "desc_fmt": "You lose 2 random Essence from your bag, and take %d damage.", "dmg": [2],
+	{"id": "inv_emp", "name": "EMP", "pattern": "AA", "kind": "utility", "desc_fmt": "You lose 2 random Essence from your bag, and take %d damage.", "dmg": [2],
 		"cast": {"kind": "drain_essence", "n": 2, "also": {"kind": "attack", "n": 2}}},
-	{"id": "inv_tornado", "name": "Tornado", "pattern": "AAW", "kind": "damage", "desc_fmt": "Deal %d damage to you and Silence 1 of your spells (1 turn).", "dmg": [3],
+	{"id": "inv_tornado", "name": "Tornado", "pattern": "AW", "kind": "damage", "desc_fmt": "Deal %d damage to you and Silence 1 of your spells (1 turn).", "dmg": [3],
 		"cast": {"kind": "attack", "n": 3, "also": {"kind": "silence", "n": 1, "turns": 1}}},
-	{"id": "inv_alacrity", "name": "Alacrity", "pattern": "AAF", "kind": "utility", "desc": "He gains Power +2.",
+	{"id": "inv_alacrity", "name": "Alacrity", "pattern": "AF", "kind": "utility", "desc": "He gains Power +2.",
 		"cast": {"kind": "empower", "n": 2}},
-	{"id": "inv_sun_strike", "name": "Sun Strike", "pattern": "FFF", "kind": "damage", "desc_fmt": "Deal %d damage to you.", "dmg": [10],
+	{"id": "inv_sun_strike", "name": "Sun Strike", "pattern": "FF", "kind": "damage", "desc_fmt": "Deal %d damage to you.", "dmg": [10],
 		"cast": {"kind": "attack", "n": 10}},
-	{"id": "inv_forge_spirit", "name": "Forge Spirit", "pattern": "FFW", "kind": "utility", "desc": "He summons 2 Forge Spirits (3 Essence each, attack for 3).",
+	{"id": "inv_forge_spirit", "name": "Forge Spirit", "pattern": "FW", "kind": "utility", "desc": "He summons 2 Forge Spirits (3 Essence each, attack for 3).",
 		"cast": {"kind": "summon", "list": ["forge_spirit", "forge_spirit_b"], "n": 2, "flank": true}},
-	{"id": "inv_chaos_meteor", "name": "Chaos Meteor", "pattern": "FFA", "kind": "damage", "desc_fmt": "Deal %d damage to you, 3 times, and Ignite 3 of your spells.", "dmg": [2],
+	{"id": "inv_chaos_meteor", "name": "Chaos Meteor", "pattern": "FA", "kind": "damage", "desc_fmt": "Deal %d damage to you, 3 times, and Ignite 3 of your spells.", "dmg": [2],
 		"cast": {"kind": "attack", "n": 2, "hits": 3, "also": {"kind": "ignite_spell", "n": 3, "turns": 1}}},
-	{"id": "inv_deafening_blast", "name": "Deafening Blast", "pattern": "WAF", "kind": "damage", "desc_fmt": "Deal %d damage to you and Disarm you (your next Release does nothing).", "dmg": [5],
+	{"id": "inv_deafening_blast", "name": "Deafening Blast", "pattern": "WF", "kind": "damage", "desc_fmt": "Deal %d damage to you and Disarm you (your next Release does nothing).", "dmg": [5],
 		"cast": {"kind": "attack", "n": 5, "also": {"kind": "disarm", "turns": 1}}},
 ]
 
@@ -566,37 +564,10 @@ static func group_size(act: int, floor: int, rng: RandomNumberGenerator) -> int:
 	return odds[-1][0]
 
 
-## Extra random elements added to the end of an enemy's Essence on deeper floors (act 2 and 3 bosses get a few too).
-## Act 1 starts at 3 elements; act 2 enemies have 8 or more, act 3 ones 11 or more. The size of the group scales it:
-## a lone enemy gets 2 more, and each enemy beyond the second takes 1 fewer from every enemy in the fight.
-static func extra_hp(act: int, floor: int, rng: RandomNumberGenerator, boss := false, group := 2) -> Array:
-	var n := 0
-	if boss:
-		n = [0, 0, 3, 5][act]  # the act 2 and 3 bosses come back tougher
-	else:
-		match act:
-			1:
-				n = 0 if floor <= 2 else (2 if floor <= 4 else 3)
-			2:
-				n = 5 if floor <= 3 else 6
-			3:
-				n = 8 if floor <= 4 else 9
-		if group == 1 and not (act == 1 and floor <= 2):
-			n += 2
-		elif group > 2:
-			n = maxi(0, n - (group - 2))
-	var out := []
-	for i in n:
-		out.append(Elements.random(rng))
-	return out
-
-
-## The extra Essence this enemy gets: none for the tiered Act 1 enemies (their Essence is exactly as designed).
-static func extra_for(id: String, act: int, floor: int, rng: RandomNumberGenerator, group := 2) -> Array:
-	var d := get_def(id)
-	if d.has("tier") or d.has("walls") or d.get("no_extra", false):
-		return []
-	return extra_hp(act, floor, rng, d.get("boss", false), group)
+## Extra Essence an enemy gets on top of its own row: none. Every enemy's Essence is set by hand in its row (and its
+## second-phase row); nothing is added for the act or the floor.
+static func extra_for(_id: String, _act: int, _floor: int, _rng: RandomNumberGenerator, _group := 2) -> Array:
+	return []
 
 
 static func attack_bonus(act: int) -> int:
@@ -625,8 +596,6 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			s = "Invert %d of your spell%s (a spell becomes an anti-spell, an anti-spell a spell)" % [m.n, "" if m.n == 1 else "s"]
 			if full:
 				s += ". A spell turned anti gives it 1 Essence of its pattern; one turned back gains 1 random Essence"
-			if full:
-				s += ", and it turns the other colour (white / black)"
 		"invoke":
 			s = "Cast his glowing spells"
 			if m.has("word"):

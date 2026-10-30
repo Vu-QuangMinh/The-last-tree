@@ -47,6 +47,8 @@ var curse_note := ""  # what the last cursed artifact just did (shown when it's 
 var seals := {}  # spell id -> [indices of its pattern sealed by upgrades]: those Essence are no longer needed
 var amber := START_AMBER
 var seen_events: Array = []
+var poison_next := 0  # the Whispering Well: Poison you start your next fight with
+var fight_gift: Array = []  # Essence you start your next fight with (the Lost Sprite's 2 Air)
 var encounter: Array = []  # the ids of the encounter being prepared
 var encounter_name := ""  # its name (Act 1's hand-made encounters, e.g. "The Slime Trio"; "" otherwise)
 var recent_encounters: Array = []  # names of the encounters met so far (an encounter never comes up twice in 3)
@@ -59,6 +61,8 @@ var _fuse_count := 0
 var over := false
 var won := false
 var reward_bottle := ""  # a bottle found after the last fight ("" if none)
+var free_pick: Array = []  # the merchant's thanks: "spell" / "artifact": the next one of that kind you take from him is free
+var merchant_talked := ""  # the room ("act:row:col") where you last talked with the merchant (one favour a visit)
 var fight_snapshot := {}  # you as you went into the current fight (the Seed of Life puts it back)
 const SEED_MEND_PRICE := 100
 ## Chance to find a bottle after winning a fight (if you have a free slot).
@@ -260,6 +264,14 @@ func make_fight(enemy_ids: Array) -> Fight:
 	if enemy_ids == encounter:
 		f.preset_extra = encounter_extra  # the Essence the player was shown before the fight
 	f.start(enemy_ids, act, depth())
+	if not enemy_ids.is_empty():
+		# what an event left for this fight: Poison (the Whispering Well), Essence to start with (the Lost Sprite)
+		if poison_next > 0:
+			player.poison += poison_next
+			poison_next = 0
+		for el in fight_gift:
+			player.add_element(String(el))
+		fight_gift.clear()
 	return f
 
 
@@ -697,11 +709,14 @@ func resolve_unknown() -> String:
 			kind = k
 			break
 		r -= UNKNOWN_ODDS[k]
+	var can_meet := MapEvents.ALL.filter(func(e): return act in e.get("acts", [1, 2, 3]) and not (String(e.get("unless_artifact", "")) in artifacts))
+	if kind == "event" and can_meet.is_empty():
+		kind = "fight"  # (no events in this act yet: the room is a fight)
 	n["as"] = kind
 	if kind == "event":
-		var pool := MapEvents.ALL.filter(func(e): return not (e.id in seen_events))
+		var pool := can_meet.filter(func(e): return not (e.id in seen_events))
 		if pool.is_empty():
-			pool = MapEvents.ALL
+			pool = can_meet
 		var total := 0.0
 		for e in pool:
 			total += float(e.get("weight", 1.0))
@@ -719,15 +734,59 @@ func resolve_unknown() -> String:
 
 ## Can you take this event option (enough Amber / HP)?
 func can_choose(opt: Dictionary) -> bool:
+	if opt.has("outcomes") or opt.has("next") or opt.has("minigame"):
+		# (the rewritten events: only a Leaves price, or having a bottle to throw, can grey an option out)
+		return amber >= int(opt.get("amber", 0)) and (not opt.get("pick_bottle", false) or not player.bottles.is_empty())
 	if opt.get("do", "") == "upgrade_artifact" and upgradable_artifacts().is_empty():
 		return false
 	if opt.get("do", "") == "trade_artifacts" and tradeable_artifacts().is_empty():
 		return false
 	if opt.get("do", "") == "invert_spell" and (invertible_spells().is_empty() or player.hp < 2):
 		return false
+	if opt.get("do", "") == "note_swap" and (storable_spells().is_empty() or db.get_spell(note_spell_id()).is_empty()):
+		return false
 	if spellbook.size() <= opt.get("lose_spells", 0):
 		return false  # (you always keep at least one spell)
 	return amber >= opt.get("amber", 0) and player.hp > opt.get("hp", 0) and player.max_hp > opt.get("max_hp", 0) + 5
+
+
+## A Note to Yourself: the spell waiting in the note (from the save; Aole's Blessing the first time).
+var note_store: Object = null  # (where the note is kept: the SaveManager; a test sets its own)
+
+
+func _notes() -> Object:
+	if note_store != null:
+		return note_store
+	var tree := Engine.get_main_loop() as SceneTree
+	return tree.root.get_node_or_null("SaveManager") if tree != null else null
+
+
+func note_spell_id() -> String:
+	var sm := _notes()
+	return String(sm.call("note_spell")) if sm != null else "trade_winds"
+
+
+## Spells you can leave in the note: your own, not fused ones (a fused spell only lives in this run). It's stored plain:
+## its seals, curses and inversion stay behind.
+func storable_spells() -> Array:
+	return spellbook.filter(func(id): return not fused.has(id))
+
+
+## Take the note's spell into your spellbook and leave `leave` in the note (it goes from your spellbook). Returns the
+## id taken.
+func note_swap(leave: String) -> String:
+	var take := note_spell_id()
+	learn_spell(take)
+	if leave != take:
+		spellbook.erase(leave)
+		loadout.erase(leave)
+		seals.erase(leave)
+		burdens.erase(leave)
+		inverted.erase(leave)
+	var sm := _notes()
+	if sm != null:
+		sm.call("set_note_spell", leave)
+	return take
 
 
 ## Spells the Upside-Down Pool can flip (not Powers).
@@ -744,6 +803,74 @@ func invert_spell(id: String) -> String:
 		inverted.append(id)
 	var s := spell(id)
 	return "%s is %s now." % [s.name, "an anti-spell" if s.get("anti", false) else "a spell again"]
+
+
+## A rewritten event's option: pay its Leaves (and give away the bottle at `bottle_at`, if it asks for one), roll
+## one of its outcomes and do it. Returns {text (what the player reads), fight: {kind, ids?} (a fight starts),
+## artifact: id (gained, to show), overflow: [bottle ids that didn't fit in your slots]}.
+func event_outcome(opt: Dictionary, bottle_at := -1) -> Dictionary:
+	amber -= int(opt.get("amber", 0))
+	if opt.get("pick_bottle", false) and bottle_at >= 0 and bottle_at < player.bottles.size():
+		player.bottles.remove_at(bottle_at)
+	var outs: Array = opt.outcomes
+	var r := rng.randf()
+	var out: Dictionary = outs[-1]
+	for o in outs:
+		r -= float(o.get("chance", 1.0))
+		if r < 0.0:
+			out = o
+			break
+	var res := {"text": String(out.text), "overflow": []}
+	for d in out.get("do", []):
+		match String(d.op):
+			"bottles", "bottle_ids":
+				var ids: Array = Bottles.random(rng, int(d.n)) if d.op == "bottles" else d.ids
+				for b in ids:
+					if not gain_bottle(b):
+						res.overflow.append(b)
+			"poison_next":
+				poison_next += int(d.n)
+			"damage":
+				player.take_effect(float(d.n))  # (it can kill: the screen ends the run then)
+			"heal":
+				player.heal(float(d.n))
+			"max_hp":
+				player.max_hp += float(d.n)
+				player.heal(float(d.n))
+			"amber":
+				amber += int(d.n)
+			"artifact":
+				var a := Artifacts.offer(unlocked_artifacts, artifacts, rng, 1, String(d.get("pool", "normal")))
+				if not a.is_empty():
+					gain_artifact(a[0].id)
+					res.artifact = a[0].id
+			"artifact_id":
+				if not (String(d.id) in artifacts):
+					gain_artifact(String(d.id))
+					res.artifact = String(d.id)
+			"fight":
+				res.fight = {"kind": String(d.get("kind", "fight")), "ids": d.get("ids", [])}
+				fight_gift.append_array(d.get("gift", []))
+	return res
+
+
+## The Farmer's Farm, after the shooting: 1 Leaf a goblin, 5 a hobgoblin, -2 a fairy (your Leaves never go below
+## 0). Returns {total, text}: the farmer's tally.
+func farm_reward(goblins: int, hobgoblins: int, fairies: int) -> Dictionary:
+	var total := goblins + 5 * hobgoblins - 2 * fairies
+	amber = maxi(0, amber + total)
+	var count := "The farmer counts on his fingers. \"Let's see: %d goblin%s, %d hobgoblin%s and... %d fair%s.\" " % [
+		goblins, "" if goblins == 1 else "s", hobgoblins, "" if hobgoblins == 1 else "s", fairies, "y" if fairies == 1 else "ies"]
+	var say := ""
+	if total > 0:
+		say = "\"That comes to %d Leaves. You've earned every one of them.\" He presses them into your hand." % total
+	elif total == 0:
+		say = "\"That comes to nothing at all. Well, thank you for trying, I suppose.\""
+	else:
+		say = "\"That's %d Leaves you owe me, I'm afraid. The fairies' families will need them more than you.\" He holds out his hat." % -total
+	if fairies == 0 and goblins + hobgoblins > 0:
+		say += " \"And not a single fairy hurt. Bless you.\""
+	return {"total": total, "text": count + say}
 
 
 ## Do what an event option says. Returns {text, fight: bool}.
@@ -854,8 +981,8 @@ func _do_event_option(opt: Dictionary) -> Dictionary:
 
 # ------------------------------------------------------------------ the merchant
 
-## What the merchant sells: 3 spells, 2 artifacts, an upgrade and a meal.
-func shop_stock() -> Array:
+## What the merchant sells: 3 spells, 2 artifacts, an upgrade and a meal. `discount`: his 10% once he's drunk.
+func shop_stock(discount := 0.0) -> Array:
 	var items := []
 	var spells := spell_offer(3, "shop")
 	var seen := {}
@@ -872,7 +999,34 @@ func shop_stock() -> Array:
 	if "broken_seed_of_life" in artifacts:
 		items.append({"kind": "mend_seed", "price": SEED_MEND_PRICE})
 	items.append({"kind": "heal", "price": PRICES.heal})
+	if discount > 0.0:
+		for it in items:
+			it.price = int(round(it.price * (1.0 - discount)))
 	return items
+
+
+## What an item on his shelf costs you now: nothing if he owes you one of that kind (see free_pick).
+func shop_price(it: Dictionary) -> int:
+	return 0 if it.kind in free_pick else int(it.price)
+
+
+## This room, as the merchant remembers it.
+func room_key() -> String:
+	return "%d:%d:%d" % [act, row, col]
+
+
+## You hand over favour n (0, 1, 2): the item goes to him, and he pays you back on this visit's shelf.
+func merchant_reward(n: int, stock: Array) -> void:
+	remove_artifact(MerchantQuests.ITEMS[n])
+	match n:
+		0:
+			free_pick.append("spell")
+		1:
+			free_pick.append("artifact")
+		2:
+			for it in stock:
+				if it.kind == "bottle":
+					it.price = 0  # (all his bottles: yours, as many as you have room for)
 
 
 ## Pay for an item (the caller applies it). Returns false if you can't afford it.

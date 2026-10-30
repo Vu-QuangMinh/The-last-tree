@@ -69,6 +69,7 @@ var charges := {}  # spell id -> triggers left right now
 var talk_id := ""  # a boss you can talk to before the fight (BossTalk): its id
 var talk_free := false  # test mode: talking to a boss costs nothing
 var talk_spent: Array = []
+var drops: Array = []  # artifact ids this fight always drops (the Matron's Blanket, the Retainer's Sake Bottle): instead of the elite's artifact
 var talk_rewards: Array = []  # artifact ids the talk promised: yours (and unlocked for good) if you win  # the Essence the talk has cost you so far
 var invoke_count := 3  # how many spells the Invoker conjures a turn
 var hm := {}  # the Handyman fight: {phase, kills, body}
@@ -172,6 +173,9 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 			_spawn(HM_HANDS.right[0], [])
 			continue
 		_spawn(enemy_ids[i], preset_extra[i] if i < preset_extra.size() else null)
+	for e in enemies:
+		if e.yin != "":
+			_yy_flip(e)  # (the Yin Yang Beast inverts your spells as it enters, before anything else)
 	if has_artifact("thornbark"):
 		player.passives["thorns"] = int(_an("thornbark"))
 	if has_artifact("chant_bell"):
@@ -584,6 +588,18 @@ func _find_spell(id: String) -> Dictionary:
 	return db.get_spell(id)
 
 
+## The Mirror Fairy: a spell aimed at her (anything that picks an enemy: damage, Burn, Snipe, Steal...) bounces off her
+## mirror half the time and does nothing at all.
+func _mirrored(spell: Dictionary, t) -> bool:
+	if not (t is EnemyState) or not t.has_passive("mirror_deflect") or not SpellDB._needs_target(spell.get("effects", [])):
+		return false
+	if rng.randf() >= 0.5:
+		return false
+	_log("%s bounces off %s's mirror." % [spell.name, t.name])
+	await anim.call({"type": "mirror_shine", "enemy": t})
+	return true
+
+
 ## Cast one charge of a living spell. target_idx: the enemy for "target" effects (-1: ask the chooser).
 func resolve_spell(id: String, target_idx := -1) -> void:
 	if over or charges.get(id, 0) <= 0 or player.stun_turns > 0:
@@ -641,12 +657,22 @@ func resolve_spell(id: String, target_idx := -1) -> void:
 				turn_ctx.box_refund.append(ch if ch != "?" else _random_element())
 				turn_ctx.box_slots.append(at + k if at >= 0 else maxi(0, chant.size() - 1))
 			_log("The Magic Box plays a note: %s's Essence will come back after the Release." % spell.name)
+	if has_artifact("nice_lute"):
+		player.lute_casts += 1
+		if player.lute_casts % 10 == 0 and not alive().is_empty():
+			# A Nice Lute: a tune that makes them weak in the knee
+			await _proc("nice_lute")
+			for e in alive():
+				e.weak_turns = maxi(e.weak_turns, 1)
+			_log("A Nice Lute plays: all enemies are Weakened.")
 	for t in times:
 		if over:
 			break
 		var tctx := {}
 		if target_idx >= 0 and target_idx < enemies.size() and not enemies[target_idx].is_dead():
 			tctx.target = enemies[target_idx]
+		if await _mirrored(spell, tctx.get("target")):
+			continue
 		await _fire(spell, turn_ctx, tctx)
 	await _kindle()
 	voice_echo = false
@@ -1841,6 +1867,9 @@ func use_bottle(i: int, target_idx := -1) -> void:
 		if over:
 			break
 		await _apply(eff, b, tctx, ctx)
+	if has_artifact("sake_bottle") and not over:
+		player.heal(5)
+		_log("The Sake Bottle numbs the pain: +5 HP.")
 	_cleanup()
 
 
@@ -2018,7 +2047,8 @@ func _plan(e: EnemyState) -> void:
 ## - turned into an anti-spell: the beast absorbs 1 Essence of its pattern (at random) into its own row;
 ## - turned into a spell: 1 random Essence is added to its pattern (at a random place).
 ## That change lasts until it is flipped again (or the fight ends). A one-Essence pattern gives nothing up.
-func _invert_spell(e: EnemyState, s: Dictionary) -> Dictionary:
+## `feed` false: the Essence a spell turned anti gives up goes nowhere (the Yin Yang Beast keeps its 12 / 10).
+func _invert_spell(e: EnemyState, s: Dictionary, feed := true) -> Dictionary:
 	var natural: Dictionary = s.get("natural", s)
 	var inv := natural.duplicate(true)
 	inv.natural = natural
@@ -2035,8 +2065,9 @@ func _invert_spell(e: EnemyState, s: Dictionary) -> Dictionary:
 			var i: int = spots[rng.randi() % spots.size()]
 			var el := p[i]
 			p = p.erase(i, 1)
-			e.append(el)
-			_log("%s absorbs a %s from %s." % [e.name, Elements.NAMES[el], inv.name])
+			if feed:
+				e.append(el)
+				_log("%s absorbs a %s from %s." % [e.name, Elements.NAMES[el], inv.name])
 	else:
 		var el := _random_element()
 		var at := rng.randi() % (p.length() + 1)
@@ -2050,28 +2081,28 @@ func _invert_spell(e: EnemyState, s: Dictionary) -> Dictionary:
 	return inv
 
 
-## The Yin Yang Beast's (soft) aim: it likes short spells as anti-spells and long ones as spells. Each pick is random,
-## but weighted: a flip that moves a spell that way (a short spell turned anti, a long anti-spell turned back) is far
-## likelier than one that undoes it. "Short" and "long" are against the average pattern length of what it can pick.
+## Which spell an inversion flips: any of them, at random.
 func _invert_pick(cands: Array) -> int:
-	var avg := 0.0
-	for s in cands:
-		avg += String(s.pattern).length()
-	avg /= maxf(1.0, cands.size())
-	var weights := []
-	var total := 0.0
-	for s in cands:
-		var plen := float(String(s.pattern).length())
-		var gain := (plen - avg) if s.get("anti", false) else (avg - plen)  # >0: the flip goes its way
-		var w := pow(4.0, clampf(gain, -3.0, 3.0))
-		weights.append(w)
-		total += w
-	var r := rng.randf() * total
-	for i in weights.size():
-		r -= weights[i]
-		if r <= 0.0:
-			return i
-	return weights.size() - 1
+	return rng.randi() % cands.size()
+
+
+## The Yin Yang Beast (and its Cubs) entering, or rising again: it inverts its "flip" spells of yours at once (random
+## ones), before it takes a turn.
+func _yy_flip(e: EnemyState, n := -1) -> void:
+	if n < 0:
+		n = int(e.def.get("flip", 0))
+	var cands := shown_spells().filter(func(s): return not s.get("power", false) and String(s.get("pattern", "")) != "" and not player.used_powers.has(s.id))
+	var flipped := []
+	for k in n:
+		if cands.is_empty():
+			break
+		var s: Dictionary = cands.pop_at(_invert_pick(cands))
+		var inv := _invert_spell(e, s, false)
+		loadout[loadout.find(s)] = inv
+		flipped.append(inv.name)
+	if not flipped.is_empty():
+		_log("%s inverts %s." % [e.name, ", ".join(flipped)])
+		anim.call({"type": "invert_spells", "enemy": e})
 
 
 ## Cooldown N: once cast, the spell can't be cast in your next N turns. (+1: the turn it's cast in ends first.)
@@ -2081,14 +2112,15 @@ func _start_cooldown(spell: Dictionary) -> void:
 		player.cooldowns[spell.id] = cd + 1
 
 
-## A spell is cast while a Yin Yang Beast charges: one of its own colour (white: a spell, black: an anti-spell) raises
-## the hit by 5; one of the other colour leaves it as it is. The fight doesn't say so: you find out.
+## A spell is cast: a Yin Yang Beast (or Cub) of its colour (white: a normal spell, black: an anti-spell) gains +1
+## Power (+1 damage per hit). One of the other colour leaves it as it is.
 func _charge_react(spell: Dictionary) -> void:
 	var col := "black" if spell.get("anti", false) else "white"
 	for e in alive():
-		if e.yin != "" and e.charge_dmg >= 0:
-			if col == e.yin:
-				e.charge_dmg += 5
+		if e.yin != "" and col == e.yin:
+			e.power += 1
+			e.dmg_bonus += 1
+			_log("%s feeds on %s: Power %d." % [e.name, spell.get("name", "your spell"), e.power])
 
 
 ## You gained Shield: an Enraged enemy gains Power +1 for each separate gain.
@@ -2121,7 +2153,10 @@ func _invoker_summon(e: EnemyState) -> void:
 	var pool := EnemyDefs.INVOKER_SPELLS.duplicate(true)
 	e.conjured.clear()
 	for k in mini(invoke_count, pool.size()):
+		if pool.is_empty():
+			break
 		var sp: Dictionary = pool.pop_at(rng.randi() % pool.size())
+		pool = pool.filter(func(x): return x.pattern != sp.pattern)  # (no two of a set share a pattern)
 		sp.rarity = "rare"
 		sp.rarity_name = "Rare"
 		sp.power = false
@@ -2216,6 +2251,21 @@ func _invoke(e: EnemyState, m: Dictionary) -> void:
 		await anim.call({"type": "speech", "enemy": e, "text": EnemyDefs.INVOKER_CHANTS[m.word]})
 
 
+## A summoner down for good (not one about to rise again: that is checked first) takes everything it summoned with it.
+func _summons_fall() -> void:
+	for x in enemies:
+		if x.is_dead() or not x.has_meta("summoner"):
+			continue
+		var s = x.get_meta("summoner")  # (untyped: it may be gone from the fight already)
+		if s is EnemyState and s.is_dead() and not s.knocked:
+			x.elements.clear()
+			x.armor.clear()
+			x.lit.clear()
+			x.painted.clear()
+			x.parts.clear()
+			_log("%s falls with %s." % [x.name, s.name])
+
+
 ## The Invoker at 0 Essence the first time: he rises again with his second row, and starts chanting.
 ## The Veiled Eyes at 0 Essence the first time: the veil falls and the spider underneath fights on, with its second row;
 ## its first move is the theft, straight away (this very enemy turn, if it fell during your Release).
@@ -2229,6 +2279,22 @@ func _rebirths() -> void:
 			e.set_meta("pending_theft", true)  # (kept as its intent until the theft has happened: see _plan)
 			_log("The veil falls away. Something underneath unfolds its legs.")
 			anim.call({"type": "veil_falls", "enemy": e})
+		if e.has_passive("yy_rebirth") and e.phase == 1 and e.is_dead():
+			# the black Beast at 0: it bursts, and the pieces fly back as the white one (its second row), which inverts
+			# your spells straight away
+			e.phase = 2
+			e.yin = "white"
+			e.power = 0
+			e.dmg_bonus = 0 if e.def.get("no_bonus", false) else EnemyDefs.attack_bonus(act)
+			e.reset_hp(String(e.def.hp2))
+			e.move_index = 0
+			e.charge_dmg = -1
+			_plan(e)
+			e.fresh = true
+			_log("%s rises again, white!" % e.name)
+			anim.call({"type": "boss_phase"})
+			anim.call({"type": "reform", "enemy": e})
+			_yy_flip(e)
 		if e.has_passive("invoker_rebirth") and e.phase == 1 and e.is_dead():
 			e.phase = 2
 			e.reset_hp(String(e.def.hp2))
@@ -2530,8 +2596,7 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				_log("%s silences %s." % [e.name, s.name])
 			await anim.call({"type": "silence"})
 		"invert_spells":
-			# the Yin Yang Beast: some of your spells flip (spell <-> anti-spell) for the rest of the fight, and it turns
-			# the other colour
+			# some of your spells flip (spell <-> anti-spell) for the rest of the fight
 			var cands := shown_spells().filter(func(s): return not s.get("power", false) and String(s.get("pattern", "")) != "" and not player.used_powers.has(s.id))
 			var flipped := []
 			for k in m.n:
@@ -2541,7 +2606,6 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				var inv := _invert_spell(e, s)
 				loadout[loadout.find(s)] = inv
 				flipped.append(inv.name)
-			e.yin = "black" if e.yin == "white" else "white"
 			if not flipped.is_empty():
 				_log("%s inverts %s." % [e.name, ", ".join(flipped)])
 			await anim.call({"type": "invert_spells", "enemy": e})
@@ -2668,6 +2732,9 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 			_log("%s makes you Brittle: you gain 25%% less Shield." % e.name)
 			await anim.call({"type": "frail"})
 		"freeze":
+			if has_artifact("blanket"):
+				_log("Your Blanket keeps the cold out.")
+				return
 			var free := player.stock.filter(func(s): return not s.frozen)
 			free.shuffle()
 			for s in free.slice(0, m.n):
@@ -2689,6 +2756,7 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				if alive().size() < MAX_ENEMIES:
 					var sid: String = m.list[i % m.list.size()] if m.has("list") else (m.id if m.has("id") else m.ids[rng.randi() % m.ids.size()])
 					var add := _spawn(sid)
+					add.set_meta("summoner", e)  # (it goes down with whoever summoned it: see _summons_fall)
 					if m.get("flank", false) and e in enemies:
 						# (the Wizard's Forge Spirits: one on each side of him, the first on his left)
 						enemies.erase(add)
@@ -2775,6 +2843,7 @@ func _rage_check(e: EnemyState) -> bool:
 
 func _cleanup() -> void:
 	_rebirths()
+	_summons_fall()
 	_handyman_step()
 	for e in enemies:
 		if _rage_check(e):
@@ -2806,9 +2875,13 @@ func _cleanup() -> void:
 				defeated.append(e.id)
 			if e.has_passive("briar_walls") and not e.elements.is_empty():
 				_log("The walls fall with her.")
+			if e.has_passive("briar_walls") and not ("blanket" in drops):
+				drops.append("blanket")  # (the Bramble Matron's blanket: the merchant's first favour)
 			if e.has_passive("avenger"):
-				# the Samurai has fallen: his Retainer yields, and the fight is over
+				# the Samurai has fallen: his Retainer yields, and the fight is over. He toasts you, and his sake is yours.
 				for r in alive().filter(func(x): return x.has_passive("retainer")):
+					if not ("sake_bottle" in drops):
+						drops.append("sake_bottle")
 					r.set_meta("yielded", true)
 					r.elements.clear()
 					r.armor.clear()
@@ -2827,16 +2900,21 @@ func _cleanup() -> void:
 				_log("%s bursts: you are poisoned." % e.name)
 			if e.has_passive("yinyang_split"):
 				# it splits into two cubs: one white, one black, out of step (one inverts first, the other roars)
+				var cubs := []
 				for k in 2:
 					if alive().size() < MAX_ENEMIES:
 						var cub := _spawn("yin_yang_clone")
 						cub.yin = ["white", "black"][k]
 						if k == 1:
-							cub.def.moves = cub.def.moves_black  # (the black one silences first, then charges)
+							cub.def.moves = cub.def.moves_black  # (the black one silences first, then attacks)
 							cub.reset_hp(String(cub.def.hp_black))  # (a row unlike the white one's)
 						cub.fresh = true
 						_plan(cub)
 						anim.call({"type": "spawn", "enemy": cub})
+						cubs.append(cub)
+				for cub in cubs:  # (once both are on the stage: a later spawn would rebuild the views under a running reform)
+					anim.call({"type": "reform", "enemy": cub, "delay": 0.15})  # (the Beast's pieces fly together into it)
+					_yy_flip(cub)
 				_log("%s splits in two!" % e.name)
 			if e.has_passive("slime_burst"):
 				# two small slimes of different colours pop out
@@ -2855,6 +2933,7 @@ func _cleanup() -> void:
 
 func _check_end() -> void:
 	_rebirths()
+	_summons_fall()
 	_handyman_step()
 	if over:
 		return

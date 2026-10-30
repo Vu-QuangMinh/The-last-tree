@@ -100,12 +100,14 @@ Knivel comes into the story later. After Nila disappeared, he went to find her (
 ## 4. Characters and bosses
 
 ### The Merchant
-His son Adam is the First Sinner, locked away below. He wants you to help free him. He has 3 quests (in any order):
-- a **blanket** (from the Bramble Witch / Bramble Matron),
-- a **chair** (from the Chairman),
-- a **bottle** (from Bottle Head).
+His son Adam is the First Sinner, locked away below. He wants you to help free him. He has 3 quests, **in order** (each opens once the one before is done; progress is kept from run to run). A quest mark (**!**) over him means he has a favour to ask; click him or the mark to talk. One visit: either he asks for a favour or you bring one back, never both. Handing it over takes the item from you.
+1. **A blanket** (the Bramble Matron always drops it). Reward: every spell on his shelf is free until you take one.
+2. **A chair** (from the Chairman: not made yet). Reward: every artifact on his shelf is free until you take one.
+3. **"Something to numb my pain"**: the **Sake Bottle** (the Samurai's Retainer gives it if the Samurai falls first). Reward: all the bottles he has.
 
-When all 3 are done he gets drunk and gives you a permanent 10% discount, and you can steal his **family picture**: a dad (him), a wife, and a son deleted from the picture (a black silhouette). Adam's note and digits are on the back.
+From the visit after the third quest on, for good, he sits **drunk on the chair** (his own model: `merchant_drunk`, not drawn yet), gives a permanent **10% discount**, and you can steal his **family picture**: a dad (him), a wife, and a son deleted from the picture (a black silhouette). Adam's note and digits are on the back.
+
+The dialogue is in `scripts/core/merchant_quests.gd` (a first draft by Claude: yours to rewrite).
 
 ### The Handyman (Act 1 boss)
 A twisted, sadistic, loyal servant of the Hands. He is rewarded with the hands of characters who acted out of line (the Pianist's hand among them). He enjoys the violence and is proud of his loyalty. Laughs "Hehe, hehehe" and "Muahahahah".
@@ -231,8 +233,9 @@ The word "seven" is red, "pair" is green, and the "one" in "gone" is white-purpl
 
 ## 6. Artifacts from the story
 
-- **The Bottle** (from Bottle Head): heal 5 whenever you use a bottle.
-- **The Blanket** (from the Bramble Witch): Thorn damage is doubled. *"Thick enough to warm a broken heart, but not to mend it."*
+- **Sake Bottle** (the Samurai's Retainer, when the Samurai falls first: "You defeated my master honorably. Cheers to you."): heal 5 every time you use a bottle. *"Can't fix your bond, but will numb your heart."* (In game.)
+- **The Blanket** (the Bramble Matron, a sure drop instead of her artifact choice): you can't be Frozen. *"Thick enough to warm a broken heart, but not to mend it."* (In game.)
+- **Family Picture** (stolen from the drunk merchant): no effect; Adam's note on the back. (In game, with "093" from the older note as a stand-in for the digits.)
 - **Mysterious Hand** (Rare; the Handyman's talk): at the start of each fight, steal 1 Essence from a random enemy. *"Once played defiantly, now lies lifeless."* (In game.)
 - **Magic Box** (Rare; the Good Ol' Wizard's talk): every 6th spell you cast, Refund its pattern after the Release. *"With the right tune, it may reveal a secret."* In the Codex it can be played (see below). (In game.)
 - **The Entertainer** (the Pianist, normal fight): apply 1 Burn to a random enemy per Extension.

@@ -169,6 +169,29 @@ func buy_artifact(id: String) -> bool:
 	return true
 
 
+# ------------------------------------------------------------------ the merchant's quests
+
+## {"done": favours done (0-3), "open": the next one taken on, "drunk": he sits drunk on his chair}. Edit it, then save_game().
+## A Note to Yourself: the spell left in the note on an earlier run (kept in the save, across runs). The very first
+## note holds Aole's Blessing.
+const NOTE_FIRST := "trade_winds"
+
+
+func note_spell() -> String:
+	return String(data.get("note_spell", NOTE_FIRST))
+
+
+func set_note_spell(id: String) -> void:
+	data["note_spell"] = id
+	save_game()
+
+
+func merchant() -> Dictionary:
+	if not (data.get("merchant") is Dictionary):
+		data.merchant = {"done": 0, "open": false}
+	return data.merchant
+
+
 # ------------------------------------------------------------------ codex
 
 func in_codex(enemy_id: String) -> bool:

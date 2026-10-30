@@ -5436,7 +5436,7 @@ func _cull_dead() -> void:
 	if _enemy_row == null:
 		return
 	for e in _views.keys():
-		if e.is_dead() and not e.knocked and not _hand_going_down(e) and not e.has_passive("armadillo") and not e.has_meta("yielded") and not (e.has_passive("veil_falls") and e.phase == 1) and not (e.has_passive("invoker_rebirth") and e.phase == 1):  # (the Veiled Eyes at 0 Essence do not break: the veil falls and the same puppet unfolds; the Invoker rises again: his own burst-and-reform plays)
+		if e.is_dead() and not e.knocked and not _hand_going_down(e) and not e.has_passive("armadillo") and not e.has_meta("yielded") and not (e.has_passive("veil_falls") and e.phase == 1) and not (e.has_passive("invoker_rebirth") and e.phase == 1) and not (e.has_passive("yy_rebirth") and e.phase == 1):  # (the Veiled Eyes at 0 Essence do not break: the veil falls and the same puppet unfolds; the Invoker rises again: his own burst-and-reform plays)
 			var old: EnemyView = _views[e]
 			_views.erase(e)
 			if is_instance_valid(old):
@@ -5522,6 +5522,18 @@ func _anim_event(ev: Dictionary) -> void:
 		"artifact_used":
 			_arts.flash(ev.id)
 			Audio.play("spell_glow")
+		"mirror_shine":
+			# the Mirror Fairy turns your spell away: her mirror flares white for a moment
+			var mv: EnemyView = _views.get(ev.enemy)
+			Audio.play("spell_glow")
+			if mv != null and is_instance_valid(mv.creature):
+				var cr := mv.creature
+				var fx := Vfx.make(_fx, 70)
+				fx.burst(cr.global_position + cr.size / 2.0, 24, Color(0.9, 0.97, 1.0), Vector2(120, 380), Vector2(0.25, 0.5), Vector2(4, 9), Vfx.SPARK)
+				var tw := cr.create_tween()
+				tw.tween_property(cr, "modulate", Color(2.6, 2.6, 2.8), 0.08)
+				tw.tween_property(cr, "modulate", Color.WHITE, 0.45)
+				await tw.finished
 		"chant":
 			_prompt.text = "Chanting " + " ".join(Array(ev.chant.split("")).map(func(c): return Elements.NAMES[c]))
 			await _wait(0.25)
@@ -5869,6 +5881,9 @@ func _anim_event(ev: Dictionary) -> void:
 		"reform":
 			# rising for his second phase: he bursts into pieces and they are pulled back into him along the same paths
 			var rv: EnemyView = _views.get(ev.enemy)
+			if ev.has("delay") and rv != null and is_instance_valid(rv.creature):
+				rv.creature.visible = false  # (a Yin Yang Cub: hidden until the pieces have flown together into it)
+				await _wait(float(ev.delay))
 			if rv != null and is_instance_valid(rv.creature):
 				var fx := PuppetShatter.spawn_reform(self, rv.creature)
 				if fx != null:
@@ -7347,6 +7362,7 @@ func _retainer_yields(r: EnemyState) -> void:
 	if rv != null and is_instance_valid(rv):
 		rv.creature.retainer_yield()
 	await _speech(r, "I yield.", 1.6)
+	await _speech(r, "You defeated my master honorably. Cheers to you.", 2.6)  # (and his sake is yours: Fight.drops)
 	var v: EnemyView = _views.get(r)
 	if v != null and is_instance_valid(v):
 		var tw := v.create_tween().set_parallel()
