@@ -39,7 +39,7 @@ Canon comes from the user. Lines marked **(?)** are open questions, not canon.
 | 2 | Chairman | ✍️ (name only) | ❌ |
 | 2 | Blackwing | ✍️ (name only) | ❌ |
 | 2 | The Warden (was Lockwarden) | ⚙️ (you kept it) | ✅ |
-| 2 | The Samurai and his Retainer | ❓ (added 2026-10-23) | ✅ (not in your list) |
+| 2 | The Samurai and his Retainer | ✍️ | ✅ |
 | 3 | Bottle Head | ✍️ (name only) | ❌ |
 | 3 | Fire Dragon | ✍️ (designed, see below) | ✅ (stand-in art) |
 | 3 | Mirror Knight | ⚙️ (you kept it) | ✅ |
@@ -162,7 +162,7 @@ A friendly-looking cartoon dragon lying down: **head on the right, tail on the l
 
 ### Mini bosses
 - **Act 1:** the Triplet, Enraged Rolling Bear, Bramble Matron.
-- **Act 2:** Chairman, Blackwing, the Warden.
+- **Act 2:** Chairman, Blackwing, the Warden, the Samurai and his Retainer.
 - **Act 3:** Bottle Head, Winter Wyvern, Mirror Knight.
 
 ---
