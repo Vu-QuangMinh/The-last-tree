@@ -21,6 +21,7 @@ var _status: RichTextLabel
 var _fuse_btn: Button
 var _out: SpellCard  # the fused spell's card, once both slots are full
 var _busy := false  # the fusion is playing
+var no_wax := false  # (An Abandoned Camp: the spells are only half-cooked, so no wax comes of the fusion)
 var _others: Control  # the "your other spells" overlay, while it's open
 
 
@@ -509,7 +510,7 @@ func _play_fusion(a: Dictionary, b: Dictionary, from_a: Vector2, from_b: Vector2
 	stage.add_child(cont)
 	# 5. a drop of purple wax gathers above the new spell: you click the Essence it seals (a fused anti-spell keeps
 	# both its patterns whole, so there is nothing to seal)
-	if result.id in run.upgradable():
+	if result.id in run.upgradable() and not no_wax:
 		cont.disabled = true
 		card = await _wax_seal(stage, card, result.id, mid)
 	await cont.pressed

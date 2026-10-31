@@ -669,14 +669,15 @@ func _ev_opt(id: String, label: String) -> Dictionary:
 func test_rewritten_events() -> void:
 	var run := RunState.new()
 	run.setup(db, ["fire_ball", "water_wall", "tailwind"], [], 3)
-	# only Act 1 has events: in Act 2 a "?" room that would be an event is a fight
+	# Act 2 only has its own events and the every-act ones; the Act 1 ones never come
 	run.act = 2
 	run.map = [[{"type": "unknown"}]]
 	run.row = 0
 	run.col = 0
 	for k in 20:
-		run.current_node().erase("as")
-		assert_true(run.resolve_unknown() != "event", "no events outside Act 1")
+		run.current_node().erase("event")
+		if run.resolve_unknown() == "event":
+			assert_true(2 in MapEvents.get_event(run.current_node().event).acts, "only events made for Act 2 (or every act)")
 	run.act = 1
 	# the Whispering Well: 50 Leaves on the button (greyed out without them), two bottles, the rest left over
 	var pay := _ev_opt("well", "Toss in 50 Leaves")
@@ -735,6 +736,278 @@ func test_farmers_farm_pays_per_head() -> void:
 	assert_eq(run.amber, 0, "fairies can cost Leaves, but never below 0")
 
 
+func test_climate_change_rewards_follow_the_water() -> void:
+	var ev := MapEvents.get_event("shrinking_pond")
+	var give: Dictionary = ev.options[0]
+	var run := RunState.new()
+	run.setup(db, ["fire_ball", "water_wall", "tailwind"], [], 3)
+	run.spellbook = ["fire_ball", "water_wall", "tailwind"]
+	run.amber = 0
+	run.event_outcome(give, -1, "fire_ball")  # FF: no Water
+	assert_true("ever_thirsting" in run.artifacts and not ("fire_ball" in run.spellbook), "an insult, the curse, and the spell is gone")
+	var ww := String(db.get_spell("water_wall").pattern).count("W")
+	var before := run.artifacts.size()
+	run.event_outcome(give, -1, "water_wall")
+	if ww == 1:
+		assert_eq(run.amber, 50)
+	elif ww == 2:
+		assert_eq(run.artifacts.size(), before + 1, "2 Water: a common artifact")
+		assert_eq(Artifacts.get_def(run.artifacts[-1]).tier, "common")
+	assert_true(Artifacts.is_curse("ever_thirsting") and Artifacts.get_def("ever_thirsting").pool == "none", "found nowhere else")
+	# Ever Thirsting: one Water fewer to start the fight
+	var counts := []
+	for arts in [[], ["ever_thirsting"]]:
+		var g := Fight.new(db, PlayerState.new())
+		g.artifacts = arts
+		g.loadout = [db.get_spell("fire_ball")]
+		g.rng.seed = 77
+		g.start(["ashling"], 1, 1)
+		counts.append([g.player.stock.size(), g.player.stock.filter(func(x): return x.el == "W").size()])
+	assert_eq([counts[0][0] - counts[1][0], counts[0][1] - counts[1][1]], [1, 1], "one Water fewer to start with")
+
+
+func test_church_of_aole() -> void:
+	var ev := MapEvents.get_event("church_of_aole")
+	var run := RunState.new()
+	run.setup(db, ["fire_ball"], [], 3)
+	run.spellbook = ["fire_ball"]
+	# walking away (or any wrong answer): 1 extra random Essence in the next fight
+	run.event_outcome(ev.options[1])
+	assert_eq(run.fight_gift, ["random"])
+	var f := run.make_fight(["ashling"])
+	var g := RunState.new()
+	g.setup(db, ["fire_ball"], [], 3)
+	var plain := g.make_fight(["ashling"])
+	assert_eq(f.player.stock.size(), plain.player.stock.size() + 1)
+	# listen, then the three right answers
+	var page: Dictionary = ev.options[0].next.options[0].next.options[0].next  # (the story's two pages, then the first question)
+	page = page.options[0].next  # Our lord and saviour
+	page = page.options[1].next  # To save this world
+	var right: Dictionary = page.options[1]  # Show others kindness
+	var res := run.event_outcome(right)
+	assert_true("trade_winds" in run.spellbook and res.spell == "trade_winds", "Aole's Blessing")
+	run.player.hp = 10
+	res = run.event_outcome(right)
+	assert_eq(run.player.hp, run.player.max_hp, "already have it: healed to full")
+	assert_true(String(res.text).contains("already have"))
+	assert_eq(Artifacts.get_def("wind_chime").name, "Aole's Charm")
+
+
+func test_the_flying_turtle_falls_three_events_later() -> void:
+	var run := RunState.new()
+	run.setup(db, ["fire_ball"], [], 3)
+	run.event_outcome(MapEvents.get_event("flying_turtle").options[1])  # walk away
+	assert_eq(run.due_events, {"turtle_falls": 3})
+	run.act = 2  # (any act: he finds you)
+	run.map = [[{"type": "unknown"}]]
+	run.row = 0
+	run.col = 0
+	var events := 0
+	var guard := 0
+	while guard < 500:
+		guard += 1
+		run.current_node().clear()
+		run.current_node()["type"] = "unknown"
+		var due := int(run.due_events.get("turtle_falls", 0))
+		run.resolve_unknown()
+		if run.current_node().get("event", "") == "turtle_falls":
+			break
+		if int(run.due_events.get("turtle_falls", 0)) < due:
+			events += 1  # (a room that rolled an event, but wasn't him yet: in Act 2 it turns into a fight)
+	assert_eq(events, 2, "the third event is the turtle")
+	run.player.hp = 30
+	run.event_outcome(MapEvents.get_event("turtle_falls").options[0])
+	assert_eq(run.player.hp, 20.0)
+	assert_true(MapEvents.get_event("turtle_falls").get("hidden", false), "never met by chance")
+
+
+func test_mystery_shack_and_summoning_bill() -> void:
+	var ev := MapEvents.get_event("mystery_shack")
+	var run := RunState.new()
+	run.setup(db, ["fire_ball"], [], 3)
+	run.note_store = NoteBox.new()  # (no save file here: unlocking the book is skipped)
+	run.event_outcome(ev.options[0])
+	run.event_outcome(ev.options[1])
+	assert_true("dollar_bill" in run.artifacts and "half_eaten_candy" in run.artifacts, "the boy's bill, the girl's candy")
+	var full := RunState.new()
+	full.setup(db, ["fire_ball"], [], 9)
+	var cheap := RunState.new()
+	cheap.setup(db, ["fire_ball"], [], 9)
+	cheap.artifacts.append("dollar_bill")
+	assert_eq(cheap.shop_stock()[-1].price, int(round(full.shop_stock()[-1].price * 0.8)), "the Dollar Bill: 20% off")
+	# the new toy: one of your artifacts (not a curse) for a Mystery Book; books stack, +1 spell slot each
+	var toy: Dictionary = ev.options[2]
+	run.artifacts = ["seed_of_life", "kindling_stone"]
+	assert_true(not run.can_choose(toy), "two toys needed")
+	run.artifacts = ["seed_of_life", "kindling_stone", "lucky_acorn", "heartwood_seed", "echo_shell", "ward_stone", "iron_bark"]
+	var slots := run.active_slots()
+	run.event_outcome(toy, -1, "kindling_stone,lucky_acorn")
+	assert_true(not ("kindling_stone" in run.artifacts) and not ("lucky_acorn" in run.artifacts) and run.artifacts.count("mystery_book") == 1)
+	assert_eq(run.active_slots(), slots + 1)
+	run.event_outcome(toy, -1, "heartwood_seed,echo_shell")
+	assert_true(not ("summoning_bill" in run.spellbook))
+	var res := run.event_outcome(toy, -1, "ward_stone,iron_bark")
+	assert_eq(run.artifacts.count("mystery_book"), 3)
+	assert_true("summoning_bill" in run.spellbook and res.spell == "summoning_bill", "three books: Summoning Bill")
+	# Summoning Bill: awake after any chant, costs nothing, and you die without fail
+	var f := _fight(["ashling"], ["summoning_bill"], "F")
+	f.player.shield = 99
+	f.player.aegis = 3
+	f.cast_chant(_all(1))
+	assert_eq(f.charges.get("summoning_bill", 0), 1, "free: awake after any chant")
+	f.resolve_spell("summoning_bill")
+	assert_true(f.player.is_dead() and f.over and not f.won)
+	assert_eq(f.player.death_note, "You summoned Bill to this world. He took over, killing everything.")
+	assert_true(db.get_spell("summoning_bill").get("hidden", false), "never offered or for sale")
+
+
+func test_wax_witch_takes_a_fifth_of_your_max_hp_per_drop() -> void:
+	var ev := MapEvents.get_event("wax_witch")
+	assert_eq(ev.acts, [1, 2, 3], "every act")
+	var run := RunState.new()
+	run.setup(db, ["fire_ball"], [], 3)
+	run.player.max_hp = 50
+	run.player.hp = 50
+	var res := run.event_outcome(ev.options[1])  # two drops: 10, then 8
+	assert_eq([run.player.max_hp, run.player.hp], [32.0, 32.0])
+	assert_true(String(res.text).contains("18 max HP"))
+	run.spellbook = []
+	assert_true(not run.can_choose(ev.options[0]), "nothing to seal: greyed out")
+
+
+func test_the_recycler_trades_like_for_like() -> void:
+	var ev := MapEvents.get_event("recycler")
+	assert_eq(ev.acts, [1, 2, 3])
+	var run := RunState.new()
+	run.setup(db, db.all_spells.map(func(x): return x.id), Artifacts.ALL.map(func(a): return a.id), 3)
+	run.spellbook = ["fire_ball", "water_wall"]
+	var offer := run.recycle_offer("spell", "fire_ball")
+	assert_eq(offer.size(), 3)
+	assert_true(offer.all(func(x): return db.get_spell(x).rarity == db.get_spell("fire_ball").rarity and not (x in run.spellbook)))
+	run.recycle("spell", "fire_ball", offer[0])
+	assert_true(not ("fire_ball" in run.spellbook) and offer[0] in run.spellbook)
+	run.artifacts = ["kindling_stone"]
+	var arts := run.recycle_offer("artifact", "kindling_stone")
+	assert_true(arts.size() == 3 and arts.all(func(x): return Artifacts.get_def(x).tier == "common"))
+	run.recycle("artifact", "kindling_stone", arts[1])
+	assert_eq(run.artifacts, [arts[1]])
+	run.player.bottles = ["fire_flask"]
+	var bot := run.recycle_offer("bottle", "fire_flask")
+	assert_true(bot.size() == 3 and bot.all(func(b): return RunState.bottle_band(b) == RunState.bottle_band("fire_flask")))
+	run.recycle("bottle", "fire_flask", bot[2])
+	assert_eq(run.player.bottles, [bot[2]])
+	run.player.bottles = []
+	assert_true(not run.can_choose(ev.options[2]), "no bottle: greyed out")
+
+
+func test_abandoned_camp() -> void:
+	var ev := MapEvents.get_event("lost_camp")
+	assert_eq(ev.acts, [1, 2, 3])
+	var run := RunState.new()
+	run.setup(db, ["fire_ball"], [], 3)
+	run.player.max_hp = 50
+	run.player.hp = 10
+	var res := run.event_outcome(ev.options[1])
+	assert_eq(run.player.hp, 10.0 + floorf(50 * RunState.REST_HEAL * 0.5), "half a campfire's rest")
+	assert_true(not String(res.text).contains("{n}"))
+	run.spellbook = ["fire_ball"]
+	assert_true(not run.can_choose(ev.options[0]), "fusing needs two spells")
+
+
+func test_rolling_bear_event() -> void:
+	var run := RunState.new()
+	run.setup(db, ["fire_ball"], [], 3)
+	run.amber = 0
+	run.player.hp = 30
+	run.bear_choice("stop")
+	assert_eq([run.amber, run.player.hp], [50, 25.0])
+	run.bear_choice("away")
+	assert_eq(run.due_events, {"bear_revenge": 3})
+	assert_true(MapEvents.get_event("bear_revenge").get("hidden", false) and 3 in MapEvents.get_event("bear_revenge").acts)
+	# the revenge fight: you start it Stunned
+	run.stun_next = 1
+	var f := run.make_fight(["enraged_bear"])
+	assert_eq(f.player.stun_turns, 1)
+	assert_eq(run.stun_next, 0)
+
+
+func test_overgrown_vine_follows_the_spell_category() -> void:
+	var cast: Dictionary = MapEvents.get_event("overgrown_vine").options[0]
+	var run := RunState.new()
+	run.setup(db, ["fire_ball", "water_wall", "tailwind"], [], 3)
+	run.spellbook = ["fire_ball", "water_wall", "tailwind"]
+	run.amber = 0
+	run.player.hp = 20
+	run.event_outcome(cast, -1, "fire_ball")  # Offensive
+	assert_eq(run.amber, 40)
+	run.event_outcome(cast, -1, "water_wall")  # Defensive
+	assert_eq(run.player.hp, 25.0)
+	var res := run.event_outcome(cast, -1, "tailwind")  # Utility
+	assert_true(String(res.text).contains("disappointed"))
+	assert_eq(run.spellbook.size(), 3, "you keep the spell you cast")
+
+
+func test_broken_bridge() -> void:
+	var ev := MapEvents.get_event("broken_bridge")
+	assert_eq(ev.acts, [2])
+	var run := RunState.new()
+	run.setup(db, ["fire_ball", "water_wall"], [], 3)
+	run.loadout = ["fire_ball"]
+	var gifts := 0
+	var wet := 0
+	for k in 40:
+		run.fight_gift.clear()
+		run.burdens.clear()
+		var res := run.event_outcome(ev.options[0])
+		if not run.fight_gift.is_empty():
+			gifts += 1
+		elif run.burdens.get("fire_ball", "") == "W":
+			wet += 1
+			assert_true(String(res.text).contains("Fire Ball") and String(run.spell("fire_ball").pattern).ends_with("W"))
+	assert_true(gifts > 5 and wet > 5 and gifts + wet == 40, "half and half")
+	run.player.hp = 20
+	run.event_outcome(ev.options[1])
+	assert_eq(run.player.hp, 15.0)
+
+
+func test_cactus_maze() -> void:
+	var run := RunState.new()
+	run.setup(db, ["fire_ball", "water_wall", "tailwind"], [], 3)
+	run.spellbook = ["fire_ball", "water_wall"]
+	run.loadout = ["fire_ball", "water_wall"]
+	var ev := MapEvents.get_event("cactus_maze")
+	# burn a spell: the one you pick is gone for good (greyed out with only one spell)
+	var res := run.event_outcome(ev.options[0], -1, "water_wall")
+	assert_true(not ("water_wall" in run.spellbook) and String(res.text).begins_with("Water Wall"))
+	run.spellbook = ["fire_ball"]
+	assert_true(not run.can_choose(ev.options[0]), "you keep your last spell")
+	run.spellbook = ["fire_ball", "water_wall"]
+	# follow the voice three times: 1-5 damage each time, the same three choices again, then the Cactus Heart
+	var opt: Dictionary = ev.options[2]
+	for k in 3:
+		run.player.hp = 40
+		res = run.event_outcome(opt)
+		assert_true(run.player.hp >= 37.0 and run.player.hp <= 39.0, "1 to 3 damage")
+		assert_true(not String(res.text).contains("{n}"))
+		if k < 2:
+			assert_eq(res.then.options.size(), 3, "the same three choices again")
+			opt = res.then.options[2]
+	assert_true("cactus_heart" in run.artifacts and not res.has("then"))
+
+
+func test_thorns_are_left_damage_and_the_cactus_heart_heals() -> void:
+	var f := _fight(["ashling"], ["fire_ball"], "")
+	f.artifacts = ["cactus_heart"]
+	var e: EnemyState = f.enemies[0]
+	_set_hp(e, "FWAFW")
+	f.player.passives["thorns"] = 1
+	f.player.hp = 20
+	f.player.shield = 0
+	f._do_move(e, {"kind": "attack", "n": 2, "hits": 2})
+	assert_eq(e.hp_text(), "AFW", "each hit: its leftmost Essence")
+	assert_eq(f.player.hp, 20.0 - 2 * (2 + e.dmg_bonus) + 10, "5 HP back per Essence the Thorns took")
+
+
 func test_nice_lute_weakens_every_10th_spell() -> void:
 	var f := _fight(["ashling"], ["fire_ball"], "FF")
 	f.artifacts = ["nice_lute"]
@@ -774,8 +1047,7 @@ func test_new_commons() -> void:
 	u.resolve_spell("unbind", 0)
 	assert_eq(u.player.hp, 34.0)
 	assert_true(u.player.silenced.is_empty() and u.player.ignited.is_empty())
-	assert_eq(SpellText.card_text(db.get_spell("coup_de_grace")), "Deal 1 Random damage to an enemy.
-Then Execute at 2.")
+	assert_eq(SpellText.card_text(db.get_spell("coup_de_grace")), "Deal 1 Random damage to an enemy." + String.chr(10) + "Then Execute at 2.")
 	assert_eq(SpellText.card_text(db.get_spell("updraft_lance")), "Deal 1 Right damage to 2 random enemies.")
 
 

@@ -3357,6 +3357,22 @@
    "flavor": "Three pieces of one thing, whole again.",
    "rarity": "legendary",
    "no_fuse": true
+  },
+  {
+   "id": "summoning_bill",
+   "name": "Summoning Bill",
+   "pattern": "",
+   "free": true,
+   "hidden": true,
+   "no_fuse": true,
+   "rarity": "unique",
+   "desc": "Costs nothing. Summon Bill to this world.",
+   "effects": [
+    {
+     "op": "summon_bill"
+    }
+   ],
+   "flavor": "Three books, one name, no way back."
   }
  ]
 }

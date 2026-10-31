@@ -49,6 +49,8 @@ var amber := START_AMBER
 var seen_events: Array = []
 var poison_next := 0  # the Whispering Well: Poison you start your next fight with
 var fight_gift: Array = []  # Essence you start your next fight with (the Lost Sprite's 2 Air)
+var due_events := {}  # event id -> how many events from now it comes, whatever the act (the Flying Turtle falling on you, the Rolling Bear's revenge)
+var stun_next := 0  # turns you start your next fight Stunned (the Rolling Bear's revenge)
 var encounter: Array = []  # the ids of the encounter being prepared
 var encounter_name := ""  # its name (Act 1's hand-made encounters, e.g. "The Slime Trio"; "" otherwise)
 var recent_encounters: Array = []  # names of the encounters met so far (an encounter never comes up twice in 3)
@@ -128,6 +130,7 @@ func active_slots() -> int:
 	for a in ["spell_satchel", "broken_crown", "tangled_grimoire", "spell_pouch"]:  # (+1 each; the Pouch is retired)
 		if a in artifacts:
 			n += 1
+	n += artifacts.count("mystery_book")  # (+1 for every Mystery Book: they stack)
 	if "withered_idol" in artifacts:
 		n -= 1
 	return clampi(n, 3, MAX_ACTIVE)
@@ -269,8 +272,11 @@ func make_fight(enemy_ids: Array) -> Fight:
 		if poison_next > 0:
 			player.poison += poison_next
 			poison_next = 0
+		if stun_next > 0:
+			player.stun_turns = maxi(player.stun_turns, stun_next)  # (the Rolling Bear knocked you silly)
+			stun_next = 0
 		for el in fight_gift:
-			player.add_element(String(el))
+			player.add_element(Elements.random(rng) if el == "random" else String(el))
 		fight_gift.clear()
 	return f
 
@@ -302,6 +308,8 @@ func finish_fight(f: Fight) -> void:
 	amber += rng.randi_range(am[0], am[1])
 	if "healing_sap" in artifacts:
 		player.heal(Artifacts.num("healing_sap", "healing_sap" in artifacts_plus))
+	if "half_eaten_candy" in artifacts:
+		player.heal(2.0)  # (the Half-Eaten Candy)
 	if kind == "boss":
 		player.heal(player.max_hp * 0.5)
 		if act >= ACTS:
@@ -426,9 +434,11 @@ func boss_relic_offer() -> Array:
 
 
 func gain_artifact(id: String) -> void:
-	if id in artifacts:
+	if id in artifacts and not Artifacts.get_def(id).get("stack", false):
 		return
 	artifacts.append(id)
+	if id == "mystery_book" and artifacts.count("mystery_book") >= 3 and not ("summoning_bill" in spellbook):
+		learn_spell("summoning_bill")  # (three Mystery Books: their pages glow, and a spell writes itself into your mind)
 	curse_note = ""
 	if id == "blood_pact":
 		player.max_hp -= 12
@@ -709,7 +719,21 @@ func resolve_unknown() -> String:
 			kind = k
 			break
 		r -= UNKNOWN_ODDS[k]
-	var can_meet := MapEvents.ALL.filter(func(e): return act in e.get("acts", [1, 2, 3]) and not (String(e.get("unless_artifact", "")) in artifacts))
+	if kind == "event" and not due_events.is_empty():
+		# a promise kept (the Flying Turtle, the Rolling Bear): when its count runs out, this event is it, in any act
+		var now := ""
+		for id in due_events.keys():
+			due_events[id] = int(due_events[id]) - 1
+			if int(due_events[id]) <= 0 and now == "":
+				now = id
+		if now != "":
+			due_events.erase(now)
+			for id in due_events:
+				due_events[id] = maxi(1, int(due_events[id]))  # (two due at once: the other waits for the next one)
+			n["as"] = "event"
+			n["event"] = now
+			return "event"
+	var can_meet := MapEvents.ALL.filter(func(e): return act in e.get("acts", [1, 2, 3]) and not e.get("hidden", false) and not (String(e.get("unless_artifact", "")) in artifacts))
 	if kind == "event" and can_meet.is_empty():
 		kind = "fight"  # (no events in this act yet: the room is a fight)
 	n["as"] = kind
@@ -734,9 +758,18 @@ func resolve_unknown() -> String:
 
 ## Can you take this event option (enough Amber / HP)?
 func can_choose(opt: Dictionary) -> bool:
-	if opt.has("outcomes") or opt.has("next") or opt.has("minigame"):
+	if opt.has("outcomes") or opt.has("next") or opt.has("minigame") or opt.has("by_water") or opt.has("by_kind") or opt.has("recycle") or opt.has("fuse"):
 		# (the rewritten events: only a Leaves price, or having a bottle to throw, can grey an option out)
-		return amber >= int(opt.get("amber", 0)) and (not opt.get("pick_bottle", false) or not player.bottles.is_empty())
+		if opt.has("recycle"):
+			return not recyclable(String(opt.recycle)).is_empty()
+		if opt.has("fuse"):
+			return fusable().size() >= 2  # (two spells that can be fused)
+		if waxable_spots() < int(opt.get("wax", 0)):
+			return false  # (the Wax Witch: no Essence left to seal)
+		if giftable_artifacts().size() < int(opt.get("pick_artifact", 0)):
+			return false  # (the Mystery Shed wants two toys)
+		return amber >= int(opt.get("amber", 0)) and (not opt.get("pick_bottle", false) or not player.bottles.is_empty()) \
+			and (not opt.get("pick_spell", false) or spellbook.size() > 1 or opt.get("keep_spell", false))  # (you always keep at least one spell)
 	if opt.get("do", "") == "upgrade_artifact" and upgradable_artifacts().is_empty():
 		return false
 	if opt.get("do", "") == "trade_artifacts" and tradeable_artifacts().is_empty():
@@ -805,24 +838,137 @@ func invert_spell(id: String) -> String:
 	return "%s is %s now." % [s.name, "an anti-spell" if s.get("anti", false) else "a spell again"]
 
 
+## An artifact found in an event that unlocks it ("unlock_by"): unlocked for good, so it can turn up anywhere later.
+func _unlock_found(id: String) -> void:
+	if Artifacts.get_def(id).get("unlock_by", "") == "":
+		return
+	var sm := _notes()
+	if sm != null and sm.has_method("unlock_artifact"):
+		sm.call("unlock_artifact", id)
+
+
+## The Recycler: what you could give him of a kind ("spell" / "artifact" / "bottle"): only things he has 3 of the same
+## kind and rarity to offer back for. (Not fused spells, curses or the Seed of Life.)
+func recyclable(kind: String) -> Array:
+	var have: Array
+	match kind:
+		"spell":
+			have = spellbook.filter(func(id): return not fused.has(id))
+		"artifact":
+			have = artifacts.filter(func(id): return not Artifacts.is_curse(id) and not (id in ["seed_of_life", "broken_seed_of_life"]))
+		_:
+			have = player.bottles.duplicate()
+	var out := []
+	for id in have:
+		if not (id in out) and recycle_offer(kind, id, true).size() >= 3:
+			out.append(id)
+	return out
+
+
+## A bottle's "rarity", by its price: 0 cheap (under 30 Leaves), 1 middling (under 45), 2 dear.
+static func bottle_band(id: String) -> int:
+	var price := int(Bottles.get_def(id).get("price", 0))
+	return 0 if price < 30 else (1 if price < 45 else 2)
+
+
+## Three things of the same kind and rarity as `id` (that you don't have), for the Recycler to offer. `all`: every
+## candidate (to know if there are enough), not just 3 picked at random.
+func recycle_offer(kind: String, id: String, all := false) -> Array:
+	var pool: Array
+	match kind:
+		"spell":
+			var rarity: String = spell(id).get("rarity", "common")
+			pool = unlocked_spells.filter(func(x): return not (x in spellbook) and not db.get_spell(x).get("starter", false) \
+				and not db.get_spell(x).get("hidden", false) and db.get_spell(x).get("rarity", "") == rarity)
+		"artifact":
+			var a := Artifacts.get_def(id)
+			pool = Artifacts.ALL.filter(func(x): return x.pool == a.pool and x.tier == a.tier and x.id != id and (x.id in unlocked_artifacts or x.starter) \
+				and (not (x.id in artifacts) or x.get("stack", false))).map(func(x): return x.id)
+		_:
+			var band := bottle_band(id)
+			pool = Bottles.ALL.filter(func(b): return not b.get("no_offer", false) and b.id != id and bottle_band(b.id) == band).map(func(b): return b.id)
+	if all:
+		return pool
+	var out := []
+	pool = pool.duplicate()
+	while out.size() < 3 and not pool.is_empty():
+		out.append(pool.pop_at(rng.randi() % pool.size()))
+	return out
+
+
+## The Recycler: `give` goes onto his cart, `take` is yours.
+func recycle(kind: String, give: String, take: String) -> void:
+	match kind:
+		"spell":
+			spellbook.erase(give)
+			loadout.erase(give)
+			seals.erase(give)
+			burdens.erase(give)
+			inverted.erase(give)
+			learn_spell(take)
+		"artifact":
+			remove_artifact(give)
+			gain_artifact(take)
+		_:
+			var at := player.bottles.find(give)
+			if at >= 0:
+				player.bottles[at] = take  # (into the same slot)
+
+
+## Spells that can still take a wax seal, and how many seals there is room for in all.
+func waxable_spells() -> Array:
+	return upgradable().filter(func(id): return not sealable(id).is_empty())
+
+
+func waxable_spots() -> int:
+	var n := 0
+	for id in waxable_spells():
+		n += sealable(id).size()
+	return n
+
+
+## Artifacts you can give away as a toy (the Mystery Shed): not curses, not the Seed of Life.
+func giftable_artifacts() -> Array:
+	return artifacts.filter(func(id): return not Artifacts.is_curse(id) and not (id in ["seed_of_life", "broken_seed_of_life"]))
+
+
 ## A rewritten event's option: pay its Leaves (and give away the bottle at `bottle_at`, if it asks for one), roll
 ## one of its outcomes and do it. Returns {text (what the player reads), fight: {kind, ids?} (a fight starts),
 ## artifact: id (gained, to show), overflow: [bottle ids that didn't fit in your slots]}.
-func event_outcome(opt: Dictionary, bottle_at := -1) -> Dictionary:
+func event_outcome(opt: Dictionary, bottle_at := -1, spell_id := "") -> Dictionary:
 	amber -= int(opt.get("amber", 0))
 	if opt.get("pick_bottle", false) and bottle_at >= 0 and bottle_at < player.bottles.size():
 		player.bottles.remove_at(bottle_at)
-	var outs: Array = opt.outcomes
-	var r := rng.randf()
-	var out: Dictionary = outs[-1]
-	for o in outs:
-		r -= float(o.get("chance", 1.0))
-		if r < 0.0:
-			out = o
-			break
+	var outs: Array = opt.get("outcomes", [])
+	var out: Dictionary = outs[-1] if not outs.is_empty() else {}
+	if opt.has("by_kind"):
+		# the Overgrown Vine: the outcome follows the category of the spell you cast (you keep it)
+		out = opt.by_kind.get(String(spell(spell_id).get("kind", "utility")), opt.by_kind.utility)
+	elif opt.has("by_water"):
+		# Climate Change: the outcome follows how many Water the spell you give has (its whole pattern, seals too)
+		var sp := spell(spell_id)
+		var waters := String(sp.get("full_pattern", sp.get("pattern", ""))).count("W")
+		out = opt.by_water[mini(waters, opt.by_water.size() - 1)]
+	else:
+		var r := rng.randf()
+		for o in outs:
+			r -= float(o.get("chance", 1.0))
+			if r < 0.0:
+				out = o
+				break
 	var res := {"text": String(out.text), "overflow": []}
+	if out.has("then"):
+		res.then = out.then  # (a page of choices comes next, under these words)
 	for d in out.get("do", []):
 		match String(d.op):
+			"lose_spell":
+				# Far from Any Road: the spell you picked burns, for good
+				res.text = String(res.text).replace("{spell}", spell(spell_id).get("name", "Your spell"))
+				spellbook.erase(spell_id)
+				loadout.erase(spell_id)
+				seals.erase(spell_id)
+				burdens.erase(spell_id)
+				inverted.erase(spell_id)
 			"bottles", "bottle_ids":
 				var ids: Array = Bottles.random(rng, int(d.n)) if d.op == "bottles" else d.ids
 				for b in ids:
@@ -830,8 +976,45 @@ func event_outcome(opt: Dictionary, bottle_at := -1) -> Dictionary:
 						res.overflow.append(b)
 			"poison_next":
 				poison_next += int(d.n)
+			"grudge":
+				due_events[String(d.event)] = int(d.n)
+			"soak":
+				# the Broken Bridge: a random active spell gets wet, and needs 1 more Water (at the end of its pattern)
+				var pool := loadout.filter(func(x): return String(spell(x).get("pattern", "")) != "")
+				if pool.is_empty():
+					pool = spellbook.filter(func(x): return String(spell(x).get("pattern", "")) != "")
+				if not pool.is_empty():
+					var wet: String = pool[rng.randi() % pool.size()]
+					burdens[wet] = String(burdens.get(wet, "")) + "W"
+					res.text = String(res.text).replace("{spell}", spell(wet).name)
+					res.spell = wet
+				else:
+					res.text = String(res.text).replace("{spell}", "a spell")
+			"rest_half":
+				var healed := player.heal(floorf(player.max_hp * REST_HEAL * 0.5))  # (half what a campfire's rest heals, rounded down)
+				res.text = String(res.text).replace("{n}", str(int(healed)))
+			"blood":
+				# the Wax Witch: each drop is 20% of your max HP, rounded down (the second drop from what is left)
+				var lost := 0
+				for k in int(d.n):
+					var drop := int(floor(player.max_hp * 0.2))
+					player.max_hp = maxf(1.0, player.max_hp - drop)
+					lost += drop
+				player.hp = minf(player.hp, player.max_hp)
+				res.text = String(res.text).replace("{n}", str(lost))
+			"mystery_book":
+				for toy in spell_id.split(",", false):
+					remove_artifact(toy)  # (the toys you gave them: their ids come in as "a,b")
+				gain_artifact("mystery_book")
+				res.artifact = "mystery_book"
+				_unlock_found("mystery_book")
+				if "summoning_bill" in spellbook and artifacts.count("mystery_book") == 3:
+					res.text = String(res.text) + "\n\nAs the third Mystery Book touches the other two, their pages begin to glow, and a spell writes itself into your mind: Summoning Bill."
+					res.spell = "summoning_bill"
 			"damage":
-				player.take_effect(float(d.n))  # (it can kill: the screen ends the run then)
+				var hurt := int(d.n) if d.has("n") else rng.randi_range(int(d.min), int(d.max))
+				player.take_effect(float(hurt))  # (it can kill: the screen ends the run then)
+				res.text = String(res.text).replace("{n}", str(hurt))
 			"heal":
 				player.heal(float(d.n))
 			"max_hp":
@@ -844,14 +1027,43 @@ func event_outcome(opt: Dictionary, bottle_at := -1) -> Dictionary:
 				if not a.is_empty():
 					gain_artifact(a[0].id)
 					res.artifact = a[0].id
+			"gift":
+				fight_gift.append_array(d.els)  # (Essence you start your next fight with: "random" is any element)
+			"learn_spell":
+				if String(d.id) in spellbook and d.get("else", "") == "heal_full":
+					player.heal(player.max_hp)
+					res.text = String(out.get("text_if_owned", res.text))
+				else:
+					learn_spell(String(d.id))
+					res.spell = String(d.id)
+			"artifact_tier":
+				# a random normal artifact of that tier (another tier if none is left)
+				var pool := Artifacts.ALL.filter(func(x): return x.pool == "normal" and (x.id in unlocked_artifacts or x.starter) and not (x.id in artifacts))
+				var of_tier := pool.filter(func(x): return x.tier == String(d.tier))
+				if of_tier.is_empty():
+					of_tier = pool
+				if not of_tier.is_empty():
+					var pick: Dictionary = of_tier[rng.randi() % of_tier.size()]
+					gain_artifact(pick.id)
+					res.artifact = pick.id
 			"artifact_id":
 				if not (String(d.id) in artifacts):
 					gain_artifact(String(d.id))
 					res.artifact = String(d.id)
+					_unlock_found(String(d.id))
 			"fight":
 				res.fight = {"kind": String(d.get("kind", "fight")), "ids": d.get("ids", [])}
 				fight_gift.append_array(d.get("gift", []))
 	return res
+
+
+## They See Me Rolling: you stopped the bear (50 Leaves, 5 damage), or stepped aside (his revenge, 3 events later).
+func bear_choice(what: String) -> void:
+	if what == "stop":
+		amber += 50
+		player.take_effect(5.0)
+	elif what == "away":
+		due_events["bear_revenge"] = 3
 
 
 ## The Farmer's Farm, after the shooting: 1 Leaf a goblin, 5 a hobgoblin, -2 a fairy (your Leaves never go below
@@ -999,6 +1211,8 @@ func shop_stock(discount := 0.0) -> Array:
 	if "broken_seed_of_life" in artifacts:
 		items.append({"kind": "mend_seed", "price": SEED_MEND_PRICE})
 	items.append({"kind": "heal", "price": PRICES.heal})
+	if "dollar_bill" in artifacts:
+		discount = 1.0 - (1.0 - discount) * 0.8  # (the Dollar Bill: 20% off, on top of any other discount)
 	if discount > 0.0:
 		for it in items:
 			it.price = int(round(it.price * (1.0 - discount)))
