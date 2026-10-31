@@ -970,6 +970,18 @@ func test_broken_bridge() -> void:
 	assert_eq(run.player.hp, 15.0)
 
 
+func test_elemental_fishing_pays_per_fish() -> void:
+	var ev := MapEvents.get_event("elemental_fishing")
+	assert_eq(ev.acts, [2])
+	assert_eq(ev.options[0].next.options[0].minigame, "fish")
+	var run := RunState.new()
+	run.setup(db, ["fire_ball"], [], 3)
+	run.amber = 0
+	var res := run.fish_reward(1, 2, 3)  # 10 + 8 + 18
+	assert_eq([res.total, run.amber], [36, 36])
+	assert_true(String(res.text).contains("1 whale,"))
+
+
 func test_cactus_maze() -> void:
 	var run := RunState.new()
 	run.setup(db, ["fire_ball", "water_wall", "tailwind"], [], 3)

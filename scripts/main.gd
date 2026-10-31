@@ -703,6 +703,15 @@ func _show_event(ev: Dictionary) -> void:
 		if o.get("minigame", "") == "farm":
 			_farm_game(ev)
 			return
+		if o.get("minigame", "") == "fish":
+			var g := FishGame.new()
+			g.act = run.act
+			g.finished.connect(func(wh, ba, sw):
+				var res := run.fish_reward(wh, ba, sw)
+				var after := _message(ev.title, res.text, ["Continue"], Color(0.8, 0.7, 1))
+				after.pressed.connect(func(_k): show_map()))
+			_stage_overlay(g)
+			return
 		if o.has("recycle"):
 			_event_recycle(ev, o)
 			return

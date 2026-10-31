@@ -1046,7 +1046,7 @@ func _rebuild_character_panel() -> void:
 	_bottle_row.z_index = PuppetStage.CEILING_Z + 3
 	add_child(_bottle_row)
 	_debuff_board = NinePatchRect.new()
-	_debuff_board.texture = UiSkin.tex("debuff_board")
+	_debuff_board.texture = UiSkin.tex("debuff_board")	
 	for side in ["left", "top", "right", "bottom"]:
 		_debuff_board.set("patch_margin_" + side, PuppetTopHud.DEBUFF_MARGIN)
 	_debuff_board.mouse_filter = Control.MOUSE_FILTER_IGNORE

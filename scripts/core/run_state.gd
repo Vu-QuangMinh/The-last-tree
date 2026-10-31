@@ -1066,6 +1066,19 @@ func bear_choice(what: String) -> void:
 		due_events["bear_revenge"] = 3
 
 
+## Elemental Fishing, after the minute: 10 Leaves a whale, 4 a barracuda, 6 a swordfish. Returns {total, text}.
+func fish_reward(whales: int, barracudas: int, swordfish: int) -> Dictionary:
+	var total := 10 * whales + 4 * barracudas + 6 * swordfish
+	amber += total
+	var text := "The old man counts the catch on his bony fingers. \"%d whale%s, %d barracuda%s and %d swordfish.\" " % [
+		whales, "" if whales == 1 else "s", barracudas, "" if barracudas == 1 else "s", swordfish]
+	if total > 0:
+		text += "\"That's %d Leaves' worth of fish. Here, take them, you've earned them.\" He presses the Leaves into your hand, then starts on a swordfish, raw." % total
+	else:
+		text += "\"Nothing at all? Oh well.\" He goes back to staring at the water. \"Another two hundred years it is.\""
+	return {"total": total, "text": text}
+
+
 ## The Farmer's Farm, after the shooting: 1 Leaf a goblin, 5 a hobgoblin, -2 a fairy (your Leaves never go below
 ## 0). Returns {total, text}: the farmer's tally.
 func farm_reward(goblins: int, hobgoblins: int, fairies: int) -> Dictionary:
