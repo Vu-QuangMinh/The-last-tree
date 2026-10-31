@@ -13,6 +13,9 @@ func run(t: SceneTree) -> void:
 	var save = root.get_node("SaveManager")
 	save.use_test_file("user://shop_stage_save.json")
 	save.data.settings["theme"] = "puppet"
+	save.data.settings["dev_mode"] = true  # (the row of pose buttons over the cart)
+	if OS.get_environment("SHOP_DRUNK") != "":  # (the merchant who sits drunk on his chair: SHOP_DRUNK=1)
+		save.merchant().merge({"done": 3, "open": false, "drunk": true}, true)
 	var m = load("res://scripts/main.gd").new()
 	root.add_child(m)
 	await t.create_timer(0.5).timeout
