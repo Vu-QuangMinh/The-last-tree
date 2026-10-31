@@ -19,8 +19,22 @@ const FLOOR_MARGIN := 43.0  # (px above the floor's front edge: nothing hangs ov
 const CART_RECT := Rect2(1064.3, 114.1, 696.0, 655.0)
 const WHEEL_BACK_RECT := Rect2(1217.1, 563.3, 142.7, 142.7)  # Layer 1 (the far wheel)
 const WHEEL_FRONT_RECT := Rect2(1504.7, 527.9, 178.1, 178.1)  # Layer 2
-const MERCHANT_RECT := Rect2(817.7, 267.9, 470.7, 470.7)
-const MERCHANT_FEET := 0.9  # (of the picture's height: where his boots are, the pivot of his walk)
+const MERCHANT_RECT := Rect2(931.9, 330.1, 256.0, 387.0)  # (the pictures are cut to the figure: 0.2298 PDF px per picture px, boots as low as before)
+## The drunk merchant (merchant_drunk.png) on his chair, where Merchant.pdf puts him: the picture's place, the PDF y of his boots, his mouth.
+const DRUNK_RECT := Rect2(526.0, 344.3, 391.4, 384.2)
+const DRUNK_FEET_Y := 713.0
+const MOUTH_PDF := Vector2(725.5, 418.7)
+## The bubbles that float up from his mouth while he is drunk (bubble (1..4).png). BUBBLE_SIZE: the smallest and the biggest bubble drawn in the PDF, in PDF px
+## (the game's are those times SHOP_SCALE, each a little off).
+const BUBBLE_SHIFT_X := -15.0  # (px: they leave beside his face, a little to its left)
+const BUBBLE_FILES := ["bubble (1).png", "bubble (2).png", "bubble (3).png", "bubble (4).png"]
+const BUBBLE_SIZE := Vector2(6.8, 13.3)
+const BUBBLE_SIZE_JITTER := 0.1  # (each is made up to this much bigger or smaller)
+const BUBBLE_EVERY := Vector2(0.35, 0.9)  # seconds between two bubbles (random in between)
+const BUBBLE_LIFE := Vector2(1.6, 2.8)
+const BUBBLE_RISE := Vector2(45.0, 95.0)  # px/s upward
+const BUBBLE_DRIFT := Vector2(-28.0, 6.0)  # px/s sideways (they lean to the left, the way the PDF has them)
+const MERCHANT_FEET := 0.934  # (of the picture's height: where his boots are, the pivot of his walk)
 const CART_FROM := 900.0  # how far right of its place the cart starts (px): off the screen
 const MERCHANT_FROM := 1400.0  # (his whole picture starts off the screen)
 const CART_TIME := 4.0
@@ -68,6 +82,14 @@ var _ropes: _HangRopes
 var _shadows: _Shadows
 var _spell_sh: Array[Dictionary] = []  # {cx, foot, w, a}: the shadows of the standing cards on the floor
 var _stride := -1000  # which step the merchant is on (a new one is heard)
+var _drunk := false  # he sits on his chair (the favours are done)
+var _cur_rect := MERCHANT_RECT  # the picture he is drawn with now (standing or drunk), in the PDF
+var _cur_feet := Vector2.ZERO  # ... and where his boots are, in the PDF
+var _m_off := 0.0  # how far from his place he is now (px)
+var _tex_stand: Texture2D
+var _tex_drunk: Texture2D
+var _bubble_tex: Array[Texture2D] = []
+var _bubbles: _Bubbles
 var _hang: Array[Dictionary] = []  # {box, rest: Vector2 (top left), phase, swing, on}
 var _arrived := false  # the cart and the merchant are in place
 var _intro_done := false  # ... and the goods are laid out: now they can be bought
@@ -84,6 +106,7 @@ var _dlg_choices: Array = []  # [[button text, Callable], ...] under the last li
 var _dlg_i := 0
 var _dlg_text: Label
 var _dlg_row: HBoxContainer
+var _voice: AudioStreamPlayer  # the line he is saying (see _say)
 
 
 func setup(p_run: RunState, p_stock: Array) -> void:
@@ -205,7 +228,7 @@ func _add_talk(him: TextureRect, head := Vector2.INF) -> void:  # (`head`: the s
 		_picture = UiTheme.button("🖼", _picture_click, 34)
 		_picture.tooltip_text = "A small framed picture"
 		if him != null:
-			_picture.position = Vector2(head.x - 150.0, _ground - 70.0) if head != Vector2.INF else Vector2(him.position.x - 80.0, him.position.y + him.size.y - 90.0)
+			_picture.position = Vector2(head.x - (275.0 if _drunk else 150.0), _ground - 70.0) if head != Vector2.INF else Vector2(him.position.x - 80.0, him.position.y + him.size.y - 90.0)
 			add_child(_picture)
 		else:
 			_title_row.add_child(_picture)
@@ -302,8 +325,15 @@ func _dialog(lines: Array, choices: Array = []) -> void:
 	_dialog_step()
 
 
+## His voice for a line: the file named after the line (mv_ + the first 8 characters of its md5, made by tools/make_merchant_dialogue_voice.py). The line before it is cut off.
+func _say(text: String) -> void:
+	Audio.stop_held(_voice, 0.1)
+	_voice = Audio.play_held("mv_" + text.md5_text().substr(0, 8))
+
+
 func _dialog_step() -> void:
 	_dlg_text.text = String(_dlg_lines[_dlg_i])
+	_say(String(_dlg_lines[_dlg_i]))
 	for c in _dlg_row.get_children():
 		c.queue_free()
 	if _dlg_i < _dlg_lines.size() - 1:
@@ -322,6 +352,8 @@ func _dialog_next() -> void:
 
 
 func _close_dialog() -> void:
+	Audio.stop_held(_voice, 0.15)
+	_voice = null
 	if _dlg != null:
 		_dlg.queue_free()
 		_dlg = null
@@ -542,9 +574,17 @@ func _buy(i: int) -> void:
 
 # ------------------------------------------------------------------ Puppet Stage
 
+## A picture of the art folder (the file's case may differ: Windows does not mind, the project does).
+func _art(file: String) -> Texture2D:
+	for f in [file, file.to_lower()]:
+		if ResourceLoader.exists(ART_DIR + f):
+			return load(ART_DIR + f)
+	return null
+
+
 ## A picture of the art folder placed at `r` (null if it is missing).
 func _pic_rect(file: String, r: Rect2, parent: Control) -> TextureRect:
-	var t: Texture2D = load(ART_DIR + file) if ResourceLoader.exists(ART_DIR + file) else null
+	var t := _art(file)
 	if t == null:
 		return null
 	var tr := TextureRect.new()
@@ -587,11 +627,24 @@ func _ready_stage() -> void:
 	_wheel_back = _pic_rect("Layer 1.png", WHEEL_BACK_RECT, _cart)
 	_wheel_front = _pic_rect("Layer 2.png", WHEEL_FRONT_RECT, _cart)
 	_merchant = _pic_rect("merchant_full.png", MERCHANT_RECT, _world)
+	for f in BUBBLE_FILES:
+		var bt := _art(f)
+		if bt != null:
+			_bubble_tex.append(bt)
 	if _merchant != null:
-		_merchant.pivot_offset = Vector2(MERCHANT_RECT.size.x / 2.0, MERCHANT_RECT.size.y * MERCHANT_FEET)
-		if MerchantQuests.is_drunk(quest) and UiSkin.tex("merchant_drunk") != null:
-			_merchant.texture = UiSkin.tex("merchant_drunk")  # (once he's drunk he sits on his chair)
+		_tex_stand = _merchant.texture
+		_tex_drunk = _art("merchant_drunk.png")
+		_set_pose(false)
+		if MerchantQuests.is_drunk(quest):
+			_set_pose(true)  # (once the favours are done he sits on his chair for good)
+		_bubbles = _Bubbles.new()
+		_bubbles.shop = self
+		_bubbles.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_bubbles.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_world.add_child(_bubbles)
 	add_child(_leaves_pill())
+	if SaveManager.setting("dev_mode", false):
+		add_child(_pose_row())
 	var leave_btn := _leave_button()
 	leave_btn.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	leave_btn.offset_left = -320.0
@@ -600,7 +653,7 @@ func _ready_stage() -> void:
 	leave_btn.offset_bottom = -30.0
 	add_child(leave_btn)
 	_set_cart_x(CART_FROM if intro else 0.0)
-	_set_merchant_x(MERCHANT_FROM if intro else 0.0)
+	_set_merchant_x((CART_FROM if _drunk else MERCHANT_FROM) if intro else 0.0)
 	if intro:
 		_arrive.connect(_add_talk_stage, CONNECT_ONE_SHOT)  # (the favour mark and clicking him to talk: once he has stopped)
 		_arrive_walk()
@@ -660,26 +713,139 @@ func _set_cart_x(off: float) -> void:
 func _set_merchant_x(off: float) -> void:
 	if _merchant == null:
 		return
+	_m_off = off
 	var ph := off * STEP_K
 	var stride := int(floorf(ph / PI))
 	if stride != _stride:
-		if _stride != -1000:
+		if _stride != -1000 and not _drunk:
 			_step_sound(off)
 		_stride = stride
-	var feet_pdf := Vector2(MERCHANT_RECT.position.x + MERCHANT_RECT.size.x / 2.0, MERCHANT_RECT.position.y + MERCHANT_RECT.size.y * MERCHANT_FEET)
-	var feet := Vector2(PDF_GROUND.x + (feet_pdf.x - PDF_GROUND.x) * SHOP_SCALE + off, _ground - (PDF_GROUND.y - feet_pdf.y) * SHOP_SCALE)
+	var feet := _pdf_to_screen(_cur_feet, off)
 	_merchant.scale = Vector2.ONE * SHOP_SCALE
+	if _drunk:  # (he is carried in on his chair, not walking)
+		_merchant.position = feet - _merchant.pivot_offset
+		_merchant.rotation = sin(off * 0.02) * 0.012
+		return
 	_merchant.position = feet - _merchant.pivot_offset + Vector2(0.0, -absf(sin(ph)) * 8.0)
 	_merchant.rotation = sin(ph) * 0.035
+
+
+## A point of the drunk picture (PDF coordinates of Merchant.pdf) moved to where he really sits.
+func _drunk_pdf(p: Vector2) -> Vector2:
+	return p + Vector2(MERCHANT_RECT.position.x + MERCHANT_RECT.size.x / 2.0 - (DRUNK_RECT.position.x + DRUNK_RECT.size.x / 2.0), 0.0)
+
+
+## A point of Merchant.pdf on the screen: scaled about the cart's ground point and put on the stage's floor. `off`: how far the group is from its place.
+func _pdf_to_screen(p: Vector2, off := 0.0) -> Vector2:
+	return Vector2(PDF_GROUND.x + (p.x - PDF_GROUND.x) * SHOP_SCALE + off, _ground - (PDF_GROUND.y - p.y) * SHOP_SCALE)
+
+
+## Standing (merchant_full) or sitting drunk on his chair (merchant_drunk): the picture, its place and the pivot of his walk change.
+func _set_pose(drunk: bool) -> void:
+	if _merchant == null:
+		return
+	if drunk and _tex_drunk == null:
+		Events.toast.emit("There is no picture of the drunk merchant yet (merchant_drunk.png)", Color(1, 0.8, 0.4))
+		return
+	_drunk = drunk
+	_cur_rect = DRUNK_RECT if drunk else MERCHANT_RECT
+	# (sitting, he is where he stands: the middle of his picture on the middle of the standing one)
+	_cur_feet = Vector2(MERCHANT_RECT.position.x + MERCHANT_RECT.size.x / 2.0, DRUNK_FEET_Y if drunk else MERCHANT_RECT.position.y + MERCHANT_RECT.size.y * MERCHANT_FEET)
+	_merchant.texture = _tex_drunk if drunk else _tex_stand
+	_merchant.size = _cur_rect.size
+	_merchant.pivot_offset = Vector2(_cur_rect.size.x / 2.0, _cur_feet.y - _cur_rect.position.y)
+	_merchant.flip_h = false
+	_set_merchant_x(_m_off)
+
+
+# ---- Dev Mode: the row of buttons over the cart, to try every pose of the merchant
+
+var _pose_tw: Tween
+
+
+func _pose_row() -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 5)
+	row.position = Vector2(1010.0, 146.0)
+	for p in [["Arrive", _pose_arrive], ["Cart in", _pose_cart_in], ["Walk in", _pose_walk.bind(true)], ["Walk out", _pose_walk.bind(false)],
+			["Stand", _pose_idle], ["Greet", _pose_greet], ["Talk", _pose_talk], ["Drunk", _pose_drunk.bind(true)], ["Sober", _pose_drunk.bind(false)],
+			["!", _pose_mark.bind("!")], ["?", _pose_mark.bind("?")], ["No mark", _pose_mark.bind("")]]:
+		var b := UiTheme.button(p[0], p[1], 15)
+		b.focus_mode = Control.FOCUS_NONE
+		row.add_child(b)
+	return row
+
+
+func _pose_reset() -> void:
+	if _pose_tw != null and _pose_tw.is_valid():
+		_pose_tw.kill()
+	_pose_tw = null
+	_stride = -1000  # (the first step of the next walk is not heard)
+	Audio.stop_held(_voice, 0.05)
+
+
+func _pose_idle() -> void:
+	_pose_reset()
+	_set_cart_x(0.0)
+	_set_merchant_x(0.0)
+	_stride = -1000
+
+
+func _pose_arrive() -> void:
+	_pose_reset()
+	_set_cart_x(CART_FROM)
+	_set_merchant_x(MERCHANT_FROM)
+	_arrive_walk()
+
+
+func _pose_cart_in() -> void:
+	_pose_reset()
+	_set_cart_x(CART_FROM)
+	Audio.play("shop_cart_roll", -2.0)
+	_pose_tw = create_tween()
+	_pose_tw.tween_method(_set_cart_x, CART_FROM, 0.0, CART_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+
+func _pose_walk(coming: bool) -> void:
+	_pose_reset()
+	_set_merchant_x(MERCHANT_FROM if coming else 0.0)
+	_pose_tw = create_tween()
+	_pose_tw.tween_method(_set_merchant_x, MERCHANT_FROM if coming else 0.0, 0.0 if coming else MERCHANT_FROM, MERCHANT_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT if coming else Tween.EASE_IN)
+
+
+func _pose_greet() -> void:
+	_pose_reset()
+	_set_merchant_x(0.0)
+	Audio.play("merchant_greeting")
+	var y0 := _merchant.position.y
+	_pose_tw = create_tween()
+	for _i in 2:
+		_pose_tw.tween_property(_merchant, "position:y", y0 - 14.0, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		_pose_tw.tween_property(_merchant, "position:y", y0, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+
+func _pose_talk() -> void:
+	_dialog(MerchantQuests.ASK[0], [[MerchantQuests.ACCEPT[0], _close_dialog], [MerchantQuests.DECLINE, _close_dialog]])
+
+
+func _pose_drunk(on: bool) -> void:
+	_pose_reset()
+	_set_pose(on)
+	_arrived = true
+
+
+func _pose_mark(m: String) -> void:
+	if _mark != null:
+		_mark.text = m
+		_mark.visible = m != ""
 
 
 ## Talking to him on the stage: he takes clicks, and the favour mark floats over his head.
 func _add_talk_stage() -> void:
 	if _merchant == null:
 		return
-	var feet_pdf := Vector2(MERCHANT_RECT.position.x + MERCHANT_RECT.size.x / 2.0, MERCHANT_RECT.position.y + MERCHANT_RECT.size.y * MERCHANT_FEET)
-	var feet := Vector2(PDF_GROUND.x + (feet_pdf.x - PDF_GROUND.x) * SHOP_SCALE, _ground - (PDF_GROUND.y - feet_pdf.y) * SHOP_SCALE)
-	_add_talk(_merchant, Vector2(feet.x - 24.0, feet.y - MERCHANT_RECT.size.y * 0.73 * SHOP_SCALE - 100.0))
+	var top := _pdf_to_screen(_drunk_pdf(Vector2(753.0, DRUNK_RECT.position.y)) if _drunk else Vector2(_cur_feet.x, _cur_feet.y - MERCHANT_RECT.size.y * MERCHANT_FEET))  # (the top of his head)
+	_add_talk(_merchant, top + (Vector2(40.0, -100.0) if _drunk else Vector2(-24.0, -100.0)))
 
 
 ## One of his boots comes down: quieter while he is far off the screen, the two boot sounds alternate, never quite the same pitch twice.
@@ -691,11 +857,16 @@ func _step_sound(off: float) -> void:
 func _arrive_walk() -> void:
 	Audio.play("shop_cart_roll", -2.0)  # (4.4 s, fading out as the cart slows)
 	var tw := create_tween().set_parallel(true)
+	_pose_tw = tw
 	tw.tween_method(_set_cart_x, CART_FROM, 0.0, CART_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	tw.tween_method(_set_merchant_x, MERCHANT_FROM, 0.0, MERCHANT_TIME).set_delay(MERCHANT_DELAY).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	if _drunk:  # (he rides in on his chair, a little behind the cart, and says nothing: he is drunk)
+		tw.tween_method(_set_merchant_x, CART_FROM, 0.0, CART_TIME).set_delay(0.25).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	else:
+		tw.tween_method(_set_merchant_x, MERCHANT_FROM, 0.0, MERCHANT_TIME).set_delay(MERCHANT_DELAY).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await tw.finished
 	_arrived = true
-	Audio.play("merchant_greeting")
+	if not _drunk:
+		Audio.play("merchant_greeting")
 	_arrive.emit()
 
 
@@ -970,8 +1141,8 @@ class _Shadows extends Control:
 		_floor_shadow(Vector2(cart_x + 16.0, ground - 1.0), 250.0, 20.0, 0.6)
 		if shop._merchant != null:
 			var m := shop._merchant
-			var fy: float = ground - (ShopScreen.PDF_GROUND.y - (ShopScreen.MERCHANT_RECT.position.y + ShopScreen.MERCHANT_RECT.size.y * ShopScreen.MERCHANT_FEET)) * ShopScreen.SHOP_SCALE
-			_floor_shadow(Vector2(m.position.x + m.pivot_offset.x + 14.0, fy), 76.0, 12.0, 0.55)
+			var fy: float = ground - (ShopScreen.PDF_GROUND.y - shop._cur_feet.y) * ShopScreen.SHOP_SCALE
+			_floor_shadow(Vector2(m.position.x + m.pivot_offset.x + 14.0, fy), 125.0 if shop._drunk else 76.0, 14.0 if shop._drunk else 12.0, 0.55)
 		for d in shop._spell_sh:
 			_floor_shadow(Vector2(d.cx + 12.0, d.foot), d.w * 0.56, 15.0, 0.5 * float(d.a))
 		var sb := _box_style()
@@ -989,3 +1160,45 @@ class _Shadows extends Control:
 		if strength <= 0.01:
 			return
 		draw_texture_rect(_blob_tex(), Rect2(c.x - rx, c.y - ry, rx * 2.0, ry * 2.0), false, Color(0, 0, 0, strength))
+
+
+## The drunk merchant's bubbles: one flies out of his mouth every so often, floats up on a path of its own (leaning left, wobbling), grows a little and fades out.
+class _Bubbles extends Control:
+	var shop: ShopScreen
+	var _list: Array = []
+	var _next := 0.6
+
+	func _process(d: float) -> void:
+		if shop._drunk and shop._arrived and not shop._bubble_tex.is_empty():
+			_next -= d
+			if _next <= 0.0:
+				_next = randf_range(ShopScreen.BUBBLE_EVERY.x, ShopScreen.BUBBLE_EVERY.y)
+				_spawn()
+		for b in _list:
+			b.t += d
+		_list = _list.filter(func(b): return b.t < b.life)
+		queue_redraw()
+
+	func _spawn() -> void:
+		var mouth := shop._pdf_to_screen(shop._drunk_pdf(ShopScreen.MOUTH_PDF), shop._m_off) + Vector2(ShopScreen.BUBBLE_SHIFT_X, 0.0)
+		var px := randf_range(ShopScreen.BUBBLE_SIZE.x, ShopScreen.BUBBLE_SIZE.y) * ShopScreen.SHOP_SCALE * (1.0 + randf_range(-ShopScreen.BUBBLE_SIZE_JITTER, ShopScreen.BUBBLE_SIZE_JITTER))
+		_list.append({
+			"tex": shop._bubble_tex[randi() % shop._bubble_tex.size()],
+			"from": mouth + Vector2(randf_range(-2.0, 2.0), randf_range(-2.0, 2.0)),
+			"size": px,
+			"vx": randf_range(ShopScreen.BUBBLE_DRIFT.x, ShopScreen.BUBBLE_DRIFT.y),
+			"vy": -randf_range(ShopScreen.BUBBLE_RISE.x, ShopScreen.BUBBLE_RISE.y),
+			"wob": randf_range(2.0, 7.0),
+			"freq": randf_range(1.5, 3.5),
+			"ph": randf() * TAU,
+			"life": randf_range(ShopScreen.BUBBLE_LIFE.x, ShopScreen.BUBBLE_LIFE.y),
+			"t": 0.0,
+		})
+
+	func _draw() -> void:
+		for b in _list:
+			var u: float = b.t / b.life
+			var pos: Vector2 = b.from + Vector2(b.vx * b.t + sin(b.t * b.freq + b.ph) * b.wob * minf(1.0, b.t * 2.0), b.vy * b.t - 8.0 * b.t * b.t)
+			var alpha := minf(1.0, b.t / 0.15) * pow(1.0 - u, 1.2)  # (pops out quickly, then fades the whole way up)
+			var sz: float = b.size * (0.85 + 0.35 * u)  # (a little bigger as it rises)
+			draw_texture_rect(b.tex, Rect2(pos - Vector2(sz, sz) * 0.5, Vector2(sz, sz)), false, Color(1, 1, 1, alpha))
