@@ -687,6 +687,9 @@ func _enter_room(kind: String) -> void:
 
 ## A "?" event: its story and choices (options you can't afford are greyed out).
 func _show_event(ev: Dictionary) -> void:
+	if ev.has("scene"):
+		_bear_scene(ev)  # (played out on the stage itself)
+		return
 	var labels: Array = ev.options.map(func(o): return o.label)
 	var pick := func(i: int):
 		var o: Dictionary = ev.options[i]
@@ -700,8 +703,31 @@ func _show_event(ev: Dictionary) -> void:
 		if o.get("minigame", "") == "farm":
 			_farm_game(ev)
 			return
-		if o.has("outcomes"):
-			if o.get("pick_bottle", false):
+		if o.has("recycle"):
+			_event_recycle(ev, o)
+			return
+		if o.get("fuse", "") == "half":
+			# An Abandoned Camp: the campfire's fusing, without the wax; backing out returns to the camp
+			var fs := FuseScreen.new()
+			fs.setup(run)
+			fs.no_wax = true
+			_room_bg = "campfire_fuse"
+			fs.back.connect(func(): _show_event(ev))
+			fs.fused.connect(func(_sp):
+				var after := _message(ev.title, String(o.text), ["Continue"], Color(0.8, 0.7, 1))
+				after.pressed.connect(func(_k): show_map()))
+			_swap(fs)
+			return
+		if o.has("outcomes") or o.has("by_water") or o.has("by_kind"):
+			if int(o.get("wax", 0)) > 0:
+				_event_wax_pick(ev, o, 0)
+			elif o.has("recycle"):
+				_event_recycle(ev, o)
+			elif int(o.get("pick_artifact", 0)) > 0:
+				_event_artifact_pick(ev, o, [])
+			elif o.get("pick_spell", false):
+				_event_spell_pick(ev, o)
+			elif o.get("pick_bottle", false):
 				_event_bottle_pick(ev, o)
 			else:
 				_event_result(ev, o, -1)
@@ -751,13 +777,22 @@ func _show_event(ev: Dictionary) -> void:
 
 ## A rewritten event's choice: roll what happens, and say it (only the outcome's own words). Then the bottles that
 ## didn't fit (swap screen), then the fight it started, or the map.
-func _event_result(ev: Dictionary, opt: Dictionary, bottle_at: int) -> void:
-	var res := run.event_outcome(opt, bottle_at)
+func _event_result(ev: Dictionary, opt: Dictionary, bottle_at: int, spell_id := "") -> void:
+	var res := run.event_outcome(opt, bottle_at, spell_id)
 	if run.player.is_dead():
 		run.over = true
 		_end_run()
 		return
+	if res.has("then"):
+		# the same choices again, under what just happened (Far from Any Road: following the voice)
+		var page := ev.duplicate()
+		page.text = res.text
+		page.options = res.then.options
+		_show_event(page)
+		return
 	var shown: Control = ArtifactCard.make(Artifacts.view(res.artifact, false)) if res.has("artifact") else null
+	if res.has("spell"):
+		shown = SpellCard.make(run.spell(res.spell))  # (a spell you learned: its card)
 	var after := _message(ev.title, res.text, ["Fight!" if res.has("fight") else "Continue"], Color(0.8, 0.7, 1), shown)
 	after.pressed.connect(func(_k):
 		var go_on := func():
@@ -777,6 +812,40 @@ func _event_result(ev: Dictionary, opt: Dictionary, bottle_at: int) -> void:
 			_bottle_swap(res.overflow, go_on))
 
 
+## They See Me Rolling / the bear's revenge, on the stage with his puppet. Stopping him pays; stepping aside sets up
+## his revenge; the revenge is an elite fight with the Enraged Rolling Bear, you Stunned on the first turn.
+func _bear_scene(ev: Dictionary) -> void:
+	var sc := BearRollScene.new()
+	sc.mode = "revenge" if ev.scene == "bear_revenge" else "meet"
+	sc.act = run.act
+	sc.chosen.connect(func(what: String):
+		if what == "fight":
+			run.stun_next = 1
+			run.current_node()["as"] = "elite"
+			run.set_encounter(["enraged_bear"])
+			_show_loadout(["enraged_bear"])
+			return
+		run.bear_choice(what)
+		if run.player.is_dead():
+			run.over = true
+			_end_run()
+			return
+		show_map())
+	_stage_overlay(sc)
+
+
+## Put `c` on the stage, like a fight: the stage is put up first if it isn't (the test rooms have none).
+func _stage_overlay(c: Control) -> void:
+	if UiSkin.is_puppet() and not _on_stage():
+		var base := _new_fight_screen(run.make_fight([]))
+		base.map_mode = true
+		_swap(base)
+		c.set("on_stage", true)
+		_set_overlay(c)
+	else:
+		_put(c)
+
+
 ## The Farmer's Farm: the shooting in the wheat, then the farmer's tally (and your Leaves).
 func _farm_game(ev: Dictionary) -> void:
 	var g := FarmGame.new()
@@ -794,6 +863,102 @@ func _farm_game(ev: Dictionary) -> void:
 		var res := run.farm_reward(gob, hob, fai)
 		var after := _message(ev.title, res.text, ["Continue"], Color(0.8, 0.7, 1))
 		after.pressed.connect(func(_k): show_map()))
+
+
+## Far from Any Road: which spell burns? (Changing your mind takes you back to the event.)
+func _event_spell_pick(ev: Dictionary, opt: Dictionary) -> void:
+	var ids := run.spellbook.duplicate()
+	var sub := "Choose a spell to cast for the tree." if opt.get("keep_spell", false) else "Choose a spell to burn. It is gone for the rest of the run."
+	var ch := _choice(ev.title, sub, ids.map(func(id): return run.spell(id)), [], true)
+	ch.chosen.connect(func(i):
+		if i < 0:
+			_show_event(ev)
+		else:
+			_event_result(ev, opt, -1, ids[i]))
+
+
+## The Mystery Shed: which of your artifacts become their new toys? One at a time, as many as the option asks for
+## (two); changing your mind takes you back to the event, with nothing given.
+func _event_artifact_pick(ev: Dictionary, opt: Dictionary, picked: Array) -> void:
+	var need := int(opt.get("pick_artifact", 1))
+	var ids := run.giftable_artifacts().filter(func(id): return not (id in picked))
+	var who := "the boy" if picked.is_empty() else "the girl"
+	var ch := _choice(ev.title, "Choose an artifact to give %s as a new toy (%d of %d). It's theirs now." % [who, picked.size() + 1, need], [], ids.map(func(id): return Artifacts.view(id, id in run.artifacts_plus)), true)
+	ch.chosen.connect(func(i):
+		if i < 0:
+			_show_event(ev)
+			return
+		var now: Array = picked + [ids[i]]
+		if now.size() < need:
+			_event_artifact_pick(ev, opt, now)
+		else:
+			_event_result(ev, opt, -1, ",".join(now)))
+
+
+## The Wax Witch: pick a spell, then the Essence the wax goes on, once per drop of blood; then the price is taken.
+## (Changing your mind at the first pick takes you back to the witch, with nothing paid.)
+func _event_wax_pick(ev: Dictionary, opt: Dictionary, done: int) -> void:
+	var need := int(opt.get("wax", 1))
+	if done >= need:
+		_event_result(ev, opt, -1)
+		return
+	var ids := run.waxable_spells()
+	var ch := _choice(ev.title, "Choose a spell for the purple wax (%d of %d)." % [done + 1, need], ids.map(func(id): return run.spell(id)), [], done == 0)
+	ch.chosen.connect(func(i):
+		if i < 0:
+			_show_event(ev)
+			return
+		var seal := SealScreen.new()
+		seal.setup(run, ids[i])
+		seal.done.connect(func(): _event_wax_pick(ev, opt, done + 1))
+		_swap(seal))
+
+
+## The Recycler: pick what you give him (changing your mind takes you back to him), then one of the 3 he offers back.
+func _event_recycle(ev: Dictionary, opt: Dictionary) -> void:
+	var kind: String = opt.recycle
+	var ids := run.recyclable(kind)
+	var take_pick := func(give: String) -> void:
+		var offer := run.recycle_offer(kind, give)
+		var finish := func(i: int) -> void:
+			run.recycle(kind, give, offer[i])
+			var shown: Control = SpellCard.make(run.spell(offer[i])) if kind == "spell" else (ArtifactCard.make(Artifacts.view(offer[i], false)) if kind == "artifact" else null)
+			var after := _message(ev.title, String(opt.text), ["Continue"], Color(0.8, 0.7, 1), shown)
+			after.pressed.connect(func(_k): show_map())
+		var sub := "\"RECYCLE!\" He tosses it onto his cart, rummages through the pile, and holds out three things. Take one."
+		if kind == "bottle":
+			_bottle_cards(ev.title, sub, offer, [], finish)
+		else:
+			var ch := _choice(ev.title, sub, offer.map(func(x): return run.spell(x)) if kind == "spell" else [], offer.map(func(x): return Artifacts.view(x, false)) if kind == "artifact" else [], false)
+			ch.chosen.connect(finish)
+	var what := {"spell": "spell", "artifact": "artifact", "bottle": "bottle"}[kind] as String
+	var sub0 := "Which %s do you give him?" % what
+	if kind == "bottle":
+		_bottle_cards(ev.title, sub0, ids, ["Keep my bottles"], func(i):
+			if i >= ids.size():
+				_show_event(ev)
+			else:
+				take_pick.call(ids[i]))
+	else:
+		var ch := _choice(ev.title, sub0, ids.map(func(x): return run.spell(x)) if kind == "spell" else [], ids.map(func(x): return Artifacts.view(x, x in run.artifacts_plus)) if kind == "artifact" else [], true)
+		ch.chosen.connect(func(i):
+			if i < 0:
+				_show_event(ev)
+			else:
+				take_pick.call(ids[i]))
+
+
+## Bottles to choose from, as option cards (name and what it does), plus any extra plain options after them.
+func _bottle_cards(title: String, body: String, ids: Array, extra: Array, then: Callable) -> void:
+	var s := MessageScreen.new()
+	s.title = title
+	s.body = body
+	s.buttons = ids.map(func(b): var d := Bottles.get_def(b); return "%s: %s" % [d.get("name", b), d.get("desc", "")]) + extra
+	s.title_color = Color(0.8, 0.7, 1)
+	s.act = run.act
+	s.cards = true
+	s.pressed.connect(then)
+	_put(s)
 
 
 ## The Hollow Stump: which of your bottles goes in? (Changing your mind takes you back to the event.)
@@ -1286,6 +1451,8 @@ func _end_run() -> void:
 	SaveManager.clear_run()  # the run is over: nothing to continue
 	var title := "The last tree stands!" if run.won else "The last tree has fallen"
 	var body := "Act %d reached · %d enemies defeated · %d spells learned\n+%d Seedlings (spend them on Unlocks)." % [run.act, run.kills, run.spellbook.size() - 4, seeds]
+	if run.player.death_note != "":
+		body = run.player.death_note + "\n\n" + body
 	var s := _message(title, body, ["Play again", "Main menu"], Color(0.6, 1, 0.5) if run.won else UiTheme.DANGER)
 	s.pressed.connect(func(i):
 		if i == 0:

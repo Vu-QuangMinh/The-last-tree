@@ -38,7 +38,7 @@ const K := {
 	"burn": [Color(1.0, 0.55, 0.2), Color(0.78, 0.3, 0.0), "Burn N: at the start of its turn the enemy loses N rightmost Essence, then Burn ends."],
 	"shield": [Color(0.55, 0.8, 1.0), Color(0.1, 0.35, 0.7), "Shield: blocks attack damage until your next turn."],
 	"evasion": [Color(1.0, 0.9, 0.5), Color(0.6, 0.45, 0.0), "Evasion: dodge one whole hit (each point dodges one)."],
-	"thorns": [Color(0.75, 0.85, 0.4), Color(0.35, 0.45, 0.05), "Thorns: an enemy that hits you loses that many rightmost Essence."],
+	"thorns": [Color(0.75, 0.85, 0.4), Color(0.35, 0.45, 0.05), "Thorns: each time an enemy hits you, it loses that many leftmost Essence (Left damage)."],
 	"heal": [Color(0.45, 1.0, 0.55), Color(0.1, 0.5, 0.15), "Heal: restore HP, up to your max."],
 	"weaken": [Color(0.75, 0.65, 0.95), Color(0.4, 0.25, 0.6), "Weaken N: the enemy deals 50% less for N turns."],
 	"weakened": [Color(0.75, 0.65, 0.95), Color(0.4, 0.25, 0.6), "Weaken N: the enemy deals 50% less for N turns."],

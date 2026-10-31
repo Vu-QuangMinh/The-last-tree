@@ -178,6 +178,8 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 			_yy_flip(e)  # (the Yin Yang Beast inverts your spells as it enters, before anything else)
 	if has_artifact("thornbark"):
 		player.passives["thorns"] = int(_an("thornbark"))
+	if has_artifact("cactus_heart"):
+		player.passives["thorns"] = player.passive("thorns") + 1  # (the Cactus Heart: Thorns 1, on top of any other)
 	if has_artifact("chant_bell"):
 		player.passives["echo_first"] = 1
 	if has_artifact("rain_chalice"):
@@ -214,6 +216,13 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 		hand[j] = tmp
 	for el in hand:
 		player.add_element(el)
+	if has_artifact("ever_thirsting"):
+		# Ever Thirsting (a curse): a Water of your first hand dries up
+		for k in player.stock.size():
+			if player.stock[k].el == "W":
+				player.stock.remove_at(k)
+				_log("Ever Thirsting: a Water dries up.")
+				break
 	if has_artifact("ember_charm"):
 		for i in int(_an("ember_charm")):
 			player.add_element("F")
@@ -547,6 +556,12 @@ func _recount() -> Array:
 			var gained: int = n - before.get(sp.id, 0)
 			if gained > 0:
 				woke.append({"id": sp.id, "starts": occ.slice(occ.size() - gained), "len": sp.pattern.length()})
+	# a spell that costs nothing (Summoning Bill) is awake after any chant
+	for sp in usable_spells():
+		if sp.get("free", false) and charges.get(sp.id, 0) == 0 and used.get(sp.id, 0) == 0:
+			charges[sp.id] = 1
+			if not before.has(sp.id):
+				woke.append({"id": sp.id, "starts": [], "len": 0})
 	# spells stored from an earlier turn wake on any chant (one charge: a match on top doesn't add a second)
 	for sp in usable_spells():
 		if stored.has(sp.id) and charges.get(sp.id, 0) == 0 and used.get(sp.id, 0) == 0:
@@ -1089,6 +1104,11 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 				if eff.has("if_burn") and e.burn < int(eff.if_burn):
 					continue  # (Frost Burn: only if it's burning that much)
 				e.freeze_turns = maxi(e.freeze_turns, eff.turns)  # (bosses too)
+		"summon_bill":
+			player.death_note = "You summoned Bill to this world. He took over, killing everything."
+			_log(player.death_note)
+			player.take_effect(player.hp)  # (no Shield, no Evasion, no second chance: you die without fail)
+			_check_end()
 		"expose":
 			# Repaint: paint n Essence of your choice, on any enemies, into one colour (Any by default: "?") for good
 			var to: String = eff.get("to", "?")
@@ -2531,8 +2551,13 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 					_log("%s's venom gets in: Poison +1." % e.name)
 				var th := player.thorns_turn + player.passive("thorns")
 				if th > 0 and not player.ethereal:
-					e.remove_right(th)
+					var pricked := e.remove_left(th)  # Thorns: every hit, its leftmost Essence (Left damage)
 					await anim.call({"type": "thorns_proc"})
+					if has_artifact("cactus_heart") and not pricked.is_empty():
+						var got := player.heal(5.0 * pricked.size())
+						if got > 0.0:
+							await _proc("cactus_heart")
+							_log("The Cactus Heart drinks it in: you heal %d." % got)
 				_check_end()
 				if over or e.is_dead():
 					break

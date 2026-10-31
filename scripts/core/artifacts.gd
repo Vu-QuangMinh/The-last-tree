@@ -12,7 +12,7 @@ extends RefCounted
 const ALL := [
 	# ---- elements you start a fight with
 	{"id": "ember_charm", "name": "Ember Charm", "aspect": "Starting Essence", "desc": "Start each fight with 1 Fire.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🕯"},
-	{"id": "wind_chime", "name": "Wind Chime", "aspect": "Starting Essence", "desc": "Start each fight with 1 Random.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🎐"},
+	{"id": "wind_chime", "name": "Aole's Charm", "aspect": "Starting Essence", "desc": "Start each fight with 1 Random.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🎐"},
 	# ---- element income and refunds
 	{"id": "fire_emblem", "name": "Fire Emblem", "aspect": "Essence income", "desc": "Turn 3 of each fight: gain 3 Fire.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🔥"},
 	{"id": "water_emblem", "name": "Water Emblem", "aspect": "Essence income", "desc": "Turn 3 of each fight: gain 3 Water.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "💧"},
@@ -33,6 +33,11 @@ const ALL := [
 	{"id": "mysterious_hand", "name": "Mysterious Hand", "aspect": "Steal", "desc": "At the start of each fight, steal 1 Essence from a random enemy.", "cost": 0, "starter": false, "pool": "normal", "tier": "rare", "icon": "🖐", "unlock_by": "handyman_talk", "flavor": "Once played defiantly, now lies lifeless."},
 	{"id": "magic_box", "name": "Magic Box", "aspect": "Refund", "desc": "Every 6th spell you cast: Refund its pattern after the Release.", "cost": 0, "starter": false, "pool": "normal", "tier": "rare", "icon": "🎵", "unlock_by": "invoker_talk", "flavor": "With the right tune, it may reveal a secret."},
 	{"id": "nice_lute", "name": "A Nice Lute", "aspect": "Spells", "desc": "Every 10th spell you cast: apply 1 Weaken to all enemies.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🪕", "flavor": "The music it creates makes people weak in the knee."},
+	{"id": "cactus_heart", "name": "Cactus Heart", "aspect": "Thorns", "desc": "Thorns 1. Heal 5 HP for each Essence your Thorns take.", "cost": 0, "starter": true, "pool": "none", "tier": "rare", "icon": "🌵", "flavor": "It still hums, if you hold it close."},
+	{"id": "ever_thirsting", "name": "Ever Thirsting", "aspect": "Cursed", "desc": "CURSE: you lose 1 Water at the start of each fight.", "cost": 0, "starter": true, "pool": "none", "tier": "common", "icon": "🏜", "flavor": "The water spirit's parting gift. Your throat has been dry ever since."},
+	{"id": "dollar_bill", "name": "Dollar Bill", "aspect": "Merchant", "desc": "The merchant's prices are 20% lower.", "cost": 0, "starter": false, "pool": "normal", "tier": "common", "unlock_by": "mystery_shack", "icon": "💵", "flavor": "\"Wow, this is worthless.\""},
+	{"id": "half_eaten_candy", "name": "Half-Eaten Candy", "aspect": "Health", "desc": "Heal 2 HP after each fight.", "cost": 0, "starter": false, "pool": "normal", "tier": "common", "unlock_by": "mystery_shack", "icon": "🍬", "flavor": "Still a little sticky."},
+	{"id": "mystery_book", "name": "Mystery Book", "aspect": "Spell slots", "desc": "+1 spell slot. You can carry more than one: they stack.", "cost": 0, "starter": false, "pool": "normal", "tier": "rare", "stack": true, "unlock_by": "mystery_shack", "icon": "📕", "flavor": "A six-fingered hand on the cover. Inside, strange symbols, and a triangle that seems to be watching you."},
 	{"id": "lock_pick", "name": "Lock Pick", "aspect": "Debuffs", "desc": "Locks on your spells are 1 shorter.", "cost": 30, "starter": false, "pool": "normal", "tier": "common", "icon": "🗝"},
 	{"id": "keen_eye", "name": "Keen Eye", "aspect": "Debuffs", "desc": "You can't be Blinded.", "cost": 25, "starter": false, "pool": "normal", "tier": "common", "icon": "👁"},
 	{"id": "calm_stone", "name": "Calm Stone", "aspect": "Debuffs", "desc": "You can't be Hypnotized.", "cost": 25, "starter": false, "pool": "normal", "tier": "common", "icon": "💠"},
@@ -158,7 +163,7 @@ const TIER_NAMES := {"common": "Common", "rare": "Rare", "legendary": "Legendary
 ## Up to n artifacts from a pool that you have unlocked and don't own. In the normal pool each pick is
 ## Rare 25% of the time (Common otherwise), falling back to whatever is left.
 static func offer(unlocked: Array, owned: Array, rng: RandomNumberGenerator, n := 3, pool_name := "normal") -> Array:
-	var pool := ALL.filter(func(a): return a.pool == pool_name and (a.id in unlocked or a.starter) and not (a.id in owned))
+	var pool := ALL.filter(func(a): return a.pool == pool_name and (a.id in unlocked or a.starter) and (not (a.id in owned) or a.get("stack", false)))  # (a Mystery Book can come again)
 	var out := []
 	while not pool.is_empty() and out.size() < n:
 		var want := "rare" if rng.randf() < RARE_CHANCE else "common"
