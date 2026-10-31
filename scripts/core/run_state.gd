@@ -51,6 +51,8 @@ var poison_next := 0  # the Whispering Well: Poison you start your next fight wi
 var fight_gift: Array = []  # Essence you start your next fight with (the Lost Sprite's 2 Air)
 var due_events := {}  # event id -> how many events from now it comes, whatever the act (the Flying Turtle falling on you, the Rolling Bear's revenge)
 var stun_next := 0  # turns you start your next fight Stunned (the Rolling Bear's revenge)
+var lasting_next := 0  # Lasting Shield you start your next fight with (the Mausoleum's blue light)
+var no_talk_next := false  # the next fight's boss doesn't talk first (the Ruined Watchtower's monster)
 var encounter: Array = []  # the ids of the encounter being prepared
 var encounter_name := ""  # its name (Act 1's hand-made encounters, e.g. "The Slime Trio"; "" otherwise)
 var recent_encounters: Array = []  # names of the encounters met so far (an encounter never comes up twice in 3)
@@ -58,7 +60,7 @@ var encounter_extra: Array = []  # the extra Essence each of those enemies will 
 var first_run := false  # the player's very first run (and the Anxious Armadillo not met yet): he waits in Act 2's 2nd fight
 var fight_rooms: Array = []  # "act:row:col" of every normal fight room entered (to count Act 2's fights)
 var fused := {}  # id -> spell dict, for spells forged at campfires ("fused_1", ...)
-var inverted: Array = []  # spell ids inverted for the run (the Upside-Down Pool): a spell plays as an anti-spell, and back
+var inverted: Array = []  # spell ids inverted for the run: a spell plays as an anti-spell, and back
 var _fuse_count := 0
 var over := false
 var won := false
@@ -272,6 +274,12 @@ func make_fight(enemy_ids: Array) -> Fight:
 		if poison_next > 0:
 			player.poison += poison_next
 			poison_next = 0
+		if no_talk_next:
+			f.talk_id = ""  # (no conversation: it is already charging at you)
+			no_talk_next = false
+		if lasting_next > 0:
+			player.lasting += lasting_next  # (the Mausoleum's blue light)
+			lasting_next = 0
 		if stun_next > 0:
 			player.stun_turns = maxi(player.stun_turns, stun_next)  # (the Rolling Bear knocked you silly)
 			stun_next = 0
@@ -310,7 +318,9 @@ func finish_fight(f: Fight) -> void:
 		player.heal(Artifacts.num("healing_sap", "healing_sap" in artifacts_plus))
 	if "half_eaten_candy" in artifacts:
 		player.heal(2.0)  # (the Half-Eaten Candy)
-	if kind == "boss":
+	if kind == "boss" and current_node().get("no_advance", false):
+		player.heal(player.max_hp * 0.5)  # (a boss met in an event: its rewards, but the act goes on)
+	elif kind == "boss":
 		player.heal(player.max_hp * 0.5)
 		if act >= ACTS:
 			over = true
@@ -479,48 +489,9 @@ func remove_artifact(id: String) -> void:
 		loadout.pop_back()
 
 
-## The Tinker: artifacts you own that have a + version you don't have yet.
-func upgradable_artifacts() -> Array:
-	return artifacts.filter(func(id): return Artifacts.can_upgrade(id) and not (id in artifacts_plus))
-
-
 func upgrade_artifact(id: String) -> void:
 	if id in artifacts and not (id in artifacts_plus):
 		artifacts_plus.append(id)
-
-
-## The Barterer: artifacts you could trade (another one of the same tier is needed, and a tier above).
-const NEXT_TIER := {"common": "rare", "rare": "legendary"}
-
-
-## (The Seed of Life, whole or broken, is never traded: it's the run's own second chance.)
-const UNTRADEABLE := ["seed_of_life", "broken_seed_of_life"]
-
-
-func tradeable_artifacts(tier := "") -> Array:
-	return artifacts.filter(func(id):
-		if id in UNTRADEABLE:
-			return false
-		var t: String = Artifacts.get_def(id).get("tier", "common")
-		return NEXT_TIER.has(t) and (tier == "" or t == tier) and artifacts.filter(func(o): return not (o in UNTRADEABLE) and Artifacts.get_def(o).get("tier", "") == t).size() >= 2)
-
-
-## Up to 3 artifacts of the tier above, not owned and not cursed.
-func trade_offer(tier: String) -> Array:
-	var want: String = NEXT_TIER.get(tier, "")
-	var pool := Artifacts.ALL.filter(func(a): return a.tier == want and not (a.pool in ["curse", "none"]) and a.get("aspect", "") != "Cursed" and not (a.id in artifacts))
-	var out := []
-	while not pool.is_empty() and out.size() < 3:
-		var pick: Dictionary = pool[rng.randi() % pool.size()]
-		out.append(pick)
-		pool.erase(pick)
-	return out
-
-
-func trade_artifacts(give_a: String, give_b: String, take: String) -> void:
-	remove_artifact(give_a)
-	remove_artifact(give_b)
-	gain_artifact(take)
 
 
 ## Rest site, option 1: heal 30% of max HP.
@@ -770,12 +741,6 @@ func can_choose(opt: Dictionary) -> bool:
 			return false  # (the Mystery Shed wants two toys)
 		return amber >= int(opt.get("amber", 0)) and (not opt.get("pick_bottle", false) or not player.bottles.is_empty()) \
 			and (not opt.get("pick_spell", false) or spellbook.size() > 1 or opt.get("keep_spell", false))  # (you always keep at least one spell)
-	if opt.get("do", "") == "upgrade_artifact" and upgradable_artifacts().is_empty():
-		return false
-	if opt.get("do", "") == "trade_artifacts" and tradeable_artifacts().is_empty():
-		return false
-	if opt.get("do", "") == "invert_spell" and (invertible_spells().is_empty() or player.hp < 2):
-		return false
 	if opt.get("do", "") == "note_swap" and (storable_spells().is_empty() or db.get_spell(note_spell_id()).is_empty()):
 		return false
 	if spellbook.size() <= opt.get("lose_spells", 0):
@@ -820,22 +785,6 @@ func note_swap(leave: String) -> String:
 	if sm != null:
 		sm.call("set_note_spell", leave)
 	return take
-
-
-## Spells the Upside-Down Pool can flip (not Powers).
-func invertible_spells() -> Array:
-	return spellbook.filter(func(id): return not spell(id).get("power", false))
-
-
-## The Upside-Down Pool: pay half your HP (rounded down), and the spell plays inverted for the rest of the run.
-func invert_spell(id: String) -> String:
-	player.hp -= floorf(player.hp * 0.5)
-	if id in inverted:
-		inverted.erase(id)
-	else:
-		inverted.append(id)
-	var s := spell(id)
-	return "%s is %s now." % [s.name, "an anti-spell" if s.get("anti", false) else "a spell again"]
 
 
 ## An artifact found in an event that unlocks it ("unlock_by"): unlocked for good, so it can turn up anywhere later.
@@ -990,6 +939,29 @@ func event_outcome(opt: Dictionary, bottle_at := -1, spell_id := "") -> Dictiona
 					res.spell = wet
 				else:
 					res.text = String(res.text).replace("{spell}", "a spell")
+			"max_hp_pct":
+				var more := int(floor(player.max_hp * float(d.pct)))
+				player.max_hp += more
+				player.heal(more)
+				res.text = String(res.text).replace("{n}", str(more))
+			"lasting_next":
+				lasting_next += int(d.n)
+			"skip_stone":
+				# Skipping Stones: 1 to 21 skips; 20 or more and the lake's spirit gives you a common artifact
+				var n := rng.randi_range(1, 21)
+				if n >= 20:
+					res.text = "Your stone skips %d times, all the way to the far shore! Your stone skipping was so great that it impressed the spirit of the lake. A hand of clear water rises from the surface, and offers you a gift." % n
+					var pool := Artifacts.ALL.filter(func(x): return x.pool == "normal" and x.tier == "common" and (x.id in unlocked_artifacts or x.starter) and not (x.id in artifacts))
+					if not pool.is_empty():
+						var pick: Dictionary = pool[rng.randi() % pool.size()]
+						gain_artifact(pick.id)
+						res.artifact = pick.id
+				else:
+					var how := "Plip. It sinks at once." if n == 1 else ("Not bad at all." if n >= 12 else ("A decent throw." if n >= 6 else "A little sad, really."))
+					res.text = "Your stone skips %d time%s across the water before it sinks. %s" % [n, "" if n == 1 else "s", how]
+					res.again = true  # (the same choices again: another stone, or walk away)
+			"room":
+				res.room = String(d.kind)  # (the screen takes you there: a campfire, the merchant, or a boss)
 			"rest_half":
 				var healed := player.heal(floorf(player.max_hp * REST_HEAL * 0.5))  # (half what a campfire's rest heals, rounded down)
 				res.text = String(res.text).replace("{n}", str(int(healed)))

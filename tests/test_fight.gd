@@ -144,25 +144,10 @@ func test_upgraded_artifact_uses_its_plus_number() -> void:
 	var run := RunState.new()
 	run.setup(db, [], [], 4)
 	run.gain_artifact("rain_chalice")
-	assert_true("rain_chalice" in run.upgradable_artifacts())
 	assert_eq(run.make_fight(["ashling"]).player.lasting, 4.0)
 	run.upgrade_artifact("rain_chalice")
 	assert_eq(run.make_fight(["ashling"]).player.lasting, 6.0, "Rain Chalice+ gives 6 Lasting Shield")
-	assert_true(not ("rain_chalice" in run.upgradable_artifacts()), "only once")
 	assert_eq(Artifacts.view("rain_chalice", true).name, "Rain Chalice+")
-
-
-func test_trade_two_of_a_tier_for_one_above() -> void:
-	var run := RunState.new()
-	run.setup(db, [], [], 4)
-	run.gain_artifact("iron_bark")
-	assert_true(run.tradeable_artifacts().is_empty(), "one common isn't a pair")
-	run.gain_artifact("healing_sap")
-	assert_eq(run.tradeable_artifacts().size(), 2)
-	var offer := run.trade_offer("common")
-	assert_true(not offer.is_empty() and offer.all(func(a): return a.tier == "rare" and a.get("aspect", "") != "Cursed"))
-	run.trade_artifacts("iron_bark", "healing_sap", offer[0].id)
-	assert_eq(run.artifacts, ["seed_of_life", offer[0].id], "the starting Seed of Life is never part of a trade")
 
 
 func test_prefight_essence_matches_the_fight() -> void:
@@ -982,6 +967,62 @@ func test_elemental_fishing_pays_per_fish() -> void:
 	assert_true(String(res.text).contains("1 whale,"))
 
 
+func test_mausoleum() -> void:
+	var ev := MapEvents.get_event("mausoleum")
+	assert_eq(ev.acts, [2])
+	var run := RunState.new()
+	run.setup(db, ["fire_ball"], [], 3)
+	run.player.max_hp = 52
+	run.player.hp = 40
+	var res := run.event_outcome(ev.options[0])
+	assert_eq([run.player.max_hp, run.player.hp], [62.0, 50.0])
+	assert_true(String(res.text).contains("+10 max HP"))
+	run.event_outcome(ev.options[1])
+	run.event_outcome(ev.options[2])
+	var plain := RunState.new()
+	plain.setup(db, ["fire_ball"], [], 3)
+	var f := run.make_fight(["ashling"])
+	var g := plain.make_fight(["ashling"])
+	assert_eq(f.player.lasting - g.player.lasting, 20.0)
+	assert_eq(f.player.stock.size() - g.player.stock.size(), 3)
+
+
+func test_watchtower_boss_keeps_the_act() -> void:
+	var ev := MapEvents.get_event("watchtower")
+	var run := RunState.new()
+	run.setup(db, ["fire_ball"], [], 3)
+	assert_eq(run.event_outcome(ev.options[0]).room, "rest")
+	assert_eq(run.event_outcome(ev.options[2]).room, "shop")
+	assert_eq(run.event_outcome(ev.options[1]).room, "boss")
+	run.act = 2
+	run.map = [[{"type": "unknown", "as": "boss", "no_advance": true}]]
+	run.row = 0
+	run.col = 0
+	run.no_talk_next = true
+	var f := run.make_fight(["invoker"])
+	assert_eq(f.talk_id, "", "no talk first")
+	f.won = true
+	run.player.hp = 10
+	run.finish_fight(f)
+	assert_eq(run.act, 2, "the act goes on")
+	assert_true(run.player.hp > 10.0, "a boss's heal")
+
+
+func test_skipping_stones() -> void:
+	var ev := MapEvents.get_event("skipping_stones")
+	var run := RunState.new()
+	run.setup(db, ["fire_ball"], [], 3)
+	var throws := 0
+	var res := {}
+	while throws < 500:
+		throws += 1
+		res = run.event_outcome(ev.options[0])
+		if not res.get("again", false):
+			break
+		assert_true(String(res.text).begins_with("Your stone skips"))
+	assert_true(res.has("artifact") and Artifacts.get_def(res.artifact).tier == "common", "20 or more: a common artifact")
+
+
 func test_cactus_maze() -> void:
 	var run := RunState.new()
 	run.setup(db, ["fire_ball", "water_wall", "tailwind"], [], 3)
@@ -1113,14 +1154,6 @@ func test_refund_disturbance_and_the_pool() -> void:
 	assert_eq(g.enemies[0].hp_text(), "WW", "its only Fire")
 	var d: Dictionary = db.get_spell("disturbance")
 	assert_eq([d.pattern, d.rarity, d.power], ["FWA", "legendary", true])
-	# the Upside-Down Pool: half your HP, and the spell plays inverted
-	var run := RunState.new()
-	run.setup(db, ["fire_ball", "water_wall", "tailwind"], [], 3)
-	run.player.hp = 40
-	run.invert_spell("fire_ball")
-	assert_eq(run.player.hp, 20.0)
-	assert_true(run.spell("fire_ball").get("anti", false), "an anti-spell now")
-	assert_true(not db.get_spell("fire_ball").get("anti", false), "(only in this run)")
 
 
 func test_rare_batch() -> void:

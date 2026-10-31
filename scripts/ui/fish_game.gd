@@ -14,6 +14,7 @@ const COUNTDOWN := 3.0
 const SPAWN_EVERY := 6.0  # seconds between fish at the start (a little random) ...
 const SPAWN_RAMP := 3.0  # ... and by the end, this many times as many fish
 const CHANT_MAX := 10
+const SPEED := 1.1  # every fish swims this much faster than its "cross" time says
 const KINDS := {
 	"swordfish": {"hp": 4, "cross": 12.0, "leaves": 6, "w": 190.0, "h": 70.0, "col": Color(0.35, 0.55, 0.85), "share": 0.4},
 	"barracuda": {"hp": 5, "cross": 16.0, "leaves": 4, "w": 230.0, "h": 60.0, "col": Color(0.55, 0.62, 0.55), "share": 0.4},
@@ -209,7 +210,7 @@ func _spawn() -> void:
 func _fits(kind: String, lane: int) -> bool:
 	var k: Dictionary = KINDS[kind]
 	var w: float = k.w
-	var v: float = (1920.0 + w) / float(k.cross)
+	var v: float = (1920.0 + w) / float(k.cross) * SPEED
 	var tail := 1920.0  # where the new fish's nose starts (off the right edge; its body is still hidden)
 	const GAP := 40.0
 	for f in _fish:
@@ -217,7 +218,7 @@ func _fits(kind: String, lane: int) -> bool:
 			continue
 		var o: Dictionary = KINDS[f.kind]
 		var ow: float = o.w
-		var ov: float = (1920.0 + ow) / float(o.cross)
+		var ov: float = (1920.0 + ow) / float(o.cross) * SPEED
 		var o_back: float = f.x + ow * 0.62  # (the back of its tail)
 		if tail < o_back + GAP:
 			return false  # (not past it yet)
@@ -286,7 +287,7 @@ func _process(d: float) -> void:
 		return
 	for f in _fish:
 		var k: Dictionary = KINDS[f.kind]
-		f.x -= (1920.0 + float(k.w)) / float(k.cross) * d
+		f.x -= (1920.0 + float(k.w)) / float(k.cross) * SPEED * d
 		if f.dead_t >= 0.0:
 			f.dead_t += d
 		var row: HBoxContainer = f.icons

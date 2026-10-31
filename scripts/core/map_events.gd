@@ -7,7 +7,6 @@ extends RefCounted
 ##   heal n · lose_hp n · max_hp n · amber n · upgrade n (a wax seal on n random spells) · spell rarity · artifact pool
 ##   bottle n (n random bottles, if you have room)
 ##   gamble (50%: heal to full, else an ambush fight) · fight · none
-##   upgrade_artifact (a random one becomes its + version) · trade_artifacts (give 2 of a tier, pick 1 of the next)
 
 const ALL := [
 	# ---- rewritten from docs/events.xlsx (the user's notes are canon). An option's "label" is all the player sees
@@ -75,30 +74,7 @@ const ALL := [
 				{"chance": 1.0, "text": "The idol bites you as you scoop up the leaves. You lose 10 HP, and gain 50 Leaves.", "do": [{"op": "damage", "n": 10}, {"op": "amber", "n": 50}]}]},
 			{"label": "Put down 100 more Leaves", "amber": 100, "outcomes": [
 				{"chance": 1.0, "text": "The idol seems pleased, and drops the box from its jaw. Inside: an artifact.", "do": [{"op": "artifact", "pool": "normal"}]}]}]},
-	{"id": "amber_vein", "acts": [1], "title": "A Golden Thicket", "text": "Golden leaves have drifted deep under a bramble. They look valuable, and the bramble looks extremely sharp.",
-		"options": [{"label": "Reach in (lose 5 HP): +45 Leaves", "hp": 5, "do": "amber", "n": 45},
-			{"label": "Admire it and move on", "do": "none"}]},
-	{"id": "old_tome", "acts": [1], "title": "An Old Spellbook", "text": "A book lies open on a stone, its pages turning by themselves. Reading it would cost you something.",
-		"options": [{"label": "Read it (lose 10 max HP): 2 random spells need 1 Essence less", "max_hp": 10, "do": "upgrade", "n": 2},
-			{"label": "Close it gently", "do": "none"}]},
-	{"id": "squirrel", "acts": [1], "title": "A Squirrel Merchant", "text": "A squirrel in a tiny waistcoat offers you a very special acorn.",
-		"options": [{"label": "Buy it for 25 Leaves (+6 max HP)", "amber": 25, "do": "max_hp", "n": 6},
-			{"label": "Politely decline", "do": "none"}]},
-	{"id": "tinker", "acts": [1], "title": "The Tinker's Cart", "text": "A gnome with a hundred tiny tools squints at your pack. \"I can make any of those better. For a price, naturally.\"",
-		"options": [{"label": "Pay 40 Leaves: upgrade a random artifact", "amber": 40, "do": "upgrade_artifact"},
-			{"label": "No thank you", "do": "none"}]},
-	{"id": "barterer", "acts": [1], "title": "The Barterer", "text": "An old tortoise wears a shell piled high with trinkets. \"Two of yours for one of mine. Mine are better. Mostly.\"",
-		"options": [{"label": "Trade 2 artifacts of the same tier for 1 of the next tier", "do": "trade_artifacts"},
-			{"label": "Keep what you have", "do": "none"}]},
-	# An Abandoned Camp (every act): a campfire that is barely one. Fusing gives no wax; resting heals half.
 	{"id": "lost_camp", "acts": [1, 2, 3], "title": "An Abandoned Camp", "text": "The camp is in such bad shape that calling it a camp would be almost dishonest. A ring of soot, half a log, and a bedroll that has seen better centuries.\n\nBut it is STILL a camp!", "options": [{"label": "Half-cook some spells", "fuse": "half", "text": "The fire sputters out before your spells are quite done. They are fused all the same, but no wax came of it."}, {"label": "Rest restlessly", "outcomes": [{"chance": 1.0, "text": "You toss and turn on the lumpy ground, and wake up stiff all over. Still, it helped a little: you heal {n} HP.", "do": [{"op": "rest_half"}]}]}]},
-	{"id": "inverted_pool", "acts": [1], "title": "The Upside-Down Pool", "text": "A still pool shows your spells upside down. It whispers that it could make one of them so, for good, if you let it drink.",
-		"options": [{"label": "Let it drink half your HP: invert a spell (a spell becomes an anti-spell, an anti-spell a spell)", "hp_pct": 0.5, "do": "invert_spell"},
-			{"label": "Step back from the edge", "do": "none"}]},
-	{"id": "apothecary", "acts": [1], "title": "A Wandering Apothecary", "text": "A mole in thick spectacles rattles a cart full of little glass bottles. \"Panic, bottled! Very reasonably priced.\"",
-		"options": [{"label": "Pay 25 Leaves: 2 random bottles", "amber": 25, "do": "bottle", "n": 2},
-			{"label": "Ask for a free sample (lose 3 HP): a random bottle", "hp": 3, "do": "bottle", "n": 1},
-			{"label": "Walk on", "do": "none"}]},
 	{"id": "note_to_self", "acts": [1], "title": "A Note to Yourself", "text": "A folded note is pinned to a tree, in handwriting you know very well. \"Thought you might need this. Leave one for next time.\"",
 		"options": [{"label": "Take the spell in the note, and leave one of yours in it", "do": "note_swap"},
 			{"label": "Leave the note for another day", "do": "none"}]},
@@ -153,6 +129,15 @@ const ALL := [
 	{"id": "broken_bridge", "acts": [2], "title": "The Broken Bridge", "text": "You come upon a broken bridge over a small bog. Both banks are thick with thorny bushes, and the gap in the middle looks... jumpable. Probably.", "options": [{"label": "Jump over it", "outcomes": [{"chance": 0.5, "text": "You take a running start and leap. You make it across, heart pounding! You feel so excited that you will start your next fight with 1 extra random Essence.", "do": [{"op": "gift", "els": ["random"]}]}, {"chance": 0.5, "text": "You take a running start and leap... and land with a splash in the middle of the bog. Your spellbook is soaked through: {spell} now needs 1 more Water.", "do": [{"op": "soak"}]}]}, {"label": "Find a way around the thorny bushes", "outcomes": [{"chance": 1.0, "text": "You push your way through the bushes until you find a way around. The thorns don't make it easy: you lose 5 HP.", "do": [{"op": "damage", "n": 5}]}]}]},
 	# Elemental Fishing (Act 2): a minute of chanting at Essence fish (FishGame), then the old man's tally.
 	{"id": "elemental_fishing", "acts": [2], "title": "Elemental Fishing", "text": "Beside a dark, odorous stream sits a ragged man. It is hard to tell whether the smell comes from the man or from the stream. He is so thin that, had he introduced himself as a walking skeleton, you would not have been surprised.\n\n\"Hi there, stranger,\" he says. \"Would you mind helping me catch some fish? It has been more than two hundred years since I caught any, and as you can see, I am quite hungry.\"", "options": [{"label": "Help him fish", "next": {"text": "\"Wonderful!\" He points a bony finger at the water. \"The fish in this stream are made of Essence, so you catch them with a chant, not a rod. Line up your Essence and Chant: every fish loses the longest start of its row that your chant contains, just like in a fight. You can chant as often as you like, and your three Essence never run out. A whale is worth 10 Leaves, a swordfish 6 and a barracuda 4. You've got one minute!\"", "options": [{"label": "Ready", "minigame": "fish"}]}}, {"label": "Walk away", "outcomes": [{"chance": 1.0, "text": "\"Oh, I see. You are busy,\" he sighs. \"I will just wait another two hundred years, then.\"", "do": []}]}]},
+	# The Mausoleum (Act 2): touch one of three lights. Red: +20% max HP (rounded down; healed as much). Blue: 20 Lasting
+	# Shield at the start of the next fight. Green: 3 extra random Essence at the start of the next fight.
+	{"id": "mausoleum", "acts": [2], "title": "The Mausoleum", "text": "You stumble upon an ancient mausoleum, its doors long since rotted away. Inside, above three stone coffins, three balls of light hang in the dark: one red, one blue, one green. They hum softly, and you feel a strange urge to touch one.", "options": [{"label": "Touch the red ball", "outcomes": [{"chance": 1.0, "text": "The red light floods into your veins, warm as a heartbeat. Somewhere in the coffin below, something sighs. You feel sturdier than ever: +{n} max HP.", "do": [{"op": "max_hp_pct", "pct": 0.2}]}]}, {"label": "Touch the blue ball", "outcomes": [{"chance": 1.0, "text": "The blue light settles over your skin like cold armour, and stays there, waiting. You will start your next fight with 20 Lasting Shield.", "do": [{"op": "lasting_next", "n": 20}]}]}, {"label": "Touch the green ball", "outcomes": [{"chance": 1.0, "text": "The green light leaps into your bag and hides there, giggling. You will start your next fight with 3 extra random Essence.", "do": [{"op": "gift", "els": ["random", "random", "random"]}]}]}]},
+	# The Ruined Watchtower (Act 2): what you spot from the top is where you go: a campfire, the merchant, or a fight with
+	# a random Act 1 boss (no talk, full boss rewards; the act does not end).
+	{"id": "watchtower", "acts": [2], "title": "The Ruined Watchtower", "text": "You find a ruined watchtower. It may be half the height it once was, but in this wasted swamp it is probably still the tallest thing for a hundred miles. You climb to the top and look out over the horizon. There, you see...", "options": [{"label": "A camping site", "outcomes": [{"chance": 1.0, "text": "A thin line of smoke rises from a clearing not far off. You climb down and make your way there: a campfire, still burning, and nobody around to mind it.", "do": [{"op": "room", "kind": "rest"}]}]}, {"label": "A towering monster", "outcomes": [{"chance": 1.0, "text": "Something enormous moves on the horizon. Before you are even halfway down the tower, it has seen you, and it is coming.", "do": [{"op": "room", "kind": "boss"}]}]}, {"label": "The merchant", "outcomes": [{"chance": 1.0, "text": "A familiar cart trundles along the road below. You hurry down the steps and wave it over.", "do": [{"op": "room", "kind": "shop"}]}]}]},
+	# Skipping Stones (Act 2): each throw skips 1-21 times; 20 or more impresses the lake's spirit (a random common
+	# artifact, and the event ends). Otherwise you may throw again, or walk away. (2 chances in 21: 10.5 throws on average.)
+	{"id": "skipping_stones", "acts": [2], "title": "Skipping Stones", "text": "You come upon a lake so still that it looks like glass. There is nothing to do here, and an awful lot of flat stones.", "options": [{"label": "Skip a stone", "outcomes": [{"chance": 1.0, "text": "", "do": [{"op": "skip_stone"}]}]}, {"label": "Walk away", "outcomes": [{"chance": 1.0, "text": "You dust off your hands and leave the lake to its stillness.", "do": []}]}]},
 ]
 
 
