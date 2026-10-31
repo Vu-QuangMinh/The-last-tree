@@ -398,6 +398,57 @@ func drop_zoom() -> void:
 		refresh()
 
 
+func _ensure_layer() -> void:
+	if _layer == null or not is_instance_valid(_layer):
+		_layer = CanvasLayer.new()
+		_layer.layer = 25
+		get_tree().root.add_child(_layer)
+
+
+## How big the magnified copy is, for a card that looks `shown` times its design size.
+static func _hover_target(shown: float) -> float:
+	return shown * 1.2 if shown >= 1.0 else 1.12
+
+
+## The magnified copy (not yet in the tree): laid out at the big size, so it's crisp.
+func _new_zoom(target: float, zsize: Vector2) -> SpellCard:
+	var z := SpellCard.make(spell, compact)
+	z.is_zoom_copy = true
+	z.zoom = target
+	z.fit_from = true  # same text and orb sizes as this card, so it wraps exactly the same
+	z.fit_name_fs = fit_name_fs
+	z.fit_fs = fit_fs
+	z.fit_orb = fit_orb
+	# its layer is outside every screen, so it must be given the game's theme (font) itself, or it falls back
+	# to Godot's default font: heavier, wider, and the text wraps differently from the real card
+	z.theme = UiTheme.get_theme()
+	z.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# same shape as the real card (it may have been stretched by its row), just bigger
+	z.custom_minimum_size = zsize
+	return z
+
+
+## Builds a magnified copy once, unseen, and frees it: the first copy of a size has to make its frame picture and its letters (a frame's worth of
+## time), so a screen that knows how big its cards will be does this while they are still arriving, not on the player's first hover.
+func warm_hover() -> void:
+	if is_zoom_copy or not is_inside_tree():
+		return
+	_ensure_layer()
+	var target := _hover_target(get_global_transform().get_scale().x * zoom)
+	var z := _new_zoom(target, size / zoom * target)
+	# (not z.modulate: the card's own refresh() sets that back to white, and it flashed in the corner. A holder that is almost, but not quite, clear is
+	# still drawn, which is the point, and cannot be seen)
+	var holder := Control.new()
+	holder.modulate.a = 0.01
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_layer.add_child(holder)
+	holder.add_child(z)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if is_instance_valid(holder):
+		holder.queue_free()
+
+
 func _on_hover(on: bool) -> void:
 	if is_zoom_copy or on == _hover:
 		return
@@ -413,28 +464,13 @@ func _on_hover(on: bool) -> void:
 		refresh()  # shows the real card again
 	if not on or not is_inside_tree():
 		return
-	if _layer == null or not is_instance_valid(_layer):
-		_layer = CanvasLayer.new()
-		_layer.layer = 25
-		get_tree().root.add_child(_layer)
+	_ensure_layer()
 	# how big the real card looks now, and how big the copy should be
 	var real_scale := get_global_transform().get_scale().x
 	var shown := real_scale * zoom
-	var target := shown * 1.2 if shown >= 1.0 else 1.12
-	var z := SpellCard.make(spell, compact)
-	z.is_zoom_copy = true
-	z.zoom = target  # laid out at the big size, so it's crisp
-	z.fit_from = true  # same text and orb sizes as this card, so it wraps exactly the same
-	z.fit_name_fs = fit_name_fs
-	z.fit_fs = fit_fs
-	z.fit_orb = fit_orb
-	# its layer is outside every screen, so it must be given the game's theme (font) itself, or it falls back
-	# to Godot's default font: heavier, wider, and the text wraps differently from the real card
-	z.theme = UiTheme.get_theme()
-	z.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# same shape as the real card (it may have been stretched by its row), just bigger
+	var target := _hover_target(shown)
 	var zsize := size / zoom * target
-	z.custom_minimum_size = zsize
+	var z := _new_zoom(target, zsize)
 	_layer.add_child(z)
 	_zoom = z
 	_sync_zoom()
@@ -447,7 +483,7 @@ func _on_hover(on: bool) -> void:
 	if z.position.y < 8.0:
 		z.position.y = 8.0
 	z.scale = Vector2.ONE * (shown / target)
-	z.create_tween().tween_property(z, "scale", Vector2.ONE, 0.1)
+	z.create_tween().tween_property(z, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	modulate.a = 0.0
 
 

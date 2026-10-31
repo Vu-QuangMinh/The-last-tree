@@ -39,6 +39,7 @@ func _ready() -> void:
 	wood_cursor.get_screen = func(): return current
 	cur.add_child(wood_cursor)
 	add_child(cur)
+	add_child(load("res://scripts/ui/fps_counter.gd").new())  # (Settings > Show FPS: top right, over every screen)
 	var tl := CanvasLayer.new()
 	tl.layer = 10
 	var toasts: VBoxContainer = load("res://scripts/ui/toasts.gd").new()
@@ -1086,9 +1087,10 @@ func _save_quest() -> void:
 		SaveManager.save_game()
 
 
-func _show_shop(stock: Array) -> void:
+func _show_shop(stock: Array, first := true) -> void:
 	var sh := ShopScreen.new()
 	sh.setup(run, stock)
+	sh.intro = first  # (Puppet Stage: the cart rolls in and the goods are laid out only on arrival, not when coming back from the wax seal)
 	sh.quest = _merchant_quest()
 	sh.quest_changed.connect(_save_quest)
 	sh.leave.connect(show_map)
@@ -1098,13 +1100,13 @@ func _show_shop(stock: Array) -> void:
 		var ch := _choice("A wax seal", "Choose a spell. Then choose which Essence of its pattern to seal: it won't be needed any more.", cards, [], false)
 		ch.chosen.connect(func(k):
 			if k < 0:
-				_show_shop(stock)
+				_show_shop(stock, false)
 				return
 			var seal := SealScreen.new()
 			seal.setup(run, ids[k])
-			seal.done.connect(func(): _show_shop(stock))
+			seal.done.connect(func(): _show_shop(stock, false))
 			_swap(seal)))
-	_swap(sh)
+	_put(sh)
 
 
 func _show_loadout(ids: Array) -> void:

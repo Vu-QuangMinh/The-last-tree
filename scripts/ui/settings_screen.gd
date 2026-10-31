@@ -41,6 +41,7 @@ func _build() -> void:
 	v.add_child(_theme_row())
 	v.add_child(_font_row())
 	v.add_child(_tick_row("Show Hotkey", "show_hotkeys", true))
+	v.add_child(_tick_row("Show FPS", "show_fps", false))
 	v.add_child(UiTheme.heading("Volume", 22, UiTheme.ACCENT))
 	v.add_child(_volume_row("Overall", Audio.overall_level, func(x): Audio.set_overall_level(x); Audio.play("ui_click")))
 	v.add_child(_volume_row("Sound", Audio.sfx_level, func(x): Audio.set_sfx_level(x); Audio.play("ui_click")))
