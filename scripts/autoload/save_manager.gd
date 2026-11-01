@@ -186,6 +186,16 @@ func set_note_spell(id: String) -> void:
 	save_game()
 
 
+## Skipping Stones: the most skips ever thrown (over every run).
+func skip_record() -> int:
+	return int(data.get("skip_record", 0))
+
+
+func set_skip_record(n: int) -> void:
+	data["skip_record"] = n
+	save_game()
+
+
 func merchant() -> Dictionary:
 	if not (data.get("merchant") is Dictionary):
 		data.merchant = {"done": 0, "open": false}

@@ -23,6 +23,8 @@ var _feet := 607.0
 var _bear: TextureRect
 var _story: RichTextLabel
 var _buttons: HBoxContainer
+var _box: PanelContainer  # the story box at the front of the stage
+var _tags: Array = []  # "Try to stop them" over the bear, "Get out of the way" over the bush: always up
 var _x := 960.0
 var _dir := 1.0
 var _spin := 0.0  # radians of roll
@@ -36,6 +38,7 @@ var _coins: Array = []  # {node, v (Vector2), age}
 
 
 func _ready() -> void:
+	Audio.stop_music()  # (no tune: just the rolling)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UiTheme.get_theme()
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -54,24 +57,31 @@ func _ready() -> void:
 	_bear.pivot_offset = _bear.size / 2.0
 	_bear.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_bear)
-	var hp := EventStage.hint_panel("They See Me Rolling" if mode == "meet" else "The Bear Comes Back", "")
-	var panel: PanelContainer = hp.panel
-	panel.position = Vector2(1960.0, EventStage.HINT_Y)
-	add_child(panel)
-	create_tween().tween_property(panel, "position:x", EventStage.HINT_X, 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	# the story box at the front of the stage, like every event's: twice the size, the choices in it
+	var hp := EventStage.hint_panel("They See Me Rolling" if mode == "meet" else "The Bear Comes Back", "", EventStage.BOX_PX, 0.0, EventStage.BOX_TEXT_W)
+	_box = hp.panel
+	add_child(_box)
 	_story = hp.body
 	_buttons = HBoxContainer.new()
 	_buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	_buttons.add_theme_constant_override("separation", 30)
-	_buttons.position = Vector2(0, 780)
-	_buttons.size = Vector2(1920, 70)
-	add_child(_buttons)
+	(hp.col as VBoxContainer).add_child(_buttons)
+	_box.modulate.a = 0.0
+	create_tween().tween_property(_box, "modulate:a", 1.0, 0.4)
+	# like every event: the scene and its opening words first, and a button to begin
 	if mode == "revenge":
-		_revenge()
+		_x = 1920.0 + BEAR_PX
+		_place()
+		_story.text = "You hear something coming. It is fast. Too fast!"
+		_offer([["Brace yourself!", func():
+			_offer([])
+			_revenge()]])
 	else:
 		_story.text = "Someone is rolling across the road, round and round, back and forth, and they are not stopping."
 		_x = 500.0
-		_rolling = true
+		_bear.visible = false
+		_locked = true  # (nothing takes a click before it begins)
+		_offer([["Watch them roll", _meet_begin]])
 		var bush_tex: Texture2D = UiSkin.tex("event_bush_exit")
 		if bush_tex != null:
 			_bush = TextureRect.new()
@@ -83,8 +93,14 @@ func _ready() -> void:
 			_bush.position = Vector2(1340.0 - _bush.size.x / 2.0, _feet - 150.0)
 			_bush.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			add_child(_bush)
-		else:
-			_offer([["Try to stop them", _stop], ["Get out of the way", _away]])
+
+
+
+## "Watch them roll": he comes rolling in, and the box offers to stop him or to let him by (the bear and the bush take no clicks).
+func _meet_begin() -> void:
+	_bear.visible = true
+	_rolling = true
+	_offer([["Try to stop them", _stop], ["Get out of the way", _away]])
 
 
 func _gui_input(e: InputEvent) -> void:
@@ -104,7 +120,6 @@ func _gui_input(e: InputEvent) -> void:
 			_stop()
 		elif _hover == "bush":
 			_set_hover("")
-			Audio.play("getout")
 			_away()
 
 
@@ -122,9 +137,6 @@ func _set_hover(now: String) -> void:
 	if now == "":
 		return
 	Audio.play("ui_hover", -8.0)
-	_tag = EventStage.make_tag("Try to stop them" if now == "bear" else "Get out of the way")
-	_tag.z_index = 10
-	add_child(_tag)
 
 
 func _process(d: float) -> void:
@@ -133,6 +145,12 @@ func _process(d: float) -> void:
 	if is_instance_valid(_tag):
 		var top := Vector2(_x, _feet - BEAR_PX - 20.0) if _hover == "bear" else Vector2(_bush.position.x + _bush.size.x / 2.0, _bush.position.y - 10.0)
 		_tag.position = Vector2(clampf(top.x - _tag.size.x / 2.0, 10.0, 1910.0 - _tag.size.x), maxf(top.y - _tag.size.y, 120.0))
+	if _tags.size() == 2 and is_instance_valid(_tags[0]):  # (over the bear, wherever he rolls; over the bush)
+		var tb: Control = _tags[0]
+		tb.position = Vector2(clampf(_x - tb.size.x / 2.0, 10.0, 1910.0 - tb.size.x), maxf(_feet - BEAR_PX - 20.0 - tb.size.y, 120.0))
+		var tu: Control = _tags[1]
+		tu.position = Vector2(_bush.position.x + _bush.size.x / 2.0 - tu.size.x / 2.0, maxf(_bush.position.y - 10.0 - tu.size.y, 120.0))
+	_fit_box()
 	_move_coins(d)
 	if _rolling:
 		_x += _dir * ROLL_SPEED * 0.6 * d
@@ -149,11 +167,38 @@ func _place() -> void:
 
 func _offer(choices: Array) -> void:
 	for c in _buttons.get_children():
+		_buttons.remove_child(c)
 		c.queue_free()
 	for c in choices:
-		var b := UiTheme.button(c[0], c[1], 22)
-		b.custom_minimum_size = Vector2(0, 52)  # (as wide as its words)
+		var b := UiTheme.button(c[0], c[1], 28)
+		b.custom_minimum_size = Vector2(0, 58)  # (as wide as its words)
 		_buttons.add_child(b)
+
+
+## The box keeps its bottom edge at the bottom of the screen and grows upwards with its words.
+func _fit_box() -> void:
+	if not is_instance_valid(_box):
+		return
+	_box.reset_size()
+	_box.size.x = EventStage.BOX_TEXT_W + 70.0
+	_box.position = Vector2(960.0 - _box.size.x / 2.0, EventStage.BOX_BOTTOM - _box.size.y)
+
+
+## A result is told: the stage dims (not the box), the words, and the button that answers it.
+func _result(text: String, ok: String, what: String) -> void:
+	for tg in _tags:
+		if is_instance_valid(tg):
+			tg.queue_free()
+	_tags.clear()
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.0)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(dim)
+	move_child(dim, _box.get_index())
+	dim.create_tween().tween_property(dim, "color:a", 0.55, 0.35)
+	_story.text = text
+	_offer([[ok, func(): chosen.emit(what)]])
 
 
 func _shake(n: float) -> void:
@@ -165,6 +210,10 @@ func _shake(n: float) -> void:
 ## "Try to stop them": he rams into you in the middle of the stage, jerks to a stop and lies there upside down.
 func _stop() -> void:
 	_offer([])
+	for tg in _tags:
+		if is_instance_valid(tg):
+			tg.queue_free()
+	_tags.clear()
 	_rolling = false
 	_locked = true
 	Audio.stop_held(_roll_snd, 0.1)
@@ -189,19 +238,16 @@ func _stop() -> void:
 	await get_tree().create_timer(1.2).timeout
 	await _bubble("Thank you, stranger!", 1.4)
 	await _bubble("Here, for your trouble.", 1.4)
-	# he cracks open like a piggy bank, and pays out
-	_spin = 0.0
-	_place()
-	if is_instance_valid(_bear.texture):
-		PuppetShatter.spawn_picture(self, _bear.texture, Rect2(_bear.position, _bear.size), _feet)
-	_bear.visible = false
+	# he slowly wiggles himself back upright (rocking, falling back a little each time), then pays out
+	var up := create_tween()
+	for v in [PI * 0.72, PI * 0.9, PI * 0.45, PI * 0.6, PI * 0.2, PI * 0.3, 0.0]:
+		up.tween_property(self, "_spin", v, 0.38).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await up.finished
 	_spray_coins(Vector2(_x, _feet - BEAR_PX * 0.5), 50)
-	Audio.play("sfx_coin_bag_spill", 0.0)  # (with the breaking wood, which is played by the shatter)
+	Audio.play("sfx_coin_bag_spill", 0.0)
 	paid.emit()
-	_shake(14.0)
-	_story.text = "He cracks open like a piggy bank, and 50 Leaves pour out. Your ribs are less grateful."
 	await get_tree().create_timer(2.2).timeout
-	_offer([["Continue", func(): chosen.emit("stop")]])
+	_result("He slowly wiggles himself back upright, and presses 50 Leaves into your hand. Your ribs are less grateful.", "Thanks... I think?", "stop")
 
 
 ## `n` coins thrown up out of `at`: they fall, bounce on the floor, lie there a moment and fade.
@@ -248,7 +294,12 @@ func _move_coins(d: float) -> void:
 
 ## "Get out of the way": he rolls on, off the stage to the left, wailing.
 func _away() -> void:
+	Audio.play("getout")
 	_offer([])
+	for tg in _tags:
+		if is_instance_valid(tg):
+			tg.queue_free()
+	_tags.clear()
 	_rolling = false
 	_locked = true
 	_story.text = "You step aside, and let them roll on by."
@@ -260,16 +311,14 @@ func _away() -> void:
 	_bubble("Why didn't you help me? Whyyyyyy...", 2.6, true)
 	await tw.finished
 	await get_tree().create_timer(0.8).timeout
-	_story.text = "His cry fades as he rolls further and further away."
-	_offer([["Continue", func(): chosen.emit("away")]])
+	_result("His cry fades as he rolls further and further away.", "Bye, rolling guy!", "away")
 
 
 ## The revenge: in from the right, a slam into the middle (into you), up on his feet, his line, then the fight.
 func _revenge() -> void:
-	_story.text = "You hear something coming. It is fast. Too fast!"
 	_x = 1920.0 + BEAR_PX
 	_place()
-	await get_tree().create_timer(1.0).timeout
+	await get_tree().create_timer(0.4).timeout
 	var dist: float = _x - 960.0
 	var tw := create_tween()
 	tw.set_parallel()
@@ -291,8 +340,7 @@ func _revenge() -> void:
 	await up.finished
 	await _bubble("Behold, heartless stranger!", 1.6)
 	await _bubble("I have come for revenge!", 1.6)
-	_story.text = "You are still seeing stars: you will be Stunned for the first turn."
-	_offer([["Fight!", func(): chosen.emit("fight")]])
+	_result("You are still seeing stars: you will be Stunned for the first turn.", "Bring it on, furball!", "fight")
 
 
 ## A black speech bubble over the bear (his head, wherever he is). `follow`: it rides along with him and fades.

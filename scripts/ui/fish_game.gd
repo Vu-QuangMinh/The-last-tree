@@ -1,6 +1,6 @@
 class_name FishGame
 extends Control
-## Elemental Fishing (an Act 2 event): fish swim right to left across the top half of the stage, their Essence on
+## Fisher's Fish (an Act 2 event): fish swim right to left across the top half of the stage, their Essence on
 ## their bodies. You line up a chant from three Essence that never run out (click one, or drag it down: a copy goes
 ## into the chant) and press Chant (or Enter / Space): every fish loses the longest start of its row that the chant
 ## contains, the fight's own rule (Chant.prefix_match). No turns: chant again at once. A fish with no Essence left is
@@ -12,7 +12,7 @@ signal finished(big: int, medium: int, small: int)
 const GAME_TIME := 60.0
 const COUNTDOWN := 3.0
 const SPAWN_EVERY := 6.0  # seconds between fish at the start (a little random) ...
-const SPAWN_RAMP := 3.0  # ... and by the end, this many times as many fish
+const SPAWN_RAMP := 6.0  # ... and by the end, this many times as many fish (rising fast early on: see _process)
 const CHANT_MAX := 10
 const SPEED := 1.1  # every fish swims this much faster than its "cross" time says
 ## The size classes, by how many Essence orbs the fish carries (each fish rolls its count in "orbs"): small 3-5, medium 5-7, big 8 or more. The picture really is that size (w =
@@ -332,7 +332,7 @@ func _process(d: float) -> void:
 		if alive.is_empty():  # (nothing swims on the screen: the next fish comes out at once)
 			_spawn_in = 0.0
 		if _spawn_in <= 0.0:
-			_spawn_in = SPAWN_EVERY / lerpf(1.0, SPAWN_RAMP, _t / GAME_TIME) * _rng.randf_range(0.7, 1.3)  # (more and more fish)
+			_spawn_in = SPAWN_EVERY / lerpf(1.0, SPAWN_RAMP, pow(clampf(_t / GAME_TIME, 0.0, 1.0), 0.8)) * _rng.randf_range(0.7, 1.3)  # (more and more fish: the last 10 s twice as many as a straight 1x-to-3x rise)
 			_spawn()
 		var left := ceili(GAME_TIME - _t)
 		_clock.text = "%d:%02d" % [left / 60, left % 60]

@@ -256,7 +256,7 @@ func _set_overlay(c: Control) -> void:
 func _put(c: Control) -> void:
 	if _on_stage():
 		if current.get("_peek"):
-			current.peek_hud(true)  # (an event is going on: its HP, bottles and artifacts stay up, and show what it just did)
+			current.peek_hud(false)  # (an event: no HUD at all, only the stage and the event's box)
 		if "on_stage" in c:
 			c.on_stage = true
 		_set_overlay(c)
@@ -718,7 +718,7 @@ func _show_event(ev: Dictionary) -> void:
 			g.finished.connect(func(wh, ba, sw):
 				var res := run.fish_reward(wh, ba, sw)
 				if UiSkin.is_puppet():
-					_tally_on_stage(ev, String(res.text))  # (the old man and his stream stay; the tally goes in the hint panel)
+					_tally_on_stage(ev, String(res.text), "Enjoy your fish!")  # (the old man and his stream stay; the tally goes in the box)
 					return
 				var after := _message(ev.title, res.text, ["Continue"], Color(0.8, 0.7, 1))
 				after.pressed.connect(func(_k): show_map()))
@@ -730,6 +730,7 @@ func _show_event(ev: Dictionary) -> void:
 		if o.get("fuse", "") == "half" and is_instance_valid(_overlay) and _overlay is EventStage and EventStage.LAYOUTS.get(String(ev.get("id", "")), {}).get("stage_fuse", false):
 			# An Abandoned Camp on its stage: the spells are picked and fused right there, in the cauldron
 			var es_f: EventStage = _overlay
+			es_f.continue_label = String(o.get("ok", "Continue"))
 			es_f.continued.connect(show_map, CONNECT_ONE_SHOT)
 			es_f.fuse_cancelled.connect(func(): _show_event(ev), CONNECT_ONE_SHOT)
 			es_f.start_fuse(String(o.text))
@@ -772,6 +773,7 @@ func _show_event(ev: Dictionary) -> void:
 		if is_instance_valid(_overlay) and _overlay is EventStage and EventStage.LAYOUTS.has(String(ev.get("id", ""))) and not res.get("fight", false):
 			# (an old-style option, like leaving the note: told on the stage as well, no black screen)
 			var es0: EventStage = _overlay
+			es0.continue_label = String(o.get("ok", "Continue"))
 			es0.continued.connect(show_map, CONNECT_ONE_SHOT)
 			es0.show_result(String(res.text), "", false, run.spell(res.spell) if res.has("spell") else {})
 			return
@@ -801,7 +803,10 @@ func _show_event(ev: Dictionary) -> void:
 ## A rewritten event's choice: roll what happens, and say it (only the outcome's own words). Then the bottles that
 ## didn't fit (swap screen), then the fight it started, or the map.
 func _event_result(ev: Dictionary, opt: Dictionary, bottle_at: int, spell_id := "") -> void:
+	var on_its_stage: bool = is_instance_valid(_overlay) and _overlay is EventStage
+	_picked = on_its_stage  # (an artifact it gives is shown in its own result, not in the "You found an artifact!" pop-up)
 	var res := run.event_outcome(opt, bottle_at, spell_id)
+	_picked = false
 	if run.player.is_dead():
 		run.over = true
 		_end_run()
@@ -846,9 +851,7 @@ func _event_result(ev: Dictionary, opt: Dictionary, bottle_at: int, spell_id := 
 	if is_instance_valid(_overlay) and _overlay is EventStage and EventStage.LAYOUTS.has(String(ev.get("id", ""))) and res.overflow.is_empty():
 		var es: EventStage = _overlay
 		es.continued.connect(go_on, CONNECT_ONE_SHOT)
-		es.continue_label = "Fight!" if res.has("fight") or res.get("room", "") == "boss" else "Continue"
-		if current is FightScreen and not EventStage.LAYOUTS[String(ev.get("id", ""))].get("no_hud", false):
-			current.peek_hud(true)  # (what the event cost shows on the HP bar)
+		es.continue_label = String(res.ok) if String(res.get("ok", "")) != "" else ("Fight!" if res.has("fight") or res.get("room", "") == "boss" else "Continue")
 		var soaked_after: Dictionary = run.spell(String(res.soaked)) if res.has("soaked") else {}
 		var soaked_before: Dictionary = {}
 		if not soaked_after.is_empty():  # (the Water is not in the card yet: it flies in from the river)
@@ -856,6 +859,15 @@ func _event_result(ev: Dictionary, opt: Dictionary, bottle_at: int, spell_id := 
 			soaked_before.pattern = String(soaked_after.pattern).left(maxi(0, String(soaked_after.pattern).length() - 1))
 			soaked_before.size = String(soaked_before.pattern).length()
 			soaked_before.burden = String(soaked_after.get("burden", "")).left(maxi(0, String(soaked_after.get("burden", "")).length() - 1))
+		es.result_artifact = String(res.get("artifact", ""))  # (its card stands over the box, with the words)
+		if res.get("curse_card", false) and not soaked_after.is_empty():
+			# the Whispering Well's grudge: its words and "Oh no...", then the spell gets its Water, then Next
+			es.continued.disconnect(go_on)
+			es.continued.connect(func():
+				await es.curse_card(soaked_before, soaked_after)
+				es.continued.connect(go_on, CONNECT_ONE_SHOT), CONNECT_ONE_SHOT)
+			es.show_result(String(res.text), _result_how(ev, opt, String(res.text), spell_id), false)
+			return
 		es.show_result(String(res.text), _result_how(ev, opt, String(res.text), spell_id), false, run.spell(res.spell) if res.has("spell") else soaked_after, soaked_before)
 		return
 	var shown: Control = ArtifactCard.make(Artifacts.view(res.artifact, false)) if res.has("artifact") else null
@@ -878,8 +890,6 @@ func _bear_scene(ev: Dictionary) -> void:
 	sc.act = run.act
 	sc.hurt.connect(func():
 		run.player.take_effect(5.0)
-		if current is FightScreen:
-			current.peek_hud(true)  # (the HP bar shows it)
 		if run.player.is_dead():
 			run.over = true
 			_end_run())
@@ -899,8 +909,6 @@ func _bear_scene(ev: Dictionary) -> void:
 			return
 		show_map())
 	_stage_overlay(sc)
-	if is_instance_valid(current) and current is FightScreen:
-		current.peek_hud(true)
 
 
 ## A "?" event played with props on the stage (EventStage): `pick(i)` is the same choice-maker the plain event screen uses.
@@ -959,15 +967,18 @@ func _event_stage(ev: Dictionary, pick: Callable) -> void:
 			_event_result(ev, o, run.player.bottles.find(String(picked_ids[0]))))
 	_stage_overlay(s)
 	if is_instance_valid(current) and current is FightScreen:
-		current.peek_hud(not EventStage.LAYOUTS[String(ev.get("id", ""))].get("no_hud", false))
+		current.peek_hud(false)  # (an event: no HUD at all)
 
 
 ## Put `c` on the stage, like a fight: the stage is put up first if it isn't (the test rooms have none).
 func _stage_overlay(c: Control) -> void:
+	# (a stage already up, the map's or a page before this one, is kept with its scenery: Skipping Stones' next throw)
+	var up: bool = is_instance_valid(current) and current is FightScreen and current.map_mode
 	if UiSkin.is_puppet() and not _on_stage():
-		var base := _new_fight_screen(run.make_fight([]))
-		base.map_mode = true
-		_swap(base)
+		if not up:
+			var base := _new_fight_screen(run.make_fight([]))
+			base.map_mode = true
+			_swap(base)
 		c.set("on_stage", true)
 		_set_overlay(c)
 	else:
@@ -975,7 +986,7 @@ func _stage_overlay(c: Control) -> void:
 
 
 ## After a minigame: the event's own stage again (its props stay), the tally in the hint panel, then Continue.
-func _tally_on_stage(ev: Dictionary, text: String) -> void:
+func _tally_on_stage(ev: Dictionary, text: String, ok := "Continue") -> void:
 	var fev := ev.duplicate()
 	fev["options"] = []
 	fev["text"] = ""
@@ -983,10 +994,9 @@ func _tally_on_stage(ev: Dictionary, text: String) -> void:
 	es.ev = fev
 	es.again = true
 	es.act = run.act
+	es.continue_label = ok
 	es.continued.connect(show_map, CONNECT_ONE_SHOT)
 	_stage_overlay(es)
-	if current is FightScreen:
-		current.peek_hud(true)
 	es.show_result.call_deferred(text)
 
 
@@ -1006,7 +1016,7 @@ func _farm_game(ev: Dictionary) -> void:
 	g.finished.connect(func(gob, hob, fai):
 		var res := run.farm_reward(gob, hob, fai)
 		if UiSkin.is_puppet() and _on_stage():
-			_tally_on_stage(ev, String(res.text))  # (the farmer and his wheat stay; the tally goes in the hint panel)
+			_tally_on_stage(ev, String(res.text), "Happy to help!")  # (the farmer and his wheat stay; the tally goes in the box)
 			return
 		var after := _message(ev.title, res.text, ["Continue"], Color(0.8, 0.7, 1))
 		after.pressed.connect(func(_k): show_map()))
@@ -1070,8 +1080,11 @@ func _recycle_on_stage(ev: Dictionary, opt: Dictionary, give: String, opt_index:
 	var offer := run.recycle_offer(kind, give)
 	var entries: Array = offer.map(func(id): return {"opt": opt_index, "kind": kind, "id": String(id), "need": 1, "spell": run.spell(id) if kind == "spell" else {}})
 	es.traded.connect(func(take: String):
+		_picked = true  # (the card he handed over is the one shown: no "You found an artifact!" pop-up)
 		run.recycle(kind, give, take)
+		_picked = false
 		es.present(take)  # (the one you took grows and stays; the other two are gone)
+		es.continue_label = String(opt.get("ok", "Continue"))
 		es.continued.connect(show_map, CONNECT_ONE_SHOT)
 		es.show_result(String(opt.text), "", true), CONNECT_ONE_SHOT)
 	es.trade(give, entries, "\"RECYCLE!\" He tosses it onto his cart, rummages through the pile, and holds out three things. Take one.")
@@ -1090,7 +1103,11 @@ func _event_wax_seal(ev: Dictionary, opt: Dictionary, spell_id: String) -> void:
 	var seal := SealScreen.new()
 	seal.setup(run, spell_id)
 	seal.embedded = true
+	seal.can_back = true
 	seal.hint_changed.connect(es.set_hint)
+	seal.backed.connect(func():  # (Back / right-click before the stamp: the spells again)
+		seal.queue_free()
+		_event_wax_pick(ev, opt, _wax_done))
 	seal.done.connect(func():
 		seal.queue_free()
 		_event_wax_pick(ev, opt, _wax_done + 1))
@@ -1107,6 +1124,7 @@ func _event_wax_pick(ev: Dictionary, opt: Dictionary, done: int) -> void:
 		_wax_done = done
 		(_overlay as EventStage).hard_lock = done > 0  # (the first drop is still undone: the other prop can be chosen instead)
 		(_overlay as EventStage).offer_items(ids.map(func(id): return {"opt": ev.options.find(opt), "kind": "spell", "id": String(id), "need": 1, "spell": run.spell(id)}), "A drop of wax on this spell (%d of %d)" % [done + 1, need])
+		(_overlay as EventStage).set_hint("Pick a spell for the drop of wax%s." % ("" if need == 1 else " (%d of %d)" % [done + 1, need]))
 		return
 	var ch := _choice(ev.title, "Choose a spell for the purple wax (%d of %d)." % [done + 1, need], ids.map(func(id): return run.spell(id)), [], done == 0, true)
 	ch.chosen.connect(func(i):
@@ -1245,6 +1263,7 @@ func _note_done(ev: Dictionary, left_id: String) -> void:
 	var left: String = run.spell(left_id).name
 	var took := run.note_swap(left_id)
 	var es: EventStage = _overlay
+	es.continue_label = "Thanks, past me!"
 	es.continued.connect(show_map, CONNECT_ONE_SHOT)
 	es.show_result("You take %s, and leave %s in the note." % [run.db.get_spell(took).name, left], "", false, run.spell(took))
 

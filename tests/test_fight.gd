@@ -636,6 +636,13 @@ func test_note_to_self_swaps_through_the_save() -> void:
 
 class NoteBox extends RefCounted:
 	var held := "trade_winds"
+	var best := 0  # (Skipping Stones' record)
+
+	func skip_record() -> int:
+		return best
+
+	func set_skip_record(n: int) -> void:
+		best = n
 
 	func note_spell() -> String:
 		return held
@@ -675,17 +682,19 @@ func test_rewritten_events() -> void:
 	assert_eq(run.player.bottles.size(), 3, "one fits")
 	assert_eq(res.overflow.size(), 1, "the other waits for the swap screen")
 	assert_true(String(res.text).contains("Two bottles"), "the words say what happened")
-	# drink: Poison 3 when the next fight starts; jump in: 15 damage (it can kill) and a cursed artifact
-	run.event_outcome(_ev_opt("well", "Drink from it"))
-	assert_eq(run.poison_next, 3)
-	var f := run.make_fight(["ashling"])
-	assert_eq([f.player.poison, run.poison_next], [3, 0])
+	# drink: heal 10, and one of your active spells needs 1 more Water (the well's grudge); jump in: 15 damage and a curse
+	run.player.hp = 20
+	var drink := run.event_outcome(_ev_opt("well", "Drink from it"))
+	assert_eq(run.player.hp, 30.0)
+	assert_true(drink.curse_card and drink.has("soaked") and String(run.burdens.get(drink.soaked, "")).ends_with("W"))
+	assert_eq(drink.ok, "Oh no, something is wrong here")
+	run.burdens.clear()
 	run.player.hp = 30
 	var jump := run.event_outcome(_ev_opt("well", "Jump in"))
 	assert_eq(run.player.hp, 15.0)
 	assert_true(jump.has("artifact") and Artifacts.is_curse(jump.artifact))
 	# the Lost Sprite: an elite of this act, and 2 Air to start it with
-	var help := run.event_outcome(_ev_opt("lost_sprite", "Help him confront the monster"))
+	var help := run.event_outcome(_ev_opt("lost_sprite", "Help him"))
 	assert_eq(help.fight.kind, "elite")
 	var g := run.make_fight(["ashling"])
 	assert_eq(g.player.stock.filter(func(s): return s.el == "A").size() >= 2, true)
@@ -709,7 +718,7 @@ func test_rewritten_events() -> void:
 
 func test_farmers_farm_pays_per_head() -> void:
 	var ev := MapEvents.get_event("farmer_farm")
-	assert_eq(ev.options[0].next.options[0].minigame, "farm", "Of course -> the farmer explains -> Ready starts the game")
+	assert_eq(ev.options[0].next.options[0].minigame, "farm", "Ask him why -> Of course starts the game")
 	var run := RunState.new()
 	run.setup(db, ["fire_ball"], [], 3)
 	run.amber = 5
@@ -853,11 +862,11 @@ func test_wax_witch_takes_a_fifth_of_your_max_hp_per_drop() -> void:
 	run.setup(db, ["fire_ball"], [], 3)
 	run.player.max_hp = 50
 	run.player.hp = 50
-	var res := run.event_outcome(ev.options[1])  # two drops: 10, then 8
+	var res := run.event_outcome(ev.options[0].next.options[1])  # two drops: 10, then 8
 	assert_eq([run.player.max_hp, run.player.hp], [32.0, 32.0])
 	assert_true(String(res.text).contains("18 max HP"))
 	run.spellbook = []
-	assert_true(not run.can_choose(ev.options[0]), "nothing to seal: greyed out")
+	assert_true(not run.can_choose(ev.options[0].next.options[0]), "nothing to seal: greyed out")
 
 
 func test_the_recycler_trades_like_for_like() -> void:
@@ -991,9 +1000,9 @@ func test_watchtower_boss_keeps_the_act() -> void:
 	var ev := MapEvents.get_event("watchtower")
 	var run := RunState.new()
 	run.setup(db, ["fire_ball"], [], 3)
-	assert_eq(run.event_outcome(ev.options[0]).room, "lost_camp")
-	assert_eq(run.event_outcome(ev.options[2]).room, "shop")
-	assert_eq(run.event_outcome(ev.options[1]).room, "boss")
+	assert_eq(run.event_outcome(ev.options[1]).room, "lost_camp")  # Go East
+	assert_eq(run.event_outcome(ev.options[0]).room, "shop")  # Go West
+	assert_eq(run.event_outcome(ev.options[2]).room, "boss")  # Go North
 	run.act = 2
 	run.map = [[{"type": "unknown", "as": "boss", "no_advance": true}]]
 	run.row = 0
@@ -1012,15 +1021,24 @@ func test_skipping_stones() -> void:
 	var ev := MapEvents.get_event("skipping_stones")
 	var run := RunState.new()
 	run.setup(db, ["fire_ball"], [], 3)
+	var box := NoteBox.new()
+	box.best = 5
+	run.note_store = box  # (the record: kept in the save, here in the box)
 	var throws := 0
 	var res := {}
 	while throws < 500:
 		throws += 1
+		var prev := box.best
 		res = run.event_outcome(ev.options[0])
+		assert_eq(String(res.text).ends_with("A new personal record!"), _skips_of(String(res.text)) > prev, "only a throw past the record says so")
 		if not res.get("again", false):
 			break
 		assert_true(String(res.text).begins_with("Your stone skips"))
 	assert_true(res.has("artifact") and Artifacts.get_def(res.artifact).tier == "common", "20 or more: a common artifact")
+
+
+func _skips_of(text: String) -> int:
+	return int(text.trim_prefix("Your stone skips ").get_slice(" ", 0))
 
 
 func test_cactus_maze() -> void:
@@ -1029,12 +1047,14 @@ func test_cactus_maze() -> void:
 	run.spellbook = ["fire_ball", "water_wall"]
 	run.loadout = ["fire_ball", "water_wall"]
 	var ev := MapEvents.get_event("cactus_maze")
-	# burn a spell: the one you pick is gone for good (greyed out with only one spell)
-	var res := run.event_outcome(ev.options[0], -1, "water_wall")
-	assert_true(not ("water_wall" in run.spellbook) and String(res.text).begins_with("Water Wall"))
-	run.spellbook = ["fire_ball"]
-	assert_true(not run.can_choose(ev.options[0]), "you keep your last spell")
-	run.spellbook = ["fire_ball", "water_wall"]
+	# cast a spell (you keep it): offensive -> 10 damage, defensive -> nothing, utility -> 2 random Essence next fight
+	assert_eq(ev.options[1].label, "Cast a spell")
+	run.player.hp = 40
+	var res := run.event_outcome(ev.options[1], -1, "fire_ball")
+	assert_eq(run.player.hp, 30)
+	run.event_outcome(ev.options[1], -1, "tailwind")
+	assert_eq(run.fight_gift.size(), 2)
+	assert_true("water_wall" in run.spellbook)
 	# follow the voice three times: 1-5 damage each time, the same three choices again, then the Cactus Heart
 	var opt: Dictionary = ev.options[2]
 	for k in 3:
