@@ -1079,7 +1079,7 @@ func _rebuild_character_panel() -> void:
 	_bottle_row.z_index = PuppetStage.CEILING_Z + 3
 	add_child(_bottle_row)
 	_debuff_board = NinePatchRect.new()
-	_debuff_board.texture = UiSkin.tex("debuff_board")
+	_debuff_board.texture = UiSkin.tex("debuff_board")	
 	for side in ["left", "top", "right", "bottom"]:
 		_debuff_board.set("patch_margin_" + side, PuppetTopHud.DEBUFF_MARGIN)
 	_debuff_board.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -6493,8 +6493,9 @@ func _shatter_card(card: SpellCard) -> void:
 		sh.n.queue_free()
 
 
-## Talking to a boss before the fight (BossTalk). Everything but the boss, the backdrop and your bag slides away;
-## a box shows what was said and the options (each with the Essence it costs, and a green tick at its right end once
+## Talking to a boss before the fight (BossTalk). No fight UI at all: only the stage, the boss and the conversation
+## (the HUD slides or fades away: spells, chant, bag and slot machine, HP, bottles, artifacts). The conversation box
+## stands where the fight UI will be, under the stage; it shows what was said and the options (each with the Essence it costs, and a green tick at its right end once
 ## its whole branch has been explored, in any run). Engage! is always there. Then the fight's UI slides back in.
 func _talk() -> void:
 	var tree := BossTalk.tree_for(fight.talk_id)
@@ -6509,6 +6510,9 @@ func _talk() -> void:
 	for n in away:
 		homes[n] = n.position
 		n.position += away[n]
+	var faded: Array = [_bag_panel, _hp_bar, _hp_label, _player_panel, _arts, _arts_frame, _bottles_frame, _bottle_row, _status_row, _debuff_board].filter(func(n): return n != null and is_instance_valid(n))
+	for n in faded:
+		(n as CanvasItem).modulate.a = 0.0  # (gone while you talk: back once you Engage)
 	for v in _views.values():
 		v.set_talk(true, 0.0, BossTalk.speaker(tree) if v.enemy.is_boss and not v.enemy.has_passive("hand") else "")
 	var box := PanelContainer.new()
@@ -6597,7 +6601,7 @@ func _talk() -> void:
 		await get_tree().process_frame
 		box.size = Vector2.ZERO
 		box.reset_size()
-		box.position.y = minf(545.0, 920.0 - box.size.y)  # (it stays clear of your bag)
+		box.position.y = maxf(650.0, 1050.0 - box.size.y)  # (where the fight UI will be: under the stage, at the bottom)
 		chosen[0] = null
 		while chosen[0] == null:  # (a line that ends the talk: only Engage! is left, pressed when you've read it)
 			await get_tree().process_frame
@@ -6634,6 +6638,9 @@ func _talk() -> void:
 		back.tween_interval(i * 0.06)
 		back.tween_property(n, "position", homes[n], 0.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		i += 1
+	for n in faded:
+		if is_instance_valid(n):
+			(n as CanvasItem).create_tween().tween_property(n, "modulate:a", 1.0, 0.5)
 	for v in _views.values():
 		v.set_talk(false, 0.5)
 	await _wait(0.6)

@@ -62,9 +62,9 @@ func _ready() -> void:
 var _room_bg := ""
 const EVENT_BG := {"well": "event_whispering_well", "lost_sprite": "event_lost_sprite",
 	"mushroom_ring": "event_mushroom_ring", "hollow_stump": "event_hollow_stump", "bard": "event_travelling_bard",
-	"cursed_shrine": "event_cursed_shrine", "amber_vein": "event_golden_thicket", "old_tome": "event_old_spellbook",
-	"squirrel": "event_squirrel_merchant", "tinker": "event_tinker_cart", "barterer": "event_barterer",
-	"lost_camp": "event_abandoned_camp", "apothecary": "event_wandering_apothecary"}
+	"cursed_shrine": "event_cursed_shrine", 
+	
+	"lost_camp": "event_abandoned_camp"}
 const BOSS_BG := ["", "boss_woodcutter", "boss_blightmother", "boss_last_winter"]  # by act
 
 
@@ -711,6 +711,15 @@ func _show_event(ev: Dictionary) -> void:
 		if o.get("minigame", "") == "farm":
 			_farm_game(ev)
 			return
+		if o.get("minigame", "") == "fish":
+			var g := FishGame.new()
+			g.act = run.act
+			g.finished.connect(func(wh, ba, sw):
+				var res := run.fish_reward(wh, ba, sw)
+				var after := _message(ev.title, res.text, ["Continue"], Color(0.8, 0.7, 1))
+				after.pressed.connect(func(_k): show_map()))
+			_stage_overlay(g)
+			return
 		if o.has("recycle"):
 			_event_recycle(ev, o)
 			return
@@ -741,15 +750,6 @@ func _show_event(ev: Dictionary) -> void:
 				_event_result(ev, o, -1)
 			return
 		match ev.options[i].get("do", ""):
-			"upgrade_artifact":
-				_tinker(ev.options[i])
-				return
-			"trade_artifacts":
-				_barter()
-				return
-			"invert_spell":
-				_invert_pick(ev)
-				return
 			"note_swap":
 				_note_pick(ev)
 				return
@@ -758,8 +758,6 @@ func _show_event(ev: Dictionary) -> void:
 			run.over = true
 			_end_run()
 			return
-		if ev.get("id", "") == "apothecary" and i < 3:  # (what you chose is shown as a picture: pay, snatch, walk on)
-			_room_bg = ["apothecary_pay", "apothecary_snatch", "apothecary_walk"][i]
 		if is_instance_valid(_overlay) and _overlay is EventStage and EventStage.LAYOUTS.has(String(ev.get("id", ""))) and not res.get("fight", false):
 			# (an old-style option, like leaving the note: told on the stage as well, no black screen)
 			var es0: EventStage = _overlay
@@ -776,9 +774,6 @@ func _show_event(ev: Dictionary) -> void:
 				show_map())
 	if UiSkin.is_puppet() and EventStage.has_layout(String(ev.get("id", ""))):
 		_event_stage(ev, pick)  # (the props of the story stand on the stage; click one to choose)
-		return
-	if ev.get("id", "") == "apothecary" and UiSkin.tex("apothecary_bg") != null:
-		_show_apothecary(ev, pick)  # (New theme: the painted clearing, where you click what you want to do)
 		return
 	var s := MessageScreen.new()  # (each option a card; the ones you can't afford greyed out)
 	s.title = ev.title
@@ -799,6 +794,19 @@ func _event_result(ev: Dictionary, opt: Dictionary, bottle_at: int, spell_id := 
 	if run.player.is_dead():
 		run.over = true
 		_end_run()
+		return
+	if res.get("again", false):
+		# Skipping Stones: what happened, then the event's own choices again
+		var again := ev.duplicate()
+		again.text = res.text
+		var opts := []
+		for o in ev.options:
+			var c: Dictionary = o.duplicate()
+			if c.label == "Skip a stone":
+				c.label = "Skip another stone"
+			opts.append(c)
+		again.options = opts
+		_show_event(again)
 		return
 	if res.has("then"):
 		# the same choices again, under what just happened (Far from Any Road: following the voice)
@@ -826,10 +834,13 @@ func _event_result(ev: Dictionary, opt: Dictionary, bottle_at: int, spell_id := 
 	var shown: Control = ArtifactCard.make(Artifacts.view(res.artifact, false)) if res.has("artifact") else null
 	if res.has("spell"):
 		shown = SpellCard.make(run.spell(res.spell))  # (a spell you learned: its card)
-	var after := _message(ev.title, res.text, ["Fight!" if res.has("fight") else "Continue"], Color(0.8, 0.7, 1), shown)
+	var fights: bool = res.has("fight") or res.get("room", "") == "boss"
+	var after := _message(ev.title, res.text, ["Fight!" if fights else "Continue"], Color(0.8, 0.7, 1), shown)
 	after.pressed.connect(func(_k):
 		var go_on := func():
-			if res.has("fight"):
+			if res.has("room"):
+				_event_room(String(res.room))
+			elif res.has("fight"):
 				run.current_node()["as"] = res.fight.kind
 				var ids: Array = res.fight.ids
 				if ids.is_empty():
@@ -1138,6 +1149,22 @@ func _bottle_cards(title: String, body: String, ids: Array, extra: Array, then: 
 	_put(s)
 
 
+## The Ruined Watchtower: off to what you saw. A boss is a random Act 1 one, with no talk first and full boss rewards,
+## but the act doesn't end.
+func _event_room(kind: String) -> void:
+	var n := run.current_node()
+	n["as"] = kind
+	if kind == "boss":
+		n["no_advance"] = true
+		run.no_talk_next = true
+		var bosses: Array = EnemyDefs.BOSSES[1]
+		var ids: Array = [bosses[run.rng.randi() % bosses.size()]]
+		run.set_encounter(ids)
+		_show_loadout(ids)
+	else:
+		_enter_room(kind)
+
+
 ## The Hollow Stump: which of your bottles goes in? (Changing your mind takes you back to the event.)
 func _event_bottle_pick(ev: Dictionary, opt: Dictionary) -> void:
 	var names: Array = run.player.bottles.map(func(b): var d := Bottles.get_def(b); return "%s: %s" % [d.get("name", b), d.get("desc", "")])
@@ -1170,19 +1197,6 @@ func _bottle_swap(extra: Array, then: Callable) -> void:
 	_put(s)
 
 
-## The Upside-Down Pool: pick a spell from your spellbook; it pays half your HP and plays inverted for the run.
-func _invert_pick(ev: Dictionary) -> void:
-	var ids := run.invertible_spells()
-	var ch := _choice("The Upside-Down Pool", "Choose a spell to invert. It costs half your HP (%d)." % int(floorf(run.player.hp * 0.5)), ids.map(func(id): return run.spell(id)), [], true, true)
-	ch.chosen.connect(func(i):
-		if i < 0:
-			show_map()
-			return
-		var text := run.invert_spell(ids[i])
-		var after := _message(ev.title, text, ["Continue"], Color(0.8, 0.7, 1), SpellCard.make(run.spell(ids[i])))
-		after.pressed.connect(func(_k): show_map()))
-
-
 ## A Note to Yourself: pick which of your spells goes into the note (for a later run); you take the one already in it.
 func _note_pick(ev: Dictionary) -> void:
 	var ids := run.storable_spells()
@@ -1208,60 +1222,6 @@ func _note_done(ev: Dictionary, left_id: String) -> void:
 	var es: EventStage = _overlay
 	es.continued.connect(show_map, CONNECT_ONE_SHOT)
 	es.show_result("You take %s, and leave %s in the note." % [run.db.get_spell(took).name, left], "", false, run.spell(took))
-
-
-## The Wandering Apothecary as a picture: the merchant (pay), the cart (a free sample), the signpost (walk on).
-func _show_apothecary(ev: Dictionary, pick: Callable) -> void:
-	var opts: Array = ev.options
-	var sc := ApothecaryScreen.new()
-	sc.setup(run)
-	sc.enabled = {"pay": run.can_choose(opts[0]), "sample": run.can_choose(opts[1]), "walk": true}
-	sc.hints = {  # (the plate's lines: text, colour, and whether the amber leaf follows)
-		"pay": [{"t": "Pay: %d" % opts[0].amber, "c": ApothecaryScreen.GOLD, "coin": true}, {"t": "%d random bottles" % opts[0].n, "c": ApothecaryScreen.WHITE}],
-		"sample": [{"t": "Snatch a bottle and run", "c": ApothecaryScreen.WHITE}, {"t": "Lose %d HP" % opts[1].hp, "c": UiTheme.DANGER}],
-		"walk": [{"t": "Walk On", "c": ApothecaryScreen.WHITE}],
-	}
-	sc.extra = _hp_box()
-	sc.chosen.connect(func(which: String): pick.call({"pay": 0, "sample": 1, "walk": 2}[which]))
-	_swap(sc)
-
-
-## The Tinker: pick an artifact (shown as it will be); pay and it becomes its + version. Skip: pay nothing.
-## The Tinker: a random one of your artifacts becomes its + version.
-func _tinker(opt: Dictionary) -> void:
-	var ids := run.upgradable_artifacts()
-	var id: String = ids[run.rng.randi() % ids.size()]
-	run.amber -= opt.get("amber", 0)
-	run.upgrade_artifact(id)
-	var a := Artifacts.view(id, true)
-	var done := _message("The Tinker's Cart", "The gnome tinkers with your %s.\n%s %s: %s" % [Artifacts.view(id).name, a.get("icon", ""), a.name, a.desc], ["Continue"], Color(0.8, 0.7, 1))
-	done.pressed.connect(func(_i): show_map())
-
-
-## The Barterer: pick two artifacts of the same tier, then one of 3 from the tier above. Skipping at any step
-## cancels the trade.
-func _barter() -> void:
-	var first := run.tradeable_artifacts()
-	var ch := _choice("Trade: first artifact", "Pick an artifact to give away. The second must be the same tier.", [], first.map(func(id): return Artifacts.view(id, id in run.artifacts_plus)), true, true)
-	ch.chosen.connect(func(k):
-		if k < 0 or k >= first.size():
-			show_map()
-			return
-		var a: String = first[k]
-		var tier: String = Artifacts.get_def(a).tier
-		var second := run.tradeable_artifacts(tier).filter(func(id): return id != a)
-		var ch2 := _choice("Trade: second artifact", "Pick a second %s artifact to give away." % Artifacts.TIER_NAMES[tier], [], second.map(func(id): return Artifacts.view(id, id in run.artifacts_plus)), true, true)
-		ch2.chosen.connect(func(k2):
-			if k2 < 0 or k2 >= second.size():
-				show_map()
-				return
-			var b: String = second[k2]
-			var offer := run.trade_offer(tier)
-			var ch3 := _choice("Trade: your new artifact", "Take one. %s and %s go to the Barterer." % [Artifacts.get_def(a).name, Artifacts.get_def(b).name], [], offer, true, true)
-			ch3.chosen.connect(func(k3):
-				if k3 >= 0:
-					run.trade_artifacts(a, b, offer[k3].id)
-				show_map())))
 
 
 var _test_quest := {"done": 0, "open": false}  # (Test mode: the merchant's quests on a scratch copy, never the real save)
