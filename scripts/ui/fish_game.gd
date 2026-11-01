@@ -18,9 +18,9 @@ const SPEED := 1.1  # every fish swims this much faster than its "cross" time sa
 ## The size classes, by how many Essence orbs the fish carries (each fish rolls its count in "orbs"): small 3-5, medium 5-7, big 8 or more. The picture really is that size (w =
 ## the width of the picture, at most "max_h" tall), and the bigger, the slower ("cross": seconds to cross the stage) and the more Leaves.
 const KINDS := {
-	"small": {"orbs": [3, 5], "cross": 12.0, "leaves": 4, "w": 150.0, "max_h": 105.0, "col": Color(0.9, 0.6, 0.3), "share": 0.4},
-	"medium": {"orbs": [5, 7], "cross": 16.0, "leaves": 6, "w": 250.0, "max_h": 105.0, "col": Color(0.4, 0.58, 0.85), "share": 0.4},
-	"big": {"orbs": [8, 10], "cross": 24.0, "leaves": 10, "w": 380.0, "max_h": 135.0, "col": Color(0.3, 0.38, 0.55), "share": 0.2},
+	"small": {"orbs": [3, 5], "cross": 12.0, "leaves": 4, "w": 225.0, "max_h": 158.0, "col": Color(0.9, 0.6, 0.3), "share": 0.4},
+	"medium": {"orbs": [5, 7], "cross": 16.0, "leaves": 6, "w": 375.0, "max_h": 158.0, "col": Color(0.4, 0.58, 0.85), "share": 0.4},
+	"big": {"orbs": [8, 10], "cross": 24.0, "leaves": 10, "w": 570.0, "max_h": 202.0, "col": Color(0.3, 0.38, 0.55), "share": 0.2},
 }
 ## The pictures (Events/event_fish_*.png) of each size class.
 const ART := {
@@ -30,7 +30,7 @@ const ART := {
 }
 ## Fish centres: the top half of the stage, under the clock and the tally. A lane can hold several fish, but a fish
 ## only comes in where it will never run into the one ahead of it (a fast one behind a slow one would catch it up).
-const LANES := [225.0, 320.0, 415.0, 510.0]
+const LANES := [250.0, 360.0, 470.0, 580.0]
 const ORB := 46.0
 
 var act := 1
@@ -290,7 +290,7 @@ func _show_els(f: Dictionary) -> void:
 	for c in row.get_children():
 		c.queue_free()
 	for el in f.els:
-		var ic := ElementIcon.make(el, 26.0)
+		var ic := ElementIcon.make(el, 39.0)
 		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(ic)
 	_light(f)

@@ -16,12 +16,13 @@ sys.path.insert(0, TACHNEN)
 from PIL import Image
 
 RAW = r"E:\GitHub\ImageSet\output\Puppet Events"
-RAWS = [RAW, r"E:\GitHub\ImageSet\output\Puppet Events Act2"]  # (the second act's pictures have their own set and style)
+RAWS = [RAW, r"E:\GitHub\ImageSet\output\Puppet Events Act2", r"E:\GitHub\ImageSet\output\Puppet Events Fixes", r"E:\GitHub\ImageSet\output\Puppet Events Fixes Wide"]  # (the second act's pictures have their own set and style)
 OUT = os.path.join(AP.PUPPET, "Events")
 CUT_OPTS = {"model": "birefnet-general", "use_gpu": True, "gpu_mem_gb": 0, "alpha_matting": False, "am_fg": 240, "am_bg": 10,
             "am_erode": 10, "post_process_mask": True, "defringe": True, "alpha_cutoff": 0, "feather": 0.0, "bg_mode": "transparent",
             "bg_custom": "#00ff00", "trim": False, "pad": 0}
 _proc = None
+NO_CUT = {"Event Mausoleum Wall"}  # (a wall that fills its whole picture: kept as it is, no cut-out)
 HAND_MADE = {"Event Bridge Stream"}  # (the user painted these over the generated picture: the importer must never write them again)
 
 
@@ -55,6 +56,50 @@ def decontaminate(im, band=3):
     return Image.fromarray(a, "RGBA")
 
 
+SPARKLE = {"Event Mausoleum Frame": ((1219, 630), (0, -95)), "Event Mausoleum Wall": ((1255, 644), (-130, 0))}  # name: (star centre, where to copy from, as an offset)
+
+
+def unmark(im, centre, shift, r=34):
+    from PIL import ImageDraw, ImageFilter
+    mask = Image.new("L", im.size, 0)
+    ImageDraw.Draw(mask).ellipse((centre[0] - r, centre[1] - r, centre[0] + r, centre[1] + r), fill=255)
+    mask = mask.filter(ImageFilter.GaussianBlur(5))
+    src = Image.new("RGBA", im.size)
+    src.paste(im, (-shift[0], -shift[1]))
+    out = im.copy()
+    out.paste(src, (0, 0), mask)
+    return out
+
+
+def inside():
+    """The mausoleum seen from inside: the stone wall is put behind the opening of the frame (one picture, written as event_mausoleum_inside.png)."""
+    import numpy as np
+    frame = Image.open(os.path.join(OUT, "event_mausoleum_frame.png")).convert("RGBA")
+    wall = Image.open(os.path.join(OUT, "event_mausoleum_wall.png")).convert("RGB")
+    a = np.asarray(frame.getchannel("A"))
+    h, w = a.shape
+    row = a[int(h * 0.78)] < 128
+    mid = w // 2
+    x0 = mid
+    while x0 > 0 and row[x0 - 1]:
+        x0 -= 1
+    x1 = mid
+    while x1 < w - 1 and row[x1 + 1]:
+        x1 += 1
+    col = a[:, mid] < 128
+    y0 = int(h * 0.37)  # (up under the beam: the frame hides the top of the wall)
+    y1 = h
+    print("   opening", x0, y0, x1, y1, "of", w, h)
+    wall = wall.resize((x1 - x0 + 8, y1 - y0 + 8), Image.LANCZOS)
+    out = Image.new("RGBA", frame.size, (0, 0, 0, 0))
+    out.paste(wall.convert("RGBA"), (x0 - 4, y0 - 4))
+    shade = Image.new("RGBA", frame.size, (20, 25, 45, 90))
+    out.alpha_composite(shade, (0, 0)) if False else None
+    out.alpha_composite(frame)
+    out.save(os.path.join(OUT, "event_mausoleum_inside.png"))
+    print("  event_mausoleum_inside.png", out.size)
+
+
 def trim(im):
     return im.crop(im.getchannel("A").point(lambda v: 255 if v > 8 else 0).getbbox())
 
@@ -78,7 +123,9 @@ def main():
         src = newest(name)
         if src is None:
             continue
-        im = trim(decontaminate(cut(src)))
+        im = Image.open(src).convert("RGBA") if name in NO_CUT else trim(decontaminate(cut(src)))
+        if name in SPARKLE:  # (Gemini left its star on these two: patched over with a piece of the same surface)
+            im = unmark(im, *SPARKLE[name])
         im.save(dest)
         print("  ", name, "->", os.path.basename(dest), im.size)
         if name == "Event Mystery Book":  # (it is also the artifact's icon, like every artifact icon 128 px on its long edge)
@@ -103,7 +150,9 @@ def artifacts():
 
 
 if __name__ == "__main__":
-    if "--artifacts" in sys.argv:
+    if "--inside" in sys.argv:
+        inside()
+    elif "--artifacts" in sys.argv:
         artifacts()
     else:
         main()

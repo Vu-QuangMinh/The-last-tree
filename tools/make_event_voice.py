@@ -17,7 +17,8 @@ OUT = Path(__file__).resolve().parent.parent / "assets" / "Puppet" / "SFX" / "Ev
 SPEAKERS = {
     "turtle": ("Fenrir", "A grumpy, sarcastic, insulting old flying turtle, nasal and cranky, hamming it up like a cartoon curmudgeon; fast and snappy."),
     "farmer": ("Sadaltager", "A tired, sad, worn-out old farmer, soft and hoarse, pleading; a little hopeful when he asks for help."),
-    "priest": ("Charon", "An extremely old, frail, gentle priest with a trembling, croaky voice; warm and proud when he tells his story, slow and kind."),
+    "priest": ("Charon", "The oldest, frailest priest imaginable, a man a breath away from death: a thin, cracked, wheezing, quavering whisper of a voice with long shaky pauses to catch his breath, trembling and toothless, barely audible; still warm and proud when he tells his story, very slow, never strong or loud."),
+    "sprite": ("Leda", "A tiny, delicate fairy, a small, high, thin, breathy and frightened voice, pleading, a little tearful; fairly slow."),
     "witch": ("Enceladus", "A mysterious witch whispering right into your mind: slow, breathy, eerie, raspy whisper."),
     "bear_angry": ("Algenib", "A huge bear, a deep, low, gravelly male voice, furious and menacing: a growling snarl full of rage, slow and heavy, spitting each word like a threat; no laughing, no cheerfulness."),
     "bear_deep": ("Algenib", "A huge, friendly old bear, a deep, low, warm, gravelly male voice; theatrical and emotional, grateful or hurt and sad as the line asks, slow and heavy; not angry, not shouting."),
@@ -87,6 +88,7 @@ def main() -> None:
         line = spoken(t["event"], t["text"]) if sp else ""
         if sp and line.strip():
             jobs.append((t["key"], line, sp))
+    jobs.append(("sprite_help_me", "O mighty traveler. Please help me. A mean monster has taken over my grove, and I am too powerless to do anything about it.", "sprite"))
     jobs.append(("witch_blood", "A drop of blood for a drop of wax.", "witch"))
     jobs.append(("well_whisper", "Traveller... come closer... I am so hungry... feed me, and I will give you something nice... or jump in... jump in...", "witch"))
     for line in FISHER_LINES:

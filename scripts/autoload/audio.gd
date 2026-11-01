@@ -258,7 +258,7 @@ func wav_from_file(path: String) -> AudioStreamWAV:
 
 
 ## Sounds that are somebody speaking (or a tune that goes with an event): stop_all_voices() cuts every one of them, whoever started it.
-const VOICE_NAMES := ["merchant_greeting", "getout", "recycler_reuse", "recycler_trade", "witch_blood", "well_whisper", "sfx_cactus_whisper", "merry puppets"]
+const VOICE_NAMES := ["merchant_greeting", "getout", "recycler_reuse", "recycler_trade", "witch_blood", "well_whisper", "sprite_help_me", "sfx_cactus_whisper", "merry puppets"]
 
 
 static func is_voice(name: String) -> bool:

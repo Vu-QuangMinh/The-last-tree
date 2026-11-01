@@ -23,20 +23,18 @@ const CACTI := {"event_cactus_1": 330.0, "event_cactus_2": 170.0, "event_cactus_
 const NOTE := "Take the spell in the note, and leave one of yours in it"
 const LAYOUTS := {
 	"note_to_self": {"no_hud": true, "offer_on_stage": true, "offer_keep_props": true, "item_tags": {"Take the spell in the note, and leave one of yours in it": "Leave this spell in the note"}, "props": [{"img": "event_tray", "x": 0.47, "h": 96.0, "from": "top", "opt": NOTE},
-			{"img": "event_scroll", "x": 0.47, "h": 64.0, "dy": -50.0, "from": "top", "delay": 0.35, "tag": "scroll", "opt": NOTE},
-			{"img": "event_bush_exit", "x": 0.62, "h": 120.0, "from": "right", "opt": "Leave the note for another day"}],
+			{"img": "event_scroll", "x": 0.47, "h": 64.0, "dy": -50.0, "from": "top", "delay": 0.35, "tag": "scroll", "opt": NOTE}],
 		"outro": {0: "scroll_fly", 1: "lift"}},
 	"farmer_farm": {"props": [{"img": "event_wheat_row", "x": 0.64, "h": 190.0, "from": "right"}, {"img": "event_farmer", "x": 0.34, "h": 330.0, "from": "left"}]},
 	"cactus_maze": {"props": [], "forest": 20, "night": 0.62, "no_hud": true, "center": true, "flame": true, "result_on_stage": true, "item_sfx": "sfx_card_ignite",
 		"result_how": {"Ignite a spell": "burn", "Force your way": "shatter", "Follow the voice": "whisper"},
 		"item_tags": {"Ignite a spell to burn a way out": "Ignite a spell to burn a way out"}},
-	"shrinking_pond": {"no_hud": true, "center": true, "item_tags": {"Give it a spell": "Give it a spell"}, "props": [{"img": "event_pond_garden", "x": 0.5, "h": 330.0, "from": "right", "opt": "Give it a spell"},
-			{"img": "event_bush_exit", "x": 0.67, "h": 130.0, "from": "right", "opt": "Walk away"}]},
+	"shrinking_pond": {"no_hud": true, "center": true, "result_on_stage": true, "result_how": {"Give it a spell": "pond_give"}, "item_tags": {"Give it a spell": "Give it a spell"},
+		"props": [{"img": "event_pond_dry", "role": "pond", "x": 0.45, "h": 210.0, "from": "right", "opt": "Give it a spell"},
+			{"img": "event_water_wisp", "role": "wisp", "x": 0.45, "h": 95.0, "dy": -34.0, "from": "right", "bob": true, "opt": "Give it a spell"}]},
 	"church_of_aole": {"props": [{"img": "event_church", "x": 0.5, "h": 530.0, "dy": -20.0, "from": "right"},
-			{"img": "event_priest", "x": 0.455, "h": 187.0, "dy": -18.0, "from": "left", "opt": "Stay awhile and listen"},
-			{"img": "event_bush_exit", "x": 0.575, "h": 72.0, "dy": -16.0, "from": "right", "opt": "Walk away"}], "night": 0.62, "no_hud": true},
-	"flying_turtle": {"result_how": {"Help him": "turtle_help"}, "no_hud": true, "center": true, "result_on_stage": true, "props": [{"img": "event_flying_turtle_front", "role": "turtle", "x": 0.5, "h": 200.0, "fly": true, "noflip": true, "opt": "Help him"},
-			{"img": "event_bush_exit", "x": 0.7, "h": 130.0, "from": "right", "opt": "Walk away"}]},
+			{"img": "event_priest", "x": 0.455, "h": 187.0, "dy": -18.0, "from": "left", "opt": "Stay awhile and listen"}], "sky": true, "no_hud": true},
+	"flying_turtle": {"result_how": {"Help him": "turtle_help"}, "no_hud": true, "center": true, "result_on_stage": true, "props": [{"img": "event_flying_turtle_flipped", "role": "turtle", "x": 0.45, "h": 200.0, "from": "top", "wriggle": true, "opt": "Help him"}]},
 	"turtle_falls": {"props": [], "center": true, "result_on_stage": true, "outro": {0: "shell_fall"}},
 	"mystery_shack": {"offer_on_stage": true, "offer_keep_props": true, "items_center_x": true, "result_on_stage": true, "result_artifact": true, "item_tags": {"Give each of them a new toy, so they don't have to fight (give 2 artifacts)": "Give each a new toy"},
 		"result_how": {"Side with the boy": "boy_wins", "Side with the girl": "girl_wins", "Give each": "toys"},
@@ -44,54 +42,41 @@ const LAYOUTS := {
 			{"img": "event_boy", "role": "boy", "x": 0.34, "h": 260.0, "from": "left", "opt": "Side with the boy"},
 			{"img": "event_girl", "role": "girl", "x": 0.66, "h": 260.0, "from": "right", "opt": "Side with the girl"}]},
 	"wax_witch": {"voice_open": "witch_blood", "center": true, "offer_on_stage": true, "offer_keep_props": true, "result_on_stage": true, "props": [{"img": "event_witch", "x": 0.5, "h": 530.0, "from": "top", "opt": "Give two drops of blood"},
-			{"img": "event_cauldron", "x": 0.385, "h": 180.0, "dy": 10.0, "from": "left", "opt": "Give one drop of blood"},
-			{"img": "event_bush_exit", "x": 0.62, "h": 120.0, "from": "right", "opt": "Walk away"}], "night": 0.62},
-	"recycler": {"no_hud": true, "items_center_x": true, "item_tags": {"Give him a spell": "Trade this?", "Give him an artifact": "Trade this?", "Give him a bottle": "Trade this?"}, "props": [{"img": "event_recycler_happy", "role": "recycler", "x": 0.45, "h": 510.0, "from": "right", "slow": 5.0, "voice_in": "recycler_reuse", "sfx_in": "shop_cart_roll", "voice_arrive": "recycler_trade"},
-			{"img": "event_bush_exit", "x": 0.68, "h": 150.0, "from": "right", "opt": "Give him nothing", "label": "Walk away"}]},
-	"overgrown_vine": {"center": true, "cards_dy": -80.0, "result_on_stage": true, "item_tags": {"Cast a spell to help the tree": "Cast this spell to help the tree"}, "props": [{"img": "event_vine_tree", "role": "tree", "x": 0.42, "h": 530.0, "from": "left"},
-			{"img": "event_bush_exit", "x": 0.53, "h": 120.0, "dy": 8.0, "from": "right", "opt": "Leave the tree to its fate"}]},
-	"broken_bridge": {"night": 0.62, "result_on_stage": true, "props": [{"img": "event_bridge_stream", "role": "bridge", "x": 0.5, "h": 760.0, "floor_edge": true, "from": "top", "opt": "Jump over it"},
-			{"img": "event_bush_exit", "role": "bush", "x": 0.72, "h": 110.0, "dy": 10.0, "from": "top", "opt": "Find a way around the thorny bushes", "label": "Find a way around"}]},
+			{"img": "event_cauldron", "x": 0.385, "h": 180.0, "dy": 10.0, "from": "left", "opt": "Give one drop of blood"}], "night": 0.62},
+	"recycler": {"no_hud": true, "items_center_x": true, "item_tags": {"Give him a spell": "Trade this?", "Give him an artifact": "Trade this?", "Give him a bottle": "Trade this?"}, "props": [{"img": "event_recycler_happy", "role": "recycler", "x": 0.45, "h": 510.0, "from": "right", "slow": 5.0, "voice_in": "recycler_reuse", "sfx_in": "shop_cart_roll", "voice_arrive": "recycler_trade"}]},
+	"overgrown_vine": {"center": true, "cards_dy": -80.0, "result_on_stage": true, "item_tags": {"Cast a spell to help the tree": "Cast this spell to help the tree"}, "props": [{"img": "event_vine_tree", "role": "tree", "x": 0.42, "h": 530.0, "from": "left"}]},
+	"broken_bridge": {"night": 0.62, "result_on_stage": true, "props": [{"img": "event_bridge_stream", "role": "bridge", "x": 0.5, "h": 760.0, "floor_edge": true, "from": "top", "opt": "Jump over it"}]},
 	# ---- the older "?" events (batch 2, 2026-11-01): the sheet is docs/events_batch2_plan.csv
 	"well": {"voice_open": "well_whisper", "night": 0.35, "center": true, "result_on_stage": true,
 		"result_how": {"Toss in": "well_toss", "Drink from": "well_drink", "Jump in": "well_jump"},
-		"props": [{"img": "event_well", "role": "well", "x": 0.43, "h": 400.0, "from": "top", "opt": "Jump in"},
-			{"img": "event_leaf_pile", "role": "pile", "x": 0.24, "h": 120.0, "from": "left", "opt": "Toss in 50 Leaves"},
-			{"img": "event_bucket", "role": "bucket", "x": 0.62, "h": 150.0, "from": "right", "opt": "Drink from it"}]},
-	"lost_sprite": {"no_hud": true, "center": true, "result_on_stage": true, "result_how": {"Help him": "sprite_help", "Refuse": "sprite_sad"},
-		"props": [{"img": "event_wind_sprite", "role": "sprite", "x": 0.42, "h": 300.0, "dy": -100.0, "from": "top", "bob": true, "opt": "Help him confront the monster"},
-			{"img": "event_bush_exit", "x": 0.64, "h": 120.0, "from": "right", "opt": "Refuse to help"}]},
+		"props": [{"img": "event_well", "role": "well", "x": 0.43, "h": 400.0, "from": "top", "opt": "Jump in"}]},
+	"lost_sprite": {"voice_open": "sprite_help_me", "no_hud": true, "center": true, "result_on_stage": true, "result_how": {"Help him": "sprite_help", "Refuse": "sprite_sad"},
+		"props": [{"img": "event_fairy", "role": "sprite", "x": 0.463, "h": 60.0, "from": "right", "opt": "Help him confront the monster"},
+			{"img": "event_flower", "x": 0.47, "h": 170.0, "from": "right", "opt": "Help him confront the monster"}]},
 	"mushroom_ring": {"night": 0.5, "center": true, "result_on_stage": true, "glow": {"event_mushroom_ring": [0.55, 1.0, 0.75]},
 		"result_how": {"Eat a mushroom": "mush"},
-		"props": [{"img": "event_mushroom_ring", "role": "ring", "x": 0.43, "h": 250.0, "from": "top", "opt": "Eat a mushroom"},
-			{"img": "event_bush_exit", "x": 0.66, "h": 120.0, "from": "right", "opt": "Walk away"}]},
+		"props": [{"img": "event_mushroom_ring", "role": "ring", "x": 0.43, "h": 250.0, "from": "top", "opt": "Eat a mushroom"}]},
 	"hollow_stump": {"night": 0.3, "center": true, "result_on_stage": true, "item_tags": {"Throw in a bottle": "Throw this bottle in"},
 		"result_how": {"Reach in": "reach", "Throw in a bottle": "throw"},
-		"props": [{"img": "event_hollow_stump", "role": "stump", "x": 0.43, "h": 420.0, "from": "top", "opt": "Reach in"},
-			{"img": "event_bush_exit", "x": 0.66, "h": 120.0, "from": "right", "opt": "Walk away"}]},
-	"bard": {"music_open": "merry puppets", "center": true, "result_on_stage": true, "result_how": {"That's animal": "bard_angry", "It is beautiful": "bard_song", "Pay 100": "bard_lute"},
-		"props": [{"img": "event_deer", "role": "deer", "x": 0.25, "h": 330.0, "from": "left", "opt": "That's animal cruelty!"},
-			{"img": "event_bard", "role": "bard", "x": 0.43, "h": 420.0, "from": "top", "opt": "It is beautiful", "alt": {"Actually, I don't have that much": "Actually, I don't have that much"}},
-			{"img": "event_lute", "role": "lute", "x": 0.6, "h": 300.0, "from": "right", "opt": "Can I have it?", "alt": {"Pay 100 Leaves": "Pay 100 Leaves"}}]},
+		"props": [{"img": "event_hollow_stump", "role": "stump", "x": 0.43, "h": 420.0, "from": "top", "opt": "Reach in"}]},
+	"bard": {"center": true, "result_on_stage": true, "result_how": {"That's animal": "bard_angry", "It is beautiful": "bard_song", "Pay 100": "bard_lute"},
+		"props": [{"img": "event_bard", "role": "bard", "x": 0.43, "h": 300.0, "from": "top", "opt": "It is beautiful", "alt": {"Actually, I don't have that much": "Actually, I don't have that much"}}]},
 	"cursed_shrine": {"night": 0.45, "center": true, "result_on_stage": true,
 		"result_how": {"Pry the box": "idol_bite", "Take the leaves": "idol_leaves", "Put down": "idol_gift"},
-		"props": [{"img": "event_idol", "role": "idol", "x": 0.43, "h": 350.0, "from": "top", "opt": "Pry the box from its mouth"},
-			{"img": "event_leaf_pile", "role": "pile", "x": 0.24, "h": 110.0, "from": "left", "opt": "Take the leaves"},
-			{"img": "event_offering_bowl", "role": "bowl", "x": 0.62, "h": 90.0, "from": "right", "opt": "Put down 100 more Leaves"}]},
+		"props": [{"img": "event_idol_seat", "role": "idol", "x": 0.43, "h": 400.0, "from": "top", "opt": "Pry the box from its mouth"}]},
 	"lost_camp": {"night": 0.4, "no_hud": true, "center": true, "result_on_stage": true, "stage_fuse": true, "cursor": "event_torch", "outro": {0: "light"}, "result_how": {"Rest": "bed_toss"},
 		"props": [{"img": "event_campfire_off", "role": "pit", "x": 0.37, "h": 420.0, "lit": 0.55, "from": "top", "opt": "Half-cook some spells", "label": "Use torch to half-cook some spells"},
 			{"img": "event_tent", "role": "bed", "x": 0.6, "h": 175.0, "lit": 0.55, "from": "right", "opt": "Rest restlessly", "label": "Plant the torch to protect the tent"}]},
 	"elemental_fishing": {"underwater_tail": true, "no_hud": true, "night": 0.3, "center": true, "result_on_stage": true,
-		"props": [{"img": "event_stream", "x": 0.55, "h": 190.0, "from": "right", "opt": "Help him fish", "alt": {"Ready": "Ready"}},
-			{"img": "event_fisherman", "x": 0.33, "h": 360.0, "from": "left", "opt": "Help him fish", "alt": {"Ready": "Ready"}},
-			{"img": "event_bush_exit", "x": 0.7, "h": 120.0, "from": "right", "opt": "Walk away"}]},
+		"props": [{"img": "event_fisherman", "x": 0.33, "h": 290.0, "dy": -128.0, "from": "left", "opt": "Help him fish", "alt": {"Ready": "Ready"}},
+			{"img": "event_stream_wide", "x": 0.5, "w": 1960.0, "h": 150.0, "from": "right", "opt": "Help him fish", "alt": {"Ready": "Ready"}}]},
 	"mausoleum": {"night": 0.62, "center": true, "result_on_stage": true,
 		"glow": {"event_orb_red": [1.0, 0.3, 0.25], "event_orb_blue": [0.3, 0.55, 1.0], "event_orb_green": [0.35, 1.0, 0.45]},
 		"result_how": {"Touch the red": "orb_red", "Touch the blue": "orb_blue", "Touch the green": "orb_green"},
-		"props": [{"img": "event_mausoleum", "x": 0.43, "h": 440.0, "from": "top"},
-			{"img": "event_orb_red", "role": "orb_red", "x": 0.31, "h": 110.0, "dy": -190.0, "from": "top", "bob": true, "opt": "Touch the red ball"},
-			{"img": "event_orb_blue", "role": "orb_blue", "x": 0.43, "h": 110.0, "dy": -250.0, "from": "top", "bob": true, "opt": "Touch the blue ball"},
-			{"img": "event_orb_green", "role": "orb_green", "x": 0.55, "h": 110.0, "dy": -190.0, "from": "top", "bob": true, "opt": "Touch the green ball"}]},
+		"props": [{"img": "event_mausoleum_inside", "x": 0.43, "h": 560.0, "from": "top"},
+			{"img": "event_orb_red", "role": "orb_red", "x": 0.355, "h": 90.0, "dy": -130.0, "from": "top", "bob": true, "opt": "Touch the red ball"},
+			{"img": "event_orb_blue", "role": "orb_blue", "x": 0.43, "h": 90.0, "dy": -200.0, "from": "top", "bob": true, "opt": "Touch the blue ball"},
+			{"img": "event_orb_green", "role": "orb_green", "x": 0.505, "h": 90.0, "dy": -130.0, "from": "top", "bob": true, "opt": "Touch the green ball"}]},
 	"watchtower": {"no_hud": true, "night": 0.3, "center": true, "result_on_stage": true,
 		"result_how": {"A camping": "watch_camp", "A towering": "watch_monster", "The merchant": "watch_cart"},
 		"props": [{"img": "event_watchtower", "x": 0.43, "h": 470.0, "from": "top"},
@@ -100,11 +85,17 @@ const LAYOUTS := {
 			{"img": "event_merchant", "role": "cart", "x": 0.34, "h": 300.0, "dy": -4.0, "from": "left", "opt": "The merchant"}]},
 	"skipping_stones": {"no_hud": true, "center": true, "result_on_stage": true, "result_how": {"Skip": "skip"},
 		"props": [{"img": "event_lake", "role": "lake", "x": 0.5, "h": 200.0, "from": "right", "opt": "Skip a stone", "alt": {"Skip another stone": "Skip a stone"}},
-			{"img": "event_flat_stones", "role": "pile", "x": 0.2, "h": 90.0, "from": "left", "opt": "Skip a stone", "alt": {"Skip another stone": "Skip a stone"}},
-			{"img": "event_bush_exit", "x": 0.77, "h": 120.0, "from": "right", "opt": "Walk away"}]},
+			{"img": "event_flat_stones", "role": "pile", "x": 0.2, "h": 90.0, "from": "left", "opt": "Skip a stone", "alt": {"Skip another stone": "Skip a stone"}}]},
 }
 ## The maze's cacti, kept between its pages: [{img, x, h, dy, lit}]
 static var _forest: Array = []
+## Church of Aole: the day goes by one page at a time. Per page: [x, y (fractions of the screen), the shade's alpha, moon]
+const SKY := [[0.10, 0.45, 0.0, false], [0.24, 0.24, 0.0, false], [0.42, 0.12, 0.06, false], [0.64, 0.17, 0.2, false],
+		[0.84, 0.36, 0.38, false], [0.32, 0.2, 0.55, true], [0.55, 0.12, 0.64, true]]
+static var _sky_step := 0
+static var _sky_from := Vector2(-1, -1)  # (where the sun / moon stood on the page before, and its shade)
+static var _sky_alpha := 0.0
+static var _sky_moon := false
 
 var ev: Dictionary = {}
 ## What the player can give (the options that ask for one of their spells, artifacts or bottles): [{opt, kind (spell / artifact / bottle), id, need, spell (the
@@ -254,6 +245,8 @@ static func how_for_result(id: String, label: String, text: String) -> String:
 			if text.contains("Leaves"):
 				return "reach_leaves"
 			return "reach_bite" if text.contains("bites") else "reach_artifact"
+		"pond_give":  # a spell with Water in its pattern fills the pond; one without leaves it dry
+			return "pond_dry" if text.contains("not even WET") else "pond_wet"
 		"throw":
 			return "throw_fight" if text.contains("coming out") else ("throw_quiet" if text.contains("shatter") else "throw_bottles")
 	return how
@@ -375,6 +368,8 @@ func _ready() -> void:
 	var night: float = lay.get("night", 0.0)
 	if night > 0.0:
 		_make_night(night)
+	if lay.get("sky", false):
+		_make_sky()
 	var entries: Array = lay.get("props", [])
 	var forest := int(lay.get("forest", 0))
 	if forest > 0:
@@ -402,7 +397,7 @@ func _ready() -> void:
 		node.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		node.stretch_mode = TextureRect.STRETCH_SCALE
 		node.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		node.size = Vector2(tex.get_width() * h / tex.get_height(), h)
+		node.size = Vector2(tex.get_width() * h / tex.get_height() if not p.has("w") else float(p.w), h)  # (w: stretched to that width, a river that runs from edge to edge)
 		node.pivot_offset = Vector2(node.size.x / 2.0, node.size.y)
 		var lit: float = p.get("lit", 1.0)
 		node.modulate = Color(lit, lit, lit)
@@ -433,7 +428,7 @@ func _ready() -> void:
 		if _has_items(opt):
 			opt = -1
 		_props.append({"node": node, "opt": opt, "label": label, "img": null, "bob": p.get("bob", false), "glow": glow_node, "ei": ei, "home": home, "fly": p.get("fly", false),
-			"noflip": p.get("noflip", false), "tag": String(p.get("tag", "")), "ph": randf() * TAU, "always": p.get("always", false), "tex": tex,
+			"noflip": p.get("noflip", false), "wriggle": p.get("wriggle", false), "tag": String(p.get("tag", "")), "ph": randf() * TAU, "always": p.get("always", false), "tex": tex,
 			"fi": int(p.get("fi", -1)), "lit": lit, "role": String(p.get("role", ""))})
 		if not again and float(p.get("slow", 0.0)) > 0.0:
 			_arrival_pending = true
@@ -509,6 +504,48 @@ func _make_night(alpha: float) -> void:
 		_moon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_world.add_child(_moon)
 		_follow_sun()
+
+
+## The priest talks from morning till night: on every page the sun climbs and sets and the moon comes, the shade deepens (the sun's own place on the stage is put away).
+func _make_sky() -> void:
+	_sky_step = _sky_step + 1 if again else 0
+	var k: Array = SKY[mini(_sky_step, SKY.size() - 1)]
+	var shade := ColorRect.new()
+	shade.color = Color(0.03, 0.05, 0.16, _sky_alpha if again else 0.0)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_world.add_child(shade)
+	create_tween().tween_property(shade, "color:a", float(k[2]), 1.4)
+	var tex_name := "event_moon" if k[3] else "event_sun"
+	var tex: Texture2D = UiSkin.tex(tex_name)
+	if _stage != null:
+		for sib in get_parent().get_children():
+			if sib is EventStage and sib != self:
+				sib._owns_night = false
+		_owns_night = true
+		var sun := _stage.sun_node()
+		if tex == null and sun != null:
+			tex = sun.texture
+		_stage.set_night(true)
+	if tex != null:
+		var body := TextureRect.new()
+		body.texture = tex
+		body.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		body.stretch_mode = TextureRect.STRETCH_SCALE
+		body.size = Vector2(tex.get_width() * 190.0 / tex.get_height(), 190.0)
+		body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var to := Vector2(float(k[0]) * 1920.0, float(k[1]) * 1080.0) - body.size / 2.0
+		body.position = to if _sky_from.x < 0.0 or not again else _sky_from - body.size / 2.0
+		_world.add_child(body)
+		if again and _sky_from.x >= 0.0:
+			var tw := create_tween()
+			tw.tween_property(body, "position", to, 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		if k[3] and not _sky_moon and again:
+			body.modulate.a = 0.0  # (the moon rises as the sun has gone)
+			create_tween().tween_property(body, "modulate:a", 1.0, 1.4)
+	_sky_from = Vector2(float(k[0]) * 1920.0, float(k[1]) * 1080.0)
+	_sky_alpha = float(k[2])
+	_sky_moon = k[3]
 
 
 func _follow_sun() -> void:
@@ -957,8 +994,23 @@ func _react(how: String) -> void:
 			_heal_flight(tree)
 		"vine_utility":  # it does nothing: the tree does not move or change
 			pass
-		"turtle_help":  # you flip him over: he drops to the floor with a thud
-			_land(_prop_role("turtle"))
+		"turtle_help":  # you flip him over: he lands on his feet with a thud, shakes himself and flies off
+			var tr := _prop_role("turtle")
+			if not tr.is_empty():
+				tr["gone"] = true
+				var tn: TextureRect = tr.node
+				_swap_pic(tr, "event_flying_turtle_front")
+				tn.pivot_offset = tn.size / 2.0
+				tn.rotation = PI
+				var ttw := create_tween()
+				ttw.tween_property(tn, "rotation", TAU, 0.55).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+				ttw.tween_callback(func():
+					tn.rotation = 0.0
+					Audio.play("wooden_ball_colide", 0.0, 0.7)
+					_shake(10.0))
+				ttw.tween_interval(0.6)
+				ttw.tween_property(tn, "position", Vector2(1920.0 + 160.0, 80.0), 1.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+				await ttw.finished
 		"bridge_ok":  # across: the bridge springs
 			if not bridge.is_empty():
 				var n2: TextureRect = bridge.node
@@ -988,23 +1040,21 @@ func _react(how: String) -> void:
 ## The older "?" events (batch 2) answer what you did on the stage itself: `how` is the stage's word for it (see LAYOUTS "result_how" and how_for_result).
 func _react_more(how: String) -> void:
 	var well := _prop_role("well")
-	var pile := _prop_role("pile")
 	var stump := _prop_role("stump")
 	var idol := _prop_role("idol")
 	var bard := _prop_role("bard")
 	match how:
 		"well_toss":  # the leaves go down the well, then two bottles float up and fly to you
 			Audio.play("sfx_coin_bag_spill", -2.0)
-			await _fly_icons("icon_amber", _center_of(pile), _center_of(well) + Vector2(0, -120), 9, 38.0)
+			await _fly_icons("icon_amber", PuppetTopHud.TRAY.get_center(), _center_of(well) + Vector2(0, -120), 9, 38.0)
 			Audio.play("sfx_water_splash", 0.0)
 			_shake_prop(well, 0.02, 4)
 			await get_tree().create_timer(0.5).timeout
 			Audio.play("sfx_draw_element", -2.0)
 			await _fly_icons(_bottle_tex(), _center_of(well) + Vector2(0, -150), PuppetTopHud.TRAY.get_center(), 2, 60.0)
 		"well_drink":  # it was not water
-			var bucket := _prop_role("bucket")
-			_shake_prop(bucket, 0.08, 6)
-			_flash(bucket, Color(0.6, 1.3, 0.5))
+			_shake_prop(well, 0.04, 6)
+			_flash(well, Color(0.6, 1.3, 0.5))
 			Audio.play("sfx_hurt_grunt", -4.0)
 			_shake(6.0)
 		"well_jump":  # a splash, a crack of bone, the cursed treasure
@@ -1013,6 +1063,16 @@ func _react_more(how: String) -> void:
 			_shake(14.0)
 			await get_tree().create_timer(0.6).timeout
 			Audio.play("event_bite", -4.0, 0.7)
+		"pond_wet":  # the pond fills up and the wisp splashes about
+			var pond := _prop_role("pond")
+			_swap_pic(pond, "event_pond_full")
+			Audio.play("sfx_water_splash", 0.0)
+			_flash(pond, Color(0.8, 1.2, 1.5))
+			_hop(_prop_role("wisp"), 3)
+			await get_tree().create_timer(0.8).timeout
+		"pond_dry":  # still dry: the wisp splutters
+			_shake_prop(_prop_role("wisp"), 0.07, 8)
+			Audio.play("sfx_hurt_grunt", -4.0, 1.3)
 		"sprite_help":  # he shoots up, ready for a fight
 			var sp := _prop_role("sprite")
 			if not sp.is_empty():
@@ -1084,9 +1144,8 @@ func _react_more(how: String) -> void:
 			_flash(bard, Color(1.5, 0.8, 0.8))
 			_shake(10.0)
 		"bard_song":  # a little song
-			Audio.play("event_lute_song", 0.0)
-			_hop(bard, 4)
-			await get_tree().create_timer(1.6).timeout
+			_hop(bard, 2)
+			await get_tree().create_timer(0.8).timeout
 			await _heal_flight(bard)
 		"bard_lute":  # the lute is yours
 			var lute := _prop_role("lute")
@@ -1098,7 +1157,6 @@ func _react_more(how: String) -> void:
 				tw2.tween_property(lute.node, "position", PuppetTopHud.TRAY.get_center() - (lute.node as Control).size / 2.0, 0.8).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 				tw2.tween_property(lute.node, "scale", Vector2.ONE * 0.3, 0.8)
 				tw2.tween_property(lute.node, "modulate:a", 0.0, 0.3).set_delay(0.5)
-			Audio.play("event_lute_song", -4.0)
 		"idol_bite", "idol_leaves":
 			_shake_prop(idol, 0.05, 5)
 			Audio.play("event_bite", 0.0)
@@ -1108,12 +1166,10 @@ func _react_more(how: String) -> void:
 			if how == "idol_leaves":
 				await get_tree().create_timer(0.5).timeout
 				Audio.play("sfx_coin_bag_spill", 0.0)
-				await _fly_icons("icon_amber", _center_of(pile), PuppetTopHud.TRAY.get_center(), 10, 36.0)
+				await _fly_icons("icon_amber", _center_of(idol) + Vector2(0, 90), PuppetTopHud.TRAY.get_center(), 10, 36.0)
 		"idol_gift":  # the leaves go into the bowl, and the jaw lets go
-			var bowl := _prop_role("bowl")
 			Audio.play("sfx_coin_bag_spill", 0.0)
-			await _fly_icons("icon_amber", PuppetTopHud.TRAY.get_center(), _center_of(bowl), 10, 36.0)
-			_flash(bowl, Color(1.5, 1.4, 0.8))
+			await _fly_icons("icon_amber", PuppetTopHud.TRAY.get_center(), _center_of(idol) + Vector2(0, 90), 10, 36.0)
 			await get_tree().create_timer(0.3).timeout
 			_shake_prop(idol, 0.03, 4)
 			_flash(idol, Color(1.4, 1.3, 0.9))
@@ -1809,6 +1865,8 @@ func _process(d: float) -> void:
 			n.flip_h = cos(_t * 0.55) < 0.0 and not bool(r.noflip)
 			n.position = Vector2(x - n.size.x / 2.0, 250.0 + sin(_t * 1.7) * 28.0)
 			n.rotation = sin(_t * 1.7) * 0.05
+		elif r.wriggle and not r.get("gone", false):
+			n.rotation = sin(_t * 7.0) * 0.16 + sin(_t * 2.9) * 0.07  # (on his back, legs kicking: he cannot get up)
 		elif r.bob and not r.get("gone", false) and (_t > 1.6 or again):
 			n.position.y = float(r.home.y) + sin(_t * 1.6 + float(r.ph)) * 14.0  # (floats: the sprite, the lights)
 		elif int(r.opt) >= 0 or r.tag == "cactus":
