@@ -4,6 +4,7 @@ extends Control
 ## isn't needed any more (the spell is easier to wake); the card keeps its name and shows the seal.
 
 signal done
+signal hint_changed(text: String)  # embedded: the words go to the event's hint panel
 
 var run: RunState
 var spell_id := ""
@@ -11,6 +12,7 @@ var _card_holder: CenterContainer
 var _orbs: HBoxContainer
 var _hint: Label
 var _sealed := false
+var embedded := false  # laid over an event's stage: no backdrop, no shade, no title, smaller, in the lower part of the screen
 
 
 func setup(p_run: RunState, p_id: String) -> void:
@@ -21,31 +23,41 @@ func setup(p_run: RunState, p_id: String) -> void:
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UiTheme.get_theme()
-	var bd := Backdrop.new()
-	bd.act = run.act
-	add_child(bd)
-	var shade := ColorRect.new()
-	shade.color = Color(0, 0, 0, 0.6)
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(shade)
+	if not embedded:
+		var bd := Backdrop.new()
+		bd.act = run.act
+		add_child(bd)
+		var shade := ColorRect.new()
+		shade.color = Color(0, 0, 0, 0.6)
+		shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(shade)
 	var v := VBoxContainer.new()
 	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	v.alignment = BoxContainer.ALIGNMENT_CENTER
-	v.add_theme_constant_override("separation", 26)
+	v.alignment = BoxContainer.ALIGNMENT_BEGIN if embedded else BoxContainer.ALIGNMENT_CENTER
+	if embedded:
+		v.offset_top = 600.0
+		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_theme_constant_override("separation", 14 if embedded else 26)
 	add_child(v)
-	var title := UiTheme.label("🟣 A purple seal for %s" % run.spell(spell_id).name, 40, Color(0.85, 0.6, 1.0))
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(title)
+	if not embedded:
+		var title := UiTheme.label("🟣 A purple seal for %s" % run.spell(spell_id).name, 40, Color(0.85, 0.6, 1.0))
+		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(title)
 	_hint = UiTheme.label("Click the Essence to seal. It won't be needed to wake the spell any more.", 22, Color(0.9, 0.9, 0.85))
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(_hint)
+	if embedded:
+		_hint.visible = false
+		hint_changed.emit.call_deferred(_hint.text)
 	_card_holder = CenterContainer.new()
-	_card_holder.custom_minimum_size = Vector2(0, SpellCard.H * 1.5)
+	_card_holder.custom_minimum_size = Vector2(0, SpellCard.H * (1.2 if embedded else 1.5))
+	_card_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(_card_holder)
 	_orbs = HBoxContainer.new()
 	_orbs.alignment = BoxContainer.ALIGNMENT_CENTER
 	_orbs.add_theme_constant_override("separation", 22)
+	_orbs.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(_orbs)
 	_rebuild()
 
@@ -54,7 +66,7 @@ func _rebuild() -> void:
 	for c in _card_holder.get_children():
 		c.queue_free()
 	var card := SpellCard.make(run.spell(spell_id))
-	card.zoom = 1.5
+	card.zoom = 1.2 if embedded else 1.5
 	_card_holder.add_child(card)
 	for c in _orbs.get_children():
 		c.queue_free()
@@ -107,7 +119,7 @@ func _seal(i: int, orb: ElementIcon) -> void:
 	tw.tween_property(wax, "rotation", 0.0, 0.32)
 	await get_tree().create_timer(0.32).timeout
 	# thump
-	Audio.play("sfx_lock_break")
+	Audio.play("sfx_wax_seal")  # (a thick wet splat: the wax lands)
 	var fx := Vfx.make(self, 30)
 	fx.glow(at, 200, Color(0.8, 0.45, 1.0, 0.8), 0.5)
 	fx.ring(at, 30, 190, Color(0.8, 0.5, 1.0), 0.45, 10.0)
@@ -124,7 +136,8 @@ func _seal(i: int, orb: ElementIcon) -> void:
 	_rebuild()
 	var left := String(run.spell(spell_id).pattern).length()
 	_hint.text = ("Sealed. %s now needs %d Essence." % [run.spell(spell_id).name, left]) if left > 0 else "Sealed. %s now wakes on every chant!" % run.spell(spell_id).name
+	hint_changed.emit(_hint.text)
 	var go := UiTheme.button("Continue", func(): done.emit(), 22)
-	go.custom_minimum_size = Vector2(260, 56)
+	go.custom_minimum_size = Vector2(0, 52) if embedded else Vector2(260, 56)
 	go.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_orbs.get_parent().add_child(go)

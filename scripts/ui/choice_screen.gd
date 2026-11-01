@@ -10,6 +10,7 @@ var spells: Array = []
 var artifacts: Array = []
 var can_skip := true
 var act := 1
+var pulse := false  # an event asks for one of these (give it, cast it): the cards glow on and off
 var on_stage := false  # Puppet Stage: laid over the stage (no backdrop of its own), the shade a little lighter
 
 
@@ -55,11 +56,13 @@ func _ready() -> void:
 		var idx := i
 		card.clicked.connect(func(_c): chosen.emit(idx))
 		row.add_child(card)
+		_pulse(card, i)
 	for i in artifacts.size():
 		var card := ArtifactCard.make(artifacts[i])
 		var idx := i
 		card.clicked.connect(func(): chosen.emit(idx))
 		row.add_child(card)
+		_pulse(card, spells.size() + i)
 	if can_skip:
 		var skip := UiTheme.button("Skip", func(): chosen.emit(-1), 20)
 		skip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -75,3 +78,13 @@ func _ready() -> void:
 	fit.call()
 	await get_tree().process_frame
 	fit.call()
+
+
+## The cards glow on and off (one after the other), to say "one of these goes".
+func _pulse(card: Control, k: int) -> void:
+	if not pulse:
+		return
+	var tw := card.create_tween().set_loops()
+	tw.tween_property(card, "modulate", Color(1.0, 1.0, 1.0), 0.0).set_delay(0.12 * k)
+	tw.tween_property(card, "modulate", Color(1.4, 1.32, 1.05), 0.55).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(card, "modulate", Color(1.0, 1.0, 1.0), 0.55).set_trans(Tween.TRANS_SINE)

@@ -106,6 +106,23 @@ func _head_at(h: Dictionary) -> Vector2:
 	return Vector2(x, lerpf(low, high, clampf(up, 0.0, 1.0)))
 
 
+## Where the painted head is drawn now (its ears and horns included).
+func _art_rect(h: Dictionary, art: Texture2D) -> Rect2:
+	var r := _radius(h)
+	var wide := r * 3.0 * float(art.get_width()) / float(art.get_height())
+	return Rect2(_head_at(h) + Vector2(-wide / 2.0, -r * 1.65), Vector2(wide, r * 3.0))
+
+
+## A shot hits a head if it lands anywhere on the picture (a click on an ear counts), a little generously, but not on the part the wheat hides.
+func _hit(h: Dictionary, at: Vector2) -> bool:
+	var art: Texture2D = UiSkin.tex("event_%s_head" % h.kind)
+	if art == null:
+		return _head_at(h).distance_to(at) <= _radius(h)
+	var box := _art_rect(h, art).grow(10.0)
+	box.size.y = minf(box.size.y, _top + 25.0 - box.position.y)
+	return box.size.y > 0.0 and box.has_point(at)
+
+
 func _radius(h: Dictionary) -> float:
 	return HEAD_R * (2.0 if h.kind == "hobgoblin" else 1.0)
 
@@ -185,7 +202,7 @@ func _gui_input(ev: InputEvent) -> void:
 		if h.dead_t >= 0.0:
 			continue
 		var c := _head_at(h)
-		if c.distance_to(ev.position) <= _radius(h):
+		if _hit(h, ev.position):
 			h.hp -= 1
 			h.hit_t = 0.25
 			if h.hp <= 0:
@@ -228,6 +245,14 @@ func _draw() -> void:
 
 
 func _draw_wheat() -> void:
+	var row: Texture2D = UiSkin.tex("event_wheat_row")  # (the painted row, laid side by side across the field)
+	if row != null:
+		var w := float(row.get_width()) * WHEAT_H / float(row.get_height())
+		var x := 170.0
+		while x < 1750.0:
+			draw_texture_rect(row, Rect2(x, _feet - WHEAT_H, w, WHEAT_H), false)
+			x += w * 0.92
+		return
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7  # (the same field every frame)
 	var base := _feet
@@ -256,6 +281,12 @@ func _draw_head(h: Dictionary) -> void:
 		fade = 1.0 - h.dead_t / 0.35
 		r *= 1.0 + h.dead_t
 	var flash: bool = h.hit_t > 0.15
+	var art: Texture2D = UiSkin.tex("event_%s_head" % h.kind)  # (the painted puppet; the shapes below are for when there is none)
+	if art != null:
+		draw_texture_rect(art, _art_rect(h, art), false, Color(1.7, 1.7, 1.7, fade) if flash else Color(1, 1, 1, fade))
+		if h.kind == "hobgoblin":
+			_draw_pips(c, r, h, fade)
+		return
 	if h.kind == "fairy":
 		var wing := Color(0.75, 1.0, 0.85, 0.7 * fade)
 		var flap := 1.0 + 0.25 * sin(Time.get_ticks_msec() / 60.0)
@@ -283,6 +314,11 @@ func _draw_head(h: Dictionary) -> void:
 	draw_circle(c + Vector2(r * 0.35, -r * 0.15), r * 0.07, Color(0, 0, 0, fade))
 	draw_arc(c + Vector2(0, r * 0.15), r * 0.45, 0.25, PI - 0.25, 14, Color(0.2, 0.0, 0.0, fade), 4.0 if hob else 3.0, true)
 	if hob:
-		for k in 3:  # (it shows how many shots it still takes: a pip per hit point)
-			var on: bool = k < int(h.hp)
-			draw_circle(c + Vector2((k - 1) * r * 0.35, -r * 1.25), 8.0, Color(1, 0.85, 0.3, fade) if on else Color(0.3, 0.2, 0.1, 0.6 * fade))
+		_draw_pips(c, r, h, fade)
+
+
+## A hobgoblin shows how many shots it still takes: a pip per hit point.
+func _draw_pips(c: Vector2, r: float, h: Dictionary, fade: float) -> void:
+	for k in 3:
+		var on: bool = k < int(h.hp)
+		draw_circle(c + Vector2((k - 1) * r * 0.35, -r * 1.25), 8.0, Color(1, 0.85, 0.3, fade) if on else Color(0.3, 0.2, 0.1, 0.6 * fade))

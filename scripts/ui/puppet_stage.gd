@@ -580,6 +580,22 @@ func is_clearing() -> bool:
 	return _clearing
 
 
+## The sun's sprite (null if the stage has none).
+func sun_node() -> Sprite2D:
+	for e in _sprites:
+		var n: Sprite2D = e["node"]
+		if is_instance_valid(n) and n.texture != null and n.texture.resource_path.ends_with("/sun.png"):
+			return n
+	return null
+
+
+## Night falls (an event's evening): the sun is put away; false brings it back.
+func set_night(on: bool) -> void:
+	var sun := sun_node()
+	if sun != null:
+		sun.visible = not on
+
+
 ## Nothing (but the hanging sign) stands on the stage any more.
 func is_clear() -> bool:
 	return _is_clear

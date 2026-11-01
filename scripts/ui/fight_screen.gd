@@ -504,6 +504,33 @@ func get_stage() -> PuppetStage:
 	return _stage
 
 
+var _peek := false  # map_mode: an event is on the stage and the player's HP, bottles and artifacts are up
+var _peek_tw: Tween
+var _peek_pending := false  # asked before the HUD has sunk (a stage made just now): it stays up when it does
+
+
+## An event on the stage (map_mode): the player's own HUD (HP, bottles, artifacts, Menu) comes up from below, so it can be read while choosing; the
+## spell row, Chant and Bag stay down. `peek_hud(true)` again just refreshes it (HP changed); `peek_hud(false)` sinks it.
+func peek_hud(on: bool) -> void:
+	if not map_mode or _top_layer == null or not is_instance_valid(_top_layer):
+		return
+	if on:
+		_refresh_all()
+	if _hud_shift <= 1.0:
+		_peek_pending = on
+		return
+	if on == _peek:
+		return
+	_peek = on
+	if _peek_tw != null:
+		_peek_tw.kill()
+	_peek_tw = create_tween().set_parallel(true)
+	# (relative to where the HUD is now: the same distance the game itself sinks it by, whatever the window's size does to its place)
+	_peek_tw.tween_property(_top_layer, "position:y", -HUD_DOWN if on else HUD_DOWN, 0.45).as_relative().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	if _menu_btn != null and not _nu_ui:
+		_peek_tw.tween_property(_menu_btn, "position", _menu_rest().position if on else MENU_TOP_AT, 0.45)
+
+
 func _hud_hidden() -> bool:
 	return map_mode or _hud_shift > 1.0
 
@@ -511,6 +538,12 @@ func _hud_hidden() -> bool:
 func _start_down() -> void:
 	busy = true
 	_set_hud_shift(HUD_DOWN)
+	if _peek_pending and _top_layer != null:
+		_peek_pending = false
+		_peek = true
+		_top_layer.position.y -= HUD_DOWN
+		if _menu_btn != null and not _nu_ui:
+			_menu_btn.position = _menu_rest().position
 	if arrive:
 		_arrive()
 

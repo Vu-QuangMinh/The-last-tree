@@ -986,6 +986,7 @@ func event_outcome(opt: Dictionary, bottle_at := -1, spell_id := "") -> Dictiona
 				if not pool.is_empty():
 					var wet: String = pool[rng.randi() % pool.size()]
 					burdens[wet] = String(burdens.get(wet, "")) + "W"
+					res.soaked = wet  # (the stage shows the Water flying into its card)
 					res.text = String(res.text).replace("{spell}", spell(wet).name)
 					res.spell = wet
 				else:

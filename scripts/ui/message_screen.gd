@@ -12,6 +12,7 @@ var disabled: Array = []:  # per button: true = greyed out (set any time: it app
 		disabled = v
 		for i in _btns.size():
 			_btns[i].disabled = disabled.size() > i and disabled[i]
+var pulse_n := 0  # the first n option cards glow on and off (an event asks for one of your items)
 var cards := false  # events: each option is a card (its words wrapped inside), all of them fitting across the screen
 var _btns: Array[Button] = []
 var act := 1
@@ -60,6 +61,11 @@ func _ready() -> void:
 		if cards:
 			btn = _option_card(buttons[i], buttons.size())
 			btn.pressed.connect(func(): pressed.emit(idx))
+			if i < pulse_n:
+				var tw := btn.create_tween().set_loops()
+				tw.tween_property(btn, "modulate", Color(1.0, 1.0, 1.0), 0.0).set_delay(0.12 * i)
+				tw.tween_property(btn, "modulate", Color(1.4, 1.32, 1.05), 0.55).set_trans(Tween.TRANS_SINE)
+				tw.tween_property(btn, "modulate", Color(1.0, 1.0, 1.0), 0.55).set_trans(Tween.TRANS_SINE)
 		else:
 			btn = UiTheme.button(buttons[i], func(): pressed.emit(idx), MenuScreen.BTN_FONT if small_buttons else 22)
 			btn.custom_minimum_size = MenuScreen.BTN if small_buttons else Vector2(240, 56)

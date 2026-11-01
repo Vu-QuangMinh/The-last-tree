@@ -21,7 +21,7 @@ static var _paths := {}  # name -> res:// path ("" = there is none)
 const FOLDERS := ["UI/Panels", "UI/Hp", "UI/SlotMachine", "UI/Machine", "UI/Hint", "UI/Buttons", "UI/Essence", "Icon/Intent", "Icon/Effect", "UI/Icons",
 	"Card", "UI/Numbers", "Card/Treasure", "Map", "UI/Fx", "Stage/Act1/Backdrop", "Stage/Act2/Backdrop", "Stage/Act3/Backdrop",
 	"Map/Rooms/Backgrounds", "Stage/Act1/Fx", "Stage/Act2/Fx", "Stage/Act3/Fx", "UI/Banners", "UI/Characters", "Icon/Artifact", "Icon/Bottle",
-	"Map/Rooms/Campfire", "Map/Rooms/Apothecary", "UI/Misc", "Fonts/Letters", "Stage/Shared", "UI/NewUi", "UI"]
+	"Map/Rooms/Campfire", "Map/Rooms/Apothecary", "UI/Misc", "Events", "Fonts/Letters", "Stage/Shared", "UI/NewUi", "UI"]
 
 ## artifact id -> picture name, where they differ
 const ARTIFACT_ART := {"scholar_quill": "scholars_quill"}
