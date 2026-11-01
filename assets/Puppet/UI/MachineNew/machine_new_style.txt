@@ -2,6 +2,6 @@ Style: one part of a small antique fairground slot machine for a game UI, a real
 
 Lighting: soft even diffuse light from the upper left, gentle natural shading that shows the depth of the carving, no strong highlights, no glossy shine.
 
-Composition: this one part only, centred, seen straight from the front with no perspective, filling most of the image with an even margin. Any pipe, strip or funnel is cut off straight and plain at the ends that join the next part, so the parts can be assembled afterwards. Isolated on a pure white seamless background (#FFFFFF), as if cut out: no table, no surface, no cast shadow, no reflection, no gradient, no other objects, no balls, no hands.
+Composition: this one part only, centred, seen straight from the front with no perspective, filling most of the image with an even margin. Any pipe, strip or funnel is cut off straight and plain at the ends that join the next part, so the parts can be assembled afterwards. Isolated on a pure black seamless background (#000000), as if cut out: no table, no surface, no cast shadow, no reflection, no gradient, no other objects, no balls, no hands.
 
 Must look like a tangible wooden and brass craft object with real material texture. Not vector art, not flat colours, not clean outlines, not cartoon, not a sticker, not plastic, not a 3D game render. No text, letters, numbers, logos or watermark.

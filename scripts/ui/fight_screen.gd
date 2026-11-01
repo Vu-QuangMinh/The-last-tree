@@ -443,6 +443,16 @@ func _ready() -> void:
 		_top_layer.add_child(menu_btn)  # (it is part of the HUD: it sinks with it between fights, where the map has its own Menu button)
 	else:
 		add_child(menu_btn)
+	if _nu_ui:  # (the HUD's own Menu sinks with it: between fights, on the map and the encounter screen, this plate stands where Puppet's does)
+		_menu_low = UiTheme.button("Menu", _open_pause_menu, 18)
+		_menu_low.custom_minimum_size = PuppetTopHud.MENU.size
+		_menu_low.size = PuppetTopHud.MENU.size
+		_menu_low.position = MENU_TOP_AT
+		_menu_low.z_index = PuppetStage.CEILING_Z + 1
+		UiTheme.use_menu_style(_menu_low)
+		UiTheme.use_heading_font(_menu_low)
+		_menu_low.visible = false
+		add_child(_menu_low)
 	_build_spells()
 	_sync_views()
 	_refresh_all()
@@ -488,6 +498,7 @@ func _set_hud_shift(v: float) -> void:
 			n.position.y -= d / HUD_DOWN * DEBUFF_LIFT
 	if _menu_btn != null:
 		_menu_btn.position = _menu_rest().position if _nu_ui else _menu_rest().position.lerp(MENU_TOP_AT, k_up)
+	_sync_menu_low()
 	if _book_btn != null:
 		var k := clampf(v / HUD_DOWN, 0.0, 1.0)
 		_book_btn.visible = k > 0.02 and not hold_hud
@@ -522,6 +533,7 @@ func peek_hud(on: bool) -> void:
 	if on == _peek:
 		return
 	_peek = on
+	_sync_menu_low()
 	if _peek_tw != null:
 		_peek_tw.kill()
 	_peek_tw = create_tween().set_parallel(true)
@@ -529,6 +541,11 @@ func peek_hud(on: bool) -> void:
 	_peek_tw.tween_property(_top_layer, "position:y", -HUD_DOWN if on else HUD_DOWN, 0.45).as_relative().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	if _menu_btn != null and not _nu_ui:
 		_peek_tw.tween_property(_menu_btn, "position", _menu_rest().position if on else MENU_TOP_AT, 0.45)
+
+
+func _sync_menu_low() -> void:
+	if _menu_low != null:
+		_menu_low.visible = _hud_shift > 1.0 and not _peek
 
 
 func _hud_hidden() -> bool:
@@ -541,6 +558,7 @@ func _start_down() -> void:
 	if _peek_pending and _top_layer != null:
 		_peek_pending = false
 		_peek = true
+		_sync_menu_low()
 		_top_layer.position.y -= HUD_DOWN
 		if _menu_btn != null and not _nu_ui:
 			_menu_btn.position = _menu_rest().position
@@ -1013,6 +1031,7 @@ const ART_ROW := 5
 const ART_ROW_GAP := 2.0
 const BOTTLE_STEP := 50.2  # the bottles' slots: five fit the frame
 var _menu_btn: Button
+var _menu_low: Button  # New UI: the Menu button of the screens between fights (the HUD, and its Menu, are down)
 var _debuff_board: NinePatchRect  # Puppet Stage: the red board at the top left that holds the debuffs (it stretches to fit their icons)
 var _top_layer: Control  # holds everything of the char panel (HP, bottles, artifacts): it sinks with the HUD between fights
 var _act_sign: Control  # Puppet Stage: the hanging sign with the Act / Floor / Turn line: it drops at the start of a fight and goes back up after a while

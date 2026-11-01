@@ -7,7 +7,7 @@ extends Control
 ## caught. 3 s countdown, then GAME_TIME seconds; `finished` with how many of each you caught. Fish that reach the
 ## left edge get away. No art yet: the fish are drawn (placeholders).
 
-signal finished(whales: int, barracudas: int, swordfish: int)
+signal finished(big: int, medium: int, small: int)
 
 const GAME_TIME := 60.0
 const COUNTDOWN := 3.0
@@ -15,10 +15,18 @@ const SPAWN_EVERY := 6.0  # seconds between fish at the start (a little random) 
 const SPAWN_RAMP := 3.0  # ... and by the end, this many times as many fish
 const CHANT_MAX := 10
 const SPEED := 1.1  # every fish swims this much faster than its "cross" time says
+## The size classes, by how many Essence orbs the fish carries (each fish rolls its count in "orbs"): small 3-5, medium 5-7, big 8 or more. The picture really is that size (w =
+## the width of the picture, at most "max_h" tall), and the bigger, the slower ("cross": seconds to cross the stage) and the more Leaves.
 const KINDS := {
-	"swordfish": {"hp": 4, "cross": 12.0, "leaves": 6, "w": 190.0, "h": 70.0, "col": Color(0.35, 0.55, 0.85), "share": 0.4},
-	"barracuda": {"hp": 5, "cross": 16.0, "leaves": 4, "w": 230.0, "h": 60.0, "col": Color(0.55, 0.62, 0.55), "share": 0.4},
-	"whale": {"hp": 10, "cross": 24.0, "leaves": 10, "w": 380.0, "h": 92.0, "col": Color(0.3, 0.38, 0.55), "share": 0.2},
+	"small": {"orbs": [3, 5], "cross": 12.0, "leaves": 4, "w": 150.0, "max_h": 105.0, "col": Color(0.9, 0.6, 0.3), "share": 0.4},
+	"medium": {"orbs": [5, 7], "cross": 16.0, "leaves": 6, "w": 250.0, "max_h": 105.0, "col": Color(0.4, 0.58, 0.85), "share": 0.4},
+	"big": {"orbs": [8, 10], "cross": 24.0, "leaves": 10, "w": 380.0, "max_h": 135.0, "col": Color(0.3, 0.38, 0.55), "share": 0.2},
+}
+## The pictures (Events/event_fish_*.png) of each size class.
+const ART := {
+	"small": ["event_fish_clownfish", "event_fish_pufferfish", "event_fish_angelfish"],
+	"medium": ["event_fish_swordfish", "event_fish_barracuda"],
+	"big": ["event_fish_whale", "event_fish_shark"],
 }
 ## Fish centres: the top half of the stage, under the clock and the tally. A lane can hold several fish, but a fish
 ## only comes in where it will never run into the one ahead of it (a fast one behind a slow one would catch it up).
@@ -31,7 +39,7 @@ var _t := -COUNTDOWN
 var _spawn_in := 0.5
 var _fish: Array = []  # {kind, lane, x, els: Array, icons: HBoxContainer, node: Control, dead_t}
 var _pops: Array = []
-var _score := {"whale": 0, "barracuda": 0, "swordfish": 0}
+var _score := {"big": 0, "medium": 0, "small": 0}
 var _chant: Array = []
 var _rng := RandomNumberGenerator.new()
 var _over := false
@@ -39,6 +47,8 @@ var _last_tick := 99
 var _clock: Label
 var _tally: Label
 var _big: Label
+var _big_art: Control  # (the same words written in the wooden alphabet)
+var _big_shown := ""
 var _chant_row: HBoxContainer
 var _tray: Array = []  # the three Essence you chant from: [{el, icon}]
 var _drag_el := ""  # an Essence being dragged from the tray
@@ -51,6 +61,8 @@ func _ready() -> void:
 	theme = UiTheme.get_theme()
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_rng.randomize()
+	if on_stage and get_parent() != null and get_parent().has_method("get_stage") and get_parent().get_stage() != null:
+		get_parent().get_stage().set_underwater(true)  # (the sea: its own back wall, reefs, kelp and algae; the event's tally puts the stage back)
 	if not on_stage:
 		var bd := Backdrop.new()
 		bd.act = act
@@ -114,6 +126,27 @@ func _label(text: String, px: int, col: Color, at: Vector2, sz: Vector2) -> Labe
 	return l
 
 
+## The big words in the middle (3, 2, 1, Go, Time Up): in the wooden alphabet when the theme has it (it pops in, big to small), else the plain label with `plain` (default: `text`).
+func _show_big(text: String, plain := "", cap := 200.0) -> void:
+	_big_shown = text
+	if is_instance_valid(_big_art):
+		_big_art.queue_free()
+	_big_art = null
+	var art: Control = UiSkin.letters(text, cap) if text != "" else null
+	_big.visible = art == null
+	_big.text = (plain if plain != "" else text)
+	_big.add_theme_font_size_override("font_size", 110 if cap < 200.0 else 160)
+	if art == null:
+		return
+	art.position = Vector2((1920.0 - art.size.x) / 2.0, 300.0)
+	art.pivot_offset = art.size / 2.0
+	art.scale = Vector2(1.4, 1.4)
+	art.z_index = 50  # (over the reef props of the sea)
+	add_child(art)
+	_big_art = art
+	create_tween().tween_property(art, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
 func _playing() -> bool:
 	return _t >= 0.0 and _t < GAME_TIME and not _over
 
@@ -155,6 +188,7 @@ func _release() -> void:
 		return
 	var c := "".join(_chant)
 	var any := false
+	var killed := ""  # (the biggest kind of fish speared by this chant: its own sound)
 	for f in _fish:
 		if f.dead_t >= 0.0:
 			continue
@@ -164,52 +198,74 @@ func _release() -> void:
 			f.els = f.els.slice(k)
 			if f.els.is_empty():
 				f.dead_t = 0.0
+				if killed != "big" and (killed == "" or f.kind == "big" or (f.kind == "medium" and killed == "small")):
+					killed = f.kind
 				_score[f.kind] += 1
 				_pops.append({"at": Vector2(f.x, LANES[f.lane] - 40.0), "text": "+%d" % int(KINDS[f.kind].leaves), "age": 0.0})
 			_show_els(f)
-	Audio.play("sfx_damage_hit" if any else "ui_click", -4.0, 1.0)
+	if killed != "":
+		Audio.play("fish_spear_" + killed, -2.0)
+	else:
+		Audio.play("sfx_damage_hit" if any else "ui_click", -4.0, 1.0)
 	_chant.clear()
 	_show_chant()
 
 
 func _spawn() -> void:
 	var r := _rng.randf()
-	var kind := "whale"
+	var kind := "big"
 	for k in KINDS:
 		r -= float(KINDS[k].share)
 		if r < 0.0:
 			kind = k
 			break
-	var lanes := range(LANES.size()).filter(func(l): return _fits(kind, l))
-	if lanes.is_empty():
-		# no room for that one: any other kind that fits somewhere?
-		for other in KINDS:
-			var room := range(LANES.size()).filter(func(l): return _fits(other, l))
-			if not room.is_empty():
-				kind = other
-				lanes = room
-				break
+	var lanes := []
+	var art_name := ""
+	var w := 0.0
+	var tries: Array = [kind]  # (that size first; no room for it: any other size that fits somewhere?)
+	tries.append_array(KINDS.keys().filter(func(o): return o != kind))
+	for cand: String in tries:
+		var roll := _roll(cand)
+		var room := range(LANES.size()).filter(func(l): return _fits(cand, float(roll.w), l))
+		if not room.is_empty():
+			kind = cand
+			art_name = String(roll.art)
+			w = float(roll.w)
+			lanes = room
+			break
 	if lanes.is_empty():
 		_spawn_in = 0.5  # (nowhere to put a fish: try again in a moment)
 		return
 	var lane: int = lanes[_rng.randi() % lanes.size()]
+	var orbs: Array = KINDS[kind].orbs
 	var els := []
-	for i in int(KINDS[kind].hp):
+	for i in _rng.randi_range(int(orbs[0]), int(orbs[1])):
 		els.append(["F", "W", "A"][_rng.randi() % 3])
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 2)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(row)
-	var f := {"kind": kind, "lane": lane, "x": 1920.0 + float(KINDS[kind].w) / 2.0, "els": els, "icons": row, "dead_t": -1.0}
+	var f := {"kind": kind, "lane": lane, "art": art_name, "w": w, "x": 1920.0 + w / 2.0, "els": els, "icons": row, "dead_t": -1.0}
 	_fish.append(f)
 	_show_els(f)
 
 
-## Can a fish of this kind come in on this lane now without ever touching one already in it? It must start behind
-## the last one, and if it swims faster, still be behind it when that one leaves the stage.
-func _fits(kind: String, lane: int) -> bool:
+## A fish of this size class: which picture it is and how wide, the class's width unless the picture would be taller than the class allows.
+func _roll(kind: String) -> Dictionary:
 	var k: Dictionary = KINDS[kind]
+	var names: Array = ART[kind]
+	var art: String = names[_rng.randi() % names.size()]
+	var pic: Texture2D = UiSkin.tex(art)
 	var w: float = k.w
+	if pic != null:
+		w = minf(w, float(k.max_h) * pic.get_width() / float(pic.get_height()))
+	return {"art": art, "w": w}
+
+
+## Can a fish of this size (and width) come in on this lane now without ever touching one already in it? It must start behind
+## the last one, and if it swims faster, still be behind it when that one leaves the stage.
+func _fits(kind: String, w: float, lane: int) -> bool:
+	var k: Dictionary = KINDS[kind]
 	var v: float = (1920.0 + w) / float(k.cross) * SPEED
 	var tail := 1920.0  # where the new fish's nose starts (off the right edge; its body is still hidden)
 	const GAP := 40.0
@@ -217,7 +273,7 @@ func _fits(kind: String, lane: int) -> bool:
 		if f.lane != lane:
 			continue
 		var o: Dictionary = KINDS[f.kind]
-		var ow: float = o.w
+		var ow: float = f.w
 		var ov: float = (1920.0 + ow) / float(o.cross) * SPEED
 		var o_back: float = f.x + ow * 0.62  # (the back of its tail)
 		if tail < o_back + GAP:
@@ -254,23 +310,27 @@ func _light(f: Dictionary) -> void:
 
 
 func _process(d: float) -> void:
+	queue_redraw()
 	if _over:
 		return
 	_t += d
 	if _t < 0.0:
 		var n := ceili(-_t)
-		_big.text = str(n)
 		if n != _last_tick:
 			_last_tick = n
-			Audio.play("ui_click", -2.0, 1.0)
+			_show_big(str(n))
+			Audio.play("fish_count", -2.0, 1.0)
 	elif _t < GAME_TIME:
 		if _t < 0.6:
-			if _big.text != "Go!":
-				_big.text = "Go!"
-				Audio.play("ui_click", 0.0, 1.5)
-		elif _big.text != "":
-			_big.text = ""
+			if _big_shown != "Go":
+				_show_big("Go", "Go!")
+				Audio.play("fish_go", 0.0)
+		elif _big_shown != "":
+			_show_big("")
 		_spawn_in -= d
+		var alive := _fish.filter(func(f): return f.dead_t < 0.0)
+		if alive.is_empty():  # (nothing swims on the screen: the next fish comes out at once)
+			_spawn_in = 0.0
 		if _spawn_in <= 0.0:
 			_spawn_in = SPAWN_EVERY / lerpf(1.0, SPAWN_RAMP, _t / GAME_TIME) * _rng.randf_range(0.7, 1.3)  # (more and more fish)
 			_spawn()
@@ -281,26 +341,26 @@ func _process(d: float) -> void:
 		_clock.modulate.a = (0.35 + 0.65 * absf(sin(_t * 6.0))) if hurry else 1.0
 		if hurry and left != _last_tick:
 			_last_tick = left
-			Audio.play("sfx_burn_tick", 0.0, 1.3)
+			Audio.play("fish_timer_tick", 0.0)
 	else:
 		_end()
 		return
 	for f in _fish:
 		var k: Dictionary = KINDS[f.kind]
-		f.x -= (1920.0 + float(k.w)) / float(k.cross) * SPEED * d
+		f.x -= (1920.0 + float(f.w)) / float(k.cross) * SPEED * d
 		if f.dead_t >= 0.0:
 			f.dead_t += d
 		var row: HBoxContainer = f.icons
 		row.position = Vector2(f.x - row.size.x / 2.0, LANES[f.lane] - 13.0)
 		row.modulate.a = 1.0 if f.dead_t < 0.0 else 0.0
-	var gone := _fish.filter(func(f): return f.x < -float(KINDS[f.kind].w) or f.dead_t > 0.5)
+	var gone := _fish.filter(func(f): return f.x < -float(f.w) or f.dead_t > 0.5)
 	for f in gone:
 		(f.icons as Node).queue_free()
 	_fish = _fish.filter(func(f): return not (f in gone))
 	for p in _pops:
 		p.age += d
 	_pops = _pops.filter(func(p): return p.age < 0.9)
-	_tally.text = "Whales %d   ·   Barracudas %d   ·   Swordfish %d" % [_score.whale, _score.barracuda, _score.swordfish] if _t >= 0.0 else ""
+	_tally.text = "Big %d   ·   Medium %d   ·   Small %d" % [_score.big, _score.medium, _score.small] if _t >= 0.0 else ""
 	if is_instance_valid(_drag_icon):
 		_drag_icon.position = get_local_mouse_position() - Vector2(ORB, ORB) / 2.0
 	queue_redraw()
@@ -365,12 +425,11 @@ func _end() -> void:
 	for f in _fish:
 		(f.icons as Node).queue_free()
 	_fish.clear()
-	_big.text = "Time's up!"
-	_big.add_theme_font_size_override("font_size", 110)
+	_show_big("Time Up", "Time's up!", 130.0)
 	Audio.play("ui_click", 0.0, 0.6)
 	queue_redraw()
 	await get_tree().create_timer(1.4).timeout
-	finished.emit(_score.whale, _score.barracuda, _score.swordfish)
+	finished.emit(_score.big, _score.medium, _score.small)
 
 
 # ------------------------------------------------------------------ drawing (placeholders until there is art)
@@ -389,8 +448,17 @@ func _draw() -> void:
 func _draw_fish(f: Dictionary) -> void:
 	var k: Dictionary = KINDS[f.kind]
 	var c := Vector2(f.x, LANES[f.lane])
-	var w: float = k.w
-	var h: float = k.h
+	var pic: Texture2D = UiSkin.tex(String(f.get("art", "")))
+	if pic != null:  # (the carved fish, a little wriggle as it swims)
+		var pw: float = f.w
+		var ph := pw * pic.get_height() / float(pic.get_width())
+		var pfade := 1.0 if f.dead_t < 0.0 else maxf(0.0, 1.0 - f.dead_t / 0.5)
+		draw_set_transform(c, sin(Time.get_ticks_msec() / 220.0 + f.x * 0.01) * 0.04, Vector2.ONE)
+		draw_texture_rect(pic, Rect2(Vector2(-pw / 2.0, -ph / 2.0), Vector2(pw, ph)), false, Color(1, 1, 1, pfade))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		return
+	var w: float = f.w
+	var h: float = w * 0.35
 	var fade := 1.0 if f.dead_t < 0.0 else maxf(0.0, 1.0 - f.dead_t / 0.5)
 	var col := Color(k.col, fade)
 	var wig := sin(Time.get_ticks_msec() / 150.0 + f.x * 0.01) * h * 0.12
@@ -401,13 +469,5 @@ func _draw_fish(f: Dictionary) -> void:
 		var a := TAU * i / 24.0
 		body.append(c + Vector2(cos(a) * w * 0.46, sin(a) * h * 0.5))
 	draw_colored_polygon(body, col)
-	if f.kind == "swordfish":  # (its sword, out in front)
-		draw_line(c + Vector2(-w * 0.44, -h * 0.05), c + Vector2(-w * 0.78, -h * 0.12), Color(0.85, 0.85, 0.9, fade), 5.0, true)
-	if f.kind == "barracuda":  # (teeth)
-		for t in 4:
-			var x := -w * 0.42 + t * 9.0
-			draw_colored_polygon(PackedVector2Array([c + Vector2(x, h * 0.12), c + Vector2(x + 4.0, h * 0.3), c + Vector2(x + 8.0, h * 0.12)]), Color(1, 1, 1, fade))
-	if f.kind == "whale":  # (a spout of water on top)
-		draw_line(c + Vector2(-w * 0.1, -h * 0.5), c + Vector2(-w * 0.1, -h * 0.85), Color(0.7, 0.85, 1.0, 0.7 * fade), 4.0, true)
 	draw_circle(c + Vector2(-w * 0.3, -h * 0.15), h * 0.09, Color(1, 1, 1, fade))
 	draw_circle(c + Vector2(-w * 0.31, -h * 0.15), h * 0.045, Color(0, 0, 0, fade))

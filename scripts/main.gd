@@ -70,6 +70,7 @@ const BOSS_BG := ["", "boss_woodcutter", "boss_blightmother", "boss_last_winter"
 
 func _swap(c: Control) -> void:
 	Backdrop.room = _room_bg
+	Audio.stop_all_voices()  # (whoever was speaking stops with the screen)
 	if is_instance_valid(current):
 		current.queue_free()
 	current = c
@@ -716,12 +717,22 @@ func _show_event(ev: Dictionary) -> void:
 			g.act = run.act
 			g.finished.connect(func(wh, ba, sw):
 				var res := run.fish_reward(wh, ba, sw)
+				if UiSkin.is_puppet():
+					_tally_on_stage(ev, String(res.text))  # (the old man and his stream stay; the tally goes in the hint panel)
+					return
 				var after := _message(ev.title, res.text, ["Continue"], Color(0.8, 0.7, 1))
 				after.pressed.connect(func(_k): show_map()))
 			_stage_overlay(g)
 			return
 		if o.has("recycle"):
 			_event_recycle(ev, o)
+			return
+		if o.get("fuse", "") == "half" and is_instance_valid(_overlay) and _overlay is EventStage and EventStage.LAYOUTS.get(String(ev.get("id", "")), {}).get("stage_fuse", false):
+			# An Abandoned Camp on its stage: the spells are picked and fused right there, in the cauldron
+			var es_f: EventStage = _overlay
+			es_f.continued.connect(show_map, CONNECT_ONE_SHOT)
+			es_f.fuse_cancelled.connect(func(): _show_event(ev), CONNECT_ONE_SHOT)
+			es_f.start_fuse(String(o.text))
 			return
 		if o.get("fuse", "") == "half":
 			# An Abandoned Camp: the campfire's fusing, without the wax; backing out returns to the camp
@@ -799,6 +810,7 @@ func _event_result(ev: Dictionary, opt: Dictionary, bottle_at: int, spell_id := 
 		# Skipping Stones: what happened, then the event's own choices again
 		var again := ev.duplicate()
 		again.text = res.text
+		again["again"] = true  # (the lake and its stones stay; the stone that was just thrown skips across)
 		var opts := []
 		for o in ev.options:
 			var c: Dictionary = o.duplicate()
@@ -816,10 +828,25 @@ func _event_result(ev: Dictionary, opt: Dictionary, bottle_at: int, spell_id := 
 		page["again"] = true
 		_show_event(page)
 		return
+	# what comes after the words: a fight, a room (a campfire, the merchant, a boss), or the map
+	var go_on := func():
+		if res.has("room"):
+			_event_room(String(res.room))
+		elif res.has("fight"):
+			run.current_node()["as"] = res.fight.kind
+			var ids: Array = res.fight.ids
+			if ids.is_empty():
+				ids = run.encounter_ids()
+			else:
+				run.set_encounter(ids)
+			_show_loadout(ids)
+		else:
+			show_map()
 	# an event with props that tells its result on its own stage (no black screen): the words in the hint panel, then Continue
-	if is_instance_valid(_overlay) and _overlay is EventStage and EventStage.LAYOUTS.has(String(ev.get("id", ""))) and not res.has("fight") and res.overflow.is_empty():
+	if is_instance_valid(_overlay) and _overlay is EventStage and EventStage.LAYOUTS.has(String(ev.get("id", ""))) and res.overflow.is_empty():
 		var es: EventStage = _overlay
-		es.continued.connect(show_map, CONNECT_ONE_SHOT)
+		es.continued.connect(go_on, CONNECT_ONE_SHOT)
+		es.continue_label = "Fight!" if res.has("fight") or res.get("room", "") == "boss" else "Continue"
 		if current is FightScreen and not EventStage.LAYOUTS[String(ev.get("id", ""))].get("no_hud", false):
 			current.peek_hud(true)  # (what the event cost shows on the HP bar)
 		var soaked_after: Dictionary = run.spell(String(res.soaked)) if res.has("soaked") else {}
@@ -837,19 +864,6 @@ func _event_result(ev: Dictionary, opt: Dictionary, bottle_at: int, spell_id := 
 	var fights: bool = res.has("fight") or res.get("room", "") == "boss"
 	var after := _message(ev.title, res.text, ["Fight!" if fights else "Continue"], Color(0.8, 0.7, 1), shown)
 	after.pressed.connect(func(_k):
-		var go_on := func():
-			if res.has("room"):
-				_event_room(String(res.room))
-			elif res.has("fight"):
-				run.current_node()["as"] = res.fight.kind
-				var ids: Array = res.fight.ids
-				if ids.is_empty():
-					ids = run.encounter_ids()
-				else:
-					run.set_encounter(ids)
-				_show_loadout(ids)
-			else:
-				show_map()
 		if res.overflow.is_empty():
 			go_on.call()
 		else:
@@ -893,6 +907,8 @@ func _bear_scene(ev: Dictionary) -> void:
 func _event_stage(ev: Dictionary, pick: Callable) -> void:
 	var s := EventStage.new()
 	s.ev = ev
+	s.edit_allowed = _test_mode
+	s.run_ref = run
 	s.act = run.act
 	s.again = ev.get("again", false)
 	s.disabled = ev.options.map(func(o): return not run.can_choose(o))
@@ -958,6 +974,22 @@ func _stage_overlay(c: Control) -> void:
 		_put(c)
 
 
+## After a minigame: the event's own stage again (its props stay), the tally in the hint panel, then Continue.
+func _tally_on_stage(ev: Dictionary, text: String) -> void:
+	var fev := ev.duplicate()
+	fev["options"] = []
+	fev["text"] = ""
+	var es := EventStage.new()
+	es.ev = fev
+	es.again = true
+	es.act = run.act
+	es.continued.connect(show_map, CONNECT_ONE_SHOT)
+	_stage_overlay(es)
+	if current is FightScreen:
+		current.peek_hud(true)
+	es.show_result.call_deferred(text)
+
+
 ## The Farmer's Farm: the shooting in the wheat, then the farmer's tally (and your Leaves).
 func _farm_game(ev: Dictionary) -> void:
 	var g := FarmGame.new()
@@ -974,18 +1006,7 @@ func _farm_game(ev: Dictionary) -> void:
 	g.finished.connect(func(gob, hob, fai):
 		var res := run.farm_reward(gob, hob, fai)
 		if UiSkin.is_puppet() and _on_stage():
-			var fev := ev.duplicate()
-			fev["options"] = []
-			fev["text"] = ""
-			var es := EventStage.new()
-			es.ev = fev
-			es.again = true
-			es.act = run.act
-			es.continued.connect(show_map, CONNECT_ONE_SHOT)
-			_stage_overlay(es)
-			if current is FightScreen:
-				current.peek_hud(true)
-			es.show_result.call_deferred(String(res.text))  # (the farmer and his wheat stay; the tally goes in the hint panel)
+			_tally_on_stage(ev, String(res.text))  # (the farmer and his wheat stay; the tally goes in the hint panel)
 			return
 		var after := _message(ev.title, res.text, ["Continue"], Color(0.8, 0.7, 1))
 		after.pressed.connect(func(_k): show_map()))
@@ -1039,7 +1060,7 @@ func _result_how(ev: Dictionary, opt: Dictionary, text: String, spell_id: String
 		if String(opt.label).begins_with("Jump"):
 			return "bridge_fail" if text.contains("splash") else "bridge_ok"
 		return "bridge_around"
-	return EventStage.how_for(id, String(opt.label))
+	return EventStage.how_for_result(id, String(opt.label), text)
 
 
 ## The Recycler, on his stage: your item goes into him, he hands back three, and the one you click is yours (then his words and Continue).
@@ -1149,7 +1170,7 @@ func _bottle_cards(title: String, body: String, ids: Array, extra: Array, then: 
 	_put(s)
 
 
-## The Ruined Watchtower: off to what you saw. A boss is a random Act 1 one, with no talk first and full boss rewards,
+## The Ruined Watchtower: off to what you saw (the merchant's shop, the Abandoned Camp event). A boss is a random Act 1 one, with no talk first and full boss rewards,
 ## but the act doesn't end.
 func _event_room(kind: String) -> void:
 	var n := run.current_node()
@@ -1161,6 +1182,10 @@ func _event_room(kind: String) -> void:
 		var ids: Array = [bosses[run.rng.randi() % bosses.size()]]
 		run.set_encounter(ids)
 		_show_loadout(ids)
+	elif kind == "lost_camp":  # (the tent seen from the tower: on to An Abandoned Camp)
+		var camp := MapEvents.get_event("lost_camp")
+		_room_bg = EVENT_BG.get("lost_camp", "")
+		_show_event(camp)
 	else:
 		_enter_room(kind)
 

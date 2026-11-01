@@ -22,8 +22,8 @@ IMAGESET = r"D:\GitHub Projects\ImageSet"
 P = AP.PUPPET
 # set name, style file, prompts file, {picture name: (file written, longest edge)}
 JOBS = [
-    ("Puppet Artifact Extra", "Icon/Artifact/artifact_icons_style.txt", "Icon/Artifact/artifact_extra_prompts.txt", {"Artifact Magic Box": ("Icon/Artifact/magic_box.png", 128)}),
-    ("Puppet Bottle Extra", "Icon/Bottle/bottle_icons_style.txt", "Icon/Bottle/bottle_extra_prompts.txt", {"Bottle Tinkers Glue": ("Icon/Bottle/tinkers_glue.png", 128)}),
+    ("Puppet Artifact Extra", "Icon/Artifact/artifact_icons_style.txt", "Icon/Artifact/artifact_extra_prompts.txt", {"Artifact Magic Box": ("Icon/Artifact/magic_box.png", 128), **{"Artifact " + n: ("Icon/Artifact/%s.png" % i, 128) for n, i in [("A Nice Lute", "nice_lute"), ("Cactus Heart", "cactus_heart"), ("Ever Thirsting", "ever_thirsting"), ("Blanket", "blanket"), ("Sake Bottle", "sake_bottle"), ("Family Picture", "family_picture")]}}),
+    ("Puppet Bottle Extra", "Icon/Bottle/bottle_icons_style.txt", "Icon/Bottle/bottle_extra_prompts.txt", {"Bottle Tinkers Glue": ("Icon/Bottle/tinkers_glue.png", 128), "Bottle Broken Bottle": ("Icon/Bottle/broken_bottle.png", 128)}),
     ("Puppet Intent Extra", "Icon/Intent/intent_extra_style.txt", "Icon/Intent/intent_extra_prompts.txt", {"Intent Revive": ("Icon/Intent/intent_revive.png", 128)}),
     ("Puppet Hands", "UI/Icons/hand_style.txt", "UI/Icons/hand_prompts.txt",
      {"Cursor Hand Open": ("UI/Icons/cursor_hand_open.png", 160), "Cursor Hand Fist": ("UI/Icons/cursor_hand_fist.png", 160)}),
@@ -38,6 +38,9 @@ JOBS = [
      {"Splash %s %d" % (c, k): ("UI/Fx/splash_%s_%d.png" % (c.lower(), k), 320) for c in ["Fire", "Water", "Wind"] for k in [1, 2, 3]}),
     ("Puppet Splash White", "UI/Fx/splash_white_style.txt", "UI/Fx/splash_white_prompts.txt",
      {"Splash Any %d" % k: ("UI/Fx/splash_any_%d.png" % k, 320) for k in [1, 2, 3]}),
+    # 2026-11-02: the water splash each time the skipping stone touches the lake (EventStage._skip_hops)
+    ("Puppet Skip Splash Carved", "Events/skip_splash_style.txt", "Events/skip_splash_prompts.txt",
+     {"Skip Splash %d" % k: ("Events/skip_splash_%d.png" % k, 256) for k in [1, 2, 3]}),
 ]
 
 

@@ -46,3 +46,7 @@
 - `HFlowContainer` fights hand-placed children: use a plain `Control`.
 - Edit `.gd` with the Edit tool or Python (UTF-8); PowerShell Get/Set-Content turns it into mojibake.
 - Art exporters (`tools/export_*.py`) are slow (~100 s) and silently drop a piece when a PDF label is renamed: read their log.
+
+## Art generation
+- Every NEW asset is generated on a pure black background (#000000), not white: the `*_style.txt` files in `assets/` already say so; keep it in any new style file or prompt. (Old pictures were made on white; `cut_ball` / `cut_light` in `tools/import_puppet_ui.py` are for white subjects on white.)
+

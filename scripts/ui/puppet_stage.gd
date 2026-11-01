@@ -222,6 +222,47 @@ func fit(width: float) -> void:
 
 ## The wooden scenery in front of the back wall: far mountains stand still, clouds, sun and trees slide on rails and rock a little.
 ## Every map (every stage that is built) lays it out anew: which mountains, trees and tufts come, and where.
+## An underwater stage (Elemental Fishing's minigame): the back wall is the sea (Stage/Act4/Backdrop) and the props that stand on it are reefs, kelp and algae
+## (Stage/Act4/Props), which walk in like a new act's. false puts the act's own back wall and props back. Returns the tween of the props coming in.
+var _water := false
+var _act_before := 1
+
+
+func is_underwater() -> bool:
+	return _water
+
+
+func set_underwater(on: bool) -> Tween:
+	if on == _water:
+		return null
+	_water = on
+	if on:
+		_act_before = act_no
+		act_no = 4
+	else:
+		act_no = _act_before
+	for q in _quads:
+		if q.names == QUADS["back_wall"]:
+			q.tex = _pic("back_wall")
+			q.queue_redraw()
+	return bring_props()
+
+
+func _add_water_props(rng: RandomNumberGenerator) -> void:
+	var reefs := [1, 2, 3, 4, 5]
+	_shuffle(reefs, rng)
+	for k in 4:  # (four of the five reefs, where the mountains stand)
+		_add_anchored("props/reef_%d" % reefs[k], _spread(k, 4, rng), 0.0, rng.randf_range(115.0, 185.0), 0.0, 1.0, 0.0, 0.0, 0.8, 0.0)
+	var kelps := [1, 2, 3, 4, 5]
+	_shuffle(kelps, rng)
+	for k in 5:  # (the kelp sways in the current where the trees stand)
+		_add_anchored("props/kelp_%d" % kelps[k], _spread(k, 5, rng), 6.0, rng.randf_range(205.0, 275.0), 0.0, rng.randf_range(0.8, 1.1), rng.randf() * 5.0, rng.randf_range(0.035, 0.045), 0.84, 0.4, true)
+	var nb := rng.randi_range(7, 9)
+	for i in nb:
+		_add_anchored("props/algae_%d" % rng.randi_range(1, 6), _spread(i, nb, rng), 12.0 + (i % 3) * 5.0, rng.randf_range(48.0, 68.0), 0.0, rng.randf_range(1.2, 1.9), i * 1.3, 0.05, 0.86, 0.4, true)
+	_place_props()
+
+
 func add_default_props(rng_seed := 0) -> void:
 	# every piece is placed by rule (see _place_props): `frac` is how far across the back wall it stands (0 = its left edge, 1 = its right
 	# edge, the piece itself always staying inside the wall), `dy` how far below the seam between the back wall and the floor its feet are
@@ -231,6 +272,9 @@ func add_default_props(rng_seed := 0) -> void:
 		rng.randomize()
 	else:
 		rng.seed = rng_seed
+	if _water:
+		_add_water_props(rng)
+		return
 	var mountains := [1, 2, 3, 4, 5]
 	_shuffle(mountains, rng)
 	for k in 4:  # (four of the five, spread over the wall with some jitter)

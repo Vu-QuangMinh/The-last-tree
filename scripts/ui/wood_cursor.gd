@@ -10,6 +10,10 @@ const SLANT := -PI / 4.0  # up-left
 const UP := 0.0
 const DOWN := PI
 
+## A picture that replaces the arrow for a while (An Abandoned Camp: the torch). It stands upright, its top is the hotspot. `override_owner` is who set it.
+static var override_name := ""
+static var override_owner: Object = null
+
 ## () -> the screen on show (not used for the angle any more: the arrow does not turn).
 var get_screen: Callable
 var _angle := SLANT
@@ -48,6 +52,12 @@ func _process(d: float) -> void:
 
 
 func _draw() -> void:
+	if override_name != "" and UiSkin.tex(override_name) != null:
+		var ot := UiSkin.tex(override_name)
+		var oh := 120.0
+		var ow := oh * ot.get_width() / float(ot.get_height())
+		draw_texture_rect(ot, Rect2(get_local_mouse_position() + Vector2(-ow / 2.0, 0.0), Vector2(ow, oh)), false)
+		return
 	var t := UiSkin.tex("cursor_arrow")
 	if t == null:
 		return

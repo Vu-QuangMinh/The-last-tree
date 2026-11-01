@@ -21,6 +21,7 @@ var _status: RichTextLabel
 var _fuse_btn: Button
 var _out: SpellCard  # the fused spell's card, once both slots are full
 var _busy := false  # the fusion is playing
+var embedded := false  # (the event stage plays only the fusion effect with this: no screen of its own)
 var no_wax := false  # (An Abandoned Camp: the spells are only half-cooked, so no wax comes of the fusion)
 var _others: Control  # the "your other spells" overlay, while it's open
 
@@ -32,6 +33,9 @@ func setup(p_run: RunState) -> void:
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UiTheme.get_theme()
+	if embedded:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		return
 	var bd := Backdrop.new()
 	bd.act = run.act
 	add_child(bd)
@@ -398,7 +402,7 @@ func _unhandled_key_input(ev: InputEvent) -> void:
 
 ## The two cards twist into each other in a tightening spiral, flaring white, and collapse into a white-hot ball.
 ## The ball becomes the new card, and a drop of purple wax seals one Essence of it (you choose which).
-func _play_fusion(a: Dictionary, b: Dictionary, from_a: Vector2, from_b: Vector2, result: Dictionary) -> void:
+func _play_fusion(a: Dictionary, b: Dictionary, from_a: Vector2, from_b: Vector2, result: Dictionary, center := Vector2(-1, -1)) -> void:
 	var stage := Control.new()
 	stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	stage.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -409,9 +413,11 @@ func _play_fusion(a: Dictionary, b: Dictionary, from_a: Vector2, from_b: Vector2
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stage.add_child(shade)
-	create_tween().tween_property(shade, "color:a", 0.85, 0.3)
+	create_tween().tween_property(shade, "color:a", 0.55 if embedded else 0.85, 0.3)
 	var view_size := get_viewport_rect().size
 	var mid := Vector2(view_size.x / 2.0, 430)  # the middle of the screen (it can be wider than 1920)
+	if center.x >= 0.0:
+		mid = center  # (the event stage: the fusion happens in the cauldron)
 	var half := Vector2(SpellCard.W, SpellCard.H) / 2.0
 	# the two cards live in a picture of their own (a SubViewport) so the black hole can bend the picture
 	var vp := SubViewport.new()
@@ -482,6 +488,12 @@ func _play_fusion(a: Dictionary, b: Dictionary, from_a: Vector2, from_b: Vector2
 	bt.tween_property(ball, "radius", 70.0, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	await bt.finished
 	await get_tree().create_timer(0.35).timeout
+	if embedded:  # (the stage shows the new card itself, in the middle of the screen)
+		var out := create_tween()
+		out.tween_property(ball, "radius", 0.0, 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		await out.finished
+		stage.queue_free()
+		return
 	# 4. the ball cools into the new spell
 	var card := SpellCard.make(result)
 	card.is_zoom_copy = true  # (only for show: no hover magnifier, and it never catches the mouse)

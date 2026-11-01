@@ -130,7 +130,7 @@ def newest(folder, raw):
 
 
 def cut(path):
-    """White-background picture -> trimmed RGBA."""
+    """Picture on a plain background (pure black since 2026-11-02, white before: the AI cut does not care) -> trimmed RGBA."""
     global _proc
     if _proc is None:
         import tachnen_core as core

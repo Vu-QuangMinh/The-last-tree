@@ -257,10 +257,30 @@ func wav_from_file(path: String) -> AudioStreamWAV:
 	return w
 
 
+## Sounds that are somebody speaking (or a tune that goes with an event): stop_all_voices() cuts every one of them, whoever started it.
+const VOICE_NAMES := ["merchant_greeting", "getout", "recycler_reuse", "recycler_trade", "witch_blood", "well_whisper", "sfx_cactus_whisper", "merry puppets"]
+
+
+static func is_voice(name: String) -> bool:
+	return name.begins_with("evv_") or name.begins_with("mv_") or name.begins_with("hm_") or name in VOICE_NAMES
+
+
+## Cut every voice at once: the boss's recorded lines, the events' and the merchant's lines, the greetings. Called when the screen changes.
+func stop_all_voices() -> void:
+	stop_voice()
+	for c in get_children():
+		if c is AudioStreamPlayer and c.has_meta("voice"):
+			c.stop()
+			c.queue_free()
+
+
 ## One-shot SFX. Safe to call for a name that has no file yet (it just stays silent).
 ## from: start this many seconds into the sound (to skip the silence some recordings begin with).
 func play(name: String, volume_db := 0.0, pitch := 1.0, from := 0.0, stackable := true) -> void:  # (stackable false: a volley of the same sound, every shot is heard at full level)
 	if _silenced.has(name):
+		return
+	if is_voice(name):
+		play_held(name, volume_db, pitch)  # (a voice has a player of its own, so it can be cut)
 		return
 	var s: AudioStream = _override.get(name, null)
 	if s == null:
@@ -291,6 +311,8 @@ func play_held(name: String, volume_db := 0.0, pitch := 1.0) -> AudioStreamPlaye
 	p.stream = s
 	p.volume_db = _db(sfx_level * overall_level) + volume_db
 	p.pitch_scale = pitch
+	if is_voice(name):
+		p.set_meta("voice", true)
 	add_child(p)
 	p.finished.connect(p.queue_free)
 	p.play()

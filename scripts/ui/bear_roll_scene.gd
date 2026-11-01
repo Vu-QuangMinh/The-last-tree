@@ -72,7 +72,7 @@ func _ready() -> void:
 		_story.text = "Someone is rolling across the road, round and round, back and forth, and they are not stopping."
 		_x = 500.0
 		_rolling = true
-		var bush_tex: Texture2D = UiSkin.tex("event_bush")
+		var bush_tex: Texture2D = UiSkin.tex("event_bush_exit")
 		if bush_tex != null:
 			_bush = TextureRect.new()
 			_bush.texture = bush_tex

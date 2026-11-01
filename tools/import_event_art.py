@@ -16,6 +16,7 @@ sys.path.insert(0, TACHNEN)
 from PIL import Image
 
 RAW = r"E:\GitHub\ImageSet\output\Puppet Events"
+RAWS = [RAW, r"E:\GitHub\ImageSet\output\Puppet Events Act2"]  # (the second act's pictures have their own set and style)
 OUT = os.path.join(AP.PUPPET, "Events")
 CUT_OPTS = {"model": "birefnet-general", "use_gpu": True, "gpu_mem_gb": 0, "alpha_matting": False, "am_fg": 240, "am_bg": 10,
             "am_erode": 10, "post_process_mask": True, "defringe": True, "alpha_cutoff": 0, "feather": 0.0, "bg_mode": "transparent",
@@ -25,7 +26,7 @@ HAND_MADE = {"Event Bridge Stream"}  # (the user painted these over the generate
 
 
 def newest(name):
-    files = [f for f in glob.glob(os.path.join(glob.escape(RAW), glob.escape(name) + "_*.png"))
+    files = [f for raw in RAWS for f in glob.glob(os.path.join(glob.escape(raw), glob.escape(name) + "_*.png"))
              if re.search(r"_\d{8}_\d{6}\.png$", f)]
     return max(files, key=os.path.getmtime) if files else None
 
@@ -63,7 +64,7 @@ def main():
     force = "--force" in args
     only = [a for a in args if not a.startswith("--")]
     os.makedirs(OUT, exist_ok=True)
-    names = sorted({os.path.basename(f).rsplit("_", 2)[0] for f in glob.glob(os.path.join(glob.escape(RAW), "Event *_*.png"))})
+    names = sorted({os.path.basename(f).rsplit("_", 2)[0] for raw in RAWS for f in glob.glob(os.path.join(glob.escape(raw), "Event *_*.png"))})
     for name in names:
         if only and name not in only:
             continue

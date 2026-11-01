@@ -962,9 +962,9 @@ func test_elemental_fishing_pays_per_fish() -> void:
 	var run := RunState.new()
 	run.setup(db, ["fire_ball"], [], 3)
 	run.amber = 0
-	var res := run.fish_reward(1, 2, 3)  # 10 + 8 + 18
-	assert_eq([res.total, run.amber], [36, 36])
-	assert_true(String(res.text).contains("1 whale,"))
+	var res := run.fish_reward(1, 2, 3)  # 10 + 12 + 12
+	assert_eq([res.total, run.amber], [34, 34])
+	assert_true(String(res.text).contains("1 big fish,"))
 
 
 func test_mausoleum() -> void:
@@ -991,7 +991,7 @@ func test_watchtower_boss_keeps_the_act() -> void:
 	var ev := MapEvents.get_event("watchtower")
 	var run := RunState.new()
 	run.setup(db, ["fire_ball"], [], 3)
-	assert_eq(run.event_outcome(ev.options[0]).room, "rest")
+	assert_eq(run.event_outcome(ev.options[0]).room, "lost_camp")
 	assert_eq(run.event_outcome(ev.options[2]).room, "shop")
 	assert_eq(run.event_outcome(ev.options[1]).room, "boss")
 	run.act = 2

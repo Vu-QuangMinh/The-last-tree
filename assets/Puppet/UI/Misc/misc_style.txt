@@ -2,6 +2,6 @@ Style: a mouse pointer that is a real physical object genuinely hand-carved from
 
 Lighting: soft even diffuse light from the upper left, gentle natural shading that shows the depth of the carving, no strong highlights, no glossy shine.
 
-Composition: this one object only, centred, seen straight from the front with no perspective, filling most of the square image with an even margin, bold and simple enough to read when shrunk to 32 pixels. Isolated on a pure white seamless background (#FFFFFF), as if cut out: no table, no surface, no cast shadow, no reflection, no gradient, no other objects, no hands.
+Composition: this one object only, centred, seen straight from the front with no perspective, filling most of the square image with an even margin, bold and simple enough to read when shrunk to 32 pixels. Isolated on a pure black seamless background (#000000), as if cut out: no table, no surface, no cast shadow, no reflection, no gradient, no other objects, no hands.
 
 Must look like a tangible wooden craft object with real material texture. Not vector art, not flat colours, not clean outlines, not cartoon, not a sticker, not plastic, not glossy, not a 3D game render. No text, letters, numbers, logos or watermark.

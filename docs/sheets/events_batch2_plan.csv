@@ -1,0 +1,53 @@
+Event,Asset,Action
+1. The Whispering Well (Act 1; nhìn thấy HP vì có mất máu),Một cái giếng đá phủ rêu có mái gỗ nhỏ,Các props được kéo ra. Giếng ở giữa; đống lá bên trái; xô nước bên phải. Sân khấu hơi tối; giếng thì thầm (sfx whisper)
+"Toss in 50 Leaves: nhận 2 bottle.",Một đống lá vàng,"Hover lên đống lá, đống lá sáng lên và có dòng ""Toss in 50 Leaves"". Click: lá bay vào giếng (sfx splash) rồi 2 bottle nổi lên bay về phía user"
+"Drink from it: ở đầu trận kế bị Poison 3.",Một cái xô gỗ đầy nước xanh đục,"Hover lên xô, xô sáng lên và có dòng ""Drink from it"". Click: xô rung, nháy xanh độc (sfx hurt)"
+"Jump in: mất 15 HP, nhận artifact curse.",,"Hover lên giếng, giếng sáng lên và có dòng ""Jump in"". Click: giếng rung, sfx splash, màn hình rung, HP bar giảm, thẻ artifact hiện ở giữa"
+,,
+2. A Lost Sprite (Act 1; không HUD),Một tiên gió nhỏ đang khóc,Tiên gió lơ lửng giữa sân khấu và run rẩy
+"Help him confront the monster: trận elite, bắt đầu với 2 Air.",Bụi cỏ (dùng lại bụi cỏ ở event 5),"Hover tiên gió, tiên sáng lên và có dòng ""Help him confront the monster"". Click: tiên bay lên vút một vòng rồi kết quả hiện trên sân khấu, nút Fight!"
+"Refuse to help: không có gì xảy ra.",,"Hover bụi cỏ, bụi cỏ sáng lên và có dòng ""Refuse to help"". Click: tiên ngừng khóc, ủ rũ trôi ra khỏi sân khấu"
+,,
+3. The Mushroom Ring (Act 1; thấy HP),Một vòng nấm phát sáng,Các props được kéo ra. Vòng nấm ở giữa; bụi cỏ bên phải. Sân khấu tối và vòng nấm có ánh sáng sau lưng
+"Eat a mushroom: 50% mất 5 HP; 49% hồi 5 HP; 1% +20 max HP.",Một bụi cỏ (dùng lại),"Hover vòng nấm, nấm sáng lên và có dòng ""Eat a mushroom"". Click: một cây nấm bật ra bay về phía user (sfx pop); độc: nháy xanh + sfx hurt; ngon: tim bay xuống HP bar; kỳ diệu: nháy vàng"
+"Walk away: không có gì xảy ra.",,"Hover bụi cỏ, bụi cỏ sáng lên và có dòng ""Walk away"""
+,,
+4. The Hollow Stump (Act 1; thấy HP),Một gốc cây rỗng có hai mắt vàng nhìn ra,Các props được kéo ra. Gốc cây ở giữa; bụi cỏ bên phải. Hai mắt trong hốc chớp chớp
+"Reach in: 50% 1 bottle, 25% 30 Leaves, 20% mất 5 HP, 5% artifact.",Một bụi cỏ (dùng lại),"Hover gốc cây, gốc sáng lên và có dòng ""Reach in"". Click: gốc rung; bottle/lá/artifact bay ra; cắn: sfx hurt + HP giảm"
+"Throw in a bottle: ném 1 bottle của bạn vào.",,"Các bottle của user hiện nhấp nháy ở giữa màn hình, hover có dòng ""Throw this bottle in"". Click: bottle bay vào hốc cây rồi vỡ (sfx)"
+50%: ném trúng thứ gì đó → trận fight.,,Gốc cây rung dữ dội rồi kết quả hiện trên sân khấu với nút Fight!
+10%: không có gì xảy ra.,,Chỉ có tiếng vỡ rất xa
+40%: nhận 3 broken bottle.,,"Giọng gốc cây (TTS) càu nhàu ""Y'all quit chuckin' things in here!"", 3 bottle vỡ bay ra"
+Walk away.,,"Hover bụi cỏ, bụi cỏ sáng lên và có dòng ""Walk away"""
+,,
+5. A Travelling Bard (Act 1; thấy HP vì hồi 10),Một nhạc sĩ lang thang cầm cây đàn,Các props được kéo ra. Bé nai bên trái; nhạc sĩ ở giữa; cây đàn xương nai bên phải
+"That's animal cruelty!: trận elite Enraged Rolling Bear.",Một chú nai bị cưa sừng,"Hover nai, nai sáng lên và có dòng ""That's animal cruelty!"". Click: nhạc sĩ giận dữ, đàn nảy tiếng chói tai (sfx), nhạc sĩ rung, kết quả hiện kèm nút Fight!"
+"It is beautiful: hồi 10 HP.",Một cây đàn lute làm bằng gạc nai,"Hover nhạc sĩ, nhạc sĩ sáng lên và có dòng ""It is beautiful"". Click: nhạc sĩ chơi một bài (sfx lute tự làm), tim bay xuống HP bar"
+"Can I have it?: trang thứ hai, trả 100 Leaves để lấy đàn (artifact Nice Lute).",,"Hover cây đàn, đàn sáng lên và có dòng ""Can I have it?"". Trang 2: đàn = ""Pay 100 Leaves"" (xám nếu thiếu), nhạc sĩ = ""Actually, I don't have that much"". Trả tiền: đàn bay về phía user, hiện thẻ artifact"
+,,
+6. A Cursed Shrine (Act 1; thấy HP),Một tượng thần cười nhe răng ngậm hộp đen,Các props được kéo ra. Tượng ở giữa; đống lá bên trái; bát cúng bên phải. Sân khấu hơi tối
+"Pry the box from its mouth: mất 10 HP, nhận artifact curse.",Một đống lá vàng (dùng lại của event 1),"Hover tượng, tượng sáng lên và có dòng ""Pry the box from its mouth"". Click: hàm tượng đóng sập (rung + sfx cắn), HP bar giảm, thẻ artifact hiện"
+"Take the leaves: mất 10 HP, nhận 50 Leaves.",Một cái bát cúng gỗ,"Hover đống lá, đống lá sáng lên và có dòng ""Take the leaves"". Click: tượng cắn, lá bay về phía user"
+"Put down 100 more Leaves: tượng nhả hộp, nhận artifact thường.",,"Hover bát cúng, bát sáng lên và có dòng ""Put down 100 more Leaves"" (xám nếu thiếu Leaves). Click: lá rơi vào bát, tượng nhả hộp"
+,,
+7. An Abandoned Camp (cả 3 act; thấy HP),Một vòng lửa trại đã tắt có khúc củi cháy dở,Các props được kéo ra. Vòng lửa trại ở giữa; tấm chăn trải bên phải
+"Half-cook some spells: mở màn nung spell (không có sáp).",Một tấm chăn trải rách,"Hover vòng lửa, vòng lửa sáng lên và có dòng ""Half-cook some spells"". Click: lửa trại sputter, chuyển sang màn Fuse"
+"Rest restlessly: hồi một nửa lượng bình thường.",,"Hover tấm chăn, chăn sáng lên và có dòng ""Rest restlessly"". Click: chăn lăn qua lăn lại (sfx), tim bay xuống HP bar"
+,,
+8. Elemental Fishing (Act 2; không HUD),Một ông lão gầy trơ xương ngồi câu cá,Các props được kéo ra. Ông lão bên trái; dòng suối tối ở giữa; bụi cỏ bên phải
+"Help him fish: mở minigame câu cá 1 phút.",Một dòng suối đục (rộng),"Hover ông lão hoặc dòng suối, cả hai sáng lên và có dòng ""Help him fish"". Click: sang trang Ready, rồi minigame FishGame; sau đó ông lão đọc kết quả trên sân khấu với Continue"
+"Walk away: không có gì xảy ra.",,"Hover bụi cỏ, bụi cỏ sáng lên và có dòng ""Walk away"""
+,,
+9. The Mausoleum (Act 2; thấy HP vì hồi max HP),Một lăng mộ cổ có 3 quan tài đá,Sân khấu tối. Lăng mộ ở giữa; ba quả cầu sáng treo thả xuống từ trên cao trên ba quan tài
+"Touch the red ball: +20% max HP (hồi tương ứng).",Ba quả cầu sáng: đỏ / xanh dương / xanh lá,"Hover quả cầu, quả cầu sáng chói lên và có dòng ""Touch the red ball"" (blue/green tương tự)"
+"Touch the blue ball: 20 Lasting Shield đầu trận kế.",,"Click đỏ: cầu bay vào user, tim bay xuống HP bar. Click xanh dương: cầu bay vào user, nháy xanh lạnh (sfx shield). Click xanh lá: cầu bay vào user, Essence rơi xuống (sfx draw)"
+"Touch the green ball: 3 Essence ngẫu nhiên đầu trận kế.",,"Hai quả còn lại tắt dần"
+,,
+10. The Ruined Watchtower (Act 2; không HUD),Một tháp canh đổ nát,Sân khấu tối dần. Tháp canh ở giữa; xa xa trên ba hướng là ba thứ nhìn thấy từ đỉnh tháp
+"A camping site: tới campfire.",Một khu trại nhỏ xa xa,"Hover khu trại, sáng lên và có dòng ""A camping site"". Click: khói bay lên, kết quả hiện trên sân khấu, Continue → màn Campfire"
+"A towering monster: trận boss Act 1 ngẫu nhiên.",Một con quái khổng lồ xa xa,"Hover con quái, sáng lên và có dòng ""A towering monster"". Click: quái nhấc chân, sân khấu rung (sfx), kết quả kèm nút Fight!"
+"The merchant: tới shop.",Xe hàng của merchant (dùng lại Merchant\Cart.png),"Hover xe hàng, sáng lên và có dòng ""The merchant"". Click: xe lăn vào (sfx shop_cart_roll), Continue → Shop"
+,,
+11. Skipping Stones (Act 2; không HUD),Một cái hồ phẳng lặng,Các props được kéo ra. Hồ ở giữa; đống đá phẳng bên trái; bụi cỏ bên phải
+"Skip a stone: ném 1-21 lần nảy. 20 lần trở lên: artifact common và event kết thúc. Còn lại được ném tiếp hoặc bỏ đi.",Một đống đá phẳng và một viên đá,"Hover đống đá hoặc hồ, sáng lên và có dòng ""Skip a stone"". Click: viên đá bay ra nảy trên mặt hồ đúng số lần (sfx plink từng lần nảy), rồi kết quả hiện; ném tiếp thì viên đá mới nằm sẵn"
+"Walk away.",,"Hover bụi cỏ, bụi cỏ sáng lên và có dòng ""Walk away"""

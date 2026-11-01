@@ -21,9 +21,12 @@ SPEAKERS = {
     "witch": ("Enceladus", "A mysterious witch whispering right into your mind: slow, breathy, eerie, raspy whisper."),
     "bear_angry": ("Algenib", "A huge bear, a deep, low, gravelly male voice, furious and menacing: a growling snarl full of rage, slow and heavy, spitting each word like a threat; no laughing, no cheerfulness."),
     "bear_deep": ("Algenib", "A huge, friendly old bear, a deep, low, warm, gravelly male voice; theatrical and emotional, grateful or hurt and sad as the line asks, slow and heavy; not angry, not shouting."),
+    "fisher": ("Sadaltager", "A starving, ragged, skeletal old fisherman, thin and raspy, weak but eager, a little dark humour; slow."),
+    "stump": ("Fenrir", "A grumpy little creature living inside a tree stump, a gruff hillbilly drawl, annoyed and shouting through a hole; fast, then calm at the end."),
     "bear": ("Puck", "A big, dramatic, comical, tearful-then-furious round bear, theatrical and over the top."),
 }
-EVENT_SPEAKER = {"flying_turtle": "turtle", "turtle_falls": "turtle", "farmer_farm": "farmer", "church_of_aole": "priest"}
+EVENT_SPEAKER = {"flying_turtle": "turtle", "turtle_falls": "turtle", "farmer_farm": "farmer", "church_of_aole": "priest", "elemental_fishing": "fisher", "hollow_stump": "stump"}
+FISHER_LINES = ["Here, take them, you've earned them."]  # (EventStage.SPOKEN_PARTS: said inside the tally, whose other words change with the catch)
 BEAR_ANGRY_LINES = ["Behold, heartless stranger!", "I have come for revenge!"]
 BEAR_LINES = ["Thank you, stranger!", "Here, for your trouble.", "Why didn't you help me? Whyyyyyy..."]
 
@@ -85,6 +88,9 @@ def main() -> None:
         if sp and line.strip():
             jobs.append((t["key"], line, sp))
     jobs.append(("witch_blood", "A drop of blood for a drop of wax.", "witch"))
+    jobs.append(("well_whisper", "Traveller... come closer... I am so hungry... feed me, and I will give you something nice... or jump in... jump in...", "witch"))
+    for line in FISHER_LINES:
+        jobs.append((key_of(line), line, "fisher"))
     for line in BEAR_LINES:
         jobs.append((key_of(line), line, "bear_deep"))
     for line in BEAR_ANGRY_LINES:

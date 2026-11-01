@@ -13,6 +13,7 @@ extends Control
 
 signal picked(i: int)
 signal traded(id: String)  # the Recycler: one of the three he gave back was chosen
+signal fuse_cancelled  # (An Abandoned Camp: Back was pressed while picking the two spells)
 signal continued  # the result is read and Continue is pressed (see show_result)
 signal item_picked(opt: int, ids: Array)  # an item shown on the stage was chosen for option `opt` (as many ids as the option needs)
 
@@ -23,19 +24,19 @@ const NOTE := "Take the spell in the note, and leave one of yours in it"
 const LAYOUTS := {
 	"note_to_self": {"no_hud": true, "offer_on_stage": true, "offer_keep_props": true, "item_tags": {"Take the spell in the note, and leave one of yours in it": "Leave this spell in the note"}, "props": [{"img": "event_tray", "x": 0.47, "h": 96.0, "from": "top", "opt": NOTE},
 			{"img": "event_scroll", "x": 0.47, "h": 64.0, "dy": -50.0, "from": "top", "delay": 0.35, "tag": "scroll", "opt": NOTE},
-			{"img": "event_bush", "x": 0.62, "h": 120.0, "from": "right", "opt": "Leave the note for another day"}],
+			{"img": "event_bush_exit", "x": 0.62, "h": 120.0, "from": "right", "opt": "Leave the note for another day"}],
 		"outro": {0: "scroll_fly", 1: "lift"}},
 	"farmer_farm": {"props": [{"img": "event_wheat_row", "x": 0.64, "h": 190.0, "from": "right"}, {"img": "event_farmer", "x": 0.34, "h": 330.0, "from": "left"}]},
 	"cactus_maze": {"props": [], "forest": 20, "night": 0.62, "no_hud": true, "center": true, "flame": true, "result_on_stage": true, "item_sfx": "sfx_card_ignite",
 		"result_how": {"Ignite a spell": "burn", "Force your way": "shatter", "Follow the voice": "whisper"},
 		"item_tags": {"Ignite a spell to burn a way out": "Ignite a spell to burn a way out"}},
 	"shrinking_pond": {"no_hud": true, "center": true, "item_tags": {"Give it a spell": "Give it a spell"}, "props": [{"img": "event_pond_garden", "x": 0.5, "h": 330.0, "from": "right", "opt": "Give it a spell"},
-			{"img": "event_bush", "x": 0.67, "h": 130.0, "from": "right", "opt": "Walk away"}]},
+			{"img": "event_bush_exit", "x": 0.67, "h": 130.0, "from": "right", "opt": "Walk away"}]},
 	"church_of_aole": {"props": [{"img": "event_church", "x": 0.5, "h": 530.0, "dy": -20.0, "from": "right"},
 			{"img": "event_priest", "x": 0.455, "h": 187.0, "dy": -18.0, "from": "left", "opt": "Stay awhile and listen"},
-			{"img": "event_bush", "x": 0.575, "h": 72.0, "dy": -16.0, "from": "right", "opt": "Walk away"}], "night": 0.62, "no_hud": true},
+			{"img": "event_bush_exit", "x": 0.575, "h": 72.0, "dy": -16.0, "from": "right", "opt": "Walk away"}], "night": 0.62, "no_hud": true},
 	"flying_turtle": {"result_how": {"Help him": "turtle_help"}, "no_hud": true, "center": true, "result_on_stage": true, "props": [{"img": "event_flying_turtle_front", "role": "turtle", "x": 0.5, "h": 200.0, "fly": true, "noflip": true, "opt": "Help him"},
-			{"img": "event_bush", "x": 0.7, "h": 130.0, "from": "right", "opt": "Walk away"}]},
+			{"img": "event_bush_exit", "x": 0.7, "h": 130.0, "from": "right", "opt": "Walk away"}]},
 	"turtle_falls": {"props": [], "center": true, "result_on_stage": true, "outro": {0: "shell_fall"}},
 	"mystery_shack": {"offer_on_stage": true, "offer_keep_props": true, "items_center_x": true, "result_on_stage": true, "result_artifact": true, "item_tags": {"Give each of them a new toy, so they don't have to fight (give 2 artifacts)": "Give each a new toy"},
 		"result_how": {"Side with the boy": "boy_wins", "Side with the girl": "girl_wins", "Give each": "toys"},
@@ -44,13 +45,63 @@ const LAYOUTS := {
 			{"img": "event_girl", "role": "girl", "x": 0.66, "h": 260.0, "from": "right", "opt": "Side with the girl"}]},
 	"wax_witch": {"voice_open": "witch_blood", "center": true, "offer_on_stage": true, "offer_keep_props": true, "result_on_stage": true, "props": [{"img": "event_witch", "x": 0.5, "h": 530.0, "from": "top", "opt": "Give two drops of blood"},
 			{"img": "event_cauldron", "x": 0.385, "h": 180.0, "dy": 10.0, "from": "left", "opt": "Give one drop of blood"},
-			{"img": "event_bush", "x": 0.62, "h": 120.0, "from": "right", "opt": "Walk away"}], "night": 0.62},
+			{"img": "event_bush_exit", "x": 0.62, "h": 120.0, "from": "right", "opt": "Walk away"}], "night": 0.62},
 	"recycler": {"no_hud": true, "items_center_x": true, "item_tags": {"Give him a spell": "Trade this?", "Give him an artifact": "Trade this?", "Give him a bottle": "Trade this?"}, "props": [{"img": "event_recycler_happy", "role": "recycler", "x": 0.45, "h": 510.0, "from": "right", "slow": 5.0, "voice_in": "recycler_reuse", "sfx_in": "shop_cart_roll", "voice_arrive": "recycler_trade"},
-			{"img": "event_bush", "x": 0.68, "h": 150.0, "from": "right", "opt": "Give him nothing", "label": "Walk away"}]},
+			{"img": "event_bush_exit", "x": 0.68, "h": 150.0, "from": "right", "opt": "Give him nothing", "label": "Walk away"}]},
 	"overgrown_vine": {"center": true, "cards_dy": -80.0, "result_on_stage": true, "item_tags": {"Cast a spell to help the tree": "Cast this spell to help the tree"}, "props": [{"img": "event_vine_tree", "role": "tree", "x": 0.42, "h": 530.0, "from": "left"},
-			{"img": "event_bush", "x": 0.53, "h": 120.0, "dy": 8.0, "from": "right", "opt": "Leave the tree to its fate"}]},
+			{"img": "event_bush_exit", "x": 0.53, "h": 120.0, "dy": 8.0, "from": "right", "opt": "Leave the tree to its fate"}]},
 	"broken_bridge": {"night": 0.62, "result_on_stage": true, "props": [{"img": "event_bridge_stream", "role": "bridge", "x": 0.5, "h": 760.0, "floor_edge": true, "from": "top", "opt": "Jump over it"},
-			{"img": "event_bush", "role": "bush", "x": 0.72, "h": 110.0, "dy": 10.0, "from": "top", "opt": "Find a way around the thorny bushes", "label": "Find a way around"}]},
+			{"img": "event_bush_exit", "role": "bush", "x": 0.72, "h": 110.0, "dy": 10.0, "from": "top", "opt": "Find a way around the thorny bushes", "label": "Find a way around"}]},
+	# ---- the older "?" events (batch 2, 2026-11-01): the sheet is docs/events_batch2_plan.csv
+	"well": {"voice_open": "well_whisper", "night": 0.35, "center": true, "result_on_stage": true,
+		"result_how": {"Toss in": "well_toss", "Drink from": "well_drink", "Jump in": "well_jump"},
+		"props": [{"img": "event_well", "role": "well", "x": 0.43, "h": 400.0, "from": "top", "opt": "Jump in"},
+			{"img": "event_leaf_pile", "role": "pile", "x": 0.24, "h": 120.0, "from": "left", "opt": "Toss in 50 Leaves"},
+			{"img": "event_bucket", "role": "bucket", "x": 0.62, "h": 150.0, "from": "right", "opt": "Drink from it"}]},
+	"lost_sprite": {"no_hud": true, "center": true, "result_on_stage": true, "result_how": {"Help him": "sprite_help", "Refuse": "sprite_sad"},
+		"props": [{"img": "event_wind_sprite", "role": "sprite", "x": 0.42, "h": 300.0, "dy": -100.0, "from": "top", "bob": true, "opt": "Help him confront the monster"},
+			{"img": "event_bush_exit", "x": 0.64, "h": 120.0, "from": "right", "opt": "Refuse to help"}]},
+	"mushroom_ring": {"night": 0.5, "center": true, "result_on_stage": true, "glow": {"event_mushroom_ring": [0.55, 1.0, 0.75]},
+		"result_how": {"Eat a mushroom": "mush"},
+		"props": [{"img": "event_mushroom_ring", "role": "ring", "x": 0.43, "h": 250.0, "from": "top", "opt": "Eat a mushroom"},
+			{"img": "event_bush_exit", "x": 0.66, "h": 120.0, "from": "right", "opt": "Walk away"}]},
+	"hollow_stump": {"night": 0.3, "center": true, "result_on_stage": true, "item_tags": {"Throw in a bottle": "Throw this bottle in"},
+		"result_how": {"Reach in": "reach", "Throw in a bottle": "throw"},
+		"props": [{"img": "event_hollow_stump", "role": "stump", "x": 0.43, "h": 420.0, "from": "top", "opt": "Reach in"},
+			{"img": "event_bush_exit", "x": 0.66, "h": 120.0, "from": "right", "opt": "Walk away"}]},
+	"bard": {"music_open": "merry puppets", "center": true, "result_on_stage": true, "result_how": {"That's animal": "bard_angry", "It is beautiful": "bard_song", "Pay 100": "bard_lute"},
+		"props": [{"img": "event_deer", "role": "deer", "x": 0.25, "h": 330.0, "from": "left", "opt": "That's animal cruelty!"},
+			{"img": "event_bard", "role": "bard", "x": 0.43, "h": 420.0, "from": "top", "opt": "It is beautiful", "alt": {"Actually, I don't have that much": "Actually, I don't have that much"}},
+			{"img": "event_lute", "role": "lute", "x": 0.6, "h": 300.0, "from": "right", "opt": "Can I have it?", "alt": {"Pay 100 Leaves": "Pay 100 Leaves"}}]},
+	"cursed_shrine": {"night": 0.45, "center": true, "result_on_stage": true,
+		"result_how": {"Pry the box": "idol_bite", "Take the leaves": "idol_leaves", "Put down": "idol_gift"},
+		"props": [{"img": "event_idol", "role": "idol", "x": 0.43, "h": 350.0, "from": "top", "opt": "Pry the box from its mouth"},
+			{"img": "event_leaf_pile", "role": "pile", "x": 0.24, "h": 110.0, "from": "left", "opt": "Take the leaves"},
+			{"img": "event_offering_bowl", "role": "bowl", "x": 0.62, "h": 90.0, "from": "right", "opt": "Put down 100 more Leaves"}]},
+	"lost_camp": {"night": 0.4, "no_hud": true, "center": true, "result_on_stage": true, "stage_fuse": true, "cursor": "event_torch", "outro": {0: "light"}, "result_how": {"Rest": "bed_toss"},
+		"props": [{"img": "event_campfire_off", "role": "pit", "x": 0.37, "h": 420.0, "lit": 0.55, "from": "top", "opt": "Half-cook some spells", "label": "Use torch to half-cook some spells"},
+			{"img": "event_tent", "role": "bed", "x": 0.6, "h": 175.0, "lit": 0.55, "from": "right", "opt": "Rest restlessly", "label": "Plant the torch to protect the tent"}]},
+	"elemental_fishing": {"underwater_tail": true, "no_hud": true, "night": 0.3, "center": true, "result_on_stage": true,
+		"props": [{"img": "event_stream", "x": 0.55, "h": 190.0, "from": "right", "opt": "Help him fish", "alt": {"Ready": "Ready"}},
+			{"img": "event_fisherman", "x": 0.33, "h": 360.0, "from": "left", "opt": "Help him fish", "alt": {"Ready": "Ready"}},
+			{"img": "event_bush_exit", "x": 0.7, "h": 120.0, "from": "right", "opt": "Walk away"}]},
+	"mausoleum": {"night": 0.62, "center": true, "result_on_stage": true,
+		"glow": {"event_orb_red": [1.0, 0.3, 0.25], "event_orb_blue": [0.3, 0.55, 1.0], "event_orb_green": [0.35, 1.0, 0.45]},
+		"result_how": {"Touch the red": "orb_red", "Touch the blue": "orb_blue", "Touch the green": "orb_green"},
+		"props": [{"img": "event_mausoleum", "x": 0.43, "h": 440.0, "from": "top"},
+			{"img": "event_orb_red", "role": "orb_red", "x": 0.31, "h": 110.0, "dy": -190.0, "from": "top", "bob": true, "opt": "Touch the red ball"},
+			{"img": "event_orb_blue", "role": "orb_blue", "x": 0.43, "h": 110.0, "dy": -250.0, "from": "top", "bob": true, "opt": "Touch the blue ball"},
+			{"img": "event_orb_green", "role": "orb_green", "x": 0.55, "h": 110.0, "dy": -190.0, "from": "top", "bob": true, "opt": "Touch the green ball"}]},
+	"watchtower": {"no_hud": true, "night": 0.3, "center": true, "result_on_stage": true,
+		"result_how": {"A camping": "watch_camp", "A towering": "watch_monster", "The merchant": "watch_cart"},
+		"props": [{"img": "event_watchtower", "x": 0.43, "h": 470.0, "from": "top"},
+			{"img": "event_tent", "role": "camp", "x": 0.2, "h": 150.0, "from": "left", "opt": "A camping site"},
+			{"img": "event_far_giant", "role": "giant", "x": 0.62, "h": 230.0, "from": "right", "opt": "A towering monster"},
+			{"img": "event_merchant", "role": "cart", "x": 0.34, "h": 300.0, "dy": -4.0, "from": "left", "opt": "The merchant"}]},
+	"skipping_stones": {"no_hud": true, "center": true, "result_on_stage": true, "result_how": {"Skip": "skip"},
+		"props": [{"img": "event_lake", "role": "lake", "x": 0.5, "h": 200.0, "from": "right", "opt": "Skip a stone", "alt": {"Skip another stone": "Skip a stone"}},
+			{"img": "event_flat_stones", "role": "pile", "x": 0.2, "h": 90.0, "from": "left", "opt": "Skip a stone", "alt": {"Skip another stone": "Skip a stone"}},
+			{"img": "event_bush_exit", "x": 0.77, "h": 120.0, "from": "right", "opt": "Walk away"}]},
 }
 ## The maze's cacti, kept between its pages: [{img, x, h, dy, lit}]
 static var _forest: Array = []
@@ -75,6 +126,7 @@ var _shell: TextureRect
 var _stage: PuppetStage
 var _moon: TextureRect
 var _owns_night := false
+var _owns_water := false  # (the fisherman's tally: the stage is still the sea, and goes back to the act when this page leaves)
 var _card_node: SpellCard  # the card a result shows
 var _card_after: Dictionary = {}  # what it becomes (the Water that soaks into it)
 var _offered_opt := -1
@@ -82,6 +134,22 @@ var _offer_back := false  # the items on the stage are what the Recycler gives b
 var hidden_opts: Array = []  # options that get no button (the Recycler: nothing to give of that kind)
 var _arrival_pending := false
 var _cart_snd: AudioStreamPlayer
+var run_ref: RunState  # (An Abandoned Camp: the spells to half-cook come from here)
+var _fz_ids: Array = []  # the spells on offer while the two to fuse are picked
+var _fz_btns: HBoxContainer
+var _fz_fuse: Button
+var _fz_zoom := 0.62
+var edit_allowed := false  # the test room: F6 turns the layout editor on (see _edit_toggle)
+var _edit := false
+var _sel := -1  # the prop being edited
+var _undo: Array = []  # snapshots [{pos, size}] of every prop, before each change
+var _drag := ""  # "", "move" or "scale"
+var _drag_from := Vector2.ZERO
+var _drag_start := {}  # {pos, size} of the selected prop when the drag began
+var _edit_box: Control
+var continue_label := "Continue"  # ("Fight!" when the result is followed by a fight)
+var result_artifact := ""  # the artifact the result gives: its card is shown with the words
+var _result_text := ""
 var hard_lock := false  # nothing on the stage takes a click (the wax is being dropped)
 var _props_locked := false  # the options are being answered with items: the props no longer take clicks
 var _offer_tag := ""
@@ -102,8 +170,58 @@ static var _line: AudioStreamPlayer
 static func speak(text: String) -> void:
 	var key := voice_key(text)
 	if Audio.has_sfx(key):
+		say(key)
+		return
+	for line in SPOKEN_PARTS:  # (a page whose words change, but with one line in it that is always said: the fisherman's payment)
+		if text.contains(line) and Audio.has_sfx(voice_key(line)):
+			say(voice_key(line))
+			return
+
+
+## Lines said by their own voice file wherever they appear in a page (tools/make_event_voice.py makes them).
+const SPOKEN_PARTS := ["Here, take them, you've earned them."]
+
+
+## Cut off the line being said (an option was chosen, or Continue pressed: the words are skipped, so is the voice).
+static func stop_voice() -> void:
+	_cut_line()
+	stop_music()
+
+
+static func _cut_line() -> void:
+	if is_instance_valid(_line):
 		Audio.stop_held(_line, 0.05)
-		_line = Audio.play_held(key, 2.0)
+	_line = null
+
+
+## A named voice (voice_open / voice_in / voice_arrive) said as the current line, so it can be cut like the others.
+static func say(key: String) -> void:
+	_cut_line()
+	_line = Audio.play_held(key, 2.0)
+
+
+## A tune that plays over and over from the start of the event (layout "music_open") until the words are skipped, an option is chosen or the stage goes.
+static var _tune: AudioStreamPlayer
+var _owns_tune := false
+
+static func play_music(key: String) -> void:
+	stop_music()
+	var p: AudioStreamPlayer = Audio.play_held(key, -2.0)
+	if p == null:
+		return
+	p.finished.disconnect(p.queue_free)  # (it is not freed at its end: it starts again)
+	p.finished.connect(func():
+		if _tune == p and is_instance_valid(p):
+			p.play()
+		elif is_instance_valid(p):
+			p.queue_free())
+	_tune = p
+
+
+static func stop_music() -> void:
+	if is_instance_valid(_tune):
+		Audio.stop_held(_tune, 0.15)
+	_tune = null
 
 
 ## How long the spoken line of `text` lasts (0: it has none).
@@ -122,6 +240,23 @@ static func how_for(id: String, label: String) -> String:
 		if label.begins_with(k):
 			return String(table[k])
 	return ""
+
+
+## How the stage plays an option that has several outcomes: the option's word (how_for) made exact by what the words say happened.
+static func how_for_result(id: String, label: String, text: String) -> String:
+	var how := how_for(id, label)
+	match how:
+		"mush":
+			return "mush_bad" if text.contains("poisonous") else ("mush_great" if text.contains("miraculous") else "mush_good")
+		"reach":
+			if text.contains("bottle"):
+				return "reach_bottle"
+			if text.contains("Leaves"):
+				return "reach_leaves"
+			return "reach_bite" if text.contains("bites") else "reach_artifact"
+		"throw":
+			return "throw_fight" if text.contains("coming out") else ("throw_quiet" if text.contains("shatter") else "throw_bottles")
+	return how
 
 
 const HINT_TEXT_W := 412.0
@@ -250,7 +385,14 @@ func _ready() -> void:
 			var f: Dictionary = _forest[fi]
 			entries.append({"img": f.img, "x": f.x, "h": f.h, "dy": f.dy, "tag": "cactus", "fi": fi, "lit": f.lit})
 	var delay_n := 0
+	var saved: Dictionary = _saved_layout().get(String(ev.get("id", "")), {}) if forest == 0 else {}
+	var ei := -1
 	for p: Dictionary in entries:
+		ei += 1
+		if saved.has(str(ei)):  # (where the test room's editor left it: the new default)
+			p = p.duplicate()
+			p.merge(saved[str(ei)], true)
+			p.erase("floor_edge")
 		var tex: Texture2D = UiSkin.tex(String(p.img))
 		if tex == null:
 			continue  # (no art for it yet: its option shows as a button)
@@ -275,11 +417,22 @@ func _ready() -> void:
 		node.position = home
 		if String(lay.get("spot", "")) == String(p.img):
 			_add_spot(home + node.size / 2.0, h)
+		var glow_node: TextureRect = null
+		if lay.get("glow", {}).has(String(p.img)):
+			var gc: Array = lay.glow[String(p.img)]
+			glow_node = _add_spot(home + node.size / 2.0, h, Color(gc[0], gc[1], gc[2], 0.55))
 		_world.add_child(node)
 		var opt := _option_of(String(p.get("opt", "")))
+		var label := String(p.get("label", p.get("opt", "")))
+		if opt < 0:  # (a later page of the event: the same prop stands for another option)
+			for k: String in p.get("alt", {}):
+				opt = _option_of(k)
+				if opt >= 0:
+					label = String(p.alt[k])
+					break
 		if _has_items(opt):
 			opt = -1
-		_props.append({"node": node, "opt": opt, "label": String(p.get("label", p.get("opt", ""))), "img": null, "home": home, "fly": p.get("fly", false),
+		_props.append({"node": node, "opt": opt, "label": label, "img": null, "bob": p.get("bob", false), "glow": glow_node, "ei": ei, "home": home, "fly": p.get("fly", false),
 			"noflip": p.get("noflip", false), "tag": String(p.get("tag", "")), "ph": randf() * TAU, "always": p.get("always", false), "tex": tex,
 			"fi": int(p.get("fi", -1)), "lit": lit, "role": String(p.get("role", ""))})
 		if not again and float(p.get("slow", 0.0)) > 0.0:
@@ -290,9 +443,17 @@ func _ready() -> void:
 			delay_n += 1
 	_build_text(lay)
 	_build_items(lay)
+	if lay.get("underwater_tail", false) and again and _stage != null and _stage.is_underwater():
+		_owns_water = true
+	if String(lay.get("cursor", "")) != "":
+		WoodCursor.override_name = String(lay.cursor)  # (the torch is the pointer in this event)
+		WoodCursor.override_owner = self
 	var say_in := String(lay.get("voice_open", ""))
+	if not again and String(lay.get("music_open", "")) != "":
+		play_music(String(lay.music_open))
+		_owns_tune = true
 	if not again and say_in != "":
-		Audio.play(say_in, 2.0)  # (the witch's first words)
+		say(say_in)  # (the witch's first words)
 	elif String(ev.get("text", "")) != "":
 		speak(String(ev.text))
 	if _arrival_pending:
@@ -304,9 +465,21 @@ func _ready() -> void:
 	for r: Dictionary in _props:
 		if r.always:
 			_show_tag(r)
+	if again and String(ev.get("id", "")) == "skipping_stones" and _skips_in(String(ev.get("text", ""))) > 0:
+		_busy = true  # (the stone is still skipping: the next throw waits for it)
+		await _skip_hops(_skips_in(String(ev.text)))
+		_busy = false
 
 
 func _exit_tree() -> void:
+	if _owns_tune:
+		stop_music()
+	if _owns_water and _stage != null and is_instance_valid(_stage):
+		_stage.set_underwater(false)
+	if WoodCursor.override_owner == self:
+		WoodCursor.override_name = ""
+		WoodCursor.override_owner = null
+	_exit_tree_edit()
 	_exit_tree_cart()
 	if _owns_night and _stage != null and is_instance_valid(_stage):
 		_stage.set_night(false)  # (the sun comes back; a page that follows has already taken the night over)
@@ -685,6 +858,7 @@ func _item_click(it: Dictionary) -> void:
 	Audio.play(sfx if sfx != "" else "ui_click")
 	if picks.size() >= int(it.need):
 		_busy = true
+		stop_voice()
 		_hide_tag()
 		if sfx != "":
 			await get_tree().create_timer(0.9).timeout  # (the card burns for a moment)
@@ -695,6 +869,7 @@ func _item_click(it: Dictionary) -> void:
 ## a Continue button comes up. `how`: "burn" (the cacti catch fire) or "shatter" (they break to pieces). `continued` is emitted when it is pressed.
 func show_result(text: String, how := "", keep_items := false, card := {}, card_before := {}) -> void:
 	_busy = true
+	_result_text = text
 	_hide_tag()
 	for n in _choice_ui:
 		if is_instance_valid(n):
@@ -727,6 +902,16 @@ func show_result(text: String, how := "", keep_items := false, card := {}, card_
 		await _shed_scene(how)
 	elif how.begins_with("vine_") or how.begins_with("bridge_") or how.begins_with("turtle_"):
 		await _react(how)
+	elif how != "":
+		await _react_more(how)
+	if result_artifact != "" and card.is_empty():  # (an artifact you were given: its card stands where the items stood)
+		var ac := ArtifactCard.make(Artifacts.view(result_artifact, false))
+		ac.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		ac.scale = Vector2.ONE * 0.8
+		ac.position = Vector2(960.0 - ArtifactCard.W * 0.4, _center_cards_y() - 150.0)
+		ac.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(ac)
+		_item_views.append({"node": ac, "opt": -1, "id": "", "tw": null})
 	var lay: Dictionary = LAYOUTS.get(String(ev.get("id", "")), {})
 	var row := HBoxContainer.new()
 	row.anchor_left = 0.0
@@ -740,7 +925,7 @@ func show_result(text: String, how := "", keep_items := false, card := {}, card_
 		row.anchor_bottom = 1.0
 		row.offset_bottom = -222.0
 		row.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	var b := UiTheme.button("Continue", func(): continued.emit(), 22)
+	var b := UiTheme.button(continue_label, func(): stop_voice(); continued.emit(), 22)
 	b.custom_minimum_size = Vector2(0, 52)
 	row.add_child(b)
 	add_child(row)
@@ -798,6 +983,336 @@ func _react(how: String) -> void:
 			_shake_prop(bush, 0.08, 8)
 			Audio.play("sfx_bleed_tick", -4.0)
 	await get_tree().create_timer(1.3).timeout
+
+
+## The older "?" events (batch 2) answer what you did on the stage itself: `how` is the stage's word for it (see LAYOUTS "result_how" and how_for_result).
+func _react_more(how: String) -> void:
+	var well := _prop_role("well")
+	var pile := _prop_role("pile")
+	var stump := _prop_role("stump")
+	var idol := _prop_role("idol")
+	var bard := _prop_role("bard")
+	match how:
+		"well_toss":  # the leaves go down the well, then two bottles float up and fly to you
+			Audio.play("sfx_coin_bag_spill", -2.0)
+			await _fly_icons("icon_amber", _center_of(pile), _center_of(well) + Vector2(0, -120), 9, 38.0)
+			Audio.play("sfx_water_splash", 0.0)
+			_shake_prop(well, 0.02, 4)
+			await get_tree().create_timer(0.5).timeout
+			Audio.play("sfx_draw_element", -2.0)
+			await _fly_icons(_bottle_tex(), _center_of(well) + Vector2(0, -150), PuppetTopHud.TRAY.get_center(), 2, 60.0)
+		"well_drink":  # it was not water
+			var bucket := _prop_role("bucket")
+			_shake_prop(bucket, 0.08, 6)
+			_flash(bucket, Color(0.6, 1.3, 0.5))
+			Audio.play("sfx_hurt_grunt", -4.0)
+			_shake(6.0)
+		"well_jump":  # a splash, a crack of bone, the cursed treasure
+			_shake_prop(well, 0.03, 6)
+			Audio.play("sfx_water_splash", 2.0)
+			_shake(14.0)
+			await get_tree().create_timer(0.6).timeout
+			Audio.play("event_bite", -4.0, 0.7)
+		"sprite_help":  # he shoots up, ready for a fight
+			var sp := _prop_role("sprite")
+			if not sp.is_empty():
+				sp["gone"] = true
+				var tw := create_tween().set_parallel(true)
+				tw.tween_property(sp.node, "position:y", float((sp.node as Control).position.y) - 70.0, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+				tw.tween_property(sp.node, "scale", Vector2.ONE * 1.25, 0.5)
+			Audio.play("sfx_aegis_up", -2.0)
+			_flash(sp, Color(1.4, 1.4, 1.6))
+		"sprite_sad":  # he stops crying and drifts off, small and quiet
+			var sp2 := _prop_role("sprite")
+			if not sp2.is_empty():
+				sp2["gone"] = true
+				_run_off(sp2, 2.4, 6.0, true)
+		"mush_bad", "mush_good", "mush_great":
+			var ring := _prop_role("ring")
+			Audio.play("event_mushroom_bite", -2.0)
+			_shake_prop(ring, 0.03, 4)
+			await get_tree().create_timer(0.35).timeout
+			if how == "mush_bad":
+				_flash(ring, Color(0.6, 1.2, 0.4))
+				Audio.play("sfx_hurt_grunt", -4.0)
+				_shake(8.0)
+			else:
+				_flash(ring, Color(1.5, 1.4, 0.8) if how == "mush_great" else Color(1.3, 1.25, 1.0))
+				if how == "mush_great":
+					Audio.play("sfx_aegis_up", 0.0)
+				await _heal_flight(ring)
+		"reach_bottle":
+			Audio.play("event_stump_knock", -2.0)
+			_shake_prop(stump, 0.03, 4)
+			await get_tree().create_timer(0.4).timeout
+			Audio.play("sfx_draw_element", -2.0)
+			await _fly_icons(_bottle_tex(), _center_of(stump), PuppetTopHud.TRAY.get_center(), 1, 60.0)
+		"reach_leaves":
+			Audio.play("event_stump_knock", -2.0)
+			_shake_prop(stump, 0.03, 4)
+			Audio.play("sfx_coin_bag_spill", 0.0)
+			_leaf_fall(stump, 12)
+		"reach_bite":
+			Audio.play("event_stump_knock", -2.0)
+			_shake_prop(stump, 0.07, 8)
+			_flash(stump, Color(1.5, 0.8, 0.8))
+			Audio.play("event_bite", 0.0)
+			Audio.play("sfx_hurt_grunt", -2.0)
+			_shake(12.0)
+		"reach_artifact":
+			Audio.play("event_stump_knock", -2.0)
+			_shake_prop(stump, 0.03, 4)
+			_flash(stump, Color(1.5, 1.4, 0.8))
+			Audio.play("sfx_aegis_up", 0.0)
+		"throw_fight":  # something mean in there
+			Audio.play("event_glass_break", -3.0)
+			await get_tree().create_timer(0.35).timeout
+			_shake_prop(stump, 0.08, 10)
+			_flash(stump, Color(1.5, 0.7, 0.7))
+			Audio.play("sfx_hurt_grunt", -2.0, 0.7)
+			_shake(14.0)
+		"throw_quiet":  # a long way down
+			Audio.play("event_glass_break", -14.0, 0.8)
+		"throw_bottles":  # three broken ones come flying back
+			Audio.play("event_glass_break", -3.0)
+			await get_tree().create_timer(0.4).timeout
+			_shake_prop(stump, 0.05, 6)
+			await _fly_icons(_bottle_tex(), _center_of(stump), PuppetTopHud.TRAY.get_center(), 3, 56.0, Color(0.7, 0.7, 0.7))
+		"bard_angry":  # a sour chord
+			Audio.play("event_lute_sour", 0.0)
+			_shake_prop(bard, 0.07, 12)
+			_flash(bard, Color(1.5, 0.8, 0.8))
+			_shake(10.0)
+		"bard_song":  # a little song
+			Audio.play("event_lute_song", 0.0)
+			_hop(bard, 4)
+			await get_tree().create_timer(1.6).timeout
+			await _heal_flight(bard)
+		"bard_lute":  # the lute is yours
+			var lute := _prop_role("lute")
+			Audio.play("sfx_coin_bag_spill", 0.0)
+			await _fly_icons("icon_amber", PuppetTopHud.TRAY.get_center(), _center_of(bard), 8, 36.0)
+			if not lute.is_empty():
+				lute["gone"] = true
+				var tw2 := create_tween().set_parallel(true)
+				tw2.tween_property(lute.node, "position", PuppetTopHud.TRAY.get_center() - (lute.node as Control).size / 2.0, 0.8).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+				tw2.tween_property(lute.node, "scale", Vector2.ONE * 0.3, 0.8)
+				tw2.tween_property(lute.node, "modulate:a", 0.0, 0.3).set_delay(0.5)
+			Audio.play("event_lute_song", -4.0)
+		"idol_bite", "idol_leaves":
+			_shake_prop(idol, 0.05, 5)
+			Audio.play("event_bite", 0.0)
+			Audio.play("sfx_hurt_grunt", -3.0)
+			_flash(idol, Color(1.5, 0.8, 0.8))
+			_shake(14.0)
+			if how == "idol_leaves":
+				await get_tree().create_timer(0.5).timeout
+				Audio.play("sfx_coin_bag_spill", 0.0)
+				await _fly_icons("icon_amber", _center_of(pile), PuppetTopHud.TRAY.get_center(), 10, 36.0)
+		"idol_gift":  # the leaves go into the bowl, and the jaw lets go
+			var bowl := _prop_role("bowl")
+			Audio.play("sfx_coin_bag_spill", 0.0)
+			await _fly_icons("icon_amber", PuppetTopHud.TRAY.get_center(), _center_of(bowl), 10, 36.0)
+			_flash(bowl, Color(1.5, 1.4, 0.8))
+			await get_tree().create_timer(0.3).timeout
+			_shake_prop(idol, 0.03, 4)
+			_flash(idol, Color(1.4, 1.3, 0.9))
+			Audio.play("wooden_ball_colide", 0.0, 1.2)
+		"bed_toss":  # the torch is planted beside the tent (the pointer is the arrow again), and you sleep soundly
+			_drop_torch_cursor()
+			var bed := _prop_role("bed")
+			_swap_pic(bed, "event_tent_torch")
+			if not bed.is_empty():
+				bed["lit"] = 1.0
+				(bed.node as Control).modulate = Color(1.6, 1.4, 1.2)
+				create_tween().tween_property(bed.node, "modulate", Color.WHITE, 0.6)
+			Audio.play("wooden_ball_colide", 0.0, 0.8)
+			_shake(6.0)
+			Audio.play("sfx_cocoon_roll", -6.0)
+			_shake_prop(bed, 0.015, 4)
+			await get_tree().create_timer(0.6).timeout
+			await _heal_flight(bed)
+		"orb_red", "orb_blue", "orb_green":
+			await _orb_touch(how)
+		"watch_camp":  # smoke rises from the camp
+			var camp := _prop_role("camp")
+			_hop(camp, 2)
+			_flash(camp, Color(1.3, 1.25, 1.0))
+			Audio.play("sfx_scene_prepare_short_1", -3.0)
+		"watch_monster":  # it has seen you
+			var giant := _prop_role("giant")
+			_shake_prop(giant, 0.03, 8)
+			for i in 3:
+				Audio.play("wooden_ball_colide", 2.0, 0.55)
+				_shake(14.0)
+				await get_tree().create_timer(0.4).timeout
+		"watch_cart":  # the cart rolls over to you
+			var cart := _prop_role("cart")
+			if not cart.is_empty():
+				cart["gone"] = true
+				var snd := Audio.play_held("shop_cart_roll", -3.0)
+				var tw3 := create_tween().set_parallel(true)
+				tw3.tween_property(cart.node, "position:x", 960.0 - (cart.node as Control).size.x / 2.0, 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+				await tw3.finished
+				Audio.stop_held(snd, 0.2)
+		"skip":  # the last throw of the lake (20 skips or more: the spirit's gift)
+			await _skip_hops(_skips_in(_result_text))
+	await get_tree().create_timer(1.0).timeout
+
+
+## The three lights: the one you touch flies into you and does its thing; the other two go out.
+func _orb_touch(how: String) -> void:
+	var mine := _prop_role(how)
+	for r: Dictionary in _props:
+		if String(r.role).begins_with("orb_"):
+			r["gone"] = true
+			if r.role != how:
+				create_tween().tween_property(r.node, "modulate:a", 0.0, 0.6)
+				if r.glow != null:
+					create_tween().tween_property(r.glow, "modulate:a", 0.0, 0.6)
+	if mine.is_empty():
+		return
+	var n: TextureRect = mine.node
+	n.pivot_offset = n.size / 2.0
+	if how == "orb_red":
+		await _heal_flight(mine)
+	elif how == "orb_blue":
+		Audio.play("sfx_aegis_up", 0.0)
+	else:
+		Audio.play("sfx_draw_element", 0.0)
+	var tw := create_tween().set_parallel(true)
+	if mine.glow != null:
+		tw.tween_property(mine.glow, "position", PuppetTopHud.TRAY.get_center() - (mine.glow as Control).size / 2.0, 0.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_property(mine.glow, "modulate:a", 0.0, 0.9)
+	var to := PuppetTopHud.TRAY.get_center() - n.size / 2.0
+	tw.tween_property(n, "position", to, 0.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(n, "scale", Vector2.ONE * 0.3, 0.9)
+	tw.tween_property(n, "modulate:a", 0.0, 0.25).set_delay(0.7)
+	await tw.finished
+	_shake(6.0)
+
+
+func _center_of(r: Dictionary) -> Vector2:
+	if r.is_empty():
+		return Vector2(960, 500)
+	var n: Control = r.node
+	return n.position + n.size / 2.0
+
+
+## A name of a bottle's picture that exists (the broken ones have none of their own).
+func _bottle_tex() -> String:
+	return "water_flask" if UiSkin.tex("water_flask") != null else "icon_heart"
+
+
+## `n` small pictures fly one after another from `from` to `to` along a bent path (awaits the last of them).
+func _fly_icons(tex_name: String, from: Vector2, to: Vector2, n: int, px: float, tint := Color.WHITE) -> void:
+	var tex: Texture2D = UiSkin.tex(tex_name)
+	if tex == null:
+		return
+	for i in n:
+		var c := TextureRect.new()
+		c.texture = tex
+		c.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		c.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		c.size = Vector2(px, px)
+		c.pivot_offset = c.size / 2.0
+		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		c.z_index = 40
+		c.modulate = Color(tint.r, tint.g, tint.b, 0.0)
+		c.position = from - c.size / 2.0
+		add_child(c)
+		var bend := Vector2(randf_range(-140.0, 140.0), randf_range(-170.0, -40.0))
+		var tw := create_tween()
+		tw.tween_interval(0.1 * i)
+		tw.tween_property(c, "modulate:a", 1.0, 0.06)
+		tw.tween_method(func(v: float) -> void:
+			var mid := (from + to) / 2.0 + bend
+			c.position = from.lerp(mid, v).lerp(mid.lerp(to, v), v) - c.size / 2.0, 0.0, 1.0, 0.8).set_trans(Tween.TRANS_SINE)
+		tw.tween_property(c, "modulate:a", 0.0, 0.1)
+		tw.tween_callback(c.queue_free)
+	await get_tree().create_timer(0.1 * n + 1.0).timeout
+
+
+## How many times the stone skipped, from the lake's words (0: none told).
+static func _skips_in(text: String) -> int:
+	var m := RegEx.create_from_string("skips (\\d+) time").search(text)
+	return int(m.get_string(1)) if m != null else 0
+
+
+## Where the marks of star_end_skipping.png lie on the lake picture (fractions of its size): the stone first touches the water at SKIP_START_X and stops at SKIP_END_X, along SKIP_AT_Y.
+const SKIP_START_X := 0.1363
+const SKIP_END_X := 0.8620
+const SKIP_AT_Y := 0.3805
+
+
+## One of the three water splashes (Events/skip_splash_N) standing on the water at `at`, `h` px tall: it pops up and fades.
+func _water_splash(at: Vector2, h: float) -> void:
+	var tex: Texture2D = UiSkin.tex("skip_splash_%d" % randi_range(1, 3))
+	if tex == null:
+		return
+	var sp := TextureRect.new()
+	sp.texture = tex
+	sp.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	sp.stretch_mode = TextureRect.STRETCH_SCALE
+	sp.size = Vector2(tex.get_width() * h / tex.get_height(), h)
+	sp.pivot_offset = Vector2(sp.size.x / 2.0, sp.size.y)  # (it grows from the water)
+	sp.position = at - Vector2(sp.size.x / 2.0, sp.size.y * 0.92)
+	sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sp.z_index = 29
+	sp.scale = Vector2(0.4, 0.2)
+	sp.modulate.a = 0.0
+	add_child(sp)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(sp, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(sp, "modulate:a", 1.0, 0.06)
+	tw.chain().tween_property(sp, "modulate:a", 0.0, 0.32).set_delay(0.12)
+	tw.chain().tween_callback(sp.queue_free)
+
+
+## The stone leaves the pile and skips over the lake `n` times (a plink for each), then sinks (20 or more: it reaches the far shore).
+func _skip_hops(n: int) -> void:
+	var lake := _prop_role("lake")
+	var from_pile := _prop_role("pile")
+	var tex: Texture2D = UiSkin.tex("event_flat_stone")
+	if n <= 0 or lake.is_empty() or tex == null:
+		return
+	var ln: Control = lake.node
+	var stone := TextureRect.new()
+	stone.texture = tex
+	stone.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	stone.stretch_mode = TextureRect.STRETCH_SCALE
+	stone.size = Vector2(tex.get_width() * 30.0 / tex.get_height(), 30.0)
+	stone.pivot_offset = stone.size / 2.0
+	stone.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stone.z_index = 30
+	var surface := ln.position.y + ln.size.y * SKIP_AT_Y  # (the marks painted on star_end_skipping.png: where the stone first touches the water and where it ends)
+	var x0 := _center_of(from_pile).x if not from_pile.is_empty() else ln.position.x
+	var x1 := ln.position.x + ln.size.x * SKIP_END_X
+	var start := Vector2(x0, (from_pile.node as Control).position.y if not from_pile.is_empty() else surface)
+	stone.position = start - stone.size / 2.0
+	add_child(stone)
+	Audio.play("sfx_steal_miss", -8.0, 1.6)
+	var hop_t := clampf(2.4 / float(n), 0.09, 0.32)
+	var lx0 := ln.position.x + ln.size.x * SKIP_START_X
+	for j in n:
+		var a := Vector2(lerpf(lx0, x1, float(j) / float(n)), surface) if j > 0 else start
+		var b := Vector2(lerpf(lx0, x1, float(j + 1) / float(n)), surface)
+		var h := lerpf(70.0, 12.0, float(j) / float(maxi(1, n - 1)))
+		var tw := create_tween()
+		tw.tween_method(func(v: float) -> void:
+			var p := a.lerp(b, v)
+			stone.position = Vector2(p.x, p.y - sin(v * PI) * h) - stone.size / 2.0, 0.0, 1.0, hop_t)
+		await tw.finished
+		Audio.play("event_skip_plink", -6.0, lerpf(0.9, 1.5, float(j) / float(maxi(1, n - 1))))
+		_water_splash(b, lerpf(48.0, 26.0, float(j) / float(maxi(1, n - 1))))
+	if n >= 20:
+		await get_tree().create_timer(0.4).timeout
+	else:
+		Audio.play("sfx_water_splash", -8.0, 1.4)
+		create_tween().tween_property(stone, "modulate:a", 0.0, 0.4)
+		await get_tree().create_timer(0.4).timeout
+	stone.queue_free()
 
 
 ## The flying turtle drops to the floor (and stays there): a thud, a small bounce.
@@ -1127,7 +1642,7 @@ func _option_of(label: String) -> int:
 	return -1
 
 
-func _add_spot(at: Vector2, h: float) -> void:
+func _add_spot(at: Vector2, h: float, col := Color(1, 0.95, 0.75, 0.6)) -> TextureRect:
 	var g := GradientTexture2D.new()
 	g.fill = GradientTexture2D.FILL_RADIAL
 	g.fill_from = Vector2(0.5, 0.5)
@@ -1135,7 +1650,7 @@ func _add_spot(at: Vector2, h: float) -> void:
 	g.width = 256
 	g.height = 256
 	var grad := Gradient.new()
-	grad.colors = PackedColorArray([Color(1, 0.95, 0.75, 0.6), Color(1, 0.95, 0.75, 0.0)])
+	grad.colors = PackedColorArray([col, Color(col.r, col.g, col.b, 0.0)])
 	g.gradient = grad
 	var s := TextureRect.new()
 	s.texture = g
@@ -1148,6 +1663,7 @@ func _add_spot(at: Vector2, h: float) -> void:
 	m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	s.material = m
 	_world.add_child(s)
+	return s
 
 
 ## A prop rolls in from the right edge, slowly, to its place: its first line is said and its cart rolls while it comes, its second when it stops. Then the items come up.
@@ -1156,7 +1672,7 @@ func _roll_in(node: Control, home: Vector2, p: Dictionary) -> void:
 	var secs := float(p.slow)
 	var voice := String(p.get("voice_in", ""))
 	if voice != "":
-		Audio.play(voice, 2.0)
+		say(voice)
 	var cart := String(p.get("sfx_in", ""))
 	if cart != "":
 		_cart_snd = Audio.play_held(cart, -3.0)
@@ -1169,7 +1685,7 @@ func _roll_in(node: Control, home: Vector2, p: Dictionary) -> void:
 	_arrival_pending = false
 	var arrive := String(p.get("voice_arrive", ""))
 	if arrive != "":
-		Audio.play(arrive, 2.0)
+		say(arrive)
 	for n in _choice_ui:
 		if is_instance_valid(n):
 			n.visible = true
@@ -1280,6 +1796,8 @@ func _process(d: float) -> void:
 	if _hover_k >= 0 and _hover_k < _props.size() and is_instance_valid(_tag) and _props[_hover_k].fly:
 		_place_tag(_props[_hover_k])  # (the flying turtle moves: his words follow him)
 	_follow_sun()
+	if _edit:
+		return
 	for r: Dictionary in _props:
 		var n: TextureRect = r.node
 		if _busy and not r.fly:
@@ -1291,11 +1809,16 @@ func _process(d: float) -> void:
 			n.flip_h = cos(_t * 0.55) < 0.0 and not bool(r.noflip)
 			n.position = Vector2(x - n.size.x / 2.0, 250.0 + sin(_t * 1.7) * 28.0)
 			n.rotation = sin(_t * 1.7) * 0.05
+		elif r.bob and not r.get("gone", false) and (_t > 1.6 or again):
+			n.position.y = float(r.home.y) + sin(_t * 1.6 + float(r.ph)) * 14.0  # (floats: the sprite, the lights)
 		elif int(r.opt) >= 0 or r.tag == "cactus":
 			n.rotation = sin(_t * 1.3 + float(r.ph)) * 0.012  # (rocks a hair on its base, like the other puppets)
 
 
 func _gui_input(e: InputEvent) -> void:
+	if _edit:
+		_edit_mouse(e)
+		return
 	if _busy:
 		return
 	if e is InputEventMouseMotion:
@@ -1311,6 +1834,427 @@ func _gui_input(e: InputEvent) -> void:
 			Audio.play("ui_click", -10.0, 0.7)
 		elif i >= 0:
 			_choose(int(_props[i].opt))
+
+
+# ---- An Abandoned Camp: pick two spells on the stage, they are fused in the cauldron
+## Called when "Half-cook some spells" is chosen: two red frames hang above the campfire and your spells (the whole spellbook that can be fused) stand in a row; click a spell or drag it
+## into a frame (the first one's pattern goes first, anti-spells only with anti-spells), the new spell shows in the preview frame on the left, Fuse melts them in the cauldron and the
+## result stands in the middle with Continue. `text` is the camp's words about it.
+func start_fuse(text: String) -> void:
+	_busy = true
+	_hide_tag()
+	for n in _choice_ui:
+		if is_instance_valid(n):
+			n.queue_free()
+	_choice_ui.clear()
+	_fz_text = text
+	_fz_ids = run_ref.fusable()
+	_fz_slots = ["", ""]
+	_fz_row.clear()
+	_fz_zoom = clampf(1340.0 / (maxf(1.0, float(_fz_ids.size())) * (SpellCard.W + 8.0)), 0.3, CENTER_ZOOM)
+	if _hint_body != null:
+		_hint_body.text = Keywords.colorize("Click or drag two spells into the two boards above the fire. The pattern of the first one goes first. The new spell shows above them.")
+	var sw := SpellCard.W * FZ_SLOT_ZOOM + FZ_RIM * 2.0  # (a small card on its debuff board)
+	var sh := SpellCard.H * FZ_SLOT_ZOOM + FZ_RIM * 2.0
+	var pw := SpellCard.W * FZ_PREVIEW_ZOOM
+	var ph := SpellCard.H * FZ_PREVIEW_ZOOM
+	var cx := 960.0
+	var top := 142.0
+	var pit := _prop_role("pit")
+	if not pit.is_empty():
+		var pn: Control = pit.node
+		cx = pn.position.x + pn.size.x / 2.0
+	_fz_prev_at = Vector2(cx - pw / 2.0, top)  # (the new spell stands above the two small ones, once both are in)
+	_fz_slot_box.clear()
+	for k in 2:
+		var p := PanelContainer.new()
+		p.custom_minimum_size = Vector2(sw, sh)
+		p.size = Vector2(sw, sh)
+		p.add_theme_stylebox_override("panel", board_box(int(FZ_RIM), int(FZ_RIM)))
+		p.position = Vector2(cx - sw - 6.0 + float(k) * (sw + 12.0), top + ph + 8.0)
+		p.z_index = 6
+		p.set_drag_forwarding(Callable(), func(_at, d): return d is Dictionary and d.has("fuse"), func(_at, d): _fuse_drop(k, d))
+		add_child(p)
+		_fz_slot_box.append(p)
+	_fz_btns = HBoxContainer.new()
+	_fz_btns.add_theme_constant_override("separation", 24)
+	_fz_btns.alignment = BoxContainer.ALIGNMENT_CENTER
+	_fz_btns.anchor_left = 0.0
+	_fz_btns.anchor_right = 0.0
+	_fz_btns.offset_left = 20.0
+	_fz_btns.offset_right = 1900.0
+	_fz_btns.offset_top = _center_cards_y() + SpellCard.H * _fz_zoom + 30.0
+	var back := UiTheme.button("Back", func(): _fuse_back(), 22)
+	back.custom_minimum_size = Vector2(0, 52)
+	_fz_btns.add_child(back)
+	_fz_fuse = UiTheme.button("Fuse", func(): _fuse_go(), 22)
+	_fz_fuse.custom_minimum_size = Vector2(0, 52)
+	_fz_fuse.disabled = true
+	_fz_btns.add_child(_fz_fuse)
+	add_child(_fz_btns)
+	_fuse_refresh()
+
+
+const FZ_SLOT_ZOOM := 0.54
+const FZ_PREVIEW_ZOOM := 0.744
+const FZ_RIM := 10.5  # (air around the small card: the board is 20 % smaller than with 30; its painted rim reaches over the card edge a little)
+var _fz_text := ""
+var _fz_busy := false
+var _fz_slots: Array = ["", ""]  # ids in the two red frames: the first one's pattern goes first
+var _fz_row: Array = []  # the cards standing in the row
+var _fz_slot_box: Array = []
+var _fz_prev: SpellCard
+var _fz_prev_at := Vector2.ZERO
+
+
+## Can this spell go in a frame next to what is already in the other one? (Anti-spells only with anti-spells.)
+func _fuse_fits(id: String, ignore_slot := -1) -> bool:
+	for k in 2:
+		if k != ignore_slot and _fz_slots[k] != "" and _fz_slots[k] != id and not run_ref.can_fuse_pair(String(_fz_slots[k]), id):
+			return false
+	return true
+
+
+## A click on a spell of the row: it goes in the first free frame.
+func _fuse_click(id: String) -> void:
+	if _fz_busy:
+		return
+	var k := 0 if _fz_slots[0] == "" else (1 if _fz_slots[1] == "" else -1)
+	if k < 0 or not _fuse_fits(id):
+		Audio.play("ui_click", -10.0, 0.7)
+		return
+	_fz_slots[k] = id
+	Audio.play("ui_click", -4.0)
+	_fuse_refresh()
+
+
+## A click on a spell in a frame: it goes back to the row.
+func _fuse_unslot(k: int) -> void:
+	if _fz_busy:
+		return
+	_fz_slots[k] = ""
+	Audio.play("ui_click", -4.0)
+	_fuse_refresh()
+
+
+func _fuse_drop(k: int, d: Variant) -> void:
+	if _fz_busy:
+		return
+	var id: String = d.fuse
+	var from: int = d.from
+	if from == k or not _fuse_fits(id, from if from >= 0 else k):
+		return
+	var old: String = _fz_slots[k]
+	if from >= 0:
+		_fz_slots[from] = old  # (dropped on the other frame: they swap)
+	_fz_slots[k] = id
+	Audio.play("ui_click", -4.0)
+	_fuse_refresh()
+
+
+func _fuse_begin_drag(card: SpellCard, id: String, from: int) -> Variant:
+	var pv := Control.new()
+	var c := SpellCard.make(run_ref.spell(id))
+	c.zoom = 0.7
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.position = -Vector2(SpellCard.W, SpellCard.H) * 0.35
+	pv.add_child(c)
+	card.set_drag_preview(pv)
+	return {"fuse": id, "from": from}
+
+
+## The row, the two frames and the preview, as the picks stand now.
+func _fuse_refresh() -> void:
+	for c in _fz_row:
+		if is_instance_valid(c):
+			(c as Control).queue_free()
+	_fz_row.clear()
+	var shown: Array = _fz_ids.filter(func(id: String) -> bool: return not (id in _fz_slots) and _fuse_fits(id))
+	var cw := SpellCard.W * _fz_zoom
+	var gap := 8.0
+	var x0 := 960.0 - (float(shown.size()) * (cw + gap) - gap) / 2.0
+	for i in shown.size():
+		var id: String = shown[i]
+		var card := SpellCard.make(run_ref.spell(id))
+		card.zoom = _fz_zoom
+		card.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		card.position = Vector2(x0 + float(i) * (cw + gap), _center_cards_y())
+		card.clicked.connect(func(_c): _fuse_click(id))
+		card.set_drag_forwarding(func(_at): return _fuse_begin_drag(card, id, -1), Callable(), Callable())
+		add_child(card)
+		_fz_row.append(card)
+	for k in 2:
+		var box: PanelContainer = _fz_slot_box[k]
+		for c in box.get_children():
+			c.queue_free()
+		var sid: String = _fz_slots[k]
+		if sid == "":
+			var hint := UiTheme.label("1st" if k == 0 else "2nd", 22, Color(1, 0.8, 0.75, 0.7))
+			hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			box.add_child(hint)
+		else:
+			var sc := SpellCard.make(run_ref.spell(sid))
+			sc.zoom = FZ_SLOT_ZOOM
+			var slot := k
+			sc.clicked.connect(func(_c): _fuse_unslot(slot))
+			sc.set_drag_forwarding(func(_at): return _fuse_begin_drag(sc, sid, slot), Callable(), Callable())
+			box.add_child(sc)
+	var both: bool = _fz_slots[0] != "" and _fz_slots[1] != ""
+	_fz_fuse.disabled = not both
+	if is_instance_valid(_fz_prev):
+		_fz_prev.queue_free()
+	_fz_prev = null
+	if both:  # (no frame: just the card)
+		_fz_prev = SpellCard.make(run_ref.fuse_preview(String(_fz_slots[0]), String(_fz_slots[1])))
+		_fz_prev.zoom = FZ_PREVIEW_ZOOM
+		_fz_prev.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		_fz_prev.position = _fz_prev_at
+		_fz_prev.z_index = 6
+		add_child(_fz_prev)
+
+
+func _drop_torch_cursor() -> void:
+	if WoodCursor.override_owner == self:
+		WoodCursor.override_name = ""
+		WoodCursor.override_owner = null
+
+
+func _fuse_clear() -> void:
+	for c in _fz_row:
+		if is_instance_valid(c):
+			(c as Control).queue_free()
+	_fz_row.clear()
+	for c in _fz_slot_box:
+		if is_instance_valid(c):
+			(c as Control).queue_free()
+	_fz_slot_box.clear()
+	for c in [_fz_prev, _fz_btns]:
+		if is_instance_valid(c):
+			(c as Control).queue_free()
+
+
+func _fuse_back() -> void:
+	if _fz_busy:
+		return
+	_fuse_clear()
+	fuse_cancelled.emit()
+
+
+func _fuse_go() -> void:
+	var ia: String = _fz_slots[0]
+	var ib: String = _fz_slots[1]
+	if _fz_busy or ia == "" or ib == "":
+		return
+	_fz_busy = true
+	var a := run_ref.spell(ia)
+	var b := run_ref.spell(ib)
+	var from_a: Vector2 = (_fz_slot_box[0] as Control).global_position
+	var from_b: Vector2 = (_fz_slot_box[1] as Control).global_position
+	var preview := run_ref.fuse_preview(ia, ib)
+	run_ref.fuse_commit(preview, ia, ib)
+	_fuse_clear()
+	var pit := _prop_role("pit")
+	var at := Vector2(960, 400)
+	if not pit.is_empty():
+		var pn: Control = pit.node
+		at = pn.position + Vector2(pn.size.x * 0.5, pn.size.y * 0.38)  # (the cauldron hangs in the upper middle of the picture)
+	var fs := FuseScreen.new()
+	fs.embedded = true
+	fs.run = run_ref
+	add_child(fs)
+	await fs._play_fusion(a, b, from_a, from_b, preview, at)
+	fs.queue_free()
+	_fz_busy = false
+	show_result(_fz_text, "", false, preview)
+
+
+# ---- layout editor (test room only, F6): props stand still, click one to box it, drag / arrows to move, corners or + - to scale, Ctrl+Z to undo
+const HANDLE := 16.0
+
+
+func _input(e: InputEvent) -> void:
+	if not edit_allowed or not (e is InputEventKey) or not e.pressed:
+		return
+	if e.keycode == KEY_F6 and not e.echo:
+		_edit_toggle()
+		get_viewport().set_input_as_handled()
+		return
+	if not _edit:
+		return
+	if e.keycode == KEY_Z and e.ctrl_pressed:
+		_edit_undo()
+	elif _sel >= 0 and e.keycode in [KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN]:
+		var step := 10.0 if e.shift_pressed else 1.0
+		var d := Vector2(float(e.keycode == KEY_RIGHT) - float(e.keycode == KEY_LEFT), float(e.keycode == KEY_DOWN) - float(e.keycode == KEY_UP)) * step
+		_edit_push()
+		_edit_place(_sel, (_props[_sel].node as Control).position + d, (_props[_sel].node as Control).size)
+	elif _sel >= 0 and e.keycode in [KEY_EQUAL, KEY_PLUS, KEY_KP_ADD, KEY_MINUS, KEY_KP_SUBTRACT]:
+		_edit_push()
+		_edit_scale(_sel, 1.05 if e.keycode in [KEY_EQUAL, KEY_PLUS, KEY_KP_ADD] else 1.0 / 1.05)
+	else:
+		return
+	get_viewport().set_input_as_handled()
+
+
+func _edit_toggle() -> void:
+	_edit = not _edit
+	_hide_tag()
+	if _edit:
+		for r: Dictionary in _props:  # (still: no rocking, no floating, nobody lit)
+			var n: TextureRect = r.node
+			n.rotation = 0.0
+			n.scale = Vector2.ONE
+			n.modulate = Color(r.lit, r.lit, r.lit)
+			if r.bob:
+				n.position.y = float(r.home.y)
+		_edit_box = Control.new()
+		_edit_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_edit_box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_edit_box.z_index = 4000
+		_edit_box.draw.connect(_edit_draw)
+		add_child(_edit_box)
+		mouse_default_cursor_shape = Control.CURSOR_ARROW
+		print("EDITOR on: click a prop; drag / arrows (Shift = 10 px) move; corners or + - scale; Ctrl+Z undo; F6 off prints the layout values")
+	else:
+		var lines: PackedStringArray = []
+		for r: Dictionary in _props:
+			var n: TextureRect = r.node
+			r["home"] = n.position
+			var h := n.size.y
+			lines.append('{"img": "%s", "x": %.3f, "h": %.1f, "dy": %.1f}' % [n.texture.resource_path.get_file().get_basename(), (n.position.x + n.size.x / 2.0) / 1920.0, h, n.position.y - (_feet - h)])
+		print("EDITOR off, props of %s:\n%s" % [ev.get("id", ""), "\n".join(lines)])
+		DisplayServer.clipboard_set("\n".join(lines))
+		_edit_save()
+		_sel = -1
+		_drag = ""
+		if is_instance_valid(_edit_box):
+			_edit_box.queue_free()
+		_edit_box = null
+
+
+const SAVED_PATH := "res://data/event_layout_overrides.json"  # {event id: {prop index in its layout: {x, h, dy}}}: the user's own placing, never delete
+
+
+static func _saved_layout() -> Dictionary:
+	if not FileAccess.file_exists(SAVED_PATH):
+		return {}
+	var d = JSON.parse_string(FileAccess.get_file_as_string(SAVED_PATH))
+	return d if d is Dictionary else {}
+
+
+## The props as they stand now become the event's default (written to SAVED_PATH).
+func _edit_save() -> void:
+	var id := String(ev.get("id", ""))
+	if int(LAYOUTS.get(id, {}).get("forest", 0)) > 0:
+		return
+	var all := _saved_layout()
+	var mine: Dictionary = all.get(id, {})
+	for r: Dictionary in _props:
+		if r.fly or int(r.ei) < 0:
+			continue
+		var n: TextureRect = r.node
+		mine[str(int(r.ei))] = {"x": snappedf((n.position.x + n.size.x / 2.0) / 1920.0, 0.0001), "h": snappedf(n.size.y, 0.1), "dy": snappedf(n.position.y - (_feet - n.size.y), 0.1)}
+	all[id] = mine
+	var f := FileAccess.open(SAVED_PATH, FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(all, "\t"))
+		f.close()
+		print("EDITOR: saved the layout of %s to %s" % [id, SAVED_PATH])
+
+
+func _exit_tree_edit() -> void:
+	if _edit:
+		_edit_save()  # (the stage went away with the editor still on)
+
+
+func _edit_snapshot() -> Array:
+	return _props.map(func(r: Dictionary) -> Dictionary: return {"pos": (r.node as Control).position, "size": (r.node as Control).size})
+
+
+func _edit_push() -> void:
+	_undo.append(_edit_snapshot())
+	if _undo.size() > 200:
+		_undo.pop_front()
+
+
+func _edit_undo() -> void:
+	if _undo.is_empty():
+		return
+	var snap: Array = _undo.pop_back()
+	for k in mini(snap.size(), _props.size()):
+		_edit_place(k, snap[k].pos, snap[k].size)
+
+
+## Put prop `k` at `pos` with `size`; its home follows, so it stays there when the rocking and floating start again.
+func _edit_place(k: int, pos: Vector2, size: Vector2) -> void:
+	var r: Dictionary = _props[k]
+	var n: TextureRect = r.node
+	n.size = size
+	n.pivot_offset = Vector2(size.x / 2.0, size.y)
+	n.position = pos
+	r["home"] = pos
+	if _edit_box != null:
+		_edit_box.queue_redraw()
+
+
+func _edit_scale(k: int, f: float) -> void:
+	var n: TextureRect = _props[k].node
+	var c := n.position + n.size / 2.0
+	var ns := n.size * clampf(f, 0.05, 20.0)
+	_edit_place(k, c - ns / 2.0, ns)
+
+
+func _edit_draw() -> void:
+	if _sel < 0 or _sel >= _props.size():
+		return
+	var n: Control = _props[_sel].node
+	var rc := Rect2(n.position, n.size)
+	_edit_box.draw_rect(rc, Color(1, 0.9, 0.3), false, 2.0)
+	for c: Vector2 in _edit_corners(rc):
+		_edit_box.draw_rect(Rect2(c - Vector2(HANDLE, HANDLE) / 2.0, Vector2(HANDLE, HANDLE)), Color(1, 0.9, 0.3))
+		_edit_box.draw_rect(Rect2(c - Vector2(HANDLE, HANDLE) / 2.0, Vector2(HANDLE, HANDLE)), Color(0.1, 0.1, 0.1), false, 2.0)
+
+
+func _edit_corners(rc: Rect2) -> Array:
+	return [rc.position, Vector2(rc.end.x, rc.position.y), rc.end, Vector2(rc.position.x, rc.end.y)]
+
+
+func _edit_mouse(e: InputEvent) -> void:
+	if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT:
+		if e.pressed:
+			if _sel >= 0:
+				var n: Control = _props[_sel].node
+				for c: Vector2 in _edit_corners(Rect2(n.position, n.size)):
+					if (e.position - c).length() <= HANDLE:
+						_edit_push()
+						_drag = "scale"
+						_drag_from = e.position
+						_drag_start = {"pos": n.position, "size": n.size}
+						return
+			var k := _prop_at(e.position, true)
+			_sel = k
+			if k >= 0:
+				_edit_push()
+				var n2: Control = _props[k].node
+				_drag = "move"
+				_drag_from = e.position
+				_drag_start = {"pos": n2.position, "size": n2.size}
+			if _edit_box != null:
+				_edit_box.queue_redraw()
+		else:
+			_drag = ""
+	elif e is InputEventMouseMotion and _drag != "" and _sel >= 0:
+		var st: Dictionary = _drag_start
+		if _drag == "move":
+			_edit_place(_sel, st.pos + (e.position - _drag_from), st.size)
+		else:
+			var c: Vector2 = st.pos + st.size / 2.0  # (scaled about its middle, ratio kept)
+			var d0 := maxf(1.0, (_drag_from - c).length())
+			var f := clampf((e.position - c).length() / d0, 0.05, 20.0)
+			var ns: Vector2 = st.size * f
+			_edit_place(_sel, c - ns / 2.0, ns)
 
 
 ## A prop that takes no click now: once items are offered, every prop (the wax) or, where the layout keeps them, just the one whose option they answer (the shed).
@@ -1331,10 +2275,10 @@ func _usable(i: int) -> bool:
 
 
 ## The topmost prop (tied to an option) whose painted part is under `at`; -1 if none.
-func _prop_at(at: Vector2) -> int:
+func _prop_at(at: Vector2, any := false) -> int:
 	for k in range(_props.size() - 1, -1, -1):
 		var r: Dictionary = _props[k]
-		if int(r.opt) < 0:
+		if int(r.opt) < 0 and not any:
 			continue
 		var n: TextureRect = r.node
 		var rect := Rect2(n.position, n.size)
@@ -1428,6 +2372,7 @@ func _choose(i: int) -> void:
 	if _busy:
 		return
 	_busy = true
+	stop_voice()
 	_hide_tag()
 	var lay: Dictionary = LAYOUTS.get(String(ev.get("id", "")), {})
 	var kind := String(lay.get("outro", {}).get(i, ""))
@@ -1454,6 +2399,17 @@ func _outro(kind: String) -> void:
 				else:
 					tw.tween_property(n, "modulate:a", 0.0, 0.4)
 			Audio.play("sfx_steal", -4.0)
+		"light":  # the torch goes into the campfire: the pointer is the arrow again, the fire burns
+			_drop_torch_cursor()
+			var pit := _prop_role("pit")
+			_swap_pic(pit, "event_campfire_lit")
+			if not pit.is_empty():
+				pit["lit"] = 1.0
+				(pit.node as Control).modulate = Color(1.6, 1.4, 1.2)
+				create_tween().tween_property(pit.node, "modulate", Color.WHITE, 0.6)
+			Audio.play("sfx_card_ignite", -2.0)
+			await get_tree().create_timer(0.8).timeout
+			return
 		"lift":
 			tw = create_tween().set_parallel(true)
 			for r: Dictionary in _props:

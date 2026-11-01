@@ -2,6 +2,6 @@ Style: a real physical prop from an antique Czech marionette puppet theatre, han
 
 Lighting: soft even diffuse light from the upper left, gentle natural shading, no strong highlights, no glossy shine.
 
-Composition: this one object only, centred, seen straight from the front with no perspective, filling the image with a small even margin. Isolated on a pure white seamless background (#FFFFFF), as if cut out: no cast shadow, no reflection, no gradient, no table, no other objects, no hands. A wide frame is built so it can be cut into nine slices and stretched: its four corners are identical to each other (mirrored), its straight edges are plain and repeat evenly, and its large middle is one flat uniform fill with nothing on it.
+Composition: this one object only, centred, seen straight from the front with no perspective, filling the image with a small even margin. Isolated on a pure black seamless background (#000000), as if cut out: no cast shadow, no reflection, no gradient, no table, no other objects, no hands. A wide frame is built so it can be cut into nine slices and stretched: its four corners are identical to each other (mirrored), its straight edges are plain and repeat evenly, and its large middle is one flat uniform fill with nothing on it.
 
 Must look like a tangible craft object with real material texture. Not vector art, not clean outlines, not cartoon, not a sticker, not plastic, not glossy, not a 3D game render. No text, letters, numbers, logos or watermark.

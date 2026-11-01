@@ -273,3 +273,13 @@
 00:32:23 starting the AnySFX backend
 00:33:22 [1/1] fx_magic_bolt            pick 3 of 1.13 1.03 0.99 1.13  (56 s)  deep low magical bolt whoosh, dark arcane thump, bass energy
 00:33:22 stopping the AnySFX backend
+21:11:27 starting the AnySFX backend
+21:12:55 event_mushroom_bite    pick 3 of 0.38 0.54 0.58 0.59 (81 s) a big wet bite into a juicy ripe fruit, crisp crunch and juicy squelch, chewing
+21:13:53 event_stump_knock      pick 3 of 0.54 0.50 0.23 0.69 (58 s) knuckles knocking on a hollow wooden stump, three clunky hollow wood knocks
+21:15:29 fish_spear_small       pick 1 of 0.09 0.67 0.59 0.62 (96 s) small speargun shot under water, quick bubbly thwip, light spear tip stabbing a small fish
+21:16:24 fish_spear_medium      pick 1 of 0.24 0.73 0.56 0.27 (54 s) speargun shot under water, twang and bubbling whoosh, spear stabbing into a fish with a wet thud
+21:17:24 fish_spear_big         pick 0 of 0.83 0.63 0.57 0.47 (60 s) heavy harpoon gun shot under water, deep twang and thick bubbles, spear driving into a big fish with a heavy wet thump
+21:18:18 event_skip_plink       pick 3 of 0.61 0.53 0.64 0.70 (54 s) a flat stone skipping on the surface of a still lake, a single light water plip
+21:27:00 starting the AnySFX backend
+21:28:03 fish_count             pick 1 of 0.69 0.74 0.68 0.67 (60 s) a single short dry wooden block tap, one woody tick, clean
+21:28:54 fish_go                pick 0 of 1.16 -0.77 0.78 0.40 (50 s) a single bright hand bell ding, short clear ring, game start signal

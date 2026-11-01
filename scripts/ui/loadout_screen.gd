@@ -123,6 +123,8 @@ func _ready() -> void:
 	bh.alignment = BoxContainer.ALIGNMENT_END
 	bh.position = Vector2(1300, 996)
 	bh.size = Vector2(580, 60)  # (the Menu button of the stage stands to the left of Begin the fight: see FightScreen.MENU_TOP_AT)
+	if on_stage:
+		bh.mouse_filter = Control.MOUSE_FILTER_IGNORE  # (this row stands over the Menu button of the stage: only its own buttons take clicks)
 	add_child(bh)
 	if not on_stage:  # (on the stage the Codex button is in the bar at the top)
 		bh.add_child(UiTheme.button("Codex", func(): codex_pressed.emit()))
