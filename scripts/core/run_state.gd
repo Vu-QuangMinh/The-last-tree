@@ -905,7 +905,7 @@ func event_outcome(opt: Dictionary, bottle_at := -1, spell_id := "") -> Dictiona
 			if r < 0.0:
 				out = o
 				break
-	var res := {"text": String(out.text), "overflow": []}
+	var res := {"text": String(out.text), "overflow": [], "ok": String(out.get("ok", "")), "curse_card": out.get("curse_card", false)}  # ("ok": the words of the button after it)
 	if out.has("then"):
 		res.then = out.then  # (a page of choices comes next, under these words)
 	for d in out.get("do", []):
@@ -948,9 +948,15 @@ func event_outcome(opt: Dictionary, bottle_at := -1, spell_id := "") -> Dictiona
 			"lasting_next":
 				lasting_next += int(d.n)
 			"skip_stone":
-				# Skipping Stones: 1 to 21 skips; 20 or more and the lake's spirit gives you a common artifact
+				# Skipping Stones: 95 % of throws skip 1 to 21 times, all as likely; the other 5 % go past that: 22, and each
+				# skip after it 87 % likely (50 or more: about 1 in 1000). 20 or more and the lake's spirit gives you a common artifact.
 				var n := rng.randi_range(1, 21)
+				if rng.randf() < 0.05:
+					n = 22
+					while rng.randf() < 0.8696 and n < 101:  # (101 skips at most)
+						n += 1
 				if n >= 20:
+					res.ok = "Thank you, lake spirit!"
 					res.text = "Your stone skips %d times, all the way to the far shore! Your stone skipping was so great that it impressed the spirit of the lake. A hand of clear water rises from the surface, and offers you a gift." % n
 					var pool := Artifacts.ALL.filter(func(x): return x.pool == "normal" and x.tier == "common" and (x.id in unlocked_artifacts or x.starter) and not (x.id in artifacts))
 					if not pool.is_empty():
@@ -961,6 +967,14 @@ func event_outcome(opt: Dictionary, bottle_at := -1, spell_id := "") -> Dictiona
 					var how := "Plip. It sinks at once." if n == 1 else ("Not bad at all." if n >= 12 else ("A decent throw." if n >= 6 else "A little sad, really."))
 					res.text = "Your stone skips %d time%s across the water before it sinks. %s" % [n, "" if n == 1 else "s", how]
 					res.again = true  # (the same choices again: another stone, or walk away)
+				# the best throw ever (kept in the save, over every run): beaten, it is said ("A new personal record!")
+				var sm := _notes()
+				if sm != null and sm.has_method("skip_record"):
+					var best := int(sm.call("skip_record"))
+					if n > best:
+						sm.call("set_skip_record", n)
+						if best > 0:
+							res.text += " A new personal record!"
 			"room":
 				res.room = String(d.kind)  # (the screen takes you there: a campfire, the merchant, or a boss)
 			"rest_half":
@@ -1039,7 +1053,7 @@ func bear_choice(what: String) -> void:
 		due_events["bear_revenge"] = 3
 
 
-## Elemental Fishing, after the minute: 10 Leaves a big fish (8+ Essence), 6 a medium one (5-7), 4 a small one (3-5). Returns {total, text}.
+## Fisher's Fish, after the minute: 10 Leaves a big fish (8+ Essence), 6 a medium one (5-7), 4 a small one (3-5). Returns {total, text}.
 func fish_reward(big: int, medium: int, small: int) -> Dictionary:
 	var total := 10 * big + 6 * medium + 4 * small
 	amber += total

@@ -5,6 +5,7 @@ extends Control
 
 signal done
 signal hint_changed(text: String)  # embedded: the words go to the event's hint panel
+signal backed  # (can_back) Back or a right-click before the wax is stamped: pick another spell
 
 var run: RunState
 var spell_id := ""
@@ -12,7 +13,9 @@ var _card_holder: CenterContainer
 var _orbs: HBoxContainer
 var _hint: Label
 var _sealed := false
-var embedded := false  # laid over an event's stage: no backdrop, no shade, no title, smaller, in the lower part of the screen
+var embedded := false  # laid over an event's stage: no backdrop, no shade, no title, smaller, in the upper part of the screen
+var can_back := false  # Back (top left) and a right-click go back to the spells, until the wax is stamped (that is final)
+var _back_btn: Button
 
 
 func setup(p_run: RunState, p_id: String) -> void:
@@ -36,8 +39,13 @@ func _ready() -> void:
 	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	v.alignment = BoxContainer.ALIGNMENT_BEGIN if embedded else BoxContainer.ALIGNMENT_CENTER
 	if embedded:
-		v.offset_top = 600.0
+		v.offset_top = 150.0
 		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if can_back:
+		_back_btn = UiTheme.button("Back", _back, 24)
+		_back_btn.custom_minimum_size = Vector2(200, 52)
+		_back_btn.position = Vector2(24.0, 190.0)
+		add_child(_back_btn)
 	v.add_theme_constant_override("separation", 14 if embedded else 26)
 	add_child(v)
 	if not embedded:
@@ -97,11 +105,26 @@ func _rebuild() -> void:
 		_orbs.add_child(ic)
 
 
+func _back() -> void:
+	if _sealed:
+		return
+	Audio.play("ui_click", -4.0)
+	backed.emit()
+
+
+func _unhandled_input(ev: InputEvent) -> void:
+	if can_back and not _sealed and ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_RIGHT:
+		get_viewport().set_input_as_handled()
+		_back()
+
+
 ## The seal drops from above, spinning, lands with a thump and a splash of purple, and the orb is covered.
 func _seal(i: int, orb: ElementIcon) -> void:
 	if _sealed:
 		return
 	_sealed = true
+	if is_instance_valid(_back_btn):
+		_back_btn.queue_free()  # (the stamp is final)
 	var at := orb.get_global_rect().get_center()
 	var wax := ElementIcon.make(orb.el, 96)
 	wax.size = Vector2(96, 96)

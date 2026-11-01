@@ -27,11 +27,10 @@ const LAYOUTS := {
 			{"img": "event_bush_exit", "x": 0.62, "h": 120.0, "from": "right", "opt": "Leave the note for another day"}],
 		"outro": {0: "scroll_fly", 1: "lift"}},
 	"farmer_farm": {"props": [{"img": "event_wheat_row", "x": 0.64, "h": 190.0, "from": "right"}, {"img": "event_farmer", "x": 0.34, "h": 330.0, "from": "left"}]},
-	"cactus_maze": {"props": [], "forest": 20, "night": 0.62, "no_hud": true, "center": true, "flame": true, "result_on_stage": true, "item_sfx": "sfx_card_ignite",
-		"result_how": {"Ignite a spell": "burn", "Force your way": "shatter", "Follow the voice": "whisper"},
-		"item_tags": {"Ignite a spell to burn a way out": "Ignite a spell to burn a way out"}},
-	"shrinking_pond": {"no_hud": true, "center": true, "item_tags": {"Give it a spell": "Give it a spell"}, "props": [{"img": "event_pond_garden", "x": 0.5, "h": 330.0, "from": "right", "opt": "Give it a spell"},
-			{"img": "event_bush_exit", "x": 0.67, "h": 130.0, "from": "right", "opt": "Walk away"}]},
+	"cactus_maze": {"props": [], "forest": 20, "night": 0.62, "no_hud": true, "center": true, "result_on_stage": true,
+		"result_how": {"Force your way": "shatter", "Follow the voice": "whisper"}},  # (casting a spell: no burning, the maze stays)
+	"shrinking_pond": {"no_hud": true, "center": true, "props": [{"img": "event_pond_garden", "x": 0.5, "h": 330.0, "from": "right"},
+			{"img": "event_bush_exit", "x": 0.67, "h": 130.0, "from": "right"}]},
 	"church_of_aole": {"props": [{"img": "event_church", "x": 0.5, "h": 530.0, "dy": -20.0, "from": "right"},
 			{"img": "event_priest", "x": 0.455, "h": 187.0, "dy": -18.0, "from": "left", "opt": "Stay awhile and listen"},
 			{"img": "event_bush_exit", "x": 0.575, "h": 72.0, "dy": -16.0, "from": "right", "opt": "Walk away"}], "night": 0.62, "no_hud": true},
@@ -43,7 +42,7 @@ const LAYOUTS := {
 		"props": [{"img": "event_shed", "x": 0.5, "h": 430.0, "from": "top", "opt": "Give each of them a new toy, so they don't have to fight (give 2 artifacts)", "label": "Give each a new toy"},
 			{"img": "event_boy", "role": "boy", "x": 0.34, "h": 260.0, "from": "left", "opt": "Side with the boy"},
 			{"img": "event_girl", "role": "girl", "x": 0.66, "h": 260.0, "from": "right", "opt": "Side with the girl"}]},
-	"wax_witch": {"voice_open": "witch_blood", "center": true, "offer_on_stage": true, "offer_keep_props": true, "result_on_stage": true, "props": [{"img": "event_witch", "x": 0.5, "h": 530.0, "from": "top", "opt": "Give two drops of blood"},
+	"wax_witch": {"voice_open": "witch_blood", "voice_next": true, "offer_grid": true, "center": true, "offer_on_stage": true, "offer_keep_props": true, "result_on_stage": true, "props": [{"img": "event_witch", "x": 0.5, "h": 530.0, "from": "top", "opt": "Give two drops of blood"},
 			{"img": "event_cauldron", "x": 0.385, "h": 180.0, "dy": 10.0, "from": "left", "opt": "Give one drop of blood"},
 			{"img": "event_bush_exit", "x": 0.62, "h": 120.0, "from": "right", "opt": "Walk away"}], "night": 0.62},
 	"recycler": {"no_hud": true, "items_center_x": true, "item_tags": {"Give him a spell": "Trade this?", "Give him an artifact": "Trade this?", "Give him a bottle": "Trade this?"}, "props": [{"img": "event_recycler_happy", "role": "recycler", "x": 0.45, "h": 510.0, "from": "right", "slow": 5.0, "voice_in": "recycler_reuse", "sfx_in": "shop_cart_roll", "voice_arrive": "recycler_trade"},
@@ -54,13 +53,15 @@ const LAYOUTS := {
 			{"img": "event_bush_exit", "role": "bush", "x": 0.72, "h": 110.0, "dy": 10.0, "from": "top", "opt": "Find a way around the thorny bushes", "label": "Find a way around"}]},
 	# ---- the older "?" events (batch 2, 2026-11-01): the sheet is docs/events_batch2_plan.csv
 	"well": {"voice_open": "well_whisper", "night": 0.35, "center": true, "result_on_stage": true,
+		"voice_words": {"from": "well", "at": [[0.3, "Traveller..."], [1.5, "come closer..."], [3.3, "I am so hungry..."],
+			[6.55, "feed me, and I will give you something nice..."], [10.85, "or jump in..."], [13.75, "jump in..."]]},
 		"result_how": {"Toss in": "well_toss", "Drink from": "well_drink", "Jump in": "well_jump"},
 		"props": [{"img": "event_well", "role": "well", "x": 0.43, "h": 400.0, "from": "top", "opt": "Jump in"},
 			{"img": "event_leaf_pile", "role": "pile", "x": 0.24, "h": 120.0, "from": "left", "opt": "Toss in 50 Leaves"},
 			{"img": "event_bucket", "role": "bucket", "x": 0.62, "h": 150.0, "from": "right", "opt": "Drink from it"}]},
 	"lost_sprite": {"no_hud": true, "center": true, "result_on_stage": true, "result_how": {"Help him": "sprite_help", "Refuse": "sprite_sad"},
-		"props": [{"img": "event_wind_sprite", "role": "sprite", "x": 0.42, "h": 300.0, "dy": -100.0, "from": "top", "bob": true, "opt": "Help him confront the monster"},
-			{"img": "event_bush_exit", "x": 0.64, "h": 120.0, "from": "right", "opt": "Refuse to help"}]},
+		"props": [{"img": "event_wind_sprite", "role": "sprite", "x": 0.42, "h": 300.0, "dy": -100.0, "from": "top", "bob": true},
+			{"img": "event_bush_exit", "x": 0.64, "h": 120.0, "from": "right"}]},  # (no option on the props: Help him / Refuse to help are buttons in the box)
 	"mushroom_ring": {"night": 0.5, "center": true, "result_on_stage": true, "glow": {"event_mushroom_ring": [0.55, 1.0, 0.75]},
 		"result_how": {"Eat a mushroom": "mush"},
 		"props": [{"img": "event_mushroom_ring", "role": "ring", "x": 0.43, "h": 250.0, "from": "top", "opt": "Eat a mushroom"},
@@ -69,8 +70,8 @@ const LAYOUTS := {
 		"result_how": {"Reach in": "reach", "Throw in a bottle": "throw"},
 		"props": [{"img": "event_hollow_stump", "role": "stump", "x": 0.43, "h": 420.0, "from": "top", "opt": "Reach in"},
 			{"img": "event_bush_exit", "x": 0.66, "h": 120.0, "from": "right", "opt": "Walk away"}]},
-	"bard": {"music_open": "merry puppets", "center": true, "result_on_stage": true, "result_how": {"That's animal": "bard_angry", "It is beautiful": "bard_song", "Pay 100": "bard_lute"},
-		"props": [{"img": "event_deer", "role": "deer", "x": 0.25, "h": 330.0, "from": "left", "opt": "That's animal cruelty!"},
+	"bard": {"music_open": "merry puppets", "center": true, "result_on_stage": true, "result_how": {"That is a weird": "bard_angry", "It is beautiful": "bard_song", "Pay 100": "bard_lute"},
+		"props": [{"img": "event_deer", "role": "deer", "x": 0.25, "h": 330.0, "from": "left", "opt": "That is a weird looking item"},
 			{"img": "event_bard", "role": "bard", "x": 0.43, "h": 420.0, "from": "top", "opt": "It is beautiful", "alt": {"Actually, I don't have that much": "Actually, I don't have that much"}},
 			{"img": "event_lute", "role": "lute", "x": 0.6, "h": 300.0, "from": "right", "opt": "Can I have it?", "alt": {"Pay 100 Leaves": "Pay 100 Leaves"}}]},
 	"cursed_shrine": {"night": 0.45, "center": true, "result_on_stage": true,
@@ -78,9 +79,9 @@ const LAYOUTS := {
 		"props": [{"img": "event_idol", "role": "idol", "x": 0.43, "h": 350.0, "from": "top", "opt": "Pry the box from its mouth"},
 			{"img": "event_leaf_pile", "role": "pile", "x": 0.24, "h": 110.0, "from": "left", "opt": "Take the leaves"},
 			{"img": "event_offering_bowl", "role": "bowl", "x": 0.62, "h": 90.0, "from": "right", "opt": "Put down 100 more Leaves"}]},
-	"lost_camp": {"night": 0.4, "no_hud": true, "center": true, "result_on_stage": true, "stage_fuse": true, "cursor": "event_torch", "outro": {0: "light"}, "result_how": {"Rest": "bed_toss"},
-		"props": [{"img": "event_campfire_off", "role": "pit", "x": 0.37, "h": 420.0, "lit": 0.55, "from": "top", "opt": "Half-cook some spells", "label": "Use torch to half-cook some spells"},
-			{"img": "event_tent", "role": "bed", "x": 0.6, "h": 175.0, "lit": 0.55, "from": "right", "opt": "Rest restlessly", "label": "Plant the torch to protect the tent"}]},
+	"lost_camp": {"opts_on_props": true, "night": 0.4, "no_hud": true, "center": true, "result_on_stage": true, "stage_fuse": true, "cursor": "event_torch", "outro": {0: "light"}, "result_how": {"Rest": "bed_toss"},
+		"props": [{"img": "event_campfire_off", "role": "pit", "x": 0.37, "h": 420.0, "lit": 0.55, "from": "top", "opt": "Half cook some spells", "label": "Use torch to half cook some spells"},
+			{"img": "event_tent", "role": "bed", "x": 0.6, "h": 175.0, "lit": 0.55, "from": "right", "opt": "Get some restless rest", "label": "Plant the torch to protect the tent"}]},
 	"elemental_fishing": {"underwater_tail": true, "no_hud": true, "night": 0.3, "center": true, "result_on_stage": true,
 		"props": [{"img": "event_stream", "x": 0.55, "h": 190.0, "from": "right", "opt": "Help him fish", "alt": {"Ready": "Ready"}},
 			{"img": "event_fisherman", "x": 0.33, "h": 360.0, "from": "left", "opt": "Help him fish", "alt": {"Ready": "Ready"}},
@@ -93,15 +94,15 @@ const LAYOUTS := {
 			{"img": "event_orb_blue", "role": "orb_blue", "x": 0.43, "h": 110.0, "dy": -250.0, "from": "top", "bob": true, "opt": "Touch the blue ball"},
 			{"img": "event_orb_green", "role": "orb_green", "x": 0.55, "h": 110.0, "dy": -190.0, "from": "top", "bob": true, "opt": "Touch the green ball"}]},
 	"watchtower": {"no_hud": true, "night": 0.3, "center": true, "result_on_stage": true,
-		"result_how": {"A camping": "watch_camp", "A towering": "watch_monster", "The merchant": "watch_cart"},
-		"props": [{"img": "event_watchtower", "x": 0.43, "h": 470.0, "from": "top"},
-			{"img": "event_tent", "role": "camp", "x": 0.2, "h": 150.0, "from": "left", "opt": "A camping site"},
-			{"img": "event_far_giant", "role": "giant", "x": 0.62, "h": 230.0, "from": "right", "opt": "A towering monster"},
-			{"img": "event_merchant", "role": "cart", "x": 0.34, "h": 300.0, "dy": -4.0, "from": "left", "opt": "The merchant"}]},
+		"result_how": {"Go East": "watch_camp", "Go North": "watch_monster", "Go West": "watch_cart"},
+		# (the tower stands alone, up to the valance; what you spot from the top comes on once you have climbed it)
+		"props": [{"img": "event_watchtower", "x": 0.5, "h": 540.0, "from": "top"},
+			{"img": "event_tent", "role": "camp", "x": 0.2, "h": 300.0, "from": "left", "after_begin": true},
+			{"img": "event_far_giant", "role": "giant", "x": 0.62, "h": 460.0, "from": "right", "after_begin": true},
+			{"img": "event_merchant", "role": "cart", "x": 0.34, "h": 600.0, "dy": -8.0, "from": "left", "after_begin": true}]},
 	"skipping_stones": {"no_hud": true, "center": true, "result_on_stage": true, "result_how": {"Skip": "skip"},
-		"props": [{"img": "event_lake", "role": "lake", "x": 0.5, "h": 200.0, "from": "right", "opt": "Skip a stone", "alt": {"Skip another stone": "Skip a stone"}},
-			{"img": "event_flat_stones", "role": "pile", "x": 0.2, "h": 90.0, "from": "left", "opt": "Skip a stone", "alt": {"Skip another stone": "Skip a stone"}},
-			{"img": "event_bush_exit", "x": 0.77, "h": 120.0, "from": "right", "opt": "Walk away"}]},
+		"props": [{"img": "event_lake", "role": "lake", "x": 0.5, "h": 200.0, "wide": 2.0, "from": "right"},  # (the lake pulled out to twice its length)
+			{"img": "event_bush_exit", "x": 0.77, "h": 120.0, "from": "right"}]},
 }
 ## The maze's cacti, kept between its pages: [{img, x, h, dy, lit}]
 static var _forest: Array = []
@@ -154,6 +155,20 @@ var hard_lock := false  # nothing on the stage takes a click (the wax is being d
 var _props_locked := false  # the options are being answered with items: the props no longer take clicks
 var _offer_tag := ""
 var _hint_body: RichTextLabel
+var _box: PanelContainer  # the story box at the front
+var _box_col: VBoxContainer
+var _btn_row: HFlowContainer  # the buttons in it
+var _pages: Array = []
+var _page_i := 0
+var _page_last: Array = []
+var _opt_tags: Dictionary = {}  # option -> its tag, always up over its prop (and the prop it stands over)
+## Every event starts with its scene and its opening words, and a button to begin ("begin" in its data); only then do
+## the voices start, the option tags come up and the props take clicks. (A later page of the event starts at once.)
+var _begun := false
+var _opt_buttons: Array = []
+var _late_props: Array = []  # [node, home, from] of the props with "after_begin", until the event begins
+var _item_row: Control  # the spells / artifacts / bottles an option asks for: up only after its button is pressed
+var _dim: ColorRect
 var _choice_ui: Array = []  # the buttons and item rows: they go when the result is told
 var _item_picks: Dictionary = {}  # opt -> the ids chosen so far (an option can ask for several)
 var _item_views: Array = []  # {node, opt, id, tw}
@@ -264,15 +279,22 @@ const CENTER_ZOOM := 0.806  # (center: the cards, 30 % bigger than the 0.62 they
 
 ## center: the item cards stand just under the floor (their top edge on the top edge of the front wall), the buttons under them.
 func _center_cards_y() -> float:
-	return (_stage.floor_range().y if _stage != null else 654.0) + 100.0 + float(LAYOUTS.get(String(ev.get("id", "")), {}).get("cards_dy", 0.0))  # (100 px under the front wall's top edge)
+	return BOX_TOP - SpellCard.H * CENTER_ZOOM - 24.0 + float(LAYOUTS.get(String(ev.get("id", "")), {}).get("cards_dy", 0.0))  # (just above the story box)
 const HINT_W := HINT_TEXT_W + 36.0 + 34.0  # (the paper frame's margins, as in the fight's hint panel)
+## Every event tells its story in one box at the front of the stage, where the fight's own UI stands (the HUD is down):
+## the words twice the size they were, the choices as buttons in the box under them. Words that don't fit come in pages.
+const BOX_TEXT_W := 1240.0
+const BOX_PX := 36  # (twice the 18 the side panel used)
+const BOX_LINES := 4  # (lines of words per page; more than that: "Go on..." pages)
+const BOX_BOTTOM := 1062.0
+const BOX_TOP := 712.0  # (the most the box ever reaches up: the item cards stand just above it)
 const HINT_Y := 170.0
 const HINT_X := 1920.0 - HINT_W + 6.0  # (flush with the right edge, like the fight's hint panel)
 
 
 ## The Seedling's hint panel (panel_paper_frame, the sprout and a heading): the box an event tells its story in. It stands where the fight's hint panel does,
 ## against the right edge under the Leaves' frame. Returns {panel, body}: `body` is the RichTextLabel (set its `text` to change the words).
-static func hint_panel(title: String, text: String, px := 0, min_h := 0.0) -> Dictionary:
+static func hint_panel(title: String, text: String, px := 0, min_h := 0.0, text_w := HINT_TEXT_W) -> Dictionary:
 	var p := PanelContainer.new()
 	var paper := UiSkin.box("panel_paper_frame", [46, 46, 46, 46], [36, 28, 34, 34])
 	if paper != null:
@@ -286,7 +308,7 @@ static func hint_panel(title: String, text: String, px := 0, min_h := 0.0) -> Di
 		sb.set_content_margin_all(14)
 		p.add_theme_stylebox_override("panel", sb)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	p.custom_minimum_size = Vector2(HINT_W, min_h)
+	p.custom_minimum_size = Vector2(text_w + 36.0 + 34.0, min_h)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 4)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -297,7 +319,7 @@ static func hint_panel(title: String, text: String, px := 0, min_h := 0.0) -> Di
 	var sprout: Control = UiSkin.icon("icon_seedling", 40)
 	if sprout != null:
 		head.add_child(sprout)
-	var who := UiTheme.label(title, 22, Color(0.2, 0.45, 0.15))
+	var who := UiTheme.label(title, 22 if px <= 0 or px < 30 else 30, Color(0.2, 0.45, 0.15))
 	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	who.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	head.add_child(who)
@@ -307,15 +329,15 @@ static func hint_panel(title: String, text: String, px := 0, min_h := 0.0) -> Di
 	r.fit_content = true
 	r.scroll_active = false
 	r.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	r.custom_minimum_size = Vector2(HINT_TEXT_W - (28.0 if px > 0 else 0.0), 0)  # (a fixed small size leaves room round the words)
+	r.custom_minimum_size = Vector2(text_w - (28.0 if px > 0 else 0.0), 0)  # (a fixed small size leaves room round the words)
 	r.add_theme_font_size_override("normal_font_size", size_px)
 	r.add_theme_font_size_override("bold_font_size", size_px)
 	r.add_theme_constant_override("line_separation", 2)
 	r.add_theme_color_override("default_color", Color(0.14, 0.11, 0.08))
 	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	r.text = Keywords.colorize(text.replace("\n\n", "\n") if text.length() > 500 else text, true)
+	r.text = Keywords.colorize(text.replace("\n\n", "\n") if text.length() > 500 and px < 30 else text, true)
 	v.add_child(r)
-	return {"panel": p, "body": r}
+	return {"panel": p, "body": r, "col": v}
 
 
 ## The game's own wooden panel frame (panel_wood_frame) as the background of a box drawn here; a flat dark box when the art is missing.
@@ -402,7 +424,7 @@ func _ready() -> void:
 		node.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		node.stretch_mode = TextureRect.STRETCH_SCALE
 		node.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		node.size = Vector2(tex.get_width() * h / tex.get_height(), h)
+		node.size = Vector2(tex.get_width() * h / tex.get_height() * float(p.get("wide", 1.0)), h)  # ("wide": stretched sideways)
 		node.pivot_offset = Vector2(node.size.x / 2.0, node.size.y)
 		var lit: float = p.get("lit", 1.0)
 		node.modulate = Color(lit, lit, lit)
@@ -422,22 +444,18 @@ func _ready() -> void:
 			var gc: Array = lay.glow[String(p.img)]
 			glow_node = _add_spot(home + node.size / 2.0, h, Color(gc[0], gc[1], gc[2], 0.55))
 		_world.add_child(node)
-		var opt := _option_of(String(p.get("opt", "")))
-		var label := String(p.get("label", p.get("opt", "")))
-		if opt < 0:  # (a later page of the event: the same prop stands for another option)
-			for k: String in p.get("alt", {}):
-				opt = _option_of(k)
-				if opt >= 0:
-					label = String(p.alt[k])
-					break
-		if _has_items(opt):
-			opt = -1
-		_props.append({"node": node, "opt": opt, "label": label, "img": null, "bob": p.get("bob", false), "glow": glow_node, "ei": ei, "home": home, "fly": p.get("fly", false),
+		# (the props are scenery: every choice is a button in the box, never a click on a prop; except a layout with
+		# "opts_on_props", the Abandoned Camp, where the campfire and the tent are its two choices, tagged and clicked)
+		var opt := _option_of(String(p.get("opt", ""))) if lay.get("opts_on_props", false) else -1
+		_props.append({"node": node, "opt": opt, "label": String(p.get("label", p.get("opt", ""))), "img": null, "bob": p.get("bob", false), "glow": glow_node, "ei": ei, "home": home, "fly": p.get("fly", false),
 			"noflip": p.get("noflip", false), "tag": String(p.get("tag", "")), "ph": randf() * TAU, "always": p.get("always", false), "tex": tex,
 			"fi": int(p.get("fi", -1)), "lit": lit, "role": String(p.get("role", ""))})
 		if not again and float(p.get("slow", 0.0)) > 0.0:
 			_arrival_pending = true
 			_roll_in(node, home, p)
+		elif not again and p.get("after_begin", false) and not _begun:
+			node.visible = false  # (it comes on when the event begins: _begin)
+			_late_props.append([node, home, String(p.get("from", ""))])
 		elif not again:
 			_walk_on(node, home, String(p.get("from", "")), float(p.get("delay", 0.12 * delay_n if forest == 0 else randf() * 0.5)))
 			delay_n += 1
@@ -445,30 +463,93 @@ func _ready() -> void:
 	_build_items(lay)
 	if lay.get("underwater_tail", false) and again and _stage != null and _stage.is_underwater():
 		_owns_water = true
-	if String(lay.get("cursor", "")) != "":
-		WoodCursor.override_name = String(lay.cursor)  # (the torch is the pointer in this event)
-		WoodCursor.override_owner = self
-	var say_in := String(lay.get("voice_open", ""))
-	if not again and String(lay.get("music_open", "")) != "":
-		play_music(String(lay.music_open))
-		_owns_tune = true
-	if not again and say_in != "":
-		say(say_in)  # (the witch's first words)
-	elif String(ev.get("text", "")) != "":
-		speak(String(ev.text))
+	if _begun:
+		_take_cursor(lay)
+		_start_voices(lay)
 	if _arrival_pending:
 		for n in _choice_ui:
 			if is_instance_valid(n):
 				n.visible = false  # (they come up when he has stopped)
 	if not again and not _props.is_empty():
 		Audio.play("sfx_scene_prepare_short_%d" % randi_range(1, 4), -4.0)
+	if _begun:
+		_make_opt_tags()
+	if again and String(ev.get("id", "")) == "skipping_stones" and _skips_in(String(ev.get("text", ""))) > 0:
+		_busy = true  # (the stone is still skipping: its count and the next throw wait for it)
+		if is_instance_valid(_box):
+			_box.modulate.a = 0.0
+		await _skip_hops(_skips_in(String(ev.text)))
+		if is_instance_valid(_box):
+			_box.create_tween().tween_property(_box, "modulate:a", 1.0, 0.25)
+		_busy = false
+
+
+## The event begins (its button was pressed): the voices and the music start, the option tags come up, and the box
+## shows the choices.
+func _begin() -> void:
+	if _begun:
+		return
+	_begun = true
+	Audio.play("ui_click", -4.0)
+	_take_cursor(LAYOUTS.get(String(ev.get("id", "")), {}))
+	for k in _late_props.size():  # (the props that wait for the beginning walk on now)
+		var lp: Array = _late_props[k]
+		(lp[0] as Control).visible = true
+		_walk_on(lp[0], lp[1], String(lp[2]), 0.15 * k)
+	_late_props.clear()
+	_start_voices(LAYOUTS.get(String(ev.get("id", "")), {}))
+	_make_opt_tags()
+
+
+## The event's own pointer (the camp's torch): only once the event has begun, not on its opening words.
+func _take_cursor(lay: Dictionary) -> void:
+	if String(lay.get("cursor", "")) != "":
+		WoodCursor.override_name = String(lay.cursor)
+		WoodCursor.override_owner = self
+	_page_text(_choice_text(), _opt_buttons)
+
+
+## The words over the choices: the event's question if it has one, else its story again.
+func _choice_text() -> String:
+	var q := String(ev.get("prompt", ""))
+	return q if q != "" else String(ev.get("text", ""))
+	if _opt_buttons.is_empty() and String(ev.get("prompt", "")) == "" and is_instance_valid(_box):
+		_box.create_tween().tween_property(_box, "modulate:a", 0.0, 0.3)  # (every choice is a prop: nothing left to say in the box)
+
+
+func _start_voices(lay: Dictionary) -> void:
+	var say_in := String(lay.get("voice_open", ""))
+	var voice_now: bool = again == lay.get("voice_next", false)  # ("voice_next": its voice is heard on its second page, the Wax Witch's words)
+	if not again and String(lay.get("music_open", "")) != "":
+		play_music(String(lay.music_open))
+		_owns_tune = true
+	if voice_now and say_in != "":
+		say(say_in)  # (the witch's first words)
+		if lay.has("voice_words"):
+			_whisper_words(lay.voice_words)  # (the words of that voice rise out of what is speaking)
+	elif String(ev.get("text", "")) != "":
+		speak(String(ev.text))
+
+
+func _make_opt_tags() -> void:
 	for r: Dictionary in _props:
 		if r.always:
 			_show_tag(r)
-	if again and String(ev.get("id", "")) == "skipping_stones" and _skips_in(String(ev.get("text", ""))) > 0:
-		_busy = true  # (the stone is still skipping: the next throw waits for it)
-		await _skip_hops(_skips_in(String(ev.text)))
-		_busy = false
+	# what each prop does is written over it all the time (not only under the mouse)
+	for k in _props.size():
+		var r: Dictionary = _props[k]
+		var o := int(r.opt)
+		if o < 0 or _opt_tags.has(o) or r.always:
+			continue
+		var text := String(r.label)
+		if disabled.size() > o and disabled[o]:
+			text += " (can't afford)"
+		var tag := make_tag(text)
+		tag.z_index = 3900
+		tag.modulate.a = 0.0
+		add_child(tag)
+		_opt_tags[o] = {"tag": tag, "k": k}
+		tag.create_tween().tween_property(tag, "modulate:a", 1.0, 0.3)
 
 
 func _exit_tree() -> void:
@@ -560,7 +641,7 @@ func offer_items(entries: Array, tag: String) -> void:
 	_hide_tag()
 	_hover = -1
 	for n in _choice_ui:
-		if is_instance_valid(n):
+		if is_instance_valid(n) and n != _btn_row:  # (the box's button row stays: the result's button goes in it)
 			n.queue_free()
 	_choice_ui.clear()
 	for r: Dictionary in _item_views:
@@ -584,6 +665,8 @@ func offer_items(entries: Array, tag: String) -> void:
 func set_hint(text: String) -> void:
 	if _hint_body != null:
 		_hint_body.text = Keywords.colorize(text, true)
+		_hint_body.visible = true
+		_fit_box.call_deferred()
 
 
 ## The Recycler takes the item `give_id` (it shrinks into him), the other items fade, and he hands back the `offer` entries (they come out of him into the row):
@@ -620,15 +703,14 @@ func trade(give_id: String, offer: Array, say: String) -> void:
 		tw.tween_property(given, "modulate:a", 0.0, 0.25).set_delay(0.4)
 		await tw.finished
 	for n in _choice_ui:
-		if is_instance_valid(n):
+		if is_instance_valid(n) and n != _btn_row:  # (the box's button row stays: the result's button goes in it)
 			n.queue_free()
 	_choice_ui.clear()
 	for r: Dictionary in _item_views:
 		if is_instance_valid(r.node):
 			(r.node as Control).queue_free()
 	_item_views.clear()
-	if _hint_body != null:
-		_hint_body.text = Keywords.colorize(say, true)
+	_page_text(say, [])  # (his words; no Back now: the item is on his cart)
 	_hover = -1
 	items = offer
 	_offer_tag = "Take this one"
@@ -654,7 +736,9 @@ func trade(give_id: String, offer: Array, say: String) -> void:
 		v.modulate.a = 0.0
 		var o := create_tween().set_parallel(true)
 		o.tween_callback(func(): Audio.play("shop_card_pop", -4.0)).set_delay(0.25 * k)
-		o.tween_property(v, "position", home, 0.55).set_delay(0.25 * k).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		var fan := (float(k) - float(_item_views.size() - 1) / 2.0)  # (-1, 0, 1: left, middle, right)
+		o.tween_property(v, "position", home + Vector2(0.0, absf(fan) * 28.0), 0.55).set_delay(0.25 * k).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		o.tween_property(v, "rotation", fan * 0.09, 0.55).set_delay(0.25 * k).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		o.tween_property(v, "scale", final_scale, 0.55).set_delay(0.25 * k).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		o.tween_property(v, "modulate:a", 1.0, 0.2).set_delay(0.25 * k)
 		k += 1
@@ -679,9 +763,10 @@ func present(take_id: String) -> void:
 			v.z_index = 60
 			if v is SpellCard and is_instance_valid((v as SpellCard)._zoom):
 				(v as SpellCard)._zoom.queue_free()  # (its hover copy goes: this is the enlarged card itself)
-			var k2 := k if v is SpellCard else 1.7
+			var k2 := k if v is SpellCard else (1.15 if v is ArtifactCard else 1.7)
 			var tw := create_tween().set_parallel(true)
 			tw.tween_property(v, "scale", Vector2.ONE * k2, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			tw.tween_property(v, "rotation", 0.0, 0.4)  # (out of the fan, straight)
 			tw.tween_property(v, "position:y", v.position.y - 40.0, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		else:
 			var f := create_tween()
@@ -706,32 +791,43 @@ func _has_items(opt: int) -> bool:
 ## The player's spells (cards), artifacts and bottles that the options of this page ask for, standing under the stage, glowing on and off. A hover tells what
 ## it is for, a click gives it.
 func _build_items(lay: Dictionary) -> void:
-	if items.is_empty():
-		return
+	if items.is_empty() or (_offer_tag == "" and _only_opt < 0):
+		return  # (an option's things come up only when its button is pressed: _open_items)
 	var y := 664.0
 	if _stage != null:
 		y = _stage.floor_range().y + 10.0
 	var centered: bool = lay.get("center", false)
 	if centered:
 		y = _center_cards_y()
-	var spells: Array = items.filter(func(it: Dictionary) -> bool: return it.kind == "spell")
-	var others: Array = items.filter(func(it: Dictionary) -> bool: return it.kind != "spell")
+	var only := _only_opt
+	var shown: Array = items if only < 0 else items.filter(func(it: Dictionary) -> bool: return int(it.opt) == only)
+	var spells: Array = shown.filter(func(it: Dictionary) -> bool: return it.kind == "spell")
+	var others: Array = shown.filter(func(it: Dictionary) -> bool: return it.kind != "spell")
 	var tags: Dictionary = lay.get("item_tags", {})
 	var opts: Array = ev.get("options", [])
 	# one row: the spell cards, a gap, then the artifacts and bottles (so the buttons of the other options keep their place under it)
-	var row := HBoxContainer.new()
+	var row: Container = HBoxContainer.new()
 	row.anchor_left = 0.0
 	row.anchor_right = 0.0
 	row.offset_left = 20.0
 	row.offset_right = 1900.0  # (every row of items is centred on the screen, whatever the layout)
 	row.offset_top = y
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	(row as HBoxContainer).alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 8)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(row)
 	_choice_ui.append(row)
+	_item_row = row
+	var grid: bool = _only_opt >= 0 or _offer_back or (_offer_tag != "" and lay.get("offer_grid", false))
+	if grid:
+		row.queue_free()  # (they fill the screen instead, everything else dimmed: see _grid_row)
+		_choice_ui.erase(row)
+		row = _grid_row(spells.size() + others.size(), 60.0 if _offer_back else 12.0)
+		_item_row = row
 	var zoom := clampf(((1300.0 if centered else 1400.0) - float(others.size()) * 100.0 - 40.0) / maxf(1.0, float(spells.size()) * (SpellCard.W + 8.0)), 0.4, CENTER_ZOOM if centered else 0.55)
 	var k := 0
+	if grid:
+		zoom = _grid_zoom  # (at their own size, unless too many)
 	var gap_done := others.is_empty() or spells.is_empty()
 	for it: Dictionary in spells + others:
 		if not gap_done and it.kind != "spell":
@@ -748,6 +844,10 @@ func _build_items(lay: Dictionary) -> void:
 			card.zoom = zoom
 			card.clicked.connect(func(_c): _item_click(it))
 			view = card
+		elif grid and it.kind == "artifact":
+			var ac := ArtifactCard.make(Artifacts.view(String(it.id), false))  # (on their own screen: the whole card, to be read)
+			ac.clicked.connect(func(): _item_click(it))
+			view = ac
 		else:
 			view = _item_icon(it)
 		row.add_child(view)
@@ -760,6 +860,42 @@ func _build_items(lay: Dictionary) -> void:
 		_item_views.append(rec)
 		_pulse_item(rec, k)
 		k += 1
+
+
+## The Wax Witch's offer ("offer_grid"): every spell you could seal fills the screen above the box, at its own size
+## (smaller only when there are too many to fit), and everything else dims.
+var _grid_zoom := 1.0
+var _offer_dim: ColorRect
+var _only_opt := -1  # the option whose things are up (its button was pressed), or -1
+
+
+func _grid_row(n: int, gap := 12.0) -> Container:
+	var area := Vector2(1880.0, BOX_TOP - 150.0)
+	_grid_zoom = 1.0
+	while _grid_zoom > 0.4:
+		var cols := maxi(1, int(area.x / (SpellCard.W * _grid_zoom + 12.0)))
+		if ceilf(float(n) / float(cols)) * (SpellCard.H * _grid_zoom + 12.0) <= area.y:
+			break
+		_grid_zoom -= 0.05
+	var flow := HFlowContainer.new()
+	flow.alignment = FlowContainer.ALIGNMENT_CENTER
+	flow.add_theme_constant_override("h_separation", int(gap))
+	flow.add_theme_constant_override("v_separation", 12)
+	flow.position = Vector2(20.0, 120.0)
+	flow.size = Vector2(area.x, area.y)
+	flow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if not is_instance_valid(_offer_dim):
+		_offer_dim = ColorRect.new()
+		_offer_dim.color = Color(0, 0, 0, 0.0)
+		_offer_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_offer_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_offer_dim)
+		if is_instance_valid(_box):
+			move_child(_offer_dim, _box.get_index())  # (the box stays bright)
+		_offer_dim.create_tween().tween_property(_offer_dim, "color:a", 0.6, 0.3)
+	add_child(flow)
+	_choice_ui.append(flow)
+	return flow
 
 
 ## An artifact or a bottle as a small picture in a frame.
@@ -871,17 +1007,30 @@ func show_result(text: String, how := "", keep_items := false, card := {}, card_
 	_busy = true
 	_result_text = text
 	_hide_tag()
+	_drop_opt_tags()
+	if is_instance_valid(_box) and _box.modulate.a < 1.0:
+		_box.create_tween().tween_property(_box, "modulate:a", 1.0, 0.25)  # (back for the result's words)
 	for n in _choice_ui:
-		if is_instance_valid(n):
+		if is_instance_valid(n) and n != _btn_row:
 			n.queue_free()
 	_choice_ui.clear()
+	for c in _btn_row.get_children():
+		c.queue_free()
+	# the stage dims; the box (and what the result shows) stays bright
+	if is_instance_valid(_offer_dim):
+		_offer_dim.queue_free()
+	_dim = ColorRect.new()
+	_dim.color = Color(0, 0, 0, 0.0)
+	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_dim)
+	move_child(_dim, _box.get_index())
+	_dim.create_tween().tween_property(_dim, "color:a", 0.0 if how == "skip" else 0.55, 0.35)  # (a 20+ throw is told like any other throw)
 	if not keep_items:
 		for r: Dictionary in _item_views:
 			if is_instance_valid(r.node):
 				(r.node as Control).queue_free()
 		_item_views.clear()
-	if _hint_body != null:
-		_hint_body.text = Keywords.colorize(text, true)
 	speak(text)
 	if not card.is_empty():  # (a spell you learned: its card stands where the items stood)
 		var c := SpellCard.make(card_before if not card_before.is_empty() else card)  # (a card that is about to change shows how it was)
@@ -893,6 +1042,8 @@ func show_result(text: String, how := "", keep_items := false, card := {}, card_
 		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(c)
 		_item_views.append({"node": c, "opt": -1, "id": "", "tw": null})
+	if how == "skip" and is_instance_valid(_box):
+		_box.modulate.a = 0.0  # (the count is told once the stone has stopped)
 	if how == "burn":
 		await _burn_props()
 	elif how == "shatter":
@@ -912,25 +1063,112 @@ func show_result(text: String, how := "", keep_items := false, card := {}, card_
 		ac.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(ac)
 		_item_views.append({"node": ac, "opt": -1, "id": "", "tw": null})
-	var lay: Dictionary = LAYOUTS.get(String(ev.get("id", "")), {})
-	var row := HBoxContainer.new()
-	row.anchor_left = 0.0
-	row.anchor_right = 1.0
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if lay.get("center", false):
-		row.offset_top = _center_cards_y() + 40.0
-	else:
-		row.anchor_top = 1.0
-		row.anchor_bottom = 1.0
-		row.offset_bottom = -222.0
-		row.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	var b := UiTheme.button(continue_label, func(): stop_voice(); continued.emit(), 22)
-	b.custom_minimum_size = Vector2(0, 52)
-	row.add_child(b)
-	add_child(row)
-	row.modulate.a = 0.0
-	create_tween().tween_property(row, "modulate:a", 1.0, 0.3)
+	var b := UiTheme.button(continue_label, func(): stop_voice(); continued.emit(), 28)
+	b.custom_minimum_size = Vector2(0, 58)
+	_page_text(text, [b])
+	if is_instance_valid(_box) and _box.modulate.a < 1.0:
+		_box.create_tween().tween_property(_box, "modulate:a", 1.0, 0.25)
+
+
+## The Whispering Well's grudge, after its words have been read: one of your spells flies up from the bottom of the screen,
+## a ball of light rises out of the well and splashes onto it, and becomes a Water in its cost (`before` -> `after`).
+## Then only Next is left, under the dimmed stage. Await it: the caller connects `continued` once it returns.
+func curse_card(before: Dictionary, after: Dictionary) -> void:
+	for c in _btn_row.get_children():
+		c.queue_free()
+	_hint_body.visible = false
+	if is_instance_valid(_box):
+		_box.create_tween().tween_property(_box, "modulate:a", 0.0, 0.25)
+	# 1. the card flies up from the bottom middle
+	var card := SpellCard.make(before)
+	card.zoom = CENTER_ZOOM
+	card.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.z_index = 50
+	var home := Vector2(960.0 - SpellCard.W * CENTER_ZOOM / 2.0, 330.0)
+	card.position = Vector2(home.x, 1120.0)
+	add_child(card)
+	Audio.play("sfx_card_hit", -6.0, 1.2)
+	var up := create_tween()
+	up.tween_property(card, "position", home, 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await up.finished
+	await get_tree().create_timer(0.35).timeout
+	# 2. the card as it will be, measured where it stands (its new Water slot is the last of its pattern)
+	var nc := SpellCard.make(after)
+	nc.zoom = CENTER_ZOOM
+	nc.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	nc.position = home
+	nc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	nc.z_index = 50
+	add_child(nc)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	nc.visible = false
+	var slot: Control = nc._pat.get_child(nc._pat.get_child_count() - 1) if nc._pat != null and nc._pat.get_child_count() > 0 else null
+	var to := slot.get_global_rect().get_center() if slot != null else nc.get_global_rect().get_center()
+	var px := slot.size.x if slot != null and slot.size.x > 8.0 else 36.0
+	# 3. a ball of light out of the well, up, then down onto the card, where it splashes and becomes the Water
+	var well := _prop_role("well")
+	var from := Vector2(960.0, 500.0)
+	if not well.is_empty():
+		var wn: TextureRect = well.node
+		from = wn.position + Vector2(wn.size.x / 2.0, wn.size.y * 0.55)
+	var ball := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(1.0, 0.97, 0.8)
+	sb.set_corner_radius_all(64)
+	sb.shadow_color = Color(1.0, 0.9, 0.5, 0.8)
+	sb.shadow_size = 18
+	ball.add_theme_stylebox_override("panel", sb)
+	ball.size = Vector2(px, px)
+	ball.pivot_offset = ball.size / 2.0
+	ball.position = from - ball.size / 2.0
+	ball.scale = Vector2.ONE * 0.3
+	ball.z_index = 60
+	ball.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(ball)
+	Audio.play("elem_pickup", 0.0, 0.8)
+	var rise := create_tween().set_parallel(true)
+	rise.tween_property(ball, "position", from + Vector2(0.0, -200.0) - ball.size / 2.0, 0.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	rise.tween_property(ball, "scale", Vector2.ONE * 1.4, 0.6)
+	await rise.finished
+	var fall := create_tween().set_parallel(true)
+	fall.tween_property(ball, "position", to - ball.size / 2.0, 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	fall.tween_property(ball, "scale", Vector2.ONE, 0.55)
+	await fall.finished
+	# the splash: a burst of light, the drops, and the Water is there
+	Audio.play("wooden_ball_swap", -2.0)
+	for k in 10:
+		var drop := Panel.new()
+		var ds := StyleBoxFlat.new()
+		ds.bg_color = Color(0.75, 0.9, 1.0) if k % 2 == 0 else Color(1.0, 0.97, 0.8)
+		ds.set_corner_radius_all(16)
+		drop.add_theme_stylebox_override("panel", ds)
+		drop.size = Vector2(10, 10)
+		drop.position = to - drop.size / 2.0
+		drop.z_index = 61
+		drop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(drop)
+		var dir := Vector2.from_angle(TAU * k / 10.0 + randf_range(-0.2, 0.2)) * randf_range(50.0, 95.0)
+		var dt := drop.create_tween().set_parallel(true)
+		dt.tween_property(drop, "position", drop.position + dir, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		dt.tween_property(drop, "modulate:a", 0.0, 0.45)
+		dt.chain().tween_callback(drop.queue_free)
+	nc.visible = true
+	card.queue_free()
+	ball.queue_free()
+	var pop := create_tween()
+	nc.pivot_offset = nc.size / 2.0
+	pop.tween_property(nc, "scale", Vector2(1.08, 1.08), 0.1)
+	pop.tween_property(nc, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_item_views.append({"node": nc, "opt": -1, "id": "", "tw": null})
+	await get_tree().create_timer(0.6).timeout
+	# 4. only Next is left (the stage stays dim)
+	if is_instance_valid(_box):
+		_box.create_tween().tween_property(_box, "modulate:a", 1.0, 0.25)
+	var b := UiTheme.button("Next", func(): stop_voice(); continued.emit(), 28)
+	b.custom_minimum_size = Vector2(0, 58)
+	_page_text("", [b])
 
 
 ## The tree and the bridge react to what you did, right on the stage.
@@ -1306,12 +1544,9 @@ func _skip_hops(n: int) -> void:
 		await tw.finished
 		Audio.play("event_skip_plink", -6.0, lerpf(0.9, 1.5, float(j) / float(maxi(1, n - 1))))
 		_water_splash(b, lerpf(48.0, 26.0, float(j) / float(maxi(1, n - 1))))
-	if n >= 20:
-		await get_tree().create_timer(0.4).timeout
-	else:
-		Audio.play("sfx_water_splash", -8.0, 1.4)
-		create_tween().tween_property(stone, "modulate:a", 0.0, 0.4)
-		await get_tree().create_timer(0.4).timeout
+	Audio.play("sfx_water_splash", -8.0, 1.4)  # (it sinks, however far it went: nothing special for 20 or more)
+	create_tween().tween_property(stone, "modulate:a", 0.0, 0.4)
+	await get_tree().create_timer(0.4).timeout
 	stone.queue_free()
 
 
@@ -1497,6 +1732,75 @@ func _prop_role(role: String) -> Dictionary:
 		if r.role == role:
 			return r
 	return {}
+
+
+## Whispers: the words of a voice line rise out of the prop that speaks it (the well), one phrase at a time as it is
+## said: yellow, drifting slowly up and swaying, each letter bending on a wave (a lure), then fading away fast.
+## `spec`: {from: the prop's role, at: [[seconds into the voice, words], ...]}.
+const WHISPER_LIFE := 2.6  # seconds a phrase floats
+const WHISPER_COL := Color(1.0, 0.86, 0.3)
+var _whispers: Array = []  # {node, age, x0, y0, ph}
+
+
+func _whisper_words(spec: Dictionary) -> void:
+	var t0 := Time.get_ticks_msec()
+	for w in spec.get("at", []):
+		var due := int(float(w[0]) * 1000.0)
+		while Time.get_ticks_msec() - t0 < due:
+			await get_tree().process_frame
+			if not is_inside_tree() or _busy:
+				return  # (an option was chosen: the voice is cut, so are its words)
+		var src := _prop_role(String(spec.get("from", "")))
+		if src.is_empty():
+			return
+		var n: TextureRect = src.node
+		var home: Vector2 = src.home  # (where it stands once it has come on: the first words come while it is still dropping in)
+		_whisper(String(w[1]), Vector2(home.x + n.size.x / 2.0, home.y + n.size.y * 0.55))  # (out of its opening)
+
+
+func _whisper(text: String, at: Vector2) -> void:
+	var r := RichTextLabel.new()
+	r.bbcode_enabled = true
+	r.fit_content = true
+	r.scroll_active = false
+	r.autowrap_mode = TextServer.AUTOWRAP_OFF
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	r.add_theme_font_size_override("normal_font_size", 34)
+	r.add_theme_color_override("default_color", WHISPER_COL)
+	r.add_theme_constant_override("outline_size", 8)
+	r.add_theme_color_override("font_outline_color", Color(0.25, 0.12, 0.0, 0.85))
+	r.text = "[wave amp=26.0 freq=3.0 connected=1]%s[/wave]" % text  # (every letter bends on a slow wave)
+	r.z_index = 3800
+	r.modulate.a = 0.0
+	add_child(r)
+	await get_tree().process_frame
+	if not is_instance_valid(r):
+		return
+	r.size = r.get_combined_minimum_size()
+	r.pivot_offset = r.size / 2.0
+	_whispers.append({"node": r, "age": 0.0, "x0": at.x, "y0": at.y, "ph": randf() * TAU})
+
+
+## The whispers drift up out of the well, swaying and swelling, then fade away fast.
+func _move_whispers(d: float) -> void:
+	for k in range(_whispers.size() - 1, -1, -1):
+		var w: Dictionary = _whispers[k]
+		var r: RichTextLabel = w.node
+		if not is_instance_valid(r):
+			_whispers.remove_at(k)
+			continue
+		w.age = float(w.age) + d
+		var a: float = w.age
+		var ph: float = w.ph
+		r.position = Vector2(float(w.x0) + sin(a * 2.1 + ph) * 34.0, float(w.y0) - a * 62.0) - r.size / 2.0  # (slowly up, swaying side to side)
+		r.rotation = sin(a * 1.6 + ph) * 0.10  # (it leans one way, then the other)
+		r.scale = Vector2.ONE * (0.85 + 0.25 * minf(a / WHISPER_LIFE, 1.0)) * Vector2(1.0 + 0.05 * sin(a * 3.3 + ph), 1.0 - 0.05 * sin(a * 3.3 + ph))  # (it swells, and breathes)
+		var fade_in := minf(a / 0.35, 1.0)
+		var fade_out := clampf((WHISPER_LIFE - a) / 0.55, 0.0, 1.0)  # (then it is gone, fast)
+		r.modulate.a = fade_in * fade_out
+		if a >= WHISPER_LIFE:
+			r.queue_free()
+			_whispers.remove_at(k)
 
 
 ## A figure changes its picture (same height, same standing place).
@@ -1713,78 +2017,197 @@ func _walk_on(node: Control, home: Vector2, from: String, delay: float) -> void:
 
 
 func _build_text(lay: Dictionary) -> void:
-	# the story is told in the hint panel, at the right edge; the choices stay down below (and the player's HUD under them)
-	var hp := hint_panel(String(ev.get("title", "")), String(ev.get("text", "")))
+	# the story is told in the box at the front of the stage (where the fight's UI stands); the choices are buttons in it
+	var hp := hint_panel(String(ev.get("title", "")), "", BOX_PX, 0.0, BOX_TEXT_W)
 	var panel: PanelContainer = hp.panel
 	_hint_body = hp.body
+	_box = panel
+	_box_col = hp.col
 	add_child(panel)
-	if again:
-		panel.position = Vector2(HINT_X, HINT_Y)
-	else:
-		panel.position = Vector2(1960.0, HINT_Y)
-		create_tween().tween_property(panel, "position:x", HINT_X, 0.4).set_delay(0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	# the options that no prop on this page stands for: buttons (an event with art for it can put some of them beside its props)
-	var shown := {}
-	for it: Dictionary in items:
-		shown[int(it.opt)] = true
-	for r: Dictionary in _props:
-		if int(r.opt) >= 0:
-			shown[int(r.opt)] = true
+	panel.anchor_left = 0.5
+	panel.anchor_right = 0.5
+	panel.anchor_top = 0.0
+	panel.anchor_bottom = 0.0
+	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_btn_row = HFlowContainer.new()
+	_btn_row.alignment = FlowContainer.ALIGNMENT_CENTER
+	_btn_row.add_theme_constant_override("h_separation", 40)
+	_btn_row.add_theme_constant_override("v_separation", 10)
+	_btn_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_box_col.add_child(_btn_row)
+	_choice_ui.append(_btn_row)
+	if not again:
+		panel.modulate.a = 0.0
+		create_tween().tween_property(panel, "modulate:a", 1.0, 0.4).set_delay(0.3)
+	# every option is a button in the box; one that can't be taken (too few Leaves, no bottle to throw...) is silently left out
 	var opts: Array = ev.get("options", [])
-	for h in hidden_opts:
-		shown[int(h)] = true  # (no button, no prop: that option is not offered)
-	var beside: Dictionary = {}
-	for b: Dictionary in lay.get("btns", []):
-		var i := _option_of(String(b.opt))
-		if i >= 0 and not _props.is_empty():
-			beside[i] = b
-	var row := HBoxContainer.new()
-	row.anchor_left = 0.0
-	row.anchor_right = 0.0
-	row.offset_left = 20.0
-	row.offset_right = 1900.0
-	if lay.get("center", false):
-		row.anchor_top = 0.0
-		row.anchor_bottom = 0.0
-		row.offset_top = _center_cards_y() + (SpellCard.H * _items_zoom(true) + 20.0 if not items.is_empty() else 40.0)  # (no cards: where Continue will stand)
-		row.offset_right = 1900.0
-	else:
-		row.anchor_top = 1.0
-		row.anchor_bottom = 1.0
-		row.offset_bottom = -222.0  # (above the player's HP, bottles and artifacts, which stand at the bottom)
-		row.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 20)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var loose := 0
+	var buttons: Array = []
 	for i in opts.size():
-		if shown.has(i):
+		if hidden_opts.has(i) or (disabled.size() > i and disabled[i]) or _prop_for(i):
 			continue
-		if beside.has(i):
-			var bb: Dictionary = beside[i]
-			var side := _button(i, clampf(float(String(opts[i].label).length()) * 11.0 + 80.0, 200.0, 380.0))
-			side.position = Vector2(float(bb.x) * 1920.0 - side.custom_minimum_size.x / 2.0, _feet - 150.0 + float(bb.get("y", 0.0)))
-			add_child(side)
-			_choice_ui.append(side)
-			continue
-		row.add_child(_button(i, minf(420.0, 1400.0 / float(maxi(1, opts.size())) - 20.0)))
-		loose += 1
-	if loose > 0:
-		add_child(row)
-		_choice_ui.append(row)
+		buttons.append(_button(i, 0.0))
+	_opt_buttons = buttons
+	if again or String(ev.get("begin", "")) == "":
+		_begun = true
+		_page_text(String(ev.get("text", "")), buttons)
+	else:
+		var go := UiTheme.button(String(ev.begin), _begin, 28)
+		go.custom_minimum_size = Vector2(0, 58)
+		_page_text(String(ev.get("text", "")), [go])
+
+
+func _prop_for(i: int) -> bool:
+	for r: Dictionary in _props:
+		if int(r.opt) == i:
+			return true
+	return false
 
 
 func _button(i: int, w: float) -> Button:
 	var opts: Array = ev.get("options", [])
 	var label := String(opts[i].label)
-	var b := UiTheme.button(label, func(): _choose(i), 22)
-	if label.length() < 40:
-		b.custom_minimum_size = Vector2(0, 52)  # (as wide as its words)
-	else:
-		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		b.custom_minimum_size = Vector2(w, 96.0 if label.length() < 80 else 130.0)
-	b.disabled = disabled.size() > i and disabled[i]
+	var b := UiTheme.button(label, _pressed_option.bind(i), 28)
+	b.custom_minimum_size = Vector2(maxf(w, 0.0), 58)  # (as wide as its words)
 	return b
+
+
+## A button in the box: an option that asks for one of your things opens their row first, any other is chosen.
+func _pressed_option(i: int) -> void:
+	if _has_items(i):
+		_open_items(i)
+	else:
+		await _choose(i)
+
+
+## An option that asks for one of your things (a spell, an artifact, a bottle): its row comes up under the stage, the
+## box says what to pick, and Back returns to the choices.
+func _open_items(i: int) -> void:
+	if _busy:
+		return
+	Audio.play("ui_click", -4.0)
+	_drop_item_views()
+	_only_opt = i
+	_build_items(LAYOUTS.get(String(ev.get("id", "")), {}))
+	var opts: Array = ev.get("options", [])
+	var back := UiTheme.button("Back", _close_items, 28)
+	back.custom_minimum_size = Vector2(0, 58)
+	_page_text("%s: pick one below." % String(opts[i].label), [back])
+
+
+func _drop_item_views() -> void:
+	for r: Dictionary in _item_views:
+		if is_instance_valid(r.node):
+			(r.node as Control).queue_free()
+	_item_views.clear()
+	_item_picks.clear()
+	if is_instance_valid(_item_row):
+		_choice_ui.erase(_item_row)
+		_item_row.queue_free()
+
+
+func _close_items() -> void:
+	if _busy:
+		return
+	Audio.play("ui_click", -4.0)
+	_drop_item_views()
+	_only_opt = -1
+	if is_instance_valid(_offer_dim):
+		_offer_dim.queue_free()
+	_page_text(_choice_text() if String(ev.get("begin", "")) != "" else String(ev.get("text", "")), _opt_buttons)
+
+
+## The words in the box, a page at a time (at most BOX_LINES lines a page); the last page has `last` under it (the choices, or
+## the button after a result). The earlier pages have a "Go on..." button.
+func _page_text(text: String, last: Array) -> void:
+	_pages = _paginate(text)
+	_page_i = 0
+	_page_last = last
+	_show_page()
+
+
+func _show_page() -> void:
+	for c in _btn_row.get_children():
+		_btn_row.remove_child(c)
+		if not (c in _page_last):
+			c.queue_free()
+	_hint_body.text = Keywords.colorize(String(_pages[_page_i]), true) if not _pages.is_empty() else ""
+	_hint_body.visible = not _pages.is_empty() and String(_pages[_page_i]) != ""
+	if _page_i < _pages.size() - 1:
+		var more := UiTheme.button("Go on...", func():
+			_page_i += 1
+			Audio.play("ui_click", -6.0)
+			_show_page(), 28)
+		more.custom_minimum_size = Vector2(0, 58)
+		_btn_row.add_child(more)
+	else:
+		for b in _page_last:
+			if is_instance_valid(b):
+				_btn_row.add_child(b)
+		_even_buttons()
+	await get_tree().process_frame
+	_fit_box()
+
+
+## The choices stand evenly: all as wide as the widest, when they fit on one line (otherwise each keeps its own width).
+func _even_buttons() -> void:
+	var bs: Array = _btn_row.get_children().filter(func(c: Node) -> bool: return c is Button)
+	if bs.size() < 2:
+		return
+	var w := 0.0
+	for b: Button in bs:
+		b.custom_minimum_size.x = 0.0
+		w = maxf(w, b.get_combined_minimum_size().x)
+	w += 40.0  # (a little air around the words)
+	var gap := float(_btn_row.get_theme_constant("h_separation"))
+	if w * bs.size() + gap * (bs.size() - 1) > BOX_TEXT_W:
+		return
+	for b: Button in bs:
+		b.custom_minimum_size.x = w
+
+
+## The box keeps its bottom edge at the bottom of the screen and grows upwards with its words.
+func _fit_box() -> void:
+	if not is_instance_valid(_box):
+		return
+	_box.reset_size()
+	_box.size.x = BOX_TEXT_W + 70.0
+	_box.position = Vector2(960.0 - _box.size.x / 2.0, BOX_BOTTOM - _box.size.y)
+
+
+## Splits words into pages of at most BOX_LINES lines at the box's size: by paragraph, then by sentence.
+func _paginate(text: String) -> Array:
+	if text.strip_edges() == "":
+		return [""]
+	var font: Font = _hint_body.get_theme_font("normal_font")
+	var max_h := float(BOX_LINES) * (font.get_height(BOX_PX) + 2.0) + 4.0
+	var fits := func(t: String) -> bool:
+		return font.get_multiline_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, BOX_TEXT_W - 28.0, BOX_PX).y <= max_h
+	var pieces: Array = []
+	for para in text.split("\n", false):
+		var re := RegEx.new()
+		re.compile("[^.!?…]+[.!?…]+[\"'”’)]*\\s*|[^.!?…]+$")
+		var sents: Array = []
+		for m in re.search_all(String(para)):
+			sents.append(m.get_string().strip_edges())
+		if sents.is_empty():
+			sents = [String(para)]
+		pieces.append(sents)
+	var pages: Array = []
+	var cur := ""
+	for p_i in pieces.size():
+		var sents: Array = pieces[p_i]
+		for s_i in sents.size():
+			var s: String = sents[s_i]
+			var join := ("\n" if s_i == 0 else " ") if cur != "" else ""
+			var tryt: String = cur + join + s
+			if cur != "" and not fits.call(tryt):
+				pages.append(cur)
+				cur = s
+			else:
+				cur = tryt
+	if cur != "":
+		pages.append(cur)
+	return pages
 
 
 func _exit_tree_cart() -> void:
@@ -1793,6 +2216,14 @@ func _exit_tree_cart() -> void:
 
 func _process(d: float) -> void:
 	_t += d
+	_move_whispers(d)
+	for o in _opt_tags:  # (the option tags follow their props: they walk on, bob and fly)
+		var e: Dictionary = _opt_tags[o]
+		if is_instance_valid(e.tag) and int(e.k) < _props.size():
+			var n: TextureRect = _props[int(e.k)].node
+			var tg: Control = e.tag
+			var at := Vector2(n.position.x + n.size.x / 2.0 - tg.size.x / 2.0, n.position.y - tg.size.y - 8.0)
+			tg.position = Vector2(clampf(at.x, 10.0, 1910.0 - tg.size.x), maxf(at.y, 120.0))
 	if _hover_k >= 0 and _hover_k < _props.size() and is_instance_valid(_tag) and _props[_hover_k].fly:
 		_place_tag(_props[_hover_k])  # (the flying turtle moves: his words follow him)
 	_follow_sun()
@@ -1819,7 +2250,7 @@ func _gui_input(e: InputEvent) -> void:
 	if _edit:
 		_edit_mouse(e)
 		return
-	if _busy:
+	if _busy or not _begun:
 		return
 	if e is InputEventMouseMotion:
 		var k := _prop_at(e.position)
@@ -1844,34 +2275,39 @@ func start_fuse(text: String) -> void:
 	_busy = true
 	_hide_tag()
 	for n in _choice_ui:
-		if is_instance_valid(n):
+		if is_instance_valid(n) and n != _btn_row:  # (the box's button row stays: the result's button goes in it)
 			n.queue_free()
 	_choice_ui.clear()
 	_fz_text = text
 	_fz_ids = run_ref.fusable()
 	_fz_slots = ["", ""]
 	_fz_row.clear()
-	_fz_zoom = clampf(1340.0 / (maxf(1.0, float(_fz_ids.size())) * (SpellCard.W + 8.0)), 0.3, CENTER_ZOOM)
+	_fz_zoom = clampf(1880.0 / (maxf(1.0, float(_fz_ids.size())) * (SpellCard.W + 8.0)), 0.3, 1.0)  # (native size; only a very long spellbook shrinks)
+	# everything but the cards, the two boards and the box goes dim
+	_fz_dim = ColorRect.new()
+	_fz_dim.color = Color(0, 0, 0, 0.0)
+	_fz_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_fz_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_fz_dim)
+	if is_instance_valid(_box):
+		move_child(_fz_dim, _box.get_index())
+	_fz_dim.create_tween().tween_property(_fz_dim, "color:a", 0.55, 0.3)
 	if _hint_body != null:
-		_hint_body.text = Keywords.colorize("Click or drag two spells into the two boards above the fire. The pattern of the first one goes first. The new spell shows above them.")
-	var sw := SpellCard.W * FZ_SLOT_ZOOM + FZ_RIM * 2.0  # (a small card on its debuff board)
+		_hint_body.text = Keywords.colorize("Click or drag two spells into the two boards. The pattern of the first one goes first. The new spell shows beside them.")
+		_hint_body.visible = true
+		_fit_box.call_deferred()
+	var sw := SpellCard.W * FZ_SLOT_ZOOM + FZ_RIM * 2.0  # (a card at its own size on its board)
 	var sh := SpellCard.H * FZ_SLOT_ZOOM + FZ_RIM * 2.0
-	var pw := SpellCard.W * FZ_PREVIEW_ZOOM
-	var ph := SpellCard.H * FZ_PREVIEW_ZOOM
-	var cx := 960.0
-	var top := 142.0
-	var pit := _prop_role("pit")
-	if not pit.is_empty():
-		var pn: Control = pit.node
-		cx = pn.position.x + pn.size.x / 2.0
-	_fz_prev_at = Vector2(cx - pw / 2.0, top)  # (the new spell stands above the two small ones, once both are in)
+	var cx := 960.0  # (the two boards: top middle of the screen)
+	var top := 130.0
+	_fz_prev_at = Vector2(cx + sw + 70.0, top + FZ_RIM)  # (the new spell stands to the right of the two, once both are in)
 	_fz_slot_box.clear()
 	for k in 2:
 		var p := PanelContainer.new()
 		p.custom_minimum_size = Vector2(sw, sh)
 		p.size = Vector2(sw, sh)
 		p.add_theme_stylebox_override("panel", board_box(int(FZ_RIM), int(FZ_RIM)))
-		p.position = Vector2(cx - sw - 6.0 + float(k) * (sw + 12.0), top + ph + 8.0)
+		p.position = Vector2(cx - sw - 10.0 + float(k) * (sw + 20.0), top)
 		p.z_index = 6
 		p.set_drag_forwarding(Callable(), func(_at, d): return d is Dictionary and d.has("fuse"), func(_at, d): _fuse_drop(k, d))
 		add_child(p)
@@ -1883,7 +2319,7 @@ func start_fuse(text: String) -> void:
 	_fz_btns.anchor_right = 0.0
 	_fz_btns.offset_left = 20.0
 	_fz_btns.offset_right = 1900.0
-	_fz_btns.offset_top = _center_cards_y() + SpellCard.H * _fz_zoom + 30.0
+	_fz_btns.offset_top = FZ_ROW_Y + SpellCard.H * _fz_zoom + 20.0
 	var back := UiTheme.button("Back", func(): _fuse_back(), 22)
 	back.custom_minimum_size = Vector2(0, 52)
 	_fz_btns.add_child(back)
@@ -1895,8 +2331,10 @@ func start_fuse(text: String) -> void:
 	_fuse_refresh()
 
 
-const FZ_SLOT_ZOOM := 0.54
-const FZ_PREVIEW_ZOOM := 0.744
+const FZ_SLOT_ZOOM := 1.0
+const FZ_PREVIEW_ZOOM := 1.0
+const FZ_ROW_Y := 400.0  # the top of the row of spells, under the two boards
+var _fz_dim: ColorRect
 const FZ_RIM := 10.5  # (air around the small card: the board is 20 % smaller than with 30; its painted rim reaches over the card edge a little)
 var _fz_text := ""
 var _fz_busy := false
@@ -1978,7 +2416,7 @@ func _fuse_refresh() -> void:
 		var card := SpellCard.make(run_ref.spell(id))
 		card.zoom = _fz_zoom
 		card.set_anchors_preset(Control.PRESET_TOP_LEFT)
-		card.position = Vector2(x0 + float(i) * (cw + gap), _center_cards_y())
+		card.position = Vector2(x0 + float(i) * (cw + gap), FZ_ROW_Y)
 		card.clicked.connect(func(_c): _fuse_click(id))
 		card.set_drag_forwarding(func(_at): return _fuse_begin_drag(card, id, -1), Callable(), Callable())
 		add_child(card)
@@ -2030,7 +2468,7 @@ func _fuse_clear() -> void:
 		if is_instance_valid(c):
 			(c as Control).queue_free()
 	_fz_slot_box.clear()
-	for c in [_fz_prev, _fz_btns]:
+	for c in [_fz_prev, _fz_btns, _fz_dim]:
 		if is_instance_valid(c):
 			(c as Control).queue_free()
 
@@ -2337,6 +2775,8 @@ func _glow(k: int, on: bool) -> void:
 
 func _show_tag(r: Dictionary) -> void:
 	_hide_tag()
+	if _opt_tags.has(int(r.opt)):
+		return  # (its words are up already)
 	var text: String = r.label
 	var o: int = r.opt
 	if o >= 0 and disabled.size() > o and disabled[o]:
@@ -2353,6 +2793,14 @@ func _place_tag(r: Dictionary) -> void:
 	var n: TextureRect = r.node
 	var at := Vector2(n.position.x + n.size.x / 2.0 - _tag.size.x / 2.0, n.position.y - _tag.size.y - 8.0)
 	_tag.position = Vector2(clampf(at.x, 10.0, 1910.0 - _tag.size.x), maxf(at.y, 120.0))
+
+
+func _drop_opt_tags() -> void:
+	for o in _opt_tags:
+		var tg = _opt_tags[o].tag
+		if is_instance_valid(tg):
+			tg.queue_free()
+	_opt_tags.clear()
 
 
 func _hide_tag() -> void:
@@ -2374,6 +2822,7 @@ func _choose(i: int) -> void:
 	_busy = true
 	stop_voice()
 	_hide_tag()
+	_drop_opt_tags()
 	var lay: Dictionary = LAYOUTS.get(String(ev.get("id", "")), {})
 	var kind := String(lay.get("outro", {}).get(i, ""))
 	if int(lay.get("forest", 0)) > 0:

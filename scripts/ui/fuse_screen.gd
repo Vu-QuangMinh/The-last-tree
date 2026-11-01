@@ -49,7 +49,9 @@ func _ready() -> void:
 	v.size = Vector2(1820, 1000)
 	v.add_theme_constant_override("separation", 12)
 	add_child(v)
-	v.add_child(UiTheme.heading("🔥 Fuse two spells", 38, Color(1, 0.8, 0.6)))
+	var head := UiTheme.heading("🔥 Fuse two spells", 38, Color(1, 0.8, 0.6))
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(head)
 	var rules := RichTextLabel.new()
 	rules.bbcode_enabled = true
 	rules.fit_content = true
@@ -58,41 +60,57 @@ func _ready() -> void:
 	rules.add_theme_font_size_override("normal_font_size", 18)
 	rules.add_theme_font_size_override("bold_font_size", 18)
 	rules.add_theme_color_override("default_color", Color(0.9, 0.92, 0.86))
-	rules.text = Keywords.colorize(RULES)
+	rules.text = "[center]%s[/center]" % Keywords.colorize(RULES)
+	rules.custom_minimum_size = Vector2(1820, 0)
 	v.add_child(rules)
-	# the two fuse slots, then the result
+	# the two fuse slots in the top middle of the screen; the new spell, the notes and the buttons to their right
+	var top := Control.new()
+	top.custom_minimum_size = Vector2(1820, SpellCard.H)
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(top)
 	var mid := HBoxContainer.new()
 	mid.add_theme_constant_override("separation", 24)
-	v.add_child(mid)
+	top.add_child(mid)
 	for k in 2:
 		var slot := _make_slot(k)
 		_slot_box.append(slot)
 		mid.add_child(slot)
 		if k == 0:
 			mid.add_child(UiTheme.label("+", 48, Color.WHITE))
-	mid.add_child(UiTheme.label("→", 48, Color(1, 0.8, 0.4)))
+	var right := HBoxContainer.new()
+	right.add_theme_constant_override("separation", 24)
+	top.add_child(right)
+	right.add_child(UiTheme.label("→", 48, Color(1, 0.8, 0.4)))
 	_result_box = HBoxContainer.new()
 	_result_box.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H)
-	mid.add_child(_result_box)
+	right.add_child(_result_box)
 	var side := VBoxContainer.new()
 	side.add_theme_constant_override("separation", 10)
-	mid.add_child(side)
+	right.add_child(side)
+	var place := func() -> void:  # (once the row knows its width: the slots centred on the screen)
+		mid.reset_size()
+		right.reset_size()
+		mid.position = Vector2(910.0 - mid.size.x / 2.0, 0.0)
+		right.position = Vector2(mid.position.x + mid.size.x + 24.0, 0.0)
+	place.call_deferred()
 	_status = RichTextLabel.new()
 	_status.bbcode_enabled = true
 	_status.fit_content = true
 	_status.scroll_active = false
-	_status.custom_minimum_size = Vector2(420, 0)
+	_status.custom_minimum_size = Vector2(300, 0)
 	_status.add_theme_font_size_override("normal_font_size", 19)
 	_status.add_theme_font_size_override("bold_font_size", 19)
 	_status.add_theme_color_override("default_color", Color(1, 0.9, 0.75))
 	side.add_child(_status)
 	_fuse_btn = UiTheme.button("Fuse them!", _commit, 24)
-	_fuse_btn.custom_minimum_size = Vector2(260, 56)
+	_fuse_btn.custom_minimum_size = Vector2(300, 56)
 	side.add_child(_fuse_btn)
-	var see := UiTheme.button("👁 See all your other spells", _show_others, 18)
+	var see := UiTheme.button("👁 Your other spells", _show_others, 18)
 	see.tooltip_text = "Look over every spell you own before you fuse: check the new pattern doesn't break an anti-spell, and plan the order with your other spells."
 	side.add_child(see)
-	v.add_child(UiTheme.label("Your spells (drag two onto the slots, or click them):", 18, UiTheme.MUTED))
+	var pick := UiTheme.label("Your spells (drag two onto the slots, or click them):", 18, UiTheme.MUTED)
+	pick.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(pick)
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -100,6 +118,7 @@ func _ready() -> void:
 	scroll.set_drag_forwarding(Callable(), _can_drop_list, _drop_list)  # drop a slot's card here: it goes back down
 	v.add_child(scroll)
 	_grid = HFlowContainer.new()
+	_grid.alignment = FlowContainer.ALIGNMENT_CENTER
 	_grid.custom_minimum_size = Vector2(1800, 0)
 	_grid.add_theme_constant_override("h_separation", 12)
 	_grid.add_theme_constant_override("v_separation", 12)
