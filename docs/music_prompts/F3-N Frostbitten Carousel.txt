@@ -1,0 +1,10 @@
+F3-N  Frostbitten Carousel
+
+STYLE (dán vào ô Style / Style of Music):
+icy carousel waltz, celesta, glockenspiel, sleigh bells, harp, pizzicato strings, xylophone, 3/4, B minor, 150 BPM, sparkling, fast, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A frozen merry-go-round spinning too fast. A celesta and a glockenspiel run glittering arpeggios, sleigh bells jingle on every beat, a harp and pizzicato strings swing the waltz, and every fourth bar a glassy crack stops the tune for half a bar before it shatters back in. It starts at full tempo on the very first beat, with no intro and no quiet part. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings, intro, slow start, fade in, breakdown

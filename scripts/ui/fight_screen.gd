@@ -4083,7 +4083,10 @@ func _finish() -> void:
 		var perfect_run: bool = fight.player.damage_taken <= 0.0
 		var boss_win := fight.enemies.any(func(e): return e.def.get("boss", false))
 		if not boss_win:  # (a boss fight already played its own "boss_defeat": two victory sounds on top of each other were too much)
-			Audio.play("victory_fanfare")
+			Audio.result_sting("perfect_victory_fanfare" if perfect_run else "victory_fanfare")  # (the fight's music fades, the sound plays, then the map's music)
+		else:
+			Audio.fade_out_music()
+			Audio.play_music_after("map", minf(Audio.get_sfx_length("boss_defeat"), 4.0))
 		var sign_kind := "boss_defeated" if boss_win else ("perfect_victory" if perfect_run else "victory")  # (a boss always gets its own red board)
 		var sign_text := "Boss Defeated!" if boss_win else ("Perfect Victory!" if perfect_run else "Victory!")
 		await _stage.drop_sign(sign_text, Color(0.55, 0.08, 0.06) if boss_win else Color(0.30, 0.17, 0.07), sign_kind).finished
@@ -4104,7 +4107,8 @@ func _finish() -> void:
 		await _seed_revival()
 	else:
 		if stage_flow and _stage != null and ResourceLoader.exists(UiSkin.theme_dir() + "Stage/Shared/sign_defeat.png"):  # Puppet Stage: the Defeat board drops in
-			Audio.play("defeat_stinger")
+			Audio.result_sting("defeat_stinger", "")  # (the music fades; no music follows: the end screen)
+			set_meta("result_sfx", true)
 			await _stage.drop_sign("Defeat", Color(0.3, 0.1, 0.08), "defeat").finished
 			await get_tree().create_timer(1.8).timeout
 		elif not await _result_banner("defeat"):
@@ -6530,14 +6534,17 @@ func _talk() -> void:
 		homes[n] = n.position
 		n.position += away[n]
 	var faded: Array = [_bag_panel, _hp_bar, _hp_label, _player_panel, _arts, _arts_frame, _bottles_frame, _bottle_row, _status_row, _debuff_board].filter(func(n): return n != null and is_instance_valid(n))
+	if _nu_ui and _top_layer != null:
+		faded.append(_top_layer)  # (New UI: its dark blocks, tabs and Menu are all in this layer: the conversation never stands over a HUD)
 	for n in faded:
 		(n as CanvasItem).modulate.a = 0.0  # (gone while you talk: back once you Engage)
 	for v in _views.values():
 		v.set_talk(true, 0.0, BossTalk.speaker(tree) if v.enemy.is_boss and not v.enemy.has_passive("hand") else "")
 	var box := PanelContainer.new()
-	box.add_theme_stylebox_override("panel", UiTheme.panel_box(0.95, 14))
-	box.custom_minimum_size = Vector2(1120, 0)
-	box.position = Vector2(400, 545)
+	var talk_art := UiSkin.box("dialogue_panel", [14, 14, 14, 14], [TALK_PAD, 20, TALK_PAD, 22])  # (the same painted board as an event's words)
+	box.add_theme_stylebox_override("panel", talk_art if talk_art != null else _talk_box_style())
+	box.custom_minimum_size = Vector2(TALK_W, 0)
+	box.position = Vector2((1920.0 - TALK_W) / 2.0, 545)
 	box.z_index = 30
 	add_child(box)
 	var col := VBoxContainer.new()
@@ -6559,7 +6566,7 @@ func _talk() -> void:
 		text.bbcode_enabled = true
 		text.fit_content = true
 		text.scroll_active = false
-		text.custom_minimum_size = Vector2(1080, 0)
+		text.custom_minimum_size = Vector2(TALK_W - 2.0 * TALK_PAD, 0)
 		text.add_theme_font_size_override("normal_font_size", 21)
 		text.add_theme_font_size_override("italics_font_size", 21)
 		text.add_theme_font_size_override("bold_font_size", 21)
@@ -6587,7 +6594,7 @@ func _talk() -> void:
 			# an artifact he's offering: hover it to read it
 			var a := Artifacts.view(String(node.show))
 			var chip := TipPanel.new()
-			chip.add_theme_stylebox_override("panel", UiTheme.panel_box(0.8, 10))
+			chip.add_theme_stylebox_override("panel", _talk_flat(Color(0.2, 0.14, 0.08, 0.95), Color(0.7, 0.52, 0.26), 1, 8))
 			chip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 			chip.tooltip_text = Keywords.tooltip(a.name, a.desc)
 			var al := UiTheme.label("%s %s" % [a.icon, a.name], 19, Color(1.0, 0.9, 0.7))
@@ -6602,12 +6609,14 @@ func _talk() -> void:
 				if o.has("requires") and not (o.requires in seen_ids):
 					continue  # (it only comes up once you've heard what it refers to)
 				col.add_child(_talk_option(o, seen_ids, chosen))
-		var go := UiTheme.button("Engage!", func(): chosen[0] = {"engage": true}, 22)
-		go.custom_minimum_size = Vector2(1080, 50)
+		var go := Button.new()
+		go.text = "Engage!"
+		go.pressed.connect(func(): chosen[0] = {"engage": true})
+		go.custom_minimum_size = Vector2(230, 46)
+		go.size_flags_horizontal = Control.SIZE_SHRINK_END  # (a button the size of its word, at the right: not a bar across the box)
+		_talk_skin(go, true)
 		UiTheme.use_heading_font(go)
-		var amber := UiTheme.chant_button_styles()  # (the Chant button's amber face: it stands out from the talk)
-		for st in amber:
-			go.add_theme_stylebox_override(st, amber[st])
+		go.add_theme_font_size_override("font_size", 22)
 		col.add_child(go)
 		if node == tree and Audio.voice_busy():  # his first line: the buttons wait until he has said it (the later ones can be answered at once, which cuts him off)
 			var lock: Array = []
@@ -6620,7 +6629,7 @@ func _talk() -> void:
 		await get_tree().process_frame
 		box.size = Vector2.ZERO
 		box.reset_size()
-		box.position.y = maxf(650.0, 1050.0 - box.size.y)  # (where the fight UI will be: under the stage, at the bottom)
+		box.position = Vector2((1920.0 - box.size.x) / 2.0, maxf(650.0, 1050.0 - box.size.y))  # (under the stage, at the bottom; the HUD is out of the way while he talks)
 		chosen[0] = null
 		while chosen[0] == null:  # (a line that ends the talk: only Engage! is left, pressed when you've read it)
 			await get_tree().process_frame
@@ -6705,13 +6714,20 @@ func _unlock_after_voice(lock: Array) -> void:
 ## branch has been explored. Greyed out when you don't have the Essence it costs.
 func _talk_option(o: Dictionary, seen_ids: Array, chosen: Array) -> Button:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(1080, 46)
 	b.disabled = not fight.can_talk_pay(o.cost)
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN  # (as wide as its words, not a bar across the box)
+	_talk_skin(b, false)
 	b.pressed.connect(func(): chosen[0] = o)
+	var n_cost := 0 if fight.talk_free else String(o.cost).length()
+	var font := UiTheme.get_theme().get_default_font()
+	var words_w := font.get_string_size(String(o.say), HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
+	var w := 16.0 + (30.0 * n_cost + 10.0 if n_cost > 0 else 0.0) + words_w + 10.0 + 30.0 + 16.0
+	b.custom_minimum_size = Vector2(clampf(w, 300.0, TALK_W - 2.0 * TALK_PAD), 44)
 	var row := HBoxContainer.new()
 	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	row.offset_left = 14
-	row.offset_right = -14
+	row.offset_left = 16
+	row.offset_right = -16
 	row.add_theme_constant_override("separation", 10)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(row)
@@ -6719,11 +6735,11 @@ func _talk_option(o: Dictionary, seen_ids: Array, chosen: Array) -> Button:
 	cost.add_theme_constant_override("separation", 2)
 	for ch in ("" if fight.talk_free else String(o.cost)):  # (test mode: free, so no price shown)
 		cost.add_child(ElementIcon.make(ch, 30))
-	cost.custom_minimum_size = Vector2(30 * maxi(1, String(o.cost).length()), 30)
+	cost.custom_minimum_size = Vector2(30 * maxi(1, String(o.cost).length()), 30) if n_cost > 0 else Vector2.ZERO
 	cost.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	cost.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(cost)
-	var words := UiTheme.label(String(o.say), 20, Color(0.08, 0.06, 0.04) if not b.disabled else Color(0.45, 0.45, 0.45))  # (dark on the bright green: easy to read)
+	var words := UiTheme.label(String(o.say), 20, Color(0.97, 0.91, 0.78) if not b.disabled else Color(0.55, 0.5, 0.45))
 	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	words.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -6735,6 +6751,56 @@ func _talk_option(o: Dictionary, seen_ids: Array, chosen: Array) -> Button:
 	tick.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(tick)
 	return b
+
+
+const TALK_W := 980.0  # the conversation box
+const TALK_PAD := 30.0
+
+
+## A flat rounded panel (no picture: nothing to stretch or blur).
+static func _talk_flat(bg: Color, border: Color, bw: int, radius: int, shadow := 0.0) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.bg_color = bg
+	s.border_color = border
+	s.set_border_width_all(bw)
+	s.set_corner_radius_all(radius)
+	s.set_content_margin_all(0)
+	if shadow > 0.0:
+		s.shadow_color = Color(0, 0, 0, 0.5)
+		s.shadow_size = int(shadow)
+		s.shadow_offset = Vector2(0, 4)
+	return s
+
+
+## The box the boss's talk is in: dark wood-brown, a thin brass rim.
+static func _talk_box_style() -> StyleBoxFlat:
+	var s := _talk_flat(Color(0.10, 0.07, 0.05, 0.94), Color(0.66, 0.48, 0.24), 2, 14, 16.0)
+	s.content_margin_left = TALK_PAD
+	s.content_margin_right = TALK_PAD
+	s.content_margin_top = 20
+	s.content_margin_bottom = 20
+	return s
+
+
+## An option (a dark plank that warms under the mouse) or Engage! (amber, the one thing that stands out).
+static func _talk_skin(b: Button, amber: bool) -> void:
+	if UiSkin.is_puppet() and UiSkin.tex("btn_primary") != null:  # (the painted plaques: gold for Engage!, walnut for what you say)
+		UiTheme.skin_button(b, "primary" if amber else "default")
+		return
+	var look := {
+		"normal": [Color(0.78, 0.52, 0.16), Color(1.0, 0.82, 0.45)] if amber else [Color(0.20, 0.14, 0.09), Color(0.45, 0.33, 0.18)],
+		"hover": [Color(0.9, 0.62, 0.22), Color(1.0, 0.9, 0.6)] if amber else [Color(0.30, 0.21, 0.12), Color(0.72, 0.54, 0.28)],
+		"pressed": [Color(0.66, 0.42, 0.12), Color(1.0, 0.8, 0.4)] if amber else [Color(0.14, 0.10, 0.06), Color(0.72, 0.54, 0.28)],
+		"disabled": [Color(0.5, 0.36, 0.14), Color(0.7, 0.58, 0.35)] if amber else [Color(0.13, 0.10, 0.07), Color(0.28, 0.22, 0.14)],
+		"focus": [Color(0, 0, 0, 0), Color(0, 0, 0, 0)],
+	}
+	for k in look:
+		var st := _talk_flat(look[k][0], look[k][1], 2 if amber else 1, 9)
+		st.content_margin_left = 16
+		st.content_margin_right = 16
+		b.add_theme_stylebox_override(k, st)
+	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_disabled_color"]:
+		b.add_theme_color_override(c, Color(0.16, 0.09, 0.03) if amber else Color(0.97, 0.91, 0.78))
 
 
 ## An enemy says something: a speech bubble over its head for a moment (the Invoker's Quas / Wex / Exort).
@@ -6779,7 +6845,8 @@ func _speech_bubble(head_at: Callable, text: String, hold := 1.0) -> void:
 	sb.content_margin_right = 16
 	sb.content_margin_top = 6
 	sb.content_margin_bottom = 6
-	bubble.add_theme_stylebox_override("panel", sb)
+	var bubble_art := UiSkin.frame("bubble_dark", 16, [20, 8, 20, 8])  # (the painted dark plaque; the flat box is only for a missing picture)
+	bubble.add_theme_stylebox_override("panel", bubble_art if bubble_art != null else sb)
 	bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bubble.z_index = 90
 	var l := UiTheme.label(text, 30, Color(0.96, 0.94, 0.9))
@@ -6915,7 +6982,8 @@ func _dillo_say(at: Vector2, text: String, hold: float, hanging := false) -> voi
 	sb.content_margin_right = 16
 	sb.content_margin_top = 6
 	sb.content_margin_bottom = 6
-	bubble.add_theme_stylebox_override("panel", sb)
+	var bubble_art := UiSkin.frame("bubble_dark", 16, [20, 8, 20, 8])  # (the painted dark plaque; the flat box is only for a missing picture)
+	bubble.add_theme_stylebox_override("panel", bubble_art if bubble_art != null else sb)
 	bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bubble.z_index = 210
 	var l := UiTheme.label(text, 30, Color(0.96, 0.94, 0.9))
@@ -7226,7 +7294,8 @@ func _callout_panel(bbcode: String, col: Color) -> PanelContainer:
 	sb.content_margin_right = 14
 	sb.content_margin_top = 8
 	sb.content_margin_bottom = 8
-	p.add_theme_stylebox_override("panel", sb)
+	var callout_art := UiSkin.frame("bubble_dark", 16, [18, 10, 18, 10], col.lerp(Color.WHITE, 0.7))  # (a little of the callout's colour on the painted plaque)
+	p.add_theme_stylebox_override("panel", callout_art if callout_art != null else sb)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.z_index = 60
 	var r := RichTextLabel.new()

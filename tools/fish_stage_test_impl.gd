@@ -16,7 +16,10 @@ func run(t: SceneTree) -> void:
 	(main._overlay as EventStage)._choose(0)
 	await t.create_timer(2.0).timeout
 	(main._overlay as EventStage)._choose(0)  # (Ready)
-	await t.create_timer(9.0).timeout
+	for k in 4:  # (the sea comes in: the back wall comes down, the props change sides)
+		await t.create_timer(1.2).timeout
+		root.get_texture().get_image().save_png(out + "/fish_1%c_swap.png" % [97 + k])
+	await t.create_timer(4.2).timeout
 	var g: FishGame = main._overlay as FishGame
 	print("game up: ", g != null)
 	root.get_texture().get_image().save_png(out + "/fish_2_game.png")

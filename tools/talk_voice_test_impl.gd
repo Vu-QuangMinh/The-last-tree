@@ -4,7 +4,7 @@ extends RefCounted
 func _buttons(fs: FightScreen) -> Array:
 	var out: Array = []
 	for n in fs.find_children("*", "Button", true, false):
-		if n.get_global_rect().size.x > 1000.0:  # (the talk's options and Engage!)
+		if n.get_global_rect().size.x > 200.0 and n.get_global_rect().position.y > 500.0:  # (the talk's options and Engage!)
 			out.append(n)
 	return out
 

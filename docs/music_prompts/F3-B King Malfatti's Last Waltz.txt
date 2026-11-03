@@ -1,0 +1,10 @@
+F3-B  King Malfatti's Last Waltz
+
+STYLE (dán vào ô Style / Style of Music):
+grand fast waltz, strings, brass, harpsichord, timpani, xylophone, celesta, 3/4, E minor, 200 BPM, regal, dramatic, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+The puppet king dances his last waltz at breakneck speed. Violins carry a grand, bitter tune, brass hits the downbeats, a harpsichord and xylophone race arpeggios inside, and the whole waltz keeps climbing a step higher until it drops back down and starts climbing again. It starts at full tempo on the very first beat, with no intro and no quiet part. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings, intro, slow start, fade in, breakdown

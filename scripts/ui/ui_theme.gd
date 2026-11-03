@@ -16,8 +16,8 @@ static var _theme: Theme
 static func reset() -> void:
 	_theme = null
 	_fonts.clear()
-	_fallbacks.clear()
-	_acherus_bold = null
+	_fallbacks = []  # (a new array: the fonts already out there keep the one they hold)
+	_single_bold.clear()
 	_title_font = null
 	_title_font_looked = false
 
@@ -70,11 +70,12 @@ static func hk(text: String, key: String) -> String:
 	return "%s  (%s)" % [text, key] if show_hotkeys() else text
 
 
-## The display font on a control that must stand out (the Chant / Clear / Pass / Menu buttons); New theme only.
+## The display font on a control that must stand out (the Chant / Clear / Pass / Menu buttons); New theme only. Settings > Header styles ("button") restyles it.
 static func use_heading_font(c: Control) -> void:
 	var f := title_font()
 	if f != null:
 		c.add_theme_font_override("font", f)
+	apply_header(c, "button", c.get_theme_font_size("font_size"))
 
 
 static var _title_font: Font
@@ -97,38 +98,267 @@ static func title_font() -> Font:
 	return _title_font
 
 
-## A label for a heading or anything that must stand out (panel titles, names): the display font when there is one.
-static func heading(text: String, size := 18, color := TEXT) -> Label:
-	var l := label(text, size, color)
+## A label for a heading or anything that must stand out (panel titles, names): the display font when there is one. `group` is its Settings > Header styles group
+## ("title" for a big one, "section" for a small one, "card" for a card's name, when not given).
+static func heading(text: String, size := 18, color := TEXT, group := "") -> Label:
+	var l := Label.new()  # (not label(): a heading follows its own group's size, not the body size)
+	l.text = text
+	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_color_override("font_color", color)
 	var f := title_font()
 	if f != null:
 		l.add_theme_font_override("font", f)
+	apply_header(l, group if group != "" else ("title" if size >= 30 else "section"), size)
 	return l
 
 
-const FONT_OPTIONS := ["futura", "acherus"]
-const FONT_LABELS := ["Futura", "Acherus"]
-static var _acherus_bold: FontVariation
+## ---- Settings > Font Edit (and F7, the text inspector): each group of text has its own font, size, gap between the letters, colour and stroke colour ----
+## "body" is every ordinary label and button made by UiTheme.label / UiTheme.button; the others are the headers.
+const HEADER_GROUPS := ["body", "title", "section", "card", "event", "button"]
+const HEADER_LABELS := ["Body text", "Screen titles", "Section headers", "Card names", "Event titles", "Buttons (Chant, Clear, Menu...)"]
+## font "default": the group's own font; colour "": the one the code gave; stroke with alpha 0: none.
+const HEADER_DEFAULT := {"font": "default", "scale": 100.0, "spacing": 0.0, "color": "", "stroke": "00000000"}
 
 
-## Settings → Look → Font: which family the whole game is set in ("futura" or "acherus").
+## What the player set for a group (anything not set is the default).
+static func header_style(group: String) -> Dictionary:
+	var out := HEADER_DEFAULT.duplicate()
+	var all = SaveManager.setting("header_styles", {})
+	if all is Dictionary and all.has(group) and all[group] is Dictionary:
+		for k in all[group]:
+			out[k] = all[group][k]
+	return out
+
+
+static func set_header_style(group: String, style: Dictionary) -> void:
+	var all = SaveManager.setting("header_styles", {})
+	if not (all is Dictionary):
+		all = {}
+	all[group] = style
+	SaveManager.set_setting("header_styles", all)
+
+
+## The font of a group: its own default (the headers: the display font; "event" and "body": none, so the game's font stays), or a family of FONT_OPTIONS, with the gap between letters.
+static func header_font(group: String, style: Dictionary) -> Font:
+	var base: Font = null
+	var choice := String(style.get("font", "default"))
+	if choice == "default":
+		if group != "event" and group != "body":
+			base = title_font()
+	else:
+		base = font_for_option(choice, "regular")
+	var gap := float(style.get("spacing", 0.0))
+	if gap == 0.0:
+		return base
+	if base == null:
+		base = cut("regular")
+	if base == null:
+		return null
+	var fv := FontVariation.new()
+	fv.base_font = base
+	fv.spacing_glyph = int(round(gap))
+	return fv
+
+
+## Dress a Label (or Button) in its group's style (or in `style`, an unsaved one); `size` is the size the code asked for (the group's size is a percentage of it).
+## The control remembers its group and size (so the F7 inspector and Font Edit can restyle it later) and what it looked like before (so a style taken away puts that back).
+static func apply_header(c: Control, group: String, size: int, style := {}) -> void:
+	if style.is_empty():
+		apply_text_edit(c)
+	var st: Dictionary = style if not style.is_empty() else header_style(group)
+	var ts := text_style(c) if style.is_empty() else {}  # (a style kept for this one text by the F7 inspector: it wins over the group's)
+	if not ts.is_empty():
+		st = st.duplicate()
+		st.font = ts.font
+		st.spacing = ts.spacing
+		if String(ts.get("color", "")) != "":
+			st.color = ts.color
+	if not c.has_meta("hg_orig"):
+		c.set_meta("hg_orig", {"color": c.get_theme_color("font_color"), "outline": c.get_theme_constant("outline_size"), "ocolor": c.get_theme_color("font_outline_color"), "font": c.get_theme_font_size("font_size")})
+	c.set_meta("hg", group)
+	c.set_meta("hg_size", size)
+	var orig: Dictionary = c.get_meta("hg_orig")
+	var f := header_font(group, st)
+	if f != null:
+		c.add_theme_font_override("font", f)
+		c.set_meta("hg_font", true)
+	elif c.has_meta("hg_font"):  # (only a font this function set is taken away: the code sets its own on some labels)
+		c.remove_theme_font_override("font")
+		c.remove_meta("hg_font")
+	var scale := float(st.scale) / 100.0
+	if not ts.is_empty() and int(ts.get("px", 0)) > 0:
+		c.add_theme_font_size_override("font_size", int(ts.px))
+		scale = float(ts.px) / maxf(float(size), 1.0)
+	elif size > 0 and scale != 1.0:
+		c.add_theme_font_size_override("font_size", maxi(6, roundi(float(size) * scale)))
+	elif size > 0:
+		c.add_theme_font_size_override("font_size", size)
+	var col := String(st.get("color", ""))
+	c.add_theme_color_override("font_color", Color.html(col) if col != "" else orig.color)
+	var stroke := Color.html(String(st.stroke))
+	if stroke.a > 0.0:
+		c.add_theme_constant_override("outline_size", maxi(2, roundi(float(size) * scale * 0.12)))
+		c.add_theme_color_override("font_outline_color", stroke)
+	else:
+		c.add_theme_constant_override("outline_size", int(orig.outline))
+		c.add_theme_color_override("font_outline_color", orig.ocolor)
+	if c is Button:  # (a button's other states carry their own colours)
+		for k in ["font_hover_color", "font_pressed_color", "font_focus_color"]:
+			if col != "":
+				c.add_theme_color_override(k, Color.html(col))
+	set_offset(c, Vector2(float(ts.get("dx", 0)), float(ts.get("dy", 0))) if not ts.is_empty() else Vector2.ZERO)
+	if style.is_empty() and (c is Label or c is Button):
+		c.set_meta("hg_key", text_key(c))
+		if not c.has_meta("hg_watch"):
+			c.set_meta("hg_watch", true)
+			# (words given to the text after it was made: its saved style and place are looked for again)
+			c.minimum_size_changed.connect(func() -> void:
+				if is_instance_valid(c) and text_key(c) != String(c.get_meta("hg_key", "")) and c.has_meta("hg"):
+					apply_header(c, String(c.get_meta("hg")), int(c.get_meta("hg_size"))))
+
+
+## The style the F7 inspector kept for one text (found by its words): {"font", "px", "spacing", "color"}, or {} when there is none.
+static func text_key(c: Control) -> String:
+	if c.has_meta("orig_text"):
+		return String(c.get_meta("orig_text"))  # (a text the inspector reworded keeps its first words as its key)
+	var t := ""
+	if c is Label:
+		t = (c as Label).text
+	elif c is Button:
+		t = (c as Button).text
+	elif c is RichTextLabel:
+		t = (c as RichTextLabel).get_parsed_text()
+	return t.strip_edges().substr(0, 120)
+
+
+## The F7 inspector's reworded texts: Settings "text_edits" {first words: new words}. A Label or Button takes them when it is made (and back again when the edit is taken away).
+static func apply_text_edit(c: Control) -> void:
+	if not (c is Label or c is Button):
+		return
+	var key := text_key(c)
+	if key == "":
+		return
+	var all = SaveManager.setting("text_edits", {})
+	var now: String = (c as Label).text if c is Label else (c as Button).text
+	var want := key
+	if all is Dictionary and all.has(key):
+		want = String(all[key])
+	if now == want:
+		return
+	if c is Label:
+		(c as Label).text = want
+	else:
+		(c as Button).text = want
+	if want == key:
+		c.remove_meta("orig_text")
+	else:
+		c.set_meta("orig_text", key)
+
+
+static func text_style(c: Control) -> Dictionary:
+	var all = SaveManager.setting("text_styles", {})
+	var key := text_key(c)
+	if key != "" and all is Dictionary and all.has(key) and all[key] is Dictionary:
+		var out := {"font": "default", "px": 0, "spacing": 0.0, "color": "", "dx": 0, "dy": 0}
+		for k in all[key]:
+			out[k] = all[key][k]
+		return out
+	return {}
+
+
+## Move a text by `off` pixels from where its container (or its code) puts it (the F7 inspector's arrows). A container puts its children back at every layout, so the offset is
+## added again after each one (Container.sort_children); a text that is not in a container is moved once, when it enters the tree.
+static func set_offset(c: Control, off: Vector2) -> void:
+	var had: Vector2 = c.get_meta("off") if c.has_meta("off") else Vector2.ZERO
+	if off == had and c.has_meta("off_hooked"):
+		return
+	if off == Vector2.ZERO and not c.has_meta("off_hooked"):
+		return
+	c.set_meta("off", off)
+	if not c.has_meta("off_hooked"):
+		c.set_meta("off_hooked", true)
+		c.set_meta("off_applied", Vector2.ZERO)
+		var hook := func() -> void:
+			if not is_instance_valid(c):
+				return
+			var p := c.get_parent()
+			if p is Container:
+				(p as Container).sort_children.connect(func() -> void: _resort(c))  # (a lambda of its own: two texts of one container with the same bound call would count as one connection)
+				_shift(c)
+			else:
+				_shift.bind(c).call_deferred()  # (a screen that places its children itself does it right after add_child: the offset goes on top of that)
+		if c.is_inside_tree():
+			hook.call()
+		else:
+			c.tree_entered.connect(hook, CONNECT_ONE_SHOT)
+	elif c.is_inside_tree():
+		_shift(c)
+
+
+static func _resort(c: Control) -> void:
+	if is_instance_valid(c):
+		c.set_meta("off_applied", Vector2.ZERO)  # (the container just put it back in its place)
+		_shift(c)
+
+
+static func _shift(c: Control) -> void:
+	var want: Vector2 = c.get_meta("off")
+	var applied: Vector2 = c.get_meta("off_applied")
+	c.position += want - applied
+	c.set_meta("off_applied", want)
+
+
+## Restyle every text of the tree that belongs to a group (after a group's style changed).
+static func reapply_all(root: Node) -> void:
+	for n in root.get_children():
+		if n.has_meta("hg_skip"):
+			continue  # (the F7 inspector's own window)
+		if n is Control and n.has_meta("hg"):
+			apply_header(n, String(n.get_meta("hg")), int(n.get_meta("hg_size")))
+		reapply_all(n)
+
+
+const FONT_OPTIONS := ["futura", "acherus", "ba_le", "thanh_pho", "tungsten", "desire"]
+const FONT_LABELS := ["Futura", "Acherus", "UVN Ba Le", "UVN Thanh Pho", "SVN Tungsten Book", "SVN Desire"]
+## The families that are one file (plus, where there is one, a file for the bold): font option -> [regular file, bold file]. A family with no bold file is emboldened.
+const SINGLE_FONTS := {
+	"acherus": ["SVN-Acherus-Italic.otf", ""],
+	"ba_le": ["UVNBaLe.TTF", ""],
+	"thanh_pho": ["UVNThanhPho_R.TTF", "UVNThanhPho.TTF"],
+	"tungsten": ["SVN-Tungsten Book.ttf", ""],
+	"desire": ["SVN-Desire.otf", ""],
+}
+static var _single_bold := {}
+
+
+## Settings → Look → Font: which family the whole game is set in (one of FONT_OPTIONS).
 static func font_choice() -> String:
 	return SaveManager.setting("font", "futura")
 
 
-## One cut of the chosen family: "regular", "bold", "oblique" or "boldoblique". Futura has all four as files; Acherus is a
-## single italic face, so its bold is that face emboldened. Null when the files aren't there (the caller keeps its font).
+## One cut of the chosen family: "regular", "bold", "oblique" or "boldoblique". Futura has all four as files; the single-file families (Acherus is italic itself,
+## the others upright) use their file for the regular and the oblique, and their bold file for the bold, or the regular emboldened when they have none.
+## Null when the files aren't there (the caller keeps its font).
 static func cut(kind: String) -> Font:
-	if font_choice() == "acherus":
-		var acherus := font_path("SVN-Acherus-Italic.otf")
-		var base: Font = with_fallbacks(load(acherus)) if acherus != "" else null
+	return font_for_option(font_choice(), kind)
+
+
+## A cut of any family of FONT_OPTIONS (the chosen one, or the one a header group asks for).
+static func font_for_option(choice: String, kind: String) -> Font:
+	if SINGLE_FONTS.has(choice):
+		var files: Array = SINGLE_FONTS[choice]
+		var path := font_path(files[0])
+		var base: Font = with_fallbacks(load(path)) if path != "" else null
 		if base == null or kind == "regular" or kind == "oblique":
 			return base
-		if _acherus_bold == null:
-			_acherus_bold = FontVariation.new()
-			_acherus_bold.base_font = base
-			_acherus_bold.variation_embolden = 0.6
-		return _acherus_bold
+		if files[1] != "" and font_path(files[1]) != "":
+			return with_fallbacks(load(font_path(files[1])))
+		if not _single_bold.has(choice):
+			var fv := FontVariation.new()
+			fv.base_font = base
+			fv.variation_embolden = 0.6
+			_single_bold[choice] = fv
+		return _single_bold[choice]
 	return family({"regular": "SFUFuturaRegular", "bold": "SFUFuturaBold", "oblique": "SFUFuturaObliqueTTF", "boldoblique": "SFUFuturaBoldOblique"}.get(kind, "SFUFuturaRegular"))
 
 
@@ -143,7 +373,9 @@ static func get_theme() -> Theme:
 		sys.font_names = PackedStringArray(["Segoe UI", "Arial", "Helvetica", "Noto Sans"])
 		font = with_fallbacks(sys)
 	t.default_font = font
-	t.default_font_size = 18
+	t.default_font_size = px(18)
+	for fs in ["normal_font_size", "bold_font_size", "italics_font_size", "bold_italics_font_size", "mono_font_size"]:
+		t.set_font_size(fs, "RichTextLabel", px(18))
 	# the same family for rich text: bold / italic / bold italic stay what they were, in their Futura cuts
 	for pair in [["normal_font", "regular"], ["bold_font", "bold"], ["italics_font", "oblique"], ["bold_italics_font", "boldoblique"]]:
 		var f: Font = cut(pair[1])
@@ -199,7 +431,8 @@ static func get_theme() -> Theme:
 	tip.content_margin_right = 18
 	tip.content_margin_top = 14
 	tip.content_margin_bottom = 14
-	t.set_stylebox("panel", "TooltipPanel", tip)
+	var tip_art := UiSkin.frame("bubble_dark", 16, [20, 14, 20, 14])  # (the painted dark plaque, when it is there)
+	t.set_stylebox("panel", "TooltipPanel", tip_art if tip_art != null else tip)
 	t.set_color("font_color", "TooltipLabel", TEXT)
 	t.set_font_size("font_size", "TooltipLabel", 21)
 	t.set_color("font_hover_color", "Button", Color.WHITE)
@@ -235,8 +468,71 @@ static func _button_art(state: String) -> StyleBox:
 		return null
 	if state == "focus":
 		return StyleBoxEmpty.new()  # no focus ring
+	var fam := family_box("default", state)
+	if fam != null:
+		return fam
 	var key := state
 	return UiSkin.box("button_small_" + key, [12, 12, 12, 14], [12, 2, 12, 9])
+
+
+## The button family (btn_<kind>.png, cut from the ImageSet plaques by tools/cut_dialogue_panel.py): one carved walnut plaque with a brass line, painted a colour for what the
+## button does. Buttons that do the same thing look the same everywhere:
+##   primary (ochre gold)  go on / start / confirm: Continue, Next, Begin the fight, Engage!, the choices of an event
+##   default (oiled walnut) any other action: tabs, Codex, Wiki, Talk ... (and every plain Button the theme dresses)
+##   back (cream)           leave a screen without doing anything: Back, Close, Skip, Cancel, Menu, Goodbye
+##   danger (wine red)      destroys or gives up: Yes (to a warning), Quit, removing things
+##   buy (moss green)       spends something to get something: Buy, Take, Unlock
+const FAMILY_TEXT := {"primary": Color(0.22, 0.07, 0.05), "back": Color(0.22, 0.07, 0.05)}  # (the rest: cream words on the dark plaque)
+const FAMILY_WORDS := {
+	"primary": ["continue", "next", "go on", "begin", "engage", "fuse", "done", "play", "new run", "fight", "chant", "leave the shop"],
+	"back": ["back", "close", "skip", "cancel", "menu", "main menu", "goodbye", "keep the ink", "clear"],
+	"danger": ["yes", "quit", "abandon", "✕", "give up", "delete"],
+	"buy": ["buy", "take ·", "unlock", "sold"],
+}
+
+
+## The kind of a button from its words ("default" when nothing fits).
+static func kind_for(text: String) -> String:
+	var t := text.strip_edges().to_lower().trim_prefix("☰ ")
+	for kind in ["buy", "danger", "back", "primary"]:
+		for w: String in FAMILY_WORDS[kind]:
+			if t.begins_with(w):
+				return kind
+	return "default"
+
+
+static func family_box(kind: String, state: String) -> StyleBox:
+	if state == "focus":
+		return StyleBoxEmpty.new() if UiSkin.tex("btn_" + kind) != null else null
+	var b := UiSkin.box("btn_" + kind, [20, 14, 20, 14], [16, 3, 16, 5])
+	if b == null:
+		return null
+	match state:
+		"hover":
+			b.modulate_color = Color(1.14, 1.12, 1.05)
+		"pressed":
+			b.modulate_color = Color(0.78, 0.74, 0.68)
+		"disabled":
+			b.modulate_color = Color(0.55, 0.55, 0.55)
+	return b
+
+
+## Dress a Button as one of the family (the theme's own art when the family is missing, e.g. in the Classic theme).
+static func skin_button(b: Button, kind: String, size := 0) -> void:
+	if not UiSkin.is_new() or UiSkin.tex("btn_" + kind) == null:
+		return
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		b.add_theme_stylebox_override(state, family_box(kind, state))
+	var ink: Color = FAMILY_TEXT.get(kind, Color(0.98, 0.93, 0.8))
+	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		b.add_theme_color_override(c, ink)
+	b.add_theme_color_override("font_disabled_color", ink.darkened(0.3) if kind in FAMILY_TEXT else Color(0.7, 0.66, 0.6))
+	var dark := kind in FAMILY_TEXT
+	b.add_theme_constant_override("outline_size", 0 if dark else 3)
+	if not dark:
+		b.add_theme_color_override("font_outline_color", Color(0.1, 0.05, 0.03))
+	if size > 0:
+		b.add_theme_font_size_override("font_size", size)
 
 
 ## The wooden Menu button's look (normal / hover / pressed): New theme only; empty in Default.
@@ -244,6 +540,10 @@ static func menu_button_styles() -> Dictionary:
 	if not UiSkin.is_new():
 		return {}
 	var out := {}
+	if UiSkin.tex("btn_back") != null:
+		for state in ["normal", "hover", "pressed", "disabled"]:
+			out[state] = family_box("back", state)
+		return out
 	for state in ["normal", "hover", "pressed"]:
 		if UiSkin.is_puppet() and UiSkin.path_of("button_menu_" + state).contains("/Puppet/"):  # (its own plate: 131 x 46)
 			out[state] = UiSkin.box("button_menu_" + state, [20, 16, 20, 20], [16, 2, 16, 8])
@@ -255,6 +555,9 @@ static func menu_button_styles() -> Dictionary:
 
 ## Give a Button the wooden Menu look (New theme only).
 static func use_menu_style(b: Button) -> void:
+	if UiSkin.tex("btn_back") != null:
+		skin_button(b, "back")
+		return
 	var st := menu_button_styles()
 	for k in st:
 		b.add_theme_stylebox_override(k, st[k])
@@ -263,6 +566,9 @@ static func use_menu_style(b: Button) -> void:
 ## The Play button on the main menu: a normal button, turning orange (Button Play Hover) when hovered (New theme only).
 static func use_play_style(b: Button, always := false) -> void:
 	if not UiSkin.is_new():
+		return
+	if UiSkin.tex("btn_primary") != null:
+		skin_button(b, "primary")  # (the gold plaque of the family: Play, Continue, Leave the shop)
 		return
 	var orange := UiSkin.box("button_play_hover", [20, 16, 20, 18], [20, 6, 20, 12])
 	b.add_theme_stylebox_override("hover", orange)
@@ -328,18 +634,32 @@ static func panel_box(alpha := 0.88, radius := 12) -> StyleBox:
 	return b
 
 
+## Settings > Font Edit > Body text > Size %: how big the ordinary text is, as a percentage of what the screens ask for (labels, buttons, the theme's default sizes, the words of an event).
+static func body_scale() -> float:
+	return float(header_style("body").scale) / 100.0
+
+
+## A size the code asked for, in the player's body size.
+static func px(size: int) -> int:
+	var k := body_scale()
+	return size if k == 1.0 else maxi(6, roundi(float(size) * k))
+
+
 static func label(text: String, size := 18, color := TEXT) -> Label:
 	var l := Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", color)
+	apply_header(l, "body", size)
 	return l
 
 
-static func button(text: String, cb: Callable, size := 18) -> Button:
+static func button(text: String, cb: Callable, size := 18, kind := "") -> Button:
 	var b := Button.new()
 	b.text = text
+	skin_button(b, kind if kind != "" else kind_for(text), size)
 	b.add_theme_font_size_override("font_size", size)
+	apply_header(b, "body", size)
 	b.pressed.connect(func():
 		Audio.play("ui_click")
 		cb.call())

@@ -232,6 +232,11 @@ func is_underwater() -> bool:
 	return _water
 
 
+const SWAP_WALL_TIME := 1.6  # (the back wall: the old one is pushed down behind the floor by the new one coming from the top)
+const SWAP_LEAVE_TIME := 1.5  # (the old props walk off to the left ...)
+const SWAP_BRING_TIME := 2.4  # (... and the new ones walk in from the right)
+
+
 func set_underwater(on: bool) -> Tween:
 	if on == _water:
 		return null
@@ -241,11 +246,65 @@ func set_underwater(on: bool) -> Tween:
 		act_no = 4
 	else:
 		act_no = _act_before
+	if not is_inside_tree():
+		for q in _quads:
+			if q.names == QUADS["back_wall"]:
+				q.tex = _pic("back_wall")
+				q.queue_redraw()
+		return bring_props()
+	_swap_back_wall()
+	return _exchange_props()
+
+
+## The back wall is changed: the new one comes down from the top and pushes the old one down behind the floor.
+func _swap_back_wall() -> void:
+	var old: _Quad = null
 	for q in _quads:
 		if q.names == QUADS["back_wall"]:
-			q.tex = _pic("back_wall")
-			q.queue_redraw()
-	return bring_props()
+			old = q
+	if old == null:
+		return
+	var parent := old.get_parent()
+	var fresh := _Quad.new()
+	fresh.tex = _pic("back_wall")
+	fresh.names = old.names
+	fresh.corners = old.corners.duplicate()
+	fresh.x_scale = old.x_scale
+	fresh.tint = old.tint
+	parent.add_child(fresh)
+	parent.move_child(fresh, old.get_index() + 1)
+	var lo := INF
+	var hi := -INF
+	for c: Vector2 in old.corners:
+		lo = minf(lo, c.y)
+		hi = maxf(hi, c.y)
+	var drop := hi - lo + 4.0  # (the wall's own height: the new one's bottom edge meets the old one's top edge all the way down)
+	fresh.position.y = -drop
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(fresh, "position:y", 0.0, SWAP_WALL_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(old, "position:y", drop, SWAP_WALL_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.chain().tween_callback(func() -> void:
+		old.tex = fresh.tex  # (the stage's own back wall quad is the new picture now, back in its place)
+		old.position.y = 0.0
+		old.queue_redraw()
+		fresh.queue_free())
+
+
+## The props on the stage walk off to the left, then the new set walks in from the right.
+func _exchange_props() -> Tween:
+	var props := _props()
+	if props.is_empty() or _clearing:
+		return bring_props(0, SWAP_BRING_TIME)
+	if _stage_tw != null:
+		_stage_tw.kill()
+	_clearing = true
+	_stage_tw = _stagger(props, SWAP_LEAVE_TIME, true, false)
+	_stage_tw.chain().tween_callback(func() -> void:
+		_remove_props()
+		_clearing = false
+		_is_clear = true
+		bring_props.call_deferred(0, SWAP_BRING_TIME))
+	return _stage_tw
 
 
 func _add_water_props(rng: RandomNumberGenerator) -> void:
@@ -714,7 +773,7 @@ func _remove_props() -> void:
 
 ## The new set comes in from the right over BRING_TIME, prop by prop. Returns the tween. (The stage must be clear: a stage that is still
 ## full is cleared at once.)
-func bring_props(rng_seed := 0) -> Tween:
+func bring_props(rng_seed := 0, total := BRING_TIME) -> Tween:
 	if _clearing and _stage_tw != null:
 		_stage_tw.kill()
 		_clearing = false
@@ -726,7 +785,7 @@ func bring_props(rng_seed := 0) -> Tween:
 	_spawn_off = 0.0
 	if _stage_tw != null:
 		_stage_tw.kill()
-	_stage_tw = _stagger(_props(), BRING_TIME, false, true)
+	_stage_tw = _stagger(_props(), total, false, true)
 	return _stage_tw
 
 

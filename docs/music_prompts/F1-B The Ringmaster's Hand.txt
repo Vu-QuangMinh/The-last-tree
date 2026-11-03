@@ -1,0 +1,10 @@
+F1-B  The Ringmaster's Hand
+
+STYLE (dán vào ô Style / Style of Music):
+fast circus galop, cornet, piccolo, trombone, snare, cymbals, calliope, xylophone, whip cracks, 2/4, A minor, 200 BPM, showy, frantic, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+The ringmaster puppet shows off. Cornets and a piccolo play a fast marching tune, a calliope and xylophone double it, the snare and cymbals drive every beat, and three whip cracks end each phrase before a trumpet fanfare cuts off mid-note. It starts at full tempo on the very first beat, with no intro and no quiet part. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings, intro, slow start, fade in, breakdown

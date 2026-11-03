@@ -53,6 +53,8 @@ const MESH_ROWS := 14
 const POP_START := 1.0  # the cards lie still this long after the cart and the merchant are in place
 const POP_TIME := 1.0
 const POP_GAP := 0.6
+const HANG_BIG := 1.3  # a hanging good under the mouse (or just clicked) grows to this much of its size
+const HOLD_SECS := 3.0  # a click keeps a good big (a standing card's magnified copy up) for this long, even if the mouse leaves
 const HANG_SCALE := 0.65  # (the artifacts and bottles hang smaller than the old grid's: tune)
 const HANG_X0 := 112.0  # centre of the first item
 const HANG_DX := 165.0  # between centres (squeezed when there are many items)
@@ -963,7 +965,7 @@ func _pop(b: Control, rest: Vector2, fx: float, delay: float, sh: Dictionary) ->
 	col.theme = UiTheme.get_theme()  # (a viewport does not hand the theme down)
 	col.add_theme_constant_override("separation", 6)
 	col.add_child(SpellCard.make(b.get_meta("spell")))
-	var btn := UiTheme.button(b.get_meta("buy"), func(): pass, 18)
+	var btn := UiTheme.button(b.get_meta("buy"), func(): pass, 18, "buy")
 	btn.disabled = b.get_meta("off")
 	col.add_child(btn)
 	col.size = Vector2(w, h)
@@ -1063,12 +1065,46 @@ func _process(delta: float) -> void:
 	if not on_stage:
 		return
 	_t += delta
+	var mp := get_global_mouse_position()
+	var now := Time.get_ticks_msec()
 	for d in _hang:
 		var b: Control = d.box
 		if is_instance_valid(b):
 			b.rotation = float(d.swing) * 0.012 * sin(_t * 1.1 + float(d.phase))
+			if float(d.swing) >= 1.0:  # (landed: it grows under the mouse, and for a while after a click)
+				var big: bool = _under(b, mp) or int(b.get_meta("hold", 0)) > now
+				if big != bool(b.get_meta("big", false)):
+					b.set_meta("big", big)
+					b.z_index = 20 if big else 0  # (over its neighbours while it is big)
+					var old = b.get_meta("mag_tw", null)
+					if old is Tween and old.is_valid():
+						old.kill()
+					var tw := b.create_tween()
+					b.set_meta("mag_tw", tw)
+					tw.tween_property(b, "scale", Vector2.ONE * HANG_SCALE * (HANG_BIG if big else 1.0), 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	if _ropes != null:
 		_ropes.queue_redraw()
+
+
+## Is the point (on the screen) over this control, whatever its scale and turn?
+static func _under(c: Control, p: Vector2) -> bool:
+	return Rect2(Vector2.ZERO, c.size).has_point(c.get_global_transform().affine_inverse() * p)
+
+
+## A click on a good keeps it big for HOLD_SECS: a hanging one stays grown, a standing card keeps its magnified copy.
+func _input(ev: InputEvent) -> void:
+	if not on_stage or not (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT):
+		return
+	var mp := get_global_mouse_position()
+	for b in _boxes:
+		if not is_instance_valid(b) or not _under(b, mp):
+			continue
+		if b.has_meta("kind") and b.get_meta("kind") == "spell":
+			for c in b.get_children():
+				if c is SpellCard:
+					c.hold_zoom(HOLD_SECS)
+		else:
+			b.set_meta("hold", Time.get_ticks_msec() + int(HOLD_SECS * 1000.0))
 
 
 ## The ropes the artifacts and bottles hang on: two to the top corners of each, going straight up behind the valance.
@@ -1084,7 +1120,7 @@ class _HangRopes extends Control:
 			var xf := b.get_transform()
 			for frac in [0.16, 0.84]:
 				var end: Vector2 = xf * Vector2(b.size.x * frac, 6.0)
-				var top_x: float = rest.x + b.size.x * 0.5 + (b.size.x * frac - b.size.x * 0.5) * ShopScreen.HANG_SCALE
+				var top_x: float = rest.x + b.size.x * 0.5 + (b.size.x * frac - b.size.x * 0.5) * b.scale.x  # (it grows about its top middle)
 				MapScreen.MapRope.draw_between(self, Vector2(top_x, ShopScreen.ROPE_TOP), end, 0.0, Color.WHITE, RopeRig.ROPE_W)
 				var rv := RopeRig._rivet_tex(int(ceil(RopeRig.RIVET_PX)))
 				draw_texture(rv, end - rv.get_size() * 0.5)

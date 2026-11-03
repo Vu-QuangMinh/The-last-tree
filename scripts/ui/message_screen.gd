@@ -99,7 +99,9 @@ func _option_card(text: String, n: int) -> Button:
 			sb.draw_center = false
 			sb.set_border_width_all(0)
 			sb.shadow_size = 0
-		btn.add_theme_stylebox_override(state, sb)
+		var plaque := UiSkin.frame("plaque_cream", 18, [16, 12, 16, 12], {"normal": Color.WHITE, "hover": Color(1.1, 1.08, 1.0), "pressed": Color(0.88, 0.84, 0.78),
+			"disabled": Color(0.6, 0.57, 0.52), "focus": Color(1, 1, 1, 0)}[state])
+		btn.add_theme_stylebox_override(state, plaque if plaque != null else sb)
 	var cut := text.find("):")
 	var head := text.substr(0, cut + 1) if cut >= 0 else text
 	var tail := text.substr(cut + 2).strip_edges() if cut >= 0 else ""

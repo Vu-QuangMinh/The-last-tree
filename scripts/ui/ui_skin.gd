@@ -130,6 +130,15 @@ static func box(name: String, margins := [0, 0, 0, 0], content := [0, 0, 0, 0]) 
 	return b
 
 
+## A painted frame of UI/Panels (frame_<name>.png, a small 9-slice made by tools/cut_frame_art.py) as a box, tinted by `tint`; null while the picture is missing
+## (the caller then keeps its own flat box).
+static func frame(name: String, margin: int, content := [14, 8, 14, 8], tint := Color.WHITE) -> StyleBoxTexture:
+	var b := box("frame_" + name, [margin, margin, margin, margin], content)
+	if b != null:
+		b.modulate_color = tint
+	return b
+
+
 ## New theme: the painted slot frame (3 slices: left cap | middle | right cap, UI/Panels/slot_strip.png).
 static func has_slot_frame() -> bool:
 	return tex("slot_strip") != null

@@ -1,0 +1,17 @@
+M2  Between the Tents
+
+STYLE (dán vào ô Style / Style of Music):
+folk travelling tune, banjo, tin whistle, upright bass, wood block, spoons, xylophone, D Dorian, 4/4, 112 BPM, light and curious, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A small wagon rolling from tent to tent on a sunny afternoon. A banjo and an upright bass walk along, a tin whistle plays a simple tune that always ends one note short, and a wood block and spoons click like little puppet feet. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings
+
+VARIANTS (5 option, giữ nguyên PROMPT và EXCLUDE, chỉ đổi nhạc cụ chơi giai điệu trong Style):
+- Music Box
+- Accordion
+- Brass Band
+- Calliope
+- Harpsichord

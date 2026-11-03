@@ -163,7 +163,7 @@ func _ready() -> void:
 		gap.custom_minimum_size = Vector2(0, 14)
 		left.add_child(gap)
 		var counts := MapGen.counts(run.map)
-		for t in ["fight", "elite", "event", "shop", "treasure", "rest", "boss"]:
+		for t in ["fight", "elite", "event", "shop", "treasure", "boss"]:
 			left.add_child(_legend_row(t, counts.get(t, 0)))
 	var hud := HudBar.new()
 	hud.setup(run)

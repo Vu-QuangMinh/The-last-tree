@@ -93,11 +93,14 @@ func test_map_follows_the_spire_rules() -> void:
 					# no elite / campfire / merchant twice in a row
 					if n.type in MapGen.NO_REPEAT and f + 1 < MapGen.FLOORS:
 						assert_true(rows[f + 1][c].type != n.type, "%s twice in a row" % n.type)
-				var want := {1: "fight", MapGen.TREASURE_FLOOR: "treasure", MapGen.FLOORS: "rest"}
+				var want := {1: "fight", MapGen.TREASURE_FLOOR: "treasure", MapGen.FLOORS: "event"}
 				if want.has(f + 1):
 					assert_eq(n.type, want[f + 1])
 				if f + 1 < 5:
-					assert_true(not (n.type in ["elite", "rest"]), "no elites or campfires before floor 5")
+					assert_true(n.type != "elite", "no elites before floor 5")
+				assert_true(n.type != "rest", "no campfire rooms any more")
+				if f + 1 == MapGen.FLOORS:
+					assert_eq(n.event, MapGen.CAMP_EVENT)
 			for n in rows[f + 1]:
 				if n != null:
 					assert_true(hit.has(n.col), "every room on floor %d can be reached" % (f + 2))

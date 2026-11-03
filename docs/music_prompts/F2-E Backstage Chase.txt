@@ -1,0 +1,10 @@
+F2-E  Backstage Chase
+
+STYLE (dán vào ô Style / Style of Music):
+gypsy jazz chase, rhythm guitar, violin, clarinet, upright bass, xylophone, wood blocks, 4/4, F sharp minor, 220 BPM, breathless, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A puppet is chased through the wings of the theatre. Two guitars strum a hard galloping rhythm, the violin and clarinet trade breakneck runs, a xylophone and wood blocks tap like running feet, and every fourth bar a rimshot slams a door and the chase restarts. It starts at full tempo on the very first beat, with no intro and no quiet part. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings, intro, slow start, fade in, breakdown

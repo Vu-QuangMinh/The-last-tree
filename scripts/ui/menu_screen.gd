@@ -214,9 +214,9 @@ func _change_props() -> void:
 ## Puppet Stage: the title (UI/Misc/Title.png, the user's own picture) hangs under the ceiling valance (z below PuppetStage.CEILING_Z), a little lower
 ## than its edge. Its cast shadow is faked cheaply: the picture is shrunk to a third of its size once (that blurs it by about 3 px when it is drawn
 ## back at full size), drawn black (by modulate) at a low opacity and shifted down and right.
-const TITLE_W := 400.0
+const TITLE_W := 470.0
 const TITLE_Y := 150.0
-const TITLE_CROP := Rect2(57, 198, 2641, 1120)  # the painted part of the 2752 x 1536 picture
+const TITLE_CROP := Rect2(0, 0, 1283, 654)  # the whole picture: Title.png is already cut to the carved sign (tools: ImageSet "Puppet Title", raw in _Source/Title A.png)
 const SHADOW_OFFSET := Vector2(8.0, 12.0)
 const SHADOW_ALPHA := 0.4
 static var _shadow_tex: ImageTexture  # (made once)

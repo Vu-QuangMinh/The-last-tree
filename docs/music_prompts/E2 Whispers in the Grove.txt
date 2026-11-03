@@ -1,0 +1,10 @@
+E2  Whispers in the Grove
+
+STYLE (dán vào ô Style / Style of Music):
+eerie lullaby, slowed music box, celesta, bowed vibraphone, wooden clicks, soft pad, no drums, 66 BPM, mysterious, quiet, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A slow, half-forgotten lullaby played on a music box that is running down, with a celesta and a bowed vibraphone holding cold, glassy notes. Now and then a soft wooden click, like a puppet joint, answers from the dark. Quiet and uneasy, never scary. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings

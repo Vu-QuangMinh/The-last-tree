@@ -1,0 +1,10 @@
+F3-E  Fire and Ice Sideshow
+
+STYLE (dán vào ô Style / Style of Music):
+flamenco gallop, nylon guitar, palmas, castanets, glass bells, xylophone, tambourine, E Phrygian, 6/8, 180 BPM, hot and cold, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+Two puppets, one of fire and one of ice, fight in the same song. A flamenco guitar, castanets and hand claps burn on one side and bright glass bells and a xylophone answer coldly on the other, each cutting the other off until they crash together every sixteen bars. It starts at full tempo on the very first beat, with no intro and no quiet part. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings, intro, slow start, fade in, breakdown

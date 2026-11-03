@@ -105,7 +105,7 @@ func _screenshot(with_ui: bool) -> void:
 func _add_button(v: VBoxContainer, text: String, on_press: Callable) -> void:
 	var b := UiTheme.button(text, on_press, 20)
 	b.custom_minimum_size = Vector2(320, 52)
-	UiTheme.use_menu_style(b)
+	UiTheme.skin_button(b, "danger" if text.begins_with("Quit") else "primary")  # (the gold button of the family; Quit stays red)
 	v.add_child(b)
 
 

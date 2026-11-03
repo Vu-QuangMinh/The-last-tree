@@ -1,0 +1,10 @@
+F2-B  The Headless Maestro
+
+STYLE (dán vào ô Style / Style of Music):
+gothic theatre toccata, harpsichord, pipe organ, staccato strings, timpani, xylophone, 4/4, C sharp minor, 176 BPM, grand, frantic, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A conductor puppet without a head leads a runaway orchestra. A harpsichord and a pipe organ battle over fast runs, staccato strings and timpani pound every beat, and a dry baton tap counts in each section. The orchestra keeps landing one beat early. It starts at full tempo on the very first beat, with no intro and no quiet part. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings, intro, slow start, fade in, breakdown

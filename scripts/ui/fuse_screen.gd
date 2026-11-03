@@ -140,7 +140,8 @@ func _make_slot(k: int) -> PanelContainer:
 	sb.border_color = Color(1, 0.8, 0.5, 0.6)
 	sb.set_border_width_all(3)
 	sb.set_corner_radius_all(12)
-	p.add_theme_stylebox_override("panel", sb)
+	var slot := UiSkin.frame("card_slot", 20, [0, 0, 0, 0])
+	p.add_theme_stylebox_override("panel", slot if slot != null else sb)
 	p.set_drag_forwarding(Callable(), func(_at, d): return _can_drop_slot(d), func(_at, d): _drop_slot(k, d))
 	return p
 

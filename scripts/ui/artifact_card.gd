@@ -83,6 +83,7 @@ func _ready() -> void:
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_l.add_theme_constant_override("outline_size", 6)
 	name_l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	UiTheme.apply_header(name_l, "card", 30)  # (Settings > Header styles: after the card's own stroke, so a stroke colour set there wins)
 	name_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(name_l)
 	# type: small and faded

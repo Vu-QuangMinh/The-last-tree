@@ -65,7 +65,8 @@ func _ready() -> void:
 	_buttons = HBoxContainer.new()
 	_buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	_buttons.add_theme_constant_override("separation", 30)
-	(hp.col as VBoxContainer).add_child(_buttons)
+	_buttons.top_level = true  # (outside the frame, under it)
+	_box.add_child(_buttons)
 	_box.modulate.a = 0.0
 	create_tween().tween_property(_box, "modulate:a", 1.0, 0.4)
 	# like every event: the scene and its opening words first, and a button to begin
@@ -170,18 +171,14 @@ func _offer(choices: Array) -> void:
 		_buttons.remove_child(c)
 		c.queue_free()
 	for c in choices:
-		var b := UiTheme.button(c[0], c[1], 28)
-		b.custom_minimum_size = Vector2(0, 58)  # (as wide as its words)
+		var b := EventStage.dialogue_button(c[0], c[1])
+		b.custom_minimum_size = Vector2(0, 48)  # (as wide as its words)
 		_buttons.add_child(b)
 
 
-## The box keeps its bottom edge at the bottom of the screen and grows upwards with its words.
+## The box hangs from the top of the front wall; the buttons stand under it, outside the frame.
 func _fit_box() -> void:
-	if not is_instance_valid(_box):
-		return
-	_box.reset_size()
-	_box.size.x = EventStage.BOX_TEXT_W + 70.0
-	_box.position = Vector2(960.0 - _box.size.x / 2.0, EventStage.BOX_BOTTOM - _box.size.y)
+	EventStage.place_box(_box, _buttons)
 
 
 ## A result is told: the stage dims (not the box), the words, and the button that answers it.

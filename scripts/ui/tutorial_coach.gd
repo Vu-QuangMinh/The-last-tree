@@ -33,7 +33,8 @@ func _ready() -> void:
 	sb.content_margin_bottom = 12
 	sb.shadow_color = Color(0, 0, 0, 0.5)
 	sb.shadow_size = 10
-	_bubble.add_theme_stylebox_override("panel", sb)
+	var board := UiSkin.frame("plaque_cream", 18, [26, 16, 26, 16])
+	_bubble.add_theme_stylebox_override("panel", board if board != null else sb)
 	_bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_bubble)
 	var h := HBoxContainer.new()

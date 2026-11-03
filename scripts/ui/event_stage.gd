@@ -68,7 +68,7 @@ const LAYOUTS := {
 	"lost_camp": {"opts_on_props": true, "night": 0.4, "no_hud": true, "center": true, "result_on_stage": true, "stage_fuse": true, "cursor": "event_torch", "outro": {0: "light"}, "result_how": {"Rest": "bed_toss"},
 		"props": [{"img": "event_campfire_off", "role": "pit", "x": 0.37, "h": 420.0, "lit": 0.55, "from": "top", "opt": "Half cook some spells", "label": "Use torch to half cook some spells"},
 			{"img": "event_tent", "role": "bed", "x": 0.6, "h": 175.0, "lit": 0.55, "from": "right", "opt": "Get some restless rest", "label": "Plant the torch to protect the tent"}]},
-	"elemental_fishing": {"underwater_tail": true, "no_hud": true, "night": 0.3, "center": true, "result_on_stage": true,
+	"elemental_fishing": {"sea": true, "underwater_tail": true, "no_hud": true, "night": 0.3, "center": true, "result_on_stage": true,
 		"props": [{"img": "event_fisherman", "x": 0.33, "h": 290.0, "dy": -128.0, "from": "left", "opt": "Help him fish", "alt": {"Ready": "Ready"}},
 			{"img": "event_stream_wide", "x": 0.5, "w": 1960.0, "h": 150.0, "from": "right", "opt": "Help him fish", "alt": {"Ready": "Ready"}}]},
 	"mausoleum": {"night": 0.62, "center": true, "result_on_stage": true,
@@ -185,7 +185,7 @@ static func speak(text: String) -> void:
 
 
 ## Lines said by their own voice file wherever they appear in a page (tools/make_event_voice.py makes them).
-const SPOKEN_PARTS := ["Here, take them, you've earned them."]
+const SPOKEN_PARTS := ["Here, take them, you've earned them.", "And not a single fairy hurt. Bless you.", "You've earned every one of them.", "Well, thank you for trying, I suppose.", "The fairies' families will need them more than you."]
 
 
 ## Cut off the line being said (an option was chosen, or Continue pressed: the words are skipped, so is the voice).
@@ -276,32 +276,31 @@ func _center_cards_y() -> float:
 const HINT_W := HINT_TEXT_W + 36.0 + 34.0  # (the paper frame's margins, as in the fight's hint panel)
 ## Every event tells its story in one box at the front of the stage, where the fight's own UI stands (the HUD is down):
 ## the words twice the size they were, the choices as buttons in the box under them. Words that don't fit come in pages.
-const BOX_TEXT_W := 1240.0
-const BOX_PX := 36  # (twice the 18 the side panel used)
-const BOX_LINES := 4  # (lines of words per page; more than that: "Go on..." pages)
-const BOX_BOTTOM := 1062.0
-const BOX_TOP := 712.0  # (the most the box ever reaches up: the item cards stand just above it)
+const BOX_TEXT_W := 1000.0
+const BOX_PX := 24
+const BOX_LINES := 3  # (lines of words per page; more than that: "Go on..." pages)
+const BOX_TOP := 715.0  # (the box's top edge: 5 px under the top of the front wall, SCENE_DY + 562; the item cards stand just above it)
 const HINT_Y := 170.0
 const HINT_X := 1920.0 - HINT_W + 6.0  # (flush with the right edge, like the fight's hint panel)
 
 
-## The Seedling's hint panel (panel_paper_frame, the sprout and a heading): the box an event tells its story in. It stands where the fight's hint panel does,
+## The events' dialogue panel (dialogue_panel from Puppet Panels.pdf: wine-red velvet in a wooden rim; the sprout and a heading): the box an event tells its story in. It stands where the fight's hint panel does,
 ## against the right edge under the Leaves' frame. Returns {panel, body}: `body` is the RichTextLabel (set its `text` to change the words).
 static func hint_panel(title: String, text: String, px := 0, min_h := 0.0, text_w := HINT_TEXT_W) -> Dictionary:
 	var p := PanelContainer.new()
-	var paper := UiSkin.box("panel_paper_frame", [46, 46, 46, 46], [36, 28, 34, 34])
+	var paper := UiSkin.box("dialogue_panel", [14, 14, 14, 14], [30, 20, 30, 22])
 	if paper != null:
 		p.add_theme_stylebox_override("panel", paper)
 	else:
 		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0.99, 0.95, 0.82)
-		sb.border_color = Color(1, 0.75, 0.2)
+		sb.bg_color = Color(0.43, 0.06, 0.12)
+		sb.border_color = Color(0.69, 0.46, 0.24)
 		sb.set_border_width_all(3)
 		sb.set_corner_radius_all(14)
 		sb.set_content_margin_all(14)
 		p.add_theme_stylebox_override("panel", sb)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	p.custom_minimum_size = Vector2(text_w + 36.0 + 34.0, min_h)
+	p.custom_minimum_size = Vector2(text_w + 60.0, min_h)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 4)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -309,10 +308,8 @@ static func hint_panel(title: String, text: String, px := 0, min_h := 0.0, text_
 	var head := HBoxContainer.new()
 	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(head)
-	var sprout: Control = UiSkin.icon("icon_seedling", 40)
-	if sprout != null:
-		head.add_child(sprout)
-	var who := UiTheme.label(title, 22 if px <= 0 or px < 30 else 30, Color(0.2, 0.45, 0.15))
+	var who := UiTheme.label(title, 22 if px <= 0 else maxi(18, px - 4), Color(0.95, 0.78, 0.4))
+	UiTheme.apply_header(who, "event", 22 if px <= 0 else maxi(18, px - 4))
 	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	who.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	head.add_child(who)
@@ -323,14 +320,19 @@ static func hint_panel(title: String, text: String, px := 0, min_h := 0.0, text_
 	r.scroll_active = false
 	r.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	r.custom_minimum_size = Vector2(text_w - (28.0 if px > 0 else 0.0), 0)  # (a fixed small size leaves room round the words)
-	r.add_theme_font_size_override("normal_font_size", size_px)
-	r.add_theme_font_size_override("bold_font_size", size_px)
+	r.add_theme_font_size_override("normal_font_size", UiTheme.px(size_px))  # (Font Edit > Body text > Size %)
+	r.add_theme_font_size_override("bold_font_size", UiTheme.px(size_px))
 	r.add_theme_constant_override("line_separation", 2)
-	r.add_theme_color_override("default_color", Color(0.14, 0.11, 0.08))
+	r.add_theme_color_override("default_color", Color(0.98, 0.93, 0.8))
 	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	r.text = Keywords.colorize(text.replace("\n\n", "\n") if text.length() > 500 and px < 30 else text, true)
+	r.text = Keywords.colorize(text.replace("\n\n", "\n") if text.length() > 500 and px < 30 else text)
 	v.add_child(r)
 	return {"panel": p, "body": r, "col": v}
+
+
+## A choice, Continue or Next in an event: the primary (gold) button of the family.
+static func dialogue_button(text: String, cb: Callable, size := 24) -> Button:
+	return UiTheme.button(text, cb, size, "back" if text == "Back" else "primary")
 
 
 ## The game's own wooden panel frame (panel_wood_frame) as the background of a box drawn here; a flat dark box when the art is missing.
@@ -401,6 +403,11 @@ func _ready() -> void:
 		for fi in _forest.size():
 			var f: Dictionary = _forest[fi]
 			entries.append({"img": f.img, "x": f.x, "h": f.h, "dy": f.dy, "tag": "cactus", "fi": fi, "lit": f.lit})
+	var sea_wait := 0.0
+	if lay.get("sea", false) and _stage != null:
+		_take_sea()
+		if not again:
+			sea_wait = PuppetStage.SWAP_LEAVE_TIME  # (the old props are still walking off: the event's own come in after them)
 	var delay_n := 0
 	var saved: Dictionary = _saved_layout().get(String(ev.get("id", "")), {}) if forest == 0 else {}
 	var ei := -1
@@ -452,7 +459,7 @@ func _ready() -> void:
 			node.visible = false  # (it comes on when the event begins: _begin)
 			_late_props.append([node, home, String(p.get("from", ""))])
 		elif not again:
-			_walk_on(node, home, String(p.get("from", "")), float(p.get("delay", 0.12 * delay_n if forest == 0 else randf() * 0.5)))
+			_walk_on(node, home, String(p.get("from", "")), sea_wait + float(p.get("delay", 0.12 * delay_n if forest == 0 else randf() * 0.5)))
 			delay_n += 1
 	_build_text(lay)
 	_build_items(lay)
@@ -547,11 +554,32 @@ func _make_opt_tags() -> void:
 		tag.create_tween().tween_property(tag, "modulate:a", 1.0, 0.3)
 
 
+## The event's stage is the sea from the moment it begins (layout "sea"): the first page puts it under water, every later page takes over keeping it there.
+func _take_sea() -> void:
+	for sib in get_parent().get_children():
+		if sib is EventStage and sib != self:
+			sib._owns_water = false
+	_owns_water = true
+	if not _stage.is_underwater():
+		_stage.set_underwater(true)
+
+
+## The page that kept the sea is gone: the act's own stage comes back unless the next page (or the minigame) already took the sea over.
+static func _release_water(stage: PuppetStage, host: Node) -> void:
+	if not is_instance_valid(stage) or not stage.is_underwater():
+		return
+	if is_instance_valid(host):
+		for n in host.get_children():
+			if n is FishGame or (n is EventStage and n._owns_water):
+				return
+	stage.set_underwater(false)
+
+
 func _exit_tree() -> void:
 	if _owns_tune:
 		stop_music()
 	if _owns_water and _stage != null and is_instance_valid(_stage):
-		_stage.set_underwater(false)
+		_release_water.call_deferred(_stage, get_parent())
 	if WoodCursor.override_owner == self:
 		WoodCursor.override_name = ""
 		WoodCursor.override_owner = null
@@ -701,7 +729,7 @@ func offer_items(entries: Array, tag: String) -> void:
 ## The words of the hint panel are changed (the wax: what to click, what is sealed).
 func set_hint(text: String) -> void:
 	if _hint_body != null:
-		_hint_body.text = Keywords.colorize(text, true)
+		_hint_body.text = Keywords.colorize(text)
 		_hint_body.visible = true
 		_fit_box.call_deferred()
 
@@ -1100,8 +1128,8 @@ func show_result(text: String, how := "", keep_items := false, card := {}, card_
 		ac.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(ac)
 		_item_views.append({"node": ac, "opt": -1, "id": "", "tw": null})
-	var b := UiTheme.button(continue_label, func(): stop_voice(); continued.emit(), 28)
-	b.custom_minimum_size = Vector2(0, 58)
+	var b := dialogue_button(continue_label, func(): stop_voice(); continued.emit())
+	b.custom_minimum_size = Vector2(0, 48)
 	_page_text(text, [b])
 	if is_instance_valid(_box) and _box.modulate.a < 1.0:
 		_box.create_tween().tween_property(_box, "modulate:a", 1.0, 0.25)
@@ -1203,8 +1231,8 @@ func curse_card(before: Dictionary, after: Dictionary) -> void:
 	# 4. only Next is left (the stage stays dim)
 	if is_instance_valid(_box):
 		_box.create_tween().tween_property(_box, "modulate:a", 1.0, 0.25)
-	var b := UiTheme.button("Next", func(): stop_voice(); continued.emit(), 28)
-	b.custom_minimum_size = Vector2(0, 58)
+	var b := dialogue_button("Next", func(): stop_voice(); continued.emit())
+	b.custom_minimum_size = Vector2(0, 48)
 	_page_text("", [b])
 
 
@@ -2078,6 +2106,8 @@ func _build_text(lay: Dictionary) -> void:
 	var panel: PanelContainer = hp.panel
 	_hint_body = hp.body
 	_box = panel
+	if on_stage:
+		panel.z_index = maxi(_world.z_index, 0) + 100  # (above the night's shade: the box and its buttons keep their own colours)
 	_box_col = hp.col
 	add_child(panel)
 	panel.anchor_left = 0.5
@@ -2090,7 +2120,8 @@ func _build_text(lay: Dictionary) -> void:
 	_btn_row.add_theme_constant_override("h_separation", 40)
 	_btn_row.add_theme_constant_override("v_separation", 10)
 	_btn_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_box_col.add_child(_btn_row)
+	_btn_row.top_level = true  # (outside the frame: under it, placed by place_box)
+	_box.add_child(_btn_row)
 	_choice_ui.append(_btn_row)
 	if not again:
 		panel.modulate.a = 0.0
@@ -2107,8 +2138,8 @@ func _build_text(lay: Dictionary) -> void:
 		_begun = true
 		_page_text(String(ev.get("text", "")), buttons)
 	else:
-		var go := UiTheme.button(String(ev.begin), _begin, 28)
-		go.custom_minimum_size = Vector2(0, 58)
+		var go := dialogue_button(String(ev.begin), _begin)
+		go.custom_minimum_size = Vector2(0, 48)
 		_page_text(String(ev.get("text", "")), [go])
 
 
@@ -2122,8 +2153,8 @@ func _prop_for(i: int) -> bool:
 func _button(i: int, w: float) -> Button:
 	var opts: Array = ev.get("options", [])
 	var label := String(opts[i].label)
-	var b := UiTheme.button(label, _pressed_option.bind(i), 28)
-	b.custom_minimum_size = Vector2(maxf(w, 0.0), 58)  # (as wide as its words)
+	var b := dialogue_button(label, _pressed_option.bind(i))
+	b.custom_minimum_size = Vector2(maxf(w, 0.0), 48)  # (as wide as its words)
 	return b
 
 
@@ -2145,8 +2176,8 @@ func _open_items(i: int) -> void:
 	_only_opt = i
 	_build_items(LAYOUTS.get(String(ev.get("id", "")), {}))
 	var opts: Array = ev.get("options", [])
-	var back := UiTheme.button("Back", _close_items, 28)
-	back.custom_minimum_size = Vector2(0, 58)
+	var back := dialogue_button("Back", _close_items)
+	back.custom_minimum_size = Vector2(0, 48)
 	_page_text("%s: pick one below." % String(opts[i].label), [back])
 
 
@@ -2186,14 +2217,14 @@ func _show_page() -> void:
 		_btn_row.remove_child(c)
 		if not (c in _page_last):
 			c.queue_free()
-	_hint_body.text = Keywords.colorize(String(_pages[_page_i]), true) if not _pages.is_empty() else ""
+	_hint_body.text = Keywords.colorize(String(_pages[_page_i])) if not _pages.is_empty() else ""
 	_hint_body.visible = not _pages.is_empty() and String(_pages[_page_i]) != ""
 	if _page_i < _pages.size() - 1:
-		var more := UiTheme.button("Go on...", func():
+		var more := dialogue_button("Go on...", func():
 			_page_i += 1
 			Audio.play("ui_click", -6.0)
-			_show_page(), 28)
-		more.custom_minimum_size = Vector2(0, 58)
+			_show_page())
+		more.custom_minimum_size = Vector2(0, 48)
 		_btn_row.add_child(more)
 	else:
 		for b in _page_last:
@@ -2221,13 +2252,34 @@ func _even_buttons() -> void:
 		b.custom_minimum_size.x = w
 
 
-## The box keeps its bottom edge at the bottom of the screen and grows upwards with its words.
+## The box hangs from BOX_TOP and grows downwards with its words; the buttons stand under it, outside the frame.
 func _fit_box() -> void:
-	if not is_instance_valid(_box):
+	place_box(_box, _btn_row)
+
+
+static func _abs_z(c: CanvasItem) -> int:
+	var z := 0
+	var n: Node = c
+	while n is CanvasItem:
+		z += (n as CanvasItem).z_index
+		if not (n as CanvasItem).z_as_relative:
+			break
+		n = n.get_parent()
+	return z
+
+
+static func place_box(box: Control, row: Control) -> void:
+	if not is_instance_valid(box):
 		return
-	_box.reset_size()
-	_box.size.x = BOX_TEXT_W + 70.0
-	_box.position = Vector2(960.0 - _box.size.x / 2.0, BOX_BOTTOM - _box.size.y)
+	box.reset_size()
+	box.size.x = BOX_TEXT_W + 60.0
+	box.position = Vector2(960.0 - box.size.x / 2.0, BOX_TOP)
+	if is_instance_valid(row):
+		row.z_as_relative = false  # (a top-level node does not follow its parent's z: it takes the box's own place in the drawing order, over every dim and shade)
+		row.z_index = _abs_z(box)
+		row.reset_size()
+		row.size.x = BOX_TEXT_W + 60.0
+		row.global_position = Vector2(960.0 - row.size.x / 2.0, BOX_TOP + box.size.y + 12.0)
 
 
 ## Splits words into pages of at most BOX_LINES lines at the box's size: by paragraph, then by sentence.
@@ -2235,9 +2287,9 @@ func _paginate(text: String) -> Array:
 	if text.strip_edges() == "":
 		return [""]
 	var font: Font = _hint_body.get_theme_font("normal_font")
-	var max_h := float(BOX_LINES) * (font.get_height(BOX_PX) + 2.0) + 4.0
+	var max_h := float(BOX_LINES) * (font.get_height(UiTheme.px(BOX_PX)) + 2.0) + 4.0
 	var fits := func(t: String) -> bool:
-		return font.get_multiline_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, BOX_TEXT_W - 28.0, BOX_PX).y <= max_h
+		return font.get_multiline_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, BOX_TEXT_W - 28.0, UiTheme.px(BOX_PX)).y <= max_h
 	var pieces: Array = []
 	for para in text.split("\n", false):
 		var re := RegEx.new()

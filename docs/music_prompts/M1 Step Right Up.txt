@@ -1,0 +1,10 @@
+M1  Step Right Up
+
+STYLE (dán vào ô Style / Style of Music):
+puppet theatre waltz, accordion, clarinet, xylophone, toy piano, pizzicato strings, wood block, 3/4, 104 BPM, playful, welcoming, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A waltz that opens the curtain of a little wooden puppet theatre. The accordion and pizzicato strings oom-pah-pah, the clarinet sings the tune and the xylophone and toy piano sparkle above it. The tempo wobbles slightly, like a hand-cranked show. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings

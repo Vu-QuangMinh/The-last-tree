@@ -5,7 +5,7 @@ extends Control
 ## The real pointer is made see-through while this shows
 ## (and given back when the theme changes, or while a spell's own aim cursor hides the pointer).
 
-const SIZE_PX := 46.0
+const SIZE_PX := 23.0  # (half of what it was)
 const SLANT := -PI / 4.0  # up-left
 const UP := 0.0
 const DOWN := PI

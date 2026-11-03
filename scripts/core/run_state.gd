@@ -683,6 +683,10 @@ func sealable(id: String) -> Array:
 ## Reveal a "?" room: sometimes a fight, treasure or a merchant, usually an event you haven't seen this run.
 func resolve_unknown() -> String:
 	var n := current_node()
+	if n.get("forced", false) and String(n.get("event", "")) != "":
+		n["as"] = "event"  # (the camp before the boss: always its event)
+		seen_events.append(String(n.event))
+		return "event"
 	var r := rng.randf()
 	var kind := "event"
 	for k in UNKNOWN_ODDS:

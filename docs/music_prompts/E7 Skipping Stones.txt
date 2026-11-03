@@ -1,0 +1,10 @@
+E7  Skipping Stones
+
+STYLE (dán vào ô Style / Style of Music):
+bright minimal pattern, kalimba, marimba, xylophone, pizzicato strings, glockenspiel, 6/8, G major, 132 BPM, sunny, bouncy, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A stone hopping across a pond. A kalimba and a marimba repeat the same bright pattern, one slightly faster than the other, so they drift apart and back together. The hops get closer and closer, then end with a low soft plop and a beat of silence. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings

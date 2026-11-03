@@ -1,0 +1,10 @@
+E3  The Cheeky Sideshow
+
+STYLE (dán vào ô Style / Style of Music):
+comic circus polka, clarinet, kazoo, tuba, slide whistle, xylophone, wood block, snare, G minor, 2/4, 168 BPM, cheeky, bouncy, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A cheeky, bouncing polka for a clown puppet. The clarinet and kazoo trade a silly tune over a tuba oom-pah, the slide whistle slips and squeaks, and every eight bars the whole band freezes for one beat and then jumps back in a step higher. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings

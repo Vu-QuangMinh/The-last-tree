@@ -359,7 +359,8 @@ func _part(glyph: String, num: String, col: Color, kind := "") -> Control:
 	sb.content_margin_right = 8
 	sb.content_margin_top = 1
 	sb.content_margin_bottom = 1
-	p.add_theme_stylebox_override("panel", sb)
+	var pill_art := UiSkin.frame("pill", 18, [10, 2, 12, 2], col.lerp(Color.WHITE, 0.45))
+	p.add_theme_stylebox_override("panel", pill_art if pill_art != null else sb)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 3)

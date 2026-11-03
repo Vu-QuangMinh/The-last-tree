@@ -5,7 +5,41 @@ extends Node
 
 const GLOBAL_SFX_DIR := "res://assets/Global/SFX/"
 const MUSIC_DIR := "res://assets/Global/Music/"
-const MUSIC_CATEGORIES := ["menu", "map", "fight", "boss"]
+## Every place that has music: [id, label, group, where it plays, fallback]. A slot is the folder assets/Global/Music/<id>/; a slot with no track there plays its fallback's
+## (the older folders fight / boss / map / menu are the fallbacks, so the game is never silent). Settings > Music Edit lists them by group.
+const MUSIC_SLOTS := [
+	["menu", "Main menu", "Menus", "The title screen.", ""],
+	["map", "Map", "Menus", "The map between rooms.", ""],
+	["fight_1", "Fight, Act 1", "Fights", "An ordinary fight in Act 1.", "fight"],
+	["elite_1", "Mini boss, Act 1", "Fights", "An elite fight (a mini boss) in Act 1.", "fight_1"],
+	["boss_1", "Boss, Act 1", "Fights", "A boss fight in Act 1.", "boss"],
+	["fight_2", "Fight, Act 2", "Fights", "An ordinary fight in Act 2.", "fight"],
+	["elite_2", "Mini boss, Act 2", "Fights", "An elite fight (a mini boss) in Act 2.", "fight_2"],
+	["boss_2", "Boss, Act 2", "Fights", "A boss fight in Act 2.", "boss"],
+	["fight_3", "Fight, Act 3", "Fights", "An ordinary fight in Act 3.", "fight"],
+	["elite_3", "Mini boss, Act 3", "Fights", "An elite fight (a mini boss) in Act 3.", "fight_3"],
+	["boss_3", "Boss, Act 3", "Fights", "A boss fight in Act 3.", "boss"],
+	["ev_default", "Event: a fork in the path", "Events", "The ordinary \"?\" events: Lost Sprite, A Note to Yourself, The Mystery Shed, The Recycler.", ""],
+	["ev_spooky", "Event: whispers", "Events", "Eerie events: The Whispering Well, A Cursed Shrine, The Mushroom Ring, The Wax Witch, The Mausoleum.", ""],
+	["ev_comic", "Event: cheeky sideshow", "Events", "Comic events: A Travelling Bard, The Flying Turtle, Something Is Falling, The Farmer's Farm, They See Me Rolling, The Bear Comes Back, The Hollow Stump.", ""],
+	["ev_rest", "Event: rest", "Events", "Quiet events: An Abandoned Camp, Climate Change.", ""],
+	["ev_danger", "Event: danger", "Events", "Tense events: Far from Any Road, The Overgrown Vine, The Ruined Watchtower, The Broken Bridge.", ""],
+	["ev_water", "Event: Fisher's Fish", "Events", "Fisher's Fish, under the water (Act 2).", ""],
+	["ev_stones", "Event: Skipping Stones", "Events", "Skipping Stones (Act 2).", ""],
+	["ev_church", "Event: Church of Aole", "Events", "The Church of Aole.", ""],
+	["fight", "Fight (older, any act)", "Older folders", "Used by a fight slot that has no track of its own.", ""],
+	["boss", "Boss (older, any act)", "Older folders", "Used by a boss slot that has no track of its own.", ""],
+]
+## Which event plays which slot (events not listed here play no music of their own: the map's goes on).
+const EVENT_MUSIC := {
+	"lost_sprite": "ev_default", "note_to_self": "ev_default", "mystery_shack": "ev_default", "recycler": "ev_default",
+	"well": "ev_spooky", "cursed_shrine": "ev_spooky", "mushroom_ring": "ev_spooky", "wax_witch": "ev_spooky", "mausoleum": "ev_spooky",
+	"bard": "ev_comic", "flying_turtle": "ev_comic", "turtle_falls": "ev_comic", "farmer_farm": "ev_comic", "rolling_bear": "ev_comic", "bear_revenge": "ev_comic", "hollow_stump": "ev_comic",
+	"lost_camp": "ev_rest", "shrinking_pond": "ev_rest",
+	"cactus_maze": "ev_danger", "overgrown_vine": "ev_danger", "watchtower": "ev_danger", "broken_bridge": "ev_danger",
+	"elemental_fishing": "ev_water", "skipping_stones": "ev_stones", "church_of_aole": "ev_church",
+}
+var MUSIC_CATEGORIES: Array = MUSIC_SLOTS.map(func(r): return r[0])
 const POOL_SIZE := 12
 ## The Music slider only ever reaches this much of a track's own volume (headroom, since
 ## music files tend to be mixed hot); the slider itself still reads 0-100%.
@@ -30,7 +64,10 @@ const STACK_MAX_DB := 10.0  # ... down to this much
 const STACK_MAX := 5  # the sixth copy of one sound at once is not played at all
 var _music: AudioStreamPlayer
 var _music_category := ""
-var _music_track := {}  # category -> chosen filename (with extension)
+var music_theme := "suno_nov03"  # the theme whose tracks the slots play (Music Edit's Theme)
+var _fade_token := 0  # a new music (or a stop) cancels a fade-out in progress
+var _after_token := 0  # ... and a music waiting for a sound to end
+var _last_track := {}  # slot -> the track it played last (the next random pick avoids it)
 var _preview: AudioStreamPlayer
 var _preview_path := ""
 
@@ -44,8 +81,7 @@ func _ready() -> void:
 	sfx_level = SaveManager.setting("sfx_volume", 1.0)
 	music_level = SaveManager.setting("music_volume", 0.7)
 	overall_level = SaveManager.setting("overall_volume", 1.0)
-	for cat in MUSIC_CATEGORIES:
-		_music_track[cat] = SaveManager.setting("music_track_%s" % cat, "")
+	music_theme = String(SaveManager.setting("music_edit_theme", music_theme))
 	_add_master_limiter()
 	for i in POOL_SIZE:
 		var p := AudioStreamPlayer.new()
@@ -58,6 +94,7 @@ func _ready() -> void:
 	add_child(_preview)
 	_preview.finished.connect(func():
 		_preview_path = ""
+		_music.stream_paused = false
 		preview_changed.emit(""))
 
 
@@ -91,6 +128,11 @@ static func _db(level: float) -> float:
 
 
 ## Music gain, 0..1: the slider's own value, the fixed headroom ceiling and the Overall slider.
+## A listen in Music Edit does not follow the music slider (at 0% you could not pick anything): the game's loudness only.
+func _preview_gain() -> float:
+	return MUSIC_CEILING * overall_level
+
+
 func _music_gain() -> float:
 	return music_level * MUSIC_CEILING * overall_level
 
@@ -105,7 +147,7 @@ func set_music_level(v: float) -> void:
 	SaveManager.set_setting("music_volume", music_level)
 	_music.volume_db = _db(_music_gain())
 	if _preview_path != "":
-		_preview.volume_db = _db(_music_gain())
+		_preview.volume_db = _db(_preview_gain())
 
 
 func set_overall_level(v: float) -> void:
@@ -113,7 +155,7 @@ func set_overall_level(v: float) -> void:
 	SaveManager.set_setting("overall_volume", overall_level)
 	_music.volume_db = _db(_music_gain())
 	if _preview_path != "":
-		_preview.volume_db = _db(_music_gain())
+		_preview.volume_db = _db(_preview_gain())
 
 
 var _sfx_index := {}  # SFX folder -> {sound name: path}, for the sounds that sit in sub-folders (Spell Card SFX, Debuff SFX, ...)
@@ -350,36 +392,153 @@ func list_tracks(category: String) -> Array:
 	return out
 
 
-## The chosen track for a category: falls back to the first file found if nothing was
-## picked yet, or the pick no longer exists on disk.
+## Music Edit's themes: [id, label]. A track belongs to a theme by the start of its file name; everything else is "old".
+const MUSIC_THEMES := [["suno_nov03", "Suno Nov 03"], ["anysong_nov02", "AnySong Nov 02"], ["old", "Old"]]
+
+
+static func track_theme(filename: String) -> String:
+	if filename.begins_with("Suno Nov 03 "):
+		return "suno_nov03"
+	if filename.begins_with("AnySong - ") or filename.begins_with("Nov 02 "):
+		return "anysong_nov02"
+	return "old"
+
+
+## The tracks of list_tracks(category) that belong to a theme.
+func list_tracks_in_theme(category: String, theme: String) -> Array:
+	return list_tracks(category).filter(func(f): return track_theme(f) == theme)
+
+
+## The slot whose tracks really play for `category`: itself, or the first of its fallbacks that has a track ("" when the whole chain is empty).
+func resolve_category(category: String) -> String:
+	var c := category
+	for _i in 4:  # (first a slot with a track of the current theme, then any track)
+		if not list_tracks_in_theme(c, music_theme).is_empty():
+			return c
+		var next := ""
+		for r in MUSIC_SLOTS:
+			if r[0] == c:
+				next = String(r[4])
+		if next == "":
+			break
+		c = next
+	c = category
+	for _i in 4:
+		if not list_tracks(c).is_empty():
+			return c
+		var next := ""
+		for r in MUSIC_SLOTS:
+			if r[0] == c:
+				next = String(r[4])
+		if next == "":
+			return ""
+		c = next
+	return ""
+
+
+## The slot of a fight: by the act (1 to 3) and the kind ("fight", "elite" or "boss").
+func fight_slot(kind: String, act: int) -> String:
+	return "%s_%d" % [kind, clampi(act, 1, 3)]
+
+
+## The slot an event plays ("" when it has none).
+func event_slot(event_id: String) -> String:
+	return String(EVENT_MUSIC.get(event_id, ""))
+
+
+## The tracks a slot draws from: the ones of the current theme, or (none of them) every track there.
+func playable_tracks(category: String) -> Array:
+	var t := list_tracks_in_theme(category, music_theme)
+	return t if not t.is_empty() else list_tracks(category)
+
+
+## The track this slot is pinned to in the current theme ("" = no pin: every time it starts it plays a random track of the theme).
+func get_pin(category: String) -> String:
+	var pin := String(SaveManager.setting("music_pick_%s_%s" % [music_theme, category], ""))
+	return pin if pin in list_tracks_in_theme(category, music_theme) else ""
+
+
+## The track that plays for a category: its pin, else the one it played last, else the first one.
 func get_track(category: String) -> String:
-	var chosen: String = _music_track.get(category, "")
-	var avail := list_tracks(category)
-	if chosen in avail:
-		return chosen
+	var avail := playable_tracks(category)
+	var pin := get_pin(category)
+	if pin != "":
+		return pin
+	var last: String = _last_track.get(category, "")
+	if last in avail:
+		return last
 	return avail[0] if not avail.is_empty() else ""
 
 
-## Picks which file plays for a category. Switches immediately if that category is playing now.
+## Deletes a track file from the game for good (and its .import). Whatever played it stops; the slot goes on with another track (or its fallback).
+func delete_track(category: String, filename: String) -> bool:
+	var path := MUSIC_DIR + category + "/" + filename
+	if _preview_path == path:
+		stop_preview()
+	var was_playing := _music_category != "" and _music.playing and resolve_category(_music_category) == category and get_track(category) == filename
+	var ok := true
+	for p in [path, path + ".import"]:
+		if FileAccess.file_exists(p):
+			ok = DirAccess.remove_absolute(ProjectSettings.globalize_path(p)) == OK and ok
+	_cache.erase(path)
+	if get_pin(category) == filename:
+		SaveManager.set_setting("music_pick_%s_%s" % [track_theme(filename), category], "")
+	if _last_track.get(category, "") == filename:
+		_last_track.erase(category)
+	if was_playing:
+		var cat := _music_category
+		_music_category = ""
+		_music.stop()
+		play_music(cat)
+	return ok
+
+
+## Pins a slot to one track (of the current theme); "" gives it back to random. Switches immediately if that slot is playing now.
 func set_track(category: String, filename: String) -> void:
-	_music_track[category] = filename
-	SaveManager.set_setting("music_track_%s" % category, filename)
-	if _music_category == category:
+	SaveManager.set_setting("music_pick_%s_%s" % [music_theme, category], filename)
+	_restart_if_playing(category)
+
+
+func _restart_if_playing(category: String) -> void:
+	if _music_category != "" and resolve_category(_music_category) == category:
+		var cat := _music_category
 		_music_category = ""  # force play_music to reload even though the category matches
-		play_music(category)
+		play_music(cat)
 
 
-## Loops the chosen track for this category, replacing whatever is playing. Calling it again
-## for the category that's already playing does nothing (so screens can call it on every _ready()).
+## Switches to a theme: every slot now plays tracks of it (a pinned one, else a random one each time it starts); what plays now changes at once.
+func set_theme(theme: String) -> void:
+	music_theme = theme
+	SaveManager.set_setting("music_edit_theme", theme)
+	if _music_category != "":
+		var cat := _music_category
+		_music_category = ""
+		play_music(cat)
+
+
+## Loops a track for this category, replacing whatever is playing: the slot's pin, else a random track of the theme (not the one it played last, when it has others).
+## Calling it again for the category that's already playing does nothing (so screens can call it on every _ready()).
 func play_music(category: String) -> void:
-	var track := get_track(category)
-	if track == "":
-		return
 	if _music_category == category and _music.playing:
 		return
-	var s := _load(MUSIC_DIR + category + "/" + track)
+	_fade_token += 1
+	_after_token += 1
+	var real := resolve_category(category)  # (an empty slot plays its fallback's track)
+	if real == "":
+		return
+	var pool := playable_tracks(real)
+	var track := get_pin(real)
+	if track == "":
+		var choices := pool.filter(func(f): return f != _last_track.get(real, ""))
+		if choices.is_empty():
+			choices = pool
+		if choices.is_empty():
+			return
+		track = choices[randi() % choices.size()]
+	var s := _load(MUSIC_DIR + real + "/" + track)
 	if s == null:
 		return
+	_last_track[real] = track
 	_music_category = category
 	_music.stream = s
 	_music.volume_db = _db(_music_gain())
@@ -462,7 +621,41 @@ static func _pluck(freq: float) -> AudioStreamWAV:
 	return w
 
 
+## The music fades out in `seconds` and stops (a new music or a stop in the meantime cancels the stop).
+func fade_out_music(seconds := 0.8) -> void:
+	if not _music.playing:
+		return
+	_fade_token += 1
+	var mine := _fade_token
+	var tw := create_tween()
+	tw.tween_property(_music, "volume_db", -60.0, seconds)
+	tw.tween_callback(func():
+		if mine == _fade_token:
+			_music_category = ""
+			_music.stop()
+			_music.stream = null)
+
+
+## Starts a music after `delay` seconds, unless another music (or a stop) came first.
+func play_music_after(category: String, delay: float) -> void:
+	_after_token += 1
+	var mine := _after_token
+	await get_tree().create_timer(delay, true).timeout
+	if mine == _after_token:
+		play_music(category)
+
+
+## The end of a fight: the music fades away, `sfx` plays, and when it is over `then_music` starts ("" = none).
+func result_sting(sfx: String, then_music := "map") -> void:
+	fade_out_music()
+	play(sfx)
+	if then_music != "":
+		play_music_after(then_music, get_sfx_length(sfx))
+
+
 func stop_music() -> void:
+	_fade_token += 1
+	_after_token += 1
 	_music_category = ""
 	_music.stop()
 	_music.stream = null
@@ -480,8 +673,9 @@ func preview_track(category: String, filename: String) -> void:
 		return
 	_preview.stop()
 	_preview_path = path
-	_preview.volume_db = _db(_music_gain())
+	_preview.volume_db = _db(_preview_gain())
 	_preview.stream = s
+	_music.stream_paused = true  # (the background music waits while a track is listened to)
 	_preview.play()
 	preview_changed.emit(path)
 
@@ -491,8 +685,24 @@ func stop_preview() -> void:
 		return
 	_preview.stop()
 	_preview_path = ""
+	_music.stream_paused = false
 	preview_changed.emit("")
 
 
 func current_preview_path() -> String:
 	return _preview_path
+
+
+## Seconds into the track being previewed, and its length (0 when nothing plays).
+func preview_position() -> float:
+	return _preview.get_playback_position() if _preview_path != "" and _preview.playing else 0.0
+
+
+func preview_length() -> float:
+	return _preview.stream.get_length() if _preview_path != "" and _preview.stream != null else 0.0
+
+
+## Jump the preview to `seconds`; a track that is not playing (the one picked) starts from there.
+func seek_preview(seconds: float) -> void:
+	if _preview_path != "" and _preview.playing:
+		_preview.seek(seconds)

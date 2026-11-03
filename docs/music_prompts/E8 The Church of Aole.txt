@@ -1,0 +1,10 @@
+E8  The Church of Aole
+
+STYLE (dán vào ô Style / Style of Music):
+old chapel, small pipe organ, harmonium, tubular bells, celesta, soft strings, 4/4, A Dorian, 56 BPM, calm, solemn, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A tiny old chapel with a wheezing pipe organ and a harmonium. A bell tolls once a bar, a celesta repeats a three-note phrase at three different volumes as if the church were answering itself. Slow, gentle and a little sad. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings

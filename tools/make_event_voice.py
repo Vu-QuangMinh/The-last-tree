@@ -1,4 +1,4 @@
-"""The voices of the "?" events (the Turtle, the Farmer, the priest of Church of Aole, the Wax Witch, the Rolling Bear), spoken by Google Gemini TTS (the keys of the
+"""The voices of the "?" events (the Turtle, the Farmer, the priest of Church of Aole, the Wax Witch, the Rolling Bear, the pond spirit, the boy of the Mystery Shed), spoken by Google Gemini TTS (the keys of the
 AnyVideo app's settings.json) into assets/Puppet/SFX/Event Voice/evv_<md5 of the text shown>.wav (EventStage.speak finds them by that name).
 First run `godot --headless --path . --script res://tools/dump_event_texts.gd -- <json> flying_turtle turtle_falls farmer_farm church_of_aole` to get the texts.
 Run with any Python 3: python tools/make_event_voice.py <texts.json> [--redo]    (free tier: ~10 requests a day per model per key; lines that already have a file are skipped)"""
@@ -24,10 +24,13 @@ SPEAKERS = {
     "bear_deep": ("Algenib", "A huge, friendly old bear, a deep, low, warm, gravelly male voice; theatrical and emotional, grateful or hurt and sad as the line asks, slow and heavy; not angry, not shouting."),
     "fisher": ("Sadaltager", "A starving, ragged, skeletal old fisherman, thin and raspy, weak but eager, a little dark humour; slow."),
     "stump": ("Fenrir", "A grumpy little creature living inside a tree stump, a gruff hillbilly drawl, annoyed and shouting through a hole; fast, then calm at the end."),
+    "spirit": ("Sulafat", "A small, vain, bubbly pond spirit, a wet, whiny, melodramatic voice: pleading, outraged when insulted, then delighted and gushing when pleased; fairly fast."),
+    "boy": ("Puck", "A smug little boy, flat and bored, sneering with a pleased-with-himself drawl; short and dismissive."),
     "bear": ("Puck", "A big, dramatic, comical, tearful-then-furious round bear, theatrical and over the top."),
 }
-EVENT_SPEAKER = {"flying_turtle": "turtle", "turtle_falls": "turtle", "farmer_farm": "farmer", "church_of_aole": "priest", "elemental_fishing": "fisher", "hollow_stump": "stump"}
+EVENT_SPEAKER = {"flying_turtle": "turtle", "turtle_falls": "turtle", "farmer_farm": "farmer", "church_of_aole": "priest", "elemental_fishing": "fisher", "hollow_stump": "stump", "shrinking_pond": "spirit", "mystery_shack": "boy"}
 FISHER_LINES = ["Here, take them, you've earned them."]  # (EventStage.SPOKEN_PARTS: said inside the tally, whose other words change with the catch)
+FARMER_LINES = ["And not a single fairy hurt. Bless you.", "You've earned every one of them.", "Well, thank you for trying, I suppose.", "The fairies' families will need them more than you."]  # (the fixed ends of his tally, whose numbers change: EventStage.SPOKEN_PARTS)
 BEAR_ANGRY_LINES = ["Behold, heartless stranger!", "I have come for revenge!"]
 BEAR_LINES = ["Thank you, stranger!", "Here, for your trouble.", "Why didn't you help me? Whyyyyyy..."]
 
@@ -93,6 +96,8 @@ def main() -> None:
     jobs.append(("well_whisper", "Traveller... come closer... I am so hungry... feed me, and I will give you something nice... or jump in... jump in...", "witch"))
     for line in FISHER_LINES:
         jobs.append((key_of(line), line, "fisher"))
+    for line in FARMER_LINES:
+        jobs.append((key_of(line), line, "farmer"))
     for line in BEAR_LINES:
         jobs.append((key_of(line), line, "bear_deep"))
     for line in BEAR_ANGRY_LINES:

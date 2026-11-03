@@ -35,6 +35,7 @@ func _ready() -> void:
 	add_child(al)
 	var cur := CanvasLayer.new()  # the Puppet Stage's wooden arrow pointer, over everything
 	cur.layer = 128
+	cur.process_mode = Node.PROCESS_MODE_ALWAYS  # (the pointer keeps following the mouse while the game is paused: F7)
 	var wood_cursor := WoodCursor.new()
 	wood_cursor.get_screen = func(): return current
 	cur.add_child(wood_cursor)
@@ -221,6 +222,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 	if ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_F1:
 		open_wiki()
 		get_viewport().set_input_as_handled()
+	if ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_F7:
+		TextInspector.toggle(self)  # (the game stops; click any text to see and change its font, size, gap and colour)
+		get_viewport().set_input_as_handled()
 
 
 func open_codex() -> void:
@@ -379,7 +383,7 @@ func _test_fight(ids: Array, spells: Array, tweak := Callable(), artifacts := []
 	fs.test_mode = true  # (Auto-fill and Auto-ball buttons)
 	fs.finished.connect(func(_won): open_test_mode())
 	fs.menu_requested.connect(open_test_mode)
-	Audio.play_music("boss" if ids.any(func(id): return EnemyDefs.E[id].get("boss", false)) else "fight")
+	Audio.play_music(_fight_music(ids))
 	_swap(fs)
 
 
@@ -536,7 +540,7 @@ func _test_rooms() -> Array:
 		out.append({"type": "elite", "label": "Elite · Act %d" % a, "act": a, "row": 8})
 	for a in [1, 2, 3]:
 		out.append({"type": "boss", "label": "Boss · Act %d" % a, "act": a, "row": MapGen.FLOORS})
-	for t in [["rest", "Campfire"], ["treasure", "Treasure"], ["shop", "Merchant"]]:
+	for t in [["treasure", "Treasure"], ["shop", "Merchant"]]:
 		out.append({"type": t[0], "label": t[1], "act": 1, "row": 3})
 	for ev in MapEvents.ALL:
 		out.append({"type": "event", "label": ev.title, "act": 1, "row": 3, "event": ev.id})
@@ -654,6 +658,11 @@ func _next_rope_set() -> void:
 func _on_node(col: int) -> void:
 	var node := run.move_to(col)
 	var kind: String = node.type
+	if kind == "rest":  # (a map saved with the old campfire room: it is An Abandoned Camp now)
+		node["type"] = "event"
+		node["event"] = MapGen.CAMP_EVENT
+		node["forced"] = true
+		kind = "event"
 	if kind == "event":
 		kind = run.resolve_unknown()
 		if kind != "event":
@@ -694,7 +703,21 @@ func _enter_room(kind: String) -> void:
 
 
 ## A "?" event: its story and choices (options you can't afford are greyed out).
+## The music slot of a fight: by the act and by what it is (a boss, a mini boss or an ordinary fight).
+func _fight_music(ids: Array) -> String:
+	var kind := "fight"
+	var room := run.current_kind() if run != null else ""
+	if room == "boss" or ids.any(func(id): return EnemyDefs.E[id].get("boss", false)):
+		kind = "boss"
+	elif room == "elite" or ids.any(func(id): return EnemyDefs.E[id].get("elite", false)):
+		kind = "elite"
+	return Audio.fight_slot(kind, run.act if run != null else 1)
+
+
 func _show_event(ev: Dictionary) -> void:
+	var slot := Audio.event_slot(String(ev.get("id", "")))
+	if slot != "" and not ev.get("again", false):
+		Audio.play_music(slot)  # (the event's own music; the map's comes back with the map)
 	if ev.has("scene"):
 		_bear_scene(ev)  # (played out on the stage itself)
 		return
@@ -1384,7 +1407,7 @@ func _begin_stage_fight(fs: FightScreen, f: Fight, ids: Array, l: LoadoutScreen)
 	var from := l.active_rects()
 	var spells: Array = run.loadout.map(func(id): return run.spell(id))
 	var book: Array = run.spellbook.map(func(id): return run.spell(id))
-	Audio.play_music("boss" if run.current_kind() == "boss" else "fight")
+	Audio.play_music(_fight_music(ids))
 	l.queue_free()
 	_overlay = null
 	fs.begin_with_spells(spells, book, from)
@@ -1407,7 +1430,7 @@ func _start_fight(ids: Array) -> void:
 	if _stage_flow() and is_instance_valid(current) and current is FightScreen and current.get_stage() != null:
 		fs.stage_in = current.get_stage()  # (the same theatre: its scenery slides away, the new room's slides in)
 		fs.arrive = true
-	Audio.play_music("boss" if run.current_kind() == "boss" else "fight")
+	Audio.play_music(_fight_music(ids))
 	_swap(fs)
 
 
@@ -1639,7 +1662,8 @@ func _end_run() -> void:
 		return
 	_room_bg = "" if run.won else "screen_defeat"  # (no victory picture yet: the act's)
 	var seeds := run.final_seedlings()
-	Audio.play("victory_fanfare" if run.won else "defeat_stinger")
+	if not (is_instance_valid(current) and current.has_meta("result_sfx")):  # (the fight's Defeat sign already played its sound)
+		Audio.play("victory_fanfare" if run.won else "defeat_stinger")
 	Audio.play("seedling_gain")
 	Audio.stop_music()
 	SaveManager.record_run(seeds, run.act, run.kills, run.won)

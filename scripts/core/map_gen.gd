@@ -4,18 +4,20 @@ extends RefCounted
 ##   * a 7-column grid, 12 floors, then the boss;
 ##   * 6 paths are walked from the bottom up, each step moving to the same column or a neighbouring one, never
 ##     crossing an existing path; the nodes and links they touch form the map (so paths split and merge);
-##   * floor 1 is all fights, floor 6 is all treasure, floor 12 (before the boss) is all campfires;
-##   * other rooms are rolled: fight 45%, ? 22%, elite 16%, campfire 12%, merchant 5%, with rules:
-##     no elites or campfires before floor 5, no campfire on floor 11, no elite / campfire / merchant right after
-##     the same kind on a path, and the rooms a node branches into are all different kinds.
+##   * floor 1 is all fights, floor 6 is all treasure, floor 12 (before the boss) is all "?" rooms that are always An Abandoned Camp
+##     (the old campfire room is gone: that event is its replacement);
+##   * other rooms are rolled: fight 45%, ? 22%, elite 16%, merchant 5%, with rules:
+##     no elites before floor 5, no elite / merchant right after the same kind on a path, and the rooms a node
+##     branches into are all different kinds.
 ## Rows are Arrays of COLS entries: a node Dictionary {type, next: [cols on the next row], col} or null.
 
 const FLOORS := 12
 const COLS := 7
 const PATHS := 6
 const TREASURE_FLOOR := 6
-const WEIGHTS := {"fight": 45.0, "event": 22.0, "elite": 16.0, "rest": 12.0, "shop": 5.0}
-const NO_REPEAT := ["elite", "rest", "shop"]
+const WEIGHTS := {"fight": 45.0, "event": 22.0, "elite": 16.0, "shop": 5.0}
+const NO_REPEAT := ["elite", "shop"]
+const CAMP_EVENT := "lost_camp"  # the floor before the boss
 
 
 static func generate(rng: RandomNumberGenerator) -> Array:
@@ -80,7 +82,9 @@ static func _assign_types(rows: Array, rng: RandomNumberGenerator) -> void:
 				n.type = "treasure"
 				continue
 			if floor_no == FLOORS:
-				n.type = "rest"
+				n.type = "event"
+				n["event"] = CAMP_EVENT
+				n["forced"] = true  # (resolve_unknown keeps this event: no fight / treasure / merchant in its place)
 				continue
 			var parents := _parents(rows, f, n.col)
 			var banned := {}
@@ -94,9 +98,6 @@ static func _assign_types(rows: Array, rng: RandomNumberGenerator) -> void:
 						banned[sib.type] = true
 			if floor_no < 5:
 				banned["elite"] = true
-				banned["rest"] = true
-			if floor_no == FLOORS - 1:
-				banned["rest"] = true
 			n.type = _roll(rng, banned)
 
 

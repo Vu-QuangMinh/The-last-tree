@@ -1,0 +1,10 @@
+E4  Lullaby by the Fire
+
+STYLE (dán vào ô Style / Style of Music):
+gentle lullaby, harmonium, glockenspiel, soft marimba, music box, pizzicato, 3/4, F minor, 66 BPM, warm, sleepy, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A warm little lullaby by a campfire. A harmonium and a soft marimba rock in three, a glockenspiel adds a few twinkles, and the tune stops one note before its end and starts again, as if the player were nodding off. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings

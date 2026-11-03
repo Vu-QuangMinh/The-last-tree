@@ -169,11 +169,20 @@ func _magic_box() -> Control:
 		sb.set_corner_radius_all(6)
 		sb.set_border_width_all(2)
 		sb.border_color = Color(0.25, 0.18, 0.1)
-		b.add_theme_stylebox_override("normal", sb)
-		var hov := sb.duplicate()
-		hov.bg_color = (k[1] as Color).lightened(0.2)
-		b.add_theme_stylebox_override("hover", hov)
-		b.add_theme_stylebox_override("pressed", hov)
+		var key_art := UiSkin.box("btn_default", [20, 14, 20, 14])  # (the carved plaque, tinted with the key's colour)
+		if key_art != null:
+			key_art.modulate_color = (k[1] as Color).lerp(Color.WHITE, 0.3)
+			b.add_theme_stylebox_override("normal", key_art)
+			var key_hover := key_art.duplicate()
+			key_hover.modulate_color = (k[1] as Color).lerp(Color.WHITE, 0.55)
+			b.add_theme_stylebox_override("hover", key_hover)
+			b.add_theme_stylebox_override("pressed", key_hover)
+		else:
+			b.add_theme_stylebox_override("normal", sb)
+			var hov := sb.duplicate()
+			hov.bg_color = (k[1] as Color).lightened(0.2)
+			b.add_theme_stylebox_override("hover", hov)
+			b.add_theme_stylebox_override("pressed", hov)
 		b.tooltip_text = k[0]
 		var note: String = k[2]
 		b.pressed.connect(func():

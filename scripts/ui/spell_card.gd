@@ -449,11 +449,28 @@ func warm_hover() -> void:
 		holder.queue_free()
 
 
+var _hold_until := 0  # msec: a click (the shop) keeps the magnified copy up until then, even if the mouse has left
+
+
+## Shows the magnified copy and keeps it for `seconds`, whatever the mouse does (the shop: a click on a card).
+func hold_zoom(seconds: float) -> void:
+	if is_zoom_copy or not is_inside_tree():
+		return
+	_hold_until = Time.get_ticks_msec() + int(seconds * 1000.0)
+	if not _hover:
+		_on_hover(true)
+	get_tree().create_timer(seconds + 0.05).timeout.connect(func():
+		if is_instance_valid(self) and _hover and Time.get_ticks_msec() >= _hold_until:
+			_on_hover(false))
+
+
 func _on_hover(on: bool) -> void:
 	if is_zoom_copy or on == _hover:
 		return
 	if hover_off and on:
 		return
+	if not on and Time.get_ticks_msec() < _hold_until:
+		return  # (held big after a click)
 	# only let go when the mouse has really left the card (not when something flickers on top of it)
 	if not on and is_visible_in_tree() and get_global_rect().has_point(get_global_mouse_position()):
 		return

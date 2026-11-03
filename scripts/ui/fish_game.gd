@@ -69,6 +69,11 @@ func _ready() -> void:
 		bd.show_behind_parent = true
 		bd.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(bd)
+	var bubbles := _Bubbles.new()  # (rising from the sea floor: the merchant's bubble pictures, as when he is drunk)
+	bubbles.z_index = 49
+	bubbles.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bubbles.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(bubbles)
 	_clock = _label("1:00", 56, Color.WHITE, Vector2(0, 40), Vector2(1920, 70))
 	_tally = _label("", 26, Color(1, 0.9, 0.6), Vector2(0, 112), Vector2(1920, 40))
 	for l in [_clock, _tally]:
@@ -85,7 +90,8 @@ func _ready() -> void:
 	sb.set_border_width_all(3)
 	sb.set_corner_radius_all(14)
 	sb.set_content_margin_all(12)
-	panel.add_theme_stylebox_override("panel", sb)
+	var board := UiSkin.frame("bubble_dark", 16, [16, 12, 16, 12])
+	panel.add_theme_stylebox_override("panel", board if board != null else sb)
 	panel.position = Vector2(560, 770)
 	panel.custom_minimum_size = Vector2(800, 0)
 	add_child(panel)
@@ -177,7 +183,8 @@ func _show_chant() -> void:
 			rs.border_color = Color(0.6, 0.48, 0.3, 0.7)
 			rs.set_border_width_all(2)
 			rs.set_corner_radius_all(int(ORB / 2.0))
-			ring.add_theme_stylebox_override("panel", rs)
+			var socket := UiSkin.box("frame_round_socket")
+			ring.add_theme_stylebox_override("panel", socket if socket != null else rs)
 			ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			_chant_row.add_child(ring)
 
@@ -471,3 +478,60 @@ func _draw_fish(f: Dictionary) -> void:
 	draw_colored_polygon(body, col)
 	draw_circle(c + Vector2(-w * 0.3, -h * 0.15), h * 0.09, Color(1, 1, 1, fade))
 	draw_circle(c + Vector2(-w * 0.31, -h * 0.15), h * 0.045, Color(0, 0, 0, fade))
+
+
+## Bubbles float up through the water: one every so often from a random spot of the sea floor, each on a wobbling path of its own, a little bigger as it rises, fading out
+## near the top. The pictures are the drunk merchant's (ShopScreen's bubble (1..4).png).
+class _Bubbles extends Control:
+	const FILES := ["bubble (1).png", "bubble (2).png", "bubble (3).png", "bubble (4).png"]
+	const DIR := "res://assets/Puppet/UI/Characters/Merchant/"
+	const EVERY := Vector2(0.12, 0.4)
+	const SIZE := Vector2(12.0, 44.0)
+	const LIFE := Vector2(3.5, 6.5)
+	const RISE := Vector2(60.0, 140.0)
+	var _tex: Array[Texture2D] = []
+	var _list: Array = []
+	var _next := 0.0
+
+	func _ready() -> void:
+		for f in FILES:
+			if ResourceLoader.exists(DIR + f):
+				_tex.append(load(DIR + f))
+		for k in 14:  # (the sea is already bubbling when it comes in)
+			_spawn(randf_range(0.0, 3.0))
+
+	func _process(d: float) -> void:
+		if _tex.is_empty():
+			return
+		_next -= d
+		if _next <= 0.0:
+			_next = randf_range(EVERY.x, EVERY.y)
+			_spawn(0.0)
+		for b in _list:
+			b.t += d
+		_list = _list.filter(func(b): return b.t < b.life)
+		queue_redraw()
+
+	func _spawn(age: float) -> void:
+		if _tex.is_empty():
+			return
+		_list.append({
+			"tex": _tex[randi() % _tex.size()],
+			"from": Vector2(randf_range(40.0, 1880.0), randf_range(620.0, 860.0)),
+			"size": randf_range(SIZE.x, SIZE.y),
+			"vx": randf_range(-14.0, 14.0),
+			"vy": -randf_range(RISE.x, RISE.y),
+			"wob": randf_range(4.0, 14.0),
+			"freq": randf_range(1.2, 3.0),
+			"ph": randf() * TAU,
+			"life": randf_range(LIFE.x, LIFE.y),
+			"t": age,
+		})
+
+	func _draw() -> void:
+		for b in _list:
+			var u: float = b.t / b.life
+			var pos: Vector2 = b.from + Vector2(b.vx * b.t + sin(b.t * b.freq + b.ph) * b.wob, b.vy * b.t)
+			var alpha := minf(1.0, b.t / 0.4) * pow(1.0 - u, 0.8) * 0.85
+			var sz: float = b.size * (0.85 + 0.3 * u)
+			draw_texture_rect(b.tex, Rect2(pos - Vector2(sz, sz) * 0.5, Vector2(sz, sz)), false, Color(1, 1, 1, alpha))

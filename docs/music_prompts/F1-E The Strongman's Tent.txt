@@ -1,0 +1,10 @@
+F1-E  The Strongman's Tent
+
+STYLE (dán vào ô Style / Style of Music):
+bouncy circus gallop, tuba, trombone, clarinet, snare, xylophone, calliope, wood blocks, 6/8, A Phrygian dominant, 176 BPM, mischievous, tense, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A big clumsy wooden strongman puppet stomping around the ring. The tuba and trombone bounce on the off-beats, the snare and wood blocks gallop, the calliope and xylophone play a cheeky tune on top, and each phrase ends with a snare roll and a cymbal splash. It starts at full tempo on the very first beat, with no intro and no quiet part. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings, intro, slow start, fade in, breakdown

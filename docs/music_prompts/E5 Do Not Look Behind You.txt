@@ -1,0 +1,10 @@
+E5  Do Not Look Behind You
+
+STYLE (dán vào ô Style / Style of Music):
+sneaking suspense, pizzicato strings, bass clarinet, xylophone, wood blocks, soft bass drum, 7/8, C Phrygian dominant, 118 BPM, tiptoe, comic and tense, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+Someone is sneaking up on a puppet. A bass clarinet and pizzicato strings creep in an uneven 7/8 step, a xylophone makes quick chromatic slips, and a second set of wooden footsteps joins a little behind and slowly catches up. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings

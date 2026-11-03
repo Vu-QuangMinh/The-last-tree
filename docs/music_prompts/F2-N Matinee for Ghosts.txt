@@ -1,0 +1,10 @@
+F2-N  Matinee for Ghosts
+
+STYLE (dán vào ô Style / Style of Music):
+silent-film chase piano, honky-tonk piano, vibraphone, clarinet, xylophone, brushed snare, upright bass, 2/4, E minor, 168 BPM, slapstick, spooky, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A silent-film chase at a haunted puppet theatre. A honky-tonk piano races with a bouncing left hand, a vibraphone and a xylophone double the runs, the clarinet slides like a ghost, and once per loop everything stops except a projector clatter for one beat. It starts at full tempo on the very first beat, with no intro and no quiet part. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings, intro, slow start, fade in, breakdown

@@ -1,0 +1,10 @@
+E6  Lullaby Under the Water
+
+STYLE (dán vào ô Style / Style of Music):
+dreamy underwater lullaby, marimba, celesta, bowed vibraphone, harp, soft strings, 6/8, D Dorian, 64 BPM, floating, calm, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A lullaby heard from under the water. A marimba plays bubble-like pairs of notes, a harp and a celesta glitter on top, bowed vibraphone and soft strings rise and fall like a slow tide. The sound is soft and a little muffled. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings

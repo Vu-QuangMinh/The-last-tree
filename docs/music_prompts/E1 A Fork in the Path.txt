@@ -1,0 +1,10 @@
+E1  A Fork in the Path
+
+STYLE (dán vào ô Style / Style of Music):
+tiptoeing, toy piano, pizzicato strings, clarinet, marimba, wood block, 5/4, whole-tone, 96 BPM, curious, comic, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A puppet tiptoes down a path and cannot decide which way to go. A toy piano and a marimba play two little tunes, one in each ear, that answer each other and never agree. Pizzicato strings and a wood block step on tiptoe, with short silences in between. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings
