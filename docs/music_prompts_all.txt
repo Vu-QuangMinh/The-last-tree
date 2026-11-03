@@ -1,0 +1,269 @@
+M1  Step Right Up
+
+STYLE (dán vào ô Style / Style of Music):
+puppet theatre waltz, accordion, clarinet, xylophone, toy piano, pizzicato strings, wood block, 3/4, 104 BPM, playful, welcoming, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A waltz that opens the curtain of a little wooden puppet theatre. The accordion and pizzicato strings oom-pah-pah, the clarinet sings the tune and the xylophone and toy piano sparkle above it. The tempo wobbles slightly, like a hand-cranked show. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings
+
+
+----------------------------------------
+
+M2  Between the Tents
+
+STYLE (dán vào ô Style / Style of Music):
+folk travelling tune, banjo, tin whistle, upright bass, wood block, spoons, xylophone, D Dorian, 4/4, 112 BPM, light and curious, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A small wagon rolling from tent to tent on a sunny afternoon. A banjo and an upright bass walk along, a tin whistle plays a simple tune that always ends one note short, and a wood block and spoons click like little puppet feet. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings
+
+VARIANTS (5 option, giữ nguyên PROMPT và EXCLUDE, chỉ đổi nhạc cụ chơi giai điệu trong Style):
+- Music Box
+- Accordion
+- Brass Band
+- Calliope
+- Harpsichord
+
+
+----------------------------------------
+
+E1  A Fork in the Path
+
+STYLE (dán vào ô Style / Style of Music):
+tiptoeing, toy piano, pizzicato strings, clarinet, marimba, wood block, 5/4, whole-tone, 96 BPM, curious, comic, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A puppet tiptoes down a path and cannot decide which way to go. A toy piano and a marimba play two little tunes, one in each ear, that answer each other and never agree. Pizzicato strings and a wood block step on tiptoe, with short silences in between. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings
+
+
+----------------------------------------
+
+E2  Whispers in the Grove
+
+STYLE (dán vào ô Style / Style of Music):
+eerie lullaby, slowed music box, celesta, bowed vibraphone, wooden clicks, soft pad, no drums, 66 BPM, mysterious, quiet, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A slow, half-forgotten lullaby played on a music box that is running down, with a celesta and a bowed vibraphone holding cold, glassy notes. Now and then a soft wooden click, like a puppet joint, answers from the dark. Quiet and uneasy, never scary. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings
+
+
+----------------------------------------
+
+E3  The Cheeky Sideshow
+
+STYLE (dán vào ô Style / Style of Music):
+comic circus polka, clarinet, kazoo, tuba, slide whistle, xylophone, wood block, snare, G minor, 2/4, 168 BPM, cheeky, bouncy, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A cheeky, bouncing polka for a clown puppet. The clarinet and kazoo trade a silly tune over a tuba oom-pah, the slide whistle slips and squeaks, and every eight bars the whole band freezes for one beat and then jumps back in a step higher. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings
+
+
+----------------------------------------
+
+E4  Lullaby by the Fire
+
+STYLE (dán vào ô Style / Style of Music):
+gentle lullaby, harmonium, glockenspiel, soft marimba, music box, pizzicato, 3/4, F minor, 66 BPM, warm, sleepy, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A warm little lullaby by a campfire. A harmonium and a soft marimba rock in three, a glockenspiel adds a few twinkles, and the tune stops one note before its end and starts again, as if the player were nodding off. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings
+
+
+----------------------------------------
+
+E5  Do Not Look Behind You
+
+STYLE (dán vào ô Style / Style of Music):
+sneaking suspense, pizzicato strings, bass clarinet, xylophone, wood blocks, soft bass drum, 7/8, C Phrygian dominant, 118 BPM, tiptoe, comic and tense, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+Someone is sneaking up on a puppet. A bass clarinet and pizzicato strings creep in an uneven 7/8 step, a xylophone makes quick chromatic slips, and a second set of wooden footsteps joins a little behind and slowly catches up. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings
+
+
+----------------------------------------
+
+E6  Lullaby Under the Water
+
+STYLE (dán vào ô Style / Style of Music):
+dreamy underwater lullaby, marimba, celesta, bowed vibraphone, harp, soft strings, 6/8, D Dorian, 64 BPM, floating, calm, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A lullaby heard from under the water. A marimba plays bubble-like pairs of notes, a harp and a celesta glitter on top, bowed vibraphone and soft strings rise and fall like a slow tide. The sound is soft and a little muffled. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings
+
+
+----------------------------------------
+
+E7  Skipping Stones
+
+STYLE (dán vào ô Style / Style of Music):
+bright minimal pattern, kalimba, marimba, xylophone, pizzicato strings, glockenspiel, 6/8, G major, 132 BPM, sunny, bouncy, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A stone hopping across a pond. A kalimba and a marimba repeat the same bright pattern, one slightly faster than the other, so they drift apart and back together. The hops get closer and closer, then end with a low soft plop and a beat of silence. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings
+
+
+----------------------------------------
+
+E8  The Church of Aole
+
+STYLE (dán vào ô Style / Style of Music):
+old chapel, small pipe organ, harmonium, tubular bells, celesta, soft strings, 4/4, A Dorian, 56 BPM, calm, solemn, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A tiny old chapel with a wheezing pipe organ and a harmonium. A bell tolls once a bar, a celesta repeats a three-note phrase at three different volumes as if the church were answering itself. Slow, gentle and a little sad. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings
+
+
+----------------------------------------
+
+F1-N  Showtime in the Meadow
+
+STYLE (dán vào ô Style / Style of Music):
+fast hoedown, banjo, fiddle, washboard, xylophone, tin whistle, upright bass, 4/4, D Mixolydian, 168 BPM, lively, mischievous, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A hoedown at a puppet show that has gone out of control. A banjo rolls non-stop, the fiddle and tin whistle chase each other, the washboard and a xylophone keep a tight rhythm, and every fourth bar the fiddle calls and the banjo answers a half-step off. It starts at full tempo on the very first beat, with no intro and no quiet part. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings, intro, slow start, fade in, breakdown
+
+
+----------------------------------------
+
+F1-E  The Strongman's Tent
+
+STYLE (dán vào ô Style / Style of Music):
+bouncy circus gallop, tuba, trombone, clarinet, snare, xylophone, calliope, wood blocks, 6/8, A Phrygian dominant, 176 BPM, mischievous, tense, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A big clumsy wooden strongman puppet stomping around the ring. The tuba and trombone bounce on the off-beats, the snare and wood blocks gallop, the calliope and xylophone play a cheeky tune on top, and each phrase ends with a snare roll and a cymbal splash. It starts at full tempo on the very first beat, with no intro and no quiet part. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings, intro, slow start, fade in, breakdown
+
+
+----------------------------------------
+
+F1-B  The Ringmaster's Hand
+
+STYLE (dán vào ô Style / Style of Music):
+fast circus galop, cornet, piccolo, trombone, snare, cymbals, calliope, xylophone, whip cracks, 2/4, A minor, 200 BPM, showy, frantic, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+The ringmaster puppet shows off. Cornets and a piccolo play a fast marching tune, a calliope and xylophone double it, the snare and cymbals drive every beat, and three whip cracks end each phrase before a trumpet fanfare cuts off mid-note. It starts at full tempo on the very first beat, with no intro and no quiet part. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings, intro, slow start, fade in, breakdown
+
+
+----------------------------------------
+
+F2-N  Matinee for Ghosts
+
+STYLE (dán vào ô Style / Style of Music):
+silent-film chase piano, honky-tonk piano, vibraphone, clarinet, xylophone, brushed snare, upright bass, 2/4, E minor, 168 BPM, slapstick, spooky, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A silent-film chase at a haunted puppet theatre. A honky-tonk piano races with a bouncing left hand, a vibraphone and a xylophone double the runs, the clarinet slides like a ghost, and once per loop everything stops except a projector clatter for one beat. It starts at full tempo on the very first beat, with no intro and no quiet part. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings, intro, slow start, fade in, breakdown
+
+
+----------------------------------------
+
+F2-E  Backstage Chase
+
+STYLE (dán vào ô Style / Style of Music):
+gypsy jazz chase, rhythm guitar, violin, clarinet, upright bass, xylophone, wood blocks, 4/4, F sharp minor, 220 BPM, breathless, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A puppet is chased through the wings of the theatre. Two guitars strum a hard galloping rhythm, the violin and clarinet trade breakneck runs, a xylophone and wood blocks tap like running feet, and every fourth bar a rimshot slams a door and the chase restarts. It starts at full tempo on the very first beat, with no intro and no quiet part. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings, intro, slow start, fade in, breakdown
+
+
+----------------------------------------
+
+F2-B  The Headless Maestro
+
+STYLE (dán vào ô Style / Style of Music):
+gothic theatre toccata, harpsichord, pipe organ, staccato strings, timpani, xylophone, 4/4, C sharp minor, 176 BPM, grand, frantic, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A conductor puppet without a head leads a runaway orchestra. A harpsichord and a pipe organ battle over fast runs, staccato strings and timpani pound every beat, and a dry baton tap counts in each section. The orchestra keeps landing one beat early. It starts at full tempo on the very first beat, with no intro and no quiet part. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings, intro, slow start, fade in, breakdown
+
+
+----------------------------------------
+
+F3-N  Frostbitten Carousel
+
+STYLE (dán vào ô Style / Style of Music):
+icy carousel waltz, celesta, glockenspiel, sleigh bells, harp, pizzicato strings, xylophone, 3/4, B minor, 150 BPM, sparkling, fast, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+A frozen merry-go-round spinning too fast. A celesta and a glockenspiel run glittering arpeggios, sleigh bells jingle on every beat, a harp and pizzicato strings swing the waltz, and every fourth bar a glassy crack stops the tune for half a bar before it shatters back in. It starts at full tempo on the very first beat, with no intro and no quiet part. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings, intro, slow start, fade in, breakdown
+
+
+----------------------------------------
+
+F3-E  Fire and Ice Sideshow
+
+STYLE (dán vào ô Style / Style of Music):
+flamenco gallop, nylon guitar, palmas, castanets, glass bells, xylophone, tambourine, E Phrygian, 6/8, 180 BPM, hot and cold, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+Two puppets, one of fire and one of ice, fight in the same song. A flamenco guitar, castanets and hand claps burn on one side and bright glass bells and a xylophone answer coldly on the other, each cutting the other off until they crash together every sixteen bars. It starts at full tempo on the very first beat, with no intro and no quiet part. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings, intro, slow start, fade in, breakdown
+
+
+----------------------------------------
+
+F3-B  King Malfatti's Last Waltz
+
+STYLE (dán vào ô Style / Style of Music):
+grand fast waltz, strings, brass, harpsichord, timpani, xylophone, celesta, 3/4, E minor, 200 BPM, regal, dramatic, instrumental
+
+PROMPT (dán vào ô mô tả / Song description):
+The puppet king dances his last waltz at breakneck speed. Violins carry a grand, bitter tune, brass hits the downbeats, a harpsichord and xylophone race arpeggios inside, and the whole waltz keeps climbing a step higher until it drops back down and starts climbing again. It starts at full tempo on the very first beat, with no intro and no quiet part. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro.
+
+EXCLUDE (dán vào ô Exclude / Negative, nếu có):
+vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings, intro, slow start, fade in, breakdown

@@ -1,0 +1,237 @@
+Metadata for: My_Workspace-Do_Not_Look_Behind_You.m4a
+Generated: 2026-11-02T22:46:31.891Z
+
+--- Track Information ---
+Title: Do Not Look Behind You
+Artist: vutungson1989
+
+--- Musical Information ---
+
+--- Creation Details ---
+Track ID: ea8f9fd6-755c-4585-b983-82180c070d38
+
+
+Cover Art URL: https://cdn2.suno.ai/image_ea8f9fd6-755c-4585-b983-82180c070d38.jpeg
+
+--- Raw API Response ---
+{
+  "status": "complete",
+  "title": "Do Not Look Behind You",
+  "play_count": 0,
+  "upvote_count": 0,
+  "allow_comments": true,
+  "is_verified": false,
+  "id": "ea8f9fd6-755c-4585-b983-82180c070d38",
+  "entity_type": "song_schema",
+  "video_url": "",
+  "audio_url": "https://studio-api.prod.suno.com/api/forbidden",
+  "media_urls": [
+    {
+      "url": "https://d2lwuy8qc234o3.cloudfront.net/1/clip/ea8f9fd6-755c-4585-b983-82180c070d38.m4a",
+      "content_type": "m4a-opus",
+      "delivery": "progressive",
+      "encoding": "1.0.0"
+    }
+  ],
+  "image_url": "https://cdn2.suno.ai/image_ea8f9fd6-755c-4585-b983-82180c070d38.jpeg",
+  "image_large_url": "https://cdn2.suno.ai/image_large_ea8f9fd6-755c-4585-b983-82180c070d38.jpeg",
+  "major_model_version": "v6-mini",
+  "model_name": "chirp-goose",
+  "metadata": {
+    "tags": "sneaking suspense, pizzicato strings, bass clarinet, xylophone, wood blocks, soft bass drum, 7/8, C Phrygian dominant, 118 BPM, tiptoe, comic and tense, instrumental. Someone is sneaking up on a puppet. A bass clarinet and pizzicato strings creep in an uneven 7/8 step, a xylophone makes quick chromatic slips, and a second set of wooden footsteps joins a little behind and slowly catches up. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro. Exclude: vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings.\n",
+    "prompt": "",
+    "type": "gen",
+    "duration": 187.16,
+    "refund_credits": false,
+    "stream": true,
+    "make_instrumental": true,
+    "control_sliders": {
+      "aug_creativity": 0
+    },
+    "vox_render_mode": "strict",
+    "can_remix": true,
+    "is_remix": false,
+    "priority": 0,
+    "has_stem": false,
+    "uses_latest_model": true,
+    "model_badges": {
+      "songcard": {
+        "display_name": "V6",
+        "light": {
+          "text_color": "FD429C",
+          "background_color": "0000004D",
+          "border_color": "00000000"
+        },
+        "dark": {
+          "text_color": "FD429C",
+          "background_color": "0000004D",
+          "border_color": "00000000"
+        }
+      },
+      "songrow": {
+        "display_name": "V6-MINI",
+        "light": {
+          "text_color": "C2C2C2",
+          "text_color_gradient": [
+            "C2C2C2",
+            "C2C2C2",
+            "ADADAD",
+            "989898",
+            "838383",
+            "6E6E6E"
+          ],
+          "background_color": "00000000",
+          "border_color": "00000000"
+        },
+        "dark": {
+          "text_color": "C2C2C2",
+          "text_color_gradient": [
+            "C2C2C2",
+            "C2C2C2",
+            "ADADAD",
+            "989898",
+            "838383",
+            "6E6E6E"
+          ],
+          "background_color": "00000000",
+          "border_color": "00000000"
+        }
+      }
+    },
+    "image_config": {
+      "use_image_config_template": true,
+      "id": "renaissance",
+      "default_cover_style": "brand_refresh"
+    },
+    "is_mumble": false
+  },
+  "is_liked": false,
+  "user_id": "f2e25413-aced-4923-9537-0e7c680118c9",
+  "display_name": "vutungson1989",
+  "handle": "vutungson1989",
+  "is_handle_updated": false,
+  "avatar_image_url": "https://cdn1.suno.ai/sAura3.jpg",
+  "is_trashed": false,
+  "is_hidden": false,
+  "created_at": "2026-11-02T22:15:26.279Z",
+  "updated_at": "2026-11-02T22:15:40.488Z",
+  "is_public": false,
+  "is_persona_root": false,
+  "is_following_creator": false,
+  "albums": [],
+  "comment_count": 0,
+  "flag_count": 0,
+  "is_contest_clip": false,
+  "has_hook": false,
+  "batch_index": 0,
+  "action_config": {
+    "actions": [
+      {
+        "action_type": "add_to_playlist",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "like_song",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "share_song",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "dislike_song",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "report_song",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "remove_from_playlist",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "play_next",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "add_to_queue",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "delete_song",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "edit_song_details",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "create_hook",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "download_song",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "open_in_studio",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "publish_song",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "remaster",
+        "disabled": false,
+        "visible": true,
+        "action_override": {
+          "type": "upsell",
+          "slug": "remaster",
+          "feature_type": {
+            "type": "remaster"
+          }
+        }
+      },
+      {
+        "action_type": "remix_extend",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "remix_cover",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "remix_reuse_style",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "create_voice",
+        "disabled": false,
+        "visible": true
+      }
+    ]
+  },
+  "is_download_unlocked": false,
+  "workspaceId": "default",
+  "workspaceName": "My Workspace",
+  "_searchText": "do not look behind you ea8f9fd6-755c-4585-b983-82180c070d38 my workspace default sneaking suspense, pizzicato strings, bass clarinet, xylophone, wood blocks, soft bass drum, 7/8, c phrygian dominant, 118 bpm, tiptoe, comic and tense, instrumental. someone is sneaking up on a puppet. a bass clarinet and pizzicato strings creep in an uneven 7/8 step, a xylophone makes quick chromatic slips, and a second set of wooden footsteps joins a little behind and slowly catches up. instrumental only. seamless loop of 2 to 3 minutes, no fade-in, no outro. exclude: vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings. v6-mini"
+}

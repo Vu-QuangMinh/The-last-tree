@@ -1,0 +1,238 @@
+Metadata for: My_Workspace-Skipping_Stones.m4a
+Generated: 2026-11-02T22:23:58.787Z
+
+--- Track Information ---
+Title: Skipping Stones
+Artist: laxgirlgvn
+
+--- Musical Information ---
+
+--- Creation Details ---
+Track ID: cdb954f7-2c51-47e0-b5b3-2686363486e7
+
+
+Cover Art URL: https://cdn2.suno.ai/image_cdb954f7-2c51-47e0-b5b3-2686363486e7.jpeg
+
+--- Raw API Response ---
+{
+  "status": "complete",
+  "title": "Skipping Stones",
+  "play_count": 0,
+  "upvote_count": 0,
+  "allow_comments": true,
+  "is_verified": false,
+  "id": "cdb954f7-2c51-47e0-b5b3-2686363486e7",
+  "entity_type": "song_schema",
+  "video_url": "",
+  "audio_url": "https://studio-api.prod.suno.com/api/forbidden",
+  "media_urls": [
+    {
+      "url": "https://d2lwuy8qc234o3.cloudfront.net/1/clip/cdb954f7-2c51-47e0-b5b3-2686363486e7.m4a",
+      "content_type": "m4a-opus",
+      "delivery": "progressive",
+      "encoding": "1.0.0"
+    }
+  ],
+  "image_url": "https://cdn2.suno.ai/image_cdb954f7-2c51-47e0-b5b3-2686363486e7.jpeg",
+  "image_large_url": "https://cdn2.suno.ai/image_large_cdb954f7-2c51-47e0-b5b3-2686363486e7.jpeg",
+  "major_model_version": "v6-mini",
+  "model_name": "chirp-goose",
+  "metadata": {
+    "tags": "bright minimal pattern, kalimba, marimba, xylophone, pizzicato strings, glockenspiel, 6/8, G major, 132 BPM, sunny, bouncy, instrumental. A stone hopping across a pond. A kalimba and a marimba repeat the same bright pattern, one slightly faster than the other, so they drift apart and back together. The hops get closer and closer, then end with a low soft plop and a beat of silence. Instrumental only. Seamless loop of 2 to 3 minutes, no fade-in, no outro. Exclude: vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings.\n",
+    "prompt": "",
+    "type": "gen",
+    "duration": 154.76,
+    "refund_credits": false,
+    "stream": true,
+    "make_instrumental": true,
+    "control_sliders": {
+      "aug_creativity": 0
+    },
+    "vox_render_mode": "strict",
+    "can_remix": true,
+    "is_remix": false,
+    "priority": 0,
+    "has_stem": false,
+    "uses_latest_model": true,
+    "model_badges": {
+      "songcard": {
+        "display_name": "V6",
+        "light": {
+          "text_color": "FD429C",
+          "background_color": "0000004D",
+          "border_color": "00000000"
+        },
+        "dark": {
+          "text_color": "FD429C",
+          "background_color": "0000004D",
+          "border_color": "00000000"
+        }
+      },
+      "songrow": {
+        "display_name": "V6-MINI",
+        "light": {
+          "text_color": "C2C2C2",
+          "text_color_gradient": [
+            "C2C2C2",
+            "C2C2C2",
+            "ADADAD",
+            "989898",
+            "838383",
+            "6E6E6E"
+          ],
+          "background_color": "00000000",
+          "border_color": "00000000"
+        },
+        "dark": {
+          "text_color": "C2C2C2",
+          "text_color_gradient": [
+            "C2C2C2",
+            "C2C2C2",
+            "ADADAD",
+            "989898",
+            "838383",
+            "6E6E6E"
+          ],
+          "background_color": "00000000",
+          "border_color": "00000000"
+        }
+      }
+    },
+    "image_config": {
+      "use_image_config_template": true,
+      "id": "cyanotype",
+      "default_cover_style": "brand_refresh"
+    },
+    "is_mumble": false
+  },
+  "is_liked": false,
+  "user_id": "34b4dcf6-cea2-43b8-bfc9-00403763c5d7",
+  "display_name": "laxgirlgvn",
+  "handle": "laxgirlgvn",
+  "is_handle_updated": false,
+  "avatar_image_url": "https://cdn1.suno.ai/sAura19.jpg",
+  "is_trashed": false,
+  "is_hidden": false,
+  "created_at": "2026-11-02T22:19:08.519Z",
+  "updated_at": "2026-11-02T22:19:30.767Z",
+  "is_public": false,
+  "is_persona_root": false,
+  "is_following_creator": false,
+  "albums": [],
+  "comment_count": 0,
+  "flag_count": 0,
+  "display_tags": "instrumental, bright, bouncy",
+  "is_contest_clip": false,
+  "has_hook": false,
+  "batch_index": 0,
+  "action_config": {
+    "actions": [
+      {
+        "action_type": "add_to_playlist",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "like_song",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "share_song",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "dislike_song",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "report_song",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "remove_from_playlist",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "play_next",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "add_to_queue",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "delete_song",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "edit_song_details",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "create_hook",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "download_song",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "open_in_studio",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "publish_song",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "remaster",
+        "disabled": false,
+        "visible": true,
+        "action_override": {
+          "type": "upsell",
+          "slug": "remaster",
+          "feature_type": {
+            "type": "remaster"
+          }
+        }
+      },
+      {
+        "action_type": "remix_extend",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "remix_cover",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "remix_reuse_style",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "action_type": "create_voice",
+        "disabled": false,
+        "visible": true
+      }
+    ]
+  },
+  "is_download_unlocked": false,
+  "workspaceId": "default",
+  "workspaceName": "My Workspace",
+  "_searchText": "skipping stones cdb954f7-2c51-47e0-b5b3-2686363486e7 my workspace default bright minimal pattern, kalimba, marimba, xylophone, pizzicato strings, glockenspiel, 6/8, g major, 132 bpm, sunny, bouncy, instrumental. a stone hopping across a pond. a kalimba and a marimba repeat the same bright pattern, one slightly faster than the other, so they drift apart and back together. the hops get closer and closer, then end with a low soft plop and a beat of silence. instrumental only. seamless loop of 2 to 3 minutes, no fade-in, no outro. exclude: vocals, singing, choir, humming, lyrics, rap, rock, metal, edm, synth, distorted guitar, heavy, industrial, brutal, epic trailer, cinematic boom, horror stings. v6-mini"
+}
