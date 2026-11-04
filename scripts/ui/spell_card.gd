@@ -782,7 +782,7 @@ func refresh() -> void:
 			o.z_index = 0 if _shade.visible else 1  # (an anti-spell's orbs sit above its negative, but not above a silence)
 	_flame.visible = ignited and state != "used"
 	if _base_tip != "":
-		tooltip_text = _base_tip + ("\n[color=#ff9a4a][b]Ignited:[/b] casting it this turn burns you for %d HP.[/color]" % Fight.IGNITE_DAMAGE if ignited else "")
+		tooltip_text = _base_tip + ("\n[color=#ff9a4a][b]Ignited:[/b] casting it burns you for %d HP.[/color]" % Fight.IGNITE_DAMAGE if ignited else "")
 	_cracks.set_level(0 if UiSkin.is_puppet() else cracks, String(spell.get("id", "")))  # (Puppet: the card is cut into planks instead: CardSplit)
 	if spell.get("anti", false):
 		# an anti-spell is always active: its spark keeps circling, unless the chant breaks it (state "broken")

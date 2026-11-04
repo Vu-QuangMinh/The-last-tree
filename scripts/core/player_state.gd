@@ -19,6 +19,8 @@ var thorns_turn := 0  # thorns that last until your next turn
 var thorn_guard := false  # Bandage: enemy thorns (and burning hides) don't hurt you until your next turn
 var ethereal := false  # this enemy turn: no attack damage
 var poison := 0  # Poison N: at the start of your turn you lose N HP, then it drops by 1
+var bleed := 0  # Bleed N: works like Poison, counted on its own (the Pitchfork Peasant)
+var ignite_hit := {}  # spell id -> damage: Ignited until it is cast, and that burn is an attack (Shield stops it): the Torch Peasant
 var confuse_turns := 0
 var blind_turns := 0
 var toll := 0  # Toll: your next chant holds at most this many Essence (0 = no limit)
@@ -75,6 +77,7 @@ func reset_fight() -> void:
 	thorns_turn = 0
 	ethereal = false
 	poison = 0
+	bleed = 0
 	confuse_turns = 0
 	blind_turns = 0
 	toll = 0
@@ -91,6 +94,7 @@ func reset_fight() -> void:
 	silenced.clear()
 	cooldowns.clear()
 	ignited.clear()
+	ignite_hit.clear()
 	disarmed_turns = 0
 	stun_turns = 0
 	locks.clear()
@@ -177,6 +181,8 @@ func describe_statuses() -> Array:
 		out.append("Ethereal (no attack damage this turn)")
 	if poison > 0:
 		out.append("Poison %d" % poison)
+	if bleed > 0:
+		out.append("Bleed %d" % bleed)
 	if confuse_turns > 0:
 		out.append("Hypnotized: you can't see what the enemies intend")
 	if blind_turns > 0:

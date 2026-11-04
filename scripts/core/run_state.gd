@@ -233,6 +233,11 @@ func encounter_ids() -> Array:
 		ids = enc.ids
 		encounter_name = enc.name
 		recent_encounters.append(enc.name)
+	elif act == 2 and kind == "fight" and EnemyDefs.act2_has_fight(EnemyDefs.act1_tier(row), recent_encounters):
+		var enc := EnemyDefs.act2_encounter(EnemyDefs.act1_tier(row), rng, recent_encounters)
+		ids = enc.ids
+		encounter_name = enc.name
+		recent_encounters.append(enc.name)
 	else:
 		ids = EnemyDefs.encounter(kind, act, depth(), rng, met)
 	met.append_array(ids)

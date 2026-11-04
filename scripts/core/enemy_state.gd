@@ -40,6 +40,9 @@ var weak25 := false  # Stillness (permanent)
 var freeze_turns := 0
 var no_mend := false  # Cauterize
 var ethereal := false  # from its own intent: your next chant can't touch it
+var lamp_wait := false  # the Bog Lantern's lamp is out: it grows back at the end of the next enemy turn
+var shield_up := false  # the Shield Bearer has armoured himself for the fight
+var behind := false  # the Necromancer, while his Shield Bearer stands: nothing you do can touch it
 var winged := false  # the Fire Dragon's wing is folded over it: nothing you do can touch it this turn
 var impervious := 0  # Impervious: no status can be put on it (the Retainer's bottle); counts down at the end of your turn
 var phased := false  # from your spell: your spells remove double from it this turn
@@ -481,6 +484,8 @@ func describe_statuses() -> Array:
 		out.append("Ethereal (your chant can't touch it)")
 	if winged:
 		out.append("Under the wing (nothing you do can touch it this turn)")
+	if behind:
+		out.append("Behind the shield (nothing you do can touch it)")
 	if phased:
 		out.append("Phased (your spells remove double)")
 	return out

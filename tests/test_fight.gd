@@ -1041,6 +1041,130 @@ func _skips_of(text: String) -> int:
 	return int(text.trim_prefix("Your stone skips ").get_slice(" ", 0))
 
 
+func test_act2_tier1_les_miserables() -> void:
+	var f := _fight(["mob_pitchfork", "mob_slingshot", "mob_torch"], ["fire_ball"], "")
+	assert_eq(f.enemies.map(func(e): return e.size()), [7, 7, 7])
+	f.player.stock.clear()
+	f.player.hp = 40
+	await f._do_move(f.enemies[0], f.enemies[0].def.moves[0])
+	assert_eq([f.player.hp, f.player.bleed], [38.0, 2], "2 damage and Bleed 2")
+	await f.begin_player_turn()
+	assert_eq([f.player.hp, f.player.bleed], [36.0, 1], "Bleed bites like Poison")
+	await f._do_move(f.enemies[2], f.enemies[2].def.moves[0])
+	assert_true(f.player.ignite_hit.has("fire_ball"), "the torch lights a spell until it is cast")
+	f.player.shield = 3.0
+	f.player.hp = 40
+	f.charges["fire_ball"] = 1
+	await f.resolve_spell("fire_ball", 0)
+	assert_eq(f.player.hp, 38.0, "5 damage, 3 of it stopped by Shield")
+	assert_true(not f.player.ignited.has("fire_ball"), "cast: the fire is out")
+
+
+func test_act2_tier1_undying_duo() -> void:
+	var f := _fight(["shield_bearer", "necromancer"], ["fire_ball"], "")
+	var wall: EnemyState = f.enemies[0]
+	var necro: EnemyState = f.enemies[1]
+	f._cleanup()
+	assert_eq([wall.size(), necro.size()], [8, 3])
+	assert_true(wall.armor[0], "his first Essence starts armoured")
+	assert_eq(f.target_candidates(), [0], "the Necromancer can't be targeted")
+	assert_true(necro.behind)
+	await f._strike("FAW")
+	assert_eq(necro.size(), 3, "the Release can't reach him either")
+	while wall.size() > 1:
+		wall.remove_right(1)
+	f._cleanup()
+	assert_true(not wall.armor[0], "the last Essence: the shield is down")
+	assert_eq(wall.intent.kind, "attack")
+	assert_eq(wall.intent.n, 1)
+	wall.remove_right(1)
+	f._cleanup()
+	assert_true(not necro.behind and f.enemies.find(necro) in f.target_candidates(), "the skeleton is gone: he can be hit")
+
+
+func test_act2_tiers_and_the_orphans() -> void:
+	var names: Array = EnemyDefs.ENCOUNTERS_ACT2[1.0].map(func(x): return x.name)
+	assert_true("The Orphans" in names and not ("Starving Mobs" in names))
+	assert_eq(EnemyDefs.ENCOUNTERS_ACT2[1.5][0].name, "Starving Mobs")
+	assert_true(not EnemyDefs.act2_has_fight(1.5, ["Starving Mobs"]), "met just now: the mix instead of the same fight twice")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var seen := {}
+	for i in 3000:
+		var t := EnemyDefs.throw_roll(rng)
+		seen[t.n] = seen.get(t.n, 0) + 1
+		assert_true(t.n >= 2 and t.n <= 10)
+		if t.n == 10:
+			assert_eq(t.throw, "axe")
+	assert_true(seen[3] > seen[2] and seen[3] > seen[4] and seen[4] > seen[7] and seen[7] > seen[10], "3 is the usual, heavy things are rare")
+	var f := _fight(["orphan_bush"], ["fire_ball"], "")
+	assert_eq(f.enemies[0].size(), 12)
+	assert_true(f.enemies[0].intent.has("throw"), "its throw is rolled when it is planned")
+	f.player.hp = 40
+	var n: int = f.enemies[0].intent.n
+	await f.end_player_turn()
+	assert_eq(f.player.hp, 40.0 - n)
+
+
+func test_act2_tier1_bog_lantern() -> void:
+	var f := _fight(["bog_fish", "bog_lamp"], ["fire_ball"], "")
+	var fish: EnemyState = f.enemies[0]
+	var lamp: EnemyState = f.enemies[1]
+	assert_eq([fish.size(), lamp.size()], [12, 3])
+	assert_eq(lamp.intent.kind, "glow", "the clock starts at 2")
+	await f.end_player_turn()
+	assert_eq(lamp.intent.kind, "stun", "1 left: next it stuns")
+	assert_eq(f.player.stun_turns, 0)
+	await f.end_player_turn()
+	assert_eq(f.player.stun_turns, 1, "at 0: Stunned for a turn")
+	assert_eq(lamp.intent.kind, "glow", "and back to 2")
+	f.player.stun_turns = 0
+	lamp.remove_right(3)
+	f._cleanup()
+	assert_eq(fish.size(), 12, "killing the lamp doesn't hurt the fish")
+	await f.end_player_turn()
+	assert_true(not f.alive().any(func(x): return x.id == "bog_lamp"), "it stays out for a turn")
+	await f.end_player_turn()
+	var back: Array = f.alive().filter(func(x): return x.id == "bog_lamp")
+	assert_eq(back.size(), 1, "then it grows back")
+	assert_eq(back[0].intent.kind, "glow", "with its clock at 2")
+	await f.end_player_turn()
+	assert_eq(back[0].intent.kind, "stun")
+	fish.remove_right(12)
+	f._cleanup()
+	assert_true(f.alive().is_empty(), "the lamp goes out with the fish")
+
+
+func test_act2_tier1_bug_hunter() -> void:
+	var f := _fight(["bug_hunter"], ["fire_ball"], "")
+	var bot: EnemyState = f.enemies[0]
+	assert_eq(bot.size(), 12)
+	f.player.hp = 40
+	await f.end_player_turn()
+	assert_eq(f.player.hp, 35.0, "laser beam: 5")
+	bot.remove_right(12)
+	f._cleanup()
+	assert_eq([bot.size(), bot.intent.kind, f.over], [5, "explode", false])
+	await f.end_player_turn()
+	assert_eq(f.player.hp, 25.0, "it goes off for 10")
+	assert_true(bot.is_dead() and f.over, "and that is the end of it")
+	var g := _fight(["bug_hunter"], ["fire_ball"], "")
+	var bot2: EnemyState = g.enemies[0]
+	g.player.hp = 40
+	bot2.remove_right(12)
+	g._cleanup()
+	bot2.remove_right(5)
+	g._cleanup()
+	g._check_end()
+	assert_true(g.over and g.player.hp == 40.0, "the 5 Essence destroyed: no explosion")
+
+
+func test_act2_pool_keeps_summons_out() -> void:
+	var pool := EnemyDefs.normals(2)
+	for id in ["spiderling_a", "spiderling_b", "spider_cocoon", "mob_torch", "necromancer"]:
+		assert_true(not (id in pool), id + " is not a random Act 2 enemy")
+
+
 func test_cactus_maze() -> void:
 	var run := RunState.new()
 	run.setup(db, ["fire_ball", "water_wall", "tailwind"], [], 3)

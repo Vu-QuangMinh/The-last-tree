@@ -45,7 +45,15 @@ var _free_layout := false  # Puppet Stage: the name stands on the puppet's head 
 var _hp_icons: Array = []  # the orbs currently shown, left to right
 
 
+func _peek_orphans() -> void:
+	await get_tree().process_frame
+	if is_instance_valid(creature):
+		preload("res://scripts/ui/orphan_fx.gd").peek_forever(creature)
+
+
 func setup(e: EnemyState, f: Fight) -> void:
+	if e.has_passive("thrown_junk"):
+		_peek_orphans.call_deferred()
 	enemy = e
 	fight = f
 	custom_minimum_size = Vector2(300, 470)

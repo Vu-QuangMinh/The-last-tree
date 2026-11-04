@@ -46,9 +46,9 @@ func _draw() -> void:
 const LOOK := {
 	"attack": ["⚔", RED], "armor": ["🛡", GREY], "mend": ["❤", GREEN], "shuffle": ["🔀", BLUE],
 	"silence": ["🔇", PURPLE], "lock": ["🔒", PURPLE], "steal": ["✋", PURPLE], "confuse": ["🌀", PURPLE],
-	"blind": ["🙈", PURPLE], "poison": ["🧪", PURPLE], "freeze": ["❄", PURPLE], "ethereal": ["👻", BLUE],
+	"blind": ["🙈", PURPLE], "poison": ["🧪", PURPLE], "bleed": ["🩸", PURPLE], "freeze": ["❄", PURPLE], "ethereal": ["👻", BLUE],
 	"empower": ["💪", BLUE], "summon": ["👤+", BLUE], "toll": ["⛓", PURPLE], "invert": ["🔄", PURPLE],
-	"hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "fireball": ["☄", RED], "fireball_blast": ["💥", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "stun": ["💫", PURPLE], "grow_thorns": ["🌵", GREEN], "revive": ["🪽", Color(0.85, 0.75, 0.4)], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE], "steal_spell": ["🕸", PURPLE], "deflect": ["🗡", BLUE], "bottle": ["🍶", GREEN],
+	"glow": ["💡", PURPLE], "explode": ["💥", PURPLE], "hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "fireball": ["☄", RED], "fireball_blast": ["💥", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "stun": ["💫", PURPLE], "grow_thorns": ["🌵", GREEN], "revive": ["🪽", Color(0.85, 0.75, 0.4)], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE], "steal_spell": ["🕸", PURPLE], "deflect": ["🗡", BLUE], "bottle": ["🍶", GREEN],
 }
 
 
@@ -80,9 +80,12 @@ const INFO := {
 	"confuse": ["Hypnotize", "Next turn you can't see what any enemy intends to do."],
 	"blind": ["Blind", "Some enemy Essence show as ?. They still match normally."],
 	"poison": ["Poison", "At the start of your turn you lose that much HP, then Poison goes down by 1."],
+	"bleed": ["Bleed", "At the start of your turn you lose that much HP, then Bleed goes down by 1 (like Poison)."],
 	"freeze": ["Freeze", "Freezes some of your Essence: they can't be used next turn."],
 	"ethereal": ["Ethereal", "Your next chant can't touch it."],
 	"stun": ["Stun", "Next turn you can't chant or cast: you can only Pass or drink a bottle."],
+	"glow": ["Shining brighter", "Its clock runs down. At 0 it stuns you, then starts over."],
+	"explode": ["Explode", "It deals this much damage and destroys itself. Destroy it first and it never goes off."],
 	"empower": ["Empower", "Its attacks deal more damage from now on."],
 	"summon": ["Summon", "Calls more enemies into the fight."],
 	"toll": ["Toll", "Your next chant holds at most 5 Essence."],
@@ -105,11 +108,11 @@ static func make(e: EnemyState, move := {}) -> IntentChip:
 ## New theme: the painted icon of each intent kind (assets/New/Icon/Intent/intent_<kind>.png). Burn / Unknown are painted too,
 ## but no enemy intent uses them (burn is a status).
 const ART := {"attack": "intent_attack", "armor": "intent_armor", "freeze": "intent_freeze", "steal": "intent_steal", "summon": "intent_summon",
-	"poison": "intent_poison", "blind": "intent_blind", "confuse": "intent_confuse", "mend": "intent_mend", "shuffle": "intent_shuffle",
+	"poison": "intent_poison", "bleed": "intent_bleed", "blind": "intent_blind", "confuse": "intent_confuse", "mend": "intent_mend", "shuffle": "intent_shuffle",
 	"silence": "intent_silence", "lock": "intent_lock", "ethereal": "intent_ethereal", "empower": "intent_empower", "toll": "intent_toll",
 	"invert": "intent_invert", "hex": "intent_hex", "mimic": "intent_mimic", "frail": "intent_frail", "hammer_spell": "intent_hammer_spell",
 	"invert_spells": "intent_invert_spells", "invoke": "intent_invoke", "stunned": "intent_stunned", "stun": "intent_stunned", "sing": "intent_sing", "ignite_spell": "intent_ignite_spell", "charge": "intent_charge", "revive": "intent_revive",
-	"grow_thorns": "intent_grow_thorns", "hold": "intent_hold", "cleanse_self": "intent_cleanse_self", "drain_essence": "intent_drain_essence", "disarm": "intent_disarm", "brittle": "intent_brittle", "regrow": "intent_regrow"}
+	"glow": "intent_stunned", "grow_thorns": "intent_grow_thorns", "hold": "intent_hold", "cleanse_self": "intent_cleanse_self", "drain_essence": "intent_drain_essence", "disarm": "intent_disarm", "brittle": "intent_brittle", "regrow": "intent_regrow"}
 
 
 ## New theme: the bubble is five fixed-ratio pieces: two end caps, the arrow in the middle, and a stretchy piece on each
@@ -267,7 +270,7 @@ func _add_move(row: HBoxContainer, m: Dictionary, e: EnemyState) -> void:
 				row.add_child(digits if digits != null else _word(str(m.n), Color.WHITE))
 			row.add_child(ElementIcon.make("?" if m.el == "random" else m.el, 26))
 			return
-		"poison", "freeze", "steal", "summon", "invert_spells":
+		"poison", "bleed", "glow", "explode", "freeze", "steal", "summon", "invert_spells":
 			num = str(m.n)
 		"grow_thorns":
 			num = "+%d" % int(m.n)

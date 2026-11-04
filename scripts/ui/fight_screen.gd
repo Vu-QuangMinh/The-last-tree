@@ -2700,7 +2700,10 @@ func _sync_views() -> void:
 	for e in _views:  # (Puppet Stage: a puppet that was defeated breaks into pieces)
 		var old: EnemyView = _views[e]
 		if e.is_dead() and not e.knocked and not _hand_going_down(e) and is_instance_valid(old) and is_instance_valid(old.creature):
-			if old.creature.has_rig():
+			if e.has_passive("thrown_junk"):
+				OrphanFx.run_away(self, old.creature.get_global_rect(), Creature._puppet_tex("orphan_bush", 2))
+				_orphans_running = true
+			elif old.creature.has_rig():
 				_shatter_arm(old.creature)
 			else:
 				PuppetShatter.spawn(self, old.creature)
@@ -4174,7 +4177,7 @@ func _seed_revival() -> void:
 ## The picture names to try for each of your statuses (the first that exists is used; Puppet art first, the older intent pictures as a fallback).
 const STATUS_ART_NAMES := {"shield": ["icon_armor_shield"], "thorns": ["status_thorns"], "silence": ["status_silenced"], "aegis": ["status_aegis"],
 	"echo": ["status_echo_ready"], "overload": ["status_overload"], "ethereal": ["status_ethereal", "intent_ethereal"],
-	"poison": ["status_poison", "intent_poison"], "confuse": ["status_confuse", "intent_confuse"], "blind": ["status_blind", "intent_blind"],
+	"poison": ["status_poison", "intent_poison"], "bleed": ["status_bleed", "intent_bleed"], "confuse": ["status_confuse", "intent_confuse"], "blind": ["status_blind", "intent_blind"],
 	"frail": ["status_frail", "intent_frail"], "lock": ["status_toll", "intent_toll"], "vulnerable": ["status_vulnerable"],
 	"brittle": ["status_brittle"], "disarmed": ["status_disarmed"]}
 ## A Power's badge picture, by the theme of its dissolve (fire / water / wind use the Essence balls).
@@ -4214,6 +4217,8 @@ func _status_badges() -> Array:
 		out.append(["🔔 Echo ready", Color(0.85, 0.6, 1.0), "echo"])
 	if p.poison > 0:
 		out.append(["🧪 Poison %d" % p.poison, Color(0.55, 0.9, 0.3), "poison"])
+	if p.bleed > 0:
+		out.append(["🩸 Bleed %d" % p.bleed, Color(0.95, 0.3, 0.3), "bleed"])
 	if p.confuse_turns > 0:
 		out.append(["🌀 Hypnotized %d" % p.confuse_turns, Color(0.8, 0.4, 1.0), "confuse"])
 	if p.blind_turns > 0:
@@ -4352,7 +4357,7 @@ func _power_fly(sp: Dictionary) -> void:
 
 ## status keyword -> art by name (UiSkin looks in assets/New/ ...)
 const STATUS_ART := {"shield": "icon_armor_shield", "thorns": "status_thorns", "silence": "status_silenced", "aegis": "status_aegis", "evasion": "status_aegis",
-	"echo": "status_echo_ready", "overload": "status_overload", "ethereal": "intent_ethereal", "poison": "intent_poison",
+	"echo": "status_echo_ready", "overload": "status_overload", "ethereal": "intent_ethereal", "poison": "intent_poison", "bleed": "intent_bleed",
 	"confuse": "intent_confuse", "blind": "intent_blind", "frail": "intent_frail", "lock": "intent_toll"}
 
 
@@ -5485,6 +5490,13 @@ var _reforming := {}  # EnemyState -> PuppetShatter: a boss pulling itself back 
 func _anim(ev: Dictionary) -> void:
 	await _anim_event(ev)
 	_cull_dead()
+	if _orphans_running:
+		_orphans_running = false
+		await _wait(OrphanFx.WAIT)  # (the fight ends once the children have run off)
+
+
+const OrphanFx := preload("res://scripts/ui/orphan_fx.gd")
+var _orphans_running := false  # the bush has just been pulled up: the fight waits for the children to run off
 
 
 ## Puppet Stage: the views of enemies that were defeated break into pieces and leave; the others stay as they are.
@@ -5497,7 +5509,10 @@ func _cull_dead() -> void:
 			_views.erase(e)
 			if is_instance_valid(old):
 				if is_instance_valid(old.creature):
-					if old.creature.has_rig():
+					if e.has_passive("thrown_junk"):
+						OrphanFx.run_away(self, old.creature.get_global_rect(), Creature._puppet_tex("orphan_bush", 2))
+						_orphans_running = true
+					elif old.creature.has_rig():
 						_shatter_arm(old.creature)
 					else:
 						PuppetShatter.spawn(self, old.creature)
@@ -5971,6 +5986,10 @@ func _anim_event(ev: Dictionary) -> void:
 			await _wait(0.25)
 		"poison_tick":
 			Audio.play("sfx_poison_tick")
+			_refresh_all()
+			await _wait(0.15)
+		"bleed_tick":
+			Audio.play("sfx_bleed_tick")
 			_refresh_all()
 			await _wait(0.15)
 		_:
@@ -7824,6 +7843,8 @@ func _enemy_attack(ev: Dictionary) -> void:
 		tw.tween_property(hedge, "offset", Vector2.ZERO, 0.2)
 		tw.parallel().tween_property(hedge, "squash", 1.0, 0.2)
 		await _wait(0.2)
+	elif v and String(ev.get("throw", "")) != "":
+		await OrphanFx.throw_item(self, v.creature.global_position + Vector2(v.creature.size.x * 0.5, 40.0), target, String(ev.throw))
 	elif v and v.creature.has_rig() and ev.enemy.id == "hand_spear":
 		target = await _spear_stab(v, float(ev.n))  # (the spear thrusts up into your HP bar: the hit lands there)
 	elif v and v.creature.has_rig() and ev.enemy.id == "hand_sword":

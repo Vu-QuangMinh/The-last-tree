@@ -32,7 +32,7 @@ const LENSES := {"flame_lens": "F", "tide_lens": "W", "gale_lens": "A"}
 const REDIRECT_DMG_PER_ELEMENT := 3.0
 ## Moves aimed at you. When an intent is redirected, attacks hit the new target and these fizzle.
 const IGNITE_DAMAGE := 5  # casting an Ignited spell burns you this much (the Ember Sprite)
-const AT_PLAYER := ["disarm", "drain_essence", "invert_spells", "ignite_spell", "silence", "lock", "steal", "confuse", "blind", "poison", "freeze", "toll", "invert", "hex", "mimic", "frail", "brittle", "stun"]
+const AT_PLAYER := ["bleed", "explode", "disarm", "drain_essence", "invert_spells", "ignite_spell", "silence", "lock", "steal", "confuse", "blind", "poison", "freeze", "toll", "invert", "hex", "mimic", "frail", "brittle", "stun"]
 
 var rng := RandomNumberGenerator.new()
 var db: SpellDB
@@ -230,6 +230,10 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 	turn = 1
 	for e in enemies:
 		_plan(e)
+	_shield_wall()
+	for lamp in enemies.filter(func(x): return x.id == "bog_lamp"):
+		for fish in enemies.filter(func(x): return x.has_passive("lure")):
+			lamp.set_meta("summoner", fish)  # (it goes out with the fish)
 	_fold_wing()
 	_log("The fight begins.")
 
@@ -281,7 +285,7 @@ func alive() -> Array:
 
 ## The living enemies you can touch right now (not one under the Fire Dragon's wing).
 func hittable() -> Array:
-	return enemies.filter(func(e): return not e.is_dead() and not e.winged)
+	return enemies.filter(func(e): return not e.is_dead() and not e.winged and not e.behind)
 
 
 func active_spells() -> Array:
@@ -417,6 +421,11 @@ func begin_player_turn() -> void:
 		_log("Poison: you lose %d HP." % player.poison)
 		player.poison -= 1
 		await anim.call({"type": "poison_tick"})
+	if player.bleed > 0:
+		player.take_effect(player.bleed)  # Bleed: works like Poison
+		_log("Bleed: you lose %d HP." % player.bleed)
+		player.bleed -= 1
+		await anim.call({"type": "bleed_tick"})
 	if has_artifact("mending_moss"):
 		player.heal(_an("mending_moss"))
 	player.thorns_turn = 0
@@ -443,7 +452,7 @@ func preview(c: String, raw := true) -> Dictionary:
 	var dies := []
 	var extra: int = (1 if has_artifact("glass_heart") else 0) + turn_ctx.get("amplify", 0)
 	for e in alive():
-		if e.ethereal or e.winged or (e.has_passive("warded") and c.length() < 4):
+		if e.ethereal or e.winged or e.behind or (e.has_passive("warded") and c.length() < 4):
 			continue
 		var k := Chant.prefix_match(e.elements, c)
 		if k == 0:
@@ -591,7 +600,7 @@ func has_valid_move() -> bool:
 func target_candidates() -> Array:
 	var out := []
 	for i in enemies.size():
-		if not enemies[i].is_dead() and not enemies[i].winged:
+		if not enemies[i].is_dead() and not enemies[i].winged and not enemies[i].behind:
 			out.append(i)
 	return out
 
@@ -634,8 +643,13 @@ func resolve_spell(id: String, target_idx := -1) -> void:
 	turn_ctx.cast_any = true
 	_charge_react(spell)
 	if player.ignited.has(id):
-		# Ignited (the Ember Sprite): casting it burns you
-		player.take_effect(IGNITE_DAMAGE)
+		# Ignited (the Ember Sprite): casting it burns you (the Torch Peasant's: as an attack, and the fire is out)
+		if player.ignite_hit.has(id):
+			player.take_attack(player.ignite_hit[id])
+			player.ignite_hit.erase(id)
+			player.ignited.erase(id)
+		else:
+			player.take_effect(IGNITE_DAMAGE)
 		_log("%s is on fire: it burns you for %d." % [spell.name, IGNITE_DAMAGE])
 		await anim.call({"type": "ignite_burn", "id": id})
 		_cleanup()
@@ -889,7 +903,7 @@ func pass_turn() -> void:
 func _strike(c: String) -> Array:
 	var plans := []
 	for e in alive():
-		if e.ethereal or e.winged:
+		if e.ethereal or e.winged or e.behind:
 			continue
 		if e.has_passive("warded") and c.length() < 4:
 			continue
@@ -1426,6 +1440,7 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 				had += 1
 			player.silenced.clear()
 			player.ignited.clear()
+			player.ignite_hit.clear()
 			for s in player.stock:
 				s.frozen = false
 			if had > 0 and int(eff.get("heal_per", 0)) > 0:
@@ -1635,7 +1650,7 @@ func _burned(times: int) -> void:
 ## How many kinds of debuff you have right now (Purify's Shield counts them).
 func _debuff_kinds() -> int:
 	var n := 0
-	for on in [player.blind_turns > 0, player.poison > 0, player.confuse_turns > 0, not player.silenced.is_empty(),
+	for on in [player.blind_turns > 0, player.poison > 0, player.bleed > 0, player.confuse_turns > 0, not player.silenced.is_empty(),
 			player.frail_turns > 0, player.brittle_turns > 0, player.vulnerable > 0, player.stock.any(func(s): return s.frozen or s.hexed),
 			not player.ignited.is_empty()]:
 		if on:
@@ -1706,7 +1721,7 @@ func _targets(eff: Dictionary, spell: Dictionary, tctx: Dictionary) -> Array:
 		return []
 	match t:
 		"target":
-			if not tctx.has("target") or tctx.target.is_dead() or tctx.target.winged:
+			if not tctx.has("target") or tctx.target.is_dead() or tctx.target.winged or tctx.target.behind:
 				var cands := target_candidates()
 				var idx: int = await chooser.call(spell, cands)
 				tctx.target = enemies[idx]
@@ -1764,6 +1779,7 @@ func _cleanse(what: String) -> void:
 		player.blind_turns = 0
 	if what in ["all", "poison"]:
 		player.poison = 0
+		player.bleed = 0
 	if what in ["all", "confuse"]:
 		player.confuse_turns = 0
 	if what in ["all", "silence"]:
@@ -2009,6 +2025,7 @@ func _enemy_phase() -> void:
 				await _do_move(e, e.intent)
 		await anim.call({"type": "enemy_done", "enemy": e})
 		e.redirect_to = null
+		await _lamp_back(e)
 		if e.has_passive("gem_crown") and not e.armor.has(true) and e.size() > 1:
 			e.set_armor(0)
 		e.end_turn()
@@ -2059,6 +2076,10 @@ func _plan(e: EnemyState) -> void:
 		return
 	e.intent = moves[e.move_index % moves.size()]
 	e.move_index += 1
+	if e.has_passive("thrown_junk"):
+		e.intent = EnemyDefs.throw_roll(rng)  # (the Orphans: rolled now, so you can see what is coming)
+	if e.has_passive("big_shield") and e.size() <= 1:
+		e.intent = {"kind": "attack", "n": 1}  # (the Shield Bearer's last Essence: the shield is down, he swings)
 	if e.intent.kind == "charge" and e.intent.has("n"):
 		e.charge_dmg = int(e.intent.n)  # a Charge starts: the spells you cast meanwhile change the hit
 
@@ -2323,6 +2344,15 @@ func _rebirths() -> void:
 			anim.call({"type": "reform", "enemy": e})  # (he bursts into pieces, and they fly back into him)
 			e.set_meta("say_first", ["You have improved, but can you withstand the might of wizardry?"])
 			e.set_meta("catch_breath", true)  # (his next turn he only says it: no spell yet)
+		if e.has_passive("last_fuse") and e.phase == 1 and e.is_dead():
+			# Bug Hunter 1.0 reboots: one more turn, with 5 Essence, and that turn it explodes (unless they are destroyed first)
+			e.phase = 2
+			e.reset_hp(String(e.def.hp2))
+			e.move_index = 0
+			e.intent = e.def.moves2[0]
+			e.keep_intent = true
+			_log("%s reboots. Something inside it starts ticking." % e.name)
+			anim.call({"type": "reform", "enemy": e})
 
 
 ## The Handyman. Phase 1: two hands at a time, one on each side, 10 Essence each. A hand at 0 Essence is knocked off and lies on the
@@ -2545,7 +2575,7 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				var lost := player.take_attack(dmg)
 				var blocked := player.aegis < aegis_before or player.shield + player.lasting < shield_before
 				_log("%s attacks for %d." % [e.name, lost])
-				await anim.call({"type": "attack", "enemy": e, "n": lost, "blocked": blocked, "part": e.acting_part, "hit": h, "hits": int(m.get("hits", 1))})
+				await anim.call({"type": "attack", "enemy": e, "n": lost, "blocked": blocked, "part": e.acting_part, "throw": String(m.get("throw", "")), "hit": h, "hits": int(m.get("hits", 1))})
 				if lost > 0.0 and e.has_passive("envenomed"):
 					player.poison += 1  # Envenomed: only a hit that takes HP (Shield stopping it all doesn't count)
 					_log("%s's venom gets in: Poison +1." % e.name)
@@ -2693,7 +2723,9 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 					break
 				var s: Dictionary = cands.pop_at(rng.randi() % cands.size())
 				player.ignited[s.id] = m.turns
-				_log("%s sets %s on fire: casting it next turn burns you for %d." % [e.name, s.name, IGNITE_DAMAGE])
+				if m.get("until_cast", false):
+					player.ignite_hit[s.id] = IGNITE_DAMAGE
+				_log("%s sets %s on fire: casting it burns you for %d." % [e.name, s.name, IGNITE_DAMAGE])
 			await anim.call({"type": "ignite_spell"})
 			if m.get("burst", false):
 				e.elements.clear()  # (the fireball is spent: it's gone)
@@ -2733,6 +2765,19 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 				await anim.call({"type": "blind"})
 		"poison":
 			player.poison += m.n
+		"bleed":
+			player.bleed += m.n
+		"glow":
+			_log("%s shines brighter." % e.name)
+		"explode":
+			# Bug Hunter 1.0: the blast hits like an attack, and that is the end of it
+			await _do_move(e, {"kind": "attack", "n": m.n})
+			e.elements.clear()
+			e.armor.clear()
+			e.lit.clear()
+			e.painted.clear()
+			e.parts.clear()
+			_log("%s explodes." % e.name)
 		"frail":
 			player.frail_turns = maxi(player.frail_turns, m.turns)
 			_log("%s makes you Frail: you take 25%% more damage." % e.name)
@@ -2866,7 +2911,48 @@ func _rage_check(e: EnemyState) -> bool:
 	return true
 
 
+## The Undying Duo, kept up to date: the first Essence armoured from the start, the shield down on the last one (and the swing planned),
+## and the Necromancer out of reach while the Shield Bearer stands.
+func _shield_wall() -> void:
+	var wall := false
+	for e: EnemyState in alive():
+		if not e.has_passive("big_shield"):
+			continue
+		wall = true
+		if e.size() > 1:
+			if not e.shield_up:
+				e.shield_up = true
+				e.set_armor(0)
+		elif e.armor[0]:
+			e.armor[0] = false
+		if e.size() <= 1 and e.intent.get("kind", "") == "armor":
+			_plan(e)
+	for e: EnemyState in enemies:
+		if e.has_passive("behind_shield"):
+			e.behind = wall and not e.is_dead()
+
+
+## The Bog Lantern's turn is over: a lamp that is out waits one enemy turn, then grows back with its clock at 2.
+func _lamp_back(e: EnemyState) -> void:
+	if not e.has_passive("lure") or e.is_dead():
+		return
+	if alive().any(func(x): return x.id == "bog_lamp"):
+		e.lamp_wait = false
+		return
+	if not e.lamp_wait:
+		e.lamp_wait = true
+		return
+	e.lamp_wait = false
+	var lamp := _spawn("bog_lamp")
+	lamp.set_meta("summoner", e)
+	lamp.fresh = true
+	_plan(lamp)
+	_log("%s grows a new lamp." % e.name)
+	await anim.call({"type": "spawn", "enemy": lamp})
+
+
 func _cleanup() -> void:
+	_shield_wall()
 	_rebirths()
 	_summons_fall()
 	_handyman_step()

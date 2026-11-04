@@ -76,6 +76,40 @@ const E := {
 	"anxious_armadillo": {"name": "Anxious Armadillo", "act": 2, "unique": true, "no_extra": true, "hp": "WFAAFWWAFFAWWFAAFWWA",
 		"passives": ["armadillo"], "moves": [{"kind": "grow_thorns", "n": 2}],
 		"flavor": "Curled up, spiky, and very, very nervous."},
+	# Act 2 (see ENCOUNTERS_ACT2; exact numbers: no act bonus). The Starving Mobs (tier 1.5): three peasants, 7 Essence each.
+	"mob_pitchfork": {"name": "Pitchfork Peasant", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FFWAFWA",
+		"moves": [{"kind": "attack", "n": 2, "also": {"kind": "bleed", "n": 2}}],
+		"flavor": "It used to turn hay."},
+	"mob_slingshot": {"name": "Slingshot Peasant", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WAAFWAW",
+		"moves": [{"kind": "attack", "n": 2, "also": {"kind": "drain_essence", "n": 1}}],
+		"flavor": "Stones are the only thing left that is free."},
+	"mob_torch": {"name": "Torch Peasant", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "AFFWAFF",
+		"moves": [{"kind": "ignite_spell", "n": 1, "turns": 9999, "until_cast": true}],
+		"flavor": "Everything he owned has already burned."},
+	# The Undying Duo: the skeleton keeps his first Essence armoured until it is his last; behind him the Necromancer can't be touched.
+	"shield_bearer": {"name": "Skeleton Shield Bearer", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WWFAWWFA", "passives": ["big_shield"],
+		"moves": [{"kind": "armor", "pos": 0}],
+		"flavor": "Nobody told him the war was over."},
+	"necromancer": {"name": "Necromancer", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FAW", "passives": ["behind_shield"],
+		"moves": [{"kind": "poison", "n": 3}],
+		"flavor": "Brave, as long as somebody else is holding the shield."},
+	# The Orphans: a tall bramble bush with children behind it. They throw whatever they find: the damage is rolled when the
+	# throw is planned (see THROWN). The bush killed, it is pulled up and the children run off to the left, laughing.
+	"orphan_bush": {"name": "The Orphans", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "AWFAWWFAAFWA", "passives": ["thrown_junk"],
+		"moves": [{"kind": "attack", "n": 3}],
+		"flavor": "Somebody behind it is trying very hard not to laugh."},
+	# The Bog Lantern: an enormous angler fish on two legs (any of its moves, at random), and its lamp, a separate enemy on a clock:
+	# 2, 1, then at 0 it stuns you and starts over. Killed, the lamp grows back after a turn, its clock at 2.
+	"bog_fish": {"name": "Bog Lantern", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WAFWWAFAWAFW", "passives": ["lure"], "random_moves": true,
+		"moves": [{"kind": "attack", "n": 5}, {"kind": "poison", "n": 3}, {"kind": "grow_thorns", "n": 2}],
+		"flavor": "Don't look at the light."},
+	"bog_lamp": {"name": "Lamp", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FFA",
+		"moves": [{"kind": "glow", "n": 2}, {"kind": "stun", "turns": 1}],
+		"flavor": "Brighter. Brighter. Brighter."},
+	# Bug Hunter 1.0: an assembly-line robot. At 0 Essence it reboots with 5 Essence: destroy that, or on its turn it explodes.
+	"bug_hunter": {"name": "Bug Hunter 1.0", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAFFWAWWFAF", "hp2": "AWFAW", "passives": ["last_fuse"],
+		"moves": [{"kind": "attack", "n": 5}], "moves2": [{"kind": "explode", "n": 10}],
+		"flavor": "Task: remove bugs. You are a bug."},
 	"blinding_beetle": {"name": "Blinding Beetle", "act": 2, "hp": "FAF", "moves": [{"kind": "blind", "turns": 2}, {"kind": "attack", "n": 4}, {"kind": "empower", "n": 1}],
 		"flavor": "A flash, and everything blurs."},
 	# ---------------- act 3
@@ -283,6 +317,11 @@ const PASSIVE_TEXT := {
 	"last_gasp": "Last Gasp: gives you Poison 2 when it dies.",
 	"retainer": "Loyal: if the Samurai falls first, his Retainer yields and the fight is over.",
 	"avenger": "Avenger: if his Retainer falls first, the Samurai gains 5 Power for the rest of the fight.",
+	"thrown_junk": "Thrown Junk: throws whatever is at hand, for 2 to 10 damage. Usually about 3, but sometimes an axe.",
+	"lure": "Lure: its lamp is a separate enemy. Killed, the lamp grows back after a turn, its clock back at 2.",
+	"last_fuse": "Last Fuse: at 0 Essence it reboots with 5 Essence. Destroy those, or on its turn it explodes for 10 and dies.",
+	"big_shield": "Big Shield: keeps its first Essence armoured until that is its last one. Then it drops the shield and attacks.",
+	"behind_shield": "Hiding: while the Shield Bearer stands, nothing you do can touch it.",
 	"gem_crown": "Gem Crown: at the end of its turn, armours its first Essence if nothing is armoured (not when it has 1 left).",
 	"echo": "Echo: repeats each action twice.",
 	"briar_walls": "Briar Walls: she hides between two hedge walls (3 Essence each, the two ends of her row). They are part of her: leftmost and rightmost effects hit the ends of her row (a wall while it stands), random effects pick wall Essence first, and Snipe can reach anything. She regrows a fallen wall (she shows it first); with both up she sings (Power +1) or attacks. When her own Essence is gone, the walls fall with her.",
@@ -332,6 +371,15 @@ const BIOS := {
 	"hexer": "Curses one of your Essence so chanting it hurts. Heals its friends, which is honestly the most annoying part.",
 	"shrine_maiden": "Heals everyone except you. Very devout. Very inconvenient.",
 	"hush_moth": "Its wings whisper \"shhh\" at one of your spells: it can't fire for a turn.",
+	"mob_pitchfork": "A farmer with nothing left to farm. Stabs you, and the wound stays open.",
+	"mob_slingshot": "Small stones, good aim. Every hit knocks an Essence out of your bag.",
+	"mob_torch": "Sets one of your spells alight. It stays alight until you cast it, and then it burns you.",
+	"shield_bearer": "A skeleton behind a very big shield. Doesn't fight back until the shield is all he has left.",
+	"necromancer": "Three Essence and a lot of Poison, safe for as long as his skeleton stands.",
+	"orphan_bush": "Mud, stones, sticks, and now and then something much worse. Nobody ever taught them not to.",
+	"bog_fish": "An enormous angler fish on two legs. Bites, spits Poison, or grows more Thorns, whichever it feels like.",
+	"bog_lamp": "Its clock runs 2, 1, 0, and at 0 you are Stunned. Put it out and it grows back, but its clock starts over.",
+	"bug_hunter": "An assembly-line arm with a laser. Finish it twice, or stand well back.",
 	"blinding_beetle": "One shiny flash and suddenly everything is question marks. Gets stronger the longer you squint.",
 	"inverter": "Fire becomes water, water becomes fire, and your plans become confetti.",
 	"warded_golem": "Short chants bounce right off. Say something meaningful: at least four Essence long.",
@@ -411,7 +459,7 @@ static func get_def(id: String) -> Dictionary:
 
 
 static func normals(act: int) -> Array:
-	return E.keys().filter(func(k): return E[k].act == act and not E[k].get("elite", false) and not E[k].get("boss", false) and not E[k].get("unique", false))
+	return E.keys().filter(func(k): return E[k].act == act and not E[k].get("elite", false) and not E[k].get("boss", false) and not E[k].get("unique", false) and not E[k].get("member", false))
 
 
 ## The mini bosses of an act (only that act's own; "retired" ones are kept for old saves and the codex but never met).
@@ -488,6 +536,32 @@ const ENCOUNTERS_ACT1 := {
 }
 
 
+## Act 2's hand-made fights, by tier (the same rows as Act 1: act1_tier). A tier not listed yet: the old random mix.
+const ENCOUNTERS_ACT2 := {
+	1.0: [
+		{"name": "The Orphans", "ids": ["orphan_bush"], "w": 1.0},
+		{"name": "The Undying Duo", "ids": ["shield_bearer", "necromancer"], "w": 1.0},
+		{"name": "The Bog Lantern", "ids": ["bog_fish", "bog_lamp"], "w": 1.0},
+		{"name": "Bug Hunter 1.0", "ids": ["bug_hunter"], "w": 1.0},
+	],
+	1.5: [
+		{"name": "Starving Mobs", "ids": ["mob_pitchfork", "mob_slingshot", "mob_torch"], "w": 1.0},
+	],
+}
+
+## What the Orphans throw: [damage, item, weight]. 3 is the most common, the heavy things are rare, 10 is always the axe.
+const THROWN := [[2, "mud", 20], [3, "stone", 30], [4, "stick", 18], [5, "brick", 12], [6, "pot", 8], [7, "shovel", 5], [8, "sword", 3], [9, "boulder", 2], [10, "axe", 2]]
+
+
+static func throw_roll(rng: RandomNumberGenerator) -> Dictionary:
+	var r := rng.randf() * 100.0
+	for t in THROWN:
+		r -= float(t[2])
+		if r < 0.0:
+			return {"kind": "attack", "n": t[0], "throw": t[1]}
+	return {"kind": "attack", "n": 3, "throw": "stone"}
+
+
 ## Which tier of Act 1 fights a map row (0-based, 12 rows) brings.
 static func act1_tier(row: int) -> float:
 	if row <= 1:
@@ -504,7 +578,10 @@ static func act1_tier(row: int) -> float:
 ## An Act 1 fight of this tier, weighted, and never one of the last two encounters met (like Slay the Spire).
 ## recent: the names of the encounters met so far this run.
 static func act1_encounter(tier: float, rng: RandomNumberGenerator, recent: Array = []) -> Dictionary:
-	var pool: Array = ENCOUNTERS_ACT1[tier]
+	return _pick_encounter(ENCOUNTERS_ACT1[tier], rng, recent)
+
+
+static func _pick_encounter(pool: Array, rng: RandomNumberGenerator, recent: Array) -> Dictionary:
 	var last_two := recent.slice(maxi(0, recent.size() - 2))
 	var fresh := pool.filter(func(enc): return not (enc.name in last_two))
 	if fresh.is_empty():
@@ -518,6 +595,19 @@ static func act1_encounter(tier: float, rng: RandomNumberGenerator, recent: Arra
 		if r < 0.0:
 			return enc.duplicate(true)
 	return fresh[-1].duplicate(true)
+
+
+## Has this tier of Act 2 a hand-made fight left that wasn't one of the last two met? (If not: the old random mix.)
+static func act2_has_fight(tier: float, recent: Array) -> bool:
+	if not ENCOUNTERS_ACT2.has(tier):
+		return false
+	var last_two := recent.slice(maxi(0, recent.size() - 2))
+	return ENCOUNTERS_ACT2[tier].any(func(enc): return not (enc.name in last_two))
+
+
+## An Act 2 fight of this tier, picked the same way (only the tiers listed in ENCOUNTERS_ACT2).
+static func act2_encounter(tier: float, rng: RandomNumberGenerator, recent: Array = []) -> Dictionary:
+	return _pick_encounter(ENCOUNTERS_ACT2[tier], rng, recent)
 
 
 ## Enemy ids for a node. floor is 1-based within the act. seen: ids met earlier this run (avoided when possible).
@@ -634,7 +724,9 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			else:
 				s = "Charging: %d turn%s left" % [m.left, "" if m.left == 1 else "s"]
 		"ignite_spell":
-			if m.get("all", false):
+			if m.get("until_cast", false):
+				s = "Ignite a spell (it stays Ignited until you cast it, then deals %d damage; Shield stops it)" % Fight.IGNITE_DAMAGE
+			elif m.get("all", false):
 				s = "Burst: Ignite ALL your spells for your next turn (casting one burns you for %d)" % Fight.IGNITE_DAMAGE
 			else:
 				s = "Ignite one of your spells for your next turn (casting it burns you for %d)" % Fight.IGNITE_DAMAGE
@@ -650,6 +742,12 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			s = "Blind you (%d turns)" % m.turns
 		"poison":
 			s = "Poison you (%d)" % m.n
+		"bleed":
+			s = "Bleed %d" % m.n
+		"glow":
+			s = "Shines brighter: at 0 it stuns you (clock: %d)" % m.n
+		"explode":
+			s = "Explode: %d damage, and it is destroyed" % m.n
 		"freeze":
 			s = "Freeze %d of your Essence" % m.n
 		"ethereal":
