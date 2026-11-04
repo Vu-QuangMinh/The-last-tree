@@ -48,7 +48,7 @@ const LOOK := {
 	"silence": ["🔇", PURPLE], "lock": ["🔒", PURPLE], "steal": ["✋", PURPLE], "confuse": ["🌀", PURPLE],
 	"blind": ["🙈", PURPLE], "poison": ["🧪", PURPLE], "bleed": ["🩸", PURPLE], "freeze": ["❄", PURPLE], "ethereal": ["👻", BLUE],
 	"empower": ["💪", BLUE], "summon": ["👤+", BLUE], "toll": ["⛓", PURPLE], "invert": ["🔄", PURPLE],
-	"glow": ["💡", PURPLE], "explode": ["💥", PURPLE], "hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "fireball": ["☄", RED], "fireball_blast": ["💥", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "stun": ["💫", PURPLE], "grow_thorns": ["🌵", GREEN], "revive": ["🪽", Color(0.85, 0.75, 0.4)], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE], "steal_spell": ["🕸", PURPLE], "deflect": ["🗡", BLUE], "bottle": ["🍶", GREEN],
+	"recharge": ["💫", BLUE], "dormant": ["💤", BLUE], "grounded": ["💫", BLUE], "glow": ["💡", PURPLE], "explode": ["💥", PURPLE], "hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "fireball": ["☄", RED], "fireball_blast": ["💥", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "stun": ["💫", PURPLE], "grow_thorns": ["🌵", GREEN], "revive": ["🪽", Color(0.85, 0.75, 0.4)], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE], "steal_spell": ["🕸", PURPLE], "deflect": ["🗡", BLUE], "bottle": ["🍶", GREEN],
 }
 
 
@@ -84,6 +84,9 @@ const INFO := {
 	"freeze": ["Freeze", "Freezes some of your Essence: they can't be used next turn."],
 	"ethereal": ["Ethereal", "Your next chant can't touch it."],
 	"stun": ["Stun", "Next turn you can't chant or cast: you can only Pass or drink a bottle."],
+	"grounded": ["Stunned", "It fell out of the air: it skips its action."],
+	"recharge": ["Recharging", "It stuns itself for a turn, then starts over."],
+	"dormant": ["Dormant", "It does nothing until it is down to 15 Essence, or for 3 turns."],
 	"glow": ["Shining brighter", "Its clock runs down. At 0 it stuns you, then starts over."],
 	"explode": ["Explode", "It deals this much damage and destroys itself. Destroy it first and it never goes off."],
 	"empower": ["Empower", "Its attacks deal more damage from now on."],
@@ -112,7 +115,7 @@ const ART := {"attack": "intent_attack", "armor": "intent_armor", "freeze": "int
 	"silence": "intent_silence", "lock": "intent_lock", "ethereal": "intent_ethereal", "empower": "intent_empower", "toll": "intent_toll",
 	"invert": "intent_invert", "hex": "intent_hex", "mimic": "intent_mimic", "frail": "intent_frail", "hammer_spell": "intent_hammer_spell",
 	"invert_spells": "intent_invert_spells", "invoke": "intent_invoke", "stunned": "intent_stunned", "stun": "intent_stunned", "sing": "intent_sing", "ignite_spell": "intent_ignite_spell", "charge": "intent_charge", "revive": "intent_revive",
-	"glow": "intent_stunned", "grow_thorns": "intent_grow_thorns", "hold": "intent_hold", "cleanse_self": "intent_cleanse_self", "drain_essence": "intent_drain_essence", "disarm": "intent_disarm", "brittle": "intent_brittle", "regrow": "intent_regrow"}
+	"recharge": "intent_stunned", "dormant": "intent_hold", "grounded": "intent_stunned", "glow": "intent_stunned", "grow_thorns": "intent_grow_thorns", "hold": "intent_hold", "cleanse_self": "intent_cleanse_self", "drain_essence": "intent_drain_essence", "disarm": "intent_disarm", "brittle": "intent_brittle", "regrow": "intent_regrow"}
 
 
 ## New theme: the bubble is five fixed-ratio pieces: two end caps, the arrow in the middle, and a stretchy piece on each

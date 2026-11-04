@@ -55,7 +55,8 @@ var lasting_next := 0  # Lasting Shield you start your next fight with (the Maus
 var no_talk_next := false  # the next fight's boss doesn't talk first (the Ruined Watchtower's monster)
 var encounter: Array = []  # the ids of the encounter being prepared
 var encounter_name := ""  # its name (Act 1's hand-made encounters, e.g. "The Slime Trio"; "" otherwise)
-var recent_encounters: Array = []  # names of the encounters met so far (an encounter never comes up twice in 3)
+var fight_plan: Array = []  # this act's normal fights, in the order they will be met (see EnemyDefs.roll_fight_plan)
+var fight_plan_act := 0  # the act that list was rolled for
 var encounter_extra: Array = []  # the extra Essence each of those enemies will have (rolled once)
 var first_run := false  # the player's very first run (and the Anxious Armadillo not met yet): he waits in Act 2's 2nd fight
 var fight_rooms: Array = []  # "act:row:col" of every normal fight room entered (to count Act 2's fights)
@@ -227,17 +228,14 @@ func encounter_ids() -> Array:
 	if first_run and act == 2 and kind == "fight" and act_fights == 2:
 		ids = ["anxious_armadillo"]  # (once ever: main.gd records it when the fight starts)
 		encounter_name = "The Anxious Armadillo"
-	elif act == 1 and kind == "fight":
-		# a hand-made, themed encounter of the tier this floor brings (see EnemyDefs.ENCOUNTERS_ACT1)
-		var enc := EnemyDefs.act1_encounter(EnemyDefs.act1_tier(row), rng, recent_encounters)
-		ids = enc.ids
+	elif EnemyDefs.POOLS.has(act) and kind == "fight":
+		# the next fight on this act's list, whatever row this is (the same room asks again: the same fight)
+		if fight_plan_act != act:
+			fight_plan = EnemyDefs.roll_fight_plan(act, rng)
+			fight_plan_act = act
+		var enc: Dictionary = fight_plan[mini(act_fights, fight_plan.size()) - 1]
+		ids = enc.ids.duplicate()
 		encounter_name = enc.name
-		recent_encounters.append(enc.name)
-	elif act == 2 and kind == "fight" and EnemyDefs.act2_has_fight(EnemyDefs.act1_tier(row), recent_encounters):
-		var enc := EnemyDefs.act2_encounter(EnemyDefs.act1_tier(row), rng, recent_encounters)
-		ids = enc.ids
-		encounter_name = enc.name
-		recent_encounters.append(enc.name)
 	else:
 		ids = EnemyDefs.encounter(kind, act, depth(), rng, met)
 	met.append_array(ids)

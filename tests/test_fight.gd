@@ -334,20 +334,49 @@ func test_rolling_bear_gains_power_every_turn() -> void:
 	assert_eq(f.enemies[0].dmg_bonus, 4, "+2 after every attack")
 
 
-func test_act1_encounters_are_fixed_and_never_repeat_the_last_two() -> void:
+func test_fight_plans_follow_the_pools_and_never_repeat_the_last_two() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 3
-	for tier in EnemyDefs.ENCOUNTERS_ACT1:
-		for enc in EnemyDefs.ENCOUNTERS_ACT1[tier]:
-			for id in enc.ids:
-				assert_true(EnemyDefs.E.has(id), id)
-	var recent := []
-	for i in 40:
-		var enc := EnemyDefs.act1_encounter(2.0, rng, recent)
-		assert_true(not (enc.name in recent.slice(maxi(0, recent.size() - 2))), "no repeat of the last two")
-		recent.append(enc.name)
-	var slimes := EnemyDefs.ENCOUNTERS_ACT1[2.5].filter(func(e): return e.name == "The Slime Trio")
+	for act in EnemyDefs.POOLS:
+		for pool in EnemyDefs.POOLS[act]:
+			for enc in EnemyDefs.POOLS[act][pool]:
+				for id in enc.ids:
+					assert_true(EnemyDefs.E.has(id), id)
+	for act in [1, 2]:
+		var easy: Array = EnemyDefs.POOLS[act].easy.map(func(e): return e.name)
+		var medium: Array = EnemyDefs.POOLS[act].medium.map(func(e): return e.name)
+		var hard: Array = EnemyDefs.POOLS[act].hard.map(func(e): return e.name)
+		if hard.is_empty():
+			hard = medium  # (none yet)
+		for run_no in 200:
+			var plan := EnemyDefs.roll_fight_plan(act, rng)
+			assert_eq(plan.size(), EnemyDefs.PLAN_LENGTH)
+			for i in plan.size():
+				assert_true(plan[i].name in (easy if i < 2 else (medium if i < 4 else hard)), "fight %d is from its pool" % i)
+				if i >= 1:
+					assert_true(plan[i].name != plan[i - 1].name, "no repeat")
+				if i >= 2:
+					assert_true(plan[i].name != plan[i - 2].name, "no repeat of the last two")
+			for at in [2, 4]:
+				var share: bool = plan[at].ids.any(func(id): return id in plan[at - 1].ids)
+				var could: bool = (medium if at == 2 else hard).size() > 0
+				assert_true(not share or not could or act == 1 and at == 4, "the pool changes: nothing alike right after")
+	var slimes: Array = EnemyDefs.POOLS[1].medium.filter(func(e): return e.name == "The Slime Trio")
 	assert_eq(slimes[0].ids, ["purple_slime", "green_slime", "yellow_slime"], "always the same three")
+
+
+func test_the_same_room_gives_the_same_fight_and_the_next_room_the_next() -> void:
+	var run := RunState.new()
+	run.setup(db, ["fire_ball"], [], 3)
+	run.first_run = false
+	run.act = 1
+	run.row = 0
+	run.col = 0
+	var a := run.encounter_ids()
+	assert_eq(run.encounter_ids(), a, "asked again: the same fight")
+	assert_eq(a, run.fight_plan[0].ids)
+	run.row = 5
+	assert_eq(run.encounter_ids(), run.fight_plan[1].ids, "the 2nd fight is the 2nd on the list, whatever the row")
 
 
 func test_split_makes_a_twin() -> void:
@@ -1083,10 +1112,8 @@ func test_act2_tier1_undying_duo() -> void:
 
 
 func test_act2_tiers_and_the_orphans() -> void:
-	var names: Array = EnemyDefs.ENCOUNTERS_ACT2[1.0].map(func(x): return x.name)
-	assert_true("The Orphans" in names and not ("Starving Mobs" in names))
-	assert_eq(EnemyDefs.ENCOUNTERS_ACT2[1.5][0].name, "Starving Mobs")
-	assert_true(not EnemyDefs.act2_has_fight(1.5, ["Starving Mobs"]), "met just now: the mix instead of the same fight twice")
+	var names: Array = EnemyDefs.POOLS[2].easy.map(func(x): return x.name)
+	assert_true("The Orphans" in names and "Starving Mobs" in names)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 11
 	var seen := {}
@@ -1104,6 +1131,112 @@ func test_act2_tiers_and_the_orphans() -> void:
 	var n: int = f.enemies[0].intent.n
 	await f.end_player_turn()
 	assert_eq(f.player.hp, 40.0 - n)
+
+
+func test_act2_tier15_maddened_soldier() -> void:
+	var f := _fight(["mad_soldier"], ["fire_ball"], "")
+	var e: EnemyState = f.enemies[0]
+	assert_eq(e.size(), 15)
+	f.player.hp = 40
+	await f.end_player_turn()
+	assert_eq(f.player.hp, 38.0, "one hit for 2")
+	await f._strike("F")
+	await f._strike("W")
+	assert_eq(e.intent.hits, 3, "two chants struck him: two more hits")
+	await f.end_player_turn()
+	assert_eq(f.player.hp, 32.0, "three hits of 2")
+	assert_eq(e.intent.get("hits", 1), 1, "and back to one")
+	e.remove_right(1)  # (a spell taking Essence is fine)
+	assert_eq(e.intent.get("hits", 1), 1)
+
+
+func test_act2_tier15_tree_dwellers() -> void:
+	var f := _fight(["tree_dweller_a", "tree_dweller_b"], ["fire_ball"], "")
+	assert_eq(f.enemies.map(func(x): return x.size()), [8, 8])
+	await f.end_player_turn()
+	assert_eq(f.player.poison, 3, "2 Poison from each, and the new turn has already ticked it down by 1")
+	f.enemies[0].remove_right(8)
+	f._cleanup()
+	assert_eq(f.alive().size(), 1, "each has its own Essence")
+	assert_eq(EnemyDefs.POOLS[2].easy.size(), 7)
+
+
+func test_act2_tier2_headless_horseman() -> void:
+	var f := _fight(["headless_horseman"], ["fire_ball", "water_wall"], "")
+	var e: EnemyState = f.enemies[0]
+	assert_eq(e.size(), 15)
+	f.player.hp = 40
+	await f.end_player_turn()
+	assert_eq(f.player.hp, 30.0, "5 twice")
+	await f.end_player_turn()
+	assert_eq(f.player.hp, 27.0, "the scream: 3 damage")
+	assert_eq(f.player.silenced.size(), 1, "and one spell silenced")
+	f.player.silenced.clear()
+	e.remove_right(5)
+	f._cleanup()
+	assert_true(e.intent.get("head", false), "at 10: the head is his next move")
+	await f.end_player_turn()
+	assert_eq(f.player.silenced.size(), 2, "every spell silenced")
+	for k in 3:
+		assert_eq([e.intent.n, e.intent.hits], [5, 2], "only the one move from now on")
+		await f.end_player_turn()
+
+
+func test_act2_tier2_scavengers_and_flying() -> void:
+	var f := _fight(["scav_rat", "scav_hyena", "scav_vulture", "scav_beetle"], ["fire_ball"], "")
+	var rat: EnemyState = f.enemies[0]
+	var vulture: EnemyState = f.enemies[2]
+	var beetle: EnemyState = f.enemies[3]
+	assert_eq(f.enemies.map(func(x): return x.size()), [6, 6, 6, 6])
+	assert_true(vulture.flying and beetle.armor[0])
+	await f._strike("AFW")
+	assert_eq(vulture.size(), 6, "the chant can't reach a flyer")
+	assert_true(2 in f.target_candidates(), "a spell can")
+	vulture.remove_right(1)
+	f._cleanup()
+	assert_true(not vulture.flying and vulture.grounded == 1, "hit: down, and stunned")
+	f.player.hp = 40
+	await f.end_player_turn()
+	assert_eq(rat.power, 1, "the Hyena's howl")
+	assert_eq(f.player.hp, 33.0, "rat 1x3, then the howl, then the beetle 3 + 1 Power; the vulture lies stunned")
+	assert_eq(vulture.grounded, 0)
+	assert_eq(vulture.intent.kind, "attack", "and it fights on, on the ground")
+	await f._strike("AFW")
+	assert_true(vulture.size() < 5, "on the ground the chant reaches it")
+
+
+func test_act2_tier2_sentinel() -> void:
+	var f := _fight(["sentinel"], ["fire_ball"], "")
+	var e: EnemyState = f.enemies[0]
+	assert_eq(e.size(), 20)
+	f.player.hp = 100
+	for k in 3:
+		assert_eq(e.intent.kind, "dormant")
+		await f.end_player_turn()
+	assert_eq(f.player.hp, 100.0, "three turns of nothing")
+	await f.end_player_turn()
+	assert_eq(f.player.hp, 97.0, "then 3 once")
+	await f.end_player_turn()
+	assert_eq(f.player.hp, 91.0, "3 twice")
+	await f.end_player_turn()
+	assert_eq(f.player.hp, 79.0, "3 four times")
+	await f.end_player_turn()
+	assert_eq(f.player.hp, 79.0, "it stuns itself")
+	await f.end_player_turn()
+	assert_eq(f.player.hp, 76.0, "and starts over")
+	var g := _fight(["sentinel"], ["fire_ball"], "")
+	g.player.hp = 100
+	g.enemies[0].remove_right(5)
+	g._cleanup()
+	assert_eq(g.enemies[0].intent.kind, "attack", "at 15 Essence it wakes at once")
+	await g.end_player_turn()
+	assert_eq(g.player.hp, 97.0)
+
+
+func test_act1_flyers() -> void:
+	for id in ["leech_bat", "hush_moth", "winged_tortoise"]:
+		var f := _fight([id], ["fire_ball"], "")
+		assert_true(f.enemies[0].flying, id + " flies")
 
 
 func test_act2_tier1_bog_lantern() -> void:

@@ -45,6 +45,10 @@ var _free_layout := false  # Puppet Stage: the name stands on the puppet's head 
 var _hp_icons: Array = []  # the orbs currently shown, left to right
 
 
+const FLY_LIFT := 80.0
+var _lifted := false
+
+
 func _peek_orphans() -> void:
 	await get_tree().process_frame
 	if is_instance_valid(creature):
@@ -281,9 +285,20 @@ func anchor_point() -> Vector2:
 
 
 ## preview: the dict from Fight.preview (or {} for none).
+## A flyer hangs in the air above its place; knocked down, it drops.
+func _fly_height() -> void:
+	var up := enemy.flying
+	if up == _lifted:
+		return
+	_lifted = up
+	var tw := creature.create_tween()
+	tw.tween_property(creature, "position:y", creature.position.y + (-FLY_LIFT if up else FLY_LIFT), 0.3 if up else 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+
 func refresh(preview: Dictionary) -> void:
 	if _ghost:
 		return
+	_fly_height()
 	creature.modulate = Color(1, 1, 1, 0.4) if enemy.knocked and not creature.has_rig() else Color.WHITE  # (a hand's arm fades and folds by itself: Creature._draw_arm)
 	_hp_row.visible = not enemy.knocked and not creature.drop_hold  # (a fallen hand has no HP bar: it can't be targeted; nor does one that waits on the floor to be pulled up)
 	if _spell_row != null:

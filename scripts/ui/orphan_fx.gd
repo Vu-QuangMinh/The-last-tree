@@ -2,8 +2,8 @@ extends RefCounted
 ## The Orphans (an Act 2 fight): what is seen of the children behind the bush. Stand-ins until there is art: a picture named
 ## throw_<item> is used when it exists, otherwise an emoji; the children are emoji too.
 
-const ITEM_ICON := {"mud": "🟤", "stone": "🪨", "stick": "🥢", "brick": "🧱", "pot": "🍲", "shovel": "⛏", "sword": "🗡", "boulder": "🪨", "axe": "🪓"}
-const ITEM_PX := {"mud": 40, "stone": 44, "stick": 56, "brick": 56, "pot": 64, "shovel": 76, "sword": 88, "boulder": 120, "axe": 96}
+const ITEM_ICON := {"mud": "🟤", "stone": "🪨", "stick": "🥢", "brick": "🧱", "pot": "🍲", "shovel": "⛏", "sword": "🗡", "boulder": "🪨", "axe": "🪓", "head": "💀"}
+const ITEM_PX := {"mud": 40, "stone": 44, "stick": 56, "brick": 56, "pot": 64, "shovel": 76, "sword": 88, "boulder": 120, "axe": 96, "head": 110}
 const RUN_TIME := 1.5  # the children are off the stage after this
 const WAIT := 2.3  # how long the fight waits for it all
 

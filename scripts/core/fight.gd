@@ -248,6 +248,8 @@ func _spawn(id: String, extra = null) -> EnemyState:
 			e.grow_wall(side, _wall_essence(int(d.walls)))
 	e.move_index = int(d.get("start", 0))
 	e.opener = d.get("opener", []).duplicate(true)  # (the Triplet: each starts its cycle at a different move)
+	e.flying = d.get("flying", false)
+	e.fly_size = e.size()
 	enemies.append(e)
 	return e
 
@@ -452,7 +454,7 @@ func preview(c: String, raw := true) -> Dictionary:
 	var dies := []
 	var extra: int = (1 if has_artifact("glass_heart") else 0) + turn_ctx.get("amplify", 0)
 	for e in alive():
-		if e.ethereal or e.winged or e.behind or (e.has_passive("warded") and c.length() < 4):
+		if e.ethereal or e.winged or e.behind or e.flying or (e.has_passive("warded") and c.length() < 4):
 			continue
 		var k := Chant.prefix_match(e.elements, c)
 		if k == 0:
@@ -903,7 +905,7 @@ func pass_turn() -> void:
 func _strike(c: String) -> Array:
 	var plans := []
 	for e in alive():
-		if e.ethereal or e.winged or e.behind:
+		if e.ethereal or e.winged or e.behind or e.flying:
 			continue
 		if e.has_passive("warded") and c.length() < 4:
 			continue
@@ -936,6 +938,9 @@ func _strike(c: String) -> Array:
 		if extra > 0 and not e.is_dead():
 			removed.append_array(e.remove_right(extra))
 		e.struck_this_turn = true
+		if e.has_passive("maddened"):
+			e.mad_hits += 1
+			e.intent = {"kind": "attack", "n": e.def.moves[0].n, "hits": 1 + e.mad_hits}
 		hit.append(e)
 		if player.passive("strike_burn") > 0:
 			await _proc("strike_burn")
@@ -2016,6 +2021,9 @@ func _enemy_phase() -> void:
 		await anim.call({"type": "enemy_turn", "enemy": e, "move": e.intent, "frozen": e.freeze_turns > 0})
 		if e.freeze_turns > 0:
 			_log("%s is frozen." % e.name)
+		elif e.grounded > 0:
+			e.grounded -= 1
+			_log("%s is stunned from its fall." % e.name)
 		else:
 			if e.has_passive("briar_walls"):
 				await _wall_turns(e)
@@ -2026,7 +2034,7 @@ func _enemy_phase() -> void:
 		await anim.call({"type": "enemy_done", "enemy": e})
 		e.redirect_to = null
 		await _lamp_back(e)
-		if e.has_passive("gem_crown") and not e.armor.has(true) and e.size() > 1:
+		if (e.has_passive("gem_crown") or e.has_passive("shell")) and not e.armor.has(true) and e.size() > 1:
 			e.set_armor(0)
 		e.end_turn()
 		_cleanup()
@@ -2076,6 +2084,24 @@ func _plan(e: EnemyState) -> void:
 		return
 	e.intent = moves[e.move_index % moves.size()]
 	e.move_index += 1
+	e.mad_hits = 0  # (his attack is over: it starts from one hit again)
+	if e.has_passive("dormant") and not e.awake:
+		if e.size() <= 15 or e.dormant_turns >= 3:
+			e.awake = true
+			e.intent = e.def.moves[0]
+			e.move_index = 1
+			_log("%s wakes." % e.name)
+		else:
+			e.dormant_turns += 1
+			e.intent = {"kind": "dormant"}
+	if e.has_passive("head_throw"):
+		if e.has_meta("headless"):
+			e.intent = e.def.moves[0]
+		elif e.size() <= 10:
+			e.intent = e.def.head_move  # (at 10 Essence or less: his next move, whatever was coming)
+			e.set_meta("headless", true)
+	if e.grounded > 0:
+		e.intent = {"kind": "grounded"}
 	if e.has_passive("thrown_junk"):
 		e.intent = EnemyDefs.throw_roll(rng)  # (the Orphans: rolled now, so you can see what is coming)
 	if e.has_passive("big_shield") and e.size() <= 1:
@@ -2643,13 +2669,13 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 			e.rotate_left()
 		"silence":
 			var cands := usable_spells()
-			for k in int(m.get("n", 1)):
+			for k in cands.size() if m.get("all", false) else int(m.get("n", 1)):
 				if cands.is_empty():
 					break
 				var s: Dictionary = cands.pop_at(rng.randi() % cands.size())
 				player.silenced[s.id] = m.turns
 				_log("%s silences %s." % [e.name, s.name])
-			await anim.call({"type": "silence"})
+			await anim.call({"type": "silence", "enemy": e, "head": m.get("head", false)})
 		"invert_spells":
 			# some of your spells flip (spell <-> anti-spell) for the rest of the fight
 			var cands := shown_spells().filter(func(s): return not s.get("power", false) and String(s.get("pattern", "")) != "" and not player.used_powers.has(s.id))
@@ -2813,6 +2839,12 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 		"ethereal":
 			e.ethereal = true
 		"empower":
+			if m.get("who", "") == "all":  # (the Hyena's howl: itself and everyone else)
+				for x in alive():
+					x.dmg_bonus += m.n
+					x.power += m.n
+				_log("%s howls: every enemy gains %d Power." % [e.name, m.n])
+				return
 			var t := _random_one(e, m)
 			t.dmg_bonus += m.n
 			t.power += m.n
@@ -2916,16 +2948,16 @@ func _rage_check(e: EnemyState) -> bool:
 func _shield_wall() -> void:
 	var wall := false
 	for e: EnemyState in alive():
-		if not e.has_passive("big_shield"):
+		if not e.has_passive("big_shield") and not e.has_passive("shell"):
 			continue
-		wall = true
+		wall = wall or e.has_passive("big_shield")
 		if e.size() > 1:
 			if not e.shield_up:
 				e.shield_up = true
 				e.set_armor(0)
 		elif e.armor[0]:
 			e.armor[0] = false
-		if e.size() <= 1 and e.intent.get("kind", "") == "armor":
+		if e.size() <= 1 and e.intent.get("kind", "") == "armor" and e.has_passive("big_shield"):
 			_plan(e)
 	for e: EnemyState in enemies:
 		if e.has_passive("behind_shield"):
@@ -2951,8 +2983,26 @@ func _lamp_back(e: EnemyState) -> void:
 	await anim.call({"type": "spawn", "enemy": lamp})
 
 
+## A flyer that has lost Essence comes down, and is stunned for a turn. The Horseman at 10 Essence: the head is what comes next.
+func _falls_and_heads() -> void:
+	for e: EnemyState in alive():
+		if e.flying:
+			if e.size() < e.fly_size:
+				e.flying = false
+				e.grounded = 1
+				e.intent = {"kind": "grounded"}
+				_log("%s is knocked out of the air!" % e.name)
+			else:
+				e.fly_size = e.size()
+		if e.has_passive("head_throw") and not e.has_meta("headless") and e.size() <= 10:
+			_plan(e)
+		if e.has_passive("dormant") and not e.awake and e.size() <= 15:
+			_plan(e)
+
+
 func _cleanup() -> void:
 	_shield_wall()
+	_falls_and_heads()
 	_rebirths()
 	_summons_fall()
 	_handyman_step()

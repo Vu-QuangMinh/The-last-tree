@@ -40,6 +40,12 @@ var weak25 := false  # Stillness (permanent)
 var freeze_turns := 0
 var no_mend := false  # Cauterize
 var ethereal := false  # from its own intent: your next chant can't touch it
+var awake := false  # the Sentinel has woken
+var dormant_turns := 0  # the turns it has stood still
+var flying := false  # your chant can't hit it; any Essence it loses brings it down, and it is stunned for a turn
+var fly_size := 0  # its Essence while in the air (fewer: it has been hit)
+var grounded := 0  # stunned by its fall: the turns it skips
+var mad_hits := 0  # the Maddened Soldier: the extra hits your chants have earned on his next attack
 var lamp_wait := false  # the Bog Lantern's lamp is out: it grows back at the end of the next enemy turn
 var shield_up := false  # the Shield Bearer has armoured himself for the fight
 var behind := false  # the Necromancer, while his Shield Bearer stands: nothing you do can touch it
@@ -478,6 +484,10 @@ func describe_statuses() -> Array:
 		out.append("Stillness (deals 25% less)")
 	if freeze_turns > 0:
 		out.append("Frozen (skips its next action)")
+	if flying:
+		out.append("Flying (your chant can't hit it)")
+	if grounded > 0:
+		out.append("Stunned (skips its next action)")
 	if no_mend:
 		out.append("Cauterized (can't mend)")
 	if ethereal:

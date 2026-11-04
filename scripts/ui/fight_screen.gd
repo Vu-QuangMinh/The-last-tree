@@ -5918,6 +5918,9 @@ func _anim_event(ev: Dictionary) -> void:
 			_refresh_all()
 			await _wait(0.15)
 		"silence":
+			var head_v: EnemyView = _views.get(ev.get("enemy"))
+			if ev.get("head", false) and head_v:
+				await OrphanFx.throw_item(self, head_v.creature.global_position + Vector2(head_v.creature.size.x * 0.5, 40.0), _attack_point(), "head")
 			Audio.play("sfx_silence_apply")
 			_refresh_all()
 			await _wait(0.15)

@@ -8,7 +8,7 @@ extends RefCounted
 
 const E := {
 	# ---------------- act 1: the Verdant Circle (druids, changed animals, elemental spirits). tier = how early in the
-	# act it can show up (see ENCOUNTERS_ACT1); its Essence is exactly its pattern (no extra Essence on deeper floors).
+	# act it can show up (see POOLS); its Essence is exactly its pattern (no extra Essence on deeper floors).
 	"ashling": {"name": "Ashling", "act": 1, "tier": 1.0, "hp": "FFA", "moves": [{"kind": "attack", "n": 3}],
 		"flavor": "A small fire spirit."},
 	"iceling": {"name": "Iceling", "act": 1, "tier": 1.0, "hp": "WWA", "moves": [{"kind": "attack", "n": 3}],
@@ -23,17 +23,17 @@ const E := {
 		"flavor": "Warm to the touch. Don't touch it."},
 	"bramble_back": {"name": "Bramble Back", "act": 1, "tier": 2.0, "hp": "FAFWFAF", "moves": [{"kind": "attack", "n": 5}], "passives": ["thorns"],
 		"flavor": "An enraged porcupine on two legs."},
-	"winged_tortoise": {"name": "Winged Tortoise", "act": 1, "tier": 2.0, "hp": "WAWWAWW", "moves": [{"kind": "armor", "pos": -1}, {"kind": "attack", "n": 5}],
+	"winged_tortoise": {"name": "Winged Tortoise", "act": 1, "tier": 2.0, "flying": true, "passives": ["flying"], "hp": "WAWWAWW", "moves": [{"kind": "armor", "pos": -1}, {"kind": "attack", "n": 5}],
 		"flavor": "A shell that learned to fly."},
-	"leech_bat": {"name": "Leech Bat", "act": 1, "tier": 2.5, "hp": "AFAWAFA", "moves": [{"kind": "attack", "n": 5, "also": {"kind": "mend", "el": "random", "n": 1, "who": "self"}}],
+	"leech_bat": {"name": "Leech Bat", "act": 0, "tier": 2.5, "flying": true, "passives": ["flying"], "hp": "AFAWAFA", "moves": [{"kind": "attack", "n": 5, "also": {"kind": "mend", "el": "random", "n": 1, "who": "self"}}],
 		"flavor": "Shiny fangs, and it feeds on every bite."},
-	"hush_moth": {"name": "Hush Moth", "act": 1, "tier": 2.0, "hp": "AWAAWAW", "moves": [{"kind": "silence", "turns": 1}, {"kind": "attack", "n": 5}],
+	"hush_moth": {"name": "Hush Moth", "act": 1, "tier": 2.0, "flying": true, "passives": ["flying"], "hp": "AWAAWAW", "moves": [{"kind": "silence", "turns": 1}, {"kind": "attack", "n": 5}],
 		"flavor": "Its wings steal your words."},
-	"cinder_hound": {"name": "Cinder Hound", "act": 1, "tier": 2.5, "hp": "FFAFFWFFAF", "moves": [{"kind": "attack", "n": 6}], "passives": ["burn_immune"],
+	"cinder_hound": {"name": "Cinder Hound", "act": 0, "tier": 2.5, "hp": "FFAFFWFFAF", "moves": [{"kind": "attack", "n": 6}], "passives": ["burn_immune"],
 		"flavor": "Flame Essence burns under its skin like tattoos."},
 	"mirror_fairy": {"name": "Mirror Fairy", "act": 1, "tier": 2.5, "hp": "AWFWAAWFWA", "size": 3.0, "passives": ["mirror_deflect"], "moves": [{"kind": "confuse"}, {"kind": "attack", "n": 6}],
 		"flavor": "A fairy's face in a mirror, her hands gripping it from behind."},
-	"yeti": {"name": "Yeti", "act": 1, "tier": 2.5, "hp": "WWAWWAWWAWWA", "moves": [{"kind": "freeze", "n": 2}, {"kind": "attack", "n": 7}],
+	"yeti": {"name": "Yeti", "act": 0, "tier": 2.5, "hp": "WWAWWAWWAWWA", "moves": [{"kind": "freeze", "n": 2}, {"kind": "attack", "n": 7}],
 		"flavor": "Big, white and very cold."},
 	"greenseer": {"name": "Greenseer", "act": 1, "tier": 3.0, "hp": "AWFAWAFWAWFAW", "moves": [{"kind": "summon", "ids": ["purple_slime", "green_slime", "yellow_slime"], "n": 1}, {"kind": "mend", "el": "random", "n": 2, "who": "self"}, {"kind": "attack", "n": 6}],
 		"flavor": "A druid in moss clothes under a big mushroom hat."},
@@ -41,7 +41,7 @@ const E := {
 		"flavor": "It rolls. It never stops rolling."},
 	"giant_slime": {"name": "Giant Slime", "act": 1, "tier": 3.0, "hp": "FWAFWAFWAF", "moves": [{"kind": "attack", "n": 7}], "passives": ["slime_burst"],
 		"flavor": "A giant rainbow slime."},
-	"tomato_knight": {"name": "Tomato Knight", "act": 1, "tier": 3.0, "hp": "FFWFFAFFWFFAFFW", "moves": [{"kind": "armor", "pos": -1}, {"kind": "attack", "n": 7}],
+	"tomato_knight": {"name": "Tomato Knight", "act": 0, "tier": 3.0, "hp": "FFWFFAFFWFFAFFW", "moves": [{"kind": "armor", "pos": -1}, {"kind": "attack", "n": 7}],
 		"moves2": [{"kind": "attack", "n": 4, "hits": 2}], "passives": ["rage_at_half"],
 		"flavor": "Ripe, red and armoured."},
 	# ---------------- in reserve (not in any act's pool for now; kept to reuse in later acts)
@@ -76,7 +76,7 @@ const E := {
 	"anxious_armadillo": {"name": "Anxious Armadillo", "act": 2, "unique": true, "no_extra": true, "hp": "WFAAFWWAFFAWWFAAFWWA",
 		"passives": ["armadillo"], "moves": [{"kind": "grow_thorns", "n": 2}],
 		"flavor": "Curled up, spiky, and very, very nervous."},
-	# Act 2 (see ENCOUNTERS_ACT2; exact numbers: no act bonus). The Starving Mobs (tier 1.5): three peasants, 7 Essence each.
+	# Act 2 (see POOLS; exact numbers: no act bonus). The Starving Mobs: three peasants, 7 Essence each.
 	"mob_pitchfork": {"name": "Pitchfork Peasant", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FFWAFWA",
 		"moves": [{"kind": "attack", "n": 2, "also": {"kind": "bleed", "n": 2}}],
 		"flavor": "It used to turn hay."},
@@ -93,6 +93,42 @@ const E := {
 	"necromancer": {"name": "Necromancer", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FAW", "passives": ["behind_shield"],
 		"moves": [{"kind": "poison", "n": 3}],
 		"flavor": "Brave, as long as somebody else is holding the shield."},
+	# The Sentinel: a large golem with a blue orb inside. It does nothing until it is down to 15 Essence, or for 3 turns, then
+	# hits for 3 once, twice, four times, stuns itself for a turn, and starts over.
+	"sentinel": {"name": "Sentinel", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WAFWAWFAWWFAAWFWAFWA", "passives": ["dormant"],
+		"moves": [{"kind": "attack", "n": 3}, {"kind": "attack", "n": 3, "hits": 2}, {"kind": "attack", "n": 3, "hits": 4}, {"kind": "recharge"}],
+		"flavor": "Its orb turns slowly toward you."},
+	# The Headless Horseman: two moves in turn. At 10 Essence or less his next move is to throw his head, which silences every spell;
+	# from then on he only has the first move.
+	"headless_horseman": {"name": "Headless Horseman", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAFWAAWFFWAFAW", "passives": ["head_throw"],
+		"moves": [{"kind": "attack", "n": 5, "hits": 2}, {"kind": "silence", "turns": 1, "also": {"kind": "attack", "n": 3}}],
+		"head_move": {"kind": "silence", "all": true, "turns": 1, "head": true},
+		"flavor": "He holds it up to his neck to scream."},
+	# The Scavengers: four animals with human posture, 6 Essence each. Flying: see EnemyState.flying.
+	"scav_rat": {"name": "Scavenger Rat", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAFWA",
+		"moves": [{"kind": "attack", "n": 1, "hits": 3}],
+		"flavor": "Three small bites, and it has already gone through your pockets."},
+	"scav_hyena": {"name": "Scavenger Hyena", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WAFWAF",
+		"moves": [{"kind": "empower", "n": 1, "who": "all", "name": "Howl"}],
+		"flavor": "It laughs, and the others get braver."},
+	"scav_vulture": {"name": "Scavenger Vulture", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "flying": true, "hp": "AFWAFW", "passives": ["flying"],
+		"moves": [{"kind": "attack", "n": 2, "hits": 2}],
+		"flavor": "It is in no hurry."},
+	"scav_beetle": {"name": "Scavenger Dung Beetle", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WWAAFF", "passives": ["shell"],
+		"moves": [{"kind": "attack", "n": 3}],
+		"flavor": "Somebody has to clean up."},
+	# The Maddened Soldier: ragged, a shiny red eye, his hands fused into a two-handed sword he drags along the ground. Hits for 2;
+	# every time your chant strikes him, one more hit on his next attack (spells don't count).
+	"mad_soldier": {"name": "Maddened Soldier", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWWAFAFWAAWFFAW", "passives": ["maddened"],
+		"moves": [{"kind": "attack", "n": 2}],
+		"flavor": "The sword isn't in his hands. It is his hands."},
+	# The Tree Dwellers: a tree with two people growing out of it as branches, each with a bow and its own 8 Essence.
+	"tree_dweller_a": {"name": "Tree Dweller", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WFAWFAWF",
+		"moves": [{"kind": "poison", "n": 2}],
+		"flavor": "He stood his post. He is still standing it."},
+	"tree_dweller_b": {"name": "Tree Dweller", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "AWFAAWFW",
+		"moves": [{"kind": "poison", "n": 2}],
+		"flavor": "The bark has almost reached her eyes."},
 	# The Orphans: a tall bramble bush with children behind it. They throw whatever they find: the damage is rolled when the
 	# throw is planned (see THROWN). The bush killed, it is pulled up and the children run off to the left, laughing.
 	"orphan_bush": {"name": "The Orphans", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "AWFAWWFAAFWA", "passives": ["thrown_junk"],
@@ -317,6 +353,11 @@ const PASSIVE_TEXT := {
 	"last_gasp": "Last Gasp: gives you Poison 2 when it dies.",
 	"retainer": "Loyal: if the Samurai falls first, his Retainer yields and the fight is over.",
 	"avenger": "Avenger: if his Retainer falls first, the Samurai gains 5 Power for the rest of the fight.",
+	"dormant": "Dormant: does nothing until it is down to 15 Essence, or for 3 turns.",
+	"head_throw": "Head Throw: at 10 Essence or less, he throws his head and silences all your spells. After that he only swings.",
+	"flying": "Flying: your chant can't hit it. Damage from a spell or a bottle brings it down, and it is stunned for a turn.",
+	"shell": "Shell: its first Essence is always armoured, until it is its last one.",
+	"maddened": "Maddened: every time your chant strikes him, he hits one more time on his next attack. Spells don't count.",
 	"thrown_junk": "Thrown Junk: throws whatever is at hand, for 2 to 10 damage. Usually about 3, but sometimes an axe.",
 	"lure": "Lure: its lamp is a separate enemy. Killed, the lamp grows back after a turn, its clock back at 2.",
 	"last_fuse": "Last Fuse: at 0 Essence it reboots with 5 Essence. Destroy those, or on its turn it explodes for 10 and dies.",
@@ -376,6 +417,15 @@ const BIOS := {
 	"mob_torch": "Sets one of your spells alight. It stays alight until you cast it, and then it burns you.",
 	"shield_bearer": "A skeleton behind a very big shield. Doesn't fight back until the shield is all he has left.",
 	"necromancer": "Three Essence and a lot of Poison, safe for as long as his skeleton stands.",
+	"sentinel": "Wakes when you hurt it, or when it has seen enough. Each round of blows is bigger, then it has to stop and recharge.",
+	"headless_horseman": "Swings twice, or screams through the head he holds to his neck. Hurt him enough and he throws it.",
+	"scav_rat": "Three little bites a turn. Gets nastier with every howl.",
+	"scav_hyena": "Doesn't bite. It howls, and all of them hit harder.",
+	"scav_vulture": "Your chant can't reach it. Knock it down with a spell, and it lies stunned for a turn.",
+	"scav_beetle": "Its shell never comes off, and it hits harder than it looks.",
+	"mad_soldier": "Weak on his own. Every chant that strikes him adds a swing, so a spell may be the kinder way.",
+	"tree_dweller_a": "Rooted to the spot, and never stops shooting. Two Poison a turn, every turn.",
+	"tree_dweller_b": "Rooted to the spot, and never stops shooting. Two Poison a turn, every turn.",
 	"orphan_bush": "Mud, stones, sticks, and now and then something much worse. Nobody ever taught them not to.",
 	"bog_fish": "An enormous angler fish on two legs. Bites, spits Poison, or grows more Thorns, whichever it feels like.",
 	"bog_lamp": "Its clock runs 2, 1, 0, and at 0 you are Stunned. Put it out and it grows back, but its clock starts over.",
@@ -488,65 +538,58 @@ static func name_of(id: String) -> String:
 	return ELITE_GROUPS[id].name if ELITE_GROUPS.has(id) else E[id].name
 
 
-## Act 1 normal fights, the Slay the Spire way: a fixed list of hand-made, themed encounters. Each one is always the
-## same group of enemies and always the same tier (how far into the act it can appear); only WHICH encounter you meet
-## is picked (by weight). A group of smaller enemies is worth one bigger one: the three slimes together are a tier-2.5
-## fight, like a Yeti. tier -> [{name, ids (left to right), w}]
-const ENCOUNTERS_ACT1 := {
-	1.0: [
-		{"name": "A Fire Spirit", "ids": ["ashling"], "w": 1.0},
-		{"name": "An Ice Spirit", "ids": ["iceling"], "w": 1.0},
-		{"name": "An Air Spirit", "ids": ["zephling"], "w": 1.0},
-	],
-	1.5: [
-		{"name": "Purple Slime", "ids": ["purple_slime"], "w": 1.0},
-		{"name": "Green Slime", "ids": ["green_slime"], "w": 1.0},
-		{"name": "Yellow Slime", "ids": ["yellow_slime"], "w": 1.0},
-		{"name": "Steam", "ids": ["ashling", "iceling"], "w": 1.0},
-		{"name": "Wildfire", "ids": ["zephling", "ashling"], "w": 1.0},
-		{"name": "Frost Wind", "ids": ["iceling", "zephling"], "w": 1.0},
-	],
-	2.0: [
-		{"name": "Bramble Back", "ids": ["bramble_back"], "w": 1.0},
-		{"name": "Winged Tortoise", "ids": ["winged_tortoise"], "w": 1.0},
-		{"name": "Hush Moth", "ids": ["hush_moth"], "w": 1.0},
-		{"name": "The Elemental Trio", "ids": ["ashling", "iceling", "zephling"], "w": 1.0},
-		{"name": "Marsh", "ids": ["purple_slime", "iceling"], "w": 0.7},
-		{"name": "Hot Puddle", "ids": ["yellow_slime", "ashling"], "w": 0.7},
-		{"name": "Breezy Ooze", "ids": ["green_slime", "zephling"], "w": 0.7},
-	],
-	2.5: [
-		{"name": "Cinder Hound", "ids": ["cinder_hound"], "w": 1.0},
-		{"name": "Mirror Fairy", "ids": ["mirror_fairy"], "w": 1.0},
-		{"name": "Yeti", "ids": ["yeti"], "w": 1.0},
-		{"name": "Leech Bat", "ids": ["leech_bat"], "w": 1.0},
-		{"name": "The Slime Trio", "ids": ["purple_slime", "green_slime", "yellow_slime"], "w": 1.0},
-		{"name": "The Forest Floor", "ids": ["bramble_back", "winged_tortoise"], "w": 0.8},
-	],
-	3.0: [
-		{"name": "The Greenseer's Garden", "ids": ["greenseer", "green_slime"], "w": 1.0},
-		{"name": "Rolling Bear", "ids": ["rolling_bear"], "w": 1.0},
-		{"name": "Giant Slime", "ids": ["giant_slime"], "w": 1.0},
-		{"name": "Tomato Knight", "ids": ["tomato_knight"], "w": 1.0},
-		{"name": "Hound and Embers", "ids": ["cinder_hound", "ashling"], "w": 0.7},
-		{"name": "Blizzard", "ids": ["yeti", "iceling"], "w": 0.7},
-		{"name": "Hall of Mirrors", "ids": ["mirror_fairy", "zephling"], "w": 0.7},
-		{"name": "Night Wings", "ids": ["leech_bat", "hush_moth"], "w": 0.7},
-	],
-}
-
-
-## Act 2's hand-made fights, by tier (the same rows as Act 1: act1_tier). A tier not listed yet: the old random mix.
-const ENCOUNTERS_ACT2 := {
-	1.0: [
-		{"name": "The Orphans", "ids": ["orphan_bush"], "w": 1.0},
-		{"name": "The Undying Duo", "ids": ["shield_bearer", "necromancer"], "w": 1.0},
-		{"name": "The Bog Lantern", "ids": ["bog_fish", "bog_lamp"], "w": 1.0},
-		{"name": "Bug Hunter 1.0", "ids": ["bug_hunter"], "w": 1.0},
-	],
-	1.5: [
-		{"name": "Starving Mobs", "ids": ["mob_pitchfork", "mob_slingshot", "mob_torch"], "w": 1.0},
-	],
+## Normal fights, the Slay the Spire way: hand-made, themed encounters in three pools per act. Each one is always the same
+## group of enemies. What decides the pool is how many fights you have had in the act, not where you are on the map: when an act
+## starts, its whole list of fights is rolled (roll_fight_plan), and every normal fight takes the next one. act -> pool -> [{name, ids (left to right), w}]
+const POOLS := {
+	1: {
+		"easy": [
+			{"name": "A Fire Spirit", "ids": ["ashling"], "w": 1.0},
+			{"name": "An Ice Spirit", "ids": ["iceling"], "w": 1.0},
+			{"name": "An Air Spirit", "ids": ["zephling"], "w": 1.0},
+			{"name": "Purple Slime", "ids": ["purple_slime"], "w": 1.0},
+			{"name": "Green Slime", "ids": ["green_slime"], "w": 1.0},
+			{"name": "Yellow Slime", "ids": ["yellow_slime"], "w": 1.0},
+			{"name": "Steam", "ids": ["ashling", "iceling"], "w": 1.0},
+			{"name": "Wildfire", "ids": ["zephling", "ashling"], "w": 1.0},
+			{"name": "Frost Wind", "ids": ["iceling", "zephling"], "w": 1.0},
+		],
+		"medium": [
+			{"name": "Bramble Back", "ids": ["bramble_back"], "w": 1.0},
+			{"name": "Winged Tortoise", "ids": ["winged_tortoise"], "w": 1.0},
+			{"name": "Hush Moth", "ids": ["hush_moth"], "w": 1.0},
+			{"name": "The Elemental Trio", "ids": ["ashling", "iceling", "zephling"], "w": 1.0},
+			{"name": "Marsh", "ids": ["purple_slime", "iceling"], "w": 0.7},
+			{"name": "Hot Puddle", "ids": ["yellow_slime", "ashling"], "w": 0.7},
+			{"name": "Breezy Ooze", "ids": ["green_slime", "zephling"], "w": 0.7},
+			{"name": "Mirror Fairy", "ids": ["mirror_fairy"], "w": 1.0},
+			{"name": "The Slime Trio", "ids": ["purple_slime", "green_slime", "yellow_slime"], "w": 1.0},
+			{"name": "The Forest Floor", "ids": ["bramble_back", "winged_tortoise"], "w": 0.8},
+		],
+		"hard": [
+			{"name": "The Greenseer's Garden", "ids": ["greenseer", "green_slime"], "w": 1.0},
+			{"name": "Rolling Bear", "ids": ["rolling_bear"], "w": 1.0},
+			{"name": "Giant Slime", "ids": ["giant_slime"], "w": 1.0},
+			{"name": "Hall of Mirrors", "ids": ["mirror_fairy", "zephling"], "w": 0.7},
+		],
+	},
+	2: {
+		"easy": [
+			{"name": "The Orphans", "ids": ["orphan_bush"], "w": 1.0},
+			{"name": "The Undying Duo", "ids": ["shield_bearer", "necromancer"], "w": 1.0},
+			{"name": "The Bog Lantern", "ids": ["bog_fish", "bog_lamp"], "w": 1.0},
+			{"name": "Bug Hunter 1.0", "ids": ["bug_hunter"], "w": 1.0},
+			{"name": "Starving Mobs", "ids": ["mob_pitchfork", "mob_slingshot", "mob_torch"], "w": 1.0},
+			{"name": "Maddened Soldier", "ids": ["mad_soldier"], "w": 1.0},
+			{"name": "The Tree Dwellers", "ids": ["tree_dweller_a", "tree_dweller_b"], "w": 1.0},
+		],
+		"medium": [
+			{"name": "The Headless Horseman", "ids": ["headless_horseman"], "w": 1.0},
+			{"name": "The Sentinel", "ids": ["sentinel"], "w": 1.0},
+			{"name": "The Scavengers", "ids": ["scav_rat", "scav_hyena", "scav_vulture", "scav_beetle"], "w": 1.0},
+		],
+		"hard": [],  # (none yet: the medium pool stands in)
+	},
 }
 
 ## What the Orphans throw: [damage, item, weight]. 3 is the most common, the heavy things are rare, 10 is always the axe.
@@ -562,23 +605,26 @@ static func throw_roll(rng: RandomNumberGenerator) -> Dictionary:
 	return {"kind": "attack", "n": 3, "throw": "stone"}
 
 
-## Which tier of Act 1 fights a map row (0-based, 12 rows) brings.
-static func act1_tier(row: int) -> float:
-	if row <= 1:
-		return 1.0
-	if row <= 3:
-		return 1.5
-	if row <= 5:
-		return 2.0
-	if row <= 8:
-		return 2.5
-	return 3.0
+const PLAN_LENGTH := 12  # more than a path through an act can hold
+const EASY_FIGHTS := 2  # the first two fights of an act are easy,
+const MEDIUM_FIGHTS := 2  # the next two medium, the rest hard
 
 
-## An Act 1 fight of this tier, weighted, and never one of the last two encounters met (like Slay the Spire).
-## recent: the names of the encounters met so far this run.
-static func act1_encounter(tier: float, rng: RandomNumberGenerator, recent: Array = []) -> Dictionary:
-	return _pick_encounter(ENCOUNTERS_ACT1[tier], rng, recent)
+## An act's fights, in the order they will be met: weighted, never one of the last two, and where the pool changes, nothing
+## that shares an enemy with the fight just before it (no Slimes right after Slimes).
+static func roll_fight_plan(act: int, rng: RandomNumberGenerator) -> Array:
+	var pools: Dictionary = POOLS[act]
+	var plan: Array = []
+	for i in PLAN_LENGTH:
+		var kind := "easy" if i < EASY_FIGHTS else ("medium" if i < EASY_FIGHTS + MEDIUM_FIGHTS else "hard")
+		var pool: Array = pools[kind] if not pools[kind].is_empty() else pools.medium
+		if i == EASY_FIGHTS or i == EASY_FIGHTS + MEDIUM_FIGHTS:
+			var before: Array = plan[-1].ids
+			var fresh := pool.filter(func(enc): return not enc.ids.any(func(id): return id in before))
+			if not fresh.is_empty():
+				pool = fresh
+		plan.append(_pick_encounter(pool, rng, plan.map(func(enc): return enc.name)))
+	return plan
 
 
 static func _pick_encounter(pool: Array, rng: RandomNumberGenerator, recent: Array) -> Dictionary:
@@ -595,19 +641,6 @@ static func _pick_encounter(pool: Array, rng: RandomNumberGenerator, recent: Arr
 		if r < 0.0:
 			return enc.duplicate(true)
 	return fresh[-1].duplicate(true)
-
-
-## Has this tier of Act 2 a hand-made fight left that wasn't one of the last two met? (If not: the old random mix.)
-static func act2_has_fight(tier: float, recent: Array) -> bool:
-	if not ENCOUNTERS_ACT2.has(tier):
-		return false
-	var last_two := recent.slice(maxi(0, recent.size() - 2))
-	return ENCOUNTERS_ACT2[tier].any(func(enc): return not (enc.name in last_two))
-
-
-## An Act 2 fight of this tier, picked the same way (only the tiers listed in ENCOUNTERS_ACT2).
-static func act2_encounter(tier: float, rng: RandomNumberGenerator, recent: Array = []) -> Dictionary:
-	return _pick_encounter(ENCOUNTERS_ACT2[tier], rng, recent)
 
 
 ## Enemy ids for a node. floor is 1-based within the act. seen: ids met earlier this run (avoided when possible).
@@ -681,7 +714,7 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			s = "Shuffle its Essence"
 		"silence":
 			var many: int = m.get("n", 1)
-			s = "Silence %s (%d turn%s)" % ["one of your spells" if many == 1 else "%d of your spells" % many, m.turns, "" if m.turns == 1 else "s"]
+			s = "Silence %s (%d turn%s)" % ["ALL your spells" if m.get("all", false) else ("one of your spells" if many == 1 else "%d of your spells" % many), m.turns, "" if m.turns == 1 else "s"]
 		"invert_spells":
 			s = "Invert %d of your spell%s (a spell becomes an anti-spell, an anti-spell a spell)" % [m.n, "" if m.n == 1 else "s"]
 			if full:
@@ -744,6 +777,12 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			s = "Poison you (%d)" % m.n
 		"bleed":
 			s = "Bleed %d" % m.n
+		"grounded":
+			s = "Stunned: it skips its action"
+		"recharge":
+			s = "Recharging: it stuns itself for a turn"
+		"dormant":
+			s = "Dormant: it does nothing until it is down to 15 Essence, or for 3 turns"
 		"glow":
 			s = "Shines brighter: at 0 it stuns you (clock: %d)" % m.n
 		"explode":
@@ -753,7 +792,7 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 		"ethereal":
 			s = "Go Ethereal (your next chant can't touch it)"
 		"empower":
-			s = "Empower +%d" % m.n + {"random": " one of them, at random", "samurai": " the Samurai"}.get(m.get("who", "self"), "")
+			s = "Empower +%d" % m.n + {"random": " one of them, at random", "samurai": " the Samurai", "all": " every enemy"}.get(m.get("who", "self"), "")
 		"summon":
 			if m.has("list"):
 				s = "Call %d %s%s" % [m.n, E[m.list[0]].name, "" if m.n == 1 else "s"]
