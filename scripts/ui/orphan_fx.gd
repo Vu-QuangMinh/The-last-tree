@@ -8,6 +8,21 @@ const RUN_TIME := 1.5  # the children are off the stage after this
 const WAIT := 2.3  # how long the fight waits for it all
 
 
+## A child: the carved picture orphan_child when there is one, otherwise the emoji.
+static func _child(px: int) -> Control:
+	var tex: Texture2D = UiSkin.tex("orphan_child")
+	if tex == null:
+		return _figure("🧒", px)
+	var r := TextureRect.new()
+	r.texture = tex
+	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	r.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	r.custom_minimum_size = Vector2(px, px)
+	r.size = Vector2(px, px)
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return r
+
+
 static func _figure(text: String, px: int) -> Label:
 	var l := Label.new()
 	l.text = text
@@ -35,7 +50,7 @@ static func throw_item(host: Control, from: Vector2, to: Vector2, item: String) 
 	host.add_child(n)
 	n.pivot_offset = Vector2(px, px) / 2.0
 	n.global_position = from
-	Audio.play("sfx_steal_miss", -6.0, 1.3)
+	Audio.play("sfx_throw_whoosh", -2.0, randf_range(0.9, 1.15))
 	var tw := n.create_tween().set_parallel(true)
 	tw.tween_method(func(v: float) -> void:
 		n.global_position = from.lerp(to, v) + Vector2(0.0, -sin(v * PI) * 170.0) - Vector2(px, px) / 2.0, 0.0, 1.0, 0.5)
@@ -50,7 +65,8 @@ static func peek_forever(bush: Control) -> void:
 		await bush.get_tree().create_timer(randf_range(3.0, 7.0)).timeout
 		if not is_instance_valid(bush) or not bush.is_inside_tree():
 			return
-		var face := _figure("🧒", 58)
+		var face := _child(70)
+		Audio.play("sfx_kids_giggle", -9.0, randf_range(1.0, 1.3))
 		face.show_behind_parent = true
 		bush.add_child(face)
 		var x := randf_range(0.2, 0.7) * bush.size.x
@@ -74,9 +90,10 @@ static func run_away(host: Control, rect: Rect2, tex: Texture2D) -> void:
 	bush.z_index = 201
 	host.add_child(bush)
 	bush.global_position = rect.position
+	Audio.play("sfx_kids_giggle", -3.0)
 	var feet := rect.end.y - 84.0
 	for k in 3:
-		var kid := _figure("🧒", 76)
+		var kid := _child(96)
 		kid.z_index = 200
 		host.add_child(kid)
 		var at := Vector2(rect.position.x + rect.size.x * (0.2 + 0.25 * k), feet)

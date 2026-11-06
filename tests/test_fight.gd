@@ -2966,7 +2966,7 @@ func test_fire_dragon_needs_both_parts_down() -> void:
 	_set_hp(head, "")
 	f._check_end()
 	assert_true(f.over and f.won, "both down: won, and its fireball fizzles out with it")
-	assert_true("fire_dragon" in EnemyDefs.elites(3))
+	assert_true(not ("fire_dragon" in EnemyDefs.elites(3)), "hidden: the Winter Wyvern took its place")
 	assert_eq(EnemyDefs.ids_of("fire_dragon"), ["dragon_tail", "dragon_head"])
 
 

@@ -2091,6 +2091,7 @@ func _plan(e: EnemyState) -> void:
 			e.intent = e.def.moves[0]
 			e.move_index = 1
 			_log("%s wakes." % e.name)
+			anim.call({"type": "sfx", "name": "sfx_sentinel_wake"})
 		else:
 			e.dormant_turns += 1
 			e.intent = {"kind": "dormant"}
@@ -2378,6 +2379,7 @@ func _rebirths() -> void:
 			e.intent = e.def.moves2[0]
 			e.keep_intent = true
 			_log("%s reboots. Something inside it starts ticking." % e.name)
+			anim.call({"type": "sfx", "name": "sfx_boot_up"})
 			anim.call({"type": "reform", "enemy": e})
 
 
@@ -2760,6 +2762,7 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 		"stun":
 			player.stun_turns = maxi(player.stun_turns, int(m.get("turns", 1)))
 			_log("%s stuns you: next turn you can't chant or cast." % e.name)
+			await anim.call({"type": "sfx", "name": "sfx_stun_apply"})
 		"lock":
 			var cands := active_spells().filter(func(s): return not player.locks.has(s.id))
 			if not cands.is_empty():
@@ -2795,8 +2798,13 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 			player.bleed += m.n
 		"glow":
 			_log("%s shines brighter." % e.name)
+			await anim.call({"type": "sfx", "name": "sfx_lamp_glow"})
+		"recharge":
+			_log("%s powers down to recharge." % e.name)
+			await anim.call({"type": "sfx", "name": "sfx_power_down"})
 		"explode":
 			# Bug Hunter 1.0: the blast hits like an attack, and that is the end of it
+			anim.call({"type": "sfx", "name": "sfx_explode"})
 			await _do_move(e, {"kind": "attack", "n": m.n})
 			e.elements.clear()
 			e.armor.clear()
@@ -2980,6 +2988,7 @@ func _lamp_back(e: EnemyState) -> void:
 	lamp.fresh = true
 	_plan(lamp)
 	_log("%s grows a new lamp." % e.name)
+	anim.call({"type": "sfx", "name": "sfx_lamp_glow"})
 	await anim.call({"type": "spawn", "enemy": lamp})
 
 
@@ -2992,6 +3001,7 @@ func _falls_and_heads() -> void:
 				e.grounded = 1
 				e.intent = {"kind": "grounded"}
 				_log("%s is knocked out of the air!" % e.name)
+				anim.call({"type": "sfx", "name": "sfx_flyer_fall"})
 			else:
 				e.fly_size = e.size()
 		if e.has_passive("head_throw") and not e.has_meta("headless") and e.size() <= 10:

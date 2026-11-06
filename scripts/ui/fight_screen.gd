@@ -239,6 +239,8 @@ func setup(p_run: RunState, p_fight: Fight) -> void:
 func _ready() -> void:
 	add_to_group("fight_screen")  # (the bars of the screens laid over it leave the artifacts to this one)
 	_nu_ui = UiSkin.is_new_ui()
+	if _nu_ui:
+		NewUiLayout.use(UiSkin.is_hud2())  # (Puppet HUD ver 2 is the same HUD code with other numbers)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UiTheme.get_theme()
 	_backdrop = Backdrop.new()
@@ -440,6 +442,8 @@ func _ready() -> void:
 	UiTheme.use_heading_font(menu_btn)
 	if _nu_ui:
 		_style_nu_menu(menu_btn)
+		if NewUiLayout.hud2:
+			_style_hud2_menu(menu_btn)
 		_top_layer.add_child(menu_btn)  # (it is part of the HUD: it sinks with it between fights, where the map has its own Menu button)
 	else:
 		add_child(menu_btn)
@@ -572,6 +576,12 @@ func _set_info(text: String) -> void:
 	if _nu_ui:  # ("Act 1 · Floor 5\nTurn 2" -> "Act 1 - Floor 5 - Turn 2")
 		_info.text = text.replace("\r", "").replace("\n", " - ").replace(" · ", " - ").replace("Act ", "Act")  # (as the page writes it: "Act1 - Floor 5 - Turn 2")
 		_info.visible = true
+		if NewUiLayout.hud2:  # (one line over the artifact tray: smaller if it would stick out of the tray's width)
+			var fs := 18
+			var f := _info.get_theme_font("font")
+			while fs > 11 and f.get_string_size(_info.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > _info.size.x - 8.0:
+				fs -= 1
+			_info.add_theme_font_size_override("font_size", fs)
 		return
 	_info.text = text
 	if UiSkin.is_puppet():
@@ -824,7 +834,7 @@ func _build_spellbook_button() -> void:
 	_book_btn.size = Vector2(290, 64)
 	_book_btn.custom_minimum_size = _book_btn.size
 	UiTheme.use_heading_font(_book_btn)
-	UiTheme.style_puppet_button(_book_btn, "chant", 22)
+	UiTheme.style_puppet_button(_book_btn, "chant", 22, false)
 	_book_btn.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_book_btn.text = "   Spellbook"  # (room for the book on the left)
 	_book_btn.tooltip_text = "Your spells: the active row and the rest of the book."
@@ -944,6 +954,7 @@ var _resort := false  # (set while the sorted order is being walked into: its ba
 var _resort_wait := false  # a launch just ended: the balls wait a moment before they swap into their types
 var _machine: SlotMachine  # Puppet Stage: the slot machine
 var _nu_ui := false  # the New UI theme (NewUiLayout): the Puppet look, a HUD laid out as page 2 of the Chant UI PDF, no machine (fixed when the fight is built)
+var _cast_kind := "chant"  # Puppet HUD ver 2: which painted picture the main button wears
 var _nu_back: NewUiLayout.Back  # New UI: the dark blocks, the slots and the debuff circles
 var _spawned_once := false  # the first launch of a fight counts as a spawn: the lever is pulled for it
 var _bonus_from := Vector2.INF  # where the next bonus Essence comes from (a screen point: the card, the bottle...); INF: it pops up over the top funnel
@@ -1134,6 +1145,7 @@ func _rebuild_character_panel_nu() -> void:
 	add_child(_player_panel)
 	old.queue_free()
 	_nu_back = L.Back.new()
+	_nu_back.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS  # (big pictures drawn small stay smooth)
 	_nu_back.size = Vector2(1920.0, 1080.0)  # (it draws on the whole screen: a Control of size 0 that is redrawn while its parent shakes drops out of the picture for a frame or two)
 	add_child(_nu_back)
 	_hp_bar = L.Bar.new()
@@ -1182,9 +1194,9 @@ func _rebuild_character_panel_nu() -> void:
 	_info.reparent(_top_layer, false)  # (no hanging sign: the Act / Floor / Turn line is written on the second tab of the HUD, always shown)
 	_info.position = L.ACT_TEXT.position
 	_info.size = L.ACT_TEXT.size
-	_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER if L.hud2 else HORIZONTAL_ALIGNMENT_LEFT
 	_info.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_info.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_info.autowrap_mode = TextServer.AUTOWRAP_OFF  # (Puppet HUD ver 2: one line centred over the artifact tray)
 	_info.add_theme_font_size_override("font_size", 18)
 	_info.add_theme_color_override("font_color", Color.WHITE)
 	var oblique := UiTheme.cut("oblique")
@@ -1295,6 +1307,25 @@ func _style_nu_menu(b: Button) -> void:
 	b.button_up.connect(func() -> void: _nu_menu_state(1 if b.is_hovered() else 0))
 
 
+## Puppet HUD ver 2: the Menu button is the wooden plate of the HUD (drawn by Hud2Layout.draw, lighter under the mouse, darker pressed) with its word in the art's amber.
+func _style_hud2_menu(b: Button) -> void:
+	b.custom_minimum_size = Vector2.ZERO
+	b.set_deferred("size", NewUiLayout.MENU_BTN.size)  # (deferred: the old 130 px minimum is still cached until the next frame and would clamp it)
+	b.position = NewUiLayout.MENU_BTN.position
+	b.text = ""  # (the word MENU is in the picture)
+	b.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		b.add_theme_color_override(c, Color(0.96, 0.72, 0.42))
+	b.add_theme_color_override("font_outline_color", Color(0.17, 0.09, 0.05))
+	b.add_theme_constant_override("outline_size", 3)
+	var orig: Dictionary = b.get_meta("hg_orig", {})  # (the header styles put these back when the fonts are re-applied: let them put back the amber)
+	if not orig.is_empty():
+		orig.color = Color(0.96, 0.72, 0.42)
+		orig.outline = 3
+		orig.ocolor = Color(0.17, 0.09, 0.05)
+		b.set_meta("hg_orig", orig)
+
+
 func _nu_menu_state(k: int) -> void:
 	if _nu_back != null:
 		_nu_back.menu_state = k
@@ -1332,6 +1363,7 @@ const DEBUFF_PAD := 22.0
 func _fit_debuff_board(n: int) -> void:
 	if _nu_ui:
 		_nu_back.debuffs = n
+		NewUiLayout.debuff_count = n
 		_nu_back.queue_redraw()
 		var rows := maxi(1, ceili(n / float(NewUiLayout.DEBUFF_COLS)))
 		var k := 0
@@ -1601,7 +1633,7 @@ func _build_strips_puppet() -> void:
 	var cp := PanelContainer.new()
 	cp.add_theme_stylebox_override("panel", StyleBoxEmpty.new() if _nu_ui else UiSkin.box("chant_frame", margins))  # (New UI: the dark block of the page is the Chant strip)
 	_chant_panel = cp
-	cp.position = _bag_at() + PuppetLayout.CHANT_AT
+	cp.position = _bag_at() + _chant_at()
 	cp.custom_minimum_size = PuppetLayout.FRAME_CHANT
 	var cin := Control.new()
 	cin.custom_minimum_size = PuppetLayout.FRAME_CHANT
@@ -1617,17 +1649,18 @@ func _build_strips_puppet() -> void:
 	cin.add_child(_chant_note)
 	_chant_row = HBoxContainer.new()
 	_chant_row.add_theme_constant_override("separation", 6)
-	_chant_row.position = Vector2(PuppetLayout.RING_X0, PuppetLayout.RING_CY - PUPPET_RING_PX / 2.0)
+	var ring_px := NewUiLayout.RING_PX if _nu_ui else PUPPET_RING_PX
+	_chant_row.position = Vector2(PuppetLayout.RING_X0 + 26.0 - ring_px / 2.0, PuppetLayout.RING_CY - ring_px / 2.0)
 	cin.add_child(_chant_row)
 	_cast_btn = UiTheme.button("Chant", _on_primary, 15)
 	UiTheme.use_heading_font(_cast_btn)
-	_place(_cast_btn, PuppetLayout.BTN_CHANT)
+	_place(_cast_btn, NewUiLayout.BTN_CHANT if _nu_ui else PuppetLayout.BTN_CHANT)
 	UiTheme.style_puppet_button(_cast_btn, "chant", 18)
 	_cast_btn.tooltip_text = "Chant (Enter) / Release (E)"
 	cin.add_child(_cast_btn)
 	# Clear (Undo takes its place after the chant) and Pass each sit in a fixed slot
 	var clear_slot := Control.new()
-	_place(clear_slot, PuppetLayout.BTN_CLEAR)
+	_place(clear_slot, NewUiLayout.BTN_CLEAR if _nu_ui else PuppetLayout.BTN_CLEAR)
 	cin.add_child(clear_slot)
 	_clear_btn = UiTheme.button("Clear", _clear_chant, 13)
 	UiTheme.use_heading_font(_clear_btn)
@@ -1636,7 +1669,7 @@ func _build_strips_puppet() -> void:
 	_clear_btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	clear_slot.add_child(_clear_btn)
 	var pass_slot := Control.new()
-	_place(pass_slot, PuppetLayout.BTN_PASS)
+	_place(pass_slot, NewUiLayout.BTN_PASS if _nu_ui else PuppetLayout.BTN_PASS)
 	cin.add_child(pass_slot)
 	_end_btn = UiTheme.button("Pass", _on_end_turn, 13)
 	UiTheme.use_heading_font(_end_btn)
@@ -1651,7 +1684,7 @@ func _build_strips_puppet() -> void:
 	var sp := PanelContainer.new()
 	_bag_panel = sp
 	sp.add_theme_stylebox_override("panel", StyleBoxEmpty.new() if _nu_ui else UiSkin.box("bag_frame", margins))  # (New UI: the Bag tray is drawn in NewUiLayout.Back)
-	sp.position = cp.position - PuppetLayout.CHANT_AT
+	sp.position = _bag_at()
 	sp.custom_minimum_size = PuppetLayout.FRAME_BAG
 	var inner := Control.new()
 	inner.custom_minimum_size = PuppetLayout.FRAME_BAG
@@ -1664,7 +1697,12 @@ func _build_strips_puppet() -> void:
 		_machine.straight = true
 		_machine.spawn_c = Vector2(NewUiLayout.MOUTH_X, NewUiLayout.TUBE_ROW_Y)
 		_machine.lever_shift = NewUiLayout.LEVER_SHIFT
+		if NewUiLayout.hud2:  # (Puppet HUD ver 2 has no machine: the Essence come down the vertical tube)
+			_machine.headless = true
+			_machine.drop_at = NewUiLayout.DROP_AT
 	_machine.build()
+	if NewUiLayout.hud2:
+		_build_hud2_tube(inner)
 	_machine.behind.show_behind_parent = true  # (the tube comes out from under the Bag strip)
 	sp.add_child(_machine.behind)
 	sp.move_child(_machine.behind, 0)
@@ -1680,9 +1718,54 @@ func _build_strips_puppet() -> void:
 	add_child(sp)
 
 
+## Puppet HUD ver 2: the vertical tube is two pictures, the back (z 59) under the Essence that fall and wait in it (z 60) and the front (z 61) over them; the right board is over the
+## whole tube, so its right strip is drawn once more (z 62) over everything of the tube. They are children of the Bag strip, so they sink, fade and go away with the HUD
+## (the tube only exists together with the HUD board and the Bag tray).
+func _build_hud2_tube(holder: Control) -> void:
+	var specs := [["hud2_tube_lower", Hud2Layout.TUBE_LOWER, 59], ["hud2_tube_upper", Hud2Layout.TUBE_UPPER, 61]]
+	for sp in specs:
+		var t := UiSkin.tex(sp[0])
+		if t == null:
+			continue
+		var tr := TextureRect.new()
+		tr.texture = t
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_SCALE
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		var r := Hud2Layout.s(sp[1])
+		tr.position = r.position - _bag_at()  # (local to the Bag strip)
+		tr.size = r.size
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tr.z_index = sp[2]
+		holder.add_child(tr)
+	var bt := UiSkin.tex("hud2_board_right")
+	if bt != null:
+		var px := bt.get_width() / Hud2Layout.BOARD_RIGHT.size.x  # (source px per pt)
+		var x0 := Hud2Layout.BOARD_COVER_X - Hud2Layout.BOARD_RIGHT.position.x
+		var at := AtlasTexture.new()
+		at.atlas = bt
+		at.region = Rect2(x0 * px, 0.0, bt.get_width() - x0 * px, bt.get_height())
+		var cover := TextureRect.new()
+		cover.texture = at
+		cover.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		cover.stretch_mode = TextureRect.STRETCH_SCALE
+		cover.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		var cr := Hud2Layout.s(Rect2(Hud2Layout.BOARD_COVER_X, Hud2Layout.BOARD_RIGHT.position.y, Hud2Layout.BOARD_RIGHT.end.x - Hud2Layout.BOARD_COVER_X, Hud2Layout.BOARD_RIGHT.size.y))
+		cover.position = cr.position - _bag_at()
+		cover.size = cr.size
+		cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cover.z_index = 62
+		holder.add_child(cover)
+
+
 ## The Bag strip's top-left on the screen.
 func _bag_at() -> Vector2:
 	return NewUiLayout.BAG_AT if _nu_ui else PuppetLayout.BAG_AT
+
+
+## The Chant strip's top-left, from the Bag strip's.
+func _chant_at() -> Vector2:
+	return NewUiLayout.CHANT_AT if _nu_ui else PuppetLayout.CHANT_AT
 
 
 func _place(c: Control, r: Rect2) -> void:
@@ -1701,7 +1784,7 @@ func _bag_slot(k: int, n: int) -> Vector2:
 		return Vector2(minf(_stock_row.size.x - BAG_PX, k * (BAG_PX + BAG_GAP)), 0)
 	if _puppet_strips():
 		var proom := (NewUiLayout.REST_END if _nu_ui else PuppetLayout.REST_END) - PuppetLayout.REST_X - BAG_PX
-		var pstep := minf(PuppetLayout.RING_STEP, proom / maxf(1.0, n - 1))
+		var pstep := minf(NewUiLayout.RING_STEP if _nu_ui else PuppetLayout.RING_STEP, proom / maxf(1.0, n - 1))
 		return Vector2(PuppetLayout.REST_X + minf(k * pstep, proom), PuppetLayout.AXIS_Y - BAG_PX / 2.0)
 	var room := ChantLayout.REST_END - ChantLayout.REST_X - BAG_PX
 	var step := minf(BAG_PX + 4.0, room / maxf(1.0, n - 1))
@@ -2077,6 +2160,15 @@ const NU_TUBE_SPEED := 620.0  # (New UI: the Essence run on along the Bag tray a
 const SLOT_BALL_SCALE := 0.92  # an Essence is drawn this big inside the glass
 
 
+## Puppet HUD ver 2: an Essence in the vertical tube is 60 pt = 56 px, as the page shows them.
+func _ball_k() -> float:
+	return Hud2Layout.BALL_PT * Hud2Layout.K / BAG_PX if NewUiLayout.hud2 else SLOT_BALL_SCALE
+
+
+func _tray_k() -> float:
+	return Hud2Layout.BALL_PT * Hud2Layout.K / BAG_PX if NewUiLayout.hud2 else TRAY_SCALE
+
+
 ## The reels at rest show next turn's draw (in the Bag's order, three at most): what is about to spawn.
 func _sync_reels() -> void:
 	return  # (the faces on the reels are pictures of what was rolled at the lever: a bonus Essence never changes them)
@@ -2118,11 +2210,15 @@ func _slot_route_time(mode: String, from_local: Vector2) -> float:
 	if mode == "reel":
 		pts = [from_local, Vector2(from_local.x, NewUiLayout.TUBE_ROW_Y)]
 	pts.append_array(m.tube_path())
+	var fly: float = {"from": 0.5, "pop": 0.28, "tray": 0.2}.get(mode, 0.0)
+	return fly + _path_len(pts) / NU_TUBE_SPEED
+
+
+func _path_len(pts: Array) -> float:
 	var total := 0.0
 	for i in pts.size() - 1:
 		total += pts[i].distance_to(pts[i + 1])
-	var fly: float = {"from": 0.5, "pop": 0.28, "tray": 0.2}.get(mode, 0.0)
-	return fly + total / NU_TUBE_SPEED
+	return total
 
 
 func _slot_route(ic: ElementIcon, delay: float, mode: String, from_local := Vector2.ZERO) -> float:
@@ -2133,14 +2229,12 @@ func _slot_route(ic: ElementIcon, delay: float, mode: String, from_local := Vect
 	if _nu_ui and mode == "reel":  # (New UI: straight down from its reel to the tube's row, so the three come to the tube in the order of the reels)
 		pts = [from_local, Vector2(from_local.x, NewUiLayout.TUBE_ROW_Y)]
 	pts.append_array(m.tube_path())
-	var total := 0.0
-	for i in pts.size() - 1:
-		total += pts[i].distance_to(pts[i + 1])
+	var total := _path_len(pts)
 	var dur := total / (NU_TUBE_SPEED if _nu_ui else SLOT_TUBE_SPEED)
 	ic.position = Vector2(m.port_center().x + 400.0, row_y)  # (parked out of the way until its turn: it must not count as a ball in front of the others)
 	ic.rotation = 0.0
 	ic.modulate.a = 0.0
-	ic.scale = Vector2.ONE * SLOT_BALL_SCALE
+	ic.scale = Vector2.ONE * _ball_k()
 	var mouth := m.funnel_top_mouth()
 	var tw := ic.create_tween()
 	tw.tween_interval(delay)
@@ -2156,7 +2250,7 @@ func _slot_route(ic: ElementIcon, delay: float, mode: String, from_local := Vect
 				var e := u * u * (3.0 - 2.0 * u)
 				ic.position = from_local.lerp(mouth, e) + Vector2(0.0, -110.0 * sin(u * PI)) - half
 				ic.rotation = -u * TAU * 1.5
-				ic.scale = Vector2.ONE * lerpf(0.4, SLOT_BALL_SCALE, minf(1.0, u * 2.0)), 0.0, 1.0, fly)
+				ic.scale = Vector2.ONE * lerpf(0.4, _ball_k(), minf(1.0, u * 2.0)), 0.0, 1.0, fly)
 	elif mode == "pop":
 		fly = 0.28
 		tw.tween_callback(func() -> void:
@@ -2167,18 +2261,18 @@ func _slot_route(ic: ElementIcon, delay: float, mode: String, from_local := Vect
 			if is_instance_valid(ic):
 				ic.position = mouth + Vector2(0.0, lerpf(-80.0, 0.0, u * u)) - half
 				ic.modulate.a = minf(1.0, u * 4.0)
-				ic.scale = Vector2.ONE * lerpf(0.3, SLOT_BALL_SCALE, minf(1.0, u * 2.0)), 0.0, 1.0, fly)
+				ic.scale = Vector2.ONE * lerpf(0.3, _ball_k(), minf(1.0, u * 2.0)), 0.0, 1.0, fly)
 	elif mode == "tray":  # (it lay in the tray at from_local: it slips off into the funnel's mouth)
 		fly = 0.2
 		tw.tween_callback(func() -> void:
 			if is_instance_valid(ic):
 				ic.modulate.a = 1.0
-				ic.scale = Vector2.ONE * TRAY_SCALE
+				ic.scale = Vector2.ONE * _tray_k()
 				ic.position = from_local - half)
 		tw.tween_method(func(u: float) -> void:
 			if is_instance_valid(ic):
 				ic.position = from_local.lerp(mouth, u * u) - half
-				ic.scale = Vector2.ONE * lerpf(TRAY_SCALE, SLOT_BALL_SCALE, u), 0.0, 1.0, fly)
+				ic.scale = Vector2.ONE * lerpf(_tray_k(), _ball_k(), u), 0.0, 1.0, fly)
 	else:  # (mode "reel": it starts hidden behind the cabinet, where its reel is)
 		tw.tween_callback(func() -> void:
 			if is_instance_valid(ic):
@@ -2188,7 +2282,7 @@ func _slot_route(ic: ElementIcon, delay: float, mode: String, from_local := Vect
 		if is_instance_valid(ic):
 			ic.position = _path_point(pts, u * total) - half
 			ic.rotation = -u * TAU * maxf(1.0, roundf(total / (PI * BAG_PX)))
-			ic.scale = Vector2.ONE * SLOT_BALL_SCALE, 0.0, 1.0, dur)
+			ic.scale = Vector2.ONE * _ball_k(), 0.0, 1.0, dur)
 	# out of the tube it keeps rolling, straight into the Bag strip (no hole: one continuous roll), growing to its full size; _roll_ball takes over from there
 	var tube_end: Vector2 = pts[pts.size() - 1]
 	if _nu_ui:  # (the tube is straight: the Essence runs out of its mouth into the Bag tray, where _nu_roll takes it on at the same speed)
@@ -2200,7 +2294,7 @@ func _slot_route(ic: ElementIcon, delay: float, mode: String, from_local := Vect
 		if is_instance_valid(ic):
 			ic.position = tube_end.lerp(entry, u) - half
 			ic.rotation = spin0 - u * TAU  # (one whole turn: it ends upright, where the roll along the Bag starts)
-			ic.scale = Vector2.ONE * lerpf(SLOT_BALL_SCALE, 1.0, u), 0.0, 1.0, out_t)
+			ic.scale = Vector2.ONE * lerpf(_ball_k(), 1.0, u), 0.0, 1.0, out_t)
 	tw.tween_callback(func() -> void:
 		if is_instance_valid(ic):
 			ic.rotation = 0.0)
@@ -2209,6 +2303,10 @@ func _slot_route(ic: ElementIcon, delay: float, mode: String, from_local := Vect
 
 ## Pull the lever, spin the reels for 2 s and stop them on these Essence (they stay there: next turn they drop out). One sound covers the pull and the return.
 func _roll_reels(els: Array) -> void:
+	if _machine.headless:  # (Puppet HUD ver 2: no machine, nothing to roll)
+		_reel_shown = els.duplicate()
+		_reels_armed = true
+		return
 	Audio.play("sfx_lever_pull", -2.0)
 	_machine.lever_pull()
 	await get_tree().create_timer(0.3).timeout
@@ -2248,12 +2346,14 @@ const TRAY_SCALE := 0.72  # an Essence lying in the tray is drawn this big
 
 ## The centre of the k-th Essence lying in the tray (local to the Bag strip): side by side over the funnel's mouth, three to a row, the next row on top.
 func _tray_center(k: int) -> Vector2:
+	if _machine.headless:  # (Puppet HUD ver 2: they wait one above the other in the vertical tube)
+		return Hud2Layout.stack_pos(k)
 	var mouth := _machine.funnel_top_mouth()
-	var step := BAG_PX * TRAY_SCALE * 0.82
+	var step := BAG_PX * _tray_k() * 0.82
 	var row := floori(k / 3.0)
 	var col := k % 3
 	var x := mouth.x + (col - 1) * step + (step * 0.5 if row % 2 == 1 else 0.0)
-	return Vector2(x, mouth.y - BAG_PX * TRAY_SCALE * 0.42 - row * step * 0.8)
+	return Vector2(x, mouth.y - BAG_PX * _tray_k() * 0.42 - row * step * 0.8)
 
 
 ## Artifacts that give Essence for next turn: each one shines up briefly, then a ball of light flies from it to the tray
@@ -2295,13 +2395,13 @@ func _stash_to_machine(ev: Dictionary, from: Vector2) -> float:
 		ic.pivot_offset = ic.size / 2.0
 		ic.temp = ev.eff.get("temp", false)
 		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		ic.scale = Vector2.ONE * TRAY_SCALE
+		ic.scale = Vector2.ONE * _tray_k()
 		ic.modulate.a = 0.0  # (it shows when its comet lands)
 		var c := _tray_center(base_k + i)
 		ic.position = c - ic.size / 2.0
 		_stock_row.add_child(ic)
 		_pending.append(ic)
-		dests.append({"body": _stock_row.global_position + c, "row": _stock_row.global_position + c, "el": els[i], "px": BAG_PX * TRAY_SCALE, "ghost": false})  # (no copy on top: the real one shows behind the tray's front wall)
+		dests.append({"body": _stock_row.global_position + c, "row": _stock_row.global_position + c, "el": els[i], "px": BAG_PX * _tray_k(), "ghost": false})  # (no copy on top: the real one shows behind the tray's front wall)
 		# (SpellFx._draw_fx: the i-th comet lands 0.13 s after the one before it, 0.6 s after it set off; it materializes there and this Essence takes over)
 		var tw := ic.create_tween()
 		tw.tween_interval(i * 0.13 + 0.62)
@@ -2372,7 +2472,7 @@ func _puppet_launch(balls: Array) -> void:
 		if _bag_order[k] in batch_uids:
 			slots_in_order.append(k)
 	var order: Array = []
-	for want in ["preset", "reel", "tray", "extra"]:
+	for want in (["preset", "tray", "reel", "extra"] if _machine.headless else ["preset", "reel", "tray", "extra"]):  # (Puppet HUD ver 2: the ones already in the tube go first)
 		var group: Array = []
 		for j in n:
 			if role[j] == want:
@@ -2437,9 +2537,13 @@ func _puppet_launch(balls: Array) -> void:
 		var e: float = maxf(nu_next[0], rt)
 		nu_next[0] = e + gap
 		return e - rt
+	var hud2_emerge: Dictionary = _hud2_launch(order, role, balls, twin_of, from_pt, spawn) if _machine.headless else {}
 	for j in order:
 		var ic = balls[j][0]  # (untyped: it may have been freed while the reels spun, e.g. the tutorial moved on)
 		if not is_instance_valid(ic) or role[j] == "preset":
+			continue
+		if hud2_emerge.has(j):  # (Puppet HUD ver 2: the vertical tube is simulated as a whole, see _hud2_launch)
+			emerge[j] = hud2_emerge[j]
 			continue
 		if role[j] == "reel":  # (the real ball falls from behind the cabinet into the bottom funnel; the faces on the reels are only pictures and stay until the next roll)
 			var rc: Vector2 = _machine.reel_center(reel_of[j])
@@ -2486,6 +2590,229 @@ func _puppet_launch(balls: Array) -> void:
 		_roll_next_on_reels(last_emerge)  # (as soon as these balls are in the Bag, the lever is pulled for the next turn's draw)
 	if rollers.is_empty():
 		_resort_bag()  # (nothing rolled: nothing else will sort the Bag)
+
+
+## ---- Puppet HUD ver 2: the Essence in the vertical tube are real objects ---------------------------------------------------------------------------------------------
+## They stand one above the other in the tube (the first one in at the bottom, at the bend), nobody passes anybody, and they leave in the order they came in. A launch is
+## simulated once (every 1/60 s: gravity down the tube, a ball is stopped by the one below it, the lowest one is let go after it has waited a moment, the next ones one gap
+## later) and every ball then plays back its own track along the tube's centre line (top, down, round the bend, into the hole).
+
+const HUD2_HOLD := 0.4  # how long a ball that has come to rest waits before it is let go
+const HUD2_GAP := 0.12  # at least this long between one ball being let go and the next
+const HUD2_G := 2600.0  # px/s^2 falling down the tube
+const HUD2_ACC := 3500.0  # px/s^2 getting up to speed on the way out
+const HUD2_DT := 1.0 / 60.0
+
+
+func _hud2_track() -> Array:
+	var L = NewUiLayout
+	var k: float = Hud2Layout.K
+	return [Vector2(Hud2Layout.VTUBE_X, Hud2Layout.DROP_Y) * k - L.BAG_AT, Hud2Layout.STACK_UP * k - L.BAG_AT, Hud2Layout.STACK_BEND * k - L.BAG_AT, Vector2(L.MOUTH_X, L.TUBE_ROW_Y)]
+
+
+func _hud2_at(track: Array, s: float) -> Vector2:
+	var acc := 0.0
+	for i in track.size() - 1:
+		var seg: float = track[i].distance_to(track[i + 1])
+		if s <= acc + seg or i == track.size() - 2:
+			return track[i].lerp(track[i + 1], clampf((s - acc) / maxf(seg, 0.001), 0.0, 1.0))
+		acc += seg
+	return track[track.size() - 1]
+
+
+## How far down the track (px) the point `p` is (the nearest point of the track).
+func _hud2_project(track: Array, p: Vector2) -> float:
+	var best := 0.0
+	var best_d := INF
+	var acc := 0.0
+	for i in track.size() - 1:
+		var a: Vector2 = track[i]
+		var b: Vector2 = track[i + 1]
+		var seg := a.distance_to(b)
+		var u := clampf((p - a).dot(b - a) / maxf(seg * seg, 0.001), 0.0, 1.0)
+		var d := p.distance_to(a.lerp(b, u))
+		if d < best_d:
+			best_d = d
+			best = acc + u * seg
+		acc += seg
+	return best
+
+
+## The furthest down the track a ball can be when the one below it is at `s_prev`: their centres must be a whole ball apart in a straight line (round the bend, along the track
+## alone is not enough).
+func _hud2_behind(track: Array, s_prev: float, pitch: float) -> float:
+	var p := _hud2_at(track, s_prev)
+	var d := s_prev - pitch
+	while d > -400.0 and _hud2_at(track, d).distance_to(p) < pitch:
+		d -= 1.5
+	return d
+
+
+func _hud2_released_before(st: PackedInt32Array, i: int) -> bool:
+	return i == 0 or st[i - 1] >= 2
+
+
+## Sets up the whole launch: `order` is the order the balls go in. Returns ball index -> seconds from now until it is in the hole (where _nu_roll takes it on).
+func _hud2_launch(order: Array, role: Array, balls: Array, twin_of: Dictionary, from_pt: Vector2, spawn: bool) -> Dictionary:
+	var track := _hud2_track()
+	var pitch: float = Hud2Layout.STACK_STEP * Hud2Layout.K
+	var s_bend: float = track[0].distance_to(track[1]) + track[1].distance_to(track[2])
+	var s_hole: float = s_bend + track[2].distance_to(track[3])
+	var half := Vector2(BAG_PX, BAG_PX) / 2.0
+	var entries: Array = []  # {j, ic, s0 (already in the tube) or -1, kind, fly, enter}
+	var twins: Array = twin_of.values()
+	var stay_top := INF  # the highest of the Essence that stay in the tube for a later turn: new ones come to rest on top of them
+	for c in _pending:
+		if is_instance_valid(c) and not twins.has(c):
+			stay_top = minf(stay_top, _hud2_project(track, c.position + c.size / 2.0))
+	var residents: Array = []
+	for j in order:
+		if role[j] == "tray" and is_instance_valid(balls[j][0]):
+			var lying = twin_of[j]
+			var s0 := _hud2_project(track, lying.position + lying.size / 2.0) if is_instance_valid(lying) else s_bend
+			_pending.erase(lying)
+			if is_instance_valid(lying):
+				lying.queue_free()  # (the real ball takes over from the one lying there, at the same place)
+			residents.append({"j": j, "ic": balls[j][0], "s0": s0, "kind": "tray", "fly": 0.0, "enter": 0.0})
+	residents.sort_custom(func(a, b): return a.s0 > b.s0)  # (the lowest is first)
+	entries.append_array(residents)
+	var k_new := 0
+	for j in order:
+		if role[j] == "preset" or role[j] == "tray" or not is_instance_valid(balls[j][0]):
+			continue
+		var kind := "pop"
+		if role[j] == "reel":
+			kind = "reel"
+		elif from_pt != Vector2.INF and not spawn:
+			kind = "from"
+		var fly: float = {"from": 0.5, "pop": 0.28, "reel": 0.0}[kind]
+		var from_l := (from_pt - _stock_row.global_position) if kind == "from" else Vector2.ZERO
+		entries.append({"j": j, "ic": balls[j][0], "s0": -1.0, "kind": kind, "fly": fly, "enter": fly + 0.15 + k_new * 0.2, "from": from_l})
+		k_new += 1
+	var n := entries.size()
+	# --- the simulation
+	var s := PackedFloat32Array()
+	var v := PackedFloat32Array()
+	var st := PackedInt32Array()  # 0 not in yet, 1 in the tube, 2 let go, 3 in the hole
+	var landed := PackedFloat32Array()
+	var start_i := PackedInt32Array()
+	var track_s: Array = []
+	for i in n:
+		s.append(entries[i].s0 if entries[i].s0 >= 0.0 else 0.0)
+		v.append(0.0)
+		st.append(1 if entries[i].s0 >= 0.0 else 0)
+		landed.append(0.0 if entries[i].s0 >= 0.0 else -1.0)
+		start_i.append(0)
+		track_s.append(PackedFloat32Array())
+	var last_release := -999.0
+	var step := 0
+	var done := 0
+	var t_hole := PackedFloat32Array()
+	t_hole.resize(n)
+	while done < n and step < 3000:
+		var t := step * HUD2_DT
+		for i in n:
+			if st[i] == 3:
+				continue
+			var below_gone := i == 0 or st[i - 1] == 3
+			if st[i] == 0:
+				if t >= float(entries[i].enter) and (i == 0 or (st[i - 1] != 0 and (st[i - 1] == 3 or s[i - 1] >= pitch))):
+					st[i] = 1
+					s[i] = 0.0
+					start_i[i] = step
+				else:
+					continue
+			var lim := INF
+			if i > 0 and st[i - 1] != 3:
+				lim = _hud2_behind(track, s[i - 1], pitch)
+			if st[i] == 1:
+				lim = minf(lim, s_bend if below_gone else INF)
+				if stay_top < INF:
+					lim = minf(lim, stay_top - pitch)
+				v[i] = minf(v[i] + HUD2_G * HUD2_DT, NU_TUBE_SPEED)
+				s[i] = minf(s[i] + v[i] * HUD2_DT, lim)
+				if s[i] >= lim - 0.001:
+					v[i] = 0.0
+					if landed[i] < 0.0:
+						landed[i] = t
+					if t - landed[i] >= HUD2_HOLD and t - last_release >= HUD2_GAP and _hud2_released_before(st, i):
+						st[i] = 2
+						last_release = t
+			else:
+				v[i] = minf(v[i] + HUD2_ACC * HUD2_DT, NU_TUBE_SPEED)
+				s[i] = minf(s[i] + v[i] * HUD2_DT, lim)
+				if s[i] >= s_hole:
+					s[i] = s_hole
+					st[i] = 3
+					t_hole[i] = t
+					done += 1
+			track_s[i].append(s[i])
+		step += 1
+	# --- playback
+	var out := {}
+	var turns := maxf(1.0, roundf(s_hole / (PI * BAG_PX)))
+	for i in n:
+		var e: Dictionary = entries[i]
+		var ic: ElementIcon = e.ic
+		var samples: PackedFloat32Array = track_s[i]
+		if samples.is_empty():
+			continue
+		ic.set_meta("rolling", true)
+		ic.rotation = 0.0
+		ic.scale = Vector2.ONE * _ball_k()
+		var t_in: float = start_i[i] * HUD2_DT
+		var count := samples.size()
+		var tw := ic.create_tween()
+		if e.kind == "tray":  # (it already stands in the tube)
+			ic.position = _hud2_at(track, samples[0]) - half
+			ic.modulate.a = 1.0
+		else:
+			ic.modulate.a = 0.0
+			ic.position = Vector2(_machine.port_center().x + 400.0, PuppetLayout.AXIS_Y - BAG_PX / 2.0)  # (parked out of the way until its turn)
+			var top := _hud2_at(track, 0.0)
+			var fly: float = e.fly
+			tw.tween_interval(maxf(0.0, t_in * 1.0 - fly))
+			if e.kind == "from":
+				var from_l: Vector2 = e.from
+				tw.tween_callback(func() -> void:
+					if is_instance_valid(ic):
+						ic.modulate.a = 1.0
+						ic.scale = Vector2.ONE * 0.4)
+				tw.tween_method(func(u: float) -> void:
+					if is_instance_valid(ic):
+						var ease_u := u * u * (3.0 - 2.0 * u)
+						ic.position = from_l.lerp(top, ease_u) + Vector2(0.0, -110.0 * sin(u * PI)) - half
+						ic.rotation = -u * TAU * 1.5
+						ic.scale = Vector2.ONE * lerpf(0.4, _ball_k(), minf(1.0, u * 2.0)), 0.0, 1.0, fly)
+			elif e.kind == "pop":
+				tw.tween_callback(func() -> void:
+					if is_instance_valid(ic):
+						ic.modulate.a = 0.0
+						ic.scale = Vector2.ONE * 0.3)
+				tw.tween_method(func(u: float) -> void:
+					if is_instance_valid(ic):
+						ic.position = top + Vector2(0.0, lerpf(-80.0, 0.0, u * u)) - half
+						ic.modulate.a = minf(1.0, u * 4.0)
+						ic.scale = Vector2.ONE * lerpf(0.3, _ball_k(), minf(1.0, u * 2.0)), 0.0, 1.0, fly)
+			else:
+				tw.tween_callback(func() -> void:
+					if is_instance_valid(ic):
+						ic.position = top - half
+						ic.modulate.a = 1.0)
+		var dur := maxf(HUD2_DT, (count - 1) * HUD2_DT)
+		tw.tween_method(func(u: float) -> void:
+			if not is_instance_valid(ic):
+				return
+			var f := u * float(count - 1)
+			var a := int(f)
+			var sv := lerpf(samples[a], samples[mini(a + 1, count - 1)], f - a)
+			ic.position = _hud2_at(track, sv) - half
+			ic.rotation = -TAU * turns * (sv / s_hole), 0.0, 1.0, dur)
+		tw.tween_callback(func() -> void:
+			if is_instance_valid(ic):
+				ic.rotation = -TAU * turns)
+		out[e.j] = t_hole[i]
+	return out
 
 
 ## ---- New UI: the Essence of the machine run straight out of the tube into the Bag tray ----------------------------------------------------------------------------
@@ -2922,6 +3249,15 @@ Turn %d" % [run.act, run.floor_no(), fight.turn]))  # (two lines on the sign)
 	else:
 		_cast_btn.text = "Release" if _puppet_strips() else UiTheme.hk("Release", "E")
 		_cast_btn.disabled = busy or aiming or move_view != null or pick_view != null or chant_mode != ""
+	if NewUiLayout.hud2:  # (Puppet HUD ver 2: the words are painted in the buttons' pictures)
+		_clear_btn.text = ""
+		_end_btn.text = ""
+		_cast_btn.text = ""
+		_cast_btn.tooltip_text = "Chant (Enter)" if phase == "build" else "Release (E)"
+		var cast_kind := "chant" if phase == "build" else "release"  # (two painted buttons: Chant, then Release)
+		if _cast_kind != cast_kind:
+			_cast_kind = cast_kind
+			UiTheme.style_puppet_button(_cast_btn, cast_kind, 18)
 	for b in _test_btns:
 		b.disabled = busy or _auto_busy or phase != "build" or aiming or move_view != null or pick_view != null or chant_mode != "" or fight.over
 	var live_spells := fight.charges.size() > 0 and phase == "spells"
@@ -3168,8 +3504,10 @@ func _chant_layout(count := -1) -> Vector2:
 	var n := maxi(_chant_rings(), count)
 	var px := 58.0 if n <= 10 else 50.0
 	if _puppet_strips():
-		px = PUPPET_RING_PX if n <= 10 else 46.0
-		var pstep := minf(PuppetLayout.RING_STEP, (PuppetLayout.RING_STEP * 9.0 + PUPPET_RING_PX - px) / maxf(1.0, n - 1))
+		var step0 := NewUiLayout.RING_STEP if _nu_ui else PuppetLayout.RING_STEP
+		var px0 := NewUiLayout.RING_PX if _nu_ui else PUPPET_RING_PX
+		px = px0 if n <= 10 else px0 - 6.0
+		var pstep := minf(step0, (step0 * 9.0 + px0 - px) / maxf(1.0, n - 1))
 		return Vector2(px, pstep - px)
 	var step := minf(px + 6.0, ((CHANT_W_CIRCUS if _circus_strips() else CHANT_W) - px) / maxf(1.0, n - 1))
 	return Vector2(px, step - px)
@@ -3671,7 +4009,7 @@ func _build_test_buttons() -> void:
 		var b := UiTheme.button(specs[k][0], specs[k][1], 15)
 		if _puppet_strips():
 			UiTheme.use_heading_font(b)
-			UiTheme.style_puppet_button(b, "clear", 15)
+			UiTheme.style_puppet_button(b, "clear", 15, false)
 		b.tooltip_text = specs[k][2]
 		b.custom_minimum_size = Vector2(112.0, 34.0)
 		b.size = Vector2(112.0, 34.0)
@@ -4593,8 +4931,8 @@ func _on_enemy_clicked(v: EnemyView) -> void:
 		_finish_aim(idx)
 
 
-## Hovering an enemy's intent bubble explains what it's about to do; hovering the enemy itself (its body or its row
-## of Essence) explains everything about it. Our own panel, shown after a short moment and kept beside the enemy;
+## Hovering an enemy's intent bubble explains what it's about to do; hovering the enemy itself (its sprite or its row
+## of Essence) explains everything about it, and the sprite also says what it is about to do. Our own panel, shown after a short moment and kept beside the enemy;
 ## hidden while you're aiming or picking, so it never covers what you're clicking.
 const HOVER_DELAY := 0.3
 var _hover_panel: PanelContainer
@@ -4615,7 +4953,7 @@ func _update_hover_info(d: float, m := Vector2(-1, -1)) -> void:
 			if not is_instance_valid(v):
 				continue
 			var chip := v.intent_chip()
-			# only the intent bubble explains itself (hovering the enemy shows nothing more)
+			# its intent bubble explains what it is about to do
 			if chip != null and chip.get_global_rect().has_point(m):
 				key = "intent:%d" % v.get_instance_id()
 				text = chip.get_meta("info", "")
@@ -4628,6 +4966,19 @@ func _update_hover_info(d: float, m := Vector2(-1, -1)) -> void:
 				text = v.info_text()
 				anchor = Rect2(m - Vector2(20, 20), Vector2(40, 40))
 				avoid = v.puppet_global_rect()
+				break
+			# the sprite itself: everything about the enemy, and under it what it is about to do (the same words as its intent bubble)
+			var body := v.puppet_global_rect()
+			if body.has_point(m) and not v.enemy.is_dead():
+				key = "body:%d" % v.get_instance_id()
+				text = v.info_text()
+				var said: String = chip.get_meta("info", "") if chip != null else ""
+				if said != "":
+					text += "
+
+" + said
+				anchor = Rect2(m - Vector2(20, 20), Vector2(40, 40))
+				avoid = body
 				break
 	if key != _hover_key:
 		_hover_key = key
@@ -4664,15 +5015,16 @@ func _update_hover_info(d: float, m := Vector2(-1, -1)) -> void:
 	p.position = Vector2(clampf(x, 10.0, 1910.0 - p.size.x), clampf(anchor.position.y, 10.0, 1070.0 - p.size.y))
 
 
-## The Release button shines in a slow pulse (brighter and a touch bigger) while it's the thing to press.
+## The Release button shines in a slow pulse (brighter and, but for Puppet HUD ver 2, a touch bigger) while it's the thing to press.
 func _pulse_release() -> void:
 	if _cast_btn == null:
 		return
 	if _release_glow and not busy and not _cast_btn.disabled:
 		var s := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * TAU / 1.1)
 		_cast_btn.modulate = Color(1.0 + 0.45 * s, 1.0 + 0.38 * s, 1.0 + 0.15 * s)
-		_cast_btn.pivot_offset = _cast_btn.size / 2.0
-		_cast_btn.scale = Vector2.ONE * (1.0 + 0.06 * s)
+		if not NewUiLayout.hud2:  # (Puppet HUD ver 2: it only blinks brighter, it does not grow)
+			_cast_btn.pivot_offset = _cast_btn.size / 2.0
+			_cast_btn.scale = Vector2.ONE * (1.0 + 0.06 * s)
 	elif _cast_btn.scale != Vector2.ONE or _cast_btn.modulate != Color.WHITE:
 		_cast_btn.modulate = Color.WHITE
 		_cast_btn.scale = Vector2.ONE
@@ -5775,6 +6127,10 @@ func _anim_event(ev: Dictionary) -> void:
 			await _file_turn_box()
 		"attack":
 			await _enemy_attack(ev)
+		"sfx":  # (a sound that goes with something the rules did and that has no picture of its own: the Sentinel waking, the lamp glowing...)
+			Audio.play(String(ev.name))
+			_refresh_all()
+			await _wait(0.25)
 		"enemy_move":
 			await _enemy_move_fx(ev)
 		"dot":
@@ -5920,6 +6276,8 @@ func _anim_event(ev: Dictionary) -> void:
 		"silence":
 			var head_v: EnemyView = _views.get(ev.get("enemy"))
 			if ev.get("head", false) and head_v:
+				Audio.play("sfx_head_scream")
+				await get_tree().create_timer(0.55).timeout  # (he screams first, then it flies)
 				await OrphanFx.throw_item(self, head_v.creature.global_position + Vector2(head_v.creature.size.x * 0.5, 40.0), _attack_point(), "head")
 			Audio.play("sfx_silence_apply")
 			_refresh_all()

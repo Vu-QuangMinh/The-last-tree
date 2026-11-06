@@ -37,6 +37,10 @@ static func make(p_el: String, px := 40.0) -> ElementIcon:
 	return i
 
 
+func _ready() -> void:
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS  # (the painted Essence are 128 px and drawn at 50-65: mipmaps keep them smooth, not rough)
+
+
 func refresh() -> void:
 	queue_redraw()
 

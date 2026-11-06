@@ -7,7 +7,7 @@ func run(t: SceneTree) -> void:
 	var out: String = args[0] if args.size() > 0 else "user://"
 	var save = root.get_node("SaveManager")
 	save.use_test_file("user://nu_shot_save.json")
-	save.data.settings["theme"] = "new_ui"
+	save.data.settings["theme"] = OS.get_environment("SHOT_THEME") if OS.get_environment("SHOT_THEME") != "" else "new_ui"  # (SHOT_THEME=hud2: Puppet HUD ver 2)
 	var gd = root.get_node("GameData")
 	var r := RunState.new()
 	r.setup(gd.db, [], [], 0)
@@ -32,6 +32,8 @@ func run(t: SceneTree) -> void:
 	fs.setup(r, f)
 	root.add_child(fs)
 	await t.create_timer(5.0).timeout
+	var mb: Button = fs._menu_btn
+	print("menu btn: text ", mb.text, " color ", mb.get_theme_color("font_color"), " hover ", mb.get_theme_color("font_hover_color"), " modulate ", mb.modulate, " global ", mb.get_global_rect(), " size ", mb.size, " min ", mb.custom_minimum_size, " ms ", mb.get_minimum_size(), " z ", mb.z_index, " font ", mb.get_theme_font("font"), " fsize ", mb.get_theme_font_size("font_size"))
 	_shot(root, out + "/nu_start.png")
 	var sv = fs._stage.verts
 	print("stage: floor_range ", fs._stage.floor_range(), " front_l ", sv["front_l"], " front_r ", sv["front_r"], " low_top_l ", sv.get("low_top_l"), " low_bot_l ", sv.get("low_bot_l"), " back_bot_l ", sv["back_bot_l"], " SCENE_DY ", PuppetStage.SCENE_DY)

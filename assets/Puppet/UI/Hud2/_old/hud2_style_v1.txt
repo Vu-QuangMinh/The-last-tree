@@ -1,0 +1,7 @@
+Style: real physical game-HUD props in dark walnut wood and polished aged brass, the same craft quality as the reference image: the top strip of the reference (a fantasy RPG hotbar with dark carved wood, thin brass trim and subtle bevels) shows the level of finish, the bottom row of the reference shows the exact look of this game's own HUD (very dark charred-oak boards with a thin gold-brass edge, deep recessed slots, round wooden cups with a thin brass ring). Match those materials and that colour palette: very dark brown wood with visible fine grain, warm medium-brown wood for the pressable faces, thin bright brass rims with soft bevel highlights and tiny scratches.
+
+Lighting: soft even light from the upper left, gentle natural shading, a soft brass glint on the rim, no strong glare, no glossy plastic shine.
+
+Composition: this one object only, centred, seen straight from the front with no perspective, filling the image with a small even margin. Isolated on a pure black seamless background (#000000), as if cut out: no cast shadow, no reflection, no gradient, no table, no other objects, no hands. Every object is completely empty: nothing is written or drawn on it.
+
+Must look like a tangible craft object with real material texture. Not vector art, not clean outlines, not cartoon, not a sticker, not plastic, not a 3D game render. No text, letters, numbers, logos or watermark.

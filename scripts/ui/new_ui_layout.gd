@@ -5,39 +5,87 @@ extends RefCounted
 ## tools/export_new_ui_art.py into assets/Puppet/UI/NewUi/ and drawn at the places the page gives them (Back, Bar below). The chant rings and buttons are the Puppet ones; the slot
 ## machine is the Puppet one, bigger (MACHINE_SCALE), at the right end of the Bag tray: its tube is straight and the Essence roll out of its mouth (MOUTH_X) into the tray.
 
-const BAG_AT := Vector2(701.0, 970.0)  # the Bag strip's top-left on the screen (the Chant rings and the Essence rows are laid from it); the Chant strip is PuppetLayout.CHANT_AT above it
-const MENU_BTN := Rect2(17.0, 917.0, 106.0, 26.0)  # the Menu button: the part of the first dark tab that shows above the artifact block (its word MENU stands on it)
-const ACT_TEXT := Rect2(141.0, 918.0, 180.0, 28.0)  # "Act1 - Floor 5 - Turn 2" on the second tab: always shown
+static var BAG_AT := Vector2(701.0, 970.0)  # the Bag strip's top-left on the screen (the Chant rings and the Essence rows are laid from it); the Chant strip is PuppetLayout.CHANT_AT above it
+static var MENU_BTN := Rect2(17.0, 917.0, 106.0, 26.0)  # the Menu button: the part of the first dark tab that shows above the artifact block (its word MENU stands on it)
+static var ACT_TEXT := Rect2(141.0, 918.0, 180.0, 28.0)  # "Act1 - Floor 5 - Turn 2" on the second tab: always shown
 const MENU_HOVER := Color(1.35, 1.3, 1.25)  # the Menu tab under the mouse: lighter; pressed: darker
 const MENU_DOWN := Color(0.55, 0.52, 0.5)
-const ART_AT := Vector2(24.12, 962.4)  # the artifact slots: two strips of five (each 262.44 x 55.74 pt, 52.49 pt a slot, the rows 51.81 apart)
-const ART_CELL := Vector2(52.49, 51.81)
-const ART_COLS := 5
+static var ART_AT := Vector2(24.12, 962.4)  # the artifact slots: two strips of five (each 262.44 x 55.74 pt, 52.49 pt a slot, the rows 51.81 apart)
+static var ART_CELL := Vector2(52.49, 51.81)
+static var ART_COLS := 5
 const ART_MAX := 10
-const ART_PX := 44.0  # an artifact inside its slot
-const BOTTLE_AT := Vector2(370.95, 989.23)  # the bottle slots: one strip of five
-const BOTTLE_CELL := Vector2(52.49, 55.74)
+static var ART_PX := 44.0  # an artifact inside its slot
+static var BOTTLE_AT := Vector2(370.95, 989.23)  # the bottle slots: one strip of five
+static var BOTTLE_CELL := Vector2(52.49, 55.74)
 const BOTTLE_MAX := 5
-const BOTTLE_PX := 44.0
-const HP_BAR := Rect2(342.25, 939.04, 319.84, 45.01)  # the glass tube: the lower layer, the liquid, the glass with its shine, the cap, the upper layer (the brass clamps)
+static var BOTTLE_PX := 44.0
+static var HP_BAR := Rect2(342.25, 939.04, 319.84, 45.01)  # the glass tube: the lower layer, the liquid, the glass with its shine, the cap, the upper layer (the brass clamps)
 const HP_FILL := Rect2(9.75, 2.96, 310.0, 32.0)  # "HP fill": the glass pill, flat at its left end and round at its right (from HP_BAR's top left): HP and Shield run inside it
 const HP_CAP := Rect2(3.75, 1.96, 12.0, 33.0)  # "HP cap": the brass cap on the tube's left end (only decoration)
 const HP_PX := 17
-const DEBUFF_AT := Vector2(324.9, 866.6)  # the debuff circles: eight in a row, the next ones start a row above
-const DEBUFF_STEP := 44.64
-const DEBUFF_PX := 41.0
-const DEBUFF_COLS := 8
+static var DEBUFF_AT := Vector2(324.9, 866.6)  # the debuff circles: eight in a row, the next ones start a row above
+static var DEBUFF_STEP := 44.64
+static var DEBUFF_PX := 41.0
+static var DEBUFF_COLS := 8
 ## The Bag tray: the Essence rest in it from its left end to the tube's mouth.
-const MOUTH_X := 802.0  # the middle of the tube's mouth, from the Bag strip's left (strip px): the Essence roll out of the tube there
-const REST_END := 790.0  # the resting Essence end before this x (strip px): the mouth's flange
+static var MOUTH_X := 802.0  # the middle of the tube's mouth, from the Bag strip's left (strip px): the Essence roll out of the tube there
+static var REST_END := 790.0  # the resting Essence end before this x (strip px): the mouth's flange
 ## The machine (Slot_machine pieces of the Puppet theme, drawn MACHINE_SCALE times bigger as the page has them): MACHINE_POS is where the old machine's origin (the Bag strip's
 ## corner of PuppetLayout) lands in strip px; the straight tube lies from the mouth to under the cabinet.
-const MACHINE_SCALE := 1.44
-const MACHINE_POS := Vector2(-374.4, 222.0)
-const LEVER_SHIFT := Vector2(0.0, 1.5)  # in the old machine's px
+static var MACHINE_SCALE := 1.44
+static var MACHINE_POS := Vector2(-374.4, 222.0)
+static var LEVER_SHIFT := Vector2(0.0, 1.5)  # in the old machine's px
 const TUBE_AT := Vector2(810.0, -4.0)  # slot_tube_straight.png (2 px per pt) from the strip's corner
 const TUBE_CLAMP_AT := Vector2(899.0, -4.0)  # slot_tube_clamp.png
-const TUBE_ROW_Y := 45.0  # the row the Essence roll along
+static var TUBE_ROW_Y := 45.0  # the row the Essence roll along
+
+## Puppet HUD ver 2 (theme "hud2", assets/Puppet/UI/Puppet HUD Nov.pdf): the same HUD code path with other values (Hud2Layout.apply sets them; use(false) puts the New UI ones back).
+static var hud2 := false
+static var CHANT_AT := Vector2(0.0, -92.0)  # the Chant strip's top-left, from the Bag strip's (PuppetLayout.CHANT_AT)
+static var BTN_CHANT := Rect2(620.8, 17.8, 92.5, 52.5)  # (from the Chant strip's top-left)
+static var BTN_CLEAR := Rect2(722.8, 29.0, 52.8, 30.0)
+static var BTN_PASS := Rect2(784.8, 29.0, 52.8, 30.0)
+static var RING_PX := 52.0  # the Chant rings' size and step (PuppetLayout's)
+static var RING_STEP := 60.1
+static var DROP_AT := Vector2.ZERO  # Puppet HUD ver 2: where an Essence comes into the vertical tube (strip px)
+static var debuff_count := 0  # how many debuff circles are shown right now (Puppet HUD ver 2 squeezes them into its six squares' width)
+
+## Chooses which HUD the values are: Puppet HUD ver 2 (true) or New UI (false). The fight screen calls it when it is built.
+static func use(on: bool) -> void:
+	hud2 = on
+	if on:
+		Hud2Layout.apply()
+		return
+	BAG_AT = Vector2(701.0, 970.0)
+	MENU_BTN = Rect2(17.0, 917.0, 106.0, 26.0)
+	ACT_TEXT = Rect2(141.0, 918.0, 180.0, 28.0)
+	ART_AT = Vector2(24.12, 962.4)
+	ART_CELL = Vector2(52.49, 51.81)
+	ART_COLS = 5
+	ART_PX = 44.0
+	BOTTLE_AT = Vector2(370.95, 989.23)
+	BOTTLE_CELL = Vector2(52.49, 55.74)
+	BOTTLE_PX = 44.0
+	HP_BAR = Rect2(342.25, 939.04, 319.84, 45.01)
+	DEBUFF_AT = Vector2(324.9, 866.6)
+	DEBUFF_STEP = 44.64
+	DEBUFF_PX = 41.0
+	DEBUFF_COLS = 8
+	MOUTH_X = 802.0
+	REST_END = 790.0
+	MACHINE_SCALE = 1.44
+	MACHINE_POS = Vector2(-374.4, 222.0)
+	LEVER_SHIFT = Vector2(0.0, 1.5)
+	TUBE_ROW_Y = 45.0
+	SPELL_BOTTOM = 863.1
+	SPELL_CENTER_X = 926.25
+	CHANT_AT = Vector2(0.0, -92.0)
+	BTN_CHANT = Rect2(620.8, 17.8, 92.5, 52.5)
+	BTN_CLEAR = Rect2(722.8, 29.0, 52.8, 30.0)
+	BTN_PASS = Rect2(784.8, 29.0, 52.8, 30.0)
+	RING_PX = 52.0
+	RING_STEP = 60.1
+
 
 const BLOCKS := [  # [picture, where (, "menu")] in the order they are painted (each one over the one before): the two tabs first (the Menu button and the Act line), then the blocks
 	["nu_block_wide", Rect2(7.91, 923.16, 704.62, 170.66), "menu"],
@@ -50,8 +98,8 @@ const BLOCKS := [  # [picture, where (, "menu")] in the order they are painted (
 ## (SPELL_FIT of their own), 8.58 apart, the row centred on the page's row (fewer cards stand around the same middle).
 const SPELL_FIT := 192.17 / 250.0
 const SPELL_GAP := 8.58
-const SPELL_BOTTOM := 863.1
-const SPELL_CENTER_X := 926.25
+static var SPELL_BOTTOM := 863.1
+static var SPELL_CENTER_X := 926.25
 const TRAY := Rect2(694.44, 969.2, 821.0, 88.94)
 const MOUTH := Rect2(1495.22, 963.75, 15.43, 98.59)
 const ART_STRIPS := [Vector2(24.12, 960.47), Vector2(24.12, 1012.28)]  # slot strips, 262.44 x 55.74
@@ -74,6 +122,9 @@ static func bottle_slot(i: int) -> Vector2:
 
 ## The debuff circle k of `rows` rows: its top-left. The first row is the top one and the bottom row always stands at DEBUFF_AT (more rows grow upwards).
 static func debuff_slot(k: int, rows: int) -> Vector2:
+	if hud2:  # (one row over the page's six squares; more than six squeeze together inside the same width)
+		var step := minf(DEBUFF_STEP, (DEBUFF_STEP * (DEBUFF_COLS - 1)) / maxf(1.0, debuff_count - 1.0))
+		return DEBUFF_AT + Vector2(k * step, 0.0)
 	return DEBUFF_AT + Vector2((k % DEBUFF_COLS) * DEBUFF_STEP, (k / DEBUFF_COLS - (rows - 1)) * (DEBUFF_PX + 4.0))
 
 
@@ -93,6 +144,9 @@ class Back extends Control:
 			draw_rect(r, NewUiLayout.DARK)
 
 	func _draw() -> void:
+		if NewUiLayout.hud2:
+			Hud2Layout.draw(self)
+			return
 		for b in NewUiLayout.BLOCKS:
 			var mod := Color.WHITE
 			if b.size() > 2 and b[2] == "menu":

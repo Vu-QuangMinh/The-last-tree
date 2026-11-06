@@ -36,6 +36,10 @@ var straight := false
 var spawn_c := Vector2.INF
 var lever_shift := Vector2.ZERO
 var over := Control.new()  # (straight tube: its clamp, over the Essence)
+## Puppet HUD ver 2 has no machine: `headless` keeps this object as the place the Essence's trips are planned from (they come in at `drop_at`, strip px, the top of the vertical tube,
+## and fall to the tray's row), draws nothing, and its reels and lever are over at once.
+var headless := false
+var drop_at := Vector2.ZERO
 
 var _lamps: Array = []
 var _lamp_on: Texture2D
@@ -120,6 +124,8 @@ static func _screen(t: TextureRect) -> TextureRect:
 func build() -> void:
 	for c in [back, behind, front, over]:
 		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if headless:
+		return
 	# a plain soft shadow behind the cabinet and its funnel: the machine stands apart from the stage behind it
 	var body: Rect2 = PuppetSlotMachine.BODY
 	back.add_child(_shadow(body.grow(-2.0), 56.0, 1.0))
@@ -191,17 +197,23 @@ static func _strip_pic(tex_name: String, at: Vector2) -> TextureRect:
 # ------------------------------------------------------------------ places (Bag strip coordinates, centres)
 
 func reel_center(i: int) -> Vector2:
+	if headless:
+		return drop_at
 	return _x(local(Vector2(PuppetSlotMachine.REEL_X[i], PuppetSlotMachine.REEL_Y) + PuppetSlotMachine.REEL_SIZE / 2.0))
 
 
 ## The mouth of the top funnel: where a bonus Essence goes in.
 func funnel_top_mouth() -> Vector2:
+	if headless:
+		return drop_at + Vector2(0.0, -6.0)
 	var r: Rect2 = PuppetSlotMachine.FUNNEL_TOP
 	return _x(local(Vector2(r.position.x + r.size.x / 2.0, r.position.y + 14.0)))
 
 
 ## Where an Essence enters the tube: just under the cabinet, still hidden behind it (there is no bottom funnel: the tube starts right under the cabinet).
 func funnel_bottom_in() -> Vector2:
+	if headless:  # (they fall down the vertical tube to where it bends)
+		return Vector2(drop_at.x, Hud2Layout.stack_pos(1).y)
 	if straight:  # (the Essence fall down behind the cabinet into the tube's row)
 		return Vector2(1084.0, NewUiLayout.TUBE_ROW_Y)
 	var r: Rect2 = PuppetSlotMachine.BODY
@@ -210,6 +222,8 @@ func funnel_bottom_in() -> Vector2:
 
 ## The centre line of the tube, from just under the funnel to the cap at the Bag strip's edge.
 func tube_path() -> Array:
+	if headless:  # (round the tube's bend, then left into the hole)
+		return [Hud2Layout.stack_pos(0), Vector2(NewUiLayout.MOUTH_X, NewUiLayout.TUBE_ROW_Y)]
 	if straight:  # (straight left along the row, under the cabinet, through the tube, to the edge of the Bag strip)
 		return [Vector2(NewUiLayout.MOUTH_X, NewUiLayout.TUBE_ROW_Y)]
 	var pts: Array = [local(Vector2(TUBE_X, PuppetSlotMachine.BODY.end.y + 2.0))]
@@ -259,6 +273,8 @@ func _set_lever(k: float) -> void:
 
 
 func lever_pull() -> void:
+	if headless:
+		return
 	if _lever_tw != null and _lever_tw.is_valid():
 		_lever_tw.kill()
 	_lever_tw = front.create_tween()
@@ -266,6 +282,8 @@ func lever_pull() -> void:
 
 
 func lever_return() -> void:
+	if headless:
+		return
 	if _lever_tw != null and _lever_tw.is_valid():
 		_lever_tw.kill()
 	_lever_tw = front.create_tween()
@@ -275,6 +293,8 @@ func lever_return() -> void:
 # ------------------------------------------------------------------ the lamps
 
 func set_lamps(on: bool) -> void:
+	if headless:
+		return
 	for l in _lamps:
 		l.texture = _lamp_on if on else _lamp_off
 
@@ -320,6 +340,8 @@ func _face(el: String, temp := false) -> ElementIcon:
 
 
 func clear_face(i: int) -> void:
+	if headless:
+		return
 	if _faces[i] != null and is_instance_valid(_faces[i]):
 		_faces[i].queue_free()
 	_faces[i] = null
@@ -327,6 +349,8 @@ func clear_face(i: int) -> void:
 
 ## Put these Essence on the reels, one each, left to right ("" or nothing leaves a reel empty). `bounce`: they pop in.
 func set_faces(els: Array, bounce := false) -> void:
+	if headless:
+		return
 	for i in 3:
 		clear_face(i)
 		if i < els.size() and String(els[i]) != "":
@@ -341,6 +365,8 @@ func set_faces(els: Array, bounce := false) -> void:
 
 ## The reels spin for `dur` seconds (the lamps chase) and stop one after another, the last at `dur`, each on its Essence of `finals`.
 func spin(finals: Array, dur := 2.0) -> void:
+	if headless:
+		return
 	busy = true
 	for i in 3:
 		clear_face(i)
@@ -385,6 +411,8 @@ func spin(finals: Array, dur := 2.0) -> void:
 
 
 func set_faces_one(i: int, el: String) -> void:
+	if headless:
+		return
 	clear_face(i)
 	var ic := _face(el)
 	ic.position = (_boxes[i].size - ic.size) / 2.0
@@ -397,6 +425,8 @@ func set_faces_one(i: int, el: String) -> void:
 ## The Essence on reel i drops out of the machine (in front of the cabinet) and into the bottom funnel, starting `delay` seconds from now; from the funnel the real
 ## Essence takes over (behind it). `big`: the size of a real Essence. Returns how long the drop itself takes.
 func drop_front_orb(i: int, el: String, big: float, delay := 0.0) -> float:
+	if headless:
+		return 0.0
 	var a := reel_center(i)
 	var b := funnel_bottom_in()
 	var tw := front.create_tween()
