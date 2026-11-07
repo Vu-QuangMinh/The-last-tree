@@ -70,7 +70,7 @@ const K := {
 	"blind": [Color(0.7, 0.7, 0.75), Color(0.3, 0.3, 0.35), "Blind: some enemy Essence show as ?. They still match."],
 	"silence": [Color(0.85, 0.55, 1.0), Color(0.45, 0.15, 0.6), "Silenced: the spell can't fire for a few turns."],
 	"disarmed": [Color(1.0, 0.6, 0.5), Color(0.7, 0.2, 0.1), "Disarmed: an enemy's attacks do nothing on its next turn. You, Disarmed: your Release does nothing this turn."],
-	"ignited": [Color(1.0, 0.55, 0.2), Color(0.75, 0.3, 0.0), "Ignited: casting it burns you for 5 HP."],
+	"ignited": [Color(1.0, 0.55, 0.2), Color(0.75, 0.3, 0.0), "Ignited: casting it burns you for 5 HP, 5 more each time it is lit again. The number on the card shows how much."],
 	"bleed": [Color(0.95, 0.3, 0.3), Color(0.6, 0.05, 0.05), "Bleed: at the start of your turn you lose that much HP, then it drops by 1 (like Poison)."],
 	"lock": [Color(1.0, 0.8, 0.4), Color(0.6, 0.4, 0.0), "Lock: the spell can't fire until your chant contains the lock's symbols."],
 	"redirect": [Color(0.55, 1.0, 0.8), Color(0.05, 0.5, 0.35), "Redirect: the enemy's attack hits another enemy (or itself)."],

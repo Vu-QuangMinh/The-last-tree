@@ -2873,6 +2873,7 @@ Turn %d" % [run.act, run.floor_no(), fight.turn]))  # (two lines on the sign)
 		card.state = ""
 		card.state_text = ""
 		card.ignited = p.ignited.has(s.id)
+		card.ignite_dmg = fight.ignite_damage(s.id)
 		card.cracks = 3 if fight.broken.has(s.id) else fight.hammer_hits.get(s.id, 0)
 		if UiSkin.is_puppet() and card.cracks > 0 and card.get_meta("split_level", 0) != card.cracks:
 			_split_card(card, card.cracks, false)
@@ -3074,6 +3075,7 @@ func _refresh_stock() -> void:
 		ic.el = s.el
 		ic.temp = s.temp
 		ic.frozen = s.frozen
+		ic.freeze_n = int(s.get("freeze_n", 0))
 		ic.hexed = s.hexed
 		ic.dim = phase != "build"
 		if not ic.has_meta("rolling"):
@@ -3082,7 +3084,7 @@ func _refresh_stock() -> void:
 		if s.temp:
 			tip += " (conjured: fades at the end of this turn)"
 		if s.frozen:
-			tip += " (frozen: can't be used this turn)"
+			tip += " (frozen for %d turn%s: can't be used)" % [maxi(1, int(s.get("freeze_n", 1))), "" if int(s.get("freeze_n", 1)) <= 1 else "s"]
 		if s.hexed:
 			tip += " (hexed: chanting it costs 2 HP)"
 		ic.tooltip_text = tip

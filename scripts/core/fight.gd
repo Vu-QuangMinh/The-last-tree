@@ -646,13 +646,15 @@ func resolve_spell(id: String, target_idx := -1) -> void:
 	_charge_react(spell)
 	if player.ignited.has(id):
 		# Ignited (the Ember Sprite): casting it burns you (the Torch Peasant's: as an attack, and the fire is out)
+		var burn: int = ignite_damage(id)
 		if player.ignite_hit.has(id):
-			player.take_attack(player.ignite_hit[id])
+			player.take_attack(burn)
 			player.ignite_hit.erase(id)
 			player.ignited.erase(id)
+			player.ignite_dmg.erase(id)
 		else:
-			player.take_effect(IGNITE_DAMAGE)
-		_log("%s is on fire: it burns you for %d." % [spell.name, IGNITE_DAMAGE])
+			player.take_effect(burn)
+		_log("%s is on fire: it burns you for %d." % [spell.name, burn])
 		await anim.call({"type": "ignite_burn", "id": id})
 		_cleanup()
 		if over:
@@ -1446,8 +1448,10 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 			player.silenced.clear()
 			player.ignited.clear()
 			player.ignite_hit.clear()
+			player.ignite_dmg.clear()
 			for s in player.stock:
 				s.frozen = false
+				s.freeze_n = 0
 			if had > 0 and int(eff.get("heal_per", 0)) > 0:
 				player.heal(had * int(eff.heal_per))
 			_log("%s cures %d debuff%s." % [spell.name, had, "" if had == 1 else "s"])
@@ -1796,6 +1800,7 @@ func _cleanse(what: String) -> void:
 	if what in ["all", "frozen"]:
 		for s in player.stock:
 			s.frozen = false
+			s.freeze_n = 0
 			s.hexed = false
 	if what == "lock" and not player.locks.is_empty():
 		player.locks.erase(player.locks.keys()[0])
@@ -1943,7 +1948,8 @@ func end_player_turn() -> void:
 	if not has_artifact("prism_shard"):
 		player.stock = player.stock.filter(func(s): return not s.temp)
 	for s in player.stock:
-		s.frozen = false
+		s.freeze_n = maxi(0, int(s.get("freeze_n", 0)) - 1)  # (stacked Freeze: a turn at a time)
+		s.frozen = s.freeze_n > 0
 	player.confuse_turns = maxi(0, player.confuse_turns - 1)
 	player.blind_turns = maxi(0, player.blind_turns - 1)
 	player.toll = 0
@@ -1961,6 +1967,7 @@ func end_player_turn() -> void:
 		player.ignited[s] -= 1
 		if player.ignited[s] <= 0:
 			player.ignited.erase(s)
+			player.ignite_dmg.erase(s)
 	if player.blind_turns == 0:
 		blind_masks.clear()
 	await _enemy_phase()
@@ -2086,7 +2093,7 @@ func _plan(e: EnemyState) -> void:
 	e.move_index += 1
 	e.mad_hits = 0  # (his attack is over: it starts from one hit again)
 	if e.has_passive("dormant") and not e.awake:
-		if e.size() <= 15 or e.dormant_turns >= 3:
+		if e.size() <= 12 or e.dormant_turns >= 3:
 			e.awake = true
 			e.intent = e.def.moves[0]
 			e.move_index = 1
@@ -2738,20 +2745,18 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 			if blast > 0:
 				await _do_move(e, {"kind": "attack", "n": blast})
 		"ignite_spell":
-			var cands := usable_spells().filter(func(s): return not player.ignited.has(s.id))
+			var cands := usable_spells()  # (a spell already alight can be lit again: Ignite stacks)
 			if m.get("all", false):
 				for s in cands:
-					player.ignited[s.id] = m.turns  # (the Dragon's fireball bursts: every spell is on fire)
+					_ignite(s, m)  # (the Dragon's fireball bursts: every spell is on fire)
 				_log("%s bursts: all your spells are on fire next turn (casting one burns you for %d)." % [e.name, IGNITE_DAMAGE])
 				cands = []
 			for k in int(m.get("n", 1)):
 				if cands.is_empty():
 					break
 				var s: Dictionary = cands.pop_at(rng.randi() % cands.size())
-				player.ignited[s.id] = m.turns
-				if m.get("until_cast", false):
-					player.ignite_hit[s.id] = IGNITE_DAMAGE
-				_log("%s sets %s on fire: casting it burns you for %d." % [e.name, s.name, IGNITE_DAMAGE])
+				_ignite(s, m)
+				_log("%s sets %s on fire: casting it burns you for %d." % [e.name, s.name, ignite_damage(s.id)])
 			await anim.call({"type": "ignite_spell"})
 			if m.get("burst", false):
 				e.elements.clear()  # (the fireball is spent: it's gone)
@@ -2830,11 +2835,18 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 		"freeze":
 			if has_artifact("blanket"):
 				_log("Your Blanket keeps the cold out.")
+				if m.has("also") and not over and not e.is_dead():
+					await _do_move(e, m.also)  # (a blow that freezes still lands)
 				return
+			# the Essence that isn't frozen first; after that, Freeze stacks on what is (each stack is a turn longer)
 			var free := player.stock.filter(func(s): return not s.frozen)
 			free.shuffle()
-			for s in free.slice(0, m.n):
+			for k in int(m.n):
+				if player.stock.is_empty():
+					break
+				var s: Dictionary = free.pop_back() if not free.is_empty() else player.stock[rng.randi() % player.stock.size()]
 				s.frozen = true
+				s.freeze_n = int(s.get("freeze_n", 0)) + 1
 			await anim.call({"type": "freeze_stock"})
 		"ethereal":
 			e.ethereal = true
@@ -2983,6 +2995,19 @@ func _lamp_back(e: EnemyState) -> void:
 	await anim.call({"type": "spawn", "enemy": lamp})
 
 
+## What casting this spell burns you for (Ignite stacks).
+func ignite_damage(id: String) -> int:
+	return int(player.ignite_dmg.get(id, IGNITE_DAMAGE))
+
+
+## A spell is lit, or lit again: 5 more on what it burns you for.
+func _ignite(s: Dictionary, m: Dictionary) -> void:
+	player.ignite_dmg[s.id] = (int(player.ignite_dmg[s.id]) if player.ignited.has(s.id) and player.ignite_dmg.has(s.id) else 0) + IGNITE_DAMAGE
+	player.ignited[s.id] = maxi(int(player.ignited.get(s.id, 0)), int(m.turns))
+	if m.get("until_cast", false):
+		player.ignite_hit[s.id] = true
+
+
 ## A flyer that has lost Essence comes down, and is stunned for a turn. The Horseman at 10 Essence: the head is what comes next.
 func _falls_and_heads() -> void:
 	for e: EnemyState in alive():
@@ -2996,7 +3021,7 @@ func _falls_and_heads() -> void:
 				e.fly_size = e.size()
 		if e.has_passive("head_throw") and not e.has_meta("headless") and e.size() <= 10:
 			_plan(e)
-		if e.has_passive("dormant") and not e.awake and e.size() <= 15:
+		if e.has_passive("dormant") and not e.awake and e.size() <= 12:
 			_plan(e)
 
 

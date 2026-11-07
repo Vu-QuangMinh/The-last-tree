@@ -60,93 +60,101 @@ const E := {
 	"pickpocket_imp": {"name": "Pickpocket Imp", "act": 0, "hp": "AFA", "moves": [{"kind": "steal", "n": 1}, {"kind": "attack", "n": 4}, {"kind": "armor", "pos": 0}],
 		"flavor": "It wears what it steals."},
 	# ---------------- act 2
-	"splitter_ooze": {"name": "Splitter Ooze", "act": 2, "hp": "WWFF", "moves": [{"kind": "attack", "n": 4}, {"kind": "mend", "el": "random", "n": 1, "who": "self"}, {"kind": "frail", "turns": 2}], "passives": ["split"],
+	"splitter_ooze": {"name": "Splitter Ooze", "act": 2, "hp": "WWF", "moves": [{"kind": "attack", "n": 4}, {"kind": "mend", "el": "random", "n": 1, "who": "self"}, {"kind": "frail", "turns": 2}], "passives": ["split"],
 		"flavor": "Hit it wrong and there are two."},
-	"overgrowth_vine": {"name": "Overgrowth Vine", "act": 2, "hp": "FAWA", "moves": [{"kind": "attack", "n": 4}, {"kind": "armor", "pos": 0}, {"kind": "poison", "n": 2}], "passives": ["overgrowth"],
+	"overgrowth_vine": {"name": "Overgrowth Vine", "act": 2, "hp": "FAW", "moves": [{"kind": "attack", "n": 4}, {"kind": "armor", "pos": 0}, {"kind": "poison", "n": 2}], "passives": ["overgrowth"],
 		"flavor": "Ignore it and it grows."},
-	"toll_keeper": {"name": "Toll Keeper", "act": 2, "hp": "WWAW", "moves": [{"kind": "toll"}, {"kind": "attack", "n": 5}, {"kind": "armor", "pos": 1}],
+	"toll_keeper": {"name": "Toll Keeper", "act": 2, "hp": "WWA", "moves": [{"kind": "toll"}, {"kind": "attack", "n": 5}, {"kind": "armor", "pos": 1}],
 		"flavor": "Every word costs extra."},
-	"hexer": {"name": "Hexer", "act": 2, "hp": "FWA", "moves": [{"kind": "hex"}, {"kind": "attack", "n": 4}, {"kind": "mend", "el": "random", "n": 1, "who": "ally"}],
+	"hexer": {"name": "Hexer", "act": 2, "hp": "FW", "moves": [{"kind": "hex"}, {"kind": "attack", "n": 4}, {"kind": "mend", "el": "random", "n": 1, "who": "ally"}],
 		"flavor": "Marks your Essence with pain."},
-	"shrine_maiden": {"name": "Shrine Maiden", "act": 2, "hp": "WAW", "moves": [{"kind": "mend", "el": "random", "n": 1, "who": "all"}, {"kind": "attack", "n": 3}, {"kind": "frail", "turns": 1}],
+	"shrine_maiden": {"name": "Shrine Maiden", "act": 2, "hp": "WA", "moves": [{"kind": "mend", "el": "random", "n": 1, "who": "all"}, {"kind": "attack", "n": 3}, {"kind": "frail", "turns": 1}],
 		"flavor": "She mends everyone but you."},
 	# The Anxious Armadillo (Act 2, met once ever: the second fight of Act 2 on your very first run). He never attacks:
 	# he only curls up tighter (+2 Thorns a turn: your Release hitting him hurts you that much). Beaten, he doesn't
 	# break: FightScreen._armadillo_ending plays his scene (sad, he tries to hop away, the string yanks him up).
-	"anxious_armadillo": {"name": "Anxious Armadillo", "act": 2, "unique": true, "no_extra": true, "hp": "WFAAFWWAFFAWWFAAFWWA",
+	"anxious_armadillo": {"name": "Anxious Armadillo", "act": 2, "unique": true, "no_extra": true, "hp": "WFAAFWWAFFAWWFAA",
 		"passives": ["armadillo"], "moves": [{"kind": "grow_thorns", "n": 2}],
 		"flavor": "Curled up, spiky, and very, very nervous."},
 	# Act 2 (see POOLS; exact numbers: no act bonus). The Starving Mobs: three peasants, 7 Essence each.
-	"mob_pitchfork": {"name": "Pitchfork Peasant", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FFWAFWA",
+	"mob_pitchfork": {"name": "Pitchfork Peasant", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FFWAF",
 		"moves": [{"kind": "attack", "n": 2, "also": {"kind": "bleed", "n": 2}}],
 		"flavor": "It used to turn hay."},
-	"mob_slingshot": {"name": "Slingshot Peasant", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WAAFWAW",
+	"mob_slingshot": {"name": "Slingshot Peasant", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WAAFW",
 		"moves": [{"kind": "attack", "n": 2, "also": {"kind": "drain_essence", "n": 1}}],
 		"flavor": "Stones are the only thing left that is free."},
-	"mob_torch": {"name": "Torch Peasant", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "AFFWAFF",
+	"mob_torch": {"name": "Torch Peasant", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "AFFWA",
 		"moves": [{"kind": "ignite_spell", "n": 1, "turns": 9999, "until_cast": true}],
 		"flavor": "Everything he owned has already burned."},
 	# The Undying Duo: the skeleton keeps his first Essence armoured until it is his last; behind him the Necromancer can't be touched.
-	"shield_bearer": {"name": "Skeleton Shield Bearer", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WWFAWWFA", "passives": ["big_shield"],
+	"shield_bearer": {"name": "Skeleton Shield Bearer", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WWFAWW", "passives": ["big_shield"],
 		"moves": [{"kind": "armor", "pos": 0}],
 		"flavor": "Nobody told him the war was over."},
-	"necromancer": {"name": "Necromancer", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FAW", "passives": ["behind_shield"],
+	"necromancer": {"name": "Necromancer", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FA", "passives": ["behind_shield"],
 		"moves": [{"kind": "poison", "n": 3}],
 		"flavor": "Brave, as long as somebody else is holding the shield."},
-	# The Sentinel: a large golem with a blue orb inside. It does nothing until it is down to 15 Essence, or for 3 turns, then
-	# hits for 3 once, twice, four times, stuns itself for a turn, and starts over.
-	"sentinel": {"name": "Sentinel", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WAFWAWFAWWFAAWFWAFWA", "passives": ["dormant"],
+	# The Sentinels: large golems. Each does nothing until it is down to 12 Essence, or for 3 turns. Alone they are normal fights;
+	# together they are the Twin Sentinels, a mini boss. Red (a red core): hits for 3 once, twice, four times, stuns itself for a turn, starts over.
+	"sentinel": {"name": "Red Sentinel", "act": 2, "tint": Color(0.75, 0.2, 0.15), "member": true, "no_extra": true, "no_bonus": true, "hp": "WAFWAWFAWWFAAWFW", "passives": ["dormant"],
 		"moves": [{"kind": "attack", "n": 3}, {"kind": "attack", "n": 3, "hits": 2}, {"kind": "attack", "n": 3, "hits": 4}, {"kind": "recharge"}],
-		"flavor": "Its orb turns slowly toward you."},
+		"flavor": "Its red core turns slowly toward you."},
+	# Blue (a blue core): every blow freezes your Essence too. Freeze stacks.
+	"blue_sentinel": {"name": "Blue Sentinel", "act": 2, "tint": Color(0.2, 0.4, 0.8), "member": true, "no_extra": true, "no_bonus": true, "hp": "AWFAWFWWFAFWAWAF", "passives": ["dormant"],
+		"moves": [{"kind": "freeze", "n": 1, "also": {"kind": "attack", "n": 2}}, {"kind": "freeze", "n": 2, "also": {"kind": "attack", "n": 4}}, {"kind": "freeze", "n": 4, "also": {"kind": "attack", "n": 4}}],
+		"flavor": "Its blue core turns slowly toward you."},
+	# The Rot Snake: a big, half-rotten snake. Poison 5, then a bite for 5 and Poison 1, in turn.
+	"rot_snake": {"name": "Rot Snake", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WFAWWFAFWA",
+		"moves": [{"kind": "poison", "n": 5}, {"kind": "attack", "n": 5, "also": {"kind": "poison", "n": 1}}],
+		"flavor": "Half of it is already dead. The other half hasn't noticed."},
 	# The Headless Horseman: two moves in turn. At 10 Essence or less his next move is to throw his head, which silences every spell;
 	# from then on he only has the first move.
-	"headless_horseman": {"name": "Headless Horseman", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAFWAAWFFWAFAW", "passives": ["head_throw"],
-		"moves": [{"kind": "attack", "n": 5, "hits": 2}, {"kind": "silence", "turns": 1, "also": {"kind": "attack", "n": 3}}],
+	"headless_horseman": {"name": "Headless Horseman", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAFWAAWFFWAFAWF", "passives": ["head_throw"],
+		"moves": [{"kind": "attack", "n": 6, "hits": 2}, {"kind": "silence", "turns": 1, "also": {"kind": "attack", "n": 4}}],
 		"head_move": {"kind": "silence", "all": true, "turns": 1, "head": true},
 		"flavor": "He holds it up to his neck to scream."},
 	# The Scavengers: four animals with human posture, 6 Essence each. Flying: see EnemyState.flying.
-	"scav_rat": {"name": "Scavenger Rat", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAFWA",
+	"scav_rat": {"name": "Scavenger Rat", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAF",
 		"moves": [{"kind": "attack", "n": 1, "hits": 3}],
 		"flavor": "Three small bites, and it has already gone through your pockets."},
-	"scav_hyena": {"name": "Scavenger Hyena", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WAFWAF",
+	"scav_hyena": {"name": "Scavenger Hyena", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WAFW",
 		"moves": [{"kind": "empower", "n": 1, "who": "all", "name": "Howl"}],
 		"flavor": "It laughs, and the others get braver."},
-	"scav_vulture": {"name": "Scavenger Vulture", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "flying": true, "hp": "AFWAFW", "passives": ["flying"],
+	"scav_vulture": {"name": "Scavenger Vulture", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "flying": true, "hp": "AFWA", "passives": ["flying"],
 		"moves": [{"kind": "attack", "n": 2, "hits": 2}],
 		"flavor": "It is in no hurry."},
-	"scav_beetle": {"name": "Scavenger Dung Beetle", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WWAAFF", "passives": ["shell"],
+	"scav_beetle": {"name": "Scavenger Dung Beetle", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WWAA", "passives": ["shell"],
 		"moves": [{"kind": "attack", "n": 3}],
 		"flavor": "Somebody has to clean up."},
 	# The Maddened Soldier: ragged, a shiny red eye, his hands fused into a two-handed sword he drags along the ground. Hits for 2;
 	# every time your chant strikes him, one more hit on his next attack (spells don't count).
-	"mad_soldier": {"name": "Maddened Soldier", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWWAFAFWAAWFFAW", "passives": ["maddened"],
+	"mad_soldier": {"name": "Maddened Soldier", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWWAFAFWAAWF", "passives": ["maddened"],
 		"moves": [{"kind": "attack", "n": 2}],
 		"flavor": "The sword isn't in his hands. It is his hands."},
 	# The Tree Dwellers: a tree with two people growing out of it as branches, each with a bow and its own 8 Essence.
-	"tree_dweller_a": {"name": "Tree Dweller", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WFAWFAWF",
+	"tree_dweller_a": {"name": "Tree Dweller", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WFAWFA",
 		"moves": [{"kind": "poison", "n": 2}],
 		"flavor": "He stood his post. He is still standing it."},
-	"tree_dweller_b": {"name": "Tree Dweller", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "AWFAAWFW",
+	"tree_dweller_b": {"name": "Tree Dweller", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "AWFAAW",
 		"moves": [{"kind": "poison", "n": 2}],
 		"flavor": "The bark has almost reached her eyes."},
 	# The Orphans: a tall bramble bush with children behind it. They throw whatever they find: the damage is rolled when the
 	# throw is planned (see THROWN). The bush killed, it is pulled up and the children run off to the left, laughing.
-	"orphan_bush": {"name": "The Orphans", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "AWFAWWFAAFWA", "passives": ["thrown_junk"],
+	"orphan_bush": {"name": "The Orphans", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "AWFAWWFAA", "passives": ["thrown_junk"],
 		"moves": [{"kind": "attack", "n": 3}],
 		"flavor": "Somebody behind it is trying very hard not to laugh."},
 	# The Bog Lantern: an enormous angler fish on two legs (any of its moves, at random), and its lamp, a separate enemy on a clock:
 	# 2, 1, then at 0 it stuns you and starts over. Killed, the lamp grows back after a turn, its clock at 2.
-	"bog_fish": {"name": "Bog Lantern", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WAFWWAFAWAFW", "passives": ["lure"], "random_moves": true,
+	"bog_fish": {"name": "Bog Lantern", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WAFWWAFAW", "passives": ["lure"], "random_moves": true,
 		"moves": [{"kind": "attack", "n": 5}, {"kind": "poison", "n": 3}, {"kind": "grow_thorns", "n": 2}],
 		"flavor": "Don't look at the light."},
-	"bog_lamp": {"name": "Lamp", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FFA",
+	"bog_lamp": {"name": "Lamp", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FF",
 		"moves": [{"kind": "glow", "n": 2}, {"kind": "stun", "turns": 1}],
 		"flavor": "Brighter. Brighter. Brighter."},
 	# Bug Hunter 1.0: an assembly-line robot. At 0 Essence it reboots with 5 Essence: destroy that, or on its turn it explodes.
-	"bug_hunter": {"name": "Bug Hunter 1.0", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAFFWAWWFAF", "hp2": "AWFAW", "passives": ["last_fuse"],
+	"bug_hunter": {"name": "Bug Hunter 1.0", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAFFWAWW", "hp2": "AWFA", "passives": ["last_fuse"],
 		"moves": [{"kind": "attack", "n": 5}], "moves2": [{"kind": "explode", "n": 10}],
 		"flavor": "Task: remove bugs. You are a bug."},
-	"blinding_beetle": {"name": "Blinding Beetle", "act": 2, "hp": "FAF", "moves": [{"kind": "blind", "turns": 2}, {"kind": "attack", "n": 4}, {"kind": "empower", "n": 1}],
+	"blinding_beetle": {"name": "Blinding Beetle", "act": 2, "hp": "FA", "moves": [{"kind": "blind", "turns": 2}, {"kind": "attack", "n": 4}, {"kind": "empower", "n": 1}],
 		"flavor": "A flash, and everything blurs."},
 	# ---------------- act 3
 	"inverter": {"name": "Inverter", "act": 3, "hp": "FWFW", "moves": [{"kind": "invert"}, {"kind": "attack", "n": 5}, {"kind": "armor", "pos": 0}],
@@ -353,14 +361,14 @@ const PASSIVE_TEXT := {
 	"last_gasp": "Last Gasp: gives you Poison 2 when it dies.",
 	"retainer": "Loyal: if the Samurai falls first, his Retainer yields and the fight is over.",
 	"avenger": "Avenger: if his Retainer falls first, the Samurai gains 5 Power for the rest of the fight.",
-	"dormant": "Dormant: does nothing until it is down to 15 Essence, or for 3 turns.",
+	"dormant": "Dormant: does nothing until it is down to 12 Essence, or for 3 turns.",
 	"head_throw": "Head Throw: at 10 Essence or less, he throws his head and silences all your spells. After that he only swings.",
 	"flying": "Flying: your chant can't hit it. Damage from a spell or a bottle brings it down, and it is stunned for a turn.",
 	"shell": "Shell: its first Essence is always armoured, until it is its last one.",
 	"maddened": "Maddened: every time your chant strikes him, he hits one more time on his next attack. Spells don't count.",
 	"thrown_junk": "Thrown Junk: throws whatever is at hand, for 2 to 10 damage. Usually about 3, but sometimes an axe.",
 	"lure": "Lure: its lamp is a separate enemy. Killed, the lamp grows back after a turn, its clock back at 2.",
-	"last_fuse": "Last Fuse: at 0 Essence it reboots with 5 Essence. Destroy those, or on its turn it explodes for 10 and dies.",
+	"last_fuse": "Last Fuse: at 0 Essence it reboots with 4 Essence. Destroy those, or on its turn it explodes for 10 and dies.",
 	"big_shield": "Big Shield: keeps its first Essence armoured until that is its last one. Then it drops the shield and attacks.",
 	"behind_shield": "Hiding: while the Shield Bearer stands, nothing you do can touch it.",
 	"gem_crown": "Gem Crown: at the end of its turn, armours its first Essence if nothing is armoured (not when it has 1 left).",
@@ -416,8 +424,10 @@ const BIOS := {
 	"mob_slingshot": "Small stones, good aim. Every hit knocks an Essence out of your bag.",
 	"mob_torch": "Sets one of your spells alight. It stays alight until you cast it, and then it burns you.",
 	"shield_bearer": "A skeleton behind a very big shield. Doesn't fight back until the shield is all he has left.",
-	"necromancer": "Three Essence and a lot of Poison, safe for as long as his skeleton stands.",
+	"necromancer": "Two Essence and a lot of Poison, safe for as long as his skeleton stands.",
+	"rot_snake": "Spits a mouthful of rot, then bites. Its Poison piles up fast.",
 	"sentinel": "Wakes when you hurt it, or when it has seen enough. Each round of blows is bigger, then it has to stop and recharge.",
+	"blue_sentinel": "Wakes when you hurt it, or when it has seen enough. Every blow freezes your Essence, more and more of it.",
 	"headless_horseman": "Swings twice, or screams through the head he holds to his neck. Hurt him enough and he throws it.",
 	"scav_rat": "Three little bites a turn. Gets nastier with every howl.",
 	"scav_hyena": "Doesn't bite. It howls, and all of them hit harder.",
@@ -524,6 +534,7 @@ static func elites(act: int) -> Array:
 const ELITE_GROUPS := {
 	"the_triplet": {"name": "The Triplet", "act": 1, "ids": ["triplet_fire", "triplet_water", "triplet_air"]},
 	"samurai_pair": {"name": "The Samurai and his Retainer", "act": 2, "ids": ["samurai", "samurai_retainer"]},
+	"twin_sentinels": {"name": "The Twin Sentinels", "act": 2, "ids": ["sentinel", "blue_sentinel"]},
 	"fire_dragon": {"name": "The Fire Dragon", "act": 3, "ids": ["dragon_tail", "dragon_head"]},
 	"winter_wyvern": {"name": "The Winter Wyvern", "act": 3, "ids": ["wyvern_head", "wyvern_tail"]},
 }
@@ -584,11 +595,14 @@ const POOLS := {
 			{"name": "The Tree Dwellers", "ids": ["tree_dweller_a", "tree_dweller_b"], "w": 1.0},
 		],
 		"medium": [
-			{"name": "The Headless Horseman", "ids": ["headless_horseman"], "w": 1.0},
-			{"name": "The Sentinel", "ids": ["sentinel"], "w": 1.0},
+				{"name": "The Red Sentinel", "ids": ["sentinel"], "w": 1.0},
+		{"name": "The Blue Sentinel", "ids": ["blue_sentinel"], "w": 1.0},
+		{"name": "The Rot Snake", "ids": ["rot_snake"], "w": 1.0},
 			{"name": "The Scavengers", "ids": ["scav_rat", "scav_hyena", "scav_vulture", "scav_beetle"], "w": 1.0},
 		],
-		"hard": [],  # (none yet: the medium pool stands in)
+		"hard": [
+			{"name": "The Headless Horseman", "ids": ["headless_horseman"], "w": 1.0},
+		],
 	},
 }
 
@@ -617,7 +631,9 @@ static func roll_fight_plan(act: int, rng: RandomNumberGenerator) -> Array:
 	var plan: Array = []
 	for i in PLAN_LENGTH:
 		var kind := "easy" if i < EASY_FIGHTS else ("medium" if i < EASY_FIGHTS + MEDIUM_FIGHTS else "hard")
-		var pool: Array = pools[kind] if not pools[kind].is_empty() else pools.medium
+		var pool: Array = pools[kind]
+		if kind == "hard" and pool.size() < 3:
+			pool = pool + pools.medium  # (too few hard fights yet to keep from repeating: the medium ones help out)
 		if i == EASY_FIGHTS or i == EASY_FIGHTS + MEDIUM_FIGHTS:
 			var before: Array = plan[-1].ids
 			var fresh := pool.filter(func(enc): return not enc.ids.any(func(id): return id in before))
@@ -758,7 +774,7 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 				s = "Charging: %d turn%s left" % [m.left, "" if m.left == 1 else "s"]
 		"ignite_spell":
 			if m.get("until_cast", false):
-				s = "Ignite a spell (it stays Ignited until you cast it, then deals %d damage; Shield stops it)" % Fight.IGNITE_DAMAGE
+				s = "Ignite a spell (it stays Ignited until you cast it, then deals %d damage, more if it is lit again; Shield stops it)" % Fight.IGNITE_DAMAGE
 			elif m.get("all", false):
 				s = "Burst: Ignite ALL your spells for your next turn (casting one burns you for %d)" % Fight.IGNITE_DAMAGE
 			else:
@@ -782,7 +798,7 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 		"recharge":
 			s = "Recharging: it stuns itself for a turn"
 		"dormant":
-			s = "Dormant: it does nothing until it is down to 15 Essence, or for 3 turns"
+			s = "Dormant: it does nothing until it is down to 12 Essence, or for 3 turns"
 		"glow":
 			s = "Shines brighter: at 0 it stuns you (clock: %d)" % m.n
 		"explode":

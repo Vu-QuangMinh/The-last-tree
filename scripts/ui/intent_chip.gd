@@ -86,7 +86,7 @@ const INFO := {
 	"stun": ["Stun", "Next turn you can't chant or cast: you can only Pass or drink a bottle."],
 	"grounded": ["Stunned", "It fell out of the air: it skips its action."],
 	"recharge": ["Recharging", "It stuns itself for a turn, then starts over."],
-	"dormant": ["Dormant", "It does nothing until it is down to 15 Essence, or for 3 turns."],
+	"dormant": ["Dormant", "It does nothing until it is down to 12 Essence, or for 3 turns."],
 	"glow": ["Shining brighter", "Its clock runs down. At 0 it stuns you, then starts over."],
 	"explode": ["Explode", "It deals this much damage and destroys itself. Destroy it first and it never goes off."],
 	"empower": ["Empower", "Its attacks deal more damage from now on."],

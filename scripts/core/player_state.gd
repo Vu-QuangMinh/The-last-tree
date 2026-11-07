@@ -20,7 +20,8 @@ var thorn_guard := false  # Bandage: enemy thorns (and burning hides) don't hurt
 var ethereal := false  # this enemy turn: no attack damage
 var poison := 0  # Poison N: at the start of your turn you lose N HP, then it drops by 1
 var bleed := 0  # Bleed N: works like Poison, counted on its own (the Pitchfork Peasant)
-var ignite_hit := {}  # spell id -> damage: Ignited until it is cast, and that burn is an attack (Shield stops it): the Torch Peasant
+var ignite_hit := {}  # spell id -> true: Ignited until it is cast, and that burn is an attack (Shield stops it): the Torch Peasant
+var ignite_dmg := {}  # spell id -> what casting it burns you for: Ignite stacks (see Fight.IGNITE_DAMAGE)
 var confuse_turns := 0
 var blind_turns := 0
 var toll := 0  # Toll: your next chant holds at most this many Essence (0 = no limit)
@@ -95,6 +96,7 @@ func reset_fight() -> void:
 	cooldowns.clear()
 	ignited.clear()
 	ignite_hit.clear()
+	ignite_dmg.clear()
 	disarmed_turns = 0
 	stun_turns = 0
 	locks.clear()
@@ -122,7 +124,7 @@ var _next_uid := 0
 
 func add_element(el: String, temp := false) -> void:
 	_next_uid += 1
-	stock.append({"el": el, "temp": temp, "frozen": false, "hexed": false, "uid": _next_uid})
+	stock.append({"el": el, "temp": temp, "frozen": false, "freeze_n": 0, "hexed": false, "uid": _next_uid})
 
 
 func count_usable(el: String) -> int:

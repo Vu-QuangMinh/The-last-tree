@@ -3,6 +3,7 @@ extends Control
 ## A thin line of flame running all the way round a spell card's frame, flickering: the spell is Ignited (casting
 ## it burns you). It sits in the card's content box and draws out onto the frame, like the OrbitSpark.
 
+var number := 0  # the burn, written on the card
 var margins := [6.0, 7.0, 6.0, 5.0]  # the card's content margins (left, top, right, bottom): where the frame is
 var zoom := 1.0
 var _t := 0.0
@@ -20,6 +21,13 @@ func _process(d: float) -> void:
 
 func _draw() -> void:
 	var r := Rect2(Vector2(-margins[0], -margins[1]), size + Vector2(margins[0] + margins[2], margins[1] + margins[3])).grow(-1.5 * zoom)
+	if number > 0:  # (what casting it burns you for: at the card's top right)
+		var font := ThemeDB.fallback_font
+		var px := int(30.0 * zoom)
+		var w := font.get_string_size(str(number), HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
+		var at := r.position + Vector2(r.size.x - w - 10.0 * zoom, px + 4.0 * zoom)
+		draw_string_outline(font, at, str(number), HORIZONTAL_ALIGNMENT_LEFT, -1, px, int(8.0 * zoom), Color(0.25, 0.05, 0.0))
+		draw_string(font, at, str(number), HORIZONTAL_ALIGNMENT_LEFT, -1, px, Color(1.0, 0.55, 0.2))
 	# the glowing line itself
 	draw_rect(r.grow(1.0 * zoom), Color(1.0, 0.35, 0.05, 0.35), false, 5.0 * zoom)
 	draw_rect(r, Color(1.0, 0.65, 0.2, 0.95), false, 2.0 * zoom)

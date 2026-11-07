@@ -27,6 +27,7 @@ var state_text := ""
 var lock_pattern := ""
 var _base_tip := ""  # (its tooltip without the Ignited line)
 var cracks := 0  # Hammer Hand hits taken (1: a few cracks, 2: cracked all over)
+var ignite_dmg := 5  # what casting it burns you for (Ignite stacks): written at the card's top right
 var ignited := false  # wrapped in a thin line of flame: casting it burns you (the Ember Sprite)
 var selected := false
 var compact := false
@@ -512,6 +513,7 @@ func _sync_zoom() -> void:
 	z.state_text = state_text
 	z.lock_pattern = lock_pattern
 	z.ignited = ignited
+	z.ignite_dmg = ignite_dmg
 	z.cracks = cracks
 	z.selected = selected
 	z.refresh()
@@ -781,8 +783,9 @@ func refresh() -> void:
 		for o in _pat.get_children():
 			o.z_index = 0 if _shade.visible else 1  # (an anti-spell's orbs sit above its negative, but not above a silence)
 	_flame.visible = ignited and state != "used"
+	_flame.number = ignite_dmg if ignited else 0
 	if _base_tip != "":
-		tooltip_text = _base_tip + ("\n[color=#ff9a4a][b]Ignited:[/b] casting it burns you for %d HP.[/color]" % Fight.IGNITE_DAMAGE if ignited else "")
+		tooltip_text = _base_tip + ("\n[color=#ff9a4a][b]Ignited:[/b] casting it burns you for %d HP.[/color]" % ignite_dmg if ignited else "")
 	_cracks.set_level(0 if UiSkin.is_puppet() else cracks, String(spell.get("id", "")))  # (Puppet: the card is cut into planks instead: CardSplit)
 	if spell.get("anti", false):
 		# an anti-spell is always active: its spark keeps circling, unless the chant breaks it (state "broken")

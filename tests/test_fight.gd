@@ -346,8 +346,8 @@ func test_fight_plans_follow_the_pools_and_never_repeat_the_last_two() -> void:
 		var easy: Array = EnemyDefs.POOLS[act].easy.map(func(e): return e.name)
 		var medium: Array = EnemyDefs.POOLS[act].medium.map(func(e): return e.name)
 		var hard: Array = EnemyDefs.POOLS[act].hard.map(func(e): return e.name)
-		if hard.is_empty():
-			hard = medium  # (none yet)
+		if hard.size() < 3:
+			hard = hard + medium  # (too few yet)
 		for run_no in 200:
 			var plan := EnemyDefs.roll_fight_plan(act, rng)
 			assert_eq(plan.size(), EnemyDefs.PLAN_LENGTH)
@@ -1072,7 +1072,7 @@ func _skips_of(text: String) -> int:
 
 func test_act2_tier1_les_miserables() -> void:
 	var f := _fight(["mob_pitchfork", "mob_slingshot", "mob_torch"], ["fire_ball"], "")
-	assert_eq(f.enemies.map(func(e): return e.size()), [7, 7, 7])
+	assert_eq(f.enemies.map(func(e): return e.size()), [5, 5, 5])
 	f.player.stock.clear()
 	f.player.hp = 40
 	await f._do_move(f.enemies[0], f.enemies[0].def.moves[0])
@@ -1094,12 +1094,12 @@ func test_act2_tier1_undying_duo() -> void:
 	var wall: EnemyState = f.enemies[0]
 	var necro: EnemyState = f.enemies[1]
 	f._cleanup()
-	assert_eq([wall.size(), necro.size()], [8, 3])
+	assert_eq([wall.size(), necro.size()], [6, 2])
 	assert_true(wall.armor[0], "his first Essence starts armoured")
 	assert_eq(f.target_candidates(), [0], "the Necromancer can't be targeted")
 	assert_true(necro.behind)
 	await f._strike("FAW")
-	assert_eq(necro.size(), 3, "the Release can't reach him either")
+	assert_eq(necro.size(), 2, "the Release can't reach him either")
 	while wall.size() > 1:
 		wall.remove_right(1)
 	f._cleanup()
@@ -1125,7 +1125,7 @@ func test_act2_tiers_and_the_orphans() -> void:
 			assert_eq(t.throw, "axe")
 	assert_true(seen[3] > seen[2] and seen[3] > seen[4] and seen[4] > seen[7] and seen[7] > seen[10], "3 is the usual, heavy things are rare")
 	var f := _fight(["orphan_bush"], ["fire_ball"], "")
-	assert_eq(f.enemies[0].size(), 12)
+	assert_eq(f.enemies[0].size(), 9)
 	assert_true(f.enemies[0].intent.has("throw"), "its throw is rolled when it is planned")
 	f.player.hp = 40
 	var n: int = f.enemies[0].intent.n
@@ -1136,7 +1136,7 @@ func test_act2_tiers_and_the_orphans() -> void:
 func test_act2_tier15_maddened_soldier() -> void:
 	var f := _fight(["mad_soldier"], ["fire_ball"], "")
 	var e: EnemyState = f.enemies[0]
-	assert_eq(e.size(), 15)
+	assert_eq(e.size(), 12)
 	f.player.hp = 40
 	await f.end_player_turn()
 	assert_eq(f.player.hp, 38.0, "one hit for 2")
@@ -1152,10 +1152,10 @@ func test_act2_tier15_maddened_soldier() -> void:
 
 func test_act2_tier15_tree_dwellers() -> void:
 	var f := _fight(["tree_dweller_a", "tree_dweller_b"], ["fire_ball"], "")
-	assert_eq(f.enemies.map(func(x): return x.size()), [8, 8])
+	assert_eq(f.enemies.map(func(x): return x.size()), [6, 6])
 	await f.end_player_turn()
 	assert_eq(f.player.poison, 3, "2 Poison from each, and the new turn has already ticked it down by 1")
-	f.enemies[0].remove_right(8)
+	f.enemies[0].remove_right(6)
 	f._cleanup()
 	assert_eq(f.alive().size(), 1, "each has its own Essence")
 	assert_eq(EnemyDefs.POOLS[2].easy.size(), 7)
@@ -1164,21 +1164,21 @@ func test_act2_tier15_tree_dwellers() -> void:
 func test_act2_tier2_headless_horseman() -> void:
 	var f := _fight(["headless_horseman"], ["fire_ball", "water_wall"], "")
 	var e: EnemyState = f.enemies[0]
-	assert_eq(e.size(), 15)
+	assert_eq(e.size(), 16)
 	f.player.hp = 40
 	await f.end_player_turn()
-	assert_eq(f.player.hp, 30.0, "5 twice")
+	assert_eq(f.player.hp, 28.0, "6 twice")
 	await f.end_player_turn()
-	assert_eq(f.player.hp, 27.0, "the scream: 3 damage")
+	assert_eq(f.player.hp, 24.0, "the scream: 4 damage")
 	assert_eq(f.player.silenced.size(), 1, "and one spell silenced")
 	f.player.silenced.clear()
-	e.remove_right(5)
+	e.remove_right(6)
 	f._cleanup()
 	assert_true(e.intent.get("head", false), "at 10: the head is his next move")
 	await f.end_player_turn()
 	assert_eq(f.player.silenced.size(), 2, "every spell silenced")
 	for k in 3:
-		assert_eq([e.intent.n, e.intent.hits], [5, 2], "only the one move from now on")
+		assert_eq([e.intent.n, e.intent.hits], [6, 2], "only the one move from now on")
 		await f.end_player_turn()
 
 
@@ -1187,10 +1187,10 @@ func test_act2_tier2_scavengers_and_flying() -> void:
 	var rat: EnemyState = f.enemies[0]
 	var vulture: EnemyState = f.enemies[2]
 	var beetle: EnemyState = f.enemies[3]
-	assert_eq(f.enemies.map(func(x): return x.size()), [6, 6, 6, 6])
+	assert_eq(f.enemies.map(func(x): return x.size()), [4, 4, 4, 4])
 	assert_true(vulture.flying and beetle.armor[0])
 	await f._strike("AFW")
-	assert_eq(vulture.size(), 6, "the chant can't reach a flyer")
+	assert_eq(vulture.size(), 4, "the chant can't reach a flyer")
 	assert_true(2 in f.target_candidates(), "a spell can")
 	vulture.remove_right(1)
 	f._cleanup()
@@ -1202,13 +1202,14 @@ func test_act2_tier2_scavengers_and_flying() -> void:
 	assert_eq(vulture.grounded, 0)
 	assert_eq(vulture.intent.kind, "attack", "and it fights on, on the ground")
 	await f._strike("AFW")
-	assert_true(vulture.size() < 5, "on the ground the chant reaches it")
+	assert_true(vulture.size() < 3, "on the ground the chant reaches it")
 
 
 func test_act2_tier2_sentinel() -> void:
 	var f := _fight(["sentinel"], ["fire_ball"], "")
 	var e: EnemyState = f.enemies[0]
-	assert_eq(e.size(), 20)
+	assert_eq(e.size(), 16)
+	assert_eq(e.name, "Red Sentinel")
 	f.player.hp = 100
 	for k in 3:
 		assert_eq(e.intent.kind, "dormant")
@@ -1226,9 +1227,12 @@ func test_act2_tier2_sentinel() -> void:
 	assert_eq(f.player.hp, 76.0, "and starts over")
 	var g := _fight(["sentinel"], ["fire_ball"], "")
 	g.player.hp = 100
-	g.enemies[0].remove_right(5)
+	g.enemies[0].remove_right(3)
 	g._cleanup()
-	assert_eq(g.enemies[0].intent.kind, "attack", "at 15 Essence it wakes at once")
+	assert_eq(g.enemies[0].intent.kind, "dormant", "13 left: still asleep")
+	g.enemies[0].remove_right(1)
+	g._cleanup()
+	assert_eq(g.enemies[0].intent.kind, "attack", "at 12 Essence it wakes at once")
 	await g.end_player_turn()
 	assert_eq(g.player.hp, 97.0)
 
@@ -1239,11 +1243,75 @@ func test_act1_flyers() -> void:
 		assert_true(f.enemies[0].flying, id + " flies")
 
 
+func test_rot_snake() -> void:
+	var f := _fight(["rot_snake"], ["fire_ball"], "")
+	assert_eq(f.enemies[0].size(), 10)
+	f.player.hp = 40
+	await f.end_player_turn()
+	assert_eq([f.player.hp, f.player.poison], [35.0, 4], "Poison 5 bites and drops by 1 as your turn starts")
+	await f.end_player_turn()
+	assert_eq(f.player.poison, 4, "the bite adds 1, the new turn takes 1")
+	assert_eq(f.player.hp, 25.0, "the bite for 5, then Poison 5 ticks")
+	assert_true(EnemyDefs.POOLS[2].hard.any(func(x): return x.ids == ["headless_horseman"]), "the Horseman is hard now")
+
+
+func test_blue_sentinel_and_the_twins() -> void:
+	var f := _fight(["blue_sentinel"], ["fire_ball"], "FWA")
+	var e: EnemyState = f.enemies[0]
+	assert_eq([e.size(), e.intent.kind], [16, "dormant"])
+	f.player.hp = 100
+	e.remove_right(4)
+	f._cleanup()
+	assert_eq(e.intent.kind, "freeze", "at 12 it wakes")
+	await f.end_player_turn()
+	assert_eq(f.player.hp, 98.0, "freeze 1, 2 damage")
+	await f.end_player_turn()
+	assert_eq(f.player.hp, 94.0, "freeze 2, 4 damage")
+	await f.end_player_turn()
+	assert_eq(f.player.hp, 90.0, "freeze 4, 4 damage")
+	await f.end_player_turn()
+	assert_eq(f.player.hp, 88.0, "and round again")
+	assert_true("twin_sentinels" in EnemyDefs.elites(2))
+	assert_eq(EnemyDefs.ids_of("twin_sentinels"), ["sentinel", "blue_sentinel"])
+	assert_true(EnemyDefs.POOLS[2].medium.any(func(x): return x.ids == ["blue_sentinel"]), "alone it is a normal fight")
+
+
+func test_freeze_stacks_on_essence() -> void:
+	var f := _fight(["ashling"], ["fire_ball"], "FW")
+	await f._do_move(f.enemies[0], {"kind": "freeze", "n": 4})
+	var total := 0
+	for s in f.player.stock:
+		assert_true(s.frozen)
+		total += s.freeze_n
+	assert_eq(total, 4, "2 Essence, 4 stacks")
+	var s0: Dictionary = f.player.stock[0]
+	s0.freeze_n = 2
+	f.player.stock[1].freeze_n = 1
+	await f.end_player_turn()
+	assert_true(s0.frozen and s0.freeze_n == 1, "a stack wears off each turn")
+	assert_true(not f.player.stock[1].frozen)
+
+
+func test_ignite_stacks_and_shows_what_it_burns() -> void:
+	var f := _fight(["ashling"], ["fire_ball"], "")
+	var m := {"kind": "ignite_spell", "n": 1, "turns": 9999, "until_cast": true}
+	await f._do_move(f.enemies[0], m)
+	assert_eq(f.ignite_damage("fire_ball"), 5)
+	await f._do_move(f.enemies[0], m)
+	assert_eq(f.ignite_damage("fire_ball"), 10, "lit again: 5 more")
+	f.player.hp = 40
+	f.charges["fire_ball"] = 1
+	await f.resolve_spell("fire_ball", 0)
+	assert_eq(f.player.hp, 30.0)
+	assert_true(not f.player.ignited.has("fire_ball"))
+	assert_eq(f.ignite_damage("fire_ball"), 5, "cast: the fire is out")
+
+
 func test_act2_tier1_bog_lantern() -> void:
 	var f := _fight(["bog_fish", "bog_lamp"], ["fire_ball"], "")
 	var fish: EnemyState = f.enemies[0]
 	var lamp: EnemyState = f.enemies[1]
-	assert_eq([fish.size(), lamp.size()], [12, 3])
+	assert_eq([fish.size(), lamp.size()], [9, 2])
 	assert_eq(lamp.intent.kind, "glow", "the clock starts at 2")
 	await f.end_player_turn()
 	assert_eq(lamp.intent.kind, "stun", "1 left: next it stuns")
@@ -1252,9 +1320,9 @@ func test_act2_tier1_bog_lantern() -> void:
 	assert_eq(f.player.stun_turns, 1, "at 0: Stunned for a turn")
 	assert_eq(lamp.intent.kind, "glow", "and back to 2")
 	f.player.stun_turns = 0
-	lamp.remove_right(3)
+	lamp.remove_right(2)
 	f._cleanup()
-	assert_eq(fish.size(), 12, "killing the lamp doesn't hurt the fish")
+	assert_eq(fish.size(), 9, "killing the lamp doesn't hurt the fish")
 	await f.end_player_turn()
 	assert_true(not f.alive().any(func(x): return x.id == "bog_lamp"), "it stays out for a turn")
 	await f.end_player_turn()
@@ -1271,13 +1339,13 @@ func test_act2_tier1_bog_lantern() -> void:
 func test_act2_tier1_bug_hunter() -> void:
 	var f := _fight(["bug_hunter"], ["fire_ball"], "")
 	var bot: EnemyState = f.enemies[0]
-	assert_eq(bot.size(), 12)
+	assert_eq(bot.size(), 9)
 	f.player.hp = 40
 	await f.end_player_turn()
 	assert_eq(f.player.hp, 35.0, "laser beam: 5")
 	bot.remove_right(12)
 	f._cleanup()
-	assert_eq([bot.size(), bot.intent.kind, f.over], [5, "explode", false])
+	assert_eq([bot.size(), bot.intent.kind, f.over], [4, "explode", false])
 	await f.end_player_turn()
 	assert_eq(f.player.hp, 25.0, "it goes off for 10")
 	assert_true(bot.is_dead() and f.over, "and that is the end of it")
@@ -2698,10 +2766,10 @@ func test_anxious_armadillo() -> void:
 	run.first_run = false
 	run.row = 2
 	assert_true(not ("anxious_armadillo" in run.encounter_ids()), "never again")
-	# 20 Essence, he never attacks: +2 Thorns a turn, and your Release hitting him hurts you that much
+	# 16 Essence, he never attacks: +2 Thorns a turn, and your Release hitting him hurts you that much
 	var f := _fight(["anxious_armadillo"], ["fire_ball"], "WFA")
 	var e: EnemyState = f.enemies[0]
-	assert_eq(e.size(), 20)
+	assert_eq(e.size(), 16)
 	f.player.hp = 50
 	f._do_move(e, e.intent)
 	f._do_move(e, e.intent)

@@ -7,6 +7,7 @@ var armored := false
 var ghost := false  # will be removed by the current chant (preview)
 var temp := false  # conjured: fades at end of turn
 var frozen := false
+var freeze_n := 0  # how many turns it stays frozen: written at its top right
 var hexed := false
 var wall := false  # part of a hedge wall (Bramble Matron): a ring of thorny bramble around it
 var burning := false:  # will burn away (Burn takes the leftmost): flames rise off it, like Flame Lash's fire
@@ -270,6 +271,12 @@ func _draw() -> void:
 			for k in 3:
 				var d := Vector2.from_angle(k * PI / 3.0) * r * 0.7
 				draw_line(c - d, c + d, Color(1, 1, 1, 0.95), 2.0)
+		if freeze_n > 0:
+			var font := ThemeDB.fallback_font
+			var px := maxi(14, int(r * 0.95))
+			var at := c + Vector2(r * 0.45, -r * 0.42)
+			draw_string_outline(font, at, str(freeze_n), HORIZONTAL_ALIGNMENT_LEFT, -1, px, 5, Color(0.03, 0.1, 0.25))
+			draw_string(font, at, str(freeze_n), HORIZONTAL_ALIGNMENT_LEFT, -1, px, Color(0.72, 0.93, 1.0))
 	if burning:
 		# a flickering ring of fire (the flames rise from BurnFlames)
 		draw_arc(c, r + 1.5, 0, TAU, 32, Color(1.0, 0.45, 0.1, 0.95), 3.0)
