@@ -993,6 +993,8 @@ func _draw_art(blink_on: bool) -> void:
 		_draw_puppet_shadow(_unveil_tex[0] if unveiling and _unveil_t < UNVEIL_LEGS[0] else tex, Vector2(c.x, size.y), side)  # (the spider's shadow only once its legs are out)
 	if _puppet:  # a puppet doesn't bob: it rocks on its base, and tips back when it is hit
 		var tip := 0.0 if dead else (0.0 if enemy_id == "handyman" else sin(bob * 0.5) * 0.04) - 0.16 * minf(hurt / 0.4, 1.0)  # (the Handyman's body does not rock: six arms hang on its shoulders)
+		if _dragon != null:
+			tip = 0.0  # (the Wyvern's two halves share ONE body: each rocking on its own would tear it apart, and it is far too wide to tip)
 		draw_set_transform(Vector2(c.x, size.y), tip)
 		_art_tip = tip
 		_art_xf = Transform2D(tip, Vector2(c.x, size.y))

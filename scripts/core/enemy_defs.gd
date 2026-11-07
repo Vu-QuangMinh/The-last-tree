@@ -335,11 +335,11 @@ const E := {
 	# with its own intent at its own end of the stage. Every turn the wing folds over one of them, at random and shown
 	# ahead (Fight.wing_fold): that part can't be touched by anything you do that turn (even when the other part is dead,
 	# the wing keeps folding back and forth). Each part picks its move at random ("random_moves").
-	"dragon_tail": {"name": "Dragon's Tail", "act": 3, "elite": true, "member": true, "no_extra": true, "no_bonus": true, "random_moves": true,
+	"dragon_tail": {"hidden": true, "name": "Dragon's Tail", "act": 3, "elite": true, "member": true, "no_extra": true, "no_bonus": true, "random_moves": true,
 		"dragon": "tail", "hp": "FAFWFAWFAFWFAFWAFAWF", "tint": Color(0.93, 0.5, 0.2),
 		"moves": [{"kind": "attack", "n": 10, "name": "Slap"}, {"kind": "attack", "n": 2, "name": "Thrash", "also": {"kind": "stun", "turns": 1}}],
 		"flavor": "It sweeps the stage clean."},
-	"dragon_head": {"name": "Dragon's Head", "act": 3, "elite": true, "member": true, "no_extra": true, "no_bonus": true, "random_moves": true,
+	"dragon_head": {"hidden": true, "name": "Dragon's Head", "act": 3, "elite": true, "member": true, "no_extra": true, "no_bonus": true, "random_moves": true,
 		"dragon": "head", "bubble_right": true, "hp": "FWFAFFWAFWFAFFAWFWAF", "tint": Color(0.97, 0.62, 0.25),
 		"moves": [{"kind": "attack", "n": 2, "hits": 3, "name": "Bite"}, {"kind": "empower", "n": 2, "name": "Howl"},
 			{"kind": "summon", "id": "dragon_fireball", "n": 1, "name": "Fireball"}],
@@ -364,7 +364,7 @@ const E := {
 		"flavor": "Pop it before it pops."},
 	# the Dragon's fireball: it hangs in mid-air above the wing (the wing can't cover it). Its intent shows at once;
 	# a turn later it bursts and Ignites ALL your spells, and is gone.
-	"dragon_fireball": {"name": "Fireball", "act": 3, "member": true, "no_extra": true, "no_bonus": true, "dragon": "fireball",
+	"dragon_fireball": {"hidden": true, "name": "Fireball", "act": 3, "member": true, "no_extra": true, "no_bonus": true, "dragon": "fireball",
 		"hp": "FFFFF", "tint": Color(1.0, 0.45, 0.1), "moves": [{"kind": "ignite_spell", "all": true, "turns": 1, "burst": true}],
 		"flavor": "Pop it before it pops."},
 	"last_winter": {"name": "The Last Winter", "act": 3, "boss": true, "hp": "WWAWFAWWAFAWWAFWAW",
@@ -543,6 +543,17 @@ static func get_def(id: String) -> Dictionary:
 	return d
 
 
+## Every enemy that stands in one of this act's normal fights (POOLS), in order, once.
+static func fight_ids(act: int) -> Array:
+	var out: Array = []
+	for pool in POOLS.get(act, {}).values():
+		for enc in pool:
+			for id in enc.ids:
+				if not out.has(id):
+					out.append(id)
+	return out
+
+
 static func normals(act: int) -> Array:
 	return E.keys().filter(func(k): return E[k].act == act and not E[k].get("elite", false) and not E[k].get("boss", false) and not E[k].get("unique", false) and not E[k].get("member", false))
 
@@ -552,7 +563,7 @@ static func normals(act: int) -> Array:
 ## Act 3: Bottle Head, Winter Wyvern, Mirror Knight. (Chairman, Blackwing and Bottle Head: not made yet.)
 static func elites(act: int) -> Array:
 	var out := E.keys().filter(func(k): return E[k].get("elite", false) and not E[k].get("member", false) and not E[k].get("retired", false) and E[k].act == act)
-	return out + ELITE_GROUPS.keys().filter(func(k): return ELITE_GROUPS[k].act == act and not ELITE_GROUPS[k].get("wip", false))  # (wip: Test mode only)
+	return out + ELITE_GROUPS.keys().filter(func(k): return ELITE_GROUPS[k].act == act and not ELITE_GROUPS[k].get("wip", false) and not ELITE_GROUPS[k].get("hidden", false))  # (wip: Test mode only; hidden: nowhere: the Winter Wyvern took the Fire Dragon's place)
 
 
 ## Mini bosses that are a group: always met together, left to right.
@@ -560,9 +571,16 @@ const ELITE_GROUPS := {
 	"the_triplet": {"name": "The Triplet", "act": 1, "ids": ["triplet_fire", "triplet_water", "triplet_air"]},
 	"samurai_pair": {"name": "The Samurai and his Retainer", "act": 2, "ids": ["samurai", "samurai_retainer"]},
 	"twin_sentinels": {"name": "The Twin Sentinels", "act": 2, "ids": ["sentinel", "blue_sentinel"]},
-	"fire_dragon": {"name": "The Fire Dragon", "act": 3, "ids": ["dragon_tail", "dragon_head"]},
+	"fire_dragon": {"hidden": true, "name": "The Fire Dragon", "act": 3, "ids": ["dragon_tail", "dragon_head"]},
 	"winter_wyvern": {"name": "The Winter Wyvern", "act": 3, "ids": ["wyvern_head", "wyvern_tail"]},
 }
+
+
+## Is it out of the game altogether (the Fire Dragon, replaced by the Winter Wyvern)? Not in a run, the codex, Test mode or the Room Test.
+static func is_hidden(id: String) -> bool:
+	if ELITE_GROUPS.has(id):
+		return ELITE_GROUPS[id].get("hidden", false)
+	return E.has(id) and E[id].get("hidden", false)
 
 
 ## The enemies an id brings into a fight: a group's members, or just itself.

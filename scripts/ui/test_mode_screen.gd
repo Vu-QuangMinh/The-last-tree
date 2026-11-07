@@ -357,15 +357,25 @@ func _slot_box() -> StyleBoxFlat:
 	return sb
 
 
-## [label, ids] for every act's normal enemies, mini bosses, bosses, and the ones kept in reserve.
+## [label, ids] for every act's normal enemies, mini bosses, bosses, the ones kept in reserve, and the pieces / summons (so every enemy is here).
 func _enemy_groups() -> Array:
 	var out := []
 	for act in [1, 2, 3]:
-		out.append(["Act %d" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and not EnemyDefs.E[k].get("elite", false) and not EnemyDefs.E[k].get("boss", false) and not EnemyDefs.E[k].get("member", false))])
+		var in_fights := EnemyDefs.fight_ids(act)  # (a member of a normal fight, like the Scavengers or the Bog Lantern's lamp, is picked here too)
+		out.append(["Act %d" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and not EnemyDefs.E[k].get("elite", false) and not EnemyDefs.E[k].get("boss", false) and (not EnemyDefs.E[k].get("member", false) or k in in_fights))])
 		out.append(["Act %d Mini Bosses" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and EnemyDefs.E[k].get("elite", false) and not EnemyDefs.E[k].get("member", false))
 			+ EnemyDefs.ELITE_GROUPS.keys().filter(func(k): return EnemyDefs.ELITE_GROUPS[k].act == act)])
 		out.append(["Act %d Bosses" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and EnemyDefs.E[k].get("boss", false) and not EnemyDefs.E[k].get("member", false))])  # (the Handyman brings his own hands)
 	out.append(["In reserve", EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == 0)])
+	# everything else (a boss's hands, summons, the Cubs, a dragon's fireball): not met on its own in a run, but here so that every enemy can be put on the stage (to attach its ropes)
+	var shown := {}
+	for g in out:
+		for id in g[1]:
+			for x in EnemyDefs.ids_of(id):
+				shown[x] = true
+	out.append(["Pieces & summons", EnemyDefs.E.keys().filter(func(k): return not shown.has(k))])
+	for g in out:
+		g[1] = g[1].filter(func(id): return not EnemyDefs.is_hidden(id))
 	return out.filter(func(g): return not g[1].is_empty())
 
 

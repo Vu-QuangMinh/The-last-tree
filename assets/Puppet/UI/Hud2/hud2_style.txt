@@ -1,0 +1,7 @@
+Style: chunky hand-painted wooden game-UI pieces exactly in the style of the reference image (a round close button): thick carved wood painted in a matte, slightly worn colour, the paint chipped and scuffed along the edges so bare pale wood shows through, a thin worn brass ring set into the piece, a gently recessed centre, tiny dents and scratches, a soft handmade imperfect look. Tactile and slightly stylised, like the props of a wooden puppet theatre, not glossy, not plastic, not photorealistic glass.
+
+Lighting: soft even light from the upper left, gentle shading, a soft brass glint on the metal, no strong shine.
+
+Composition: this one object only, centred, seen straight from the front with no perspective, filling the image with a small even margin. Isolated on a pure black seamless background (#000000), as if cut out: no cast shadow, no reflection, no gradient, no table, no other objects, no hands. Every object is completely empty: nothing is written or drawn on it, no cross, no symbol.
+
+Must look like a tangible painted craft object with real material texture. Not vector art, not clean outlines, not a flat sticker, not a 3D game render. No text, letters, numbers, logos or watermark.

@@ -20,8 +20,8 @@ func _ready() -> void:
 	add_child(v)
 	var top := HBoxContainer.new()
 	v.add_child(top)
-	var known := EnemyDefs.E.keys().filter(func(id): return SaveManager.in_codex(id)).size()
-	var t := UiTheme.heading("Codex  ·  %d / %d enemies recorded" % [known, EnemyDefs.E.size()], 34, Color.WHITE)
+	var known := EnemyDefs.E.keys().filter(func(id): return SaveManager.in_codex(id) and not EnemyDefs.is_hidden(id)).size()
+	var t := UiTheme.heading("Codex  ·  %d / %d enemies recorded" % [known, EnemyDefs.E.keys().filter(func(id): return not EnemyDefs.is_hidden(id)).size()], 34, Color.WHITE)
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(t)
 	top.add_child(UiTheme.button(UiTheme.hk("Close", "Esc"), func(): closed.emit(), 20))
@@ -38,6 +38,8 @@ func _ready() -> void:
 	for sec in sections:
 		var ids := EnemyDefs.E.keys().filter(func(id):
 			var d: Dictionary = EnemyDefs.E[id]
+			if EnemyDefs.is_hidden(id):
+				return false
 			match sec[2]:
 				"elite":
 					return d.get("elite", false)

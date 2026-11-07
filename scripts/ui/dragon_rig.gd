@@ -21,14 +21,28 @@ const ROAR_WAVES := 2
 const ROAR_WAVE_TIME := 0.9  # seconds one wave takes to travel (each starts 0.45 s after the one before)
 const HIT_AT := {"bite": 0.4, "slam": 0.45, "sweep": 0.35, "blast": 0.25}  # seconds into the move when it lands
 const FIRE_JAW := -0.56  # (the PDF's fire pose)
-const TELE_BITE := {"neck": -0.1, "throat": -0.05, "head": -0.14, "jaw": -0.12}  # leaning at you, mouth a little open
-const TELE_SLAM := [-0.55, -0.45, -0.35]  # the tail raised
+const TELE_UP := 0.08  # how much of the fire pose its head shows while the fire / roar is only an intent: next to nothing, it still looks down (the whole pose comes when it acts)
+const IDLE_LOW := {"neck": -0.17, "throat": -0.14, "head": -0.16}  # at rest the head hangs lower and looks down (counter-clockwise leans a left-facing head forward)
+const IDLE_JAW := 0.07  # the mouth is shut at rest
+const TELE_BITE := {"neck": -0.04, "throat": -0.02, "head": -0.05, "jaw": -0.05}  # leaning at you, mouth a little open
+const TELE_SLAM := [-0.16, -0.14, -0.12]  # the tail raised (each segment only a little over the one before: it must not fold up on itself)
 const GUARD_TRACK := [[0.0, 0.0], [0.4, 1.0], [1.0, 1.0], [1.7, 0.0]]  # a wing folds down in 0.4 s, stays, and opens again slowly
 const WING_SWEEP := {1: 1.5, -1: 0.63}  # how far (radians) the open wing swings down to lie closed over the front / the back
 const WING_CLOSED_ROOT := Vector2(236.0, 55.0)  # where the closed wing's arm is, in its picture (the same joint as the open wing's root)
 const SPACING := 580.0  # the distance between the head's and the tail's centres on the screen (EnemyView.WYVERN_VIEW_W + the 20 px between two views)
 const ANCHOR := {"head": -150.0, "tail": 1580.0}  # the rig's x (body px) that stands at the middle of each part's view
+const DROP := 50.0  # the dragon stands this much lower than where its parts' feet are
 const WING_SPEED := 2.5  # the wing folds or opens in 1/2.5 s
+## The tail's segments hang on a chain: each segment's far end is joined to the next one's metal eyelet by chain links (the segments swing apart when the tail whips,
+## the links stretch to follow). Points are in each piece's own picture pixels. The farther along the tail, the lower a segment lies (tail3 under tail2 under tail1).
+const TAIL_FAR := {"tail1": Vector2(320.0, 190.0), "tail2": Vector2(215.0, 115.0)}  # the middle of a segment's far end
+const TAIL_EYE := {"tail2": Vector2(25.0, 60.0), "tail3": Vector2(40.0, 75.0)}  # the eyelet ring of a segment
+const TAIL1_FREE_X := 80.0  # tail1's own picture from here on lies beyond the body (the first 80 px are tucked under the rump)
+const LINK_LEN := 44.0  # a chain link, in body px
+const LINK_W := 26.0
+const LINK_THICK := 6.5
+const LINK_COLOR := Color(0.72, 0.64, 0.5)
+const LINK_DARK := Color(0.16, 0.12, 0.09)
 const BALL_OFFSET := Vector2(-230.0, -300.0)  # the hovering Fireball, from the mouth of the fire pose
 
 var tex := {}
@@ -198,27 +212,30 @@ func tick(d: float) -> void:
 	var n := sin(t * 1.1) * 0.025
 	var th := sin(t * 1.3 + 1.0) * 0.03
 	var hd := sin(t * 1.7 + 2.0) * 0.03
-	var jw := 0.0
-	var ta := [sin(t * 1.2) * 0.05, sin(t * 1.2 - 0.7) * 0.06, sin(t * 1.2 - 1.4) * 0.07]
+	var jw := IDLE_JAW
+	var ta := [sin(t * 1.2) * 0.04, sin(t * 1.2 - 0.7) * 0.05, sin(t * 1.2 - 1.4) * 0.06]
 	var ts := 1.0
 	var tdy := 0.0
 	var lg := Vector2.ZERO
+	if pose.get("head", "") == "":
+		n += IDLE_LOW.neck  # (an intent with a pose for the head raises it again: see below)
+		th += IDLE_LOW.throat
+		hd += IDLE_LOW.head
 	match pose.get("head", ""):
 		"bite":
 			n += TELE_BITE.neck
 			th += TELE_BITE.throat
 			hd += TELE_BITE.head
 			jw = TELE_BITE.jaw
-		"up":  # the fire pose (also for the roar)
-			n = deg_to_rad(DragonLayout.FIRE_DEG.neck) + n * 0.6
-			th = deg_to_rad(DragonLayout.FIRE_DEG.throat) + th * 0.6
-			hd = deg_to_rad(DragonLayout.FIRE_DEG.head) + hd * 0.6
-			jw = FIRE_JAW * 0.45
+		"up":  # the fire / roar: as an intent only a little more than the lowered head of rest, the mouth shut (the real pose comes with the move, below)
+			n += IDLE_LOW.neck * 0.8 + deg_to_rad(DragonLayout.FIRE_DEG.neck) * TELE_UP
+			th += IDLE_LOW.throat * 0.8 + deg_to_rad(DragonLayout.FIRE_DEG.throat) * TELE_UP
+			hd += IDLE_LOW.head * 0.8 + deg_to_rad(DragonLayout.FIRE_DEG.head) * TELE_UP
 	match pose.get("tail", ""):
 		"sweep":  # it swings toward you: bigger and lower, lashing from side to side
-			ts = 1.25
-			tdy = 20.0
-			ta = [sin(t * 3.0) * 0.3, sin(t * 3.0 - 0.8) * 0.35, sin(t * 3.0 - 1.6) * 0.4]
+			ts = 1.08
+			tdy = 12.0
+			ta = [sin(t * 3.0) * 0.1, sin(t * 3.0 - 0.8) * 0.12, sin(t * 3.0 - 1.6) * 0.14]
 		"slam":
 			ta = [TELE_SLAM[0] + sin(t * 2.0) * 0.04, TELE_SLAM[1] + sin(t * 2.0 - 0.6) * 0.04, TELE_SLAM[2] + sin(t * 2.0 - 1.2) * 0.04]
 	if playing:
@@ -231,27 +248,32 @@ func tick(d: float) -> void:
 				jw = _track(p, [[0.0, tl.jaw], [0.18, -0.2], [0.34, -0.6], [0.42, 0.06], [0.52, 0.06], [0.8, tl.jaw]])
 				lg = Vector2(-1.0, 0.7) * 90.0 * _track(p, [[0.0, 0.0], [0.18, -0.3], [0.36, 1.0], [0.5, 1.0], [0.8, 0.0]])
 			"fireball":
-				jw = FIRE_JAW * _track(p, [[0.0, 0.45], [0.25, 1.0], [0.8, 1.0], [1.1, 0.45]])
+				var rise := _track(p, [[0.0, 0.0], [0.3, 1.0], [0.85, 1.0], [1.1, 0.0]])  # (the head comes up into the fire pose for the shot, then back down)
+				n = lerpf(n, deg_to_rad(DragonLayout.FIRE_DEG.neck), rise)
+				th = lerpf(th, deg_to_rad(DragonLayout.FIRE_DEG.throat), rise)
+				hd = lerpf(hd, deg_to_rad(DragonLayout.FIRE_DEG.head), rise)
+				jw = lerpf(jw, FIRE_JAW, rise)
 				hd += 0.12 * _track(p, [[0.0, 0.0], [0.25, -1.0], [0.4, 0.4], [0.8, 0.0]])  # (it throws its head forward as the ball leaves)
 			"roar":
-				jw = FIRE_JAW * (0.85 + 0.15 * sin(p * 9.0))
 				var up := _track(p, [[0.0, 0.0], [0.25, 1.0], [1.3, 1.0], [1.6, 0.0]])
-				n += 0.1 * up
-				hd += 0.12 * up
+				n = lerpf(n, deg_to_rad(DragonLayout.FIRE_DEG.neck) + 0.1, up)
+				th = lerpf(th, deg_to_rad(DragonLayout.FIRE_DEG.throat), up)
+				hd = lerpf(hd, deg_to_rad(DragonLayout.FIRE_DEG.head) + 0.12, up)
+				jw = lerpf(jw, FIRE_JAW * (0.85 + 0.15 * sin(p * 9.0)), up)
 				lg = Vector2(sin(p * 24.0) * 3.0, 0.0)  # (its whole neck trembles)
 			"slam":
 				var raise := _track(p, [[0.0, 0.0], [0.3, 1.0], [0.45, 1.0], [0.9, 0.3]])  # (it rears the tail up a little more first)
 				var strike := _track(p, [[0.0, 0.0], [0.3, 0.0], [0.45, 1.0], [0.65, 1.0], [0.9, 0.0]])
 				for i in 3:
-					ta[i] = lerpf(TELE_SLAM[i] - 0.35 * raise, 0.14 - 0.03 * i, strike)
+					ta[i] = lerpf(TELE_SLAM[i] - 0.1 * raise, 0.12 - 0.02 * i, strike)
 				if p >= 0.45 and not _dust_done:
 					_dust_done = true
 					_dust_t = 0.0
 			"sweep":
 				var s := _track(p, [[0.0, 0.0], [0.35, 1.0], [0.9, 0.0]])
-				ts = 1.25 + 0.4 * s
-				tdy = 20.0 + 40.0 * s
-				ta = [sin(p * 9.0) * 0.45, sin(p * 9.0 - 0.8) * 0.5, sin(p * 9.0 - 1.6) * 0.55]
+				ts = 1.08 + 0.2 * s
+				tdy = 12.0 + 24.0 * s
+				ta = [sin(p * 9.0) * 0.16, sin(p * 9.0 - 0.8) * 0.19, sin(p * 9.0 - 1.6) * 0.22]
 	var k := minf(1.0, d * (14.0 if playing else 6.0))
 	neck = lerpf(neck, n, k)
 	throat = lerpf(throat, th, k)
@@ -269,7 +291,13 @@ func tick(d: float) -> void:
 ## where it should be, in `ci`'s coordinates.
 func draw_part(ci: Control, base: Transform2D, mod: Color, role: String) -> void:
 	var kk := SPACING / (float(ANCHOR.tail) - float(ANCHOR.head))
-	var root := base * Transform2D(0.0, Vector2(kk, kk), 0.0, Vector2(-float(ANCHOR[role]) * kk + _pull(ci, role), -float(DragonLayout.GROUND) * kk))  # (body px -> screen)
+	var root := base * Transform2D(0.0, Vector2(kk, kk), 0.0, Vector2(-float(ANCHOR[role]) * kk, -float(DragonLayout.GROUND) * kk))  # (body px -> screen)
+	# the whole dragon (its box, wing and tail included) stands in the middle of the screen, DROP px lower than where its feet were put; each part works the
+	# same shift out for itself from its own place (after the pull that keeps the two halves together while the Fireball stands between them), so they still meet.
+	root.origin.x += _pull(ci, role)
+	var gt := ci.get_global_transform()
+	var mid: Vector2 = gt * (root * Vector2(DragonLayout.EXTENT.get_center().x, float(DragonLayout.GROUND)))
+	root.origin += Vector2((ci.get_viewport_rect().size.x * 0.5 - mid.x) / maxf(0.01, gt.get_scale().x), DROP)
 	if role == "head" or not cr.has("head") or not _alive("head"):
 		last_root = root
 	var c := _chain({"neck": neck, "throat": throat, "head": head, "jaw": jaw}, lunge)
@@ -283,7 +311,9 @@ func draw_part(ci: Control, base: Transform2D, mod: Color, role: String) -> void
 	var xf := {"body": Transform2D.IDENTITY, "neck": c.neck, "throat": c.throat, "head": c.head, "jaw": c.jaw,
 		"tail1": t1, "tail2": t2, "tail3": t3}
 	var owns_body: bool = (role == "head") == _alive("head")  # (the head holds the body; once it has fallen, the tail does)
-	var in_front := tail_s > 1.12  # (a tail that comes at you is drawn over the body)
+	var in_front := tail_s > 1.2  # (a tail that comes at you is drawn over the body)
+	if not in_front:
+		_draw_tail(ci, root, xf, role, mod, owns_body)  # (behind the body)
 	_mouth = _mouth_of(c.head)
 	var e := smoothstep(0.0, 1.0, absf(wing))  # (how far folded: 0 open .. 1 closed)
 	var open_a := 1.0 - smoothstep(0.45, 0.9, e)
@@ -296,18 +326,14 @@ func draw_part(ci: Control, base: Transform2D, mod: Color, role: String) -> void
 				mine = role == "head"
 			_:  # tail1, body, wing_open
 				mine = owns_body
-		if not mine or (k == "wing_open" and open_a <= 0.01):
-			continue
-		if in_front and k.begins_with("tail"):
-			continue
+		if not mine or (k == "wing_open" and open_a <= 0.01) or k.begins_with("tail"):
+			continue  # (the tail is drawn together, see _draw_tail)
 		if k == "wing_open":
 			_draw_wing_open(ci, root, e, mod, open_a)
 		else:
 			_piece(ci, root, xf[k], k, mod, 1.0)
 	if in_front:
-		for k in ["tail1", "tail2", "tail3"]:
-			if owns_body if k == "tail1" else role == "tail":
-				_piece(ci, root, xf[k], k, mod, 1.0)
+		_draw_tail(ci, root, xf, role, mod, owns_body)
 	if owns_body and e > 0.02:
 		_draw_wing_closed(ci, root, e, mod)
 	if role == "head":
@@ -315,6 +341,49 @@ func draw_part(ci: Control, base: Transform2D, mod: Color, role: String) -> void
 	else:
 		_draw_fx(ci, root, mod, "tail")
 	ci.draw_set_transform_matrix(Transform2D.IDENTITY)
+
+
+## The tail: the last segment underneath, then the one before it, then the first (the farther along the tail, the lower it lies), a chain between each two.
+## The tail's creature draws segments 2 and 3 and the chains; the first segment belongs to the creature that holds the body (it lies under the rump there), and the
+## tail's creature puts the part of it that lies beyond the body on top of segment 2 again, so that it covers the segment after it.
+func _draw_tail(ci: Control, root: Transform2D, xf: Dictionary, role: String, mod: Color, owns_body: bool) -> void:
+	if role == "tail":
+		_piece(ci, root, xf.tail3, "tail3", mod, 1.0)
+		_draw_chain(ci, root, xf, "tail2", "tail3", mod)
+		_piece(ci, root, xf.tail2, "tail2", mod, 1.0)
+		_draw_chain(ci, root, xf, "tail1", "tail2", mod)
+		if owns_body:
+			_piece(ci, root, xf.tail1, "tail1", mod, 1.0)
+		else:
+			var size: Vector2 = DragonLayout.SIZE.tail1
+			_piece_region(ci, root * xf.tail1 * (DragonLayout.IDLE.tail1 as Transform2D), "tail1", mod, Rect2(TAIL1_FREE_X, 0.0, size.x - TAIL1_FREE_X, size.y))
+	elif owns_body:
+		_piece(ci, root, xf.tail1, "tail1", mod, 1.0)
+
+
+## A chain from the far end of one tail segment to the eyelet of the next: links alternate flat and edge-on, and there are as many as the gap needs.
+func _draw_chain(ci: CanvasItem, root: Transform2D, xf: Dictionary, from_piece: String, to_piece: String, mod: Color) -> void:
+	var a: Vector2 = root * (xf[from_piece] as Transform2D) * (DragonLayout.IDLE[from_piece] as Transform2D) * (TAIL_FAR[from_piece] as Vector2)
+	var b: Vector2 = root * (xf[to_piece] as Transform2D) * (DragonLayout.IDLE[to_piece] as Transform2D) * (TAIL_EYE[to_piece] as Vector2)
+	var k: float = root.get_scale().x
+	var d := b - a
+	var dist := d.length()
+	if dist < 1.0:
+		return
+	var ang := d.angle()
+	var n := maxi(2, int(ceil(dist / (LINK_LEN * k * 0.7))))
+	ci.draw_set_transform_matrix(Transform2D.IDENTITY)
+	for i in n:
+		var c := a + d * ((i + 0.5) / float(n))
+		var flat := i % 2 == 0
+		var hl := LINK_LEN * k * 0.5
+		var hw := LINK_W * k * 0.5 if flat else LINK_THICK * k * 0.8
+		var pts := PackedVector2Array()
+		for j in 17:
+			var q := Vector2(cos(j / 16.0 * TAU) * hl, sin(j / 16.0 * TAU) * hw).rotated(ang)
+			pts.append(c + q)
+		ci.draw_polyline(pts, Color(LINK_DARK.r * mod.r, LINK_DARK.g * mod.g, LINK_DARK.b * mod.b, mod.a), LINK_THICK * k * 1.9, true)
+		ci.draw_polyline(pts, Color(LINK_COLOR.r * mod.r, LINK_COLOR.g * mod.g, LINK_COLOR.b * mod.b, mod.a), LINK_THICK * k, true)
 
 
 func _alive(role: String) -> bool:
@@ -348,7 +417,8 @@ static func _scale_about(k: float, j: Vector2) -> Transform2D:
 func _draw_wing_open(ci: CanvasItem, root: Transform2D, e: float, mod: Color, alpha: float) -> void:
 	var j: Vector2 = DragonLayout.JOINT.wing_open
 	var sweep: float = WING_SWEEP[1 if wing > 0.0 else -1]
-	var m := _rot(sin(t * 1.5) * 0.02 + sweep * e, j) * _scale_about(1.0 - 0.45 * e, j)
+	var flap := (sin(t * 1.4) * 0.04 + sin(t * 0.7 + 1.0) * 0.02) * (1.0 - e)  # (the open wing lifts and settles all the time)
+	var m := _rot(flap + sweep * e, j) * _scale_about(1.0 - 0.45 * e + 0.015 * sin(t * 1.5 + 0.6) * (1.0 - e), j)
 	_piece(ci, root, m, "wing_open", mod, alpha)
 
 
@@ -357,12 +427,17 @@ func _draw_wing_closed(ci: CanvasItem, root: Transform2D, e: float, mod: Color) 
 	var j: Vector2 = DragonLayout.JOINT.wing_open
 	var side := 1 if wing > 0.0 else -1
 	var place: Transform2D = DragonLayout.WING_FRONT if side > 0 else DragonLayout.WING_BACK
-	var m := _rot(-float(WING_SWEEP[side]) * (1.0 - e), j) * _scale_about(0.3 + 0.7 * e, j) * place
+	var m := _rot(-float(WING_SWEEP[side]) * (1.0 - e) + sin(t * 1.4 + 0.5) * 0.025 * e, j) * _scale_about(0.3 + 0.7 * e, j) * place  # (a closed wing sways a little too)
 	_piece_m(ci, root * m, "wing_closed", mod, smoothstep(0.08, 0.5, e))
 
 
 func _piece(ci: CanvasItem, root: Transform2D, tf: Transform2D, piece: String, mod: Color, alpha: float) -> void:
 	_piece_m(ci, root * tf * (DragonLayout.IDLE[piece] as Transform2D), piece, mod, alpha)
+
+
+func _piece_region(ci: CanvasItem, m: Transform2D, piece: String, mod: Color, src: Rect2) -> void:
+	ci.draw_set_transform_matrix(m)
+	ci.draw_texture_rect_region(tex[piece], src, src, mod)
 
 
 func _piece_m(ci: CanvasItem, m: Transform2D, piece: String, mod: Color, alpha: float) -> void:

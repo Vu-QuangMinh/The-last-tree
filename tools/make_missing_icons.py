@@ -41,6 +41,11 @@ JOBS = [
     # 2026-11-02: the water splash each time the skipping stone touches the lake (EventStage._skip_hops)
     ("Puppet Skip Splash Carved", "Events/skip_splash_style.txt", "Events/skip_splash_prompts.txt",
      {"Skip Splash %d" % k: ("Events/skip_splash_%d.png" % k, 256) for k in [1, 2, 3]}),
+    # 2026-11-06: Act 2 mobs: the intents that were stand-ins (Explode / Glow / Dormant / Recharge), the things the Orphans throw, and an Orphan child
+    ("Puppet Intent Mobs", "Icon/Intent/intent_extra_style.txt", "Icon/Intent/mob_intents_prompts.txt",
+     {"Intent " + n: ("Icon/Intent/intent_%s.png" % n.lower(), 128) for n in ["Explode", "Glow", "Dormant", "Recharge"]}),
+    ("Puppet Throw Items", "UI/Fx/throw_style.txt", "UI/Fx/throw_prompts.txt",
+     {**{"Throw " + n: ("UI/Fx/throw_%s.png" % n.lower(), 192) for n in ["Mud", "Stone", "Stick", "Brick", "Pot", "Shovel", "Sword", "Boulder", "Axe", "Head"]}, "Orphan Child": ("UI/Fx/orphan_child.png", 256)}),
 ]
 
 
@@ -56,7 +61,7 @@ def objects(path):
 def generate(set_name, style, objs, ratio="1:1"):
     status = os.path.join(tempfile.gettempdir(), "missing_icons_status.json")
     spec = {"set_name": set_name, "style": open(os.path.join(P, style), encoding="utf-8").read().strip(), "ratio": ratio, "objects": objs,
-            "status_path": status, "retries": 1, "accounts": ["a2", "a3", "a4", "a5"]}
+            "status_path": status, "retries": 1, "accounts": ["main", "b", "a2"]}
     if os.path.exists(status):
         os.remove(status)  # (a status left by the last run would look like this one finished)
     spec_path = os.path.join(tempfile.gettempdir(), "missing_icons_spec.json")

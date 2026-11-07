@@ -30,7 +30,7 @@ static func build(kind: String, act: int) -> Array:
 			ids = _with_summons(ids, act)
 		"boss":
 			ids = _with_summons(EnemyDefs.BOSSES.get(act, []), act)
-	ids = ids.filter(func(id): return _has_art(id, act))
+	ids = ids.filter(func(id): return not EnemyDefs.is_hidden(id) and _has_art(id, act))
 	var all: Array = []
 	var files: Array = []  # (the Spiderlings share one picture: one set member for both)
 	for id in ids:
@@ -108,9 +108,23 @@ static func _has_art(id: String, act: int) -> bool:
 	return false
 
 
-## The act's normal enemies: the ones that come into a fight on their own (a "member" only ever arrives with a boss or an elite).
+## The act's fight-room enemies: every normal enemy of the act, the Anxious Armadillo (unique) and the members of its normal fights (the Scavengers, the Bog
+## Lantern's lamp...). Act 1 also gets the enemies kept in reserve (act 0), so that every enemy can be hung somewhere.
 static func _normals(act: int) -> Array:
-	return EnemyDefs.normals(act).filter(func(id): return not EnemyDefs.E[id].get("member", false))
+	var in_fights := EnemyDefs.fight_ids(act)
+	var out: Array = []
+	for k in EnemyDefs.E:
+		var d: Dictionary = EnemyDefs.E[k]
+		if d.act != act and not (act == 1 and d.act == 0):
+			continue
+		if d.get("elite", false) and d.act != 0:
+			continue
+		if d.get("boss", false) and d.act != 0:
+			continue
+		if d.get("member", false) and not (k in in_fights):
+			continue
+		out.append(k)
+	return out
 
 
 ## The enemy id of a set member ("yin_yang_beast@black" is the Yin Yang Beast, black).
