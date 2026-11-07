@@ -17,5 +17,6 @@ static func moves_tooltip(id: String, bonus: int) -> String:
 		for m in d.moves2:
 			lines.append("• " + EnemyDefs.describe_move(m, bonus))
 	for p in d.get("passives", []):
-		lines.append("◆ " + EnemyDefs.PASSIVE_TEXT[p])
+		if p in EnemyDefs.SHOWN_PASSIVES:  # (native traits are told only in the Codex)
+			lines.append("◆ " + EnemyDefs.PASSIVE_TEXT[p])
 	return Keywords.tooltip(title, "\n".join(lines))

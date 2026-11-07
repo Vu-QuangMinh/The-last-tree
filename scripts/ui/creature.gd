@@ -61,7 +61,7 @@ const SHAPES := {
 	# act 1 (the Verdant Circle)
 	"iceling": 1, "zephling": 1, "triplet_fire": 1, "triplet_water": 1, "triplet_air": 1, "purple_slime": 0, "green_slime": 0, "yellow_slime": 0, "giant_slime": 0,
 	"bramble_back": 4, "winged_tortoise": 3, "yeti": 4, "rolling_bear": 4, "enraged_bear": 4, "mirror_fairy": 2, "tomato_knight": 2, "greenseer": 5,
-	"puddle_slime": 0, "splitter_ooze": 0, "tide_colossus": 0, "blightmother": 0, "last_gasp_spore": 0,
+	"puddle_slime": 0, "splitter_ooze": 0, "tide_colossus": 0, "last_gasp_spore": 0,
 	"gale_sprite": 1, "mirror_wisp": 1, "storm_imp": 1, "hush_moth": 1, "leech_bat": 1, "echo_wraith": 1, "storm_rider": 1,
 	"stone_knight": 2, "warded_golem": 2, "lockwarden": 2, "woodcutter": 2, "invoker": 2, "forge_spirit": 1, "yin_yang_beast": 4, "yin_yang_clone": 4, "inverter": 2, "mimic_chest": 3,
 	"cinder_hound": 4, "blinding_beetle": 4, "bramble_matron": 5, "mirror_knight": 2, "void_archon": 1, "pickpocket_imp": 4, "overgrowth_vine": 5, "shrine_maiden": 5,
@@ -385,6 +385,9 @@ func _draw() -> void:
 	if enemy_id == "spider_cocoon":
 		_draw_cocoon(c, s * 0.8)
 		return
+	if enemy_id == "pianist":
+		_draw_pianist(c, s, body)
+		return
 	var eye_y := -s * 0.15
 	match shape:
 		0:  # blob
@@ -536,6 +539,94 @@ func _draw_sword_stance(c: Vector2, s: float) -> void:
 	draw_line(hilt - dir.orthogonal() * s * 0.1, hilt + dir.orthogonal() * s * 0.1, Color(0.75, 0.6, 0.25), maxf(3.0, s * 0.06), true)  # the guard
 	draw_line(hilt, hilt + dir * s * 1.5, Color(0.85, 0.88, 0.92), maxf(3.0, s * 0.06), true)  # the blade
 	draw_line(hilt + dir * s * 0.1, hilt + dir * s * 1.45, Color(1, 1, 1, 0.8), maxf(1.0, s * 0.02), true)  # its edge catching the light
+
+
+## The Pianist (drawn until he has art): tall and thin like Slender Man, black suit, white collar, a top hat, at a
+## piano. One arm (the left hand was cut off): his hand slides along the keyboard to the highest note sounding, and a
+## foot, up on the keys, to the lowest. No key presses: just the arm going back and forth with the music. A thin bar
+## on the music stand shows how much of the piece is left; a little sign beside him says "Silence, please".
+var song: PianistSong  # (set by the fight screen while he plays)
+var _hand_x := 0.5  # 0..1 along the keyboard, eased towards the note
+var page_flip := -1.0  # 0..1 while he turns the page (-1: not turning)
+var _foot_x := 0.2
+
+
+func _draw_pianist(c: Vector2, s: float, body: Color) -> void:
+	var kx0 := c.x - s * 1.3
+	var kw := s * 2.6
+	var ky := c.y + s * 0.3  # the keyboard's top edge
+	# where the hand and the foot want to be (they glide there)
+	if song != null and song.playing():
+		var hl: Array = song.hands_at(song.time())
+		if int(hl[0]) >= 0:
+			var span := float(PianistSong.HIGH - PianistSong.LOW)
+			_hand_x = lerpf(_hand_x, clampf((int(hl[0]) - PianistSong.LOW) / span, 0.0, 1.0), 0.35)
+			_foot_x = lerpf(_foot_x, clampf((int(hl[1]) - PianistSong.LOW) / span, 0.0, 0.45), 0.25)
+	var suit := Color(0.07, 0.07, 0.09) if not dead else body
+	var skin := Color(0.88, 0.86, 0.82)
+	# him, behind the piano: a long thin body, the collar, the head and its hat
+	var tx := c.x + s * 0.15
+	draw_rect(Rect2(tx - s * 0.22, c.y - s * 1.05, s * 0.44, s * 1.4), suit)
+	draw_colored_polygon(PackedVector2Array([Vector2(tx - s * 0.13, c.y - s * 1.05), Vector2(tx + s * 0.13, c.y - s * 1.05), Vector2(tx, c.y - s * 0.78)]), Color.WHITE)
+	draw_line(Vector2(tx, c.y - s * 1.0), Vector2(tx, c.y - s * 0.8), Color(0.05, 0.05, 0.05), maxf(2.0, s * 0.04))  # (a thin black tie)
+	var head := Vector2(tx, c.y - s * 1.22)
+	draw_circle(head, s * 0.17, skin)
+	draw_rect(Rect2(head.x - s * 0.26, head.y - s * 0.17, s * 0.52, s * 0.05), suit)  # the hat's brim
+	draw_rect(Rect2(head.x - s * 0.16, head.y - s * 0.52, s * 0.32, s * 0.36), suit)  # its crown
+	draw_rect(Rect2(head.x - s * 0.16, head.y - s * 0.24, s * 0.32, s * 0.05), Color(0.35, 0.05, 0.08))  # a dark red band
+	# the stump of the left arm: an empty sleeve, pinned up
+	draw_line(Vector2(tx - s * 0.22, c.y - s * 0.95), Vector2(tx - s * 0.36, c.y - s * 0.62), suit, maxf(4.0, s * 0.11), true)
+	# the piano: a black body, the keys, the music stand with the clock of the piece
+	draw_rect(Rect2(kx0 - s * 0.08, ky - s * 0.05, kw + s * 0.16, s * 0.75), Color(0.04, 0.03, 0.04))
+	draw_rect(Rect2(kx0, ky, kw, s * 0.16), Color(0.95, 0.94, 0.9))
+	var keys := 28
+	for k in keys:
+		var x := kx0 + kw * k / keys
+		draw_line(Vector2(x, ky), Vector2(x, ky + s * 0.16), Color(0.55, 0.55, 0.55), 1.0)
+		if k % 7 in [0, 1, 3, 4, 5]:
+			draw_rect(Rect2(x + kw / keys * 0.65, ky, kw / keys * 0.6, s * 0.1), Color(0.05, 0.05, 0.05))
+	var stand := Rect2(c.x - s * 0.35, ky - s * 0.32, s * 0.7, s * 0.22)
+	draw_rect(stand, Color(0.93, 0.9, 0.82))
+	if page_flip >= 0.0:
+		# the page swings over from right to left (it narrows to an edge in the middle, then opens on the other side)
+		var k := absf(cos(page_flip * PI))
+		var right := page_flip < 0.5
+		var pw := stand.size.x * 0.5 * k
+		var px0 := stand.get_center().x if right else stand.get_center().x - pw
+		draw_rect(Rect2(px0, stand.position.y - s * 0.02 * (1.0 - k), pw, stand.size.y), Color(1.0, 0.98, 0.92))
+		draw_rect(Rect2(px0, stand.position.y - s * 0.02 * (1.0 - k), pw, stand.size.y), Color(0.4, 0.35, 0.3), false, 1.0)
+	if song != null:
+		var done := clampf(song.time() / maxf(song.length, 1.0), 0.0, 1.0)
+		draw_rect(Rect2(stand.position + Vector2(s * 0.04, stand.size.y * 0.7), Vector2((stand.size.x - s * 0.08) * done, s * 0.035)), Color(0.55, 0.08, 0.1))
+	for k in 3:  # (staff lines)
+		var y := stand.position.y + stand.size.y * (0.2 + 0.15 * k)
+		draw_line(Vector2(stand.position.x + s * 0.04, y), Vector2(stand.end.x - s * 0.04, y), Color(0.3, 0.3, 0.3), 1.0)
+	# the arm: shoulder, elbow out to the side, the hand on the keys
+	var shoulder := Vector2(tx + s * 0.2, c.y - s * 0.95)
+	var hand := Vector2(kx0 + kw * _hand_x, ky + s * 0.04)
+	if page_flip >= 0.0:
+		hand = Vector2(stand.get_center().x + stand.size.x * 0.5 * cos(page_flip * PI), stand.position.y + s * 0.05)  # (his hand turns the page)
+	var mid := (shoulder + hand) / 2.0
+	var elbow := mid + (hand - shoulder).orthogonal().normalized() * s * 0.22 * (1.0 if hand.x < shoulder.x else -1.0)
+	draw_polyline(PackedVector2Array([shoulder, elbow, hand]), suit, maxf(4.0, s * 0.1), true)
+	draw_circle(hand, s * 0.06, skin)
+	# the foot, up on the keys (a long leg out from behind the piano)
+	var hip := Vector2(tx - s * 0.1, c.y + s * 0.25)
+	var foot := Vector2(kx0 + kw * _foot_x, ky + s * 0.02)
+	draw_line(hip, foot, suit, maxf(4.0, s * 0.11), true)
+	draw_rect(Rect2(foot - Vector2(s * 0.1, s * 0.04), Vector2(s * 0.2, s * 0.07)), Color(0.02, 0.02, 0.02))
+	# the sign
+	var sp := Vector2(c.x + s * 1.2, c.y - s * 0.55)
+	draw_line(sp + Vector2(0, s * 0.2), sp + Vector2(0, s * 1.2), Color(0.35, 0.25, 0.15), maxf(2.0, s * 0.04))
+	var sr := Rect2(sp - Vector2(s * 0.42, s * 0.1), Vector2(s * 0.84, s * 0.3))
+	draw_rect(sr, Color(0.92, 0.88, 0.78))
+	draw_rect(sr, Color(0.3, 0.2, 0.1), false, 2.0)
+	var font := ThemeDB.fallback_font
+	var px := int(maxf(9.0, s * 0.1))
+	for k in 2:
+		var txt: String = ["SILENCE", "PLEASE"][k]
+		var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
+		draw_string(font, Vector2(sr.get_center().x - w / 2.0, sr.position.y + sr.size.y * (0.45 + 0.4 * k)), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, px, Color(0.2, 0.1, 0.05))
 
 
 ## Puppet Stage: the side of the square the puppet's picture is drawn in. The Handyman's body is drawn at the size his arms were cut for.

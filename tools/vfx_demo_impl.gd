@@ -1,7 +1,7 @@
 extends RefCounted
 
 const OPS := ["strike", "burn", "stoke", "freeze", "weak", "expose", "curse", "ethereal", "execute",
-	"shatter", "purge", "steal", "redirect", "convert", "shield", "aegis", "thorns", "heal", "cleanse",
+	"shatter", "purge", "steal", "convert", "shield", "aegis", "thorns", "heal", "cleanse",
 	"sacrifice", "draw", "amplify", "echo", "overload", "duplicate", "retain", "passive"]
 const MULTI := ["burn", "strike", "barrage"]  # also shown hitting all enemies
 

@@ -418,12 +418,10 @@ static func describe_op(e: Dictionary, same := false) -> String:
 		"cleanse":
 			if int(e.get("lasting_per", 0)) > 0:
 				return "Cleanse all your debuffs. Gain %d Lasting Shield for each one" % int(e.lasting_per)
-			return {"all": "Cleanse all your debuffs", "blind": "Cure Blind", "poison": "Cure Poison", "confuse": "Cure Hypnotize",
+			return {"all": "Cleanse all your debuffs", "blind": "Cure Blind", "poison": "Cure Poison", "confuse": "Cure Confuse",
 				"silence": "Cure Silence", "frozen": "thaw your Frozen Essence", "lock": "break 1 Lock"}[e.get("what", "all")]
 		"copy_last":
 			return "repeat your last spell this turn"
-		"redirect":
-			return "Redirect %s intent" % ts
 		"infuse":
 			if e.el == "random":
 				return "Infuse %d Random" % maxi(1, n)
@@ -467,12 +465,11 @@ static func describe_op(e: Dictionary, same := false) -> String:
 				"shield_per_burn": "each time you apply Burn to an enemy, gain %d Shield" % n,
 				"all_lasting": "all your Shield is Lasting",
 				"disturbance": "whenever an Essence is added to or removed from your chant after you Chant, deal 1 damage to that Essence of a random enemy",
-				"strike_bonus": "your spells deal %d more damage" % n}.get(e.key, e.key)
+				"strike_bonus": "your spells deal %d more damage" % n,
+				"cauterize": "enemies can't Mend"}.get(e.key, e.key)
 		"curse":
 			var many := tg == "all"
-			return {"no_mend": "prevent %s from Mending" % t,
-				"exposed": "%s %s Exposed all fight" % [t, "are" if many else "is"],
-				"weak25": "%s %s 25%% less all fight" % [t, "deal" if many else "deals"]}.get(e.key, e.key)
+			return {"exposed": "%s %s Exposed all fight" % [t, "are" if many else "is"]}.get(e.key, e.key)
 		"each_turn":
 			return "each turn: " + "; ".join(e.effects.map(func(x): return describe_op(x)))
 	return e.op

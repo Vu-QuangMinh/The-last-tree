@@ -239,7 +239,7 @@ func _has_point(p: Vector2) -> bool:
 func _status_bbcode(text: String) -> String:
 	# the picture for the status named first in `text` (Puppet art first, the older intent pictures as a fallback)
 	var names: Array = {"Burn": ["status_burn", "intent_burn"], "Poison": ["status_poison", "intent_poison"],
-		"Frozen": ["status_freeze", "intent_freeze"], "Weakened": ["status_weak"], "Stillness": ["status_weak"],
+		"Frozen": ["status_freeze", "intent_freeze"], "Weakened": ["status_weak"],
 		"Ethereal": ["status_ethereal", "intent_ethereal"], "Power": ["intent_empower"]}.get(text.get_slice(" ", 0), [])
 	for art in names:
 		if UiSkin.tex(art) != null:
@@ -316,6 +316,19 @@ func refresh(preview: Dictionary) -> void:
 		if UiSkin.is_puppet():  # its right edge (the pointer) just touches the puppet, it grows to the left with its content
 			chip.resized.connect(_place_chip.bind(chip))  # (it moves itself whenever its size changes; the signal goes with the chip)
 			_place_chip(chip)
+		if not e.intent2.is_empty():
+			# the Corrector's small screen: its own, smaller bubble, just above the big one
+			var chip2 := IntentChip.make(e, e.intent2)
+			chip2.set_meta("info", chip2.tooltip_text)
+			chip2.tooltip_text = ""
+			chip2.scale = Vector2(0.75, 0.75)
+			_intent_slot.add_child(chip2)
+			var place2 := func():
+				if is_instance_valid(chip) and is_instance_valid(chip2):
+					chip2.position = chip.position + Vector2(chip.size.x - chip2.size.x * 0.75, -chip2.size.y * 0.75 - 6.0)
+			chip.resized.connect(place2)
+			chip2.resized.connect(place2)
+			place2.call()
 	for ch in _hp_row.get_children():
 		ch.queue_free()
 	_hp_icons.clear()
@@ -755,7 +768,7 @@ func info_text() -> String:
 			continue
 		lines.append("• " + s)
 	for p in e.def.get("passives", []):
-		if not (p in EnemyDefs.HIDDEN_PASSIVES):
+		if p in EnemyDefs.SHOWN_PASSIVES:  # (the rest are learned by facing it: the Codex explains them)
 			lines.append("• " + EnemyDefs.PASSIVE_TEXT[p])
 	if lines.size() == 1:
 		lines.append("No effects on it right now.")
@@ -779,7 +792,7 @@ func _tooltip() -> String:
 	for s in e.describe_statuses():
 		lines.append("• " + s)
 	for p in e.def.get("passives", []):
-		if not (p in EnemyDefs.HIDDEN_PASSIVES):
+		if p in EnemyDefs.SHOWN_PASSIVES:  # (the rest are learned by facing it: the Codex explains them)
 			lines.append("• " + EnemyDefs.PASSIVE_TEXT[p])
 	lines.append("Hover its portrait to see its moves.")
 	var flavor := "[i][color=#9aa89a]\"%s\"[/color][/i]" % e.def.get("flavor", "")

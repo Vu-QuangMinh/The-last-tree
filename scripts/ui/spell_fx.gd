@@ -76,8 +76,6 @@ static func play(fx: Control, op: String, eff: Dictionary, from: Vector2, dests:
 			return 0.0  # (no show: you drag the Essence home yourself, see FightScreen._end_steal_drag)
 		"siphon":
 			return _siphon(v, from, dests, col, player)
-		"redirect":
-			return _redirect(v, from, dests)
 		"shield":
 			return _shield(v, from, dests)
 		"aegis":
@@ -606,28 +604,6 @@ static func _siphon(v: Vfx, from: Vector2, dests: Array, col: Color, player: Vec
 		v.ring(player, 30, 280, col, 0.5, 10.0, 0.8, 0.42)
 		v.shake(4.0, 0.2)
 	return 0.35
-
-
-## The magic bends: a looping arc of violet light that swirls around the target.
-static func _redirect(v: Vfx, from: Vector2, dests: Array) -> float:
-	for d in dests:
-		v.move(from, d.body, 0.5, 320, SHADOW, 11.0, 0.04,
-			func(vv: Vfx, m: Vfx.Item, _d: float) -> void: _spark_trail(vv, m, SHADOW, 2),
-			func(vv: Vfx, at: Vector2) -> void:
-				_orbit(vv, at, SHADOW, Color.WHITE, 0.55, 170.0)
-				vv.sigil(at, 140, SHADOW, 1.0, 3, 0.0, 0.8, 2.6)
-				vv.glow(at, 260, Color(SHADOW, 0.5), 0.8)
-				# arrows chasing each other round it: its aim is being turned
-				vv.emit(at, 0.6, 0.0, func(v3: Vfx, it: Vfx.Item, _d: float) -> void:
-					for k in 3:
-						var ang := it.age * 9.0 + k * TAU / 3.0
-						var p := at + Vector2(cos(ang) * 175, sin(ang) * 90)
-						var ch := v3.part(p, Vector2.ZERO, SHADOW.lerp(Color.WHITE, 0.4), 0.14, 15.0, Vfx.CHEVRON)
-						ch.rot = ang + PI
-						ch.size1 = 8.0)
-				vv.ring(at, 10, 200, SHADOW, 0.5, 10.0, 0.55)
-				vv.shake(4.0, 0.55))
-	return 0.55
 
 
 ## Two strands of light spiral in around a point and pop.

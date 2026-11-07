@@ -27,8 +27,9 @@ var state_text := ""
 var lock_pattern := ""
 var _base_tip := ""  # (its tooltip without the Ignited line)
 var cracks := 0  # Hammer Hand hits taken (1: a few cracks, 2: cracked all over)
-var ignite_dmg := 5  # what casting it burns you for (Ignite stacks): written at the card's top right
-var ignited := false  # wrapped in a thin line of flame: casting it burns you (the Ember Sprite)
+var ignite_dmg := 5  # what casting it burns you for (Ignite stacks): the number in its flame badge
+var ignited := false  # a flame badge at the top right: casting it burns you (the Ember Sprite)
+var virus := 0  # Virus: casting it gives you this much Poison (a green badge at the top left; 0 = none)
 var selected := false
 var compact := false
 ## Drawn this many times bigger: fonts, orbs and margins are all laid out at the larger size (not stretched),
@@ -58,7 +59,8 @@ var _box: StyleBoxFlat
 var _art: StyleBoxTexture  # Puppet theme: the brown wooden card frame (UI art "spell_card_frame"); null = the flat parchment box above
 var _shade: ColorRect
 var _orbit: OrbitSpark  # pending: the chant you're building will wake this spell
-var _flame: FlameOutline
+var _flame: CardBadge  # Ignite
+var _virus: CardBadge
 var _cracks: CrackOverlay
 
 
@@ -247,11 +249,18 @@ func _ready() -> void:
 	_orbit.margins = [_box.content_margin_left, _box.content_margin_top, _box.content_margin_right, _box.content_margin_bottom]
 	_orbit.visible = false
 	add_child(_orbit)
-	_flame = FlameOutline.new()
+	_flame = CardBadge.new()
+	_flame.kind = "ignite"
 	_flame.zoom = zoom
 	_flame.margins = _orbit.margins
 	_flame.visible = false
 	add_child(_flame)
+	_virus = CardBadge.new()
+	_virus.kind = "virus"
+	_virus.zoom = zoom
+	_virus.margins = _orbit.margins
+	_virus.visible = false
+	add_child(_virus)
 	_cracks = CrackOverlay.new()
 	_cracks.zoom = zoom
 	_cracks.margins = _orbit.margins
@@ -514,6 +523,7 @@ func _sync_zoom() -> void:
 	z.lock_pattern = lock_pattern
 	z.ignited = ignited
 	z.ignite_dmg = ignite_dmg
+	z.virus = virus
 	z.cracks = cracks
 	z.selected = selected
 	z.refresh()
@@ -784,8 +794,11 @@ func refresh() -> void:
 			o.z_index = 0 if _shade.visible else 1  # (an anti-spell's orbs sit above its negative, but not above a silence)
 	_flame.visible = ignited and state != "used"
 	_flame.number = ignite_dmg if ignited else 0
+	_virus.visible = virus > 0 and state != "used"
+	_virus.number = virus
 	if _base_tip != "":
-		tooltip_text = _base_tip + ("\n[color=#ff9a4a][b]Ignited:[/b] casting it burns you for %d HP.[/color]" % ignite_dmg if ignited else "")
+		tooltip_text = _base_tip + ("\n[color=#ff9a4a][b]Ignited:[/b] casting it burns you for %d HP.[/color]" % ignite_dmg if ignited else "") \
+			+ ("\n[color=#8fe05a][b]Virus:[/b] casting it gives you Poison %d.[/color]" % virus if virus > 0 else "")
 	_cracks.set_level(0 if UiSkin.is_puppet() else cracks, String(spell.get("id", "")))  # (Puppet: the card is cut into planks instead: CardSplit)
 	if spell.get("anti", false):
 		# an anti-spell is always active: its spark keeps circling, unless the chant breaks it (state "broken")

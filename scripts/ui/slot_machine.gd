@@ -51,6 +51,7 @@ var _lever_k := 0.0
 var _chase_tw: Tween
 var _flash_tw: Tween
 var _stopped := 0
+var _veils: Array = []  # Confuse: a black veil over each reel (you can't see what is coming next)
 
 
 static func local(p: Vector2) -> Vector2:
@@ -155,6 +156,15 @@ func build() -> void:
 		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		front.add_child(box)
 		_boxes.append(box)
+		var veil := ColorRect.new()
+		veil.color = Color(0.02, 0.01, 0.03, 0.96)
+		veil.position = box.position - Vector2(3.0, 3.0)
+		veil.size = box.size + Vector2(6.0, 6.0)
+		veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		veil.tooltip_text = "Confused: you can't see what is coming next."
+		veil.visible = false
+		front.add_child(veil)
+		_veils.append(veil)
 	_lamp_on = UiSkin.tex("slot_lamp_on")
 	_lamp_off = UiSkin.tex("slot_lamp_off")
 	for x in PuppetSlotMachine.LAMP_X:
@@ -273,6 +283,15 @@ func lever_return() -> void:
 
 
 # ------------------------------------------------------------------ the lamps
+
+## Confuse: a black veil drops over the reels (or lifts).
+func set_veil(on: bool) -> void:
+	for v in _veils:
+		if is_instance_valid(v) and v.visible != on:
+			v.visible = on
+			if on:
+				front.move_child(v, front.get_child_count() - 1)  # (over the reels and whatever spins in them)
+
 
 func set_lamps(on: bool) -> void:
 	for l in _lamps:

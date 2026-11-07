@@ -272,8 +272,6 @@ func _effect_value(e: Dictionary) -> float:
 			return 0.8 * e.n
 		"summon_spells":
 			return 2.0
-		"redirect":
-			return 2.5
 		"sacrifice":
 			return -e.hp * 0.6
 		"overload":
@@ -417,7 +415,7 @@ func _best_chant(f: Fight) -> Array:
 				best = scored[i][1]
 	if best == "":
 		return []
-	# map the chant to stock indices (conjured first, avoid hexed)
+	# map the chant to stock indices (conjured first)
 	var chant := best
 	var used := {}
 	var out := []
@@ -427,7 +425,7 @@ func _best_chant(f: Fight) -> Array:
 			var s: Dictionary = f.player.stock[i]
 			if used.has(i) or s.frozen or s.el != ch:
 				continue
-			if pick == -1 or (s.temp and not f.player.stock[pick].temp) or (f.player.stock[pick].hexed and not s.hexed):
+			if pick == -1 or (s.temp and not f.player.stock[pick].temp) or false:
 				pick = i
 		used[pick] = true
 		out.append(pick)

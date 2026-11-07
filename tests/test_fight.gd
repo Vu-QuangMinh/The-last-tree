@@ -59,8 +59,8 @@ func test_power_leaves_row_for_the_fight() -> void:
 	assert_true(f.usable_spells().is_empty(), "slot stays empty")
 
 
-func test_hypnotize_leaves_the_chant_alone() -> void:
-	# Hypnotize (internally "confuse") only hides the enemies' intents: the chant is read as it is
+func test_confuse_leaves_the_chant_alone() -> void:
+	# Confuse only veils the slot machine: the chant is read as it is
 	var f := _fight(["ashling"], [], "WF")
 	_set_hp(f.enemies[0], "WFAAAA")
 	f.player.confuse_turns = 1
@@ -498,24 +498,6 @@ func test_rearrange_can_move_onto_another_enemy() -> void:
 	assert_eq(second.hp_text(), "WAAAF", "both moved onto the second enemy")
 	assert_true(first.is_dead(), "taking an enemy's last Essence defeats it")
 	assert_eq(f.db.get_spell("dustdevil").effects.size(), 1, "Dustdevil: Rearrange 2 only")
-
-
-func test_redirect_turns_an_attack_on_itself() -> void:
-	var f := _fight(["stone_knight"], ["decoy"], "AWAW")
-	f.loadout[0] = f.loadout[0].duplicate(true)  # (Misdirection lost its Redirect: test the effect itself)
-	f.loadout[0].effects = [{"op": "redirect", "target": "target"}]
-	var e: EnemyState = f.enemies[0]
-	_set_hp(e, "FFFFFFFF")
-	f.pass_turn()  # armour turn; next intent: attack 8
-	assert_eq(e.intent.kind, "attack")
-	f.player.hp = 40
-	f.player.stock.clear()
-	for ch in "AWAW":
-		f.player.add_element(ch)
-	f.redirector = func(_s, src, _c): return f.enemies.find(src)
-	f.cast(_all(4))
-	assert_eq(f.player.hp, 40.0, "the attack went elsewhere")
-	assert_eq(e.size(), 8 - 3, "8 damage turned on itself = 3 elements")
 
 
 func test_spells_resolve_before_the_damage_step() -> void:
@@ -2077,7 +2059,7 @@ func test_shield_is_gone_next_turn_and_brittle_shrinks_it() -> void:
 	f.end_player_turn()
 	assert_eq(f.player.shield, 0.0, "Shield is gone when your next turn starts")
 	f.player.brittle_turns = 2
-	assert_eq(f.player.gain_shield(4.0), 3.0, "Brittle: 25% less Shield (rounded down)")
+	assert_eq(f.player.gain_shield(4.0), 2.0, "Brittle: 50% less Shield")
 
 
 func test_slot_artifacts_bring_their_curses() -> void:
@@ -3130,3 +3112,131 @@ func test_mirror_fairy_deflects_half_the_aimed_spells() -> void:
 			n += 1
 		assert_true(not await f._mirrored(plain, f.enemies[0]), "a spell not aimed at her is never turned away")
 	assert_true(n > 70 and n < 130, "about half (%d / 200)" % n)
+
+
+func test_corrector() -> void:
+	var f := _fight(["corrector"], ["water_wall", "fire_ball", "tailwind"], "")
+	var e: EnemyState = f.enemies[0]
+	assert_eq(e.size(), 16)
+	assert_true(e.id in EnemyDefs.BOSSES[2])
+	e.move_index = 0
+	f._plan(e)
+	assert_eq(String(e.intent.name), "Syntax Error", "full: Patch (Mend 3) would be wasted, so it is skipped")
+	f._do_move(e, e.intent)
+	assert_eq(f.player.virus.size(), 1, "Virus 3 on one spell")
+	assert_eq(f.player.locks.size(), 1, "and a Lock")
+	assert_true(not f.player.virus.has(f.player.locks.keys()[0]), "on ANOTHER spell")
+	e.remove_right(3)
+	e.move_index = 0
+	f._plan(e)
+	assert_eq([String(e.intent.kind), int(e.intent.n)], ["mend", 3], "missing 3: Patch")
+	assert_true(e.intent2.is_empty(), "one screen before the reboot")
+	# at 0 he reboots: 16 more, and the small screen joins in
+	e.elements.clear()
+	e.armor.clear()
+	f._cleanup()
+	assert_eq([e.size(), e.phase], [16, 2])
+	assert_true(not f.over)
+	assert_true(not e.intent2.is_empty(), "two things every turn now")
+	e.move_index2 = 0
+	f._plan(e)
+	assert_eq([String(e.intent2.kind), int(e.intent2.n)], ["attack", 3], "the small screen: weaker")
+
+func test_frail_hex_and_ethereal_are_gone() -> void:
+	for id in EnemyDefs.E:
+		for key in ["moves", "moves2"]:
+			for m in EnemyDefs.E[id].get(key, []):
+				assert_true(not (String(m.kind) in ["frail", "hex", "ethereal"]), "%s still uses %s" % [id, m.kind])
+				if m.has("also"):
+					assert_true(not (String(m.also.kind) in ["frail", "hex", "ethereal"]), "%s still uses %s" % [id, m.also.kind])
+
+
+func test_vulnerable_from_an_enemy() -> void:
+	var f := _fight(["ashling"], [], "")
+	f._do_move(f.enemies[0], {"kind": "vulnerable", "n": 1})
+	assert_eq(f.player.vulnerable, 1)
+
+
+func test_virus_poisons_you_when_the_spell_is_cast() -> void:
+	var f := _fight(["ashling"], ["water_wall"], "WW")
+	f._do_move(f.enemies[0], {"kind": "virus", "n": 3})
+	assert_eq(f.player.virus.get("water_wall", 0), 3, "the only spell caught it")
+	f.cast_chant(_all(2))
+	f.resolve_spell("water_wall")
+	assert_eq([f.player.poison, f.player.virus.size()], [3, 0], "cast: Poison 3, and the virus is gone")
+
+
+func test_burden_caps_the_chant_at_five() -> void:
+	var f := _fight(["ashling"], [], "")
+	f._do_move(f.enemies[0], {"kind": "toll"})
+	assert_eq(f.player.chant_slots(), 5)
+
+
+func test_storm_imp_deflects_on_the_turn_it_shows_it() -> void:
+	var f := _fight(["storm_imp"], [], "")
+	var e: EnemyState = f.enemies[0]
+	e.intent = {"kind": "deflect"}
+	var hp := e.hp_text()
+	var hit: Array = await f._strike(hp)
+	assert_true(hit.is_empty() and e.hp_text() == hp, "the Release bounces off")
+
+
+func test_cauterizing_power_stops_every_mend() -> void:
+	var f := _fight(["puddle_slime"], ["cauterize"], "FW")
+	var e: EnemyState = f.enemies[0]
+	e.remove_right(1)
+	var before := e.size()
+	f.cast_chant(_all(2))
+	f.resolve_spell("cauterize")
+	assert_eq(f.player.passive("cauterize"), 1, "a Power of yours")
+	f._do_move(e, {"kind": "mend", "el": "W", "n": 1})
+	assert_eq(e.size(), before, "no Mend while you are Cauterizing")
+	assert_true(not e.describe_statuses().any(func(s): return s.begins_with("Cauterized")), "no status on the enemy")
+
+
+func test_the_pianist() -> void:
+	var f := _fight(["pianist"], [], "")
+	var e: EnemyState = f.enemies[0]
+	assert_eq([e.size(), e.def.pages.size()], [10, 5], "50 Essence, as five pages of 10")
+	assert_true(e.id in EnemyDefs.BOSSES[2] and not ("blightmother" in EnemyDefs.E))
+	# a page cleared: the next one, every status gone, and he turns the page on his turn
+	for k in 4:
+		e.burn = 2
+		e.power = 3
+		e.elements.clear()
+		e.armor.clear()
+		f._cleanup()
+		assert_eq([e.page, e.size(), e.burn, e.power], [k + 2, 10, 0, 0], "page %d" % (k + 2))
+		assert_true(f.page_turn_pending and not f.over)
+		f._do_move(e, e.intent)
+		assert_true(not f.page_turn_pending, "he turned the page")
+	e.elements.clear()
+	e.armor.clear()
+	f._cleanup()
+	assert_true(f.over and f.won, "the fifth page cleared: he is beaten")
+	f = _fight(["pianist"], [], "")
+	e = f.enemies[0]
+	f.player.hp = 40.0
+	f._do_move(e, e.intent)
+	assert_eq(f.player.hp, 40.0, "he never attacks")
+	assert_eq(f.song, "turkish_march")
+	f.talk_effect("song:fur_elise")
+	assert_eq(f.song, "fur_elise", "the Mysterious Hand given back: Fur Elise")
+	f.song_ends()
+	assert_true(f.over and not f.won, "the piece is over: you die")
+
+
+func test_pianist_notes_follow_the_music() -> void:
+	var s := PianistSong.make("turkish_march")
+	assert_true(s.length > 200.0, "the whole piece")
+	var hl: Array = s.hands_at(5.0)
+	assert_true(hl[0] >= hl[1] and hl[1] >= PianistSong.LOW - 10, "hand on the top note, foot on the bottom one")
+	s.free()
+
+
+func test_the_pianists_scores_play_along_with_extensions() -> void:
+	var f := _fight(["ashling"], [], "")
+	f.artifacts = ["turkish_march", "fur_elise"]
+	f.player.hp = 30.0
+	f._score_extension()
+	assert_eq([f.enemies[0].burn, f.player.hp], [1, 32.0], "Turkish March: Burn 1; Für Elise: heal 2")

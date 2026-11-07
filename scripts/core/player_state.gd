@@ -1,7 +1,7 @@
 class_name PlayerState
 extends RefCounted
 ## You: HP persists through the run; everything else resets each fight.
-## Stock entries are {el, temp (conjured: vanishes at end of turn), frozen, hexed}.
+## Stock entries are {el, temp (conjured: vanishes at end of turn), frozen}.
 
 const UNLIMITED := 1 << 20
 const TOLL_CAP := 5  # under a Toll, your next chant holds at most this many Essence
@@ -24,10 +24,9 @@ var ignite_hit := {}  # spell id -> true: Ignited until it is cast, and that bur
 var ignite_dmg := {}  # spell id -> what casting it burns you for: Ignite stacks (see Fight.IGNITE_DAMAGE)
 var confuse_turns := 0
 var blind_turns := 0
-var toll := 0  # Toll: your next chant holds at most this many Essence (0 = no limit)
-var frail_turns := 0  # Frail: you take 25% more attack damage
+var toll := 0  # Burden (internally "toll"): your next chant holds at most this many Essence, the slots past it are stone (0 = none)
 var vulnerable := 0  # Vulnerable N: you take 50% more damage; N drops by 1 after each enemy turn
-var brittle_turns := 0  # Brittle: the Shield you gain is 25% smaller
+var brittle_turns := 0  # Brittle: the Shield you gain is 50% smaller
 var dmg_taken_mult := 1.0  # from artifacts (Glass Heart)
 var overload := 0
 var stock: Array = []
@@ -38,7 +37,8 @@ var each_turn: Array = []  # [{spell, effects}]
 var silenced := {}  # spell id -> turns
 var cooldowns := {}  # spell id -> turns before it can be cast again (Cooldown N)
 var disarmed_turns := 0  # Disarmed (the Invoker's Deafening Blast): your Release does nothing
-var stun_turns := 0  # Stunned (the Dragon's Thrash): you can't chant or cast; only Pass and bottles
+var stun_turns := 0  # Stunned: your whole turn is skipped (you still get your Essence)
+var virus := {}  # spell id -> Poison: casting that spell poisons you this much (Virus; then it is gone)
 var ignited := {}  # spell id -> turns: casting it burns you (the Ember Sprite)
 var locks := {}  # spell id -> pattern
 var used_powers := {}  # spell id -> true
@@ -61,7 +61,7 @@ var echo_next := false  # Echo Draught: your next spell is cast twice (this figh
 ## kind). Brittle makes either 25% smaller.
 func gain_shield(n: float, p_lasting := false) -> float:
 	if brittle_turns > 0:
-		n = floorf(n * 0.75)
+		n = floorf(n * 0.5)
 	if passive("all_lasting") > 0:
 		p_lasting = true  # Braum's Resolve: all your Shield is Lasting
 	if p_lasting:
@@ -82,7 +82,6 @@ func reset_fight() -> void:
 	confuse_turns = 0
 	blind_turns = 0
 	toll = 0
-	frail_turns = 0
 	vulnerable = 0
 	brittle_turns = 0
 	echo_chamber_on = false
@@ -99,6 +98,7 @@ func reset_fight() -> void:
 	ignite_dmg.clear()
 	disarmed_turns = 0
 	stun_turns = 0
+	virus.clear()
 	locks.clear()
 	used_powers.clear()
 	durability.clear()
@@ -124,7 +124,7 @@ var _next_uid := 0
 
 func add_element(el: String, temp := false) -> void:
 	_next_uid += 1
-	stock.append({"el": el, "temp": temp, "frozen": false, "freeze_n": 0, "hexed": false, "uid": _next_uid})
+	stock.append({"el": el, "temp": temp, "frozen": false, "freeze_n": 0, "uid": _next_uid})
 
 
 func count_usable(el: String) -> int:
@@ -143,7 +143,7 @@ func take_attack(x: float) -> float:
 		return 0.0
 	if ethereal:
 		return 0.0
-	x = floorf(x * dmg_taken_mult * (1.25 if frail_turns > 0 else 1.0) * (1.5 if vulnerable > 0 else 1.0))
+	x = floorf(x * dmg_taken_mult * (1.5 if vulnerable > 0 else 1.0))
 	if aegis > 0:
 		aegis -= 1
 		return 0.0
@@ -186,17 +186,15 @@ func describe_statuses() -> Array:
 	if bleed > 0:
 		out.append("Bleed %d" % bleed)
 	if confuse_turns > 0:
-		out.append("Hypnotized: you can't see what the enemies intend")
+		out.append("Confused: a black veil over the slot machine (you can't see what is coming next)")
 	if blind_turns > 0:
 		out.append("Blind: some enemy Essence are hidden")
 	if toll > 0:
-		out.append("Toll: your next chant holds at most %d Essence" % toll)
-	if frail_turns > 0:
-		out.append("Frail %d (you take 25%% more damage)" % frail_turns)
+		out.append("Burden: your next chant holds at most %d Essence" % toll)
 	if vulnerable > 0:
 		out.append("Vulnerable %d (you take 50%% more damage)" % vulnerable)
 	if brittle_turns > 0:
-		out.append("Brittle %d (you gain 25%% less Shield)" % brittle_turns)
+		out.append("Brittle %d (you gain 50%% less Shield)" % brittle_turns)
 	if disarmed_turns > 0:
 		out.append("Disarmed (your Release does nothing this turn)")
 	if stun_turns > 0:

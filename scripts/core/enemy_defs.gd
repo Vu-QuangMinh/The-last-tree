@@ -45,11 +45,11 @@ const E := {
 		"moves2": [{"kind": "attack", "n": 4, "hits": 2}], "passives": ["rage_at_half"],
 		"flavor": "Ripe, red and armoured."},
 	# ---------------- in reserve (not in any act's pool for now; kept to reuse in later acts)
-	"puddle_slime": {"name": "Puddle Slime", "act": 0, "hp": "WAW", "moves": [{"kind": "attack", "n": 3}, {"kind": "mend", "el": "W", "n": 1, "who": "self"}, {"kind": "frail", "turns": 1}],
+	"puddle_slime": {"name": "Puddle Slime", "act": 0, "hp": "WAW", "moves": [{"kind": "attack", "n": 3}, {"kind": "mend", "el": "W", "n": 1, "who": "self"}, {"kind": "vulnerable", "n": 1}],
 		"flavor": "It keeps refilling itself."},
 	"gale_sprite": {"name": "Gale Sprite", "act": 0, "hp": "AFA", "moves": [{"kind": "attack", "n": 3, "hits": 2}, {"kind": "armor", "pos": 0}, {"kind": "freeze", "n": 1}],
 		"flavor": "Two quick jabs of wind."},
-	"stone_knight": {"name": "Stone Knight", "act": 0, "hp": "FFW", "moves": [{"kind": "armor", "pos": 1}, {"kind": "attack", "n": 8}, {"kind": "frail", "turns": 1, "also": {"kind": "attack", "n": 3}}],
+	"stone_knight": {"name": "Stone Knight", "act": 0, "hp": "FFW", "moves": [{"kind": "armor", "pos": 1}, {"kind": "attack", "n": 8}, {"kind": "vulnerable", "n": 1, "also": {"kind": "attack", "n": 3}}],
 		"flavor": "Braces, then swings."},
 	"tidecaller": {"name": "Tidecaller", "act": 0, "hp": "WAWA", "moves": [{"kind": "mend", "el": "W", "n": 1, "who": "self"}, {"kind": "attack", "n": 5}, {"kind": "freeze", "n": 1}],
 		"flavor": "The tide always comes back."},
@@ -60,15 +60,15 @@ const E := {
 	"pickpocket_imp": {"name": "Pickpocket Imp", "act": 0, "hp": "AFA", "moves": [{"kind": "steal", "n": 1}, {"kind": "attack", "n": 4}, {"kind": "armor", "pos": 0}],
 		"flavor": "It wears what it steals."},
 	# ---------------- act 2
-	"splitter_ooze": {"name": "Splitter Ooze", "act": 2, "hp": "WWF", "moves": [{"kind": "attack", "n": 4}, {"kind": "mend", "el": "random", "n": 1, "who": "self"}, {"kind": "frail", "turns": 2}], "passives": ["split"],
+	"splitter_ooze": {"name": "Splitter Ooze", "act": 2, "hp": "WWF", "moves": [{"kind": "attack", "n": 4}, {"kind": "mend", "el": "random", "n": 1, "who": "self"}, {"kind": "vulnerable", "n": 2}], "passives": ["split"],
 		"flavor": "Hit it wrong and there are two."},
 	"overgrowth_vine": {"name": "Overgrowth Vine", "act": 2, "hp": "FAW", "moves": [{"kind": "attack", "n": 4}, {"kind": "armor", "pos": 0}, {"kind": "poison", "n": 2}], "passives": ["overgrowth"],
 		"flavor": "Ignore it and it grows."},
 	"toll_keeper": {"name": "Toll Keeper", "act": 2, "hp": "WWA", "moves": [{"kind": "toll"}, {"kind": "attack", "n": 5}, {"kind": "armor", "pos": 1}],
 		"flavor": "Every word costs extra."},
-	"hexer": {"name": "Hexer", "act": 2, "hp": "FW", "moves": [{"kind": "hex"}, {"kind": "attack", "n": 4}, {"kind": "mend", "el": "random", "n": 1, "who": "ally"}],
+	"hexer": {"name": "Hexer", "act": 2, "hp": "FW", "moves": [{"kind": "virus", "n": 3}, {"kind": "attack", "n": 4}, {"kind": "mend", "el": "random", "n": 1, "who": "ally"}],
 		"flavor": "Marks your Essence with pain."},
-	"shrine_maiden": {"name": "Shrine Maiden", "act": 2, "hp": "WA", "moves": [{"kind": "mend", "el": "random", "n": 1, "who": "all"}, {"kind": "attack", "n": 3}, {"kind": "frail", "turns": 1}],
+	"shrine_maiden": {"name": "Shrine Maiden", "act": 2, "hp": "WA", "moves": [{"kind": "mend", "el": "random", "n": 1, "who": "all"}, {"kind": "attack", "n": 3}, {"kind": "vulnerable", "n": 1}],
 		"flavor": "She mends everyone but you."},
 	# The Anxious Armadillo (Act 2, met once ever: the second fight of Act 2 on your very first run). He never attacks:
 	# he only curls up tighter (+2 Thorns a turn: your Release hitting him hurts you that much). Beaten, he doesn't
@@ -159,7 +159,7 @@ const E := {
 	# ---------------- act 3
 	"inverter": {"name": "Inverter", "act": 3, "hp": "FWFW", "moves": [{"kind": "invert"}, {"kind": "attack", "n": 5}, {"kind": "armor", "pos": 0}],
 		"flavor": "Fire becomes water, water becomes fire."},
-	"warded_golem": {"name": "Warded Golem", "act": 3, "hp": "FFWWAA", "moves": [{"kind": "attack", "n": 5}, {"kind": "armor", "pos": 2}, {"kind": "frail", "turns": 1}], "passives": ["warded"],
+	"warded_golem": {"name": "Warded Golem", "act": 3, "hp": "FFWWAA", "moves": [{"kind": "attack", "n": 5}, {"kind": "armor", "pos": 2}, {"kind": "vulnerable", "n": 1}], "passives": ["warded"],
 		"flavor": "Short chants bounce off."},
 	"echo_wraith": {"name": "Echo Wraith", "act": 3, "hp": "AWAF", "moves": [{"kind": "confuse"}, {"kind": "attack", "n": 2}, {"kind": "mend", "el": "random", "n": 1, "who": "self"}], "passives": ["echo"],
 		"flavor": "Everything it does, it does twice."},
@@ -167,7 +167,7 @@ const E := {
 		"flavor": "It becomes your last words, backwards."},
 	"last_gasp_spore": {"name": "Last Gasp Spore", "act": 3, "hp": "AWW", "moves": [{"kind": "attack", "n": 3}, {"kind": "mend", "el": "W", "n": 1, "who": "self"}, {"kind": "poison", "n": 1}], "passives": ["last_gasp"],
 		"flavor": "Bursts when it dies."},
-	"storm_imp": {"name": "Storm Imp", "act": 3, "hp": "AAF", "moves": [{"kind": "attack", "n": 1, "hits": 3}, {"kind": "ethereal"}, {"kind": "empower", "n": 1}],
+	"storm_imp": {"name": "Storm Imp", "act": 3, "hp": "AAF", "moves": [{"kind": "attack", "n": 1, "hits": 3}, {"kind": "deflect"}, {"kind": "empower", "n": 1}],
 		"flavor": "Flickers out of reach."},
 	# ---------------- elites
 	"storm_rider": {"name": "Storm Rider", "act": 2, "elite": true, "retired": true, "hp": "AAFAA", "moves": [{"kind": "attack", "n": 3, "hits": 2}, {"kind": "attack", "n": 2, "also": {"kind": "shuffle"}}],
@@ -191,7 +191,7 @@ const E := {
 		"flavor": "He goes where his lord goes."},
 	"samurai": {"name": "The Samurai", "act": 2, "elite": true, "member": true, "no_extra": true, "no_bonus": true, "hp": "FAWWFAFWAAFWFAW",
 		"passives": ["avenger"],
-		"moves": [{"kind": "attack", "n": 10, "pose": "in_no_kamae"}, {"kind": "deflect", "pose": "ko_gasumi"}, {"kind": "attack", "n": 3, "hits": 3, "iai": true, "pose": "sha_no_kamae"}],
+		"moves": [{"kind": "attack", "n": 10, "pose": "in_no_kamae"}, {"kind": "deflect", "pose": "ko_gasumi", "pair": true}, {"kind": "attack", "n": 3, "hits": 3, "iai": true, "pose": "sha_no_kamae"}],
 		"flavor": "One cut, and it is over."},
 	"tide_colossus": {"name": "Tide Colossus", "act": 3, "elite": true, "retired": true, "hp": "WWWWFW", "moves": [{"kind": "mend", "el": "W", "n": 2, "who": "self"}, {"kind": "attack", "n": 8}],
 		"flavor": "A wave that stands up."},
@@ -281,10 +281,6 @@ const E := {
 		"moves": [{"kind": "attack", "n": 8}, {"kind": "summon", "id": "ashling", "n": 1}, {"kind": "armor", "pos": 0, "also": {"kind": "attack", "n": 4}}],
 		"moves2": [{"kind": "attack", "n": 5, "hits": 2}, {"kind": "mend", "el": "random", "n": 1, "who": "self"}],
 		"flavor": "He came for the last tree."},
-	"blightmother": {"name": "The Blightmother", "act": 2, "boss": true, "hp": "WAWFWAAWFWAWFA",
-		"moves": [{"kind": "poison", "n": 2}, {"kind": "summon", "id": "puddle_slime", "n": 1}, {"kind": "attack", "n": 7}],
-		"moves2": [{"kind": "lock", "len": 3}, {"kind": "mend", "el": "random", "n": 1, "who": "all"}, {"kind": "attack", "n": 5, "hits": 2}],
-		"flavor": "Rot, and everything it feeds."},
 	# Violet Eyes (an Act 2 boss; was the Veiled Eyes). Phase 1: a ball hanging on a white thread, two violet human eyes behind a black
 	# veil. Phase 2 (at 0 Essence the veil falls): the spider underneath, the human eyes on its back and 4 spider-eye
 	# dots. Its intent is shown like anyone's; its eyes also light up, a turn ahead ("eyes" on each move).
@@ -309,6 +305,31 @@ const E := {
 	"spider_cocoon": {"name": "Silk Cocoon", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "inert": true, "hidden_intent": true,
 		"hp": "WAF", "passives": ["cocoon"], "tint": Color(0.92, 0.9, 0.86), "moves": [{"kind": "hold"}],
 		"flavor": "Something you need is wrapped up in there."},
+	# The Pianist (the Act 2 boss; Ludwig, see docs/story.md). Tall and thin like Slender Man, black suit, white collar, a
+	# hat; his left hand was cut off, so he plays with one hand and one foot. He has no moves: he plays, in real time,
+	# from the moment the fight starts (PianistSong, on the fight screen), through every turn and animation. If the piece
+	# ends, he slams the keys: The End, and you die. Turkish March normally; give him back the Mysterious Hand (his own)
+	# in the talk and he plays Fur Elise instead. A "Silence, please" sign on his stage.
+	# 50 Essence in all, as five pages of 10 ("pages"; no act bonus): each time a page's Essence is gone, he stops the
+	# music, turns the page (that is his turn: you can do nothing; every status on him is gone) and plays on from where
+	# he stopped (that is your turn). The fifth page gone: he is beaten.
+	"pianist": {"name": "The Pianist", "act": 2, "boss": true, "no_extra": true, "no_bonus": true,
+		"hp": "FWAAWFWAFF", "pages": ["FWAAWFWAFF", "WAWFAWFAWW", "AFFWAFWAAF", "WFWAFAWWFA", "FWAWFFAWAF"], "passives": ["pianist"],
+		"moves": [{"kind": "play"}],
+		"flavor": "Silence, please."},
+	# The Corrector (an Act 2 boss): a code debugger made real, deployed by the Hand. His head is a TV screen that shows
+	# what he is about to do. 16 Essence; at 0 he reboots once with 16 more, and a second, smaller screen lights up on
+	# top of the first: from then on he does two things every turn, the big screen's move and a weaker one of the
+	# small screen's ("moves_small", in their own cycle). Patch (Mend 3) only when it heals all 3, Mend 2 likewise
+	# ("only_if_missing"); a move that would be wasted is skipped.
+	"corrector": {"name": "The Corrector", "act": 2, "boss": true, "no_extra": true, "no_bonus": true,
+		"hp": "WAFFWAWFAWFAFWAW", "hp2": "FAWWFAFWAFWFAWFA", "passives": ["corrector_reboot"],
+		"moves": [{"kind": "mend", "el": "random", "n": 3, "only_if_missing": 3, "name": "Patch"},
+			{"kind": "virus", "n": 3, "name": "Syntax Error", "also": {"kind": "lock", "len": 3, "other": true}},
+			{"kind": "attack", "n": 6, "name": "Step Over"}],
+		"moves_small": [{"kind": "attack", "n": 3, "name": "Step Over"}, {"kind": "lock", "len": 2, "name": "Breakpoint"},
+			{"kind": "virus", "n": 2, "name": "Syntax Error"}, {"kind": "mend", "el": "random", "n": 2, "only_if_missing": 2, "name": "Patch"}],
+		"flavor": "Stay tuned."},
 	# The Fire Dragon (an Act 3 mini boss, the user's design, 2026-10-26). It lies across the stage: tail on the left,
 	# head on the right, one wing on its back. Head and tail are separate enemies (20 Essence each, both must fall), each
 	# with its own intent at its own end of the stage. Every turn the wing folds over one of them, at random and shown
@@ -359,6 +380,8 @@ const PASSIVE_TEXT := {
 	"overgrowth": "Overgrowth: if not struck during your turn, it grows a random Essence.",
 	"warded": "Warded: only chants of 4 or more Essence can strike it.",
 	"last_gasp": "Last Gasp: gives you Poison 2 when it dies.",
+	"pianist": "The Pianist: he never attacks. He plays one piece, in real time, from the first turn on. If he gets to the end of it, you die. 50 Essence, as five pages of 10: every time a page is cleared he stops, turns the page (his turn) and plays on.",
+	"corrector_reboot": "Reboot: at 0 Essence he restarts with 16 more, and a second, smaller screen lights up: from then on he does two things every turn (the small screen's moves are weaker).",
 	"retainer": "Loyal: if the Samurai falls first, his Retainer yields and the fight is over.",
 	"avenger": "Avenger: if his Retainer falls first, the Samurai gains 5 Power for the rest of the fight.",
 	"dormant": "Dormant: does nothing until it is down to 12 Essence, or for 3 turns.",
@@ -467,12 +490,14 @@ const BIOS := {
 	"spiderling_a": "Eight legs, one thought: you.",
 	"spiderling_b": "Eight legs, one thought: you.",
 	"spider_cocoon": "Silk, wrapped tight around something that used to be yours.",
-	"blightmother": "Rot, and everything it feeds. She poisons you, locks you, and calls in the slimes for moral support.",
 	"last_winter": "The end of every season. Freezes your hands, scrambles your words, and calls a storm to finish the job.",
 }
 
-const BOSSES := {1: ["yin_yang_beast", "invoker", "handyman"], 2: ["blightmother", "veiled_eyes"], 3: ["last_winter"]}
+const BOSSES := {1: ["yin_yang_beast", "invoker", "handyman"], 2: ["pianist", "veiled_eyes", "corrector"], 3: ["last_winter"]}
 ## Passives the fight never tells you about (only the Codex does, once you've beaten it).
+## Passives explained in a fight (hover). Every other one is a native trait you learn by facing the enemy: no symbol, no
+## tooltip; the Codex explains it in words.
+const SHOWN_PASSIVES := ["mirror_deflect", "cocoon"]
 const HIDDEN_PASSIVES := ["yinyang_split", "yy_rebirth", "invoker_rebirth", "armadillo", "veil_falls"]
 
 ## The Invoker's spells (Dota 2's Invoker: Quas = Water, Wex = Air, Exort = Fire). Each one's "cast" is the move he makes
@@ -746,7 +771,7 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 		"bottle":
 			s = "Give the Samurai a bottle: cleanse him, and he is Impervious for a turn (no status can be put on him)"
 		"deflect":
-			s = "Deflect: this turn your Release can't touch him or his Retainer (your spells still work)"
+			s = "Deflect: this turn your Release can't touch %s (your spells still work)" % ("him or his Retainer" if m.get("pair", false) else "it")
 		"drain_essence":
 			s = "You lose %d random Essence from your bag" % m.n
 		"disarm":
@@ -780,13 +805,13 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			else:
 				s = "Ignite one of your spells for your next turn (casting it burns you for %d)" % Fight.IGNITE_DAMAGE
 		"stun":
-			s = "Stun you: next turn you can't chant or cast (only Pass and bottles)"
+			s = "Stun you: your next turn is skipped (you still get your Essence)"
 		"lock":
-			s = "Lock one of your spells (%d symbols)" % m.len
+			s = "Lock %s of your spells (%d symbols)" % ["another" if m.get("other", false) else "one", m.len]
 		"steal":
 			s = "Steal %d of your Essence" % m.n
 		"confuse":
-			s = "Hypnotize you (next turn you can't see what any enemy intends)"
+			s = "Confuse you: a black veil over the slot machine (next turn you can't see what is coming next)"
 		"blind":
 			s = "Blind you (%d turns)" % m.turns
 		"poison":
@@ -805,8 +830,6 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			s = "Explode: %d damage, and it is destroyed" % m.n
 		"freeze":
 			s = "Freeze %d of your Essence" % m.n
-		"ethereal":
-			s = "Go Ethereal (your next chant can't touch it)"
 		"empower":
 			s = "Empower +%d" % m.n + {"random": " one of them, at random", "samurai": " the Samurai", "all": " every enemy"}.get(m.get("who", "self"), "")
 		"summon":
@@ -818,12 +841,16 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			s = "Steal one of your spells (at random) and wrap it in a cocoon: break the cocoon to get it back"
 		"hold":
 			s = "Nothing: it just hangs there"
+		"play":
+			s = "He plays on. When the piece ends, you die"
 		"toll":
-			s = "Toll: your next chant holds at most %d Essence" % PlayerState.TOLL_CAP
+			s = "Burden: your next chant holds at most %d Essence (the slots after it are stone)" % PlayerState.TOLL_CAP
 		"invert":
 			s = "Invert: swap your Fire and Water"
-		"hex":
-			s = "Hex one of your Essence (chanting it costs 2 HP)"
+		"virus":
+			s = "Virus: one of your spells will give you Poison %d when you cast it" % int(m.get("n", 3))
+		"vulnerable":
+			s = "Make you Vulnerable %d (you take 50%% more damage)" % int(m.n)
 		"mimic":
 			s = "Mimic: its Essence becomes your last chant, backwards"
 		"wall_attack":
@@ -833,9 +860,7 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 		"sing":
 			s = "Sing: Power +1 (her and her walls hit 1 harder)"
 		"brittle":
-			s = "Brittle %d: the Shield you gain is 25%% smaller" % m.turns
-		"frail":
-			s = "Frail you (%d turn%s: you take 25%% more damage)" % [m.turns, "" if m.turns == 1 else "s"]
+			s = "Brittle %d: the Shield you gain is 50%% smaller" % m.turns
 	if m.has("also"):
 		s += " + " + describe_move(m.also, bonus, full)
 	if m.has("name"):

@@ -36,10 +36,8 @@ var wall_step := {"L": 0, "R": 0}  # where each wall is in its attack pattern (a
 var parts: Array = []  # per Essence: "" = the enemy itself, "L" / "R" = a wall it stands behind (Bramble Matron)
 var burn := 0
 var weak_turns := 0
-var weak25 := false  # Stillness (permanent)
 var freeze_turns := 0
-var no_mend := false  # Cauterize
-var ethereal := false  # from its own intent: your next chant can't touch it
+var no_mend := false  # your Cauterizing Power is up: it can't Mend
 var awake := false  # the Sentinel has woken
 var dormant_turns := 0  # the turns it has stood still
 var flying := false  # your chant can't hit it; any Essence it loses brings it down, and it is stunned for a turn
@@ -50,17 +48,18 @@ var lamp_wait := false  # the Bog Lantern's lamp is out: it grows back at the en
 var shield_up := false  # the Shield Bearer has armoured himself for the fight
 var behind := false  # the Necromancer, while his Shield Bearer stands: nothing you do can touch it
 var winged := false  # the Fire Dragon's wing is folded over it: nothing you do can touch it this turn
+var page := 1  # the Pianist: which page of his score he is on (1..5)
+var full_size := 0  # its Essence when it came in (the Corrector mends only when he is missing enough of it)
 var impervious := 0  # Impervious: no status can be put on it (the Retainer's bottle); counts down at the end of your turn
-var phased := false  # from your spell: your spells remove double from it this turn
 var struck_this_turn := false
 var move_index := 0
 var intent := {}
+var intent2 := {}  # the Corrector's small screen: a second move every turn, after the first ({} = none)
+var move_index2 := 0
 var last_intent := {}
 var is_boss := false
 var is_elite := false
 var phase := 1
-var hexed_turns := 0
-var redirect_to: EnemyState = null  # this turn's intent was redirected at this enemy
 
 
 func setup(p_def: Dictionary, extra: Array = []) -> void:
@@ -401,7 +400,7 @@ func insert_front(el: String) -> void:
 	parts.push_front("")
 
 
-## Mend / steal: add an element at the end (blocked by Cauterize for mending).
+## Mend / steal: add an element at the end (no mending while your Cauterizing Power is up).
 func append(el: String, is_mend := true) -> bool:
 	if is_mend and no_mend:
 		return false
@@ -429,15 +428,12 @@ func damage_mult() -> float:
 	var m := 1.0
 	if weak_turns > 0:
 		m *= 0.5
-	if weak25:
-		m *= 0.75
 	return m
 
 
 ## Start of the enemy's turn (after Burn): armour from last turn fades.
 func begin_turn(_rng: RandomNumberGenerator = null) -> Dictionary:
 	armor.fill(false)
-	ethereal = false
 	return {"burn": []}
 
 
@@ -460,7 +456,6 @@ func end_turn() -> void:
 	disarmed = maxi(0, disarmed - 1)
 	weak_turns = maxi(0, weak_turns - 1)
 	freeze_turns = maxi(0, freeze_turns - 1)
-	phased = false
 	struck_this_turn = false
 
 
@@ -480,22 +475,14 @@ func describe_statuses() -> Array:
 		out.append("Burn %d (loses its %d rightmost Essence at the start of its turn, then the Burn is gone)" % [burn, burn])
 	if weak_turns > 0:
 		out.append("Weakened %d turn%s (deals 50%% less)" % [weak_turns, "" if weak_turns == 1 else "s"])
-	if weak25:
-		out.append("Stillness (deals 25% less)")
 	if freeze_turns > 0:
 		out.append("Frozen (skips its next action)")
 	if flying:
-		out.append("Flying (your chant can't hit it)")
+		pass  # (Flying: shown by the picture, no text)
 	if grounded > 0:
 		out.append("Stunned (skips its next action)")
-	if no_mend:
-		out.append("Cauterized (can't mend)")
-	if ethereal:
-		out.append("Ethereal (your chant can't touch it)")
 	if winged:
-		out.append("Under the wing (nothing you do can touch it this turn)")
+		pass  # (under the wing: shown by the picture)
 	if behind:
-		out.append("Behind the shield (nothing you do can touch it)")
-	if phased:
-		out.append("Phased (your spells remove double)")
+		pass  # (behind the shield: shown by the picture)
 	return out

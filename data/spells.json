@@ -1015,14 +1015,15 @@
    "pattern": "FW",
    "effects": [
     {
-     "op": "curse",
-     "key": "no_mend",
-     "target": "target"
+     "op": "passive",
+     "key": "cauterize",
+     "n": 1
     }
    ],
    "flavor": "Seal the wound so it never grows back.",
    "power": true,
-   "rarity": "rare"
+   "rarity": "rare",
+   "badge_name": "Cauterizing"
   },
   {
    "id": "snuff_out",

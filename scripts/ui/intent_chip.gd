@@ -46,9 +46,9 @@ func _draw() -> void:
 const LOOK := {
 	"attack": ["⚔", RED], "armor": ["🛡", GREY], "mend": ["❤", GREEN], "shuffle": ["🔀", BLUE],
 	"silence": ["🔇", PURPLE], "lock": ["🔒", PURPLE], "steal": ["✋", PURPLE], "confuse": ["🌀", PURPLE],
-	"blind": ["🙈", PURPLE], "poison": ["🧪", PURPLE], "bleed": ["🩸", PURPLE], "freeze": ["❄", PURPLE], "ethereal": ["👻", BLUE],
+	"blind": ["🙈", PURPLE], "poison": ["🧪", PURPLE], "bleed": ["🩸", PURPLE], "freeze": ["❄", PURPLE], 
 	"empower": ["💪", BLUE], "summon": ["👤+", BLUE], "toll": ["⛓", PURPLE], "invert": ["🔄", PURPLE],
-	"recharge": ["💫", BLUE], "dormant": ["💤", BLUE], "grounded": ["💫", BLUE], "glow": ["💡", PURPLE], "explode": ["💥", PURPLE], "hex": ["🕯", PURPLE], "mimic": ["🎭", PURPLE], "frail": ["💔", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "fireball": ["☄", RED], "fireball_blast": ["💥", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "stun": ["💫", PURPLE], "grow_thorns": ["🌵", GREEN], "revive": ["🪽", Color(0.85, 0.75, 0.4)], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE], "steal_spell": ["🕸", PURPLE], "deflect": ["🗡", BLUE], "bottle": ["🍶", GREEN],
+	"recharge": ["💫", BLUE], "dormant": ["💤", BLUE], "grounded": ["💫", BLUE], "glow": ["💡", PURPLE], "explode": ["💥", PURPLE], "mimic": ["🎭", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "fireball": ["☄", RED], "fireball_blast": ["💥", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "stun": ["💫", PURPLE], "grow_thorns": ["🌵", GREEN], "revive": ["🪽", Color(0.85, 0.75, 0.4)], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE], "steal_spell": ["🕸", PURPLE], "play": ["🎹", BLUE], "virus": ["🦠", PURPLE], "vulnerable": ["🎯", PURPLE], "deflect": ["🗡", BLUE], "bottle": ["🍶", GREEN],
 }
 
 
@@ -69,6 +69,9 @@ const INFO := {
 	"disarm": ["Disarm", "Your next Release does nothing."],
 	"deflect": ["Deflect", "His sword held sideways: this turn your Release can't touch him or his Retainer. Each Essence bounces off his blade. Your spells still work."],
 	"bottle": ["Bottle", "Cleanses the Samurai, and he is Impervious for a turn: no status can be put on him."],
+	"virus": ["Virus", "One of your spells catches a virus: casting it gives you Poison (the number on its badge)."],
+	"vulnerable": ["Vulnerable", "You take 50% more damage."],
+	"play": ["Playing", "He never attacks. He plays his piece, in real time; if he gets to the end of it, you die."],
 	"steal_spell": ["Steal a spell", "Takes one of your spells at random and wraps it in a cocoon. Break the cocoon to get it back."],
 	"invert_spells": ["Inversion", "Some of your spells flip: a spell becomes an anti-spell, an anti-spell a spell."],
 	"charge": ["Charging", ""],
@@ -77,13 +80,13 @@ const INFO := {
 	"ignite_spell": ["Ignite", "Sets one of your spells on fire for your next turn: casting it burns you for 5 HP."],
 	"lock": ["Lock", "Locks one of your spells. Chant the lock's symbols, unbroken, to break it."],
 	"steal": ["Steal", "Takes Essence from your bag and adds it to its own."],
-	"confuse": ["Hypnotize", "Next turn you can't see what any enemy intends to do."],
+	"confuse": ["Confuse", "A black veil falls over the slot machine: next turn you can't see what is coming next."],
 	"blind": ["Blind", "Some enemy Essence show as ?. They still match normally."],
 	"poison": ["Poison", "At the start of your turn you lose that much HP, then Poison goes down by 1."],
 	"bleed": ["Bleed", "At the start of your turn you lose that much HP, then Bleed goes down by 1 (like Poison)."],
 	"freeze": ["Freeze", "Freezes some of your Essence: they can't be used next turn."],
-	"ethereal": ["Ethereal", "Your next chant can't touch it."],
-	"stun": ["Stun", "Next turn you can't chant or cast: you can only Pass or drink a bottle."],
+	
+	"stun": ["Stun", "Your next turn is skipped entirely (you still get your Essence)."],
 	"grounded": ["Stunned", "It fell out of the air: it skips its action."],
 	"recharge": ["Recharging", "It stuns itself for a turn, then starts over."],
 	"dormant": ["Dormant", "It does nothing until it is down to 12 Essence, or for 3 turns."],
@@ -91,12 +94,12 @@ const INFO := {
 	"explode": ["Explode", "It deals this much damage and destroys itself. Destroy it first and it never goes off."],
 	"empower": ["Empower", "Its attacks deal more damage from now on."],
 	"summon": ["Summon", "Calls more enemies into the fight."],
-	"toll": ["Toll", "Your next chant holds at most 5 Essence."],
+	"toll": ["Burden", "Your next chant holds at most 5 Essence: the slots after them are stone."],
 	"invert": ["Invert", "Swaps all your Fire and Water Essence."],
-	"hex": ["Hex", "Marks one of your Essence: chanting it costs 2 HP."],
+	
 	"mimic": ["Mimic", "Its Essence becomes your last chant, backwards."],
-	"frail": ["Frail", "You take 25% more attack damage for a few turns."],
-	"brittle": ["Brittle", "The Shield you gain is 25% smaller for a few turns."],
+	
+	"brittle": ["Brittle", "The Shield you gain is 50% smaller for a few turns."],
 	"regrow": ["Regrow", ""],
 	"sing": ["Sing", ""],
 }
@@ -111,9 +114,9 @@ static func make(e: EnemyState, move := {}) -> IntentChip:
 ## New theme: the painted icon of each intent kind (assets/New/Icon/Intent/intent_<kind>.png). Burn / Unknown are painted too,
 ## but no enemy intent uses them (burn is a status).
 const ART := {"attack": "intent_attack", "armor": "intent_armor", "freeze": "intent_freeze", "steal": "intent_steal", "summon": "intent_summon",
-	"poison": "intent_poison", "bleed": "intent_bleed", "blind": "intent_blind", "confuse": "intent_confuse", "mend": "intent_mend", "shuffle": "intent_shuffle",
-	"silence": "intent_silence", "lock": "intent_lock", "ethereal": "intent_ethereal", "empower": "intent_empower", "toll": "intent_toll",
-	"invert": "intent_invert", "hex": "intent_hex", "mimic": "intent_mimic", "frail": "intent_frail", "hammer_spell": "intent_hammer_spell",
+	"poison": "intent_poison", "virus": "intent_poison", "vulnerable": "status_vulnerable", "bleed": "intent_bleed", "blind": "intent_blind", "confuse": "intent_confuse", "mend": "intent_mend", "shuffle": "intent_shuffle",
+	"silence": "intent_silence", "lock": "intent_lock", "empower": "intent_empower", "toll": "intent_toll",
+	"invert": "intent_invert", "mimic": "intent_mimic", "hammer_spell": "intent_hammer_spell",
 	"invert_spells": "intent_invert_spells", "invoke": "intent_invoke", "stunned": "intent_stunned", "stun": "intent_stunned", "sing": "intent_sing", "ignite_spell": "intent_ignite_spell", "charge": "intent_charge", "revive": "intent_revive",
 	"recharge": "intent_stunned", "dormant": "intent_hold", "grounded": "intent_stunned", "glow": "intent_stunned", "grow_thorns": "intent_grow_thorns", "hold": "intent_hold", "cleanse_self": "intent_cleanse_self", "drain_essence": "intent_drain_essence", "disarm": "intent_disarm", "brittle": "intent_brittle", "regrow": "intent_regrow"}
 
@@ -216,16 +219,6 @@ func build(e: EnemyState, move := {}) -> void:
 			line += "\n[color=#b8c2b8]%s[/color]" % info[1]
 		lines.append(line)
 		m = m.get("also", {})
-	if e.redirect_to != null and is_instance_valid(e.redirect_to):
-		var who := "itself" if e.redirect_to == e else e.redirect_to.name
-		var redir := UiSkin.icon("intent_redirect", 30)  # New theme: the painted U-turn arrow instead of ↪
-		if redir != null:
-			redir.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			row.add_child(redir)
-			row.add_child(_word(who, Color(0.6, 1, 0.8)))
-		else:
-			row.add_child(_word("↪ " + who, Color(0.6, 1, 0.8)))
-		lines.append(UiSkin.inline("intent_redirect", "↪", 24) + " " + Keywords.colorize("Redirected: its attacks hit %s, and anything aimed at you fizzles." % who))
 	tooltip_text = "\n".join(lines)
 
 
@@ -306,8 +299,10 @@ func _add_move(row: HBoxContainer, m: Dictionary, e: EnemyState) -> void:
 			num = "+%d" % m.n
 		"lock":
 			num = str(m.len)
-		"blind", "silence", "frail", "brittle":
+		"blind", "silence", "brittle":
 			num = str(m.turns)
+		"vulnerable", "virus":
+			num = str(m.n)
 		"toll":
 			num = str(PlayerState.TOLL_CAP)
 	row.add_child(_part(look[0], num, look[1], m.kind))

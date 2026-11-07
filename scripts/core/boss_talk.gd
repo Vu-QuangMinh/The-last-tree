@@ -6,7 +6,8 @@ extends RefCounted
 ##
 ## A node: {id, say (your line; "*...*" is an action), cost ("F" / "W" / "A" / ""), reply (the boss's line), note
 ## (narration after the reply), show (an artifact id to show, hover to read), effects: [...], options: [nodes]}.
-## Effects: "artifact:<id>" (you get that artifact when the talk is over), "win_artifact:<id>" (you get it, and it's unlocked for
+## Effects: "return_artifact:<id>" (you give that artifact away), "song:<id>" (the Pianist's piece),
+## "artifact:<id>" (you get that artifact when the talk is over), "win_artifact:<id>" (you get it, and it's unlocked for
 ## good, if you win this fight), "engage" (the fight starts).
 ## An option whose whole branch you've explored (in any run) gets a green tick: SaveManager setting "talk_seen".
 
@@ -16,6 +17,17 @@ extends RefCounted
 ## greeting: what the boss says right after the opening. A node may also have reply2 / note2: more of the boss's
 ## answer after its narration ("He unfolds the Tweezer Hand." and then he goes on). A boss without a tree has no talk.
 const TREES := {
+	# The Pianist: a few words of narration (the user writes his scene); the Mysterious Hand is his own, and giving it back
+	# changes the piece he plays ("needs_artifact": the option only comes up if you carry it).
+	"pianist": {
+		"name": "The Pianist", "who": "",
+		"opening": "A tall, thin man in a black suit and a hat sits at a grand piano. Where his left hand should be, the sleeve is pinned up. A small sign beside the piano reads: Silence, please.",
+		"options": [
+			{"id": "pianist_hand", "say": "*Hold out the Mysterious Hand.*", "cost": "", "needs_artifact": "mysterious_hand",
+				"note": "He looks at it for a long time. Then he takes it, and the piece he begins is not the one he meant to play.",
+				"effects": ["return_artifact:mysterious_hand", "song:fur_elise", "engage"]},
+		],
+	},
 	# (no words yet: just its entrance, then Engage! Its name stays "???": nothing ever reveals it before the fight)
 	"veiled_eyes": {
 		"name": "Violet Eyes", "who": "veiled_eyes_never",

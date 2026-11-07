@@ -8,7 +8,6 @@ var ghost := false  # will be removed by the current chant (preview)
 var temp := false  # conjured: fades at end of turn
 var frozen := false
 var freeze_n := 0  # how many turns it stays frozen: written at its top right
-var hexed := false
 var wall := false  # part of a hedge wall (Bramble Matron): a ring of thorny bramble around it
 var burning := false:  # will burn away (Burn takes the leftmost): flames rise off it, like Flame Lash's fire
 	set(v):
@@ -227,6 +226,9 @@ func _draw() -> void:
 		for k in 5:
 			var t := float(k) / 4.0
 			draw_circle(c, r * (1.7 - 0.62 * t), Color(gc, (0.12 + 0.34 * t) * (0.75 + 0.25 * pulse)), true, -1.0, true)
+	if el == "stone":
+		_draw_stone(c, r)
+		return
 	if el == "hidden" and UiSkin.draw_fit(self, "essence_unknown", c, r * 2.0 + 2.0, Color(1, 1, 1, a)):
 		pass  # (Puppet: the grey wooden ball with the brass question mark)
 	elif el == "hidden":
@@ -329,9 +331,20 @@ func _draw() -> void:
 			var tt := c + Vector2.from_angle(ta) * (r + r * 0.42)
 			var ts := Vector2.from_angle(ta + PI / 2.0) * r * 0.12
 			draw_colored_polygon(PackedVector2Array([tb - ts, tt, tb + ts]), Color(0.36, 0.25, 0.12))
-	if hexed:
-		draw_arc(c, r + 1.0, 0, TAU, 32, Color(0.75, 0.3, 0.95), 3.0)
-		draw_circle(c + Vector2(-r * 0.62, -r * 0.62), r * 0.22, Color(0.75, 0.3, 0.95))
+
+
+## Burden: a dull grey stone sitting in a chant slot: lumpy, speckled, with a crack and a soft highlight.
+func _draw_stone(c: Vector2, r: float) -> void:
+	var pts := PackedVector2Array()
+	for k in 14:
+		var ang := k * TAU / 14.0
+		pts.append(c + Vector2.from_angle(ang) * r * (0.86 + 0.08 * sin(ang * 3.0 + 1.3)))
+	draw_colored_polygon(pts, Color(0.42, 0.4, 0.38))
+	draw_polyline(pts + PackedVector2Array([pts[0]]), Color(0.22, 0.21, 0.2), maxf(1.5, r * 0.07), true)
+	draw_circle(c + Vector2(-r * 0.25, -r * 0.3), r * 0.32, Color(0.6, 0.58, 0.55, 0.55))
+	for p in [Vector2(0.3, 0.2), Vector2(-0.35, 0.35), Vector2(0.1, -0.45), Vector2(0.45, -0.15), Vector2(-0.1, 0.55)]:
+		draw_circle(c + p * r, r * 0.06, Color(0.28, 0.27, 0.26))
+	draw_polyline(PackedVector2Array([c + Vector2(r * 0.15, -r * 0.7), c + Vector2(r * 0.02, -r * 0.2), c + Vector2(r * 0.22, r * 0.1)]), Color(0.2, 0.19, 0.18), maxf(1.5, r * 0.06), true)
 
 
 ## Three curved wedges, Fire / Water / Air, blending into each other around the orb.

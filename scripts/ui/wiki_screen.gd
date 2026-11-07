@@ -135,8 +135,8 @@ static func _content() -> Dictionary:
 		["Armour", "Armoured Essence (grey ring) count for matching but are not removed that turn. F (F) W hit by FFW leaves F."],
 		["Repaint", "Repaint N gives you a paint brush: paint N enemy Essence, on any enemies, into the colour shown, for the rest of the fight. Painted Any {?}, any Essence in your chant hits it."],
 		["Self-Repaint", "Self-Repaint N paints N Essence of this turn's chant into the colour shown. An Any {?} in the chant fits every spot of a spell's pattern and hits any enemy Essence. New matches wake more spells; none go back to sleep."],
-		["Hypnotized and Blind", "Hypnotized: you can't see what any enemy intends to do that turn. Blind: some enemy Essence show as {?}; they still match normally."],
-		["Warded and Ethereal enemies", "Warded enemies can only be struck by chants of 4 or more Essence. An Ethereal enemy can't be touched by the chant that turn."],
+		["Confused and Blind", "Confused: a black veil covers the slot machine, so you can't see what is coming next. Blind: some enemy Essence show as {?}; they still match normally."],
+		["Warded enemies and Deflect", "Warded enemies can only be struck by chants of 4 or more Essence. On the turn an enemy shows Deflect, your Release bounces off it; your spells still work."],
 	]
 	c["Spells"] = [
 		["Patterns and charges", "A spell whose pattern (1–5 Essence) appears in the chant comes alive and triggers once that turn, however many times its pattern appears. A spell whose whole pattern is sealed (upgrades) wakes on every chant."],

@@ -18,10 +18,9 @@ Canon comes from the user. Lines marked **(?)** are open questions, not canon.
 | 1 | The Good Ol' Wizard (was the Invoker) | ✍️ | ✅ |
 | 1 | The Masked (King Malfatti in disguise) | ✍️ | ❌ |
 | 1 | Yin Yang Beast | ❓ (added 2026-10-07) | ✅ (not in your Act 1 list) |
-| 2 | The Headless Pianist (Ludwig) | ✍️ | ❌ |
+| 2 | The Pianist (Ludwig) | ✍️ | ✅ (placeholder art) |
 | 2 | The Skinwalker | ✍️ (name only, no design yet) | ❌ |
 | 2 | Violet Eyes (the spider) | ✍️ | ✅ (your notes put it in Act -1 (?)) |
-| 2 | The Blightmother | ⚙️ | ✅ (not in your list) |
 | 2 | The Anxious Armadillo (first run only, fight 2) | ✍️ | ✅ |
 | 3 | King Malfatti (final boss; was Master Penn) | ✍️ | ❌ |
 | 3 | The Last Winter | ⚙️ | ✅ (the current Act 3 boss; not in your list) |
@@ -79,7 +78,7 @@ They obtained the **admin code** to the source code. Knowing the Hands would cha
 ### The fall
 They were caught but **not deleted**: they still serve a purpose, mostly torture, as an example to everyone else and as entertainment for the Hands.
 - **Nila** had her eyes and ears removed. She was promised that if she can make it out of there, she will be let go. (Act 0.)
-- **Ludwig** had his head and arms removed, but is still allowed upstairs (Act 2). One of his hands became the Handyman's Tweezer Hand (its sleeve is the same black suit cloth as the Pianist's).
+- **Ludwig** had his left hand cut off, but is still allowed upstairs (Act 2), where he plays with one hand and one foot. His hand became the Handyman's Tweezer Hand (its sleeve is the same black suit cloth as the Pianist's).
 - **Adam** was turned into the worst monster possible (the secret boss of Act 0).
 - **Princess Elise** was the only one not caught at once. Ludwig pushed her away from the fight: *"Be free, Elise, my heart and soul. Be free, for me."* She jumped into the source code and **deleted herself**. The Hands can recreate her, but only as a shell; there is no soul left.
 - So the Hands kept Malfatti's bargain **to the letter**: Elise is "safe", and he is "with her forever", but only with an empty shell.
@@ -123,9 +122,9 @@ The first character created for the game, and the oldest. Worried about his stud
 ### The Masked (Act 1 boss) = King Malfatti
 The Masked **is King Malfatti** in disguise, testing the Chosen One. He speaks in verses and riddles (below).
 
-### The Headless Pianist (Act 2 boss) = Ludwig
-No head, no hands. He doesn't attack: after the talk he plays through the whole fight. When the song ends he slams every key, "The End" comes up, and you die. 50 HP. The song plays through every turn and animation.
-- Normally he plays **The Entertainer** (Joplin, public domain).
+### The Pianist (Act 2 boss) = Ludwig
+Tall and thin like Slender Man: black suit, white collar, a hat. His left hand was cut off, so he plays with one hand and one foot. His stage has a sign: "Silence, please." He doesn't attack: after the talk he plays through the whole fight, in real time, through every turn and animation; his arm moves back and forth along the keys with the music. When the piece ends he slams every key, "The End" comes up, and you die. 50 HP, as five pages of 10: each time a page is cleared he stops the music and turns the page (his turn: you can do nothing, and every status on him is gone), then plays on from where he stopped (your turn). The fifth page cleared, he is beaten.
+- Normally he plays **Turkish March** (Mozart, public domain).
 - If you bring the **Mysterious Hand**, you may give it back to him: the fight then plays **Für Elise** (slowed, reverb).
 - Winning gives that song's score as an artifact (see Artifacts).
 
@@ -156,7 +155,7 @@ A friendly-looking cartoon dragon lying down: **head on the right, tail on the l
 
 ### Bosses by act
 - **Act 1:** the Handyman, the Good Ol' Wizard, the Masked.
-- **Act 2:** the Headless Pianist, the Skinwalker, (third boss (?)).
+- **Act 2:** the Pianist, the Skinwalker, (third boss (?)). (In game now: the Pianist, Violet Eyes, the Corrector.)
 - **Act 3:** King Malfatti (final boss).
 - **Act 0 (secret):** Nila the Darkblade (dead Knivel in her room), Adam (the monster), the Hands (final boss).
 
@@ -238,8 +237,8 @@ The word "seven" is red, "pair" is green, and the "one" in "gone" is white-purpl
 - **Family Picture** (stolen from the drunk merchant): no effect; Adam's note on the back. (In game, with "093" from the older note as a stand-in for the digits.)
 - **Mysterious Hand** (Rare; the Handyman's talk): at the start of each fight, steal 1 Essence from a random enemy. *"Once played defiantly, now lies lifeless."* (In game.)
 - **Magic Box** (Rare; the Good Ol' Wizard's talk): every 6th spell you cast, Refund its pattern after the Release. *"With the right tune, it may reveal a secret."* In the Codex it can be played (see below). (In game.)
-- **The Entertainer** (the Pianist, normal fight): apply 1 Burn to a random enemy per Extension.
-- **Für Elise** (the Pianist, after giving back the Mysterious Hand; the secret score): heal 2 per Extension.
+- **Turkish March** (the Pianist, normal fight; was The Entertainer): apply 1 Burn to a random enemy per Extension. (In game.)
+- **Für Elise** (the Pianist, after giving back the Mysterious Hand; the secret score): heal 2 per Extension. (In game.)
 
 ### The Magic Box tune (in game: Codex > Artifacts, once the box is unlocked)
 Buttons, left to right: red = B, green = E, white = A, black = D#, blue = C, yellow = D.
