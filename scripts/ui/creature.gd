@@ -18,6 +18,7 @@ const SWING_K := 9.0  # the pull back to plumb (a long rope: about two seconds a
 const SWING_DAMP := 1.1  # the air: a push dies down over a few swings
 const SWING_HIT := 0.8  # a hit knocks it back this hard (enough to see it register, not a big swing)
 const SWING_MAX := 0.22
+const ROPE_SWING := 0.3  # the swing, seen from the ceiling: the rope only moves a little, the puppet swings at its end
 var _shake := 0.0  # pixels of jolt, decaying
 var _blink := 0.0  # seconds of white blinking left
 const HURT_TIME := 1.75  # long enough for the player to see the reaction
@@ -1018,11 +1019,14 @@ func _draw_art(blink_on: bool) -> void:
 		var tip := 0.0 if dead or enemy_id == "handyman" else _swing_a  # (the Handyman's body does not swing: six arms hang on it)
 		if _dragon != null:
 			tip = 0.0  # (the Wyvern's two halves share ONE body: each rocking on its own would tear it apart, and it is far too wide to tip)
-		# (it turns about the point where its rope is tied on: that point stays where it is, the rope holds it there; everything
-		# else is still measured from its feet)
+		# (a pendulum: the rope hangs from the ceiling straight above where it is tied on and swings a little, and the puppet, the
+		# weight at its end, swings with it; everything else is still measured from its feet)
 		var tie := _rope_local(_pivot_frac(), side)
+		var org := Vector2(c.x, size.y) + fly
+		var hook := Vector2(org.x + tie.x, (get_global_transform().affine_inverse() * Vector2(0.0, RopeRig.TOP_Y)).y)
+		tip *= ROPE_SWING
 		_art_tip = tip
-		_art_xf = Transform2D(tip, Vector2(c.x, size.y) + fly + tie) * Transform2D(0.0, -tie)  # (the rope's anchor rides along with a flyer's drift)
+		_art_xf = Transform2D(tip, hook) * Transform2D(0.0, org - hook)  # (the rope's anchor rides along with a flyer's drift)
 		draw_set_transform_matrix(_art_xf)
 		c = Vector2(0, -side * 0.5)
 		if veil2:
