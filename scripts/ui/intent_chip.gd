@@ -48,7 +48,7 @@ const LOOK := {
 	"silence": ["🔇", PURPLE], "lock": ["🔒", PURPLE], "steal": ["✋", PURPLE], "confuse": ["🌀", PURPLE],
 	"blind": ["🙈", PURPLE], "poison": ["🧪", PURPLE], "bleed": ["🩸", PURPLE], "freeze": ["❄", PURPLE], 
 	"empower": ["💪", BLUE], "summon": ["👤+", BLUE], "toll": ["⛓", PURPLE], "invert": ["🔄", PURPLE],
-	"recharge": ["💫", BLUE], "dormant": ["💤", BLUE], "grounded": ["💫", BLUE], "glow": ["💡", PURPLE], "explode": ["💥", PURPLE], "mimic": ["🎭", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "fireball": ["☄", RED], "fireball_blast": ["💥", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "stun": ["💫", PURPLE], "grow_thorns": ["🌵", GREEN], "revive": ["🪽", Color(0.85, 0.75, 0.4)], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE], "steal_spell": ["🕸", PURPLE], "play": ["🎹", BLUE], "virus": ["🦠", PURPLE], "vulnerable": ["🎯", PURPLE], "deflect": ["🗡", BLUE], "bottle": ["🍶", GREEN],
+	"summon_clock": ["⏰", PURPLE], "guard": ["🛡", GREY], "resurrect": ["💀", PURPLE], "recharge": ["💫", BLUE], "dormant": ["💤", BLUE], "grounded": ["💫", BLUE], "glow": ["💡", PURPLE], "explode": ["💥", PURPLE], "mimic": ["🎭", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "fireball": ["☄", RED], "fireball_blast": ["💥", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "stun": ["💫", PURPLE], "grow_thorns": ["🌵", GREEN], "revive": ["🪽", Color(0.85, 0.75, 0.4)], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE], "steal_spell": ["🕸", PURPLE], "play": ["🎹", BLUE], "virus": ["🦠", PURPLE], "vulnerable": ["🎯", PURPLE], "deflect": ["🗡", BLUE], "bottle": ["🍶", GREEN],
 }
 
 
@@ -88,6 +88,9 @@ const INFO := {
 	
 	"stun": ["Stun", "Your next turn is skipped entirely (you still get your Essence)."],
 	"grounded": ["Stunned", "It fell out of the air: it skips its action."],
+	"summon_clock": ["Alarm", "When the clock runs out, it calls a Sentinel."],
+	"guard": ["Guard", "It shields the Necromancer behind it: he can't be touched while it stands."],
+	"resurrect": ["Raise the dead", "The skeleton gets up again, with 3 Essence."],
 	"recharge": ["Recharging", "It stuns itself for a turn, then starts over."],
 	"dormant": ["Dormant", "It does nothing until it is down to 12 Essence, or for 3 turns."],
 	"glow": ["Shining brighter", "Its clock runs down. At 0 it stuns you, then starts over."],
@@ -118,7 +121,7 @@ const ART := {"attack": "intent_attack", "armor": "intent_armor", "freeze": "int
 	"silence": "intent_silence", "lock": "intent_lock", "empower": "intent_empower", "toll": "intent_toll",
 	"invert": "intent_invert", "mimic": "intent_mimic", "hammer_spell": "intent_hammer_spell",
 	"invert_spells": "intent_invert_spells", "invoke": "intent_invoke", "stunned": "intent_stunned", "stun": "intent_stunned", "sing": "intent_sing", "ignite_spell": "intent_ignite_spell", "charge": "intent_charge", "revive": "intent_revive",
-	"recharge": "intent_recharge", "dormant": "intent_dormant", "grounded": "intent_stunned", "glow": "intent_glow", "explode": "intent_explode", "grow_thorns": "intent_grow_thorns", "hold": "intent_hold", "cleanse_self": "intent_cleanse_self", "drain_essence": "intent_drain_essence", "disarm": "intent_disarm", "brittle": "intent_brittle", "regrow": "intent_regrow"}
+	"summon_clock": "intent_summon", "guard": "intent_armor", "resurrect": "intent_summon", "recharge": "intent_recharge", "dormant": "intent_dormant", "grounded": "intent_stunned", "glow": "intent_glow", "explode": "intent_explode", "grow_thorns": "intent_grow_thorns", "hold": "intent_hold", "cleanse_self": "intent_cleanse_self", "drain_essence": "intent_drain_essence", "disarm": "intent_disarm", "brittle": "intent_brittle", "regrow": "intent_regrow"}
 
 
 ## New theme: the bubble is five fixed-ratio pieces: two end caps, the arrow in the middle, and a stretchy piece on each
@@ -266,7 +269,7 @@ func _add_move(row: HBoxContainer, m: Dictionary, e: EnemyState) -> void:
 				row.add_child(digits if digits != null else _word(str(m.n), Color.WHITE))
 			row.add_child(ElementIcon.make("?" if m.el == "random" else m.el, 26))
 			return
-		"poison", "bleed", "glow", "explode", "freeze", "steal", "summon", "invert_spells":
+		"poison", "bleed", "glow", "summon_clock", "explode", "freeze", "steal", "summon", "invert_spells":
 			num = str(m.n)
 		"grow_thorns":
 			num = "+%d" % int(m.n)

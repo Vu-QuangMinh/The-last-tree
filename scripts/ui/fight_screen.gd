@@ -995,9 +995,14 @@ func _feet_y() -> float:
 	return y
 
 
+var _lift_locked: Fight  # the fight whose enemy row has found its height: from then on it doesn't move
+
+
 func _fit_enemy_lift() -> void:
 	if _stage == null or _enemy_row == null or _spell_row == null or _spell_row.get_child_count() == 0:
 		return
+	if _lift_locked == fight:
+		return  # (their places are fixed for the fight: a Burn or a second line of Essence doesn't push them up)
 	var bottom := 0.0
 	for e in _views:
 		var v: EnemyView = _views[e]
@@ -1005,6 +1010,8 @@ func _fit_enemy_lift() -> void:
 			bottom = maxf(bottom, v.below_feet_bottom())
 	if bottom <= 0.0:
 		return
+	if Engine.get_process_frames() > _lights_from + 30 and fight != null and fight.turn >= 1:
+		_lift_locked = fight  # (this is its height now; this last fit still applies)
 	# (they never stand higher than the far edge of the floor, 20 px in: a puppet pushed up by its own rows of Essence would leave the floor)
 	var top_room := 130.0
 	var feet := _feet_y()
@@ -1523,13 +1530,25 @@ func _refresh_statuses_compact() -> void:
 	_fit_debuff_board(shown)
 
 
-## Where the enemies' feet are (the spotlights follow them).
+## Where the enemies' feet are, for the spotlights. A light stays where its enemy stood once the stage was laid out: an enemy
+## that moves, lunges or leans steps out of it, the light doesn't follow.
+var _light_home := {}  # EnemyState -> the spot its light shines on
+var _lights_from := 0  # the frame the enemy row was last rebuilt (its lights are measured a few frames later)
+
+
 func _enemy_feet() -> Array:
 	var out: Array = []
+	var settled := Engine.get_process_frames() > _lights_from + 10
 	for e in _views:
 		var v: EnemyView = _views[e]
+		if _light_home.has(e) and not e.is_dead():
+			out.append(_light_home[e])
+			continue
 		if is_instance_valid(v) and is_instance_valid(v.creature) and not e.is_dead() and not v.creature.has_rig():  # (a hand hangs on his shoulder: no light at its feet)
-			out.append(v.creature.global_position + Vector2(v.creature.size.x / 2.0, v.creature.size.y))
+			var at := v.creature.global_position + Vector2(v.creature.size.x / 2.0, v.creature.size.y + v.creature.ground_drop)
+			if settled:
+				_light_home[e] = at
+			out.append(at)  # (a flyer: its light on the floor below it)
 	if _hm_stage != null and is_instance_valid(_hm_stage):
 		var body_feet = _hm_stage.body_feet()  # (his body, while it is only a picture)
 		if body_feet != null:
@@ -3020,10 +3039,7 @@ func _sync_views() -> void:
 	var hm := not fight.hm.is_empty() and HandymanStage.available()  # (the Handyman fight with its art: hands on the body's shoulders)
 	var same := live.size() == _views.size() and live.all(func(e): return _views.has(e))
 	if same:
-		if not hm:
-			for i in live.size():
-				_enemy_row.move_child(_views[live[i]], i)
-		return
+		return  # (the places are kept: see _row_order)
 	for e in _views:  # (Puppet Stage: a puppet that was defeated breaks into pieces)
 		var old: EnemyView = _views[e]
 		if e.is_dead() and not e.knocked and not _hand_going_down(e) and is_instance_valid(old) and is_instance_valid(old.creature):
@@ -3057,8 +3073,31 @@ func _sync_views() -> void:
 		for c in _enemy_row.get_children():
 			_enemy_row.remove_child(c)
 			c.queue_free()
+	var widths := {}  # (the width each one took: a dead one's slot stays this wide)
+	for e in _views:
+		if is_instance_valid(_views[e]):
+			widths[e] = maxf((_views[e] as Control).custom_minimum_size.x, (_views[e] as Control).size.x)  # (as wide as it really stood)
+	_slot_w.merge(widths, true)
+	if _row_fight != fight:
+		_row_fight = fight
+		_row_order.clear()
+		_slot_w.clear()
+	for i in live.size():  # (a newcomer stands next to the one before it in the fight: a split, a summon)
+		if not (live[i] in _row_order):
+			var at := _row_order.find(live[i - 1]) + 1 if i > 0 else 0
+			_row_order.insert(at, live[i])
 	_views.clear()
+	_light_home.clear()  # (a new row: the lights are measured again once it has settled)
+	_lights_from = Engine.get_process_frames()
 	var body_out := false
+	if not hm:
+		for e in _row_order:
+			if not (e in live):
+				var gap_slot := Control.new()  # (an enemy that is gone: its place stays empty, nobody moves over)
+				gap_slot.custom_minimum_size = Vector2(float(_slot_w.get(e, 300.0)), 1.0)
+				gap_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				gap_slot.set_meta("slot", true)
+				_enemy_row.add_child(gap_slot)
 	for e in live:
 		var v := EnemyView.new()
 		v.setup(e, fight)
@@ -3066,6 +3105,7 @@ func _sync_views() -> void:
 		v.hp_clicked.connect(_on_hp_clicked)
 		if not hm:
 			_enemy_row.add_child(v)
+			_enemy_row.move_child(v, _row_order.find(e))
 		elif e.id == "handyman":
 			_hm_stage.add_body(v)
 			body_out = true
@@ -3088,19 +3128,32 @@ func _sync_views() -> void:
 ## its enemy) never lands on its neighbour's model or cards (the Wizard's floating spells); 20 px when the row is full.
 const ENEMY_GAP_MAX := 150.0
 const SAMURAI_GAP := -110.0
+const LAMP_GAP := -185.0
+const DUO_GAP := -236.0
+
+
+var _gap_fight: Fight  # the fight whose gap between enemies is set: it stays for the fight (a death must not move anyone)
 
 
 func _space_enemy_row() -> void:
+	if _gap_fight == fight and fight != null:
+		return
 	var views := _enemy_row.get_children().filter(func(c): return c is EnemyView)
-	if views.size() < 2:
+	var places := _enemy_row.get_children().filter(func(c): return c is EnemyView or c.has_meta("slot"))
+	if places.size() < 2:
 		return
 	var total := 0.0
-	for v in views:
+	for v in places:
 		total += (v as Control).custom_minimum_size.x
-	var gap := clampf((1840.0 - total) / float(views.size() - 1), 20.0, ENEMY_GAP_MAX)
+	var gap := clampf((1840.0 - total) / float(places.size() - 1), 20.0, ENEMY_GAP_MAX)
 	if views.all(func(v): return v.enemy.has_passive("avenger") or v.enemy.has_passive("retainer")):
 		gap = SAMURAI_GAP  # (the Samurai and his Retainer stand side by side, their puppets may overlap a little)
+	if views.size() == 2 and views[0].enemy.id == "bog_lamp" and views[1].enemy.has_passive("lure"):
+		gap = LAMP_GAP  # (the Bog Lantern: its lamp hangs on the fish's hook, over the fish's left side)
+	if views.size() == 2 and views[0].enemy.has_passive("big_shield") and views[1].enemy.has_passive("behind_shield"):
+		gap = DUO_GAP  # (the Undying Duo: the Necromancer stands right behind his Shield Bearer, a little to the right)
 	_enemy_row.add_theme_constant_override("separation", int(gap))
+	_gap_fight = fight
 
 
 func _chant_string() -> String:
@@ -3347,8 +3400,6 @@ func _refresh_chant() -> void:
 		note = ""  # (Puppet Stage: no plain count; only what needs saying: a Toll, the chant is spoken, Hypnotized)
 	if p.toll > 0:
 		note = "%d / %d Essence (Burden)" % [chant_idx.size(), slots]
-	if phase == "spells":
-		note = "Chanted (%d). It is Released when your spells are done." % shown.size()
 	if p.confuse_turns > 0 and phase == "build":
 		note += ("" if note == "" else "   ·   ") + "CONFUSED: you can't see what is coming next"
 	_chant_note.text = note
@@ -5868,7 +5919,22 @@ func _anim(ev: Dictionary) -> void:
 
 
 const OrphanFx := preload("res://scripts/ui/orphan_fx.gd")
+var _row_order: Array = []  # every enemy of this fight in its place on the stage, the dead ones too (their places stay empty)
+var _slot_w := {}  # EnemyState -> the width of its place
+var _row_fight: Fight  # the fight _row_order belongs to
 var _orphans_running := false  # the bush has just been pulled up: the fight waits for the children to run off
+
+
+## The Necromancer acts: he leans further out from behind his Shield Bearer, then back.
+func _necro_peek(e: EnemyState) -> void:
+	var v: EnemyView = _views.get(e)
+	if v == null or not e.has_passive("behind_shield") or not is_instance_valid(v.creature):
+		return
+	v.creature.pivot_offset = Vector2(v.creature.size.x / 2.0, v.creature.size.y)  # (he leans from his feet)
+	var tw := v.creature.create_tween()
+	tw.tween_property(v.creature, "rotation", EnemyView.PEEK_TILT_ACT, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_interval(1.1)
+	tw.tween_property(v.creature, "rotation", EnemyView.PEEK_TILT, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
 ## Puppet Stage: the views of enemies that were defeated break into pieces and leave; the others stay as they are.
@@ -5888,8 +5954,19 @@ func _cull_dead() -> void:
 						_shatter_arm(old.creature)
 					else:
 						PuppetShatter.spawn(self, old.creature)
-				old.get_parent().remove_child(old)
+				var par := old.get_parent()
+				var at := old.get_index()
+				var w := maxf(old.custom_minimum_size.x, old.size.x)
+				_slot_w[e] = w
+				par.remove_child(old)
 				old.queue_free()
+				if par == _enemy_row:
+					var gap_slot := Control.new()  # (its place stays empty: nobody moves over)
+					gap_slot.custom_minimum_size = Vector2(w, 1.0)
+					gap_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+					gap_slot.set_meta("slot", true)
+					_enemy_row.add_child(gap_slot)
+					_enemy_row.move_child(gap_slot, at)
 
 
 func _anim_event(ev: Dictionary) -> void:
@@ -6140,6 +6217,7 @@ func _anim_event(ev: Dictionary) -> void:
 			_refresh_all()
 			await _wait(maxf(0.3, 0.11 * ev.targets.size()) if ev.op == "barrage" else 0.3)  # (a volley lasts as long as its shots)
 		"enemy_turn":
+			_necro_peek(ev.enemy)
 			await _enemy_turn_start(ev)
 		"enemy_done":
 			for v in _views.values():
@@ -8244,10 +8322,11 @@ func _enemy_turn_start(ev: Dictionary) -> void:
 		v.modulate = Color.WHITE if v == actor else Color(0.55, 0.55, 0.6)
 	if actor == null:
 		return
-	var tw := actor.creature.create_tween()
-	actor.creature.pivot_offset = actor.creature.size / 2.0
-	tw.tween_property(actor.creature, "scale", Vector2(1.12, 1.12), 0.15)
-	tw.tween_property(actor.creature, "scale", Vector2.ONE, 0.2)
+	if not ev.enemy.has_passive("behind_shield"):  # (the Necromancer doesn't step forward: he leans out, see _necro_peek)
+		var tw := actor.creature.create_tween()
+		actor.creature.pivot_offset = actor.creature.size / 2.0
+		tw.tween_property(actor.creature, "scale", Vector2(1.12, 1.12), 0.15)
+		tw.tween_property(actor.creature, "scale", Vector2.ONE, 0.2)
 	var m: Dictionary = ev.move
 	var words := "❄ Frozen: it skips its turn." if ev.frozen else _move_words(m, ev.enemy)
 	await _file_turn_box()  # (in case the last one is still up)
@@ -8317,7 +8396,7 @@ func _enemy_attack(ev: Dictionary) -> void:
 		tw.parallel().tween_property(hedge, "squash", 1.0, 0.2)
 		await _wait(0.2)
 	elif v and String(ev.get("throw", "")) != "":
-		await OrphanFx.throw_item(self, v.creature.global_position + Vector2(v.creature.size.x * 0.5, 40.0), target, String(ev.throw))
+		target = await OrphanFx.throw_item(self, v.creature.global_position + Vector2(v.creature.size.x * 0.5, 40.0), target, String(ev.throw))  # (the hit shows where it lands)
 	elif v and v.creature.has_rig() and ev.enemy.id == "hand_spear":
 		target = await _spear_stab(v, float(ev.n))  # (the spear thrusts up into your HP bar: the hit lands there)
 	elif v and v.creature.has_rig() and ev.enemy.id == "hand_sword":

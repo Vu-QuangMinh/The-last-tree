@@ -379,14 +379,6 @@ func test_the_same_room_gives_the_same_fight_and_the_next_room_the_next() -> voi
 	assert_eq(run.encounter_ids(), run.fight_plan[1].ids, "the 2nd fight is the 2nd on the list, whatever the row")
 
 
-func test_split_makes_a_twin() -> void:
-	var f := _fight(["splitter_ooze"], [], "W")
-	_set_hp(f.enemies[0], "WWFF")
-	f.cast(_all(1))
-	assert_eq(f.enemies.size(), 2)
-	assert_eq(f.enemies[0].hp_text() + "|" + f.enemies[1].hp_text(), "W|FF")
-
-
 func test_kindling_stone_burns_on_every_third_spell() -> void:
 	var f := _fight(["ashling"], ["water_wall"], "")
 	f.artifacts = ["kindling_stone"]
@@ -1076,21 +1068,40 @@ func test_act2_tier1_undying_duo() -> void:
 	var wall: EnemyState = f.enemies[0]
 	var necro: EnemyState = f.enemies[1]
 	f._cleanup()
-	assert_eq([wall.size(), necro.size()], [6, 2])
-	assert_true(wall.armor[0], "his first Essence starts armoured")
+	assert_eq([wall.size(), necro.size()], [11, 3])
+	assert_true(not wall.armor.has(true), "no armour")
 	assert_eq(f.target_candidates(), [0], "the Necromancer can't be targeted")
 	assert_true(necro.behind)
 	await f._strike("FAW")
-	assert_eq(necro.size(), 2, "the Release can't reach him either")
+	assert_eq(necro.size(), 3, "the Release can't reach him either")
 	while wall.size() > 1:
 		wall.remove_right(1)
 	f._cleanup()
-	assert_true(not wall.armor[0], "the last Essence: the shield is down")
-	assert_eq(wall.intent.kind, "attack")
-	assert_eq(wall.intent.n, 1)
+	assert_eq([wall.intent.kind, wall.intent.n], ["attack", 1], "his last Essence: he swings")
 	wall.remove_right(1)
 	f._cleanup()
-	assert_true(not necro.behind and f.enemies.find(necro) in f.target_candidates(), "the skeleton is gone: he can be hit")
+	assert_true(wall.knocked and wall in f.enemies, "fallen, he lies there")
+	assert_true(not necro.behind and f.enemies.find(necro) in f.target_candidates(), "the skeleton is down: he can be hit")
+	assert_true(not f.over)
+	await f._do_move(necro, necro.def.moves[1])
+	assert_eq([wall.size(), necro.size()], [0, 3], "nobody to mend: nothing happens")
+	await f.end_player_turn()
+	assert_eq(necro.intent.kind, "resurrect", "raising him comes first")
+	f.player.hp = 40
+	await f.end_player_turn()
+	assert_true(not wall.knocked and wall.size() == 3, "back up, with 3 Essence")
+	assert_true(necro.behind, "and the Necromancer is hidden again")
+	var g := _fight(["shield_bearer", "necromancer"], ["fire_ball"], "")
+	g.enemies[0].remove_right(3)
+	await g._do_move(g.enemies[1], g.enemies[1].def.moves[1])
+	assert_eq(g.enemies[0].size(), 11, "he heals his skeleton 3, back to its 11")
+	var h := _fight(["shield_bearer", "necromancer"], ["fire_ball"], "")
+	h.enemies[0].remove_right(11)
+	h._cleanup()
+	h.enemies[1].remove_right(3)
+	h._cleanup()
+	h._check_end()
+	assert_true(h.over, "the Necromancer dead: the bones stay down, the fight is won")
 
 
 func test_act2_tiers_and_the_orphans() -> void:
@@ -1116,20 +1127,24 @@ func test_act2_tiers_and_the_orphans() -> void:
 
 
 func test_act2_tier15_maddened_soldier() -> void:
-	var f := _fight(["mad_soldier"], ["fire_ball"], "")
+	var f := _fight(["mad_soldier"], ["fire_ball", "water_wall"], "")
 	var e: EnemyState = f.enemies[0]
 	assert_eq(e.size(), 12)
 	f.player.hp = 40
 	await f.end_player_turn()
 	assert_eq(f.player.hp, 38.0, "one hit for 2")
 	await f._strike("F")
-	await f._strike("W")
-	assert_eq(e.intent.hits, 3, "two chants struck him: two more hits")
+	assert_eq(e.intent.get("hits", 1), 1, "the chant doesn't count")
+	for id in ["fire_ball", "water_wall"]:
+		f.charges[id] = 1
+		await f.resolve_spell(id, 0)
+	assert_eq(e.intent.hits, 3, "two spells cast: two more hits, shown at once")
+	f.player.shield = 0
+	f.player.lasting = 0
+	f.player.hp = 40
 	await f.end_player_turn()
-	assert_eq(f.player.hp, 32.0, "three hits of 2")
-	assert_eq(e.intent.get("hits", 1), 1, "and back to one")
-	e.remove_right(1)  # (a spell taking Essence is fine)
-	assert_eq(e.intent.get("hits", 1), 1)
+	assert_eq(f.player.hp, 34.0, "three hits of 2")
+	assert_eq(e.intent.get("hits", 1), 1, "and back to one next turn")
 
 
 func test_act2_tier15_tree_dwellers() -> void:
@@ -1140,7 +1155,7 @@ func test_act2_tier15_tree_dwellers() -> void:
 	f.enemies[0].remove_right(6)
 	f._cleanup()
 	assert_eq(f.alive().size(), 1, "each has its own Essence")
-	assert_eq(EnemyDefs.POOLS[2].easy.size(), 7)
+	assert_eq(EnemyDefs.POOLS[2].easy.size(), 5)
 
 
 func test_act2_tier2_headless_horseman() -> void:
@@ -1169,10 +1184,10 @@ func test_act2_tier2_scavengers_and_flying() -> void:
 	var rat: EnemyState = f.enemies[0]
 	var vulture: EnemyState = f.enemies[2]
 	var beetle: EnemyState = f.enemies[3]
-	assert_eq(f.enemies.map(func(x): return x.size()), [4, 4, 4, 4])
+	assert_eq(f.enemies.map(func(x): return x.size()), [6, 6, 6, 6])
 	assert_true(vulture.flying and beetle.armor[0])
 	await f._strike("AFW")
-	assert_eq(vulture.size(), 4, "the chant can't reach a flyer")
+	assert_eq(vulture.size(), 6, "the chant can't reach a flyer")
 	assert_true(2 in f.target_candidates(), "a spell can")
 	vulture.remove_right(1)
 	f._cleanup()
@@ -1184,7 +1199,7 @@ func test_act2_tier2_scavengers_and_flying() -> void:
 	assert_eq(vulture.grounded, 0)
 	assert_eq(vulture.intent.kind, "attack", "and it fights on, on the ground")
 	await f._strike("AFW")
-	assert_true(vulture.size() < 3, "on the ground the chant reaches it")
+	assert_true(vulture.size() < 5, "on the ground the chant reaches it")
 
 
 func test_act2_tier2_sentinel() -> void:
@@ -1290,10 +1305,10 @@ func test_ignite_stacks_and_shows_what_it_burns() -> void:
 
 
 func test_act2_tier1_bog_lantern() -> void:
-	var f := _fight(["bog_fish", "bog_lamp"], ["fire_ball"], "")
-	var fish: EnemyState = f.enemies[0]
-	var lamp: EnemyState = f.enemies[1]
-	assert_eq([fish.size(), lamp.size()], [9, 2])
+	var f := _fight(["bog_lamp", "bog_fish"], ["fire_ball"], "")
+	var fish: EnemyState = f.enemies[1]
+	var lamp: EnemyState = f.enemies[0]
+	assert_eq([fish.size(), lamp.size()], [12, 2])
 	assert_eq(lamp.intent.kind, "glow", "the clock starts at 2")
 	await f.end_player_turn()
 	assert_eq(lamp.intent.kind, "stun", "1 left: next it stuns")
@@ -1304,7 +1319,8 @@ func test_act2_tier1_bog_lantern() -> void:
 	f.player.stun_turns = 0
 	lamp.remove_right(2)
 	f._cleanup()
-	assert_eq(fish.size(), 9, "killing the lamp doesn't hurt the fish")
+	assert_eq(fish.size(), 12, "killing the lamp doesn't hurt the fish")
+	assert_true(lamp.knocked and lamp in f.enemies, "it stays on its hook, dark")
 	await f.end_player_turn()
 	assert_true(not f.alive().any(func(x): return x.id == "bog_lamp"), "it stays out for a turn")
 	await f.end_player_turn()
@@ -1313,6 +1329,7 @@ func test_act2_tier1_bog_lantern() -> void:
 	assert_eq(back[0].intent.kind, "glow", "with its clock at 2")
 	await f.end_player_turn()
 	assert_eq(back[0].intent.kind, "stun")
+	assert_true(back[0] == lamp, "the same lamp, lit again")
 	fish.remove_right(12)
 	f._cleanup()
 	assert_true(f.alive().is_empty(), "the lamp goes out with the fish")
@@ -1322,24 +1339,21 @@ func test_act2_tier1_bug_hunter() -> void:
 	var f := _fight(["bug_hunter"], ["fire_ball"], "")
 	var bot: EnemyState = f.enemies[0]
 	assert_eq(bot.size(), 9)
-	f.player.hp = 40
+	f.player.hp = 100
+	for k in 3:
+		assert_eq([bot.intent.kind, bot.intent.also.kind, bot.intent.also.n], ["attack", "summon_clock", 3 - k], "the laser, and the clock")
+		await f.end_player_turn()
+	assert_eq(f.player.hp, 85.0, "5 a turn")
+	assert_eq(bot.intent.also.kind, "summon", "the 4th turn: the call")
 	await f.end_player_turn()
-	assert_eq(f.player.hp, 35.0, "laser beam: 5")
-	bot.remove_right(12)
+	assert_eq(f.alive().size(), 2, "a Sentinel has come")
+	assert_true(f.alive()[1].id in ["sentinel", "blue_sentinel"])
+	assert_true(not bot.intent.has("also") and bot.intent.kind == "attack", "only once: from now on just the laser")
+	await f.end_player_turn()
+	assert_eq(f.alive().size(), 2, "no second Sentinel")
+	bot.remove_right(9)
 	f._cleanup()
-	assert_eq([bot.size(), bot.intent.kind, f.over], [4, "explode", false])
-	await f.end_player_turn()
-	assert_eq(f.player.hp, 25.0, "it goes off for 10")
-	assert_true(bot.is_dead() and f.over, "and that is the end of it")
-	var g := _fight(["bug_hunter"], ["fire_ball"], "")
-	var bot2: EnemyState = g.enemies[0]
-	g.player.hp = 40
-	bot2.remove_right(12)
-	g._cleanup()
-	bot2.remove_right(5)
-	g._cleanup()
-	g._check_end()
-	assert_true(g.over and g.player.hp == 40.0, "the 5 Essence destroyed: no explosion")
+	assert_true(bot.is_dead(), "no reboot, no explosion")
 
 
 func test_act2_pool_keeps_summons_out() -> void:

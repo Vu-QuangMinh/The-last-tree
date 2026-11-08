@@ -46,6 +46,11 @@ var _hp_icons: Array = []  # the orbs currently shown, left to right
 
 
 const FLY_LIFT := 80.0
+const LAMP_ROW_AT := 0.58  # the lamp's Essence row: this far down its picture's box (just under the lamp itself)
+const DUO_ROW_DROP := 44.0  # the Necromancer's row sits this far under the Shield Bearer's
+const PEEK_TILT := 0.07  # the Necromancer leans out from behind the shield this far (radians) ...
+const PEEK_TILT_ACT := 0.3  # ... and further when he does something
+var _hung := false
 var _lifted := false
 
 
@@ -291,16 +296,27 @@ func _fly_height() -> void:
 	if up == _lifted:
 		return
 	_lifted = up
-	var tw := creature.create_tween()
+	var tw := creature.create_tween().set_parallel()
 	tw.tween_property(creature, "position:y", creature.position.y + (-FLY_LIFT if up else FLY_LIFT), 0.3 if up else 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(creature, "ground_drop", FLY_LIFT if up else 0.0, 0.3 if up else 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)  # (its shadow stays on the floor)
 
 
 func refresh(preview: Dictionary) -> void:
 	if _ghost:
 		return
 	_fly_height()
+	if not _hung and float(enemy.def.get("hang", 0.0)) > 0.0:
+		_hung = true
+		creature.position.y -= float(enemy.def.hang)  # (the Bog Lantern's lamp: up on the fish's hook)
+	if not _hung and enemy.has_passive("behind_shield") and creature.size.x > 0.0:
+		_hung = true
+		creature.pivot_offset = Vector2(creature.size.x / 2.0, creature.size.y)  # (the Necromancer: behind his Shield Bearer, leaning out to the right)
+		creature.rotation = PEEK_TILT
+	if not _hung and enemy.has_passive("big_shield"):
+		_hung = true
+		creature.z_index = 1  # (the Shield Bearer stands in front of the Necromancer)
 	creature.modulate = Color(1, 1, 1, 0.4) if enemy.knocked and not creature.has_rig() else Color.WHITE  # (a hand's arm fades and folds by itself: Creature._draw_arm)
-	_hp_row.visible = not enemy.knocked and not creature.drop_hold  # (a fallen hand has no HP bar: it can't be targeted; nor does one that waits on the floor to be pulled up)
+	_hp_row.visible = not enemy.knocked and not creature.drop_hold and not enemy.behind  # (a fallen hand has no HP bar: it can't be targeted; nor does one that waits on the floor to be pulled up)
 	if _spell_row != null:
 		_refresh_invoked(preview.get("invoke", {}).get(enemy, []))
 	var e := enemy
@@ -477,6 +493,17 @@ func _layout_free() -> void:
 	var below := top + _hp_row.get_combined_minimum_size().y + 2.0
 	_status.position = Vector2(5.0 + dx, below)
 	_status.size.x = w - 10.0
+	var hang := float(enemy.def.get("hang", 0.0))
+	if hang > 0.0:
+		# (the Bog Lantern's lamp hangs in front of the fish, on its hook: its Essence and statuses hang just under the lamp)
+		z_index = 1
+		var lamp_y := creature.global_position.y - (0.0 if _hung else hang)
+		_hp_row.global_position.y = lamp_y + creature.size.y * LAMP_ROW_AT
+		_status.global_position.y = _hp_row.global_position.y + _hp_row.get_combined_minimum_size().y + 2.0
+	if enemy.has_passive("behind_shield"):
+		# (the Necromancer stands behind his Shield Bearer: his Essence goes under the Bearer's, not on top of it)
+		_hp_row.position.y = top + DUO_ROW_DROP
+		_status.position.y = below + DUO_ROW_DROP
 
 
 ## Puppet Stage: the intent bubble stands left of the puppet (its pointer 4 px off the painted part), centred on the puppet's height.
