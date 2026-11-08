@@ -20,7 +20,7 @@ const INTENT_Y := 6.0
 const PUPPET_TOP := 50.0  # (Puppet Stage: how far the puppet's box rises above its holder, so the name and the Essence are not far above its head)
 const PUPPET_BUBBLE_RIGHT := 70.0  # (Puppet Stage: x, in the puppet's box, where the intent bubble's pointer ends)
 var _ring: Panel
-var _marker: TextureRect  # New theme: the target reticle that replaces the ring
+var _marker: Control  # New theme: the target reticle that replaces the ring
 var targetable := false
 var targeted := false
 var move_mode := false
@@ -46,6 +46,59 @@ var _hp_icons: Array = []  # the orbs currently shown, left to right
 
 
 const FLY_LIFT := 80.0
+
+
+## A crosshair behind an enemy you can aim at (see AimCursor.cross).
+class CrossMark extends Control:
+	func _draw() -> void:
+		AimCursor.cross(self, size / 2.0, size.x * 0.42, 0.9)
+var _stars: Control  # a stunned enemy: yellow stars going round over its head
+
+
+## Stunned: three yellow stars go round over its head on a flat ring you can see (the cartoon dizzy stars).
+class StunStars extends Control:
+	var cr: Creature
+	var _t := 0.0
+	const RX := 52.0
+	const RY := 14.0
+
+	func _ready() -> void:
+		top_level = true
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		z_index = 30
+
+	func _process(d: float) -> void:
+		_t += d
+		if not is_instance_valid(cr):
+			return
+		# (over the top of its head, and moving with it as it swings on its string)
+		var b := cr.puppet_bounds()
+		if b.size == Vector2.ZERO:
+			b = Rect2(Vector2.ZERO, cr.size)
+		var swing := cr.rope_point(cr._pivot_frac()) - cr.rope_point(cr._pivot_frac(), true)
+		global_position = cr.get_global_transform() * Vector2(b.get_center().x, b.position.y) + swing + Vector2(0.0, -6.0)
+		queue_redraw()
+
+	func _draw() -> void:
+		var ring := PackedVector2Array()
+		for k in 41:
+			var a := TAU * float(k) / 40.0
+			ring.append(Vector2(cos(a) * RX, sin(a) * RY))
+		draw_polyline(ring, Color(1.0, 0.9, 0.4, 0.35), 1.5, true)  # (its path, so you see them go round)
+		for k in 3:
+			var a := _t * 3.2 + TAU * float(k) / 3.0
+			var front := sin(a)
+			var r := lerpf(6.0, 10.0, (front + 1.0) / 2.0)  # (bigger in front, smaller behind)
+			_star(Vector2(cos(a) * RX, sin(a) * RY), r, a * 0.6, lerpf(0.55, 1.0, (front + 1.0) / 2.0))
+
+	func _star(c: Vector2, r: float, turn: float, alpha: float) -> void:
+		var pts := PackedVector2Array()
+		for k in 10:
+			var ang := turn - PI / 2.0 + PI * float(k) / 5.0
+			pts.append(c + Vector2.from_angle(ang) * (r if k % 2 == 0 else r * 0.45))
+		draw_colored_polygon(pts, Color(1.0, 0.86, 0.2, alpha))
+		pts.append(pts[0])
+		draw_polyline(pts, Color(0.45, 0.25, 0.0, alpha), 1.4, true)
 const LAMP_ROW_AT := 0.58  # the lamp's Essence row: this far down its picture's box (just under the lamp itself)
 const DUO_ROW_DROP := 44.0  # the Necromancer's row sits this far under the Shield Bearer's
 const PEEK_TILT := 0.07  # the Necromancer leans out from behind the shield this far (radians) ...
@@ -107,19 +160,15 @@ func setup(e: EnemyState, f: Fight) -> void:
 		sr.size = Vector2(250, 250.0 * stand.get_height() / stand.get_width())
 		sr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(sr)
-	var reticle := UiSkin.tex("target_marker")
-	if reticle != null:
+	if UiSkin.is_puppet():
 		_ring.hide()
-		_marker = TextureRect.new()
-		_marker.texture = reticle
-		_marker.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		_marker.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		_marker = CrossMark.new()  # (a crosshair on the puppet you can aim at, in place of the old wooden target)
 		_marker.size = Vector2(160, 160)
 		_marker.position = Vector2(70, 62.0 - (PUPPET_TOP if UiSkin.is_puppet() else 0.0))
 		_marker.pivot_offset = Vector2(80, 80)
 		_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_marker.visible = false
-		holder.add_child(_marker)  # behind the creature: it stands in front of its reticle
+		holder.add_child(_marker)  # (drawn over the puppet: z_index in _place_marker)
 	creature = Creature.new()
 	creature.setup(e)
 	creature.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -208,7 +257,7 @@ func _raise_text() -> void:
 func _place_marker() -> void:
 	if _marker == null or creature == null or not UiSkin.is_puppet():
 		return
-	_marker.size = Vector2(42.0, 42.0)  # (small, as on the Handyman's hands, and on the enemy itself)
+	_marker.size = Vector2(56.0, 56.0)  # (a crosshair on the enemy itself, as on the Handyman's hands)
 	_marker.z_index = 6  # (over the puppet)
 	_marker.pivot_offset = _marker.size / 2.0
 	if creature.has_rig():
@@ -305,6 +354,13 @@ func refresh(preview: Dictionary) -> void:
 	if _ghost:
 		return
 	_fly_height()
+	var dizzy: bool = not enemy.is_dead() and (enemy.grounded > 0 or String(enemy.intent.get("kind", "")) in ["grounded", "recharge"])
+	if dizzy and not is_instance_valid(_stars) and creature != null:
+		_stars = StunStars.new()
+		_stars.cr = creature
+		add_child(_stars)
+	elif not dizzy and is_instance_valid(_stars):
+		_stars.queue_free()
 	if not _hung and float(enemy.def.get("hang", 0.0)) > 0.0:
 		_hung = true
 		creature.position.y -= float(enemy.def.hang)  # (the Bog Lantern's lamp: up on the fish's hook)

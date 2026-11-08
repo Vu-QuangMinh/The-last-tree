@@ -200,7 +200,7 @@ func _ready() -> void:
 		mid.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		mid.add_child(d)
 		v.add_child(mid)
-	var tags := [spell.rarity_name.to_upper(), SpellDB.KIND_NAMES[spell.kind].to_upper()]
+	var tags := []  # (no rarity or type words: the metal corners show the rarity, the colours the type)
 	if spell.power:
 		tags.append("POWER")
 	if spell.get("fused", false):
@@ -209,7 +209,8 @@ func _ready() -> void:
 		tags.append("ANTI-SPELL")
 	if spell.get("ephemeral", false):
 		tags.append("EPHEMERAL")
-	var tag_l := UiTheme.label(" · ".join(tags), _zi(13), RARITY_COLORS[spell.rarity])
+	var tag_l := UiTheme.label(" · ".join(tags), _zi(13), RARITY_COLORS.common)
+	tag_l.visible = not tags.is_empty()
 	# many tags (an inverted conjured spell: ANTI-SPELL · EPHEMERAL) would widen the card: the line shrinks to fit
 	var tag_font := tag_l.get_theme_font("font")
 	var tag_fs := _zi(13)
@@ -221,18 +222,16 @@ func _ready() -> void:
 	v.add_child(tag_l)
 	_tag_l = tag_l
 	_fit_text()
-	# no pattern at all: it wakes whenever you chant (sealed down to nothing, or made that way)
-	var pattern_words := "nothing: it wakes whenever you chant" if String(spell.get("full_pattern", spell.pattern)) == "" else "anything (every Essence is sealed: it wakes on every chant)"
-	if spell.pattern != "":
-		pattern_words = " ".join(Array(spell.pattern.split("")).map(func(c): return "any Essence" if c == "?" else Elements.NAMES.get(c, c)))
-	var extra := "[color=#9aa89a]%s %s  ·  chant %s[/color]" % [spell.rarity_name, SpellDB.KIND_NAMES[spell.kind], pattern_words]
+	# the tooltip: only what its keywords mean (nothing at all when it has none worth explaining)
+	var more_keys := []
+	if spell.get("fused", false):
+		more_keys.append("fused")
 	if not seals.is_empty():
-		extra += "\n[color=#c79be0]Sealed: %d Essence of its pattern %s no longer needed.[/color]" % [seals.size(), "is" if seals.size() == 1 else "are"]
+		more_keys.append("sealed")
+	var more := [Keywords.ANY_ESSENCE] if "?" in full else []
 	if spell.get("burden", "") != "":
-		extra += "\n[color=#ff8a7a]Cursed (Tangled Grimoire): it needs %d more Essence than it used to.[/color]" % String(spell.burden).length()
-	if spell.has("flavor"):
-		extra += "\n[i][color=#9aa89a]\"%s\"[/color][/i]" % spell.flavor
-	tooltip_text = Keywords.tooltip(spell.name, SpellText.describe(spell), extra, "", [Keywords.ANY_ESSENCE] if "?" in full else [])
+		more.append("Cursed: the Tangled Grimoire makes it need %d more Essence than it used to." % String(spell.burden).length())
+	tooltip_text = Keywords.keyword_lines(SpellText.describe(spell), more_keys, more)
 	_base_tip = tooltip_text
 	# overlays
 	if spell.get("anti", false):
@@ -240,6 +239,11 @@ func _ready() -> void:
 	if spell.get("ephemeral", false):
 		_static_mat = _add_overlay(_static_shader())
 		_static_mat.set_shader_parameter("seed", randf() * 10.0)
+	if spell.rarity in ["rare", "legendary"]:
+		var corners := RarityCorners.new()
+		corners.rarity = spell.rarity
+		corners.zoom = zoom
+		add_child(corners)
 	_shade = ColorRect.new()
 	_shade.color = Color(0.02, 0.02, 0.04, 0.78)
 	_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -371,7 +375,7 @@ func _fit_text() -> void:
 		return
 	# the rules: the height left once the card's frame, name, orbs and tag line are counted
 	var used := _z(7 + 5 + (_art_pad_y() if _art != null else 0.0)) + _name_l.get_combined_minimum_size().y + _z(2) + _pat.get_combined_minimum_size().y \
-		+ _tag_l.get_combined_minimum_size().y + _z(SEP) * 3
+		+ (_tag_l.get_combined_minimum_size().y + _z(SEP) if _tag_l.visible else 0.0) + _z(SEP) * 2
 	var room := _z(H) - used
 	# measured on the real text box (coloured keywords and line spacing included), at the card's text width
 	_rules.size = Vector2(_z(_rw()), 0)
@@ -796,9 +800,13 @@ func refresh() -> void:
 	_flame.number = ignite_dmg if ignited else 0
 	_virus.visible = virus > 0 and state != "used"
 	_virus.number = virus
-	if _base_tip != "":
-		tooltip_text = _base_tip + ("\n[color=#ff9a4a][b]Ignited:[/b] casting it burns you for %d HP.[/color]" % ignite_dmg if ignited else "") \
-			+ ("\n[color=#8fe05a][b]Virus:[/b] casting it gives you Poison %d.[/color]" % virus if virus > 0 else "")
+	if not has_meta("tip_pinned"):
+		var adds := []
+		if ignited:
+			adds.append("[color=#ff9a4a][b]Ignited[/b]: casting it burns you for %d HP.[/color]" % ignite_dmg)
+		if virus > 0:
+			adds.append("[color=#8fe05a][b]Virus[/b]: casting it gives you Poison %d.[/color]" % virus)
+		tooltip_text = "\n".join(([_base_tip] if _base_tip != "" else []) + adds)
 	_cracks.set_level(0 if UiSkin.is_puppet() else cracks, String(spell.get("id", "")))  # (Puppet: the card is cut into planks instead: CardSplit)
 	if spell.get("anti", false):
 		# an anti-spell is always active: its spark keeps circling, unless the chant breaks it (state "broken")
@@ -806,3 +814,40 @@ func refresh() -> void:
 		_orbit.visible = state == ""
 	else:
 		_orbit.visible = fires > 0 and charges == 0 and state == ""
+
+
+## Rare and Legendary cards: a metal triangle over each corner, green (Rare) or gold (Legendary). Common cards have none.
+class RarityCorners extends Control:
+	const METAL := {"rare": [Color(0.16, 0.55, 0.24), Color(0.72, 1.0, 0.66), Color(0.03, 0.2, 0.07)],
+		"legendary": [Color(0.86, 0.6, 0.12), Color(1.0, 0.95, 0.62), Color(0.38, 0.22, 0.02)]}  # [metal, shine, dark edge]
+	var rarity := "rare"
+	var zoom := 1.0
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	func _draw() -> void:
+		var m: Array = METAL.get(rarity, METAL.rare)
+		var s := 22.0 * zoom
+		var inset := 1.0 * zoom
+		for k in 4:
+			var fx := 1.0 if k % 2 == 1 else 0.0  # (right corners)
+			var fy := 1.0 if k >= 2 else 0.0  # (bottom corners)
+			var c := Vector2(lerpf(inset, size.x - inset, fx), lerpf(inset, size.y - inset, fy))
+			var dx := -1.0 if fx > 0.5 else 1.0
+			var dy := -1.0 if fy > 0.5 else 1.0
+			var a := c + Vector2(s * dx, 0.0)
+			var b := c + Vector2(0.0, s * dy)
+			# the plate: bright where the light catches its corner, darker along its long edge
+			draw_polygon(PackedVector2Array([c, a, b]), PackedColorArray([m[1], m[0], m[0].darkened(0.25)]))
+			# a bevel along the long edge, then a dark outline
+			var a2 := c + Vector2(s * 0.78 * dx, 0.0)
+			var b2 := c + Vector2(0.0, s * 0.78 * dy)
+			draw_line(a2, b2, Color(m[1], 0.55), maxf(1.0, 1.5 * zoom), true)
+			draw_polyline(PackedVector2Array([c, a, b, c]), m[2], maxf(1.0, 1.6 * zoom), true)
+			# a rivet
+			var r := c + Vector2(s * 0.28 * dx, s * 0.28 * dy)
+			draw_circle(r, 2.6 * zoom, m[2])
+			draw_circle(r, 1.8 * zoom, m[0])
+			draw_circle(r + Vector2(-0.8, -0.8) * zoom, 0.9 * zoom, m[1])

@@ -361,7 +361,7 @@ func test_fight_plans_follow_the_pools_and_never_repeat_the_last_two() -> void:
 				var share: bool = plan[at].ids.any(func(id): return id in plan[at - 1].ids)
 				var could: bool = (medium if at == 2 else hard).size() > 0
 				assert_true(not share or not could or act == 1 and at == 4, "the pool changes: nothing alike right after")
-	var slimes: Array = EnemyDefs.POOLS[1].medium.filter(func(e): return e.name == "The Slime Trio")
+	var slimes: Array = EnemyDefs.POOLS[1].hard.filter(func(e): return e.name == "The Slime Trio")
 	assert_eq(slimes[0].ids, ["purple_slime", "green_slime", "yellow_slime"], "always the same three")
 
 
@@ -935,10 +935,11 @@ func test_overgrown_vine_follows_the_spell_category() -> void:
 	run.spellbook = ["fire_ball", "water_wall", "tailwind"]
 	run.amber = 0
 	run.player.hp = 20
-	run.event_outcome(cast, -1, "fire_ball")  # Offensive
-	assert_eq(run.amber, 40)
-	run.event_outcome(cast, -1, "water_wall")  # Defensive
-	assert_eq(run.player.hp, 25.0)
+	var r1 := run.event_outcome(cast, -1, "fire_ball")  # Offensive: Fire Ball is FF
+	assert_eq(run.amber, 30, "15 Leaves for each of its 2 Essence")
+	assert_true(String(r1.text).contains("30 Leaves"))
+	run.event_outcome(cast, -1, "water_wall")  # Defensive: Water Wall is WW
+	assert_eq(run.player.hp, 24.0, "2 HP for each of its 2 Essence")
 	var res := run.event_outcome(cast, -1, "tailwind")  # Utility
 	assert_true(String(res.text).contains("disappointed"))
 	assert_eq(run.spellbook.size(), 3, "you keep the spell you cast")
@@ -1690,7 +1691,7 @@ func test_rewards_follow_rarity() -> void:
 		for s in run.spell_offer(3, "elite"):
 			if s.rarity != "common":
 				elite_better += 1
-	assert_true(rares > 170 and rares < 280, "about 37%% Rare, got %d of 600" % rares)
+	assert_true(rares > 110 and rares < 200, "about 25%% Rare, got %d of 600" % rares)
 	assert_true(elite_better > 220, "elites: about half Rare or better, got %d of 600" % elite_better)
 
 
@@ -2694,10 +2695,10 @@ func test_reward_odds_follow_slay_the_spire() -> void:
 	var counts := {"common": 0, "rare": 0, "legendary": 0}
 	for i in 4000:
 		counts[run._roll_rarity("fight")] += 1
-	# ~60 / 37 / 3, plus the pity counter nudging Legendary up a little between hits
-	assert_true(counts.common > 2000 and counts.common < 2600, str(counts))
-	assert_true(counts.rare > 1300 and counts.rare < 1700, str(counts))
+	# about 1 Rare in 4 (its pity counter), a few Legendaries, the rest Common
+	assert_true(counts.rare > 800 and counts.rare < 1200, str(counts))
 	assert_true(counts.legendary > 60 and counts.legendary < 400, str(counts))
+	assert_true(counts.common > 2400, str(counts))
 	assert_eq(run._roll_rarity("boss"), "legendary")
 	# the pity counter: every Common shown raises it 1%, a Legendary resets it
 	run.legendary_offset = 0.0
@@ -2709,6 +2710,15 @@ func test_reward_odds_follow_slay_the_spire() -> void:
 	run.legendary_offset = 0.9
 	assert_eq(run._roll_rarity("elite"), "legendary", "a big offset all but guarantees it")
 	assert_eq(run.legendary_offset, RunState.LEGENDARY_OFFSET_START, "and it resets")
+	# the Rare pity counter: it starts low, rises with every card that isn't Rare, resets on a Rare
+	assert_eq(RunState.new().rare_chance, RunState.RARE_CHANCE_START, "Rares are rarer at the start")
+	run.legendary_offset = -1.0
+	run.rare_chance = 0.0
+	assert_eq(run._roll_rarity("fight"), "common")
+	assert_eq(snappedf(run.rare_chance, 0.001), RunState.RARE_CHANCE_STEP)
+	run.rare_chance = 1.0
+	assert_eq(run._roll_rarity("fight"), "rare", "a long dry spell all but guarantees one")
+	assert_eq(run.rare_chance, RunState.RARE_CHANCE_START, "and it resets")
 
 
 func test_talking_to_the_handyman() -> void:

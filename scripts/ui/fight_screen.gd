@@ -5349,6 +5349,13 @@ var _casting := false
 
 func _end_casting() -> void:
 	_casting = false
+	# (the cast is over: no aiming pointer may stay behind, and the mouse pointer comes back)
+	if not _picking_any:
+		for c in find_children("*", "AimCursor", true, false):
+			if c != _grab_cursor:
+				c.queue_free()
+		_aim_cursor = null
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var any := false
 	for v in _views.values():
 		if is_instance_valid(v) and v.keep_big:
@@ -5399,6 +5406,8 @@ func _pick_any_essence(spell: Dictionary, cancellable: bool, only: EnemyState = 
 		v.pick_el = _pick_el
 		v.pick_i = -1
 	# the pointer becomes a crosshair (remove), an open hand (steal) or a paint brush (Expose)
+	if is_instance_valid(_aim_cursor):
+		_aim_cursor.queue_free()  # (never two at once: one left over would stay on the screen)
 	_aim_cursor = AimCursor.new()
 	_aim_cursor.mode = _pick_style
 	add_child(_aim_cursor)
@@ -7091,7 +7100,7 @@ func _talk() -> void:
 			var chip := TipPanel.new()
 			chip.add_theme_stylebox_override("panel", _talk_flat(Color(0.2, 0.14, 0.08, 0.95), Color(0.7, 0.52, 0.26), 1, 8))
 			chip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-			chip.tooltip_text = Keywords.tooltip(a.name, a.desc)
+			chip.tooltip_text = ArtifactCard.tip(a)
 			var al := UiTheme.label("%s %s" % [a.icon, a.name], 19, Color(1.0, 0.9, 0.7))
 			al.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			chip.add_child(al)

@@ -623,10 +623,11 @@ const POOLS := {
 			{"name": "Hot Puddle", "ids": ["yellow_slime", "ashling"], "w": 0.7},
 			{"name": "Breezy Ooze", "ids": ["green_slime", "zephling"], "w": 0.7},
 			{"name": "Mirror Fairy", "ids": ["mirror_fairy"], "w": 1.0},
+		],
+		# (by the numbers: medium tops out near 10 Essence and 9 damage a turn; the 13+ Essence groups are hard)
+		"hard": [
 			{"name": "The Slime Trio", "ids": ["purple_slime", "green_slime", "yellow_slime"], "w": 1.0},
 			{"name": "The Forest Floor", "ids": ["bramble_back", "winged_tortoise"], "w": 0.8},
-		],
-		"hard": [
 			{"name": "The Greenseer's Garden", "ids": ["greenseer", "green_slime"], "w": 1.0},
 			{"name": "Rolling Bear", "ids": ["rolling_bear"], "w": 1.0},
 			{"name": "Giant Slime", "ids": ["giant_slime"], "w": 1.0},
