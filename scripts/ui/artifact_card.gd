@@ -5,8 +5,20 @@ extends PanelContainer
 
 signal clicked
 
-const TIER_COL := {"common": Color(0.93, 0.9, 0.78), "rare": Color(0.5, 0.78, 1.0), "legendary": Color(1.0, 0.78, 0.3)}
-const CURSED_COL := Color(1.0, 0.45, 0.4)
+const TIER_COL := {"common": Color(0.96, 0.96, 0.94), "rare": Color(0.45, 0.92, 0.4), "legendary": Color(1.0, 0.6, 0.15)}  # white, green, orange
+const CURSED_COL := Color(1.0, 0.3, 0.28)  # (and red for a cursed one)
+
+
+## An artifact's colour: its rarity's, or red when it is cursed.
+static func color_of(a: Dictionary) -> Color:
+	if a.get("aspect", "") == "Cursed" or a.get("pool", "") == "curse":
+		return CURSED_COL
+	return TIER_COL.get(a.get("tier", "common"), Color.WHITE)
+
+
+## An artifact's tooltip: its name in bold, in its rarity's colour, then what it does (keywords coloured and explained).
+static func tip(a: Dictionary, icon := "") -> String:
+	return Keywords.tooltip(a.name, a.desc, "", icon, [], color_of(a))
 const W := 360.0
 
 var artifact: Dictionary
@@ -28,8 +40,7 @@ static func make(a: Dictionary) -> ArtifactCard:
 
 func _ready() -> void:
 	var a := artifact
-	var cursed: bool = a.get("aspect", "") == "Cursed"
-	_col = CURSED_COL if cursed else TIER_COL.get(a.get("tier", "common"), Color.WHITE)
+	_col = color_of(a)
 	custom_minimum_size = Vector2(W, 0)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -49,7 +60,7 @@ func _ready() -> void:
 	_frame = UiSkin.box("treasure_card_frame", fm, fc)
 	if _frame != null:
 		_frame_hover = UiSkin.box("treasure_card_frame_hover", fm, fc)
-		_ring = UiSkin.tex("medal_ring_cursed" if cursed else "medal_ring_" + str(a.get("tier", "common")))
+		_ring = UiSkin.tex("medal_ring_cursed" if _col == CURSED_COL else "medal_ring_" + str(a.get("tier", "common")))
 		add_theme_stylebox_override("panel", _frame)
 	else:
 		add_theme_stylebox_override("panel", _box)
@@ -86,13 +97,7 @@ func _ready() -> void:
 	UiTheme.apply_header(name_l, "card", 30)  # (Settings > Header styles: after the card's own stroke, so a stroke colour set there wins)
 	name_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(name_l)
-	# type: small and faded
-	var tier: String = Artifacts.TIER_NAMES.get(a.get("tier", "common"), "")
-	var kind := "%s artifact  ·  %s" % [tier, a.get("aspect", "")]
-	var type_l := UiTheme.label(kind, 15, Color(0.62, 0.66, 0.6))
-	type_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	type_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	v.add_child(type_l)
+	# (no rarity or type line: the name's colour says the rarity)
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0, 6)
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE

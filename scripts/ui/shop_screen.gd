@@ -42,7 +42,7 @@ const MERCHANT_TIME := 5.0
 const MERCHANT_DELAY := 2.0  # he sets off this long after the cart does
 const SPELL_X := [190.0, 470.0, 750.0]  # where the spell cards stand (centre) and the bottom of the Buy buttons (on the floor)
 const SPELL_FOOT := [640.0, 640.0, 640.0]
-const SPELL_SCALE := 0.8  # (the standing spell cards, against the old shop)
+const SPELL_SCALE := 1.3  # (the standing spell cards, against the old shop)
 ## A spell card is a hinged target, like the ducks of a shooting gallery: it lies face up on the floor with its top edge away from you, and swings up about
 ## its bottom edge. `LIE_DEPTH`: how much of the card's height the floor shows when it lies flat (the floor is seen at a slant); `LIE_NARROW`: how much narrower
 ## its far edge is than its near one (perspective).
@@ -55,8 +55,29 @@ const POP_TIME := 1.0
 const POP_GAP := 0.6
 const HANG_BIG := 1.3  # a hanging good under the mouse (or just clicked) grows to this much of its size
 const HOLD_SECS := 3.0  # a click keeps a good big (a standing card's magnified copy up) for this long, even if the mouse leaves
-const HANG_SCALE := 0.65  # (the artifacts and bottles hang smaller than the old grid's: tune)
-const HANG_X0 := 112.0  # centre of the first item
+const HANG_SCALE := 0.975  # (the artifacts and bottles hang a little smaller than the old grid's)
+const ART_PX := 147  # an artifact: only its picture, on a string (no words: hover it for what it does)
+const ART_X := [240.0, 610.0, 960.0]  # the artifacts' centres, along the top
+const ART_TOP := [175.0, 200.0, 175.0]
+const RIGHT_X := [1400.0, 1700.0]  # the bottles, the wax and the meal hang on the right, over the cart, never over the merchant
+const RIGHT_ROW_Y := [130.0, 395.0]
+const CARD_GAP := 300.0  # between the standing spell cards' centres, along the bottom of the screen
+const CARD_FOOT := 1070.0  # where they stand (where the fight's panels are in a fight)
+const CARD_SPAN := [40.0, 1400.0]  # the row of cards, left of the Menu and Leave buttons
+const CONJURE_TIME := 0.6
+const HANG_X0 := 165.0  # centre of the first item
+const TRAY_W := 520.0  # the bottles stand together in one tray, hung in the middle, under the artifacts
+const TRAY_CX := 600.0
+const TRAY_TOP := 525.0
+const TRAY_FLOOR := 0.62  # (of the tray picture's height: where the bottles' bottoms are, behind its front lip)
+const TRAY_SLOTS := [0.2, 0.5, 0.8]
+const BOTTLE_PX := 120.0
+const CAMP_CX := 1715.0  # the campfire with its cauldron of wax, on the floor right of the cart: the meal over it, the wax under it
+const CAMP_W := 265.0
+const SWING_K := 9.0  # an artifact hangs on one string and swings on it like a puppet does (see Creature)
+const SWING_DAMP := 1.1
+const SWING_MAX := 0.22
+const SWING_NUDGE := 0.35  # the push it gets when the mouse comes onto it, or when it lands
 const HANG_DX := 165.0  # between centres (squeezed when there are many items)
 const HANG_MAX_W := 940.0  # the row must end before the merchant
 const HANG_ROW_Y := [188.0, 214.0]  # tops, in turn: the ropes differ in length, so the row is not a straight line
@@ -392,7 +413,13 @@ func _refresh() -> void:
 	_panels.clear()
 	for i in stock.size():
 		var it: Dictionary = stock[i]
-		var box := VBoxContainer.new()
+		# (the stage shop: an artifact or a bottle and its price are one hover zone, an invisible box round both)
+		var tipped: bool = on_stage and it.kind in ["artifact", "bottle"]
+		var box: VBoxContainer = _TipBox.new() if tipped else VBoxContainer.new()
+		if tipped:
+			box.mouse_filter = Control.MOUSE_FILTER_PASS
+			if HoverBoard.available():
+				box.theme = HoverBoard.bare_theme()  # (the board is its own box)
 		box.add_theme_constant_override("separation", 6)
 		match it.kind:
 			"spell":
@@ -406,8 +433,18 @@ func _refresh() -> void:
 				p.add_theme_stylebox_override("panel", _frame())
 				p.custom_minimum_size = Vector2(SpellCard.W, SpellCard.H)
 				var col := Color(0.6, 0.8, 1) if a.tier == "rare" else Color(1, 0.88, 0.6)
-				var art := UiSkin.artifact_icon(a.id, 64)  # New theme: the painted artifact above its name
-				if art != null:
+				var art := UiSkin.artifact_icon(a.id, ART_PX if on_stage else 64)  # New theme: the painted artifact above its name
+				if art != null and on_stage:
+					# (the stage shop: no frame, only the picture, dangling on its string; what it is and does shows on hover)
+					p.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+					p.custom_minimum_size = Vector2(ART_PX, ART_PX)
+					art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+					art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+					p.add_child(art)
+					box.set_meta("sil", art)  # (its shadow on the wall is the picture's own)
+					box.tooltip_text = ArtifactCard.tip(a)
+					(box as _TipBox).tip_tex = UiSkin.tex(UiSkin.ARTIFACT_ART.get(a.id, a.id))
+				elif art != null:
 					var av := VBoxContainer.new()
 					av.alignment = BoxContainer.ALIGNMENT_CENTER
 					av.add_theme_constant_override("separation", 2)
@@ -428,6 +465,22 @@ func _refresh() -> void:
 				p.size_flags_vertical = Control.SIZE_EXPAND_FILL  # the frames stretch to the tallest one
 				_panels.append(p)
 				box.add_child(p)
+			"bottle" when on_stage:
+				var b := Bottles.get_def(it.bottle)
+				var ic: Control = UiSkin.icon(b.id, BOTTLE_PX)
+				if ic == null:
+					ic = UiTheme.label(b.icon, 64, Color.WHITE)
+					ic.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+					ic.custom_minimum_size = Vector2(BOTTLE_PX, BOTTLE_PX)
+				ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+				ic.mouse_filter = Control.MOUSE_FILTER_PASS
+				box.tooltip_text = Keywords.tooltip(b.name, b.desc)
+				(box as _TipBox).tip_tex = UiSkin.tex(b.id)
+				box.add_child(ic)
+				var drop := Control.new()  # (from the bottle's bottom, past the tray's front, to its price under the tray)
+				drop.custom_minimum_size.y = _tray_h() * (1.0 - TRAY_FLOOR)
+				drop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				box.add_child(drop)
 			"bottle":
 				var b := Bottles.get_def(it.bottle)
 				var p := PanelContainer.new()
@@ -467,6 +520,14 @@ func _refresh() -> void:
 				l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 				p.add_child(l)
 				box.add_child(p)
+			"upgrade", "heal" when on_stage:
+				var title := UiTheme.heading("A hot meal" if it.kind == "heal" else "Wax seal", 26, Color(1.0, 0.93, 0.78))
+				title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				title.add_theme_constant_override("outline_size", 8)
+				title.add_theme_color_override("font_outline_color", Color(0.12, 0.06, 0.02))
+				title.mouse_filter = Control.MOUSE_FILTER_PASS
+				title.tooltip_text = "Heal %d HP." % int(run.player.max_hp * RunState.REST_HEAL) if it.kind == "heal" else "Seal one Essence of a spell's pattern: it won't be needed any more."
+				box.add_child(title)
 			"upgrade", "heal":
 				var p := PanelContainer.new()
 				p.add_theme_stylebox_override("panel", _frame())
@@ -498,9 +559,42 @@ func _refresh() -> void:
 		var full: bool = it.kind == "bottle" and run.player.bottles.size() >= run.bottle_slots()
 		var none: bool = it.kind == "upgrade" and run.upgradable().is_empty()
 		var price := run.shop_price(it)
-		var label := "Sold" if sold else ("Bottle slots full" if full else ("Nothing to seal" if none else ("Take · free" if price == 0 else "Buy · %d Leaves" % price)))
-		var btn := UiTheme.button(label, func(): _buy(i), 18)
+		var label := "Sold" if sold else ("Bottle slots full" if full else ("Nothing to seal" if none else ("Free" if price == 0 else str(price))))
+		var btn := UiTheme.button(label, func(): _buy(i), 18, "buy")
+		for k in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+			btn.add_theme_color_override(k, Color(0.06, 0.05, 0.04))  # (the price in black ink)
+		btn.add_theme_color_override("font_disabled_color", Color(0.06, 0.05, 0.04, 0.55))
+		btn.add_theme_constant_override("outline_size", 0)
 		btn.disabled = sold or full or none or run.amber < price
+		var coin := UiSkin.tex("icon_amber")
+		if on_stage and coin != null and label == str(price):
+			# (the coin right before the price, the two centred together on the button)
+			btn.custom_minimum_size = btn.get_combined_minimum_size()  # (its size with the price written in it)
+			btn.text = ""
+			var row := HBoxContainer.new()
+			row.alignment = BoxContainer.ALIGNMENT_CENTER
+			row.add_theme_constant_override("separation", 6)
+			row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			var ci := TextureRect.new()
+			ci.texture = coin
+			ci.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ci.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ci.custom_minimum_size = Vector2(24, 24)
+			ci.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			ci.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ci.modulate.a = 0.55 if btn.disabled else 1.0
+			row.add_child(ci)
+			var num := Label.new()
+			num.text = label
+			num.add_theme_font_size_override("font_size", 18)
+			UiTheme.apply_header(num, "body", 18)
+			num.add_theme_color_override("font_color", Color(0.06, 0.05, 0.04, 0.55 if btn.disabled else 1.0))
+			num.add_theme_constant_override("outline_size", 0)
+			num.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			row.add_child(num)
+			btn.custom_minimum_size.x += 30.0  # (room for the coin)
+			btn.add_child(row)
 		box.add_child(btn)
 		_boxes.append(box)
 		if on_stage:
@@ -511,16 +605,72 @@ func _refresh() -> void:
 				box.set_meta("off", btn.disabled)
 			box.modulate.a = 0.0  # (placed once it has its size)
 			box.position = Vector2(-4000.0, 0.0)
-			(_spell_layer if it.kind == "spell" else _hang_layer).add_child(box)
+			if it.kind == "bottle":
+				box.modulate.a = 1.0
+				_bottle_tray(old).add_child(box)
+			else:
+				(_spell_layer if it.kind == "spell" else _hang_layer).add_child(box)
 		else:
 			_grid.add_child(box)
 	if on_stage:
+		if _tray != null and not _tray in _boxes and not _tray in old:
+			_boxes.append(_tray)
 		_stage_layout.call_deferred(old)
 	else:
 		_equalize.call_deferred()
 
 
+## An item with its price under it, as one hover zone: anywhere over the box (the item, the price, the gap between)
+## shows the item's tooltip, on the hover board with its picture.
+class _TipBox extends VBoxContainer:
+	var tip_tex: Texture2D
+
+	func _make_custom_tooltip(for_text: String) -> Object:
+		if for_text.strip_edges() == "":
+			return null
+		if HoverBoard.available():
+			return HoverBoard.make(tip_tex, for_text)
+		return Keywords.make_tooltip(for_text)
+
+
 ## The frame behind a goods panel: on the stage the dark brass-and-wood picture, whole (it shrinks with the panel); else the usual panel.
+var _tray: Control  # the tray the bottles stand in (the stage shop)
+var _camp: TextureRect  # the campfire the meal and the wax are sold by
+
+
+func _tray_h() -> float:
+	var t := UiSkin.tex("nu_bottle_tray")
+	return TRAY_W * float(t.get_height()) / float(t.get_width()) if t != null else 96.0
+
+
+## A new tray for this round of boxes (the old one goes with the old boxes).
+func _bottle_tray(old: Array) -> Control:
+	if _tray != null and is_instance_valid(_tray) and _tray in _boxes:
+		return _tray
+	if _tray != null and is_instance_valid(_tray) and not _tray in old:
+		old.append(_tray)
+	_tray = Control.new()
+	_tray.set_meta("kind", "tray")
+	_tray.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tray.modulate.a = 0.0
+	_tray.position = Vector2(-4000.0, 0.0)
+	var h := _tray_h()
+	var t := UiSkin.tex("nu_bottle_tray")
+	if t != null:
+		var r := TextureRect.new()
+		r.texture = t
+		r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		r.stretch_mode = TextureRect.STRETCH_SCALE
+		r.size = Vector2(TRAY_W, h)
+		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_tray.add_child(r)
+		_tray.set_meta("sil", r)
+	_tray.custom_minimum_size = Vector2(TRAY_W, h)
+	_hang_layer.add_child(_tray)
+	_boxes.append(_tray)
+	return _tray
+
+
 func _frame() -> StyleBox:
 	if on_stage:
 		var b := UiSkin.box("Panel Frame Dark", [0, 0, 0, 0], [34, 30, 34, 30])
@@ -629,6 +779,18 @@ func _ready_stage() -> void:
 	_wheel_back = _pic_rect("Layer 1.png", WHEEL_BACK_RECT, _cart)
 	_wheel_front = _pic_rect("Layer 2.png", WHEEL_FRONT_RECT, _cart)
 	_merchant = _pic_rect("merchant_full.png", MERCHANT_RECT, _world)
+	var fire := UiSkin.tex("event_campfire_lit")  # (the campfire and its cauldron of wax: the meal is cooked on it, the wax melted in it)
+	if fire != null:
+		var ch := CAMP_W * float(fire.get_height()) / float(fire.get_width())
+		_camp = TextureRect.new()
+		_camp.texture = fire
+		_camp.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_camp.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		_camp.size = Vector2(CAMP_W, ch)
+		_camp.position = Vector2(CAMP_CX - CAMP_W / 2.0, _ground + 12.0 - ch)
+		_camp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_world.add_child(_camp)
+	_world.move_child(_hang_layer, _world.get_child_count() - 1)  # (the hanging goods in front of the cart: on the right they hang over it)
 	for f in BUBBLE_FILES:
 		var bt := _art(f)
 		if bt != null:
@@ -654,14 +816,13 @@ func _ready_stage() -> void:
 	leave_btn.offset_top = -86.0
 	leave_btn.offset_bottom = -30.0
 	add_child(leave_btn)
-	_set_cart_x(CART_FROM if intro else 0.0)
-	_set_merchant_x((CART_FROM if _drunk else MERCHANT_FROM) if intro else 0.0)
-	if intro:
-		_arrive.connect(_add_talk_stage, CONNECT_ONE_SHOT)  # (the favour mark and clicking him to talk: once he has stopped)
-		_arrive_walk()
-	else:
-		_arrived = true
-		_add_talk_stage.call_deferred()
+	# (everything is there at once: the cart, the merchant and the goods; only the goods show up, all together)
+	_set_cart_x(0.0)
+	_set_merchant_x(0.0)
+	_arrived = true
+	_add_talk_stage.call_deferred()
+	if intro and not _drunk:
+		Audio.play("merchant_greeting")
 	_refresh()
 
 
@@ -687,7 +848,7 @@ func _leaves_pill() -> Control:
 	_amber.add_theme_color_override("font_outline_color", Color(0.05, 0.2, 0.04))
 	_amber.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(_amber)
-	pill.position = Vector2(48.0, 985.0)
+	pill.position = Vector2(48.0, 650.0)  # (over the floor's front edge: the spell cards take the bottom of the screen)
 	return pill
 
 
@@ -883,7 +1044,9 @@ func _floor_stretch(y: float) -> float:
 	return lerpf(wb, wf, (y - fr.x) / maxf(1.0, fr.y - fr.x)) / PuppetStage.DESIGN_W
 
 
-## Sizes every new box, puts it in its place and (the first time) plays the arrival of the goods; then the old boxes go.
+## Sizes every new box, puts it in its place and (the first time) plays the arrival of the goods, all at once; then the old boxes go.
+## The spell cards stand along the bottom of the screen and are conjured up; the artifacts hang on the left, the bottles, the
+## wax and the meal on the right (over the cart, never over the merchant), let down on their ropes.
 func _stage_layout(old: Array) -> void:
 	_gen += 1
 	var gen := _gen
@@ -892,51 +1055,86 @@ func _stage_layout(old: Array) -> void:
 		if gen != _gen or not is_inside_tree():
 			return
 	var animate := not _intro_done and intro
-	if animate and not _arrived:
-		await _arrive
-		if gen != _gen or not is_inside_tree():
-			return
-	var n_spell := 0
-	var n_hang := 0
 	var spells_total := _boxes.filter(func(x): return is_instance_valid(x) and x.get_meta("kind") == "spell").size()
-	var pop_end := POP_START + float(maxi(spells_total - 1, 0)) * POP_GAP + POP_TIME  # (the hanging goods come down after the last card stands)
+	var n_spell := 0
+	var n_left := 0
+	var n_right := 0
 	var hang_new: Array[Dictionary] = []
 	var sh_new: Array[Dictionary] = []
+	var n_bottle := 0
+	var bottles_total := _boxes.filter(func(x): return is_instance_valid(x) and x.get_meta("kind") == "bottle").size()
+	var camp_top := _ground - 230.0
+	var camp_foot := _ground + 12.0
+	if _camp != null:
+		camp_top = _camp.position.y
+		camp_foot = _camp.position.y + _camp.size.y
+		sh_new.append({"cx": CAMP_CX + 6.0, "foot": camp_foot - 6.0, "w": CAMP_W * 0.75, "a": 1.0})
 	for b in _boxes:
 		if not is_instance_valid(b):
 			continue
 		b.size = b.get_combined_minimum_size()
 		var w: float = b.size.x
 		var h: float = b.size.y
-		if b.get_meta("kind") == "spell":
-			var k := mini(n_spell, SPELL_X.size() - 1)
-			var foot: float = SPELL_FOOT[k]
-			var rest := Vector2(SPELL_X[k] - w / 2.0, foot - h)  # (its box, unscaled: it is scaled about its bottom edge)
+		var kind := String(b.get_meta("kind"))
+		if kind == "bottle":
+			# (it stands in the tray: its bottom on the tray's floor, its price under the tray)
+			var slots: Array = [[0.5], [0.33, 0.67], TRAY_SLOTS][clampi(bottles_total, 1, 3) - 1]
+			var cx: float = TRAY_W * float(slots[mini(n_bottle, slots.size() - 1)])
+			n_bottle += 1
+			b.position = Vector2(cx - w / 2.0, _tray_h() * TRAY_FLOOR - BOTTLE_PX)
+			b.pivot_offset = Vector2(w / 2.0, BOTTLE_PX)
+			continue
+		if kind == "tray":
+			b.size = Vector2(TRAY_W, _tray_h())
+			w = b.size.x
+		if kind in ["upgrade", "heal"] and _camp != null:
+			# (by the campfire: the meal over it, the wax under it)
+			b.pivot_offset = Vector2(w / 2.0, h / 2.0)
+			b.position = Vector2(CAMP_CX - w / 2.0, camp_top - h + 6.0 if kind == "heal" else camp_foot + 2.0)
+			b.scale = Vector2.ONE
+			if animate:
+				b.modulate.a = 0.0
+				b.create_tween().tween_property(b, "modulate:a", 1.0, 0.5).set_delay(0.3)
+			else:
+				b.modulate.a = 1.0
+			continue
+		if kind == "spell":
+			var cw := w * SPELL_SCALE
+			var gap := (float(CARD_SPAN[1]) - float(CARD_SPAN[0]) - cw * spells_total) / maxf(1.0, spells_total - 1.0)
+			var cx := float(CARD_SPAN[0]) + cw / 2.0 + float(n_spell) * (cw + minf(gap, 60.0)) + maxf(0.0, gap - 60.0) * (spells_total - 1) / 2.0
+			var rest := Vector2(cx - w / 2.0, CARD_FOOT - h)  # (its box, unscaled: it is scaled about its bottom edge)
 			n_spell += 1
 			b.pivot_offset = Vector2(w / 2.0, h)
 			b.position = rest
 			b.scale = Vector2.ONE * SPELL_SCALE
-			var sh := {"cx": SPELL_X[k], "foot": foot, "w": w * SPELL_SCALE, "a": 0.0 if animate else 1.0}
-			sh_new.append(sh)
-			for c in b.get_children():
-				if c is SpellCard and animate:
-					c.warm_hover.call_deferred()  # (their magnified copy is made once, unseen, now: not on the first hover)
+			sh_new.append({"cx": cx, "foot": CARD_FOOT, "w": w * SPELL_SCALE, "a": 1.0})
+			b.modulate.a = 1.0
 			if animate:
-				b.modulate.a = 0.0  # (a flat picture of it lies there instead, see _pop)
-				_pop(b, rest, _floor_stretch(foot), POP_START + float(k) * POP_GAP, sh)
-			else:
-				b.modulate.a = 1.0
+				_conjure(b)
 		else:
-			var cx := HANG_X0 + n_hang * minf(HANG_DX, HANG_MAX_W / float(maxi(1, _boxes.size() - spells_total)))
-			var rest := Vector2(cx - w / 2.0, HANG_ROW_Y[n_hang % 2])
-			n_hang += 1
+			var rest: Vector2
+			if kind == "tray":
+				rest = Vector2(TRAY_CX - w / 2.0, TRAY_TOP)
+			elif kind == "artifact":
+				var k := mini(n_left, ART_X.size() - 1)
+				rest = Vector2(float(ART_X[k]) + 40.0 * float(n_left - k) - w / 2.0, float(ART_TOP[k]))
+				n_left += 1
+			else:
+				rest = Vector2(float(RIGHT_X[n_right % 2]) - w / 2.0, float(RIGHT_ROW_Y[mini(n_right / 2, 1)]) + 26.0 * float(n_right % 2))
+				n_right += 1
 			b.pivot_offset = Vector2(w / 2.0, 0.0)
 			b.scale = Vector2.ONE * HANG_SCALE
 			b.position = rest
-			var d := {"box": b, "rest": rest, "phase": float(n_hang) * 1.9, "swing": 0.0, "on": not animate}
+			if kind == "artifact" and b.has_meta("sil"):
+				var art: TextureRect = b.get_meta("sil")
+				b.set_meta("tie", art.get_parent().position + art.position + art.size / 2.0)  # (its string comes down behind it, to its middle: it swings about that)
+			var d := {"box": b, "rest": rest, "phase": float(n_left + n_right) * 1.9, "swing": 0.0, "on": not animate,
+					"one": kind == "artifact" and b.has_meta("sil"), "a": 0.0, "v": 0.0}  # (one: it hangs on one string, and swings on it)
+			if kind == "tray":
+				b.scale = Vector2.ONE
 			if animate:
 				b.modulate.a = 0.0
-				_drop_in(d, pop_end + HANG_START + float(n_hang - 1) * HANG_GAP)
+				_drop_in(d, 0.0)
 			else:
 				b.modulate.a = 1.0
 				d.swing = 1.0
@@ -947,8 +1145,21 @@ func _stage_layout(old: Array) -> void:
 		if is_instance_valid(b):
 			b.queue_free()
 	if animate:
-		await get_tree().create_timer(pop_end + HANG_START + float(n_hang) * HANG_GAP + HANG_FALL + 1.3).timeout
+		await get_tree().create_timer(HANG_FALL + 1.3).timeout
 	_intro_done = true
+
+
+## A spell card is conjured up where it stands: it shows as static that settles into the card (the conjuring of a fight's
+## spells), and its price fades in under it.
+func _conjure(b: Control) -> void:
+	Audio.play("spell_glow", -4.0)
+	for c in b.get_children():
+		if c is SpellCard:
+			(c as SpellCard).static_in((c as Control).global_position, CONJURE_TIME)
+			(c as SpellCard).warm_hover.call_deferred()  # (their magnified copy is made once, unseen, now: not on the first hover)
+		elif c is Button:
+			(c as Control).modulate.a = 0.0
+			(c as Control).create_tween().tween_property(c, "modulate:a", 1.0, 0.3).set_delay(CONJURE_TIME * 0.6)
 
 
 ## A spell card lies face up on the floor (a picture of the box, drawn to a mesh in perspective: far edge higher and narrower, the whole stretched with the
@@ -1048,6 +1259,7 @@ func _drop_in(d: Dictionary, delay: float) -> void:
 	if is_instance_valid(b):
 		b.position.y = rest.y
 	d.swing = 1.0
+	d.v = randf_range(-1.0, 1.0) * SWING_NUDGE
 
 
 func _hang_step(t: float, b: Control, rest_y: float, from: float) -> void:
@@ -1069,10 +1281,31 @@ func _process(delta: float) -> void:
 	var now := Time.get_ticks_msec()
 	for d in _hang:
 		var b: Control = d.box
-		if is_instance_valid(b):
+		if is_instance_valid(b) and d.one and float(d.swing) >= 1.0:
+			# (an artifact on its string: a pendulum from where the string comes down, as a puppet swings; a slow breeze of its own)
+			var breeze := 0.045 * sin(_t * 0.8 + float(d.phase)) + 0.02 * sin(_t * 1.9 + float(d.phase) * 1.7)  # (it never quite stops swinging)
+			d.v += (-SWING_K * (float(d.a) - breeze) - SWING_DAMP * float(d.v)) * delta
+			d.a = clampf(float(d.a) + float(d.v) * delta, -SWING_MAX, SWING_MAX)
+			var rest: Vector2 = d.rest
+			var at: Vector2 = b.get_meta("tie", Vector2(b.size.x / 2.0, 0.0))  # (where the string is tied, on the picture)
+			var hook := Vector2(rest.x + at.x, ROPE_TOP)
+			var tie := hook + Vector2(-sin(float(d.a)), cos(float(d.a))) * (rest.y + at.y - ROPE_TOP)
+			b.pivot_offset = at
+			b.rotation = float(d.a)
+			b.position = tie - b.pivot_offset
+		elif is_instance_valid(b) and String(b.get_meta("kind", "")) == "tray":
+			b.rotation = float(d.swing) * 0.008 * sin(_t * 1.1 + float(d.phase))
+			if float(d.swing) >= 1.0:
+				for k in b.get_children():
+					if k is VBoxContainer:
+						_grow(k, (_under(k, mp) or int(k.get_meta("hold", 0)) > now), 1.25)
+		elif is_instance_valid(b):
 			b.rotation = float(d.swing) * 0.012 * sin(_t * 1.1 + float(d.phase))
+		if is_instance_valid(b) and String(b.get_meta("kind", "")) != "tray":
 			if float(d.swing) >= 1.0:  # (landed: it grows under the mouse, and for a while after a click)
 				var big: bool = _under(b, mp) or int(b.get_meta("hold", 0)) > now
+				if big and not bool(b.get_meta("big", false)) and d.one:
+					d.v += SWING_NUDGE * (1.0 if randf() < 0.5 else -1.0)  # (touched: it swings)
 				if big != bool(b.get_meta("big", false)):
 					b.set_meta("big", big)
 					b.z_index = 20 if big else 0  # (over its neighbours while it is big)
@@ -1084,6 +1317,20 @@ func _process(delta: float) -> void:
 					tw.tween_property(b, "scale", Vector2.ONE * HANG_SCALE * (HANG_BIG if big else 1.0), 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	if _ropes != null:
 		_ropes.queue_redraw()
+
+
+## A bottle in the tray grows (about its bottom) under the mouse.
+func _grow(b: Control, big: bool, by: float) -> void:
+	if big == bool(b.get_meta("big", false)):
+		return
+	b.set_meta("big", big)
+	b.z_index = 20 if big else 0
+	var old = b.get_meta("mag_tw", null)
+	if old is Tween and old.is_valid():
+		old.kill()
+	var tw := b.create_tween()
+	b.set_meta("mag_tw", tw)
+	tw.tween_property(b, "scale", Vector2.ONE * (by if big else 1.0), 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
 ## Is the point (on the screen) over this control, whatever its scale and turn?
@@ -1118,12 +1365,19 @@ class _HangRopes extends Control:
 				continue
 			var rest: Vector2 = d.rest
 			var xf := b.get_transform()
-			for frac in [0.16, 0.84]:
+			var ink := Color(0.03, 0.03, 0.03, 0.9)
+			if d.one:
+				var at: Vector2 = b.get_meta("tie", Vector2(b.size.x * 0.5, 8.0))
+				var tie: Vector2 = xf * at
+				draw_line(Vector2(rest.x + at.x, ShopScreen.ROPE_TOP), tie, ink, RopeRig.STRING_W, true)
+				draw_circle(tie, RopeRig.STRING_W * 1.3, Color(0.03, 0.03, 0.03))
+				continue
+			var fracs := [0.04, 0.96] if String(b.get_meta("kind", "")) == "tray" else [0.16, 0.84]
+			for frac in fracs:
 				var end: Vector2 = xf * Vector2(b.size.x * frac, 6.0)
 				var top_x: float = rest.x + b.size.x * 0.5 + (b.size.x * frac - b.size.x * 0.5) * b.scale.x  # (it grows about its top middle)
-				MapScreen.MapRope.draw_between(self, Vector2(top_x, ShopScreen.ROPE_TOP), end, 0.0, Color.WHITE, RopeRig.ROPE_W)
-				var rv := RopeRig._rivet_tex(int(ceil(RopeRig.RIVET_PX)))
-				draw_texture(rv, end - rv.get_size() * 0.5)
+				draw_line(Vector2(top_x, ShopScreen.ROPE_TOP), end, ink, RopeRig.STRING_W, true)
+				draw_circle(end, RopeRig.STRING_W * 1.3, Color(0.03, 0.03, 0.03))
 
 
 ## The shadows, drawn under everything else of the shop: a soft blob on the floor under the cart, the merchant and the standing cards, and a soft copy of each
@@ -1185,6 +1439,12 @@ class _Shadows extends Control:
 		for d in shop._hang:
 			var b: Control = d.box
 			if not is_instance_valid(b) or not d.on:
+				continue
+			if b.has_meta("sil"):
+				var sil: TextureRect = b.get_meta("sil")
+				if is_instance_valid(sil) and sil.texture != null:
+					draw_set_transform_matrix(Transform2D(0.0, ShopScreen.SHADOW_SHIFT) * get_global_transform().affine_inverse() * sil.get_global_transform())
+					draw_texture_rect(sil.texture, Rect2(Vector2.ZERO, sil.size), false, Color(0, 0, 0, 0.4))  # (no frame: the shadow of the thing itself)
 				continue
 			draw_set_transform_matrix(Transform2D(0.0, ShopScreen.SHADOW_SHIFT) * b.get_transform())  # (the frame's own turn and scale, then the shift)
 			var g := float(BOX_CORE) - 6.0

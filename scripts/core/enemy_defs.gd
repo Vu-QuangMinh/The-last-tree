@@ -60,16 +60,6 @@ const E := {
 	"pickpocket_imp": {"name": "Pickpocket Imp", "act": 0, "hp": "AFA", "moves": [{"kind": "steal", "n": 1}, {"kind": "attack", "n": 4}, {"kind": "armor", "pos": 0}],
 		"flavor": "It wears what it steals."},
 	# ---------------- act 2
-	"splitter_ooze": {"name": "Splitter Ooze", "act": 2, "hp": "WWF", "moves": [{"kind": "attack", "n": 4}, {"kind": "mend", "el": "random", "n": 1, "who": "self"}, {"kind": "vulnerable", "n": 2}], "passives": ["split"],
-		"flavor": "Hit it wrong and there are two."},
-	"overgrowth_vine": {"name": "Overgrowth Vine", "act": 2, "hp": "FAW", "moves": [{"kind": "attack", "n": 4}, {"kind": "armor", "pos": 0}, {"kind": "poison", "n": 2}], "passives": ["overgrowth"],
-		"flavor": "Ignore it and it grows."},
-	"toll_keeper": {"name": "Toll Keeper", "act": 2, "hp": "WWA", "moves": [{"kind": "toll"}, {"kind": "attack", "n": 5}, {"kind": "armor", "pos": 1}],
-		"flavor": "Every word costs extra."},
-	"hexer": {"name": "Hexer", "act": 2, "hp": "FW", "moves": [{"kind": "virus", "n": 3}, {"kind": "attack", "n": 4}, {"kind": "mend", "el": "random", "n": 1, "who": "ally"}],
-		"flavor": "Marks your Essence with pain."},
-	"shrine_maiden": {"name": "Shrine Maiden", "act": 2, "hp": "WA", "moves": [{"kind": "mend", "el": "random", "n": 1, "who": "all"}, {"kind": "attack", "n": 3}, {"kind": "vulnerable", "n": 1}],
-		"flavor": "She mends everyone but you."},
 	# The Anxious Armadillo (Act 2, met once ever: the second fight of Act 2 on your very first run). He never attacks:
 	# he only curls up tighter (+2 Thorns a turn: your Release hitting him hurts you that much). Beaten, he doesn't
 	# break: FightScreen._armadillo_ending plays his scene (sad, he tries to hop away, the string yanks him up).
@@ -77,29 +67,29 @@ const E := {
 		"passives": ["armadillo"], "moves": [{"kind": "grow_thorns", "n": 2}],
 		"flavor": "Curled up, spiky, and very, very nervous."},
 	# Act 2 (see POOLS; exact numbers: no act bonus). The Starving Mobs: three peasants, 7 Essence each.
-	"mob_pitchfork": {"name": "Pitchfork Peasant", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FFWAF",
+	"mob_pitchfork": {"name": "Pitchfork Peasant", "act": 2, "size": 1.5, "member": true, "no_extra": true, "no_bonus": true, "hp": "FFWAF",
 		"moves": [{"kind": "attack", "n": 2, "also": {"kind": "bleed", "n": 2}}],
 		"flavor": "It used to turn hay."},
-	"mob_slingshot": {"name": "Slingshot Peasant", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WAAFW",
+	"mob_slingshot": {"name": "Slingshot Peasant", "act": 2, "size": 1.5, "member": true, "no_extra": true, "no_bonus": true, "hp": "WAAFW",
 		"moves": [{"kind": "attack", "n": 2, "also": {"kind": "drain_essence", "n": 1}}],
 		"flavor": "Stones are the only thing left that is free."},
-	"mob_torch": {"name": "Torch Peasant", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "AFFWA",
+	"mob_torch": {"name": "Torch Peasant", "act": 2, "size": 1.5, "member": true, "no_extra": true, "no_bonus": true, "hp": "AFFWA",
 		"moves": [{"kind": "ignite_spell", "n": 1, "turns": 9999, "until_cast": true}],
 		"flavor": "Everything he owned has already burned."},
 	# The Undying Duo: the skeleton keeps his first Essence armoured until it is his last; behind him the Necromancer can't be touched.
-	"shield_bearer": {"name": "Skeleton Shield Bearer", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WWFAWW", "passives": ["big_shield"],
-		"moves": [{"kind": "armor", "pos": 0}],
+	"shield_bearer": {"name": "Skeleton Shield Bearer", "act": 2, "size": 2.0, "member": true, "no_extra": true, "no_bonus": true, "hp": "WWFAWWFAWFA", "passives": ["big_shield"],
+		"moves": [{"kind": "guard"}],
 		"flavor": "Nobody told him the war was over."},
-	"necromancer": {"name": "Necromancer", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FA", "passives": ["behind_shield"],
-		"moves": [{"kind": "poison", "n": 3}],
+	"necromancer": {"name": "Necromancer", "act": 2, "size": 1.3, "member": true, "no_extra": true, "no_bonus": true, "hp": "FAW", "passives": ["behind_shield"],
+		"moves": [{"kind": "poison", "n": 3}, {"kind": "mend", "el": "random", "n": 3, "who": "ally", "cap": 11}],  # (the heal: back up to the Bearer's 11; with him down, it does nothing)
 		"flavor": "Brave, as long as somebody else is holding the shield."},
 	# The Sentinels: large golems. Each does nothing until it is down to 12 Essence, or for 3 turns. Alone they are normal fights;
 	# together they are the Twin Sentinels, a mini boss. Red (a red core): hits for 3 once, twice, four times, stuns itself for a turn, starts over.
-	"sentinel": {"name": "Red Sentinel", "act": 2, "tint": Color(0.75, 0.2, 0.15), "member": true, "no_extra": true, "no_bonus": true, "hp": "WAFWAWFAWWFAAWFW", "passives": ["dormant"],
+	"sentinel": {"name": "Red Sentinel", "act": 2, "size": 2.0, "tint": Color(0.75, 0.2, 0.15), "member": true, "no_extra": true, "no_bonus": true, "hp": "WAFWAWFAWWFAAWFW", "passives": ["dormant"],
 		"moves": [{"kind": "attack", "n": 3}, {"kind": "attack", "n": 3, "hits": 2}, {"kind": "attack", "n": 3, "hits": 4}, {"kind": "recharge"}],
 		"flavor": "Its red core turns slowly toward you."},
 	# Blue (a blue core): every blow freezes your Essence too. Freeze stacks.
-	"blue_sentinel": {"name": "Blue Sentinel", "act": 2, "tint": Color(0.2, 0.4, 0.8), "member": true, "no_extra": true, "no_bonus": true, "hp": "AWFAWFWWFAFWAWAF", "passives": ["dormant"],
+	"blue_sentinel": {"name": "Blue Sentinel", "act": 2, "size": 2.0, "tint": Color(0.2, 0.4, 0.8), "member": true, "no_extra": true, "no_bonus": true, "hp": "AWFAWFWWFAFWAWAF", "passives": ["dormant"],
 		"moves": [{"kind": "freeze", "n": 1, "also": {"kind": "attack", "n": 2}}, {"kind": "freeze", "n": 2, "also": {"kind": "attack", "n": 4}}, {"kind": "freeze", "n": 4, "also": {"kind": "attack", "n": 4}}],
 		"flavor": "Its blue core turns slowly toward you."},
 	# The Rot Snake: a big, half-rotten snake. Poison 5, then a bite for 5 and Poison 1, in turn.
@@ -113,21 +103,21 @@ const E := {
 		"head_move": {"kind": "silence", "all": true, "turns": 1, "head": true},
 		"flavor": "He holds it up to his neck to scream."},
 	# The Scavengers: four animals with human posture, 6 Essence each. Flying: see EnemyState.flying.
-	"scav_rat": {"name": "Scavenger Rat", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAF",
+	"scav_rat": {"name": "Scavenger Rat", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAFWA",
 		"moves": [{"kind": "attack", "n": 1, "hits": 3}],
 		"flavor": "Three small bites, and it has already gone through your pockets."},
-	"scav_hyena": {"name": "Scavenger Hyena", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WAFW",
+	"scav_hyena": {"name": "Scavenger Hyena", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WAFWAF",
 		"moves": [{"kind": "empower", "n": 1, "who": "all", "name": "Howl"}],
 		"flavor": "It laughs, and the others get braver."},
-	"scav_vulture": {"name": "Scavenger Vulture", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "flying": true, "hp": "AFWA", "passives": ["flying"],
+	"scav_vulture": {"name": "Scavenger Vulture", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "flying": true, "hp": "AFWAFW", "passives": ["flying"],
 		"moves": [{"kind": "attack", "n": 2, "hits": 2}],
 		"flavor": "It is in no hurry."},
-	"scav_beetle": {"name": "Scavenger Dung Beetle", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WWAA", "passives": ["shell"],
+	"scav_beetle": {"name": "Scavenger Dung Beetle", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WWAAFF", "passives": ["shell"],
 		"moves": [{"kind": "attack", "n": 3}],
 		"flavor": "Somebody has to clean up."},
 	# The Maddened Soldier: ragged, a shiny red eye, his hands fused into a two-handed sword he drags along the ground. Hits for 2;
-	# every time your chant strikes him, one more hit on his next attack (spells don't count).
-	"mad_soldier": {"name": "Maddened Soldier", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWWAFAFWAAWF", "passives": ["maddened"],
+	# every spell you cast is one more hit on his next attack (that turn only: it starts over each turn).
+	"mad_soldier": {"name": "Maddened Soldier", "act": 2, "size": 1.5, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWWAFAFWAAWF", "passives": ["maddened"],
 		"moves": [{"kind": "attack", "n": 2}],
 		"flavor": "The sword isn't in his hands. It is his hands."},
 	# The Tree Dwellers: a tree with two people growing out of it as branches, each with a bow and its own 8 Essence.
@@ -142,20 +132,21 @@ const E := {
 	"orphan_bush": {"name": "The Orphans", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "AWFAWWFAA", "passives": ["thrown_junk"],
 		"moves": [{"kind": "attack", "n": 3}],
 		"flavor": "Somebody behind it is trying very hard not to laugh."},
-	# The Bog Lantern: an enormous angler fish on two legs (any of its moves, at random), and its lamp, a separate enemy on a clock:
-	# 2, 1, then at 0 it stuns you and starts over. Killed, the lamp grows back after a turn, its clock at 2.
-	"bog_fish": {"name": "Bog Lantern", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WAFWWAFAW", "passives": ["lure"], "random_moves": true,
+	# The Bog Lantern: an enormous angler fish on two legs (any of its moves, at random), and its lamp, a separate enemy hanging on
+	# its hook, on a clock: 2, 1, then at 0 it stuns you and starts over. It is part of the fish: put out, it stays there, dark, and
+	# lights up again after a turn, its clock at 2.
+	"bog_fish": {"name": "Bog Lantern", "act": 2, "member": true, "size": 2.0, "no_extra": true, "no_bonus": true, "hp": "WAFWWAFAWAFW", "passives": ["lure"], "random_moves": true,
 		"moves": [{"kind": "attack", "n": 5}, {"kind": "poison", "n": 3}, {"kind": "grow_thorns", "n": 2}],
 		"flavor": "Don't look at the light."},
-	"bog_lamp": {"name": "Lamp", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FF",
+	"bog_lamp": {"name": "Lamp", "act": 2, "hang": 150.0, "member": true, "no_extra": true, "no_bonus": true, "hp": "FF",
 		"moves": [{"kind": "glow", "n": 2}, {"kind": "stun", "turns": 1}],
 		"flavor": "Brighter. Brighter. Brighter."},
-	# Bug Hunter 1.0: an assembly-line robot. At 0 Essence it reboots with 5 Essence: destroy that, or on its turn it explodes.
-	"bug_hunter": {"name": "Bug Hunter 1.0", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAFFWAWW", "hp2": "AWFA", "passives": ["last_fuse"],
-		"moves": [{"kind": "attack", "n": 5}], "moves2": [{"kind": "explode", "n": 10}],
+	# Bug Hunter 1.0: an assembly-line robot with two things in mind at once: its laser (5 every turn) and a clock of 3 turns;
+	# on its 4th turn it calls a Sentinel (red or blue). Only once: after that, only the laser.
+	"bug_hunter": {"name": "Bug Hunter 1.0", "act": 2, "call_once": true, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAFFWAWW",
+		"moves": [{"kind": "attack", "n": 5, "also": {"kind": "summon_clock", "n": 3}}, {"kind": "attack", "n": 5, "also": {"kind": "summon_clock", "n": 2}},
+			{"kind": "attack", "n": 5, "also": {"kind": "summon_clock", "n": 1}}, {"kind": "attack", "n": 5, "also": {"kind": "summon", "ids": ["sentinel", "blue_sentinel"], "n": 1}}],
 		"flavor": "Task: remove bugs. You are a bug."},
-	"blinding_beetle": {"name": "Blinding Beetle", "act": 2, "hp": "FA", "moves": [{"kind": "blind", "turns": 2}, {"kind": "attack", "n": 4}, {"kind": "empower", "n": 1}],
-		"flavor": "A flash, and everything blurs."},
 	# ---------------- act 3
 	"inverter": {"name": "Inverter", "act": 3, "hp": "FWFW", "moves": [{"kind": "invert"}, {"kind": "attack", "n": 5}, {"kind": "armor", "pos": 0}],
 		"flavor": "Fire becomes water, water becomes fire."},
@@ -388,11 +379,11 @@ const PASSIVE_TEXT := {
 	"head_throw": "Head Throw: at 10 Essence or less, he throws his head and silences all your spells. After that he only swings.",
 	"flying": "Flying: your chant can't hit it. Damage from a spell or a bottle brings it down, and it is stunned for a turn.",
 	"shell": "Shell: its first Essence is always armoured, until it is its last one.",
-	"maddened": "Maddened: every time your chant strikes him, he hits one more time on his next attack. Spells don't count.",
+	"maddened": "Maddened: every spell you cast this turn is one more hit on his attack. It starts over each turn.",
 	"thrown_junk": "Thrown Junk: throws whatever is at hand, for 2 to 10 damage. Usually about 3, but sometimes an axe.",
-	"lure": "Lure: its lamp is a separate enemy. Killed, the lamp grows back after a turn, its clock back at 2.",
+	"lure": "Lure: its lamp hangs on its hook. Put out, it goes dark for a turn, then lights up again, its clock back at 2.",
 	"last_fuse": "Last Fuse: at 0 Essence it reboots with 4 Essence. Destroy those, or on its turn it explodes for 10 and dies.",
-	"big_shield": "Big Shield: keeps its first Essence armoured until that is its last one. Then it drops the shield and attacks.",
+	"big_shield": "Big Shield: guards the Necromancer, who can't be touched while it stands. On its last Essence it swings instead. Fallen, it can be raised again.",
 	"behind_shield": "Hiding: while the Shield Bearer stands, nothing you do can touch it.",
 	"gem_crown": "Gem Crown: at the end of its turn, armours its first Essence if nothing is armoured (not when it has 1 left).",
 	"echo": "Echo: repeats each action twice.",
@@ -437,17 +428,12 @@ const BIOS := {
 	"mirror_wisp": "Never in the same order twice. Blinds you, reshuffles itself, and giggles about it.",
 	"frost_hex": "Freezes your Essence, then waits for you to complain. Mends itself with the same cold patience.",
 	"pickpocket_imp": "Steals your Essence and wears them like jewellery. Surprisingly good fashion sense for a thief.",
-	"splitter_ooze": "Hit it wrong and there are two of them. Hit it right and there are still two, just smaller and angrier.",
-	"overgrowth_vine": "Ignore it for one turn and it grows. Basically a houseplant with a violence problem.",
-	"toll_keeper": "Every word costs extra. Shortens your chant and charges admission in bruises.",
-	"hexer": "Curses one of your Essence so chanting it hurts. Heals its friends, which is honestly the most annoying part.",
-	"shrine_maiden": "Heals everyone except you. Very devout. Very inconvenient.",
 	"hush_moth": "Its wings whisper \"shhh\" at one of your spells: it can't fire for a turn.",
 	"mob_pitchfork": "A farmer with nothing left to farm. Stabs you, and the wound stays open.",
 	"mob_slingshot": "Small stones, good aim. Every hit knocks an Essence out of your bag.",
 	"mob_torch": "Sets one of your spells alight. It stays alight until you cast it, and then it burns you.",
-	"shield_bearer": "A skeleton behind a very big shield. Doesn't fight back until the shield is all he has left.",
-	"necromancer": "Two Essence and a lot of Poison, safe for as long as his skeleton stands.",
+	"shield_bearer": "A skeleton behind a very big shield. Doesn't fight back until he is nearly gone, and he doesn't stay down for long.",
+	"necromancer": "Three Essence, Poison 3, a heal of 3 for his skeleton, and he raises it when it falls. You can't touch him, or even see his Essence, while it stands.",
 	"rot_snake": "Spits a mouthful of rot, then bites. Its Poison piles up fast.",
 	"sentinel": "Wakes when you hurt it, or when it has seen enough. Each round of blows is bigger, then it has to stop and recharge.",
 	"blue_sentinel": "Wakes when you hurt it, or when it has seen enough. Every blow freezes your Essence, more and more of it.",
@@ -456,14 +442,13 @@ const BIOS := {
 	"scav_hyena": "Doesn't bite. It howls, and all of them hit harder.",
 	"scav_vulture": "Your chant can't reach it. Knock it down with a spell, and it lies stunned for a turn.",
 	"scav_beetle": "Its shell never comes off, and it hits harder than it looks.",
-	"mad_soldier": "Weak on his own. Every chant that strikes him adds a swing, so a spell may be the kinder way.",
+	"mad_soldier": "Weak on his own, but every spell you cast this turn adds a swing. Cast less, or kill him fast.",
 	"tree_dweller_a": "Rooted to the spot, and never stops shooting. Two Poison a turn, every turn.",
 	"tree_dweller_b": "Rooted to the spot, and never stops shooting. Two Poison a turn, every turn.",
 	"orphan_bush": "Mud, stones, sticks, and now and then something much worse. Nobody ever taught them not to.",
 	"bog_fish": "An enormous angler fish on two legs. Bites, spits Poison, or grows more Thorns, whichever it feels like.",
-	"bog_lamp": "Its clock runs 2, 1, 0, and at 0 you are Stunned. Put it out and it grows back, but its clock starts over.",
-	"bug_hunter": "An assembly-line arm with a laser. Finish it twice, or stand well back.",
-	"blinding_beetle": "One shiny flash and suddenly everything is question marks. Gets stronger the longer you squint.",
+	"bog_lamp": "Its clock runs 2, 1, 0, and at 0 you are Stunned. Put it out and it lights up again, but its clock starts over.",
+	"bug_hunter": "An assembly-line arm with a laser, and a clock: on its 4th turn it calls a Sentinel. Take it apart before the alarm goes off.",
 	"inverter": "Fire becomes water, water becomes fire, and your plans become confetti.",
 	"warded_golem": "Short chants bounce right off. Say something meaningful: at least four Essence long.",
 	"echo_wraith": "Everything it does, it does twice. Everything it does, it does twice.",
@@ -580,15 +565,36 @@ const ELITE_GROUPS := {
 static func is_hidden(id: String) -> bool:
 	if ELITE_GROUPS.has(id):
 		return ELITE_GROUPS[id].get("hidden", false)
+	if LINKED.has(id):
+		return false
 	return E.has(id) and E[id].get("hidden", false)
+
+
+## Normal-fight enemies that only ever come together, as one (Test mode puts them on the stage together, never one alone).
+const LINKED := {
+	"undying_duo": {"name": "The Undying Duo", "act": 2, "ids": ["shield_bearer", "necromancer"]},
+	"bog_lantern": {"name": "The Bog Lantern", "act": 2, "ids": ["bog_lamp", "bog_fish"], "thumb": "bog_fish"},
+}
 
 
 ## The enemies an id brings into a fight: a group's members, or just itself.
 static func ids_of(id: String) -> Array:
+	if LINKED.has(id):
+		return LINKED[id].ids.duplicate()
 	return ELITE_GROUPS[id].ids.duplicate() if ELITE_GROUPS.has(id) else [id]
 
 
+## Every enemy that only comes as part of a LINKED pair.
+static func linked_members() -> Array:
+	var out: Array = []
+	for k in LINKED:
+		out.append_array(LINKED[k].ids)
+	return out
+
+
 static func name_of(id: String) -> String:
+	if LINKED.has(id):
+		return LINKED[id].name
 	return ELITE_GROUPS[id].name if ELITE_GROUPS.has(id) else E[id].name
 
 
@@ -617,10 +623,11 @@ const POOLS := {
 			{"name": "Hot Puddle", "ids": ["yellow_slime", "ashling"], "w": 0.7},
 			{"name": "Breezy Ooze", "ids": ["green_slime", "zephling"], "w": 0.7},
 			{"name": "Mirror Fairy", "ids": ["mirror_fairy"], "w": 1.0},
+		],
+		# (by the numbers: medium tops out near 10 Essence and 9 damage a turn; the 13+ Essence groups are hard)
+		"hard": [
 			{"name": "The Slime Trio", "ids": ["purple_slime", "green_slime", "yellow_slime"], "w": 1.0},
 			{"name": "The Forest Floor", "ids": ["bramble_back", "winged_tortoise"], "w": 0.8},
-		],
-		"hard": [
 			{"name": "The Greenseer's Garden", "ids": ["greenseer", "green_slime"], "w": 1.0},
 			{"name": "Rolling Bear", "ids": ["rolling_bear"], "w": 1.0},
 			{"name": "Giant Slime", "ids": ["giant_slime"], "w": 1.0},
@@ -630,9 +637,7 @@ const POOLS := {
 	2: {
 		"easy": [
 			{"name": "The Orphans", "ids": ["orphan_bush"], "w": 1.0},
-			{"name": "The Undying Duo", "ids": ["shield_bearer", "necromancer"], "w": 1.0},
-			{"name": "The Bog Lantern", "ids": ["bog_fish", "bog_lamp"], "w": 1.0},
-			{"name": "Bug Hunter 1.0", "ids": ["bug_hunter"], "w": 1.0},
+				{"name": "Bug Hunter 1.0", "ids": ["bug_hunter"], "w": 1.0},
 			{"name": "Starving Mobs", "ids": ["mob_pitchfork", "mob_slingshot", "mob_torch"], "w": 1.0},
 			{"name": "Maddened Soldier", "ids": ["mad_soldier"], "w": 1.0},
 			{"name": "The Tree Dwellers", "ids": ["tree_dweller_a", "tree_dweller_b"], "w": 1.0},
@@ -641,10 +646,13 @@ const POOLS := {
 				{"name": "The Red Sentinel", "ids": ["sentinel"], "w": 1.0},
 		{"name": "The Blue Sentinel", "ids": ["blue_sentinel"], "w": 1.0},
 		{"name": "The Rot Snake", "ids": ["rot_snake"], "w": 1.0},
-			{"name": "The Scavengers", "ids": ["scav_rat", "scav_hyena", "scav_vulture", "scav_beetle"], "w": 1.0},
+		{"name": "The Bog Lantern", "ids": ["bog_lamp", "bog_fish"], "w": 1.0},
+		{"name": "The Undying Duo", "ids": ["shield_bearer", "necromancer"], "w": 1.0},
 		],
 		"hard": [
 			{"name": "The Headless Horseman", "ids": ["headless_horseman"], "w": 1.0},
+			{"name": "The Scavengers", "ids": ["scav_rat", "scav_hyena", "scav_vulture", "scav_beetle"], "w": 1.0},
+			{"name": "Three Bug Hunters", "ids": ["bug_hunter", "bug_hunter", "bug_hunter"], "w": 1.0},
 		],
 	},
 }
@@ -836,6 +844,12 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			s = "Poison you (%d)" % m.n
 		"bleed":
 			s = "Bleed %d" % m.n
+		"guard":
+			s = "Guard: the Necromancer behind it can't be touched"
+		"resurrect":
+			s = "Raise the skeleton again, with 3 Essence"
+		"summon_clock":
+			s = "Calls a Sentinel in %d turn%s" % [m.n, "" if int(m.n) == 1 else "s"]
 		"grounded":
 			s = "Stunned: it skips its action"
 		"recharge":
@@ -853,6 +867,8 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 		"summon":
 			if m.has("list"):
 				s = "Call %d %s%s" % [m.n, E[m.list[0]].name, "" if m.n == 1 else "s"]
+			elif m.has("ids"):
+				s = "Call %d of: %s" % [m.n, ", ".join(m.ids.map(func(x): return E[x].name))]
 			else:
 				s = "Call %d %s" % [m.n, E[m.id].name] if m.has("id") else "Call %d random small slime%s" % [m.n, "" if m.n == 1 else "s"]
 		"steal_spell":

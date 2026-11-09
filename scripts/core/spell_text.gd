@@ -364,7 +364,7 @@ static func describe_op(e: Dictionary, same := false) -> String:
 			var where: String = {"first": "leftmost Essence", "first2": "2 leftmost Essence", "last": "rightmost Essence"}[e.pos]
 			return "turn %s %s into %s" % [ts, where, _el(e.to)]
 		"purge":
-			return "deal up to %d damage to %s %s" % [n, ts, _el(e.el)]
+			return "deal up to %d %s damage to %s" % [n, _el(e.el), t]
 		"shatter":
 			if int(e.get("shield_per", 0)) > 0:
 				return "break %s Armour. Gain %d Shield for each Armour broken" % [ts, int(e.shield_per)]

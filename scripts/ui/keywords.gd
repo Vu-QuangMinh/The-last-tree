@@ -174,7 +174,7 @@ static func glossary(text: String) -> Array:
 	var out := []
 	for m in _regex().search_all(text):
 		var key := m.get_string(1).to_lower()
-		if key == "" or not K.has(key):
+		if key == "" or not K.has(key) or key in PLAIN:  # (Heal, Shield, Essence...: everyone knows them)
 			continue
 		var expl: String = K[key][2]
 		if expl == "" or seen.has(expl):
@@ -184,9 +184,43 @@ static func glossary(text: String) -> Array:
 	return out
 
 
-## A tooltip body: title, coloured rules text, then what its keywords mean.
-static func tooltip(title: String, body: String, extra := "", icon := "", more_gloss := []) -> String:
-	var s := "[b][font_size=25]%s%s[/font_size][/b]\n%s" % [(icon + " ") if icon != "" else "", _escape(title), colorize(body)]
+## Words everyone knows (Heal, Shield, Damage, the Essence...): a card's tooltip doesn't explain them.
+const PLAIN := ["damage", "heal", "shield", "essence", "release", "released", "fire", "water", "wind", "air", "random"]
+
+
+## A spell card's tooltip: only what its keywords mean, one line each ("" when none needs explaining). `more_keys`: keywords
+## the card shows without writing them (Fused, Sealed...); `more`: other explanations ("Word: what it means").
+static func keyword_lines(text: String, more_keys := [], more := []) -> String:
+	var keys: Array = []
+	for m in _regex().search_all(text):
+		keys.append(m.get_string(1).to_lower())
+	keys.append_array(more_keys)
+	var seen := {}
+	var expl: Array = []
+	for key in keys:
+		if key == "" or key in PLAIN or not K.has(key) or K[key][2] == "":
+			continue
+		if not seen.has(K[key][2]):
+			seen[K[key][2]] = true
+			expl.append(K[key][2])
+	for e in more:
+		if not seen.has(e):
+			seen[e] = true
+			expl.append(e)
+	var lines: Array = []
+	for g in expl:
+		var parts: PackedStringArray = String(g).split(":", true, 1)
+		lines.append(colorize(parts[0]) + "[color=#d8ddd2]:" + _escape(parts[1] if parts.size() > 1 else "") + "[/color]")
+	return "\n".join(lines)
+
+
+## A tooltip body: title, coloured rules text, then what its keywords mean. `title_col`: the title's colour (an artifact's
+## rarity), else the default.
+static func tooltip(title: String, body: String, extra := "", icon := "", more_gloss := [], title_col := Color(0, 0, 0, 0)) -> String:
+	var t := _escape(title)
+	if title_col.a > 0.0:
+		t = "[color=#%s]%s[/color]" % [title_col.to_html(false), t]
+	var s := "[b][font_size=25]%s%s[/font_size][/b]\n%s" % [(icon + " ") if icon != "" else "", t, colorize(body)]
 	if extra != "":
 		s += "\n" + extra
 	# (a keyword whose explanation IS the body, like a status badge's, isn't explained a second time)

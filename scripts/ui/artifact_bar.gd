@@ -124,8 +124,7 @@ class ArtifactChip extends PanelContainer:
 			l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			c.add_child(l)
-		var tier: String = Artifacts.TIER_NAMES.get(a.get("tier", "common"), "")
-		c.tooltip_text = Keywords.tooltip(a.name, a.desc, "[color=#9aa89a]%s artifact · %s[/color]" % [tier, a.get("aspect", "")], "" if UiSkin.is_puppet() else UiSkin.inline(UiSkin.ARTIFACT_ART.get(id, id), a.get("icon", ""), 28))  # (Puppet: the big picture of the hover board stands for it)
+		c.tooltip_text = ArtifactCard.tip(a, "" if UiSkin.is_puppet() else UiSkin.inline(UiSkin.ARTIFACT_ART.get(id, id), a.get("icon", ""), 28))  # (Puppet: the big picture of the hover board stands for it)
 		c._sb = sb
 		c._base_border = sb.border_color
 		c._base_tip = c.tooltip_text

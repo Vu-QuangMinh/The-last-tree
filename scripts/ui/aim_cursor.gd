@@ -58,22 +58,26 @@ func _draw() -> void:
 
 
 func _draw_crosshair(m: Vector2) -> void:
-	var marker: Texture2D = UiSkin.tex("target_marker") if UiSkin.is_puppet() else null
-	if marker != null:  # Puppet: the wooden bullseye, breathing in and out like the crosshair does (and bigger after a shot)
-		var side := 64.0 * (1.0 + 0.07 * sin(_t * 6.0) + 0.5 * _kick)
-		draw_texture_rect(marker, Rect2(m - Vector2(side, side) / 2.0, Vector2(side, side)), false)
-		return
-	var r := 20.0 + 3.0 * sin(_t * 6.0) + 10.0 * _kick
-	var red := Color(1.0, 0.15, 0.12)
-	var dark := Color(0.15, 0.0, 0.0, 0.8)
+	# a crosshair, no ring: it breathes in and out, and springs wider after a shot
+	cross(self, m, 22.0 + 3.0 * sin(_t * 6.0) + 10.0 * _kick, 1.0)
+
+
+## A crosshair: four red arms around a gap, outlined dark, and a dot in the middle (`r`: how far the arms reach).
+## The crosshair, in red with a dark outline: one ring, four thick arms through it with a gap in the middle, a dot at the centre.
+static func cross(ci: CanvasItem, m: Vector2, r: float, alpha: float) -> void:
+	var red := Color(1.0, 0.15, 0.12, alpha)
+	var dark := Color(0.12, 0.0, 0.0, 0.85 * alpha)
+	var gap := r * 0.32
+	var ring := r * 0.72
 	for pass_i in 2:
 		var col := dark if pass_i == 0 else red
-		var w := 5.0 if pass_i == 0 else 2.5
-		draw_arc(m, r, 0, TAU, 40, col, w, true)
+		var w := maxf(2.0, r * 0.2) if pass_i == 0 else maxf(1.2, r * 0.1)
+		ci.draw_arc(m, ring, 0.0, TAU, 48, col, w, true)
 		for k in 4:
 			var d := Vector2.from_angle(k * PI / 2.0)
-			draw_line(m + d * (r - 7.0), m + d * (r + 9.0), col, w, true)
-	draw_circle(m, 2.5, red)
+			ci.draw_line(m + d * gap, m + d * r, col, w, true)
+	ci.draw_circle(m, maxf(1.6, r * 0.09), dark)
+	ci.draw_circle(m, maxf(1.0, r * 0.06), red)
 
 
 ## The tether: a wobbling, glowing strand from the enemy's row to your hand, with motes flowing towards you.

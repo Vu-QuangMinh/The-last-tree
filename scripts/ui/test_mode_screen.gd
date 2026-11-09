@@ -362,7 +362,9 @@ func _enemy_groups() -> Array:
 	var out := []
 	for act in [1, 2, 3]:
 		var in_fights := EnemyDefs.fight_ids(act)  # (a member of a normal fight, like the Scavengers or the Bog Lantern's lamp, is picked here too)
-		out.append(["Act %d" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and not EnemyDefs.E[k].get("elite", false) and not EnemyDefs.E[k].get("boss", false) and (not EnemyDefs.E[k].get("member", false) or k in in_fights))])
+		var linked := EnemyDefs.linked_members()  # (the Undying Duo, the Bog Lantern: only ever together, one button for both)
+		out.append(["Act %d" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and not EnemyDefs.E[k].get("elite", false) and not EnemyDefs.E[k].get("boss", false) and (not EnemyDefs.E[k].get("member", false) or k in in_fights) and not (k in linked))
+			+ EnemyDefs.LINKED.keys().filter(func(k): return int(EnemyDefs.LINKED[k].act) == act)])
 		out.append(["Act %d Mini Bosses" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and EnemyDefs.E[k].get("elite", false) and not EnemyDefs.E[k].get("member", false))
 			+ EnemyDefs.ELITE_GROUPS.keys().filter(func(k): return EnemyDefs.ELITE_GROUPS[k].act == act)])
 		out.append(["Act %d Bosses" % act, EnemyDefs.E.keys().filter(func(k): return EnemyDefs.E[k].act == act and EnemyDefs.E[k].get("boss", false) and not EnemyDefs.E[k].get("member", false))])  # (the Handyman brings his own hands)
@@ -398,7 +400,7 @@ func _enemy_thumb(id: String) -> Button:
 	b.focus_mode = Control.FOCUS_NONE
 	b.tooltip_text = EnemyDefs.name_of(id)
 	b.pressed.connect(func(): _add_enemy(id))
-	var first: String = EnemyDefs.ids_of(id)[0]  # (a group mini boss shows its first member)
+	var first: String = String(EnemyDefs.LINKED[id].get("thumb", EnemyDefs.ids_of(id)[0])) if EnemyDefs.LINKED.has(id) else EnemyDefs.ids_of(id)[0]  # (a group shows its first member)
 	var act := int(EnemyDefs.E[first].get("act", 1)) if EnemyDefs.E.has(first) else 1
 	var tex := Creature._puppet_tex(Creature.PUPPET_FILES.get(first, first), act)
 	if tex == null:

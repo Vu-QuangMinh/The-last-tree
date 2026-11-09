@@ -6,7 +6,7 @@ extends RefCounted
 const UNLIMITED := 1 << 20
 const TOLL_CAP := 5  # under a Toll, your next chant holds at most this many Essence
 const BASE_DRAW := 3
-const START_ELEMENTS := 5
+const START_ELEMENTS := 6
 
 var lasting := 0.0  # Lasting Shield: like Shield, but it stays from turn to turn until attacks break it
 var hp := 50.0

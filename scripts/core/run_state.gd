@@ -8,13 +8,16 @@ const MAX_ACTIVE := 8
 const SEEDLINGS := {"fight": 3, "elite": 8, "boss": 20}
 const WIN_BONUS := 30
 const REST_HEAL := 0.3
-## Normal fights: each card is common 70% of the time, rare 30%. Elites: 3 rares. Bosses: 3 legendaries.
 ## Spell reward odds, Slay the Spire's (their common / uncommon / rare = our Common / Rare / Legendary), per card:
 ## [Common, Rare, Legendary]. A boss always gives Legendary.
 const ODDS := {"fight": [0.60, 0.37, 0.03], "elite": [0.50, 0.40, 0.10], "shop": [0.54, 0.37, 0.09]}
 ## Their hidden pity counter: the Legendary chance starts 5% lower, rises 1% with every Common you're shown, and drops
 ## back when a Legendary shows up.
 const LEGENDARY_OFFSET_START := -0.05
+## Normal fights' Rare chance has its own hidden pity counter (in place of ODDS.fight's Rare): it starts at 12%, rises 6% with
+## every card that isn't Rare and drops back to 12% when a Rare shows up. About 1 card in 4 is Rare over a run (fewer early).
+const RARE_CHANCE_START := 0.12
+const RARE_CHANCE_STEP := 0.06
 ## Amber: the run's money, spent at merchants and in some events.
 const START_AMBER := 30
 const AMBER := {"fight": [14, 22], "elite": [28, 38], "boss": [60, 60]}
@@ -365,9 +368,10 @@ func is_boss_node() -> bool:
 
 # ------------------------------------------------------------------ rewards
 
-## Spells you don't own yet. Normal fights: each card common (70%) or rare (30%). Elites: rares. Bosses: legendaries.
+## Spells you don't own yet, each card's rarity rolled by _roll_rarity (bosses: legendaries).
 ## The Scholar's Quill adds a 4th card. Offers always mix at least two categories.
 var legendary_offset := LEGENDARY_OFFSET_START  # (the pity counter, see ODDS)
+var rare_chance := RARE_CHANCE_START  # (normal fights' Rare pity counter, see RARE_CHANCE_START)
 
 
 ## One card's rarity for a reward of this kind (fight, elite, shop, boss), moving the pity counter.
@@ -376,15 +380,22 @@ func _roll_rarity(kind: String) -> String:
 		return "legendary"
 	var o: Array = ODDS.get(kind, ODDS.fight)
 	var leg := maxf(0.0, o[2] + (legendary_offset if kind != "shop" else 0.0))
+	var rare: float = minf(rare_chance, 1.0 - leg) if kind == "fight" else o[1]
 	var r := rng.randf()
 	if r < leg:
 		if kind != "shop":
 			legendary_offset = LEGENDARY_OFFSET_START
+		if kind == "fight":
+			rare_chance += RARE_CHANCE_STEP  # (not a Rare: the Rare chance still rises)
 		return "legendary"
-	if r < leg + o[1]:
+	if r < leg + rare:
+		if kind == "fight":
+			rare_chance = RARE_CHANCE_START
 		return "rare"
 	if kind != "shop":
 		legendary_offset += 0.01
+	if kind == "fight":
+		rare_chance += RARE_CHANCE_STEP
 	return "common"
 
 
@@ -1010,12 +1021,16 @@ func event_outcome(opt: Dictionary, bottle_at := -1, spell_id := "") -> Dictiona
 				player.take_effect(float(hurt))  # (it can kill: the screen ends the run then)
 				res.text = String(res.text).replace("{n}", str(hurt))
 			"heal":
-				player.heal(float(d.n))
+				var hn := _per_element(d, spell_id)
+				player.heal(float(hn))
+				res.text = String(res.text).replace("{n}", str(hn))
 			"max_hp":
 				player.max_hp += float(d.n)
 				player.heal(float(d.n))
 			"amber":
-				amber += int(d.n)
+				var an := _per_element(d, spell_id)
+				amber += an
+				res.text = String(res.text).replace("{n}", str(an))
 			"artifact":
 				var a := Artifacts.offer(unlocked_artifacts, artifacts, rng, 1, String(d.get("pool", "normal")))
 				if not a.is_empty():
@@ -1049,6 +1064,15 @@ func event_outcome(opt: Dictionary, bottle_at := -1, spell_id := "") -> Dictiona
 				res.fight = {"kind": String(d.get("kind", "fight")), "ids": d.get("ids", [])}
 				fight_gift.append_array(d.get("gift", []))
 	return res
+
+
+## How much an event's heal or Leaves give: `n`, or `per_element` for every Essence of the spell you picked (its whole pattern,
+## seals too: the Overgrown Vine pays for the length of the spell you cast).
+func _per_element(d: Dictionary, spell_id: String) -> int:
+	if not d.has("per_element"):
+		return int(d.n)
+	var sp := spell(spell_id) if spell_id != "" else {}
+	return int(d.per_element) * String(sp.get("full_pattern", sp.get("pattern", ""))).length()
 
 
 ## They See Me Rolling: you stopped the bear (50 Leaves, 5 damage), or stepped aside (his revenge, 3 events later).
@@ -1199,19 +1223,19 @@ func _do_event_option(opt: Dictionary) -> Dictionary:
 
 # ------------------------------------------------------------------ the merchant
 
-## What the merchant sells: 3 spells, 2 artifacts, an upgrade and a meal. `discount`: his 10% once he's drunk.
+## What the merchant sells: 4 spells, 3 artifacts, 3 bottles, an upgrade and a meal. `discount`: his 10% once he's drunk.
 func shop_stock(discount := 0.0) -> Array:
 	var items := []
-	var spells := spell_offer(3, "shop")
+	var spells := spell_offer(4, "shop")
 	var seen := {}
 	for s in spells:
 		if seen.has(s.id):
 			continue
 		seen[s.id] = true
 		items.append({"kind": "spell", "spell": s, "price": PRICES[s.rarity]})
-	for a in artifact_offer(2):
+	for a in artifact_offer(3):
 		items.append({"kind": "artifact", "artifact": a, "price": PRICES.artifact_rare if a.tier == "rare" else PRICES.artifact})
-	for b in Bottles.random(rng, 2):
+	for b in Bottles.random(rng, 3):
 		items.append({"kind": "bottle", "bottle": b, "price": Bottles.get_def(b).price})
 	items.append({"kind": "upgrade", "price": PRICES.upgrade})
 	if "broken_seed_of_life" in artifacts:

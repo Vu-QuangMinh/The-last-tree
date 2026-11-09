@@ -6,10 +6,19 @@ var enemy_id := ""
 var tint := Color(0.6, 0.6, 0.6)
 var accent := Color(1, 1, 1)
 var big := 1.0
+var ground_drop := 0.0  # a flyer: how far (px) below its picture the real ground is (its shadow lies there; set by EnemyView)
 var flash := 0.0
 var bob := 0.0
 ## Getting hit: it jolts (shake, decaying), blinks white a few times, and pulls a pained face for a moment.
 var hurt := 0.0  # seconds of the pained face left
+var _swing_a := 0.0  # Puppet Stage: how far it hangs off plumb on its rope (radians) ...
+var _swing_v := 0.0  # ... and how fast that is changing
+var _hurt_seen := 0.0
+const SWING_K := 9.0  # the pull back to plumb (a long rope: about two seconds a swing)
+const SWING_DAMP := 1.1  # the air: a push dies down over a few swings
+const SWING_HIT := 0.8  # a hit knocks it back this hard (enough to see it register, not a big swing)
+const SWING_MAX := 0.22
+const ROPE_SWING := 0.3  # the swing, seen from the ceiling: the rope only moves a little, the puppet swings at its end
 var _shake := 0.0  # pixels of jolt, decaying
 var _blink := 0.0  # seconds of white blinking left
 const HURT_TIME := 1.75  # long enough for the player to see the reaction
@@ -61,12 +70,12 @@ const SHAPES := {
 	# act 1 (the Verdant Circle)
 	"iceling": 1, "zephling": 1, "triplet_fire": 1, "triplet_water": 1, "triplet_air": 1, "purple_slime": 0, "green_slime": 0, "yellow_slime": 0, "giant_slime": 0,
 	"bramble_back": 4, "winged_tortoise": 3, "yeti": 4, "rolling_bear": 4, "enraged_bear": 4, "mirror_fairy": 2, "tomato_knight": 2, "greenseer": 5,
-	"puddle_slime": 0, "splitter_ooze": 0, "tide_colossus": 0, "last_gasp_spore": 0,
+	"puddle_slime": 0, "tide_colossus": 0, "last_gasp_spore": 0,
 	"gale_sprite": 1, "mirror_wisp": 1, "storm_imp": 1, "hush_moth": 1, "leech_bat": 1, "echo_wraith": 1, "storm_rider": 1,
 	"stone_knight": 2, "warded_golem": 2, "lockwarden": 2, "woodcutter": 2, "invoker": 2, "forge_spirit": 1, "yin_yang_beast": 4, "yin_yang_clone": 4, "inverter": 2, "mimic_chest": 3,
-	"cinder_hound": 4, "blinding_beetle": 4, "bramble_matron": 5, "mirror_knight": 2, "void_archon": 1, "pickpocket_imp": 4, "overgrowth_vine": 5, "shrine_maiden": 5,
+	"cinder_hound": 4, "bramble_matron": 5, "mirror_knight": 2, "void_archon": 1, "pickpocket_imp": 4, 
 	"rot_snake": 4, "sentinel": 2, "blue_sentinel": 2, "headless_horseman": 4, "scav_rat": 4, "scav_hyena": 4, "scav_vulture": 1, "scav_beetle": 4, "mad_soldier": 2, "tree_dweller_a": 5, "tree_dweller_b": 5, "bog_fish": 4, "bog_lamp": 1, "bug_hunter": 2, "mob_pitchfork": 2, "mob_slingshot": 2, "mob_torch": 2, "shield_bearer": 2, "necromancer": 5,
-	"tidecaller": 5, "hexer": 5, "toll_keeper": 5, "frost_hex": 5, "ashling": 1, "last_winter": 1,
+	"tidecaller": 5, "frost_hex": 5, "ashling": 1, "last_winter": 1,
 	"dragon_tail": 4, "dragon_head": 4, "dragon_fireball": 1, "wyvern_tail": 4, "wyvern_head": 4, "wyvern_fireball": 1,  # (the Fire Dragon and the Winter Wyvern: stand-ins until its pieces are drawn)
 }
 
@@ -347,6 +356,15 @@ func _process(d: float) -> void:
 		quake -= d
 		_shake = maxf(_shake, 26.0)  # (a hard shake, not a jolt that dies away)
 	flash = maxf(0.0, flash - d * 3.0)
+	if _puppet:
+		# the swing: pulled back to plumb, slowed by the air, nudged by a slow breeze of its own, knocked back by a hit
+		if hurt > _hurt_seen + 0.01:
+			_swing_v -= SWING_HIT
+		_hurt_seen = hurt
+		var t := Time.get_ticks_msec() / 1000.0
+		var breeze := 0.018 * sin(t * 0.8 + bob) + 0.01 * sin(t * 1.9 + bob * 1.7)
+		_swing_v += (-SWING_K * (_swing_a - breeze) - SWING_DAMP * _swing_v) * d
+		_swing_a = clampf(_swing_a + _swing_v * d, -SWING_MAX, SWING_MAX)
 	hurt = maxf(0.0, hurt - d)
 	_sad_t = maxf(0.0, _sad_t - d)
 	_shake = maxf(0.0, _shake - d * 30.0)
@@ -1094,15 +1112,27 @@ func _draw_art(blink_on: bool) -> void:
 	if _shake > 0.0:
 		c += Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake) * 0.5)
 	_art_shake_x = c.x - size.x / 2.0
+	# a flyer drifts in the air: a slow sway left and right, a quicker bob up and down (its shadow stays on the ground)
+	var fly := Vector2.ZERO
+	if ground_drop > 0.5 and not dead:
+		var ft := Time.get_ticks_msec() / 1000.0 + float(hash(enemy_id) % 97) * 0.13
+		fly = Vector2(sin(ft * 1.1) * 8.0, sin(ft * 2.3) * 10.0)
 	if _puppet and not dead and steal_pose <= 0.0 and _dragon == null:  # (carrying a card it hangs in the air: no shadow over the card)
-		_draw_puppet_shadow(_unveil_tex[0] if unveiling and _unveil_t < UNVEIL_LEGS[0] else tex, Vector2(c.x, size.y), side)  # (the spider's shadow only once its legs are out)
-	if _puppet:  # a puppet doesn't bob: it rocks on its base, and tips back when it is hit
-		var tip := 0.0 if dead else (0.0 if enemy_id == "handyman" else sin(bob * 0.5) * 0.04) - 0.16 * minf(hurt / 0.4, 1.0)  # (the Handyman's body does not rock: six arms hang on its shoulders)
+		var shadow_side := side * (1.0 - 0.15 * clampf(ground_drop / 80.0, 0.0, 1.0))  # (a flyer's shadow: on the floor below it, a little smaller)
+		_draw_puppet_shadow(_unveil_tex[0] if unveiling and _unveil_t < UNVEIL_LEGS[0] else tex, Vector2(c.x + fly.x * 0.5, size.y + ground_drop), shadow_side)  # (the spider's shadow only once its legs are out)
+	if _puppet:  # a puppet doesn't bob: it hangs on its rope and swings from the top of it (see _process), and a hit knocks it back
+		var tip := 0.0 if dead or enemy_id == "handyman" else _swing_a  # (the Handyman's body does not swing: six arms hang on it)
 		if _dragon != null:
 			tip = 0.0  # (the Wyvern's two halves share ONE body: each rocking on its own would tear it apart, and it is far too wide to tip)
-		draw_set_transform(Vector2(c.x, size.y), tip)
+		# (a pendulum: the rope hangs from the ceiling straight above where it is tied on and swings a little, and the puppet, the
+		# weight at its end, swings with it; everything else is still measured from its feet)
+		var tie := _rope_local(_pivot_frac(), side)
+		var org := Vector2(c.x, size.y) + fly
+		var hook := Vector2(org.x + tie.x, (get_global_transform().affine_inverse() * Vector2(0.0, RopeRig.TOP_Y)).y)
+		tip *= ROPE_SWING
 		_art_tip = tip
-		_art_xf = Transform2D(tip, Vector2(c.x, size.y))
+		_art_xf = Transform2D(tip, hook) * Transform2D(0.0, org - hook)  # (the rope's anchor rides along with a flyer's drift)
+		draw_set_transform_matrix(_art_xf)
 		c = Vector2(0, -side * 0.5)
 		if veil2:
 			c.y -= side * VEIL2_LIFT  # (the spider hangs higher: its purple eyes stay level with the eyes under the veil)
@@ -1225,16 +1255,34 @@ func rope_ok() -> bool:
 ## Where a point of the picture is on the screen. `rest`: where it is while the puppet stands still (no rocking, no jolt): the top of its rope hangs over that.
 func rope_point(frac: Vector2, rest := false) -> Vector2:
 	var side := _art_side()
-	var local := Vector2(0.0, -side * 0.5 - _veil_lift(side)) + (frac - Vector2(0.5, 0.5)) * side
-	var org := Vector2(size.x / 2.0 + (0.0 if rest else _art_shake_x), size.y)
-	return get_global_transform() * (org + local.rotated(0.0 if rest else _art_tip))
+	var local := _rope_local(frac, side)
+	if rest:
+		return get_global_transform() * (Vector2(size.x / 2.0, size.y) + local)
+	return get_global_transform() * (_art_xf * local)  # (the picture as it is drawn now: swinging about its rope's tie)
+
+
+## A point of the picture (a fraction of its square), measured from its feet.
+func _rope_local(frac: Vector2, side: float) -> Vector2:
+	return Vector2(0.0, -side * 0.5 - _veil_lift(side)) + (frac - Vector2(0.5, 0.5)) * side
+
+
+## Where its rope is tied on (the middle of them when it has more than one; the top of the picture when it has none yet): the
+## point it hangs and swings from.
+func _pivot_frac() -> Vector2:
+	var pts: Array = EnemyRopes.points(enemy_id)
+	if pts.is_empty():
+		return Vector2(0.5, 0.0)
+	var sum := Vector2.ZERO
+	for p in pts:
+		sum += Vector2(p[0], p[1]) if p is Array else (p as Vector2)
+	return sum / float(pts.size())
 
 
 ## The point of the picture under a screen point (the inverse of rope_point; outside the square when the point is off the picture).
 func rope_frac_at(g: Vector2) -> Vector2:
 	var side := _art_side()
 	var l := get_global_transform().affine_inverse() * g
-	l = (l - Vector2(size.x / 2.0 + _art_shake_x, size.y)).rotated(-_art_tip)
+	l = _art_xf.affine_inverse() * l
 	return (l - Vector2(0.0, -side * 0.5)) / side + Vector2(0.5, 0.5)
 
 

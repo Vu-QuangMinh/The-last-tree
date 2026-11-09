@@ -453,14 +453,10 @@ func start_run() -> void:
 		var fs := _new_fight_screen(run.make_fight([]))
 		fs.map_mode = true
 		_swap(fs)
-		var st: PuppetStage = fs.get_stage()
-		if st != null and st.curtains.has_art():
-			await get_tree().process_frame  # (the stage was just built: the drapes start once that frame is over, or their move would jump)
-			await get_tree().process_frame
-			await st.curtains.close()
+		await get_tree().process_frame  # (the stage was just built: the keepsakes hang on it, the drapes stay open)
 		if current != fs or run == null:  # (left for the menu meanwhile)
 			return
-	var ch := _choice("Choose a keepsake", "It stays with you for the whole run.", [], offer, false)
+	var ch := _choice("Choose a keepsake", "It stays with you for the whole run.", [], offer, false, false, true)
 	ch.chosen.connect(func(i):
 		_pick_artifact(offer[i].id)
 		show_map())
@@ -1637,9 +1633,10 @@ func _run_steps(steps: Array, i: int) -> void:
 	steps[i].call(func(): _run_steps.call_deferred(steps, i + 1))
 
 
-func _choice(title: String, sub: String, spells: Array, arts: Array, can_skip: bool, pulse := false) -> ChoiceScreen:
+func _choice(title: String, sub: String, spells: Array, arts: Array, can_skip: bool, pulse := false, hang := false) -> ChoiceScreen:
 	var c := ChoiceScreen.new()
 	c.pulse = pulse
+	c.hang = hang  # (the keepsakes: they dangle on the stage, in spotlights)
 	c.title = title
 	c.subtitle = sub
 	c.spells = spells

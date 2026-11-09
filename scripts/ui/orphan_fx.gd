@@ -31,8 +31,10 @@ static func _figure(text: String, px: int) -> Label:
 	return l
 
 
-## Something flies out from behind the bush in an arc, spinning, and lands at `to`.
-static func throw_item(host: Control, from: Vector2, to: Vector2, item: String) -> void:
+## Something flies out from behind the bush and comes at you, at the screen: it grows as it comes closer, faster and faster,
+## on a smooth curve like a curveball: it leaves within 45 degrees either side of straight at you and breaks sideways on the
+## way. Returns where it lands (where the hit is shown).
+static func throw_item(host: Control, from: Vector2, to: Vector2, item: String) -> Vector2:
 	var px: int = ITEM_PX.get(item, 48)
 	var tex: Texture2D = UiSkin.tex("throw_" + item)
 	var n: Control
@@ -49,14 +51,23 @@ static func throw_item(host: Control, from: Vector2, to: Vector2, item: String) 
 	n.z_index = 200
 	host.add_child(n)
 	n.pivot_offset = Vector2(px, px) / 2.0
-	n.global_position = from
+	var ang := randf_range(-PI / 4.0, PI / 4.0)  # (0: straight at you, down the screen)
+	var depth := maxf(to.y - from.y, 260.0)
+	var end := Vector2(clampf(from.x + tan(ang) * depth, 140.0, 1780.0), to.y)
+	var side := -1.0 if ang > 0.0 else 1.0  # (the break goes against its direction, so it bends back in: a curveball)
+	var bend := (from + end) / 2.0 + Vector2(side * randf_range(110.0, 190.0), -150.0)  # (and it rises out of the bush first)
+	var grow := minf(3.2, 280.0 / float(px))  # (big as it reaches you, never filling the screen)
 	Audio.play("sfx_throw_whoosh", -2.0, randf_range(0.9, 1.15))
-	var tw := n.create_tween().set_parallel(true)
+	var tw := n.create_tween()
 	tw.tween_method(func(v: float) -> void:
-		n.global_position = from.lerp(to, v) + Vector2(0.0, -sin(v * PI) * 170.0) - Vector2(px, px) / 2.0, 0.0, 1.0, 0.5)
-	tw.tween_property(n, "rotation", TAU * 2.0, 0.5)
+		var t := v * v * 0.45 + v * 0.55  # (it speeds up as it comes closer)
+		var p := from.lerp(bend, t).lerp(bend.lerp(end, t), t)
+		n.scale = Vector2.ONE * lerpf(0.35, grow, t * t)
+		n.global_position = p - Vector2(px, px) / 2.0, 0.0, 1.0, 0.7)
+	tw.tween_property(n, "modulate:a", 0.0, 0.08)
 	await tw.finished
 	n.queue_free()
+	return end
 
 
 ## A child's face comes up from behind the bush now and then, with a giggle written in the air.
