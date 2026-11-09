@@ -188,6 +188,8 @@ const EFFECT_FX := {
 	"convert": "transmute", "transmute": "transmute", "draw": "gain_essence", "sacrifice": "lose_hp", "amplify": "amplify", "shatter": "break_armour", "temp_seal": "seal",
 	"passive": "power", "each_turn": "power", "retain": "refund",
 }
+## The sound an enemy's move makes when it lands on you, by kind (those that have none of their own in the generic code)
+const ENEMY_KIND_SFX := {"virus": "sfx_virus_apply", "vulnerable": "spellfx_vulnerable", "toll": "sfx_burden_apply"}
 ## The shots of a barrage: one sound each, a beat apart (a little different each, so that it does not sound like one sample played again and again), each enemy
 ## flinching as it is hit. Runs on its own while the step goes on.
 func _volley(targets: Array, group: String, fallback: String) -> void:
@@ -4418,7 +4420,7 @@ func _after_turn() -> void:
 func _stunned_turn() -> void:
 	busy = true
 	_banner("Stunned!", Color(1.0, 0.85, 0.3), 1.0)
-	Audio.play("sfx_frail_apply")
+	Audio.play("sfx_stun_apply")
 	_refresh_all()
 	await get_tree().create_timer(1.4).timeout
 	if fight.over or not is_inside_tree():
@@ -4542,7 +4544,7 @@ func _seed_revival() -> void:
 const STATUS_ART_NAMES := {"shield": ["icon_armor_shield"], "thorns": ["status_thorns"], "silence": ["status_silenced"], "aegis": ["status_aegis"],
 	"echo": ["status_echo_ready"], "overload": ["status_overload"], "ethereal": ["status_ethereal", "intent_ethereal"],
 	"poison": ["status_poison", "intent_poison"], "bleed": ["status_bleed", "intent_bleed"], "confuse": ["status_confuse", "intent_confuse"], "blind": ["status_blind", "intent_blind"],
-	"lock": ["status_toll", "intent_toll"], "vulnerable": ["status_vulnerable"],
+	"lock": ["status_burden", "status_toll", "intent_toll"], "vulnerable": ["status_vulnerable"], "stun": ["status_stunned", "intent_stunned"],
 	"brittle": ["status_brittle"], "disarmed": ["status_disarmed"]}
 ## A Power's badge picture, by the theme of its dissolve (fire / water / wind use the Essence balls).
 const POWER_ART_NAMES := {"fire": ["essence_fire"], "water": ["essence_water"], "wind": ["essence_wind"], "thorn": ["status_thorns"],
@@ -8787,14 +8789,19 @@ func _enemy_move_fx(ev: Dictionary) -> void:
 	if kind == "steal":
 		await _steal_fx(ev, v)
 		return
-	if String(ev.get("move", {}).get("sfx", "")) == "gong":
+	var move_sfx := String(ev.get("move", {}).get("sfx", ""))
+	if move_sfx == "gong":
 		Audio.play("gong", -2.0)
+	elif move_sfx != "":
+		Audio.play(move_sfx)  # (a sound of the move's own: the Rot Snake's hiss)
+	elif ENEMY_KIND_SFX.has(kind):
+		Audio.play(ENEMY_KIND_SFX[kind])
 	var look: Array = IntentChip.LOOK.get(kind, ["✦", Color.WHITE])
 	var info: Array = IntentChip.INFO.get(kind, [kind.capitalize(), ""])
 	if v and v.creature.has_rig():  # (a Handyman hand: its arm acts it out, a little gentler than a blow)
 		_arm_swing(v.creature, 0.6)
 		await _wait(0.23)
-	if kind in Fight.AT_PLAYER and v:
+	if (kind in Fight.AT_PLAYER or kind in ["virus", "vulnerable"]) and v:
 		var from := v.creature.global_position + v.creature.size / 2.0
 		var to := _attack_point()
 		var comet := Comet.launch(_fx, from, to, (look[1] as Color).lightened(0.3))

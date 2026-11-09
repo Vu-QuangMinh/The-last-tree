@@ -151,6 +151,9 @@ func setup(e: EnemyState) -> void:
 			_unveil_t = -1.0
 		if e.id == "anxious_armadillo":
 			_sad_tex = _puppet_tex("anxious_armadillo_sad", 2)
+		_small_tv = _puppet_tex("corrector_small_screen", 2) if e.id == "corrector" else null
+		_small_on = false
+		_boot_t = -1.0
 		_pose_tex = {}
 		if e.id == "samurai":  # (one picture per stance: samurai_in_no_kamae / _ko_gasumi / _sha_no_kamae.png)
 			for pose in SAMURAI_POSES:
@@ -204,6 +207,8 @@ func setup(e: EnemyState) -> void:
 	accent = Elements.COLORS[e.def.hp[0]]
 	big = 1.2 if e.is_boss else (1.1 if e.is_elite or e.id == "giant_slime" else 1.0)
 	big = e.def.get("size", big)
+	if e.id == "pianist":
+		big = 2.0  # (the boss at his piano: a big stage of his own)
 	crown = e.is_boss and not e.has_passive("hand")
 	spikes = e.is_elite
 	bob = randf() * TAU
@@ -551,6 +556,96 @@ var page_flip := -1.0  # 0..1 while he turns the page (-1: not turning)
 var _foot_x := 0.2
 
 
+## The Corrector's head is a TV: the screen shows what he is about to do (the picture of the intent and its number, in teal light);
+## after the reboot (phase 2) a second, smaller TV sits on top of the first and shows the weaker move he adds every turn.
+const CORR_SCREEN := Rect2(0.3896, 0.1904, 0.152, 0.1087)  # the big screen, in fractions of the art square
+const CORR_SMALL := Rect2(0.405, -0.04, 0.19, 0.19)  # the small TV on top of the head (its square), in fractions of the art square
+const CORR_SMALL_SCREEN := Rect2(0.1123, 0.2694, 0.7589, 0.514)  # its screen, in fractions of its own picture
+const CORR_GLOW := Color(0.55, 1.0, 0.85)
+var _small_tv: Texture2D
+var _small_on := false
+var _boot_t := -1.0  # seconds since the small screen lit up (-1: not yet)
+
+
+func _draw_corrector(c: Vector2, side: float, mod: Color) -> void:
+	var origin := c - Vector2(side, side) * 0.5
+	var phase2: bool = _enemy != null and _enemy.phase >= 2 and _small_tv != null
+	if phase2 and not _small_on:
+		_small_on = true
+		_boot_t = 0.0
+		var au := get_node_or_null("/root/Audio")  # (the second screen lights up: a boot-up chime; absent in a test script)
+		if au != null and is_inside_tree():
+			au.play("sfx_boot_up")
+	elif not phase2:
+		_small_on = false
+		_boot_t = -1.0
+	var big := Rect2(origin + CORR_SCREEN.position * side, CORR_SCREEN.size * side)
+	_screen_show(big, _enemy.intent if _enemy != null else {}, mod, 1.0)
+	if phase2:
+		var k := 1.0
+		if _boot_t >= 0.0:
+			_boot_t += get_process_delta_time()
+			k = clampf(_boot_t / 0.45, 0.0, 1.0)
+			k = 1.0 + 2.70158 * pow(k - 1.0, 3) + 1.70158 * pow(k - 1.0, 2)  # (it pops up with a little overshoot)
+		var sq := Rect2(origin + CORR_SMALL.position * side, CORR_SMALL.size * side)
+		var pivot := Vector2(sq.get_center().x, sq.end.y)
+		var fit := minf(sq.size.x / _small_tv.get_width(), sq.size.y / _small_tv.get_height()) * k
+		var sz := Vector2(_small_tv.get_width(), _small_tv.get_height()) * fit
+		var at := Vector2(pivot.x - sz.x * 0.5, pivot.y - sz.y)
+		draw_texture_rect(_small_tv, Rect2(at, sz), false, mod)
+		var scr := Rect2(at + CORR_SMALL_SCREEN.position * sz, CORR_SMALL_SCREEN.size * sz)
+		_screen_show(scr, _enemy.intent2, mod, 0.8 * k)
+
+
+## One TV screen: dark teal glass, scan lines, a flicker, and the move (its picture and number) glowing on it.
+func _screen_show(r: Rect2, m: Dictionary, mod: Color, a: float) -> void:
+	draw_rect(r, Color(0.02, 0.08, 0.08, a))
+	var glow := 0.85 + 0.15 * sin(bob * 7.0) + (0.12 if fmod(bob, 5.3) < 0.08 else 0.0)  # (an old set: a steady hum, and now and then a flicker)
+	if not m.is_empty():
+		var kind := String(m.get("kind", ""))
+		var tex: Texture2D = UiSkin.tex(IntentChip.ART.get(kind, ""))
+		var label := ""
+		if m.has("n") and kind != "mend":
+			label = "%d" % int(m.n)
+			if m.has("hits"):
+				label += "x%d" % int(m.hits)
+		elif kind == "mend":
+			label = "+%d" % int(m.get("n", 1))
+		elif m.has("len"):
+			label = "%d" % int(m.len)
+		elif m.has("turns"):
+			label = "%d" % int(m.turns)
+		var fs := int(r.size.y * 0.46)
+		var icon_h := r.size.y * (0.62 if label != "" else 0.8)
+		var col := Color(CORR_GLOW, a * glow)
+		var font := ThemeDB.fallback_font
+		var tw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x if label != "" else 0.0
+		var iw := icon_h if tex != null else 0.0
+		var x0 := r.get_center().x - (iw + tw + (r.size.y * 0.05 if tex != null and label != "" else 0.0)) * 0.5
+		if tex != null:
+			draw_texture_rect(tex, Rect2(Vector2(x0, r.get_center().y - icon_h * 0.5), Vector2(icon_h, icon_h)), false, Color(1.0, 1.0, 1.0, a * glow) * mod)
+			x0 += iw + r.size.y * 0.05
+		elif label == "":
+			label = "?"
+			tw = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			x0 = r.get_center().x - tw * 0.5
+		if label != "":
+			draw_string(font, Vector2(x0, r.get_center().y + fs * 0.35), label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
+	var y := r.position.y
+	while y < r.end.y:  # (scan lines)
+		draw_line(Vector2(r.position.x, y), Vector2(r.end.x, y), Color(0.0, 0.0, 0.0, 0.22 * a), 1.0)
+		y += maxf(3.0, r.size.y * 0.06)
+	draw_rect(r, Color(CORR_GLOW, 0.07 * a * glow))
+
+
+var _pianist_rig: PianistRig  # (his pieces, when the pictures exist; else the drawn stand-in below)
+var _pianist_tried := false
+
+
+func _puppet_ok() -> bool:
+	return UiSkin.is_puppet()
+
+
 func _draw_pianist(c: Vector2, s: float, body: Color) -> void:
 	var kx0 := c.x - s * 1.3
 	var kw := s * 2.6
@@ -562,6 +657,16 @@ func _draw_pianist(c: Vector2, s: float, body: Color) -> void:
 			var span := float(PianistSong.HIGH - PianistSong.LOW)
 			_hand_x = lerpf(_hand_x, clampf((int(hl[0]) - PianistSong.LOW) / span, 0.0, 1.0), 0.35)
 			_foot_x = lerpf(_foot_x, clampf((int(hl[1]) - PianistSong.LOW) / span, 0.0, 0.45), 0.25)
+	if not _pianist_tried:
+		_pianist_tried = true
+		_pianist_rig = PianistRig.load_rig() if _puppet_ok() else null
+	if _pianist_rig != null:
+		var playing_now: bool = song != null and song.playing()
+		_pianist_rig.draw(self, c, s, {"hand": _hand_x, "foot": _foot_x, "page": page_flip, "dead": dead,
+			"press": (0.5 + 0.5 * sin(song.time() * 19.0)) if playing_now else 0.0,
+			"left": clampf(song.time() / maxf(song.length, 1.0), 0.0, 1.0) if song != null else 0.0, "t": bob},
+			Color(0.35, 0.35, 0.35, 0.6) if dead else Color.WHITE.lerp(Color(2, 2, 2), maxf(flash, 0.0) * 0.5))
+		return
 	var suit := Color(0.07, 0.07, 0.09) if not dead else body
 	var skin := Color(0.88, 0.86, 0.82)
 	# him, behind the piano: a long thin body, the collar, the head and its hat
@@ -1022,6 +1127,8 @@ func _draw_art(blink_on: bool) -> void:
 		_dragon.draw_part(self, _art_xf, mod, _enemy.def.rig_part)  # (its part of the pieces, feet on the same line as the single picture's)
 	else:
 		draw_texture_rect(tex, Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side)), false, mod)
+	if enemy_id == "corrector" and _puppet and not dead:
+		_draw_corrector(c, side, mod)
 	if enemy_id == "veiled_eyes" and _puppet and not dead and not unveiling:
 		_draw_veiled_eyes_art(c, side, mod, veil2)
 	if _puppet and not dead:

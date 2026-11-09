@@ -30,7 +30,8 @@ func _draw() -> void:
 	var pulse := 1.0 + 0.05 * sin(_t * (7.0 if kind == "ignite" else 4.0))
 	var col := Color(1.0, 0.45, 0.1) if kind == "ignite" else Color(0.4, 0.85, 0.2)
 	draw_circle(c, r * 1.25 * pulse, Color(col, 0.25))  # (a soft glow behind it)
-	if not UiSkin.draw_fit(self, "status_burn" if kind == "ignite" else "status_poison", c, r * 2.2 * pulse):
+	var art := "status_burn" if kind == "ignite" else ("status_virus" if UiSkin.tex("status_virus") != null else "status_poison")  # (the Virus badge: the virus on its card)
+	if not UiSkin.draw_fit(self, art, c, r * 2.2 * pulse):
 		# (no art: a drawn flame or drop)
 		var pts := PackedVector2Array()
 		for k in 24:
