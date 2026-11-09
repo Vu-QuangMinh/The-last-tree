@@ -217,7 +217,7 @@ func setup(e: EnemyState) -> void:
 	big = 1.2 if e.is_boss else (1.1 if e.is_elite or e.id == "giant_slime" else 1.0)
 	big = e.def.get("size", big)
 	if e.id == "pianist":
-		big = 2.0  # (the boss at his piano: a big stage of his own)
+		big = 2.7  # (the boss at his piano: a big stage of his own)
 	crown = e.is_boss and not e.has_passive("hand")
 	spikes = e.is_elite
 	bob = randf() * TAU
@@ -374,7 +374,7 @@ func _process(d: float) -> void:
 
 func _draw() -> void:
 	_draw_rings()  # (the Invoker's rings: drawn first, so he stands in front of them)
-	var c := Vector2(size.x / 2.0, size.y * 0.58 + sin(bob) * 4.0)
+	var c := Vector2(size.x / 2.0, size.y * 0.58 + (0.0 if enemy_id == "pianist" else sin(bob) * 4.0))  # (the Pianist and his whole stage stand still: no bobbing)
 	if _enemy != null and _enemy.yin != "":
 		tint = Color(0.92, 0.91, 0.88) if _enemy.yin == "white" else Color(0.13, 0.13, 0.15)  # black and white only
 		accent = Color(0.5, 0.5, 0.5)
@@ -656,8 +656,74 @@ func _screen_show(r: Rect2, m: Dictionary, mod: Color, a: float) -> void:
 	draw_rect(r, Color(CORR_GLOW, 0.07 * a * glow))
 
 
-var _pianist_rig: PianistRig  # (his pieces, when the pictures exist; else the drawn stand-in below)
+var _pianist_rig: PianistRig  # (his pieces seen from the front: the first set of pictures; kept as a fallback)
+var _pianist_back: PianistBackRig  # (his pieces seen from behind, the user's design; used when its pictures exist)
+var _bk_hand := 0.6  # 0..1 along the keyboard (the high notes' hand) and the foot (the low notes'), jumping to each key as it is struck
+var _bk_foot := 0.2
+var _bk_rh := 6.5  # the picture of the right hand now (0..11, walks towards its target) and of the left foot (0..4)
+var _bk_lf := 0.0
+var _bk_rh_target := 6.5
+var _bk_started := false  # the music has started once: from then on the figure is the frames, before it the idle position of the PDF
+var _bk_idle := 1.0
+var _bk_lf_target := 0.0
+var _bk_foot_on := 0.0
+var _pt_t := -1.0  # seconds into the sign sequence (-1: not running)
+var _bk_slam := 0.0  # 0..1: the last chord (The End)
+var _slam_on := false
 var _pianist_tried := false
+
+
+## The sign sequence of the Pianist (see PianistBackRig.SEQ): he raises his arm, points at the "Silence, please" board three times (the fight screen plays the knocks at PianistBackRig.KNOCKS),
+## lowers it and goes back to playing. Returns how many seconds it takes.
+func pianist_point(_sec := 0.0) -> float:
+	_pt_t = 0.0
+	return PianistBackRig.SEQ_TIME
+
+
+## The last chord: both arms and his whole back come down on the keys.
+func pianist_slam() -> void:
+	_slam_on = true
+
+
+## What PianistBackRig draws now: the hand and the foot jump to the key of the note being struck (PianistSong), tap as it is struck, and so on.
+func _back_state() -> Dictionary:
+	var d := get_process_delta_time()
+	var playing_now: bool = song != null and song.playing()
+	var tm: float = song.time() if song != null else 0.0
+	var tap_f := 0.0
+	var rt := _bk_rh_target  # (where the right hand wants to be: 0..11)
+	var lt := _bk_lf_target  # (the same for the left foot: 0..4)
+	if playing_now:
+		_bk_started = true
+		var rh: Dictionary = song.hand_at(0, tm)  # the right hand: the pitch of the note it struck last, between the lowest and the highest note of its part
+		if not rh.is_empty():
+			rt = float(rh.rt) * float(PianistBackRig.FRAMES - 1)
+		var lh: Dictionary = song.hand_at(1, tm)  # the left foot: the picture of the pitch of the left hand's last note (low note = picture 1 ... high note = picture 5)
+		if not lh.is_empty():
+			lt = float(lh.frame)
+			tap_f = clampf(1.0 - (tm - float(lh.t)) / 0.2, 0.0, 1.0)
+	if _pt_t >= 0.0:
+		rt = 6.5  # (the sign sequence starts from the picture that is nearest to its own first one: the hand out on the keys)
+	elif _bk_slam > 0.3:
+		rt = float(PianistBackRig.FRAMES - 3)  # (the last chord: right_hand_10: the arm stretched out)
+		lt = 0.0  # (and the left foot: leg picture 1, the lowest note: the bass of the chord)
+	elif page_flip >= 0.0:
+		rt = 0.0  # (the page turn: right_hand_01: the hand comes back to the body)
+	_bk_rh_target = rt
+	_bk_lf_target = lt
+	# the pictures are walked through, not jumped to: a leap of the melody sweeps through the pictures in between (the figure's frames lie on each other, so it is smooth)
+	_bk_rh = move_toward(_bk_rh, rt, d * 70.0)
+	_bk_lf = move_toward(_bk_lf, lt, d * 40.0)
+	_bk_idle = 0.0 if _bk_started else 1.0  # (the idle position of the PDF until the music starts, then it fades into the frames)
+	_bk_foot_on = move_toward(_bk_foot_on, 1.0 if (playing_now or _bk_slam > 0.3) else 0.0, d * 5.0)
+	if _pt_t >= 0.0:
+		_pt_t += d
+		if _pt_t >= PianistBackRig.SEQ_TIME:
+			_pt_t = -1.0
+	_bk_slam = move_toward(_bk_slam, 1.0 if _slam_on else 0.0, d * 9.0)
+	return {"rh": _bk_rh, "foot_frame": roundi(_bk_lf), "tap_f": tap_f, "foot_on": _bk_foot_on, "page": page_flip, "pt": _pt_t, "idle": _bk_idle,
+		"sheet": (maxi(1, _enemy.page) - 1) % 4 if _enemy != null else 0, "slam": _bk_slam,
+		"left": clampf(tm / maxf(song.length, 1.0), 0.0, 1.0) if song != null else 0.0}
 
 
 func _puppet_ok() -> bool:
@@ -677,7 +743,11 @@ func _draw_pianist(c: Vector2, s: float, body: Color) -> void:
 			_foot_x = lerpf(_foot_x, clampf((int(hl[1]) - PianistSong.LOW) / span, 0.0, 0.45), 0.25)
 	if not _pianist_tried:
 		_pianist_tried = true
-		_pianist_rig = PianistRig.load_rig() if _puppet_ok() else null
+		_pianist_back = PianistBackRig.load_rig() if _puppet_ok() else null  # (the view from behind, if its pieces are there)
+		_pianist_rig = null if _pianist_back != null else (PianistRig.load_rig() if _puppet_ok() else null)
+	if _pianist_back != null:
+		_pianist_back.draw(self, c, s, _back_state(), Color(0.35, 0.35, 0.35, 0.6) if dead else Color.WHITE.lerp(Color(2, 2, 2), maxf(flash, 0.0) * 0.5))
+		return
 	if _pianist_rig != null:
 		var playing_now: bool = song != null and song.playing()
 		_pianist_rig.draw(self, c, s, {"hand": _hand_x, "foot": _foot_x, "page": page_flip, "dead": dead,

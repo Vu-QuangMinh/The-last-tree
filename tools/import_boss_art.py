@@ -119,6 +119,39 @@ def do_icons(set_name, table, only):
             shutil.copyfile(os.path.join(AP.PUPPET, *src.split("/")), os.path.join(AP.PUPPET, *dst.split("/")))
 
 
+BACK = {"Pianist Back": {"Pianist Back A": "pianist_a", "Pianist Back B": "pianist_b", "Pianist Back Grand Piano": "piano_1", "Pianist Back Grand Piano 2": "piano_2", "Pianist Back Stool": "stool"},
+        "Pianist Back Parts": {n: "part_" + n.lower().replace(" ", "_") for n in ["Back Torso A", "Back Torso B", "Back Head A", "Back Head B", "Forearm Tap A", "Forearm Tap B", "Forearm Point A", "Forearm Point B", "Forearm Fist A", "Forearm Fist B", "Empty Sleeve A", "Empty Sleeve B"]},
+        "Pianist Back Props": {**{"Sheet Music %d" % k: "sheet_%d" % k for k in range(1, 5)}, "Silence Sign A": "sign_a", "Silence Sign B": "sign_b"}}
+
+
+def keep_blobs(im, min_frac=0.004):
+    """Keep every piece of the cut that is bigger than min_frac of the biggest one (the A-pose figure's arms may be loose pieces; Gemini's sparkle mark is tiny)."""
+    a = np.array(im)
+    lab, n = label(a[:, :, 3] > 8)
+    if n > 1:
+        sizes = np.bincount(lab.ravel())
+        keep = [i for i in range(1, n + 1) if sizes[i] >= sizes[1:].max() * min_frac]
+        a[:, :, 3] = np.where(np.isin(lab, keep), a[:, :, 3], 0)
+    return Image.fromarray(a)
+
+
+def do_back(only):
+    """2026-11-09, the view from behind (the user's Pianist.pdf): full size, trimmed, into Enemies/Act2/pianist/back/ (the user cuts the A-pose figure by hand)."""
+    d = os.path.join(OUT, "pianist", "back")
+    os.makedirs(d, exist_ok=True)
+    for set_name, table in BACK.items():
+        for name, ident in table.items():
+            if only and not any(w.lower() in name.lower() for w in only):
+                continue
+            f = newest(set_name, name)
+            if f is None:
+                print("  MISSING raw picture for", name)
+                continue
+            im = trim(keep_blobs(cut(f)))
+            im.save(os.path.join(d, ident + ".png"))
+            print("  %-28s -> pianist/back/%s.png %s" % (name, ident, im.size), flush=True)
+
+
 def do_sentinel():
     """The existing golem has a BLUE core: keep it as the Blue Sentinel, and make the Red one by turning the blue pixels red."""
     blue = os.path.join(OUT, "blue_sentinel.png")
@@ -142,6 +175,8 @@ if __name__ == "__main__":
     rest = sys.argv[2:]
     if what == "icons":
         do_icons("Puppet Intent Bosses", ICONS, rest)
+    elif what == "back":
+        do_back(rest)
     elif what == "artifacts":
         do_icons("Puppet Artifact Piano", ARTIFACTS, rest)
     else:

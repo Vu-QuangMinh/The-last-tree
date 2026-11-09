@@ -31,8 +31,8 @@ def read_vlq(b, i):
             return v, i
 
 
-def parse_midi(path):
-    """[(start s, pitch, duration s, velocity)] from a type 0/1 MIDI file, tempo changes included."""
+def parse_midi(path, only_channel=None):
+    """[(start s, pitch, duration s, velocity)] from a type 0/1 MIDI file, tempo changes included. only_channel: keep just that MIDI channel (here channel 1 = the left hand, 0 = the right)."""
     b = Path(path).read_bytes()
     assert b[:4] == b"MThd"
     hl = struct.unpack(">I", b[4:8])[0]
@@ -72,6 +72,8 @@ def parse_midi(path):
                 continue
             d1, d2 = b[j], b[j + 1]
             j += 2
+            if only_channel is not None and (status & 0x0F) != only_channel:
+                continue
             if hi == 0x90 and d2 > 0:
                 events.append((tick, "on", d1, d2))
             elif hi == 0x80 or (hi == 0x90 and d2 == 0):

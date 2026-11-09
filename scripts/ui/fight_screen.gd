@@ -7235,7 +7235,14 @@ func _page_turn(e: EnemyState) -> void:
 	if v == null or not is_instance_valid(v.creature):
 		await _wait(1.2)
 		return
-	await _wait(0.4)
+	# the music has stopped: he points at the sign, "Silence, please", three times (a knock on the wood each time: PianistBackRig.KNOCKS), and then turns the page (the paper's sound)
+	var total: float = v.creature.pianist_point()
+	var spent := 0.0
+	for kt in PianistBackRig.KNOCKS:
+		await get_tree().create_timer(float(kt) - spent).timeout
+		spent = float(kt)
+		Audio.play("sfx_knock_wood")
+	await get_tree().create_timer(maxf(0.0, total - spent)).timeout
 	Audio.play("page_flip")
 	var tw := create_tween()
 	tw.tween_property(v.creature, "page_flip", 1.0, 1.1).from(0.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -7265,6 +7272,9 @@ func _pianist_finale() -> void:
 		if v.enemy.has_passive("pianist") and is_instance_valid(v.creature):
 			v.creature.flash = 1.0
 	Audio.play("piano_slam")
+	for v in _views.values():
+		if v.enemy.has_passive("pianist") and is_instance_valid(v.creature):
+			v.creature.pianist_slam()
 	_shake(16.0)
 	_slam("The End", Color(0.95, 0.92, 0.85), Color(0.1, 0.05, 0.05), 150)
 	fight.song_ends()

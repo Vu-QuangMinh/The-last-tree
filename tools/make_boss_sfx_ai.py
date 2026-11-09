@@ -15,10 +15,11 @@ SOUNDS = {
     "page_flip": ("one big sheet of heavy paper being turned over on a music stand, a soft dry rustle and one gentle flap, quiet and close", 1.2),
     "sfx_virus_apply": ("a computer virus infecting something, a glitchy digital stutter with a sickly wet bubbling squelch, ominous and gross", 1.4),
     "sfx_burden_apply": ("a heavy stone weight dropping onto a wooden stage, one deep dull thud with a short rattle of an iron chain", 1.3),
+    "sfx_knock_wood": ("one single short hard knock of a knuckle on a thick wooden sign board, dry, woody and close, a quick tok with a tiny hollow ring", 0.8),
     "sfx_snake_hiss": ("a huge snake hissing angrily then spitting a wet rotten splat, slimy and gross", 1.5),
 }
 NEG = {"page_flip": "music, voice, melody, loud", "sfx_virus_apply": "music, melody, voice", "sfx_burden_apply": "music, voice, melody",
-       "sfx_snake_hiss": "music, melody, human voice"}
+       "sfx_snake_hiss": "music, melody, human voice", "sfx_knock_wood": "music, voice, melody, echo, reverb"}
 
 
 def path_of(name):

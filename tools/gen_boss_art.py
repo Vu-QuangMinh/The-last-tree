@@ -14,6 +14,11 @@ SETS = {
     "artifacts": ("Puppet Artifact Piano", "Icon/Artifact/artifact_icons_style.txt", "Icon/Artifact/piano_artifacts_prompts.txt", "1:1"),
     "bosses": ("Act 2 Bosses", "Enemies/Act2/act2_bosses_style.txt", "Enemies/Act2/act2_bosses_prompts.txt", "1:1"),
     "pianist": ("Pianist Pieces", "Enemies/Act2/pianist_style.txt", "Enemies/Act2/pianist_prompts.txt", "1:1"),
+    # 2026-11-09: the new view from BEHIND (the user's Pianist.pdf): A-pose figure, grand piano, stool; then sheet music + sign (these two may carry letters)
+    "pianist_back": ("Pianist Back", "Enemies/Act2/pianist_back_style.txt", "Enemies/Act2/pianist_back_prompts.txt", "1:1"),
+    # the separate parts for the view from behind (torso, head with hat, hand poses, empty left sleeve); the old front-view arm / thigh / shin pieces are reused
+    "pianist_parts": ("Pianist Back Parts", "Enemies/Act2/pianist_back_style.txt", "Enemies/Act2/pianist_parts_prompts.txt", "1:1"),
+    "pianist_props": ("Pianist Back Props", "Enemies/Act2/pianist_back_props_style.txt", "Enemies/Act2/pianist_back_props_prompts.txt", "1:1"),
 }
 
 if __name__ == "__main__":
