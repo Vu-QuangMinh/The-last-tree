@@ -128,6 +128,8 @@ var _info: Label
 var _info_row: Control  # Puppet Stage: the same line written in the wooden alphabet (UiSkin.letters)
 var _info_text := ""
 var _hp_bar: HpBar
+var _minh_lever: TextureRect  # MinhHUD: the lever on the hub
+var _minh_disc: MinhParts.Disc  # MinhHUD: the round Chant / Pass button (flips into Release)
 var _hp_label: Label
 var _shield_box: HBoxContainer  # the Shield (and Lasting) amount, beside your HP
 var _shield_label: Label
@@ -188,6 +190,8 @@ const EFFECT_FX := {
 	"convert": "transmute", "transmute": "transmute", "draw": "gain_essence", "sacrifice": "lose_hp", "amplify": "amplify", "shatter": "break_armour", "temp_seal": "seal",
 	"passive": "power", "each_turn": "power", "retain": "refund",
 }
+## The sound an enemy's move makes when it lands on you, by kind (those that have none of their own in the generic code)
+const ENEMY_KIND_SFX := {"virus": "sfx_virus_apply", "vulnerable": "spellfx_vulnerable", "toll": "sfx_burden_apply"}
 ## The shots of a barrage: one sound each, a beat apart (a little different each, so that it does not sound like one sample played again and again), each enemy
 ## flinching as it is hit. Runs on its own while the step goes on.
 func _volley(targets: Array, group: String, fallback: String) -> void:
@@ -239,7 +243,7 @@ func _ready() -> void:
 	add_to_group("fight_screen")  # (the bars of the screens laid over it leave the artifacts to this one)
 	_nu_ui = UiSkin.is_new_ui()
 	if _nu_ui:
-		NewUiLayout.use(UiSkin.is_hud2())  # (Puppet HUD ver 2 is the same HUD code with other numbers)
+		NewUiLayout.use(UiSkin.is_hud2() or UiSkin.is_minhhud(), UiSkin.is_minhhud())  # (Puppet HUD ver 2 and MinhHUD are the same HUD code with other numbers)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UiTheme.get_theme()
 	_backdrop = Backdrop.new()
@@ -1155,7 +1159,10 @@ func _rebuild_character_panel_nu() -> void:
 	_nu_back.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS  # (big pictures drawn small stay smooth)
 	_nu_back.size = Vector2(1920.0, 1080.0)  # (it draws on the whole screen: a Control of size 0 that is redrawn while its parent shakes drops out of the picture for a frame or two)
 	add_child(_nu_back)
-	_hp_bar = L.Bar.new()
+	if L.minh:  # (MinhHUD: your HP is the red flask)
+		_hp_bar = MinhHpFlask.new()
+	else:
+		_hp_bar = L.Bar.new()
 	_hp_bar.position = L.HP_BAR.position
 	_hp_bar.size = L.HP_BAR.size
 	_hp_bar.custom_minimum_size = L.HP_BAR.size
@@ -1198,6 +1205,8 @@ func _rebuild_character_panel_nu() -> void:
 	move_child(_top_layer, _stage.get_index() + 1)
 	for n in [_nu_back, _hp_bar, _hp_label, _shield_box, _lasting_label, _bottle_row, _arts, _player_panel]:
 		n.reparent(_top_layer, false)
+	if L.minh:
+		_build_minh_layers()
 	_info.reparent(_top_layer, false)  # (no hanging sign: the Act / Floor / Turn line is written on the second tab of the HUD, always shown)
 	_info.position = L.ACT_TEXT.position
 	_info.size = L.ACT_TEXT.size
@@ -1346,6 +1355,21 @@ func _fit_hud_nu() -> void:
 	_arts.position = L.ART_AT + (L.ART_CELL - Vector2.ONE * L.ART_PX) / 2.0
 	_bottle_row.visible = true
 	_bottle_row.position = L.BOTTLE_AT + (L.BOTTLE_CELL - Vector2.ONE * L.BOTTLE_PX) / 2.0
+	if L.minh:  # (the numbers stand on the lower half of the flask, under the hub)
+		var fc: Vector2 = L.HP_BAR.get_center()
+		_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_hp_label.position = Vector2(fc.x - 55.0, fc.y + 34.0)
+		_hp_label.size = Vector2(110.0, 24.0)
+		_shield_box.alignment = BoxContainer.ALIGNMENT_CENTER
+		_shield_box.custom_minimum_size = Vector2(80.0, 20.0)
+		_shield_box.position = Vector2(fc.x - 40.0, fc.y + 58.0)
+		_shield_box.size = _shield_box.custom_minimum_size
+		_lasting_label.size = Vector2(160.0, 20.0)
+		_lasting_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_lasting_label.position = Vector2(fc.x - 80.0, fc.y + 80.0)
+		_player_panel.position = L.HP_BAR.position
+		return
 	var bar := _hp_bar as NewUiLayout.Bar
 	var parts := bar.parts()
 	var fill: Rect2 = Rect2(L.HP_BAR.position + L.HP_FILL.position, L.HP_FILL.size)  # (the pill the liquid is in, on the screen)
@@ -1696,6 +1720,7 @@ func _build_strips_puppet() -> void:
 	_end_btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_end_btn.tooltip_text = "End your turn without chanting (you keep your Essence). (E)"
 	pass_slot.add_child(_end_btn)
+	_wire_minh_buttons()
 	add_child(cp)
 	# the Bag strip, then the slot machine (Slot_machine.pdf, SlotMachine) on its right. Layers: the strip, the glass tube and the port's hole, every Essence
 	# (in the strip, in the tube, hidden behind the funnels and the cabinet), then the funnels, the cabinet with its reels, lamps and lever, the tube's clamps
@@ -1720,7 +1745,9 @@ func _build_strips_puppet() -> void:
 			_machine.headless = true
 			_machine.drop_at = NewUiLayout.DROP_AT
 	_machine.build()
-	if NewUiLayout.hud2:
+	if NewUiLayout.minh:
+		_build_minh_pipe(inner)
+	elif NewUiLayout.hud2:
 		_build_hud2_tube(inner)
 	_machine.behind.show_behind_parent = true  # (the tube comes out from under the Bag strip)
 	sp.add_child(_machine.behind)
@@ -1730,11 +1757,100 @@ func _build_strips_puppet() -> void:
 	_stock_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	_stock_row.custom_minimum_size = Vector2(1100.0, PuppetLayout.FRAME_BAG.y)
 	_stock_row.size = _stock_row.custom_minimum_size
+	if NewUiLayout.minh:
+		_stock_row.z_index = 60  # (the Essence rest and wait INSIDE the glass pipe: it is drawn under them (z 59) and faintly over them (61))
 	inner.add_child(_stock_row)
 	if _nu_ui:
 		inner.add_child(_machine.over)  # (the tube's clamp, over the Essence)
 	inner.add_child(_machine.front)
 	add_child(sp)
+
+
+## MinhHUD: the layers of the PDF that stand over or between the cards of the HUD (children of the top layer, which is the HUD's own: they sink and fade with it). z: the Chant tray's front 1
+## (over the rings that lie in it), the hub 2 (over the flask's glass), the glass over the artifacts and the bottles 4 (over the artifacts z 3 and the bottles z 2); the round button
+## is under the real Buttons of the Chant strip.
+func _build_minh_layers() -> void:
+	var H = Hud2Layout
+	_minh_disc = MinhParts.Disc.new()
+	_top_layer.add_child(_minh_disc)
+	_top_layer.add_child(MinhParts.Layer.new(1, [["Chant tray/Front tray", Rect2(969.797, 924.183, 584.032, 38.828)]]))
+	_top_layer.add_child(MinhParts.Layer.new(2, [["minhhud_hub", MinhParts.HUB]]))
+	_top_layer.add_child(MinhParts.Layer.new(4, [["Artifact Cabinet/Glass", Rect2(141.385, 852.717, 285.406, 180.444)], ["Artifact Cabinet/Side Glass", Rect2(155.698, 872.299, 256.78, 141.279)], ["Bottle cabinet/Front stand", Rect2(508.003, 986.671, 131.846, 20.376)]]))
+	_top_layer.add_child(MinhParts.Layer.new(4, [["Bottle cabinet/Glass", H.M_BOT_BACK]], true))
+
+
+## MinhHUD: the round button changes face (the chant is spoken: Chant / Pass flips into Release, and back): its picture flips, and the real Button that takes the clicks changes its size
+## (Chant is the red upper part, Release is the whole face; Pass is hidden then by the fight screen).
+func _minh_flip(kind: String) -> void:
+	if _minh_disc == null:
+		return
+	_minh_disc.set_kind(kind, true)
+	var r: Rect2 = Hud2Layout.M_CHANT_BTN if kind == "chant" else Hud2Layout.M_RELEASE_BTN
+	_place(_cast_btn, Rect2(r.position - (NewUiLayout.BAG_AT + NewUiLayout.CHANT_AT), r.size))
+
+
+## MinhHUD: the looped glass pipe (the picture is opaque: once at z 59 under the Essence that wait and run in it, and once more at z 61 over them, faint, as the glass in front of them), the lever (63) and the hub's centre over its pivot (64). Children of the Bag strip like the hud2 tube, so they
+## sink and fade with the HUD. The pipe is one picture drawn twice, as the page does: the whole of it right of x 1190, and again 94.3 px further right inside a box over the straight tube
+## (the tube is as long as the page needs). The lever's pivot is the hub's centre (`_minh_lever` is kept for its animation: not made yet).
+func _build_minh_pipe(holder: Control) -> void:
+	var H = Hud2Layout
+	var pipe := UiSkin.tex("minhhud_pipe")
+	if pipe != null:
+		var img := Rect2(854.436, 753.858, 1004.039, 332.926)
+		for clip in [[Rect2(1189.958, 753.858, 668.516, 326.142), 0.0, 59, 1.0], [Rect2(948.757, 970.778, 241.214, 63.484), 94.321, 59, 1.0], [Rect2(1189.958, 753.858, 668.516, 326.142), 0.0, 61, H.M_PIPE_FRONT_ALPHA], [Rect2(948.757, 970.778, 241.214, 63.484), 94.321, 61, H.M_PIPE_FRONT_ALPHA]]:
+			var box := Control.new()
+			box.clip_contents = true
+			box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			box.position = clip[0].position - _bag_at()
+			box.size = clip[0].size
+			box.z_index = clip[2]
+			box.modulate.a = clip[3]
+			var tr := TextureRect.new()
+			tr.texture = pipe
+			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tr.stretch_mode = TextureRect.STRETCH_SCALE
+			tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+			tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tr.position = Vector2(img.position.x + clip[1], img.position.y) - clip[0].position
+			tr.size = img.size
+			box.add_child(tr)
+			holder.add_child(box)
+	var lever := UiSkin.tex("minhhud_lever")
+	if lever != null:
+		var lr := Rect2(1710.894, 753.503, 20.323, 148.617)
+		var tr := TextureRect.new()
+		tr.texture = lever
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_SCALE
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		tr.position = lr.position - _bag_at()
+		tr.size = lr.size
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tr.z_index = 63
+		tr.pivot_offset = H.M_LOOP_C - lr.position
+		holder.add_child(tr)
+		_minh_lever = tr
+	var cap := MinhParts.Cap.new()
+	cap.position = -_bag_at()
+	cap.z_index = 64
+	holder.add_child(cap)
+
+
+## MinhHUD: the round Chant / Pass button is one picture (MinhParts.Disc); its real Buttons (Chant = the red upper part, Pass = the plate under it; Release covers all of it) only take the
+## clicks and tell the picture which part is pressed or under the mouse.
+func _wire_minh_buttons() -> void:
+	if not NewUiLayout.minh:
+		return
+	var set_disc := func(k: int) -> void:
+		if _minh_disc != null:
+			_minh_disc.set_press(k)
+	for pair in [[_cast_btn, 2], [_end_btn, 3]]:
+		var b: Button = pair[0]
+		var down: int = pair[1]
+		b.button_down.connect(func() -> void: set_disc.call(down))
+		b.button_up.connect(func() -> void: set_disc.call(1 if b.is_hovered() else 0))
+		b.mouse_entered.connect(func() -> void: set_disc.call(1))
+		b.mouse_exited.connect(func() -> void: set_disc.call(0))
 
 
 ## Puppet HUD ver 2: the vertical tube is two pictures, the back (z 59) under the Essence that fall and wait in it (z 60) and the front (z 61) over them; the right board is over the
@@ -2626,7 +2742,11 @@ const HUD2_DT := 1.0 / 60.0
 func _hud2_track() -> Array:
 	var L = NewUiLayout
 	var k: float = Hud2Layout.K
-	return [Vector2(Hud2Layout.VTUBE_X, Hud2Layout.DROP_Y) * k - L.BAG_AT, Hud2Layout.STACK_UP * k - L.BAG_AT, Hud2Layout.STACK_BEND * k - L.BAG_AT, Vector2(L.MOUTH_X, L.TUBE_ROW_Y)]
+	var out: Array = []
+	for p in Hud2Layout.track_pts():  # (drop, the first waiting places, the bend, and for MinhHUD the loop round the flask)
+		out.append(p * k - L.BAG_AT)
+	out.append(Vector2(L.MOUTH_X, L.TUBE_ROW_Y))
+	return out
 
 
 func _hud2_at(track: Array, s: float) -> Vector2:
@@ -2676,7 +2796,9 @@ func _hud2_launch(order: Array, role: Array, balls: Array, twin_of: Dictionary, 
 	var track := _hud2_track()
 	var pitch: float = Hud2Layout.STACK_STEP * Hud2Layout.K
 	var s_bend: float = track[0].distance_to(track[1]) + track[1].distance_to(track[2])
-	var s_hole: float = s_bend + track[2].distance_to(track[3])
+	var s_hole: float = s_bend
+	for i in range(2, track.size() - 1):
+		s_hole += track[i].distance_to(track[i + 1])
 	var half := Vector2(BAG_PX, BAG_PX) / 2.0
 	var entries: Array = []  # {j, ic, s0 (already in the tube) or -1, kind, fly, enter}
 	var twins: Array = twin_of.values()
@@ -2810,7 +2932,7 @@ func _hud2_launch(order: Array, role: Array, balls: Array, twin_of: Dictionary, 
 						ic.scale = Vector2.ONE * 0.3)
 				tw.tween_method(func(u: float) -> void:
 					if is_instance_valid(ic):
-						ic.position = top + Vector2(0.0, lerpf(-80.0, 0.0, u * u)) - half
+						ic.position = top + Vector2(0.0, lerpf(80.0 if Hud2Layout.minh else -80.0, 0.0, u * u)) - half
 						ic.modulate.a = minf(1.0, u * 4.0)
 						ic.scale = Vector2.ONE * lerpf(0.3, _ball_k(), minf(1.0, u * 2.0)), 0.0, 1.0, fly)
 			else:
@@ -3315,6 +3437,9 @@ Turn %d" % [run.act, run.floor_no(), fight.turn]))  # (two lines on the sign)
 		if _cast_kind != cast_kind:
 			_cast_kind = cast_kind
 			UiTheme.style_puppet_button(_cast_btn, cast_kind, 18)
+			_minh_flip(cast_kind)
+		if _minh_disc != null:
+			_minh_disc.enabled = not _cast_btn.disabled
 	for b in _test_btns:
 		b.disabled = busy or _auto_busy or phase != "build" or aiming or move_view != null or pick_view != null or chant_mode != "" or fight.over
 	var live_spells := fight.charges.size() > 0 and phase == "spells"
@@ -4469,7 +4594,7 @@ func _after_turn() -> void:
 func _stunned_turn() -> void:
 	busy = true
 	_banner("Stunned!", Color(1.0, 0.85, 0.3), 1.0)
-	Audio.play("sfx_frail_apply")
+	Audio.play("sfx_stun_apply")
 	_refresh_all()
 	await get_tree().create_timer(1.4).timeout
 	if fight.over or not is_inside_tree():
@@ -4593,7 +4718,7 @@ func _seed_revival() -> void:
 const STATUS_ART_NAMES := {"shield": ["icon_armor_shield"], "thorns": ["status_thorns"], "silence": ["status_silenced"], "aegis": ["status_aegis"],
 	"echo": ["status_echo_ready"], "overload": ["status_overload"], "ethereal": ["status_ethereal", "intent_ethereal"],
 	"poison": ["status_poison", "intent_poison"], "bleed": ["status_bleed", "intent_bleed"], "confuse": ["status_confuse", "intent_confuse"], "blind": ["status_blind", "intent_blind"],
-	"lock": ["status_toll", "intent_toll"], "vulnerable": ["status_vulnerable"],
+	"lock": ["status_burden", "status_toll", "intent_toll"], "vulnerable": ["status_vulnerable"], "stun": ["status_stunned", "intent_stunned"],
 	"brittle": ["status_brittle"], "disarmed": ["status_disarmed"]}
 ## A Power's badge picture, by the theme of its dissolve (fire / water / wind use the Essence balls).
 const POWER_ART_NAMES := {"fire": ["essence_fire"], "water": ["essence_water"], "wind": ["essence_wind"], "thorn": ["status_thorns"],
@@ -5100,10 +5225,16 @@ func _pulse_release() -> void:
 	if _release_glow and not busy and not _cast_btn.disabled:
 		var s := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * TAU / 1.1)
 		_cast_btn.modulate = Color(1.0 + 0.45 * s, 1.0 + 0.38 * s, 1.0 + 0.15 * s)
+		if _minh_disc != null:  # (MinhHUD: the picture is the round button's, not the Button's)
+			_minh_disc.glow = s
+			_minh_disc.queue_redraw()
 		if not NewUiLayout.hud2:  # (Puppet HUD ver 2: it only blinks brighter, it does not grow)
 			_cast_btn.pivot_offset = _cast_btn.size / 2.0
 			_cast_btn.scale = Vector2.ONE * (1.0 + 0.06 * s)
-	elif _cast_btn.scale != Vector2.ONE or _cast_btn.modulate != Color.WHITE:
+	elif _cast_btn.scale != Vector2.ONE or _cast_btn.modulate != Color.WHITE or (_minh_disc != null and _minh_disc.glow != 0.0):
+		if _minh_disc != null:
+			_minh_disc.glow = 0.0
+			_minh_disc.queue_redraw()
 		_cast_btn.modulate = Color.WHITE
 		_cast_btn.scale = Vector2.ONE
 
@@ -7209,6 +7340,7 @@ func _talk() -> void:
 
 ## The Pianist: his piece starts now and runs in real time; at its end, The End.
 var _song: PianistSong
+const PIANIST_LEAD_IN := 2.0  # (seconds between Engage and the first note)
 
 
 func _pianist_start() -> void:
@@ -7221,9 +7353,12 @@ func _pianist_start() -> void:
 			fight.talk_rewards.append(fight.song)  # (beat him: the score of the piece he played is yours, and unlocked)
 			add_child(_song)
 			_song.ended.connect(_pianist_finale)
-			_song.play()
 			if is_instance_valid(v.creature):
 				v.creature.song = _song
+				v.creature.pianist_warm_up()  # (he brings the leg and the hand to the first notes' places...)
+			await get_tree().create_timer(PIANIST_LEAD_IN).timeout  # (...and only then the music starts: otherwise the leg would jump)
+			if is_instance_valid(_song) and not fight.over:
+				_song.play()
 			return
 
 
@@ -7233,7 +7368,14 @@ func _page_turn(e: EnemyState) -> void:
 	if v == null or not is_instance_valid(v.creature):
 		await _wait(1.2)
 		return
-	await _wait(0.4)
+	# the music has stopped: he points at the sign, "Silence, please", three times (a knock on the wood each time: PianistBackRig.KNOCKS), and then turns the page (the paper's sound)
+	var total: float = v.creature.pianist_point()
+	var spent := 0.0
+	for kt in PianistBackRig.KNOCKS:
+		await get_tree().create_timer(float(kt) - spent).timeout
+		spent = float(kt)
+		Audio.play("sfx_knock_wood")
+	await get_tree().create_timer(maxf(0.0, total - spent)).timeout
 	Audio.play("page_flip")
 	var tw := create_tween()
 	tw.tween_property(v.creature, "page_flip", 1.0, 1.1).from(0.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -7263,6 +7405,9 @@ func _pianist_finale() -> void:
 		if v.enemy.has_passive("pianist") and is_instance_valid(v.creature):
 			v.creature.flash = 1.0
 	Audio.play("piano_slam")
+	for v in _views.values():
+		if v.enemy.has_passive("pianist") and is_instance_valid(v.creature):
+			v.creature.pianist_slam()
 	_shake(16.0)
 	_slam("The End", Color(0.95, 0.92, 0.85), Color(0.1, 0.05, 0.05), 150)
 	fight.song_ends()
@@ -8875,14 +9020,19 @@ func _enemy_move_fx(ev: Dictionary) -> void:
 	if kind == "steal":
 		await _steal_fx(ev, v)
 		return
-	if String(ev.get("move", {}).get("sfx", "")) == "gong":
+	var move_sfx := String(ev.get("move", {}).get("sfx", ""))
+	if move_sfx == "gong":
 		Audio.play("gong", -2.0)
+	elif move_sfx != "":
+		Audio.play(move_sfx)  # (a sound of the move's own: the Rot Snake's hiss)
+	elif ENEMY_KIND_SFX.has(kind):
+		Audio.play(ENEMY_KIND_SFX[kind])
 	var look: Array = IntentChip.LOOK.get(kind, ["✦", Color.WHITE])
 	var info: Array = IntentChip.INFO.get(kind, [kind.capitalize(), ""])
 	if v and v.creature.has_rig():  # (a Handyman hand: its arm acts it out, a little gentler than a blow)
 		_arm_swing(v.creature, 0.6)
 		await _wait(0.23)
-	if kind in Fight.AT_PLAYER and v:
+	if (kind in Fight.AT_PLAYER or kind in ["virus", "vulnerable"]) and v:
 		var from := v.creature.global_position + v.creature.size / 2.0
 		var to := _attack_point()
 		var comet := Comet.launch(_fx, from, to, (look[1] as Color).lightened(0.3))

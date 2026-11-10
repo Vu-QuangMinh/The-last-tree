@@ -94,7 +94,7 @@ const E := {
 		"flavor": "Its blue core turns slowly toward you."},
 	# The Rot Snake: a big, half-rotten snake. Poison 5, then a bite for 5 and Poison 1, in turn.
 	"rot_snake": {"name": "Rot Snake", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WFAWWFAFWA",
-		"moves": [{"kind": "poison", "n": 5}, {"kind": "attack", "n": 5, "also": {"kind": "poison", "n": 1}}],
+		"moves": [{"kind": "poison", "n": 5, "sfx": "sfx_snake_hiss"}, {"kind": "attack", "n": 5, "also": {"kind": "poison", "n": 1}}],
 		"flavor": "Half of it is already dead. The other half hasn't noticed."},
 	# The Headless Horseman: two moves in turn. At 10 Essence or less his next move is to throw his head, which silences every spell;
 	# from then on he only has the first move.

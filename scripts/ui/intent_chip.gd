@@ -117,11 +117,12 @@ static func make(e: EnemyState, move := {}) -> IntentChip:
 ## New theme: the painted icon of each intent kind (assets/New/Icon/Intent/intent_<kind>.png). Burn / Unknown are painted too,
 ## but no enemy intent uses them (burn is a status).
 const ART := {"attack": "intent_attack", "armor": "intent_armor", "freeze": "intent_freeze", "steal": "intent_steal", "summon": "intent_summon",
-	"poison": "intent_poison", "virus": "intent_poison", "vulnerable": "status_vulnerable", "bleed": "intent_bleed", "blind": "intent_blind", "confuse": "intent_confuse", "mend": "intent_mend", "shuffle": "intent_shuffle",
-	"silence": "intent_silence", "lock": "intent_lock", "empower": "intent_empower", "toll": "intent_toll",
+	"poison": "intent_poison", "virus": "intent_virus", "vulnerable": "status_vulnerable", "bleed": "intent_bleed", "blind": "intent_blind", "confuse": "intent_confuse", "mend": "intent_mend", "shuffle": "intent_shuffle",
+	"silence": "intent_silence", "lock": "intent_lock", "empower": "intent_empower", "toll": "intent_burden",
 	"invert": "intent_invert", "mimic": "intent_mimic", "hammer_spell": "intent_hammer_spell",
 	"invert_spells": "intent_invert_spells", "invoke": "intent_invoke", "stunned": "intent_stunned", "stun": "intent_stunned", "sing": "intent_sing", "ignite_spell": "intent_ignite_spell", "charge": "intent_charge", "revive": "intent_revive",
-	"summon_clock": "intent_summon", "guard": "intent_armor", "resurrect": "intent_summon", "recharge": "intent_recharge", "dormant": "intent_dormant", "grounded": "intent_stunned", "glow": "intent_glow", "explode": "intent_explode", "grow_thorns": "intent_grow_thorns", "hold": "intent_hold", "cleanse_self": "intent_cleanse_self", "drain_essence": "intent_drain_essence", "disarm": "intent_disarm", "brittle": "intent_brittle", "regrow": "intent_regrow"}
+	"summon_clock": "intent_summon", "guard": "intent_armor", "resurrect": "intent_summon", "recharge": "intent_recharge", "dormant": "intent_dormant", "grounded": "intent_stunned", "glow": "intent_glow", "explode": "intent_explode", "grow_thorns": "intent_grow_thorns", "hold": "intent_hold", "cleanse_self": "intent_cleanse_self", "drain_essence": "intent_drain_essence", "disarm": "intent_disarm", "brittle": "intent_brittle", "regrow": "intent_regrow",
+	"play": "intent_play", "deflect": "intent_deflect", "bottle": "intent_bottle", "steal_spell": "intent_steal_spell", "fireball": "intent_fireball", "fireball_blast": "intent_fireball_blast"}
 
 
 ## New theme: the bubble is five fixed-ratio pieces: two end caps, the arrow in the middle, and a stretchy piece on each

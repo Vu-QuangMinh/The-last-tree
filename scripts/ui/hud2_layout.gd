@@ -6,9 +6,11 @@ extends RefCounted
 ## The page is 2048 x 1152 pt and the game 1920 x 1080: one pt = K screen px. Every number below is in PDF pt; `apply()` turns them into the values of NewUiLayout (the fight screen's
 ## HUD code is the New UI one, it only reads the values), and `draw()` paints the HUD for NewUiLayout.Back.
 ## Art: assets/Puppet/UI/Hud2/ (tools/export_hud2_art.py: cup, hole, tube from the PDF; tools/make_hud2_art.py + import_hud2_art.py: boards, slot frame, buttons made by ImageSet).
+## Theme MinhHUD shares this class: `minh` is true while its values are in (apply_minh() sets them, apply() puts these ones back), its page is the screen itself (K = 1) and `draw()` /
+## `track_pts()` / `stack_pos()` branch on it. The page: page 2 of assets/Puppet/UI/MinhHUD/MinhHUD.pdf (the HUD assembled at the bottom of it; the pieces drawn above are the flip of the round button and the bottle cabinet's hint).
 ## (The page also has a second thin glass tube lying on the right board's top edge, no use named: not drawn.)
 
-const K := 0.9375
+static var K := 0.9375
 
 const BOARD_LEFT := Rect2(206, 907, 735, 213)
 const BOARD_RIGHT := Rect2(1112, 907, 838, 213)
@@ -37,14 +39,31 @@ const MENU_BTN := Rect2(69.0, 1059.8, 82.8, 53.3)
 const TUBE_UPPER := Rect2(1893.6, 702.7, 147.2, 406.8)  # the vertical tube in two pictures: the front (glass, brass rings, hud2_tube_upper.png: over the Essence) ...
 const TUBE_LOWER := Rect2(1927.9, 763.2, 86.9, 290.9)  # ... and the back (the far lip of the glass at both rings, hud2_tube_lower.png: under the Essence); its rims sit on the front's rings
 const BOARD_COVER_X := 1936.0  # the right board is over the tube: from here to the board's right edge the board is drawn again over the Essence and the tube's front
-const VTUBE_X := 1979.0  # the Essence column in it (the page's three examples stand at 1979, the lowest one turned to 1962 at the bend)
-const VTUBE_TOP := 814.5  # the highest a waiting Essence stands (its centre): just under the top ring
-const DROP_Y := 740.5  # an Essence comes in over the top ring and goes down into the tube
-const STACK_BEND := Vector2(1966.0, 1066.7)  # the lowest waiting Essence; the others stand 60 pt apart going up the tube
-const STACK_UP := Vector2(1979.0, 1006.7)  # the next one up
-const STACK_STEP := 60.0
-const BALL_PT := 60.0  # an Essence in the tube is 60 pt
-const RING_PX := 60.0  # the Chant rings (the Essence in the cups)
+static var VTUBE_X := 1979.0  # the Essence column in it (the page's three examples stand at 1979, the lowest one turned to 1962 at the bend)
+static var VTUBE_TOP := 814.5  # the highest a waiting Essence stands (its centre): just under the top ring
+static var DROP_Y := 740.5  # an Essence comes in over the top ring and goes down into the tube
+static var STACK_BEND := Vector2(1966.0, 1066.7)  # the lowest waiting Essence; the others stand 60 pt apart going up the tube
+static var STACK_UP := Vector2(1979.0, 1006.7)  # the next one up
+static var STACK_STEP := 60.0
+static var BALL_PT := 60.0  # an Essence in the tube is 60 pt
+static var RING_PX := 60.0  # the Chant rings (the Essence in the cups)
+
+
+static var minh := false  # theme MinhHUD's values are in
+
+
+## Puppet HUD ver 2's own values of the variables the fight screen reads (apply_minh changes them).
+static func _hud2_values() -> void:
+	minh = false
+	K = 0.9375
+	VTUBE_X = 1979.0
+	VTUBE_TOP = 814.5
+	DROP_Y = 740.5
+	STACK_BEND = Vector2(1966.0, 1066.7)
+	STACK_UP = Vector2(1979.0, 1006.7)
+	STACK_STEP = 60.0
+	BALL_PT = 60.0
+	RING_PX = 60.0
 
 
 static func s(r: Rect2) -> Rect2:
@@ -53,6 +72,7 @@ static func s(r: Rect2) -> Rect2:
 
 ## Puts this HUD's values into NewUiLayout.
 static func apply() -> void:
+	_hud2_values()
 	var L = NewUiLayout
 	var cup0: Vector2 = CUP_C0 * K  # (the first cup's centre: the first Chant ring and the first resting Essence stand there)
 	var tray_mid := (TRAY.position.y + TRAY.size.y / 2.0) * K
@@ -92,6 +112,8 @@ static func apply() -> void:
 
 ## Where the k-th waiting Essence stands in the vertical tube (strip px): the first at the bend, the next ones going up the tube 60 pt apart, as the page shows three of them.
 static func stack_pos(k: int) -> Vector2:
+	if minh:  # (MinhHUD: they wait one under the other in the pipe's column, the first at the top, the rest going down it and out of the screen)
+		return (STACK_BEND + Vector2(0.0, STACK_STEP * k)) * K - NewUiLayout.BAG_AT
 	var first := STACK_BEND.distance_to(STACK_UP)
 	var d := STACK_STEP * k
 	var p: Vector2
@@ -156,6 +178,9 @@ static func tint_of(state: String) -> Color:
 ## Draws the HUD on `c` (a NewUiLayout.Back, at the screen's origin): back to front the left board with its artifact slots, the bottle board with its five slots, the right board with its
 ## cups, the tray and its hole, the vertical tube, the Menu button and the debuff circles. (Chant / Pass / Clear are real Buttons of the fight screen.)
 static func draw(c) -> void:
+	if minh:
+		_draw_minh(c)
+		return
 	_pic(c, "hud2_board_left", s(BOARD_LEFT))
 	_pic(c, "hud2_art_tray", s(ART_TRAY))
 	_pic(c, "hud2_bottle_tray", s(BOTTLE_TRAY))
@@ -165,6 +190,116 @@ static func draw(c) -> void:
 	_hslice(c, "hud2_tray", s(TRAY), 170.0)
 	_pic(c, "hud2_hole", s(Rect2(HOLE_C - Vector2.ONE * HOLE_D / 2.0, Vector2.ONE * HOLE_D)))
 	_pic(c, "hud2_btn_menu_pressed" if c.menu_state == 2 else "hud2_btn_menu", s(MENU_BTN), tint_of("hover" if c.menu_state == 1 else "normal"))
+	var sock := _tex("nu_debuff_ring")
+	for k in c.debuffs:
+		var at := NewUiLayout.debuff_slot(k, 1)
+		if sock != null:
+			c.draw_texture_rect(sock, Rect2(at, Vector2.ONE * NewUiLayout.DEBUFF_PX), false)
+		else:
+			c.draw_arc(at + Vector2.ONE * NewUiLayout.DEBUFF_PX / 2.0, NewUiLayout.DEBUFF_PX / 2.0, 0.0, TAU, 32, Color(0.8, 0.6, 0.3), 1.5)
+
+
+## ---- Theme MinhHUD -----------------------------------------------------------------------------------------------------------------------------------------------------
+## The HUD assembled at the bottom of page 2 of assets/Puppet/UI/MinhHUD/MinhHUD.pdf (1920 x 1080 = the screen, so one pt = one px), every number below read off that page (the images'
+## places and sizes, the clip paths, the drawing order = the z order). Left to right on a wooden base: the artifact cabinet (two shelves of five pedestals, a glass over them), the bottle
+## cabinet (a stand of three, a glass over it), the round Chant / Pass button (flips into Release), the wooden Chant tray (ten sockets: the Chant rings lie in them), then the glass pipe:
+## its left part is a straight tube (the Essence rest in it), an Essence is pushed up into the column from below the screen, waits there, and when it is let go runs over the top of the
+## loop, down the right side and left along the bottom into the straight tube. The red glass flask in the loop's hole is your HP (and Shield); the brass hub and lever sit on it.
+## The pictures are the user's: assets/Puppet/UI/MinhHUD/ (the folders are the PDF's parts); MinhParts (minh_parts.gd) holds the layers that sit over the cards of the HUD.
+const M_BASE := Rect2(101.269, 814.298, 1483.035, 250.0)
+const M_ART_CAB := Rect2(139.676, 853.856, 288.824, 178.165)  # the artifacts stand inside it (between this and its glass)
+const M_BOT_CAB := Rect2(481.961, 852.717, 183.93, 180.444)
+const M_BOT_BACK := Rect2(500.376, 870.369, 147.101, 145.139)
+const M_BOT_BEHIND := Rect2(515.671, 982.586, 116.511, 5.227)  # the back edge of the stand, behind the bottles
+const M_TRAY_BEHIND := Rect2(990.596, 915.206, 542.273, 11.863)  # the Chant tray's back, behind the rings (its front is over them: MinhParts)
+const M_FLASK := Rect2(1635.894, 806.653, 170.323, 170.323)
+const M_LOOP_C := Vector2(1721.055, 891.8)  # the loop's centre = the flask's and the hub's centre = the lever's pivot
+const M_LOOP_R := 110.8  # the pipe's middle line: the column is M_LOOP_R left of the centre, the bottom leg M_LOOP_R under it (the tube is 54 wide)
+const M_CHANT_BTN := Rect2(768, 866, 150, 100)  # the real Buttons over the round button: Chant (the red upper part), Pass (the plate under it) or, once the chant is spoken, Release (all of it)
+const M_PASS_BTN := Rect2(785, 970, 115, 48)
+const M_RELEASE_BTN := Rect2(768, 864, 150, 150)
+const M_CLEAR_BTN := Rect2(1503, 829, 48, 48)  # (the page has no Clear: the Puppet HUD ver 2 picture goes between the Chant tray and the pipe, over the tray's right end)
+const M_MENU_BTN := Rect2(10, 1043, 83, 36)  # (neither has the page a Menu: the Puppet HUD ver 2 picture at the base's left)
+const M_CUP_C0 := Vector2(1029.797, 904.4)  # the first of the ten Chant rings (the PDF's balls: 49.77 wide, 50.92 apart)
+const M_CUP_STEP := 50.92
+const M_RING_PX := 49.77
+const M_ART_C0 := 189.7  # x of the first artifact pedestal's middle (47.2 apart), y of the two shelves where the artifacts stand (their feet)
+const M_ART_STEP := 47.2
+const M_ART_FEET := [940.0, 1012.0]
+const M_BOTTLE_C0 := Vector2(535.8, 967.3)  # the first bottle: where the page puts the Essence ball that shows a bottle's place; the stand's three sockets are 39.2 apart
+const M_BOTTLE_STEP := 39.2
+const M_REST0 := 1013.0  # the first resting Essence's middle in the pipe's straight tube
+const M_TRAY_Y := 1002.5  # the straight tube's middle line
+const M_PIPE_FRONT_ALPHA := 0.4  # the pipe's picture is opaque: it is drawn under the Essence, and again over them at this opacity (the glass in front); 1.0 is for a picture with its own transparency
+const M_MOUTH_X := 1540.0  # the Essence rest in the straight tube from here (left of the column and its brass collar)
+
+
+static func apply_minh() -> void:
+	minh = true
+	K = 1.0
+	VTUBE_X = M_LOOP_C.x - M_LOOP_R
+	VTUBE_TOP = M_LOOP_C.y
+	DROP_Y = 1096.0
+	STACK_BEND = Vector2(VTUBE_X, M_LOOP_C.y)
+	STACK_UP = Vector2(VTUBE_X, M_LOOP_C.y + 70.0)
+	STACK_STEP = 54.0
+	BALL_PT = 50.0
+	RING_PX = M_RING_PX
+	var L = NewUiLayout
+	L.BAG_AT = Vector2(M_REST0 - (PuppetLayout.REST_X + 26.0), M_TRAY_Y - PuppetLayout.AXIS_Y)
+	L.RING_PX = RING_PX
+	L.RING_STEP = M_CUP_STEP
+	L.CHANT_AT = Vector2(M_CUP_C0.x - M_REST0, M_CUP_C0.y - PuppetLayout.RING_CY - L.BAG_AT.y)
+	var chant_at: Vector2 = L.BAG_AT + L.CHANT_AT
+	L.BTN_CHANT = Rect2(M_CHANT_BTN.position - chant_at, M_CHANT_BTN.size)
+	L.BTN_PASS = Rect2(M_PASS_BTN.position - chant_at, M_PASS_BTN.size)
+	L.BTN_CLEAR = Rect2(M_CLEAR_BTN.position - chant_at, M_CLEAR_BTN.size)
+	L.MENU_BTN = M_MENU_BTN
+	# artifacts: a 44 px artifact stands on each pedestal (five a row, the rows are the two shelves)
+	L.ART_CELL = Vector2(M_ART_STEP, M_ART_FEET[1] - M_ART_FEET[0])
+	L.ART_COLS = 5
+	L.ART_PX = 44.0
+	L.ART_AT = Vector2(M_ART_C0 - L.ART_PX / 2.0 - (L.ART_CELL.x - L.ART_PX) / 2.0, M_ART_FEET[0] - L.ART_PX - (L.ART_CELL.y - L.ART_PX) / 2.0)
+	L.BOTTLE_CELL = Vector2(M_BOTTLE_STEP, 56.0)
+	L.BOTTLE_PX = 39.0
+	L.BOTTLE_AT = Vector2(M_BOTTLE_C0.x - L.BOTTLE_PX / 2.0 - (L.BOTTLE_CELL.x - L.BOTTLE_PX) / 2.0, M_BOTTLE_C0.y - L.BOTTLE_PX / 2.0 - (L.BOTTLE_CELL.y - L.BOTTLE_PX) / 2.0)
+	L.HP_BAR = M_FLASK
+	L.ACT_TEXT = Rect2(M_ART_CAB.position.x, 782.0, M_ART_CAB.size.x, 29.0)
+	L.DEBUFF_AT = Vector2(M_CUP_C0.x - 21.0, 833.0)  # (a row of up to six over the Chant tray, 42 px each)
+	L.DEBUFF_STEP = M_CUP_STEP
+	L.DEBUFF_PX = 42.0
+	L.DEBUFF_COLS = 6
+	var mouth: Vector2 = Vector2(M_MOUTH_X, M_TRAY_Y) - L.BAG_AT
+	L.MOUTH_X = mouth.x
+	L.REST_END = mouth.x - 30.0
+	L.TUBE_ROW_Y = PuppetLayout.AXIS_Y
+	L.DROP_AT = Vector2(VTUBE_X, DROP_Y) - L.BAG_AT
+	L.SPELL_BOTTOM = 771.0
+	L.SPELL_CENTER_X = 960.0
+
+
+## The way of an Essence in the pipe (page px): from below the screen up the column to the first waiting place, then (after STACK_BEND) round the loop clockwise: up and over the top,
+## down the right side and left along the bottom leg (the caller adds the mouth). MinhHUD only; Puppet HUD ver 2's is [drop, STACK_UP, STACK_BEND].
+static func track_pts() -> Array:
+	if not minh:
+		return [Vector2(VTUBE_X, DROP_Y), STACK_UP, STACK_BEND]
+	var pts: Array = [Vector2(VTUBE_X, DROP_Y), STACK_UP, STACK_BEND]
+	for k in range(1, 19):  # from 180 degrees (the column, level with the centre) round the top and the right to 450 (the bottom): 15 degrees a step
+		var a := deg_to_rad(180.0 + 15.0 * k)
+		pts.append(M_LOOP_C + Vector2(cos(a), sin(a)) * M_LOOP_R)
+	return pts
+
+
+## What MinhHUD draws on the Back (the layers under the cards, the bottles, the artifacts and the Chant rings); the ones over them are MinhParts.Layer, the round button MinhParts.Disc.
+static func _draw_minh(c) -> void:
+	_pic(c, "minhhud_base", M_BASE)
+	_pic(c, "Artifact Cabinet/Cabinet", M_ART_CAB)
+	_pic(c, "Bottle cabinet/Bottle Cabinet", M_BOT_CAB)
+	_pic(c, "Bottle cabinet/Wooden back", M_BOT_BACK)
+	_pic(c, "Bottle cabinet/Behind stand", M_BOT_BEHIND)
+	_pic(c, "Chant tray/Behind tray", M_TRAY_BEHIND)
+	_pic(c, "minhhud_flask", M_FLASK)
+	_pic(c, "hud2_btn_menu_pressed" if c.menu_state == 2 else "hud2_btn_menu", M_MENU_BTN, tint_of("hover" if c.menu_state == 1 else "normal"))
 	var sock := _tex("nu_debuff_ring")
 	for k in c.debuffs:
 		var at := NewUiLayout.debuff_slot(k, 1)

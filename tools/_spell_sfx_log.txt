@@ -283,3 +283,14 @@
 21:27:00 starting the AnySFX backend
 21:28:03 fish_count             pick 1 of 0.69 0.74 0.68 0.67 (60 s) a single short dry wooden block tap, one woody tick, clean
 21:28:54 fish_go                pick 0 of 1.16 -0.77 0.78 0.40 (50 s) a single bright hand bell ding, short clear ring, game start signal
+18:56:07 starting the AnySFX backend
+18:57:21 sfx_sentinel_wake      pick 1 of 0.94 1.10 0.86 0.87 (67 s) a huge stone golem waking up, deep grinding of heavy stone slabs shifting, a low rumble and a dull stony crack
+18:58:05 sfx_lamp_glow          pick 2 of 0.54 0.18 0.92 0.44 (44 s) a soft magical lantern glowing brighter, a gentle rising shimmer with one soft glassy chime, calm and eerie
+18:58:49 sfx_stun_apply         pick 0 of 0.79 0.65 0.74 0.57 (44 s) a cartoon dizzy daze, a dull wooden bonk followed by a short wobbly ringing whistle, comic
+16:32:21 starting the AnySFX backend
+16:33:59 page_flip              pick 2 of 0.37 0.57 0.59 0.33 (89 s) one big sheet of heavy paper being turned over on a music stand, a soft dry rustle and one gentle flap, quiet and close
+16:34:45 sfx_virus_apply        pick 0 of 0.94 0.63 0.40 0.85 (46 s) a computer virus infecting something, a glitchy digital stutter with a sickly wet bubbling squelch, ominous and gross
+16:35:29 sfx_burden_apply       pick 0 of 0.96 0.76 -0.28 0.68 (44 s) a heavy stone weight dropping onto a wooden stage, one deep dull thud with a short rattle of an iron chain
+16:36:11 sfx_snake_hiss         pick 3 of -0.35 0.60 0.64 0.95 (42 s) a huge snake hissing angrily then spitting a wet rotten splat, slimy and gross
+21:11:51 starting the AnySFX backend
+21:13:01 sfx_knock_wood         pick 0 of 0.69 0.65 0.66 0.61 (63 s) one single short hard knock of a knuckle on a thick wooden sign board, dry, woody and close, a quick tok with a tiny hollow ring
