@@ -717,12 +717,19 @@ func _show_event(ev: Dictionary) -> void:
 	var slot := Audio.event_slot(String(ev.get("id", "")))
 	if slot != "" and not ev.get("again", false):
 		Audio.play_music(slot)  # (the event's own music; the map's comes back with the map)
+	if ev.get("scene", "") == "matador":
+		_matador_scene(ev)
+		return
 	if ev.has("scene"):
 		_bear_scene(ev)  # (played out on the stage itself)
 		return
+	if ev.get("id", "") == "church_of_aole":
+		MatadorLore.flag("aole")  # (the name Aole met: the Crowned Matador can be asked about her)
 	var labels: Array = ev.options.map(func(o): return o.label)
 	var pick := func(i: int):
 		var o: Dictionary = ev.options[i]
+		if o.has("next") and ev.get("id", "") == "church_of_aole":
+			MatadorLore.flag("church_listened")  # (you stayed and listened: the four horsemen can be asked about)
 		if o.has("next"):
 			# a second page: its own words and options (the Bard: "Can I have it?")
 			var page := ev.duplicate()
@@ -906,6 +913,26 @@ func _event_result(ev: Dictionary, opt: Dictionary, bottle_at: int, spell_id := 
 
 ## They See Me Rolling / the bear's revenge, on the stage with his puppet. Stopping him pays; stepping aside sets up
 ## his revenge; the revenge is an elite fight with the Enraged Rolling Bear, you Stunned on the first turn.
+## The Crowned Matador: his dice game and his questions, on the stage (MatadorScene). "boss": his trial, a boss of this act
+## (not the one at the end of the map), with its full rewards; the act goes on, and you can't die in it.
+func _matador_scene(_ev: Dictionary) -> void:
+	var sc := MatadorScene.new()
+	sc.run = run
+	sc.finished.connect(func(result: String):
+		if result == "boss":
+			var n := run.current_node()
+			n["as"] = "boss"
+			n["no_advance"] = true
+			run.trial_fight = true
+			run.no_talk_next = true
+			var ids: Array = [run.trial_boss()]
+			run.set_encounter(ids)
+			_show_loadout(ids)
+			return
+		show_map())
+	_stage_overlay(sc)
+
+
 func _bear_scene(ev: Dictionary) -> void:
 	var sc := BearRollScene.new()
 	sc.mode = "revenge" if ev.scene == "bear_revenge" else "meet"
@@ -1582,6 +1609,11 @@ func _after_fight(f: Fight) -> void:
 	for spell_name in ([] if _test_mode else SaveManager.boss_unlocks(f.defeated)):
 		Events.toast.emit("New spell unlocked: %s" % spell_name, Color(1, 0.85, 0.4))
 	var act_before := run.act
+	if not f.won and run.trial_fight:
+		run.finish_fight(f)  # (the Crowned Matador's trial: you wake on the map at 1 HP)
+		Events.toast.emit("The trial is over. You wake at 1 HP.", Color(1, 0.85, 0.5))
+		show_map()
+		return
 	if not f.won and run.can_revive():
 		# the Seed of Life: back to the start of this fight's preparation, as you were going in
 		run.revive()
@@ -1629,6 +1661,8 @@ func _after_fight(f: Fight) -> void:
 				ch.chosen.connect(func(i):
 					_pick_artifact(relics[i].id)
 					go.call()))
+	if act_before == 2 and run.act == 3 and not _test_mode:
+		MatadorLore.flag("act2_end")  # (the end of Act 2 reached: the basement can be asked about)
 	if run.act != act_before:
 		steps.append(func(go):
 			var s := _message("Act %d cleared" % act_before, "You heal half your HP and press deeper into the wood.", ["Onward"], Color(0.9, 0.7, 1))

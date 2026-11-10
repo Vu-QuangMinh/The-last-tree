@@ -2127,12 +2127,10 @@ func _plan(e: EnemyState) -> void:
 		e.intent = {"kind": "grounded"}
 	if e.def.get("call_once", false):
 		if e.has_meta("called"):
-			e.intent = e.def.moves[0].duplicate()  # (Bug Hunter 1.0: its Sentinel came; from now on only the laser)
+			e.intent = e.def.moves[0].duplicate()  # (the Bug Hunter: its Sentinel came; from now on only its strikes)
 			e.intent.erase("also")
 		elif e.intent.get("also", {}).get("kind", "") == "summon":
 			e.set_meta("called", true)
-	if e.has_passive("thrown_junk"):
-		e.intent = EnemyDefs.throw_roll(rng)  # (the Orphans: rolled now, so you can see what is coming)
 	if e.has_passive("big_shield") and e.size() <= 1:
 		e.intent = {"kind": "attack", "n": 1}
 	if e.has_passive("behind_shield") and enemies.any(func(x): return x.has_passive("big_shield") and x.knocked):

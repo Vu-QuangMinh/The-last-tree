@@ -107,15 +107,7 @@ var _hung := false
 var _lifted := false
 
 
-func _peek_orphans() -> void:
-	await get_tree().process_frame
-	if is_instance_valid(creature):
-		preload("res://scripts/ui/orphan_fx.gd").peek_forever(creature)
-
-
 func setup(e: EnemyState, f: Fight) -> void:
-	if e.has_passive("thrown_junk"):
-		_peek_orphans.call_deferred()
 	enemy = e
 	fight = f
 	custom_minimum_size = Vector2(300, 470)

@@ -210,6 +210,7 @@ func _talk() -> void:
 		"ask":
 			_dialog(MerchantQuests.ASK[n], [[MerchantQuests.ACCEPT[n], func():
 				MerchantQuests.accept(quest)
+				MatadorLore.flag("merchant_quest")  # (the Crowned Matador can be asked how to help him)
 				run.merchant_talked = run.room_key()
 				quest_changed.emit()
 				Audio.play("discovery_unlock")

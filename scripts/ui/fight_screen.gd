@@ -3165,10 +3165,7 @@ func _sync_views() -> void:
 	for e in _views:  # (Puppet Stage: a puppet that was defeated breaks into pieces)
 		var old: EnemyView = _views[e]
 		if e.is_dead() and not e.knocked and not _hand_going_down(e) and is_instance_valid(old) and is_instance_valid(old.creature):
-			if e.has_passive("thrown_junk"):
-				OrphanFx.run_away(self, old.creature.get_global_rect(), Creature._puppet_tex("orphan_bush", 2))
-				_orphans_running = true
-			elif old.creature.has_rig():
+			if old.creature.has_rig():
 				_shatter_arm(old.creature)
 			else:
 				PuppetShatter.spawn(self, old.creature)
@@ -4646,7 +4643,7 @@ func _finish() -> void:
 			else:
 				await _slam("Victory!", Color(0.75, 1.0, 0.5), Color(0.1, 0.28, 0.05), 140)
 		await get_tree().create_timer(0.5).timeout
-	elif run != null and run.can_revive():
+	elif run != null and run.can_revive() and not run.trial_fight:  # (the Matador's trial: no Seed of Life spent, you just wake on the map)
 		await _seed_revival()
 	else:
 		if stage_flow and _stage != null and ResourceLoader.exists(UiSkin.theme_dir() + "Stage/Shared/sign_defeat.png"):  # Puppet Stage: the Defeat board drops in
@@ -6053,16 +6050,12 @@ var _reforming := {}  # EnemyState -> PuppetShatter: a boss pulling itself back 
 func _anim(ev: Dictionary) -> void:
 	await _anim_event(ev)
 	_cull_dead()
-	if _orphans_running:
-		_orphans_running = false
-		await _wait(OrphanFx.WAIT)  # (the fight ends once the children have run off)
 
 
-const OrphanFx := preload("res://scripts/ui/orphan_fx.gd")
+const ThrowFx := preload("res://scripts/ui/orphan_fx.gd")
 var _row_order: Array = []  # every enemy of this fight in its place on the stage, the dead ones too (their places stay empty)
 var _slot_w := {}  # EnemyState -> the width of its place
 var _row_fight: Fight  # the fight _row_order belongs to
-var _orphans_running := false  # the bush has just been pulled up: the fight waits for the children to run off
 
 
 ## The Necromancer acts: he leans further out from behind his Shield Bearer, then back.
@@ -6087,10 +6080,7 @@ func _cull_dead() -> void:
 			_views.erase(e)
 			if is_instance_valid(old):
 				if is_instance_valid(old.creature):
-					if e.has_passive("thrown_junk"):
-						OrphanFx.run_away(self, old.creature.get_global_rect(), Creature._puppet_tex("orphan_bush", 2))
-						_orphans_running = true
-					elif old.creature.has_rig():
+					if old.creature.has_rig():
 						_shatter_arm(old.creature)
 					else:
 						PuppetShatter.spawn(self, old.creature)
@@ -6516,7 +6506,7 @@ func _anim_event(ev: Dictionary) -> void:
 			if ev.get("head", false) and head_v:
 				Audio.play("sfx_head_scream")
 				await get_tree().create_timer(0.55).timeout  # (he screams first, then it flies)
-				await OrphanFx.throw_item(self, head_v.creature.global_position + Vector2(head_v.creature.size.x * 0.5, 40.0), _attack_point(), "head")
+				await ThrowFx.throw_item(self, head_v.creature.global_position + Vector2(head_v.creature.size.x * 0.5, 40.0), _attack_point(), "head")
 			Audio.play("sfx_silence_apply")
 			_refresh_all()
 			await _wait(0.15)
@@ -8532,6 +8522,24 @@ func _move_words(m: Dictionary, e: EnemyState) -> String:
 	return " + ".join(parts)
 
 
+## The Bug Hunter strikes its own head: the striker swings up onto the bell, it rings and shakes. `alarm`: it rings the
+## alarm for a Sentinel (three strikes, louder, longer). Returns when the first ring lands (the hit shows then).
+func _bell_strike(v: EnemyView, alarm: bool) -> void:
+	if not is_instance_valid(v) or not is_instance_valid(v.creature):
+		return
+	var c := v.creature
+	var dur := 1.0
+	var tw := c.create_tween()
+	tw.tween_property(c, "bell_t", 1.0, dur).from(0.0)
+	if alarm:
+		tw.tween_property(c, "bell_t", 1.0, dur).from(0.0)
+		tw.tween_property(c, "bell_t", 1.0, dur).from(0.0)
+	tw.tween_callback(func(): c.bell_t = -1.0)
+	await _wait(dur * 0.28)
+	Audio.play("bell_alarm" if alarm else "bell_strike", -2.0)
+	_shake(3.0 if alarm else 2.0)
+
+
 ## The attacker lunges at you: slash marks, a shake, and the HP bar (or the Shield glass) takes the hit.
 func _enemy_attack(ev: Dictionary) -> void:
 	var v: EnemyView = _views.get(ev.enemy)
@@ -8550,13 +8558,15 @@ func _enemy_attack(ev: Dictionary) -> void:
 		tw.parallel().tween_property(hedge, "squash", 1.0, 0.2)
 		await _wait(0.2)
 	elif v and String(ev.get("throw", "")) != "":
-		target = await OrphanFx.throw_item(self, v.creature.global_position + Vector2(v.creature.size.x * 0.5, 40.0), target, String(ev.throw))  # (the hit shows where it lands)
+		target = await ThrowFx.throw_item(self, v.creature.global_position + Vector2(v.creature.size.x * 0.5, 40.0), target, String(ev.throw))  # (the hit shows where it lands)
 	elif v and v.creature.has_rig() and ev.enemy.id == "hand_spear":
 		target = await _spear_stab(v, float(ev.n))  # (the spear thrusts up into your HP bar: the hit lands there)
 	elif v and v.creature.has_rig() and ev.enemy.id == "hand_sword":
 		target = await _sword_slash(v, float(ev.n))  # (the blade cuts across your HP bar: the hit lands there)
 	elif v and v.creature.has_rig() and ev.enemy.id == "hand_crossbow" and _arrow_tex() != null:
 		target = await _arrow_shot(v, float(ev.n))  # (the bolt flies up and sticks in your HP bar: the hit lands there)
+	elif v and ev.enemy.id == "bug_hunter":
+		await _bell_strike(v, false)  # (it strikes its own head: the bell rings, and that is the hit)
 	elif v and v.creature.has_samurai():
 		await _wait(v.creature.samurai_strike(int(ev.get("hit", 0)), int(ev.get("hits", 1))))  # (the swing plays; the blow lands when his sword comes down)
 	elif v and v.creature.has_rig():
@@ -9020,6 +9030,9 @@ func _enemy_move_fx(ev: Dictionary) -> void:
 	if kind == "steal":
 		await _steal_fx(ev, v)
 		return
+	if kind == "summon" and v and ev.enemy.id == "bug_hunter":
+		await _bell_strike(v, true)  # (it rings the alarm: a Sentinel is on its way)
+		await _wait(1.6)
 	var move_sfx := String(ev.get("move", {}).get("sfx", ""))
 	if move_sfx == "gong":
 		Audio.play("gong", -2.0)

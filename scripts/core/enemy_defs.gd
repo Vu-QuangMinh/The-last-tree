@@ -127,11 +127,6 @@ const E := {
 	"tree_dweller_b": {"name": "Tree Dweller", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "AWFAAW",
 		"moves": [{"kind": "poison", "n": 2}],
 		"flavor": "The bark has almost reached her eyes."},
-	# The Orphans: a tall bramble bush with children behind it. They throw whatever they find: the damage is rolled when the
-	# throw is planned (see THROWN). The bush killed, it is pulled up and the children run off to the left, laughing.
-	"orphan_bush": {"name": "The Orphans", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "AWFAWWFAA", "passives": ["thrown_junk"],
-		"moves": [{"kind": "attack", "n": 3}],
-		"flavor": "Somebody behind it is trying very hard not to laugh."},
 	# The Bog Lantern: an enormous angler fish on two legs (any of its moves, at random), and its lamp, a separate enemy hanging on
 	# its hook, on a clock: 2, 1, then at 0 it stuns you and starts over. It is part of the fish: put out, it stays there, dark, and
 	# lights up again after a turn, its clock at 2.
@@ -141,12 +136,13 @@ const E := {
 	"bog_lamp": {"name": "Lamp", "act": 2, "hang": 150.0, "member": true, "no_extra": true, "no_bonus": true, "hp": "FF",
 		"moves": [{"kind": "glow", "n": 2}, {"kind": "stun", "turns": 1}],
 		"flavor": "Brighter. Brighter. Brighter."},
-	# Bug Hunter 1.0: an assembly-line robot with two things in mind at once: its laser (5 every turn) and a clock of 3 turns;
-	# on its 4th turn it calls a Sentinel (red or blue). Only once: after that, only the laser.
-	"bug_hunter": {"name": "Bug Hunter 1.0", "act": 2, "call_once": true, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAFFWAWW",
+	# The Bug Hunter: a little brass bell on legs, its head the bell, a striker in its hands. It hunts bugs: it strikes its
+	# own head (5 every turn: the bell rings and shakes) and keeps a clock of 3 turns; on its 4th turn it rings the alarm
+	# and a Sentinel (red or blue) comes to destroy the bug. Only once: after that, only the strikes. (Was a robot.)
+	"bug_hunter": {"name": "The Bug Hunter", "act": 2, "call_once": true, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAFFWAWW",
 		"moves": [{"kind": "attack", "n": 5, "also": {"kind": "summon_clock", "n": 3}}, {"kind": "attack", "n": 5, "also": {"kind": "summon_clock", "n": 2}},
 			{"kind": "attack", "n": 5, "also": {"kind": "summon_clock", "n": 1}}, {"kind": "attack", "n": 5, "also": {"kind": "summon", "ids": ["sentinel", "blue_sentinel"], "n": 1}}],
-		"flavor": "Task: remove bugs. You are a bug."},
+		"flavor": "It hunts for bugs. When it finds one, it rings."},
 	# ---------------- act 3
 	"inverter": {"name": "Inverter", "act": 3, "hp": "FWFW", "moves": [{"kind": "invert"}, {"kind": "attack", "n": 5}, {"kind": "armor", "pos": 0}],
 		"flavor": "Fire becomes water, water becomes fire."},
@@ -380,7 +376,6 @@ const PASSIVE_TEXT := {
 	"flying": "Flying: your chant can't hit it. Damage from a spell or a bottle brings it down, and it is stunned for a turn.",
 	"shell": "Shell: its first Essence is always armoured, until it is its last one.",
 	"maddened": "Maddened: every spell you cast this turn is one more hit on his attack. It starts over each turn.",
-	"thrown_junk": "Thrown Junk: throws whatever is at hand, for 2 to 10 damage. Usually about 3, but sometimes an axe.",
 	"lure": "Lure: its lamp hangs on its hook. Put out, it goes dark for a turn, then lights up again, its clock back at 2.",
 	"last_fuse": "Last Fuse: at 0 Essence it reboots with 4 Essence. Destroy those, or on its turn it explodes for 10 and dies.",
 	"big_shield": "Big Shield: guards the Necromancer, who can't be touched while it stands. On its last Essence it swings instead. Fallen, it can be raised again.",
@@ -445,10 +440,9 @@ const BIOS := {
 	"mad_soldier": "Weak on his own, but every spell you cast this turn adds a swing. Cast less, or kill him fast.",
 	"tree_dweller_a": "Rooted to the spot, and never stops shooting. Two Poison a turn, every turn.",
 	"tree_dweller_b": "Rooted to the spot, and never stops shooting. Two Poison a turn, every turn.",
-	"orphan_bush": "Mud, stones, sticks, and now and then something much worse. Nobody ever taught them not to.",
 	"bog_fish": "An enormous angler fish on two legs. Bites, spits Poison, or grows more Thorns, whichever it feels like.",
 	"bog_lamp": "Its clock runs 2, 1, 0, and at 0 you are Stunned. Put it out and it lights up again, but its clock starts over.",
-	"bug_hunter": "An assembly-line arm with a laser, and a clock: on its 4th turn it calls a Sentinel. Take it apart before the alarm goes off.",
+	"bug_hunter": "A brass bell on legs that hunts for bugs. It strikes its own head to hurt you, and on its 4th turn it rings the alarm for a Sentinel. Silence it before then.",
 	"inverter": "Fire becomes water, water becomes fire, and your plans become confetti.",
 	"warded_golem": "Short chants bounce right off. Say something meaningful: at least four Essence long.",
 	"echo_wraith": "Everything it does, it does twice. Everything it does, it does twice.",
@@ -636,8 +630,7 @@ const POOLS := {
 	},
 	2: {
 		"easy": [
-			{"name": "The Orphans", "ids": ["orphan_bush"], "w": 1.0},
-				{"name": "Bug Hunter 1.0", "ids": ["bug_hunter"], "w": 1.0},
+				{"name": "The Bug Hunter", "ids": ["bug_hunter"], "w": 1.0},
 			{"name": "Starving Mobs", "ids": ["mob_pitchfork", "mob_slingshot", "mob_torch"], "w": 1.0},
 			{"name": "Maddened Soldier", "ids": ["mad_soldier"], "w": 1.0},
 			{"name": "The Tree Dwellers", "ids": ["tree_dweller_a", "tree_dweller_b"], "w": 1.0},
@@ -657,19 +650,7 @@ const POOLS := {
 	},
 }
 
-## What the Orphans throw: [damage, item, weight]. 3 is the most common, the heavy things are rare, 10 is always the axe.
-const THROWN := [[2, "mud", 20], [3, "stone", 30], [4, "stick", 18], [5, "brick", 12], [6, "pot", 8], [7, "shovel", 5], [8, "sword", 3], [9, "boulder", 2], [10, "axe", 2]]
-
-
-static func throw_roll(rng: RandomNumberGenerator) -> Dictionary:
-	var r := rng.randf() * 100.0
-	for t in THROWN:
-		r -= float(t[2])
-		if r < 0.0:
-			return {"kind": "attack", "n": t[0], "throw": t[1]}
-	return {"kind": "attack", "n": 3, "throw": "stone"}
-
-
+const FIRST_SPIRITS := ["ashling", "iceling", "zephling"]  # the run's first fight is one of these, alone
 const PLAN_LENGTH := 12  # more than a path through an act can hold
 const EASY_FIGHTS := 2  # the first two fights of an act are easy,
 const MEDIUM_FIGHTS := 2  # the next two medium, the rest hard
@@ -685,6 +666,10 @@ static func roll_fight_plan(act: int, rng: RandomNumberGenerator) -> Array:
 		var pool: Array = pools[kind]
 		if kind == "hard" and pool.size() < 3:
 			pool = pool + pools.medium  # (too few hard fights yet to keep from repeating: the medium ones help out)
+		if act == 1 and i == 0:
+			pool = pool.filter(func(enc): return enc.ids.size() == 1 and enc.ids[0] in FIRST_SPIRITS)  # (the very first fight of a run: one spirit alone)
+		elif act == 1 and i == 1:
+			pool = pool.filter(func(enc): return not (enc.ids.size() == 1 and enc.ids[0] in FIRST_SPIRITS))  # (the second: a pair of spirits, or a slime)
 		if i == EASY_FIGHTS or i == EASY_FIGHTS + MEDIUM_FIGHTS:
 			var before: Array = plan[-1].ids
 			var fresh := pool.filter(func(enc): return not enc.ids.any(func(id): return id in before))

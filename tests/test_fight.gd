@@ -1105,26 +1105,10 @@ func test_act2_tier1_undying_duo() -> void:
 	assert_true(h.over, "the Necromancer dead: the bones stay down, the fight is won")
 
 
-func test_act2_tiers_and_the_orphans() -> void:
+func test_act2_easy_pool_without_the_orphans() -> void:
 	var names: Array = EnemyDefs.POOLS[2].easy.map(func(x): return x.name)
-	assert_true("The Orphans" in names and "Starving Mobs" in names)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 11
-	var seen := {}
-	for i in 3000:
-		var t := EnemyDefs.throw_roll(rng)
-		seen[t.n] = seen.get(t.n, 0) + 1
-		assert_true(t.n >= 2 and t.n <= 10)
-		if t.n == 10:
-			assert_eq(t.throw, "axe")
-	assert_true(seen[3] > seen[2] and seen[3] > seen[4] and seen[4] > seen[7] and seen[7] > seen[10], "3 is the usual, heavy things are rare")
-	var f := _fight(["orphan_bush"], ["fire_ball"], "")
-	assert_eq(f.enemies[0].size(), 9)
-	assert_true(f.enemies[0].intent.has("throw"), "its throw is rolled when it is planned")
-	f.player.hp = 40
-	var n: int = f.enemies[0].intent.n
-	await f.end_player_turn()
-	assert_eq(f.player.hp, 40.0 - n)
+	assert_true("Starving Mobs" in names and not ("The Orphans" in names))
+	assert_true(not EnemyDefs.E.has("orphan_bush"), "the Orphans are gone")
 
 
 func test_act2_tier15_maddened_soldier() -> void:
@@ -1156,7 +1140,7 @@ func test_act2_tier15_tree_dwellers() -> void:
 	f.enemies[0].remove_right(6)
 	f._cleanup()
 	assert_eq(f.alive().size(), 1, "each has its own Essence")
-	assert_eq(EnemyDefs.POOLS[2].easy.size(), 5)
+	assert_eq(EnemyDefs.POOLS[2].easy.size(), 4, "(the Orphans are gone)")
 
 
 func test_act2_tier2_headless_horseman() -> void:
@@ -3264,3 +3248,63 @@ func test_the_pianists_scores_play_along_with_extensions() -> void:
 	f.player.hp = 30.0
 	f._score_extension()
 	assert_eq([f.enemies[0].burn, f.player.hp], [1, 32.0], "Turkish March: Burn 1; Für Elise: heal 2")
+
+
+func test_the_very_first_fight_is_one_enemy() -> void:
+	var rng := RandomNumberGenerator.new()
+	for k in 200:
+		rng.seed = k
+		var plan := EnemyDefs.roll_fight_plan(1, rng)
+		assert_true(plan[0].ids.size() == 1 and plan[0].ids[0] in ["ashling", "iceling", "zephling"], "fight 1: one spirit alone (seed %d)" % k)
+		assert_true(plan[1].ids.size() == 2 or plan[1].ids[0].ends_with("slime"), "fight 2: a pair or a slime (seed %d)" % k)
+
+
+func test_crowned_matador_comes_at_least_once_and_again() -> void:
+	var run := RunState.new()
+	run.setup(db, ["fire_ball", "water_wall", "tailwind"], [], 3)
+	run.act = 2
+	run.map = [[{"type": "unknown"}]]
+	run.row = 0
+	run.col = 0
+	# not met by Act 2: the next event is him
+	var first := ""
+	for k in 50:
+		run.current_node().erase("event")
+		if run.resolve_unknown() == "event":
+			first = String(run.current_node().event)
+			break
+	assert_eq(first, "crowned_matador", "not met yet in Act 2: he is the next event")
+	assert_eq(run.matador_met, 1)
+	# he stays on the list (the only event that comes again)
+	var again := 0
+	for k in 400:
+		run.current_node().erase("event")
+		if run.resolve_unknown() == "event" and run.current_node().event == "crowned_matador":
+			again += 1
+	assert_true(again > 0, "he can come again")
+
+
+func test_crowned_matador_trial_boss() -> void:
+	var run := RunState.new()
+	run.setup(db, ["fire_ball", "water_wall", "tailwind"], [], 3)
+	run.act = 2
+	var map_boss := run.boss_for(2)
+	assert_eq(run.boss_for(2), map_boss, "the map's boss is chosen once and kept")
+	for k in 30:
+		assert_true(run.trial_boss() != map_boss, "the trial is never the map's boss")
+	# you can't die in it: back on the map at 1 HP, the run goes on
+	run.map = [[{"type": "unknown", "as": "boss", "no_advance": true}]]
+	run.row = 0
+	run.col = 0
+	run.trial_fight = true
+	var f := run.make_fight([run.trial_boss()])
+	f.won = false
+	run.finish_fight(f)
+	assert_true(not run.over and run.player.hp == 1.0 and not run.trial_fight)
+
+
+func test_crowned_matador_questions() -> void:
+	var open: Array = MatadorLore.open_questions().map(func(q): return q.id)
+	assert_eq(open, ["who_are_you", "mask", "nila", "who_am_i"], "with nothing found yet: the four always-open ones")
+	assert_eq(MatadorLore.QUESTIONS.size(), 12)
+	assert_eq(MatadorLore.QUESTIONS[0].choices, ["A coward.", "A father.", "A king."])

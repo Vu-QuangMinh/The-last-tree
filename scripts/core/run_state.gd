@@ -55,6 +55,9 @@ var fight_gift: Array = []  # Essence you start your next fight with (the Lost S
 var due_events := {}  # event id -> how many events from now it comes, whatever the act (the Flying Turtle falling on you, the Rolling Bear's revenge)
 var stun_next := 0  # turns you start your next fight Stunned (the Rolling Bear's revenge)
 var lasting_next := 0  # Lasting Shield you start your next fight with (the Mausoleum's blue light)
+var matador_met := 0  # times the Crowned Matador came this run (he comes at least once: see resolve_unknown)
+var act_bosses := {}  # act -> the boss at the end of that act's map (chosen the first time it is needed)
+var trial_fight := false  # a boss the Crowned Matador set on you: you can't die in it (lose: back on the map at 1 HP)
 var no_talk_next := false  # the next fight's boss doesn't talk first (the Ruined Watchtower's monster)
 var encounter: Array = []  # the ids of the encounter being prepared
 var encounter_name := ""  # its name (Act 1's hand-made encounters, e.g. "The Slime Trio"; "" otherwise)
@@ -239,12 +242,30 @@ func encounter_ids() -> Array:
 		var enc: Dictionary = fight_plan[mini(act_fights, fight_plan.size()) - 1]
 		ids = enc.ids.duplicate()
 		encounter_name = enc.name
+	elif kind == "boss" and not current_node().get("no_advance", false):
+		ids = [boss_for(act)]  # (chosen ahead: the Crowned Matador's trial must not be this one)
 	else:
 		ids = EnemyDefs.encounter(kind, act, depth(), rng, met)
 	met.append_array(ids)
 	encounter = ids.duplicate()
 	encounter_extra = ids.map(func(id): return EnemyDefs.extra_for(id, act, depth(), rng, ids.size()))
 	return ids
+
+
+## The boss at the end of this act's map (picked the first time it is asked for, then kept).
+func boss_for(a: int) -> String:
+	if not act_bosses.has(a):
+		var pool: Array = EnemyDefs.BOSSES.get(a, [])
+		act_bosses[a] = pool[rng.randi() % pool.size()] if not pool.is_empty() else ""
+	return String(act_bosses[a])
+
+
+## The Crowned Matador's trial: a boss of this act, never the one at the end of its map.
+func trial_boss() -> String:
+	var pool: Array = EnemyDefs.BOSSES.get(act, []).filter(func(id): return id != boss_for(act))
+	if pool.is_empty():
+		pool = EnemyDefs.BOSSES.get(act, [])
+	return String(pool[rng.randi() % pool.size()])
 
 
 ## Test mode: swap the encounter being prepared for these enemies (their extra Essence rolled the usual way).
@@ -300,9 +321,14 @@ func finish_fight(f: Fight) -> void:
 	var kind := current_kind()
 	if not (kind in ["fight", "elite", "boss"]):
 		kind = "fight"
+	if not f.won and trial_fight:
+		trial_fight = false  # (the Crowned Matador's trial: you can't die in it)
+		player.hp = 1.0
+		return
 	if not f.won:
 		over = true
 		return
+	trial_fight = false
 	for id in f.exhausted:  # Exhausted spells: gone for the rest of the run
 		spellbook.erase(id)
 		loadout.erase(id)
@@ -723,11 +749,17 @@ func resolve_unknown() -> String:
 			n["event"] = now
 			return "event"
 	var can_meet := MapEvents.ALL.filter(func(e): return act in e.get("acts", [1, 2, 3]) and not e.get("hidden", false) and not (String(e.get("unless_artifact", "")) in artifacts))
+	if kind == "event" and matador_met == 0 and act >= 2:
+		# the Crowned Matador comes at least once a run: not met by Act 2, he is the next event
+		matador_met += 1
+		n["as"] = "event"
+		n["event"] = "crowned_matador"
+		return "event"
 	if kind == "event" and can_meet.is_empty():
 		kind = "fight"  # (no events in this act yet: the room is a fight)
 	n["as"] = kind
 	if kind == "event":
-		var pool := can_meet.filter(func(e): return not (e.id in seen_events))
+		var pool := can_meet.filter(func(e): return not (e.id in seen_events) or e.get("repeatable", false))  # (the Crowned Matador comes again)
 		if pool.is_empty():
 			pool = can_meet
 		var total := 0.0
@@ -741,6 +773,8 @@ func resolve_unknown() -> String:
 				ev = e
 				break
 		seen_events.append(ev.id)
+		if ev.id == "crowned_matador":
+			matador_met += 1
 		n["event"] = ev.id
 	return kind
 
