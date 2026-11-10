@@ -596,6 +596,8 @@ static func puppet_button_styles(kind: String, art := true) -> Dictionary:
 		out["focus"] = StyleBoxEmpty.new()
 		return out
 	var m := [14, 12, 14, 12] if kind == "chant" else [10, 8, 10, 8]
+	if UiSkin.is_newui2():
+		m = [0, 0, 0, 0]  # (NewUI Ver2: the pictures are full size and not cut in nine: the whole picture is stretched to the button, they have its shape)
 	for state in ["normal", "hover", "pressed", "disabled"]:
 		out[state] = UiSkin.box("button_%s_%s" % [kind, state], m, [4, 2, 4, 4])
 	return out
@@ -606,7 +608,7 @@ static func style_puppet_button(b: Button, kind: String, size: int, art := true)
 	var st := puppet_button_styles(kind, art)
 	for k in st:
 		b.add_theme_stylebox_override(k, st[k])
-	if art and (UiSkin.is_hud2() or UiSkin.is_minhhud()):
+	if art and (UiSkin.is_hud2() or UiSkin.is_minhhud() or UiSkin.is_newui2()):
 		b.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS  # (the painted pictures are big and drawn small: mipmaps keep them smooth)
 	b.add_theme_font_size_override("font_size", size)
 	var ink := Color(1.0, 0.93, 0.78) if (UiSkin.is_hud2() or UiSkin.is_minhhud()) and art else Color(0.96, 0.72, 0.42)  # (HUD ver 2: cream words on the lighter wood)

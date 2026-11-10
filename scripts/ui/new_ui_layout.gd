@@ -20,13 +20,14 @@ static var BOTTLE_CELL := Vector2(52.49, 55.74)
 const BOTTLE_MAX := 5
 static var BOTTLE_PX := 44.0
 static var HP_BAR := Rect2(342.25, 939.04, 319.84, 45.01)  # the glass tube: the lower layer, the liquid, the glass with its shine, the cap, the upper layer (the brass clamps)
-const HP_FILL := Rect2(9.75, 2.96, 310.0, 32.0)  # "HP fill": the glass pill, flat at its left end and round at its right (from HP_BAR's top left): HP and Shield run inside it
-const HP_CAP := Rect2(3.75, 1.96, 12.0, 33.0)  # "HP cap": the brass cap on the tube's left end (only decoration)
+static var HP_FILL := Rect2(9.75, 2.96, 310.0, 32.0)  # "HP fill": the glass pill, flat at its left end and round at its right (from HP_BAR's top left): HP and Shield run inside it
+static var HP_CAP := Rect2(3.75, 1.96, 12.0, 33.0)  # "HP cap": the brass cap on the tube's left end (only decoration)
 const HP_PX := 17
 static var DEBUFF_AT := Vector2(324.9, 866.6)  # the debuff circles: eight in a row, the next ones start a row above
 static var DEBUFF_STEP := 44.64
 static var DEBUFF_PX := 41.0
 static var DEBUFF_COLS := 8
+static var DEBUFF_ROW := 45.0  # the distance between two rows of debuff circles
 ## The Bag tray: the Essence rest in it from its left end to the tube's mouth.
 static var MOUTH_X := 802.0  # the middle of the tube's mouth, from the Bag strip's left (strip px): the Essence roll out of the tube there
 static var REST_END := 790.0  # the resting Essence end before this x (strip px): the mouth's flange
@@ -42,6 +43,7 @@ static var TUBE_ROW_Y := 45.0  # the row the Essence roll along
 ## Puppet HUD ver 2 (theme "hud2", assets/Puppet/UI/Puppet HUD Nov.pdf): the same HUD code path with other values (Hud2Layout.apply sets them; use(false) puts the New UI ones back).
 static var hud2 := false
 static var minh := false  # theme MinhHUD (hud2 is true too); set by use()
+static var v2 := false  # theme NewUI Ver2 (the New UI HUD laid out by NewUi2Layout, hud2 is false); set by use()
 static var CHANT_AT := Vector2(0.0, -92.0)  # the Chant strip's top-left, from the Bag strip's (PuppetLayout.CHANT_AT)
 static var BTN_CHANT := Rect2(620.8, 17.8, 92.5, 52.5)  # (from the Chant strip's top-left)
 static var BTN_CLEAR := Rect2(722.8, 29.0, 52.8, 30.0)
@@ -52,8 +54,10 @@ static var DROP_AT := Vector2.ZERO  # Puppet HUD ver 2: where an Essence comes i
 static var debuff_count := 0  # how many debuff circles are shown right now (Puppet HUD ver 2 squeezes them into its six squares' width)
 
 ## Chooses which HUD the values are: Puppet HUD ver 2 (true) or New UI (false). The fight screen calls it when it is built.
-static func use(on: bool, as_minh := false) -> void:
+static func use(on: bool, as_minh := false, as_v2 := false) -> void:
+	DEBUFF_ROW = 45.0
 	minh = on and as_minh
+	v2 = as_v2 and not on
 	hud2 = on  # (true for theme MinhHUD too: it is the same code path with the values of Hud2Layout.apply_minh())
 	if on:
 		if as_minh:
@@ -90,6 +94,10 @@ static func use(on: bool, as_minh := false) -> void:
 	BTN_PASS = Rect2(784.8, 29.0, 52.8, 30.0)
 	RING_PX = 52.0
 	RING_STEP = 60.1
+	HP_FILL = Rect2(9.75, 2.96, 310.0, 32.0)
+	HP_CAP = Rect2(3.75, 1.96, 12.0, 33.0)
+	if v2:
+		NewUi2Layout.apply()
 
 
 const BLOCKS := [  # [picture, where (, "menu")] in the order they are painted (each one over the one before): the two tabs first (the Menu button and the Act line), then the blocks
@@ -130,16 +138,29 @@ static func debuff_slot(k: int, rows: int) -> Vector2:
 	if hud2:  # (one row over the page's six squares; more than six squeeze together inside the same width)
 		var step := minf(DEBUFF_STEP, (DEBUFF_STEP * (DEBUFF_COLS - 1)) / maxf(1.0, debuff_count - 1.0))
 		return DEBUFF_AT + Vector2(k * step, 0.0)
-	return DEBUFF_AT + Vector2((k % DEBUFF_COLS) * DEBUFF_STEP, (k / DEBUFF_COLS - (rows - 1)) * (DEBUFF_PX + 4.0))
+	return DEBUFF_AT + Vector2((k % DEBUFF_COLS) * DEBUFF_STEP, (k / DEBUFF_COLS - (rows - 1)) * DEBUFF_ROW)
 
 
 ## The blocks, the slots, the Bag tray, the HP groove and the debuff circles of the HUD (in screen px: put it at the screen's origin).
 class Back extends Control:
 	var debuffs := 0  # how many debuff icons there are (a ring for each)
+	var info := "":  # NewUI Ver2: the Act / Floor / Turn lines on the paper (a PaperText child of its own)
+		set(v):
+			info = v
+			if _paper != null:
+				_paper.text = v
+	var _paper: NewUi2Layout.PaperText
+	var bottle_slots := 3  # NewUI Ver2: the bottle rack in use (3 or 5 bottles)
 	var menu_state := 0  # the Menu tab: 0 as it is, 1 under the mouse (lighter), 2 pressed (darker)
 
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _ready() -> void:
+		if NewUiLayout.v2:
+			_paper = NewUi2Layout.PaperText.new()
+			_paper.text = info
+			add_child(_paper)
 
 	func _pic(tex_name: String, r: Rect2, mod := Color.WHITE) -> void:
 		var tex := UiSkin.tex(tex_name)
@@ -149,6 +170,9 @@ class Back extends Control:
 			draw_rect(r, NewUiLayout.DARK)
 
 	func _draw() -> void:
+		if NewUiLayout.v2:
+			NewUi2Layout.draw(self)
+			return
 		if NewUiLayout.hud2:
 			Hud2Layout.draw(self)
 			return
@@ -234,7 +258,7 @@ class Bar extends HpBar:
 		_screen(_gloss, NewUiLayout.GLOSS_STRENGTH)
 		_gloss.draw.connect(func() -> void:
 			var tex := UiSkin.tex("nu_hp_gloss")
-			if tex != null:
+			if tex != null and not NewUiLayout.v2:
 				_gloss.draw_texture_rect(tex, NewUiLayout.HP_FILL, false))
 		add_child(_gloss)
 		_cap = Control.new()
@@ -242,13 +266,16 @@ class Bar extends HpBar:
 		_cap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_cap.draw.connect(func() -> void:
 			var tex := UiSkin.tex("nu_hp_cap")
-			if tex != null:
+			if tex != null and not NewUiLayout.v2:
 				_cap.draw_texture_rect(tex, NewUiLayout.HP_CAP, false))
 		add_child(_cap)
 		_upper = Control.new()
 		_upper.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		_upper.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_upper.draw.connect(func() -> void:
+			if NewUiLayout.v2:  # (NewUI Ver2: the glass tube of the page is the top layer: the liquid shows through the glass, the brass caps cover its ends)
+				NewUi2Layout.draw_tube(_upper, NewUiLayout.HP_BAR.position)
+				return
 			var tex := UiSkin.tex("nu_hp_upper")
 			if tex != null:
 				_upper.draw_texture_rect(tex, Rect2(Vector2.ZERO, size), false))
@@ -315,6 +342,8 @@ class Bar extends HpBar:
 	## The pill the liquid lies in: flat at the left end, round at the right (HP_FILL, from its own top left).
 	func _pill() -> PackedVector2Array:
 		var f: Rect2 = NewUiLayout.HP_FILL
+		if NewUiLayout.v2:  # (NewUI Ver2: a straight glass tube, flat at both ends)
+			return PackedVector2Array([Vector2(0, 0), Vector2(f.size.x, 0), Vector2(f.size.x, f.size.y), Vector2(0, f.size.y)])
 		var r := f.size.y / 2.0
 		var out := PackedVector2Array([Vector2(0, 0), Vector2(f.size.x - r, 0)])
 		for k in range(1, 12):
@@ -429,6 +458,8 @@ class Bar extends HpBar:
 				node.draw_line(c, c + Vector2.from_angle(a) * h * 1.2, Color(1, 1, 1, _crack), 1.5)
 
 	func _draw() -> void:
+		if NewUiLayout.v2:  # (NewUI Ver2: the glass tube is drawn over the liquid, by `_upper`)
+			return
 		var lower := UiSkin.tex("nu_hp_lower")
 		if lower != null:
 			draw_texture_rect(lower, Rect2(Vector2.ZERO, size), false)

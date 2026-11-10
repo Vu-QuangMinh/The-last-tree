@@ -33,6 +33,13 @@ var busy := false  # a spin is going on: the preview must not touch the reels
 var xs := 1.0
 var xp := Vector2.ZERO
 var straight := false
+var funnel_old := Rect2()  # NewUI Ver2: where the funnel is (the machine's own old px; zero size = the old place)
+var funnel_flip := false  # NewUI Ver2: the funnel picture is mirrored
+var funnel_layers: Array = []  # NewUI Ver2: the funnel in two layers [[picture, Rect2 in strip px, "behind" (under the Essence) or "over"], ...]: the Essence sink in between them
+var mouth_strip := Vector2.INF  # NewUI Ver2: where a bonus Essence goes into the funnel (strip px)
+var connectors: Array = []  # NewUI Ver2: [[Rect2 (strip px), mirrored], ...] the tube's two end connectors, over the Essence
+var tube_strip := Rect2()  # NewUI Ver2: where the tube lies (strip px), drawn mirrored; zero size = the old place and the old clamp
+var drop_x := 1084.0  # where the Essence fall down behind the cabinet into the tube's row (strip px)
 var spawn_c := Vector2.INF
 var lever_shift := Vector2.ZERO
 var over := Control.new()  # (straight tube: its clamp, over the Essence)
@@ -56,6 +63,10 @@ var _chase_tw: Tween
 var _flash_tw: Tween
 var _stopped := 0
 var _veils: Array = []  # Confuse: a black veil over each reel (you can't see what is coming next)
+
+
+func _funnel() -> Rect2:
+	return funnel_old if funnel_old.size != Vector2.ZERO else PuppetSlotMachine.FUNNEL_TOP
 
 
 static func local(p: Vector2) -> Vector2:
@@ -130,7 +141,7 @@ func build() -> void:
 	# a plain soft shadow behind the cabinet and its funnel: the machine stands apart from the stage behind it
 	var body: Rect2 = PuppetSlotMachine.BODY
 	back.add_child(_shadow(body.grow(-2.0), 56.0, 1.0))
-	var top: Rect2 = PuppetSlotMachine.FUNNEL_TOP
+	var top: Rect2 = _funnel()
 	back.add_child(_shadow(Rect2(top.position + Vector2(18.0, 8.0), top.size - Vector2(36.0, 16.0)), 40.0, 0.9))
 	# the glass under the Essence: Screen at 50 %. (The real Screen shader reads the screen behind it and, drawn below the Essence, makes them vanish in
 	# Compatibility; for these small bright patches over a dark floor "Add" at 50 % looks the same: screen(a, b) = a + b - a*b is almost a + b when b is small.)
@@ -142,11 +153,31 @@ func build() -> void:
 		under.modulate.a = 0.5
 		behind.add_child(under)
 	# (no port hole in the Bag strip any more: the Essence roll straight out of the tube into the Bag)
-	front.add_child(_art("slot_funnel_top", PuppetSlotMachine.FUNNEL_TOP))
+	if funnel_layers.is_empty():
+		var fun := _art("slot_funnel_top", _funnel())
+		fun.flip_h = funnel_flip
+		front.add_child(fun)
+	else:
+		for fl in funnel_layers:
+			var fp := _strip_pic(fl[0], fl[1].position)
+			fp.size = fl[1].size
+			fp.flip_h = funnel_flip
+			(behind if fl[2] == "behind" else over).add_child(fp)
 	if straight:
 		# the straight tube (UI/SlotMachine/slot_tube_straight.png, 2 px per pt) lies behind the Bag strip and goes in under the cabinet; its clamp is over the Essence
-		behind.add_child(_strip_pic("slot_tube_straight", NewUiLayout.TUBE_AT))
-		over.add_child(_strip_pic("slot_tube_clamp", NewUiLayout.TUBE_CLAMP_AT))
+		if tube_strip.size != Vector2.ZERO:
+			var tb := _strip_pic("slot_tube_straight", tube_strip.position)
+			tb.size = tube_strip.size
+			tb.flip_h = true
+			behind.add_child(tb)
+			for cn in connectors:  # (the two connectors: over the Essence, so they go in under them)
+				var cp := _strip_pic("nu2_connector", cn[0].position)
+				cp.size = cn[0].size
+				cp.flip_h = cn[1]
+				over.add_child(cp)
+		else:
+			behind.add_child(_strip_pic("slot_tube_straight", NewUiLayout.TUBE_AT))
+			over.add_child(_strip_pic("slot_tube_clamp", NewUiLayout.TUBE_CLAMP_AT))
 	else:
 		# the tube's glass over the Essence (Screen blend, 50 %: it only lightens, so they show through) and its metal (collars, clamps), under the cabinet
 		behind.add_child(_screen(_art("slot_tube_glass", PuppetSlotMachine.TUBE_GLASS)))
@@ -191,6 +222,9 @@ func build() -> void:
 			c.position = xp
 
 
+const STRIP_PIC_SIZE := {"slot_tube_straight": Vector2(266.0, 90.0), "slot_tube_clamp": Vector2(23.0, 90.0)}
+
+
 ## A picture placed at strip px (drawn at half its size: the pngs are 2 px per pt).
 static func _strip_pic(tex_name: String, at: Vector2) -> TextureRect:
 	var t := TextureRect.new()
@@ -199,7 +233,7 @@ static func _strip_pic(tex_name: String, at: Vector2) -> TextureRect:
 	t.stretch_mode = TextureRect.STRETCH_SCALE
 	t.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	t.position = at
-	t.size = t.texture.get_size() / 2.0
+	t.size = STRIP_PIC_SIZE[tex_name] if STRIP_PIC_SIZE.has(tex_name) else t.texture.get_size() / 2.0  # (a redrawn picture of another pixel size keeps the size the old one was shown at)
 	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return t
 
@@ -216,7 +250,9 @@ func reel_center(i: int) -> Vector2:
 func funnel_top_mouth() -> Vector2:
 	if headless:
 		return drop_at + Vector2(0.0, -6.0)
-	var r: Rect2 = PuppetSlotMachine.FUNNEL_TOP
+	if mouth_strip != Vector2.INF:
+		return mouth_strip
+	var r: Rect2 = _funnel()
 	return _x(local(Vector2(r.position.x + r.size.x / 2.0, r.position.y + 14.0)))
 
 
@@ -225,7 +261,7 @@ func funnel_bottom_in() -> Vector2:
 	if headless:  # (they fall down the vertical tube to where it bends)
 		return Vector2(drop_at.x, Hud2Layout.stack_pos(1).y)
 	if straight:  # (the Essence fall down behind the cabinet into the tube's row)
-		return Vector2(1084.0, NewUiLayout.TUBE_ROW_Y)
+		return Vector2(drop_x, NewUiLayout.TUBE_ROW_Y)
 	var r: Rect2 = PuppetSlotMachine.BODY
 	return local(Vector2(TUBE_X, r.end.y - 6.0))
 
@@ -235,6 +271,8 @@ func tube_path() -> Array:
 	if headless:  # (round the tube's bend, then left into the hole)
 		return [Hud2Layout.stack_pos(0), Vector2(NewUiLayout.MOUTH_X, NewUiLayout.TUBE_ROW_Y)]
 	if straight:  # (straight left along the row, under the cabinet, through the tube, to the edge of the Bag strip)
+		if NewUiLayout.v2:  # (NewUI Ver2: on under the Bag tray, to the hole, where it comes up: see FightScreen._slot_route)
+			return [Vector2(NewUi2Layout.BAG_EDGE_X - NewUiLayout.BAG_AT.x, NewUiLayout.TUBE_ROW_Y), Vector2(NewUiLayout.MOUTH_X, NewUiLayout.TUBE_ROW_Y)]
 		return [Vector2(NewUiLayout.MOUTH_X, NewUiLayout.TUBE_ROW_Y)]
 	var pts: Array = [local(Vector2(TUBE_X, PuppetSlotMachine.BODY.end.y + 2.0))]
 	var c := Vector2(TUBE_X - TUBE_R, TUBE_Y - TUBE_R)  # centre of the bend

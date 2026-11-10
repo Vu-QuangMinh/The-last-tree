@@ -154,6 +154,7 @@ var _shot_fired := false  # the shot already showed the hit, so the spell's own 
 const BAG_DROP_MARGIN := 90.0  # where the bottle being drunk sits (its effects fly from there)
 var _log: Label
 var _cast_btn: Button
+var _rack_upper: TextureRect  # NewUI Ver2: the rack's upper layer (its cup rims, over the bottles)
 var _end_btn: Button
 var _clear_btn: Button
 var _fx: Control
@@ -243,7 +244,7 @@ func _ready() -> void:
 	add_to_group("fight_screen")  # (the bars of the screens laid over it leave the artifacts to this one)
 	_nu_ui = UiSkin.is_new_ui()
 	if _nu_ui:
-		NewUiLayout.use(UiSkin.is_hud2() or UiSkin.is_minhhud(), UiSkin.is_minhhud())  # (Puppet HUD ver 2 and MinhHUD are the same HUD code with other numbers)
+		NewUiLayout.use(UiSkin.is_hud2() or UiSkin.is_minhhud(), UiSkin.is_minhhud(), UiSkin.is_newui2())  # (Puppet HUD ver 2 and MinhHUD are the same HUD code with other numbers)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UiTheme.get_theme()
 	_backdrop = Backdrop.new()
@@ -445,7 +446,7 @@ func _ready() -> void:
 	UiTheme.use_heading_font(menu_btn)
 	if _nu_ui:
 		_style_nu_menu(menu_btn)
-		if NewUiLayout.hud2:
+		if NewUiLayout.hud2 or NewUiLayout.v2:  # (NewUI Ver2: the Menu picture has its word too)
 			_style_hud2_menu(menu_btn)
 		_top_layer.add_child(menu_btn)  # (it is part of the HUD: it sinks with it between fights, where the map has its own Menu button)
 	else:
@@ -576,6 +577,12 @@ func _start_down() -> void:
 ## The Act / Floor / Turn line: a Label, or (Puppet Stage) the wooden letters on the hanging sign, centred on the Label's old spot; the Label stays hidden
 ## unless the theme has no such art.
 func _set_info(text: String) -> void:
+	if NewUiLayout.v2:  # (NewUI Ver2: the Act / Floor / Turn line is three lines on the paper)
+		_info.text = NewUi2Layout.info_text(text)
+		if _nu_back != null:
+			_nu_back.info = _info.text
+			_nu_back.queue_redraw()
+		return
 	if _nu_ui:  # ("Act 1 · Floor 5\nTurn 2" -> "Act 1 - Floor 5 - Turn 2")
 		_info.text = text.replace("\r", "").replace("\n", " - ").replace(" · ", " - ").replace("Act ", "Act")  # (as the page writes it: "Act1 - Floor 5 - Turn 2")
 		_info.visible = true
@@ -1220,6 +1227,18 @@ func _rebuild_character_panel_nu() -> void:
 		_info.add_theme_font_override("font", oblique)
 	_info.z_index = 4
 	_info.visible = true
+	if L.v2:  # (NewUI Ver2: the three lines on the paper are drawn by _nu_back; the two lamps of the artifact cabinet)
+		_info.visible = false
+		_nu_back.info = _info.text
+		_top_layer.add_child(NewUi2Layout.Lights.new())
+		_rack_upper = TextureRect.new()
+		_rack_upper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_rack_upper.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_rack_upper.stretch_mode = TextureRect.STRETCH_SCALE
+		_rack_upper.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		_rack_upper.z_index = 3  # (the bottles are at 2)
+		_top_layer.add_child(_rack_upper)
+		NewUi2Layout.place_rack_upper(_rack_upper, Bottles.BASE_SLOTS)
 	_status_row = Control.new()  # (the debuff icons stand on the green circles of _nu_back, placed by _fit_debuff_board)
 	_status_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_status_row.position = L.DEBUFF_AT
@@ -1373,7 +1392,7 @@ func _fit_hud_nu() -> void:
 	var bar := _hp_bar as NewUiLayout.Bar
 	var parts := bar.parts()
 	var fill: Rect2 = Rect2(L.HP_BAR.position + L.HP_FILL.position, L.HP_FILL.size)  # (the pill the liquid is in, on the screen)
-	_hp_label.position = fill.position + Vector2(30.0, 0.0)  # (clear of the left clamp)
+	_hp_label.position = fill.position + Vector2(8.0 if L.v2 else 30.0, 0.0)  # (clear of the left clamp)
 	_hp_label.size = Vector2(110.0, fill.size.y)
 	var end_x: float = fill.position.x + parts.x  # (the Shield lies over the end of the HP: its number stands at the end of the HP)
 	_shield_box.custom_minimum_size = Vector2(60.0, fill.size.y)
@@ -1685,6 +1704,8 @@ func _build_strips_puppet() -> void:
 	# what the chant row says ("3 Essence", Toll, Hypnotized...): just above the strip
 	_chant_note = UiTheme.label("", 15, Color.WHITE)
 	_chant_note.position = Vector2(PuppetLayout.RING_X0, -26)
+	if NewUiLayout.v2:  # (NewUI Ver2: the HP glass tube lies just over the sockets: the note stands above the tube's left end)
+		_chant_note.position = Vector2(NewUi2Layout.HP_GLASS.position.x, 866.0) - (NewUiLayout.BAG_AT + NewUiLayout.CHANT_AT)
 	_chant_note.z_index = 5  # (over the spell cards that now stand right on the strip)
 	_chant_note.add_theme_constant_override("outline_size", 5)
 	_chant_note.add_theme_color_override("font_outline_color", Color(0.1, 0.05, 0.03))
@@ -1699,6 +1720,7 @@ func _build_strips_puppet() -> void:
 	UiTheme.use_heading_font(_cast_btn)
 	_place(_cast_btn, NewUiLayout.BTN_CHANT if _nu_ui else PuppetLayout.BTN_CHANT)
 	UiTheme.style_puppet_button(_cast_btn, "chant", 18)
+	_cast_kind = "chant"
 	_cast_btn.tooltip_text = "Chant (Enter) / Release (E)"
 	cin.add_child(_cast_btn)
 	# Clear (Undo takes its place after the chant) and Pass each sit in a fixed slot
@@ -1741,6 +1763,13 @@ func _build_strips_puppet() -> void:
 		_machine.straight = true
 		_machine.spawn_c = Vector2(NewUiLayout.MOUTH_X, NewUiLayout.TUBE_ROW_Y)
 		_machine.lever_shift = NewUiLayout.LEVER_SHIFT
+		if NewUiLayout.v2:  # (NewUI Ver2: the page puts the funnel and the tube where the old machine does not)
+			_machine.funnel_old = NewUi2Layout.funnel_old()
+			_machine.tube_strip = NewUi2Layout.tube_strip()
+			_machine.funnel_layers = NewUi2Layout.funnel_layers()
+			_machine.mouth_strip = NewUi2Layout.funnel_mouth()
+			_machine.connectors = NewUi2Layout.connectors_strip()
+			_machine.drop_x = NewUi2Layout.MACHINE_TUBE.end.x - 6.0 - NewUiLayout.BAG_AT.x
 		if NewUiLayout.hud2:  # (Puppet HUD ver 2 has no machine: the Essence come down the vertical tube)
 			_machine.headless = true
 			_machine.drop_at = NewUiLayout.DROP_AT
@@ -2291,6 +2320,7 @@ func _roll_ball(balls: Array, j: int, from_x: float, t: float, delay: float) -> 
 ## a refund, the ones of a spawn beyond the third) does not touch the reels: it flies from its source into the top funnel, falls through the machine, and takes the same
 ## way out. An Essence that a spell gives for NEXT turn materializes in the tray on top of the machine and lies there; at the next spawn it goes down with the others.
 const SLOT_TUBE_SPEED := 470.0  # px/s of an Essence inside the machine and the tube
+const NU_EMERGE_T := 0.14  # (NewUI Ver2: how long an Essence takes to come up out of the hole)
 const NU_TUBE_SPEED := 620.0  # (New UI: the Essence run on along the Bag tray at this speed, see _nu_roll)
 const SLOT_BALL_SCALE := 0.92  # an Essence is drawn this big inside the glass
 
@@ -2341,12 +2371,20 @@ func _path_point(pts: Array, at: float) -> Vector2:
 ## New UI: how long an Essence's trip takes from the start of `mode` until it has come up out of the circle (see _slot_route).
 func _slot_route_time(mode: String, from_local: Vector2) -> float:
 	var m := _machine
-	var pts: Array = [from_local, m.funnel_bottom_in()] if mode == "reel" else [m.funnel_top_mouth(), m.funnel_bottom_in()]
+	var pts: Array = [from_local, m.funnel_bottom_in()] if mode == "reel" else _funnel_sink(m)
 	if mode == "reel":
 		pts = [from_local, Vector2(from_local.x, NewUiLayout.TUBE_ROW_Y)]
 	pts.append_array(m.tube_path())
 	var fly: float = {"from": 0.5, "pop": 0.28, "tray": 0.2}.get(mode, 0.0)
-	return fly + _path_len(pts) / NU_TUBE_SPEED
+	return fly + _path_len(pts) / NU_TUBE_SPEED + (NU_EMERGE_T if NewUiLayout.v2 else 0.0)
+
+
+## A bonus Essence's way from the funnel's mouth to where it enters the tube. NewUI Ver2: it sinks straight down into the funnel (behind its upper layer, then behind the machine's body) before it turns towards the tube.
+func _funnel_sink(m: SlotMachine) -> Array:
+	var mouth := m.funnel_top_mouth()
+	if NewUiLayout.v2:
+		return [mouth, mouth + Vector2(0.0, 70.0), m.funnel_bottom_in()]
+	return [mouth, m.funnel_bottom_in()]
 
 
 func _path_len(pts: Array) -> float:
@@ -2360,7 +2398,7 @@ func _slot_route(ic: ElementIcon, delay: float, mode: String, from_local := Vect
 	var m := _machine
 	var half := ic.size / 2.0
 	var row_y := PuppetLayout.AXIS_Y - BAG_PX / 2.0
-	var pts: Array = [from_local, m.funnel_bottom_in()] if mode == "reel" else [m.funnel_top_mouth(), m.funnel_bottom_in()]
+	var pts: Array = [from_local, m.funnel_bottom_in()] if mode == "reel" else _funnel_sink(m)
 	if _nu_ui and mode == "reel":  # (New UI: straight down from its reel to the tube's row, so the three come to the tube in the order of the reels)
 		pts = [from_local, Vector2(from_local.x, NewUiLayout.TUBE_ROW_Y)]
 	pts.append_array(m.tube_path())
@@ -2413,11 +2451,25 @@ func _slot_route(ic: ElementIcon, delay: float, mode: String, from_local := Vect
 			if is_instance_valid(ic):
 				ic.position = pts[0] - half
 				ic.modulate.a = 1.0)
+	var edge_x := NewUi2Layout.BAG_EDGE_X - NewUiLayout.BAG_AT.x if NewUiLayout.v2 else -99999.0
 	tw.tween_method(func(u: float) -> void:
 		if is_instance_valid(ic):
-			ic.position = _path_point(pts, u * total) - half
+			var at := _path_point(pts, u * total)
+			ic.position = at - half
 			ic.rotation = -u * TAU * maxf(1.0, roundf(total / (PI * BAG_PX)))
-			ic.scale = Vector2.ONE * _ball_k(), 0.0, 1.0, dur)
+			ic.scale = Vector2.ONE * _ball_k()
+			if NewUiLayout.v2:  # (NewUI Ver2: the tube lies UNDER the Bag tray: the Essence goes in under its edge and is out of sight until the hole)
+				ic.modulate.a = clampf((at.x - (edge_x - BAG_PX * 0.5)) / (BAG_PX * 0.5), 0.0, 1.0), 0.0, 1.0, dur)
+	if NewUiLayout.v2:  # (...and comes up out of the hole: it rises from deeper down, growing, then rolls on along the Bag)
+		var mouth_at: Vector2 = pts[pts.size() - 1]
+		tw.tween_method(func(u: float) -> void:
+			if is_instance_valid(ic):
+				var e := 1.0 - (1.0 - u) * (1.0 - u)
+				ic.position = mouth_at + Vector2(0.0, lerpf(BAG_PX * 0.35, 0.0, e)) - half
+				ic.modulate.a = minf(1.0, u * 3.0)
+				ic.scale = Vector2.ONE * _ball_k() * lerpf(0.45, 1.0, e)
+				ic.rotation = 0.0, 0.0, 1.0, NU_EMERGE_T)
+		return delay + fly + dur + NU_EMERGE_T
 	# out of the tube it keeps rolling, straight into the Bag strip (no hole: one continuous roll), growing to its full size; _roll_ball takes over from there
 	var tube_end: Vector2 = pts[pts.size() - 1]
 	if _nu_ui:  # (the tube is straight: the Essence runs out of its mouth into the Bag tray, where _nu_roll takes it on at the same speed)
@@ -3428,6 +3480,14 @@ Turn %d" % [run.act, run.floor_no(), fight.turn]))  # (two lines on the sign)
 	else:
 		_cast_btn.text = "Release" if _puppet_strips() else UiTheme.hk("Release", "E")
 		_cast_btn.disabled = busy or aiming or move_view != null or pick_view != null or chant_mode != ""
+	if NewUiLayout.v2:  # (NewUI Ver2: Clear, Chant, Release and Pass have their words painted in)
+		_clear_btn.text = ""
+		_end_btn.text = ""
+		_cast_btn.text = ""
+		var kind2 := "chant" if phase == "build" else "release"  # (two painted buttons of the same form: Chant, then Release)
+		if _cast_kind != kind2:
+			_cast_kind = kind2
+			UiTheme.style_puppet_button(_cast_btn, kind2, 18)
 	if NewUiLayout.hud2:  # (Puppet HUD ver 2: the words are painted in the buttons' pictures)
 		_clear_btn.text = ""
 		_end_btn.text = ""
@@ -4967,6 +5027,18 @@ func _refresh_bottles() -> void:
 	elif _puppet_hud:  # (the bottle frame's five slots hold them 44 px each)
 		chip_px = BOTTLE_PX
 		_bottle_row.add_theme_constant_override("separation", int(BOTTLE_STEP - BOTTLE_PX))
+	if NewUiLayout.v2:  # (NewUI Ver2: the rack holds 3 bottles, or 5 with the Bandolier: its cups are where the bottles stand)
+		var slots: int = maxi(run.bottle_slots() if run else Bottles.BASE_SLOTS, bs.size())
+		NewUi2Layout.set_rack(slots)
+		chip_px = NewUiLayout.BOTTLE_PX
+		_bottle_row.add_theme_constant_override("separation", int(NewUiLayout.BOTTLE_CELL.x - NewUiLayout.BOTTLE_PX))
+		if _rack_upper != null:
+			NewUi2Layout.place_rack_upper(_rack_upper, slots)
+		if _nu_back != null:
+			_nu_back.bottle_slots = slots
+			_nu_back.queue_redraw()
+		if _puppet_hud and _hp_bar != null and _arts != null:
+			_fit_hud_nu()
 	for i in n_shown:
 		var chip := BottleChip.make(bs[i] if i < bs.size() else "", i, true, chip_px)
 		chip.used.connect(_on_bottle)
@@ -5228,9 +5300,7 @@ func _pulse_release() -> void:
 		if _minh_disc != null:  # (MinhHUD: the picture is the round button's, not the Button's)
 			_minh_disc.glow = s
 			_minh_disc.queue_redraw()
-		if not NewUiLayout.hud2:  # (Puppet HUD ver 2: it only blinks brighter, it does not grow)
-			_cast_btn.pivot_offset = _cast_btn.size / 2.0
-			_cast_btn.scale = Vector2.ONE * (1.0 + 0.06 * s)
+		# (the Release button only blinks brighter: it NEVER grows, in any theme)
 	elif _cast_btn.scale != Vector2.ONE or _cast_btn.modulate != Color.WHITE or (_minh_disc != null and _minh_disc.glow != 0.0):
 		if _minh_disc != null:
 			_minh_disc.glow = 0.0
