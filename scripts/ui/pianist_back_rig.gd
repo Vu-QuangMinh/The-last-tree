@@ -5,7 +5,8 @@ extends RefCounted
 ##  - rh_01..12.png: the whole seated figure (head, hat, torso, tails, stool, right arm) in 12 poses of the right hand, from the hand near the body (1) out to the far right (12). They were
 ##    registered on the stool, cleaned and cropped to one common box by tools/import_pianist_frames.py, so they lie exactly on each other: the right hand picks the frame by where the pitch of
 ##    the right hand's last note lies between the lowest and the highest note of the right hand in the piece (PianistSong.hand_at), and the frames are crossfaded while it moves;
-##  - user_leg_1..5.png: the raised LEFT leg in 5 poses, picture 1 for the lowest note of the left hand (shoe farthest left on the keys) ... 5 for the highest (nearest the middle);
+##  - the LEFT leg = two pieces from page 2 of the PDF: leg.png (the thigh, turns about the red dot under the coat tails) and pdf_foot.png (shoe + shin, only moves sideways). Row 1 of the PDF = the foot DOWN on a key,
+##    row 2 = RAISED (a little higher and tilted, not touching the keys): the foot goes to ANY x between the first and the last panel, the thigh turns so that its free end always meets the foot's knee (_draw_leg);
 ##  - the pieces of the IDLE position and of the sign sequence (the PDF's own: body, stool, upper arm, forearms): the Pianist waits in the idle position until the music starts, and points at the sign
 ##    with them (SEQ); leg.png is a hanging leg (two of them, behind the figure; the left one fades out while the foot is up).
 ## Layout in px of the piano's picture ("pp", 1849 wide); `u` scales it to the stage. NOTHING here moves by itself: the cluster stands still.
@@ -14,7 +15,9 @@ extends RefCounted
 const FRAMES := 12
 const FILES := {"pbody": "body", "pstool": "stool", "pupper": "pdf_upper", "pfore": "user_fore", "pforep": "pdf_point_fore", "leg": "leg", "piano": "piano", "sign": "sign",
 	"sheet0": "sheet_1", "sheet1": "sheet_2", "sheet2": "sheet_3", "sheet3": "sheet_4",
-	"foot1": "user_leg_1", "foot2": "user_leg_2", "foot3": "user_leg_3", "foot4": "user_leg_4", "foot5": "user_leg_5"}
+	"foot": "pdf_foot", "idleleg": "idle_leg"}
+const HAND_LIFT_PX := 10.0  # (the user, 2026-11-10: the whole figure, body and hands, 10 px of its own pictures higher than the PDF puts it, so the hands meet the keys)
+const PIVOT_SHIFT := Vector2(36.0, 0.0)  # (pp: the thigh's pivot (red dot) moved right so that it hides behind the body instead of showing at its left edge)
 const LAYOUT := "pianist/back/pdf_layout.json"
 ## The sign sequence (the user's Pianist.pdf, page 1): idle -> raise the arm -> the hand sprite changes to the pointing one -> touches the sign (a knock on the wood) -> the hand comes out a little ->
 ## touches again (knock) -> out -> touches a third time (knock) -> lowers the arm -> the sprite changes back -> idle. [time s, pose, swap]: swap = the forearm sprite changes at that time (the arm
@@ -28,7 +31,7 @@ const SEQ_TIME := 4.25
 var tex := {}
 var frames: Array = []
 var poses: Dictionary = {}  # idle / raise / point / touch / out: {up, fo, pt, body, stool, leg, sign, sheet} (matrices in pp)
-var legs: Array = []  # the five matrices of the raised left leg
+var foot: Dictionary = {}  # the left leg's geometry from page 2 of the PDF (see tools/extract_pianist_pdf.py)
 var frame_s := 2.075  # the figure's frames: pp per px of the sprite, the hat's centre x in the sprite, where that hat stands (pp), and where the top of the sprite is
 var hat_x := 155.0
 var fig_cx := 913.0
@@ -52,7 +55,7 @@ static func load_rig() -> PianistBackRig:
 		return null
 	var lay: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(jp))
 	r.poses = lay.poses
-	r.legs = lay.legs
+	r.foot = lay.foot
 	r.frame_s = float(lay.fig.scale)
 	r.hat_x = float(lay.fig.hat_x)
 	r.fig_cx = float(lay.fig.cx)
@@ -60,7 +63,7 @@ static func load_rig() -> PianistBackRig:
 	return r
 
 
-## st: rh (0..11, a float: the frame of the right hand; between two frames they are crossfaded), foot_frame (0..4), foot_on (0..1), tap_f (0..1: a low note was just struck),
+## st: rh (0..11, a float: the frame of the right hand), foot_x (0..1: the left foot along the keys, 0 = the lowest note of the left hand), foot_up (0..1: 1 = the foot is raised, 0 = it is down on the key), foot_on (0..1),
 ## page (-1, or 0..1 while he turns it), sheet (0..3, which music), slam (0..1: the last chord), left (0..1 of the piece played), pt (seconds into the sign sequence, -1 = none),
 ## idle (0..1: how much of the idle position of the PDF is shown instead of the frames: 1 until the music starts).
 func draw(ci: CanvasItem, c: Vector2, u: float, st: Dictionary, mod: Color) -> void:
@@ -96,26 +99,55 @@ func draw(ci: CanvasItem, c: Vector2, u: float, st: Dictionary, mod: Color) -> v
 	# the two legs hang straight down from under the coat tails (the left one while he does not play with it): the PDF's leg, and the same mirrored about the body
 	var foot_on := float(st.foot_on)
 	var dive := Vector2(0.0, 46.0 * slam)  # (the last chord: the whole figure dives forward)
-	var lm: Array = idle.leg
-	_piece(ci, base, tex.leg, lm, dive, mod)
-	if foot_on < 0.5:  # (a hard switch, never a fade: a half-transparent wooden leg shows the piano through it)
-		var lm2: Array = [-float(lm[0]), float(lm[1]), -float(lm[2]), float(lm[3]), 2.0 * fig_cx - float(lm[4]), float(lm[5])]
-		_piece(ci, base, tex.leg, lm2, dive, mod)
-	# the left leg, up on the keys: the picture of the pitch of the left hand's last note, where the PDF puts it, kicking a little as each note is struck
+	# the IDLE leg (the user drew it into the PDF's idle position, page 1: shoe under the coat tails, behind the body) shows whenever he is not playing: before Engage, the sign sequence, the page turn;
+	# while he plays, the leg is the one on the keys (a hard switch, never a fade)
+	if foot_on < 0.5:
+		_piece(ci, base, tex.idleleg, idle.leg, dive + Vector2(0.0, -HAND_LIFT_PX * frame_s), mod)
+	# the left leg, on the keys: the foot slides sideways (raised while it travels), goes down on the key as the note sounds, and the thigh turns to follow it
 	if foot_on >= 0.5:
-		var fi := clampi(int(st.foot_frame), 0, legs.size() - 1)
-		_piece(ci, base, tex["foot%d" % (fi + 1)], legs[fi], dive + Vector2(0.0, -10.0 * float(st.tap_f)), mod)
+		_draw_leg(ci, base, float(st.foot_x), float(st.foot_up), dive, mod)
 	# what is shown of the figure: ONE picture, never two at once (no fades, no cross-fades: they made the figure ghostly): the idle position of the PDF until the music starts, the sign
 	# sequence while he points at the sign, otherwise the frame of the right hand nearest to `rh` (the frames lie exactly on each other, so the change between them does not jump)
 	var pt := float(st.pt)
-	var pos := Vector2(fig_cx - hat_x * frame_s, fig_top) + dive
+	var fdive := dive + Vector2(0.0, -HAND_LIFT_PX * frame_s)  # (the figure only; the legs keep `dive`)
+	var pos := Vector2(fig_cx - hat_x * frame_s, fig_top) + fdive
 	if pt >= 0.0 and pt >= SEQ_FIGURE and pt < SEQ_TIME - 0.03:
-		_draw_sequence(ci, base, pt, dive, mod)
+		_draw_sequence(ci, base, pt, fdive, mod)
 	elif float(st.idle) > 0.5:
-		_composite(ci, base, idle.up, idle.fo, false, dive, mod)
+		_composite(ci, base, idle.up, idle.fo, false, fdive, mod)
 	else:
 		_place(ci, base, frames[clampi(roundi(float(st.rh)), 0, FRAMES - 1)], pos, frame_s, mod)
 	ci.draw_set_transform_matrix(Transform2D.IDENTITY)
+
+
+## The left leg: the user's rule (2026-11-10): the LEG turns only about its pivot (the red dot, the hip behind the body) and the FOOT hangs on the leg's joint: the leg's blue point and the foot's
+## blue point (its knee) are always the same point, so nothing stretches and nothing comes apart. x (0..1 between the first and the last place of the PDF's row 1) and `up` (0 down on the key ...
+## 1 raised: lifted, and the foot tilted about the knee) say where the knee WANTS to be; the leg is turned to point at that place, and the joint (which can only lie on its circle about the pivot) is where
+## the knee really goes, the foot follows it.
+func _draw_leg(ci: CanvasItem, base: Transform2D, x: float, up: float, dive: Vector2, mod: Color) -> void:
+	var f := foot
+	var lm: Array = f.leg_m
+	var lT := Transform2D(Vector2(lm[0], lm[1]), Vector2(lm[2], lm[3]), Vector2(lm[4], lm[5]))
+	var pivot := Vector2(float(f.pivot[0]), float(f.pivot[1])) + PIVOT_SHIFT  # (the whole leg is moved right a little so that the pivot hides behind the body)
+	lT = Transform2D(0.0, PIVOT_SHIFT) * lT
+	var uvj: Array = f.uv_joint
+	var joint0: Vector2 = lT * Vector2(uvj[0], uvj[1])
+	var want := Vector2(lerpf(float(f.knee_x0), float(f.knee_x1), clampf(x, 0.0, 1.0)) + PIVOT_SHIFT.x, float(f.knee_y) - float(f.lift) * up)
+	var rot := (want - pivot).angle() - (joint0 - pivot).angle()
+	var leg_t := Transform2D(0.0, pivot) * Transform2D(rot, Vector2.ZERO) * Transform2D(0.0, -pivot) * lT
+	var joint: Vector2 = leg_t * Vector2(uvj[0], uvj[1])
+	var fm: Array = f.foot_m
+	var fT := Transform2D(Vector2(fm[0], fm[1]), Vector2(fm[2], fm[3]), Vector2(fm[4], fm[5]))
+	var uvk: Array = f.uv_knee
+	var knee0: Vector2 = fT * Vector2(uvk[0], uvk[1])
+	var tilt := Transform2D(deg_to_rad(float(f.tilt)) * up, Vector2.ZERO)
+	var foot_t: Transform2D = Transform2D(0.0, joint) * tilt * Transform2D(0.0, -joint) * Transform2D(0.0, joint - knee0) * fT
+	_piece(ci, base, tex.leg, _arr(leg_t), dive, mod)
+	_piece(ci, base, tex.foot, _arr(foot_t), dive, mod)
+
+
+static func _arr(t: Transform2D) -> Array:
+	return [t.x.x, t.x.y, t.y.x, t.y.y, t.origin.x, t.origin.y]
 
 
 func _place(ci: CanvasItem, base: Transform2D, t: Texture2D, pos: Vector2, s: float, mod: Color) -> void:

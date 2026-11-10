@@ -83,6 +83,32 @@ func run(t: SceneTree) -> void:
 			if k % 6 == 0:
 				root.get_texture().get_image().save_png("%s/h2_bonus%02d.png" % [out, k / 6])
 		print("closest two rolling orbs: ", min_d, " (one orb is ", 60.0 * 0.9375, ")")
+	if OS.get_environment("HUD_CHANT") != "":  # (HUD_CHANT=n: put n Essence in the chant (the rings lie in the tray), press the REAL Chant button, then shoot the flip of the round button into Release, HUD_PRESS=1 also shoots Chant pressed and Pass pressed first)
+		for i in int(OS.get_environment("HUD_CHANT")):
+			fs._add_stock_index(i)
+		await t.create_timer(1.0).timeout
+		root.get_texture().get_image().save_png(out + "/h2_chant_rings.png")
+		if OS.get_environment("HUD_PRESS") != "" and fs._minh_disc != null:
+			fs._minh_disc.set_press(2)
+			await t.create_timer(0.1).timeout
+			root.get_texture().get_image().save_png(out + "/h2_press_chant.png")
+			fs._minh_disc.set_press(3)
+			await t.create_timer(0.1).timeout
+			root.get_texture().get_image().save_png(out + "/h2_press_pass.png")
+			fs._minh_disc.set_press(0)
+		print("before: kind ", fs._cast_kind, " cast rect ", fs._cast_btn.get_global_rect(), " pass visible ", fs._end_btn.visible)
+		fs._cast_btn.pressed.emit()
+		for k in 14:
+			await t.create_timer(0.05).timeout
+			root.get_texture().get_image().save_png("%s/h2_flip%02d.png" % [out, k])
+		await t.create_timer(2.0).timeout
+		root.get_texture().get_image().save_png(out + "/h2_released_state.png")
+		print("after: kind ", fs._cast_kind, " phase ", fs.phase, " cast rect ", fs._cast_btn.get_global_rect(), " pass visible ", fs._end_btn.visible)
+		if OS.get_environment("HUD_PRESS") != "" and fs._minh_disc != null:
+			fs._minh_disc.set_press(2)
+			await t.create_timer(0.1).timeout
+			root.get_texture().get_image().save_png(out + "/h2_press_release.png")
+			fs._minh_disc.set_press(0)
 	if OS.get_environment("HUD_SINK") != "":  # (the HUD sinks between fights: the tube must go down with it)
 		fs._set_hud_shift(fs.HUD_DOWN)
 		await t.create_timer(0.3).timeout

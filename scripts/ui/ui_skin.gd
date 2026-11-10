@@ -10,8 +10,8 @@ extends RefCounted
 ## root, in ROOTS' order) that holds <name>.png or <name>.jpg wins, so a picture can be moved between those folders freely.
 
 const ASSETS := "res://assets/"
-const OPTIONS := ["puppet", "new_ui", "hud2"]  # (what the player picks in Settings; "new" is for tools)
-const LABELS := ["Puppet", "New UI", "Puppet HUD ver 2"]
+const OPTIONS := ["puppet", "new_ui", "hud2", "minhhud"]  # (what the player picks in Settings; "new" is for tools)
+const LABELS := ["Puppet", "New UI", "Puppet HUD ver 2", "MinhHUD"]
 ## Puppet Stage theme: pieces that would clash with the stage (the painted stump under an enemy) are hidden.
 const PUPPET_HIDDEN := ["enemy_stand"]
 
@@ -21,7 +21,7 @@ static var _paths := {}  # name -> res:// path ("" = there is none)
 const FOLDERS := ["UI/Panels", "UI/Hp", "UI/SlotMachine", "UI/Machine", "UI/Hint", "UI/Buttons", "UI/Essence", "Icon/Intent", "Icon/Effect", "UI/Icons",
 	"Card", "UI/Numbers", "Card/Treasure", "Map", "UI/Fx", "Stage/Act1/Backdrop", "Stage/Act2/Backdrop", "Stage/Act3/Backdrop",
 	"Map/Rooms/Backgrounds", "Stage/Act1/Fx", "Stage/Act2/Fx", "Stage/Act3/Fx", "UI/Banners", "UI/Characters", "Icon/Artifact", "Icon/Bottle",
-	"Map/Rooms/Campfire", "Map/Rooms/Apothecary", "UI/Misc", "Events", "Fonts/Letters", "Stage/Shared", "UI/Hud2", "UI/NewUi", "UI"]
+	"Map/Rooms/Campfire", "Map/Rooms/Apothecary", "UI/Misc", "Events", "Fonts/Letters", "Stage/Shared", "UI/MinhHUD", "UI/Hud2", "UI/NewUi", "UI"]
 
 ## artifact id -> picture name, where they differ
 const ARTIFACT_ART := {"scholar_quill": "scholars_quill"}
@@ -32,7 +32,7 @@ static func theme_id() -> String:
 	if _tool_new:
 		return "new"
 	var id := str(SaveManager.setting("theme", "puppet"))
-	return id if id == "new_ui" or id == "hud2" else "puppet"
+	return id if id == "new_ui" or id == "hud2" or id == "minhhud" else "puppet"
 
 
 static var _tool_new := false  # set_theme("new"): a tool or test asking for the New look
@@ -66,7 +66,12 @@ static func is_puppet() -> bool:
 ## New UI and Puppet HUD ver 2: the Puppet look with the HUD laid out as in NewUiLayout (one code path; NewUiLayout.use() picks which of the two layouts its values are).
 static func is_new_ui() -> bool:
 	var id := theme_id()
-	return id == "new_ui" or id == "hud2"
+	return id == "new_ui" or id == "hud2" or id == "minhhud"
+
+
+## Theme MinhHUD (assets/Puppet/UI/MinhHUD/MinhHUD.pdf): the same HUD code path as Puppet HUD ver 2 (NewUiLayout.hud2 is true for it too) with the values of Hud2Layout.apply_minh().
+static func is_minhhud() -> bool:
+	return theme_id() == "minhhud"
 
 
 ## Puppet HUD ver 2 (assets/Puppet/UI/Puppet HUD Nov.pdf): the HUD of NewUiLayout with the values of Hud2 (see new_ui_layout.gd).
@@ -77,7 +82,7 @@ static func is_hud2() -> bool:
 static func set_theme(id: String) -> void:
 	_tool_new = id == "new"
 	if not _tool_new:
-		SaveManager.set_setting("theme", id if id == "new_ui" or id == "hud2" else "puppet")
+		SaveManager.set_setting("theme", id if id == "new_ui" or id == "hud2" or id == "minhhud" else "puppet")
 	_tex.clear()  # the same name now means another picture
 	_paths.clear()
 	UiTheme.reset()  # the shared Theme is rebuilt for the next screen

@@ -174,6 +174,13 @@ func voices_at(t: float) -> Dictionary:
 ## The last note a hand has struck by time t: {p: pitch, t: when it was struck, frame: for the left hand, which of the five leg pictures its pitch calls for}; {} before the first one.
 ## (Notes struck together: the highest is the last of them.) The leg picture is by where the pitch lies between the lowest and the highest note of the left hand in this piece:
 ## 0 = the lowest, 4 = the highest.
+func first_at(hand: int) -> Dictionary:  # (the same as hand_at at the moment of that hand's first note: where it has to be before the piece starts)
+	var ns: Array = _hand_notes[hand]
+	if ns.is_empty():
+		return {}
+	return hand_at(hand, float(ns[0][0]))
+
+
 func hand_at(hand: int, t: float) -> Dictionary:
 	var ns: Array = _hand_notes[hand]
 	var lo := 0
@@ -190,9 +197,17 @@ func hand_at(hand: int, t: float) -> Dictionary:
 		return {}
 	var p: int = int(ns[found][1])
 	var fr := 0
+	var lt := 0.5  # (the left hand: where the pitch lies between its lowest and highest note, 0..1: the left foot's place along the keys)
+	var nt := -1.0  # (when the next note of this hand starts, and where its foot place is: so the foot can already be over the next key)
+	var nlt := 0.5
+	if hand == 1 and left_hi > left_lo:
+		lt = clampf(float(int(ns[found][1]) - left_lo) / float(left_hi - left_lo), 0.0, 1.0)
+		if found + 1 < ns.size():
+			nt = float(ns[found + 1][0])
+			nlt = clampf(float(int(ns[found + 1][1]) - left_lo) / float(left_hi - left_lo), 0.0, 1.0)
 	var rt := 0.0  # (the right hand: where the pitch lies between its lowest and its highest note, 0..1: for the 12 pictures of the figure)
 	if hand == 1 and left_hi > left_lo:
 		fr = clampi(int(float(p - left_lo) / float(left_hi - left_lo) * 5.0), 0, 4)
 	elif hand == 0 and right_hi > right_lo:
 		rt = clampf(float(p - right_lo) / float(right_hi - right_lo), 0.0, 1.0)
-	return {"p": p, "t": float(ns[found][0]), "frame": fr, "rt": rt}
+	return {"p": p, "t": float(ns[found][0]), "frame": fr, "rt": rt, "lt": lt, "next_t": nt, "next_lt": nlt}

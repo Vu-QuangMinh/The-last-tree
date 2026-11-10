@@ -41,6 +41,7 @@ static var TUBE_ROW_Y := 45.0  # the row the Essence roll along
 
 ## Puppet HUD ver 2 (theme "hud2", assets/Puppet/UI/Puppet HUD Nov.pdf): the same HUD code path with other values (Hud2Layout.apply sets them; use(false) puts the New UI ones back).
 static var hud2 := false
+static var minh := false  # theme MinhHUD (hud2 is true too); set by use()
 static var CHANT_AT := Vector2(0.0, -92.0)  # the Chant strip's top-left, from the Bag strip's (PuppetLayout.CHANT_AT)
 static var BTN_CHANT := Rect2(620.8, 17.8, 92.5, 52.5)  # (from the Chant strip's top-left)
 static var BTN_CLEAR := Rect2(722.8, 29.0, 52.8, 30.0)
@@ -51,10 +52,14 @@ static var DROP_AT := Vector2.ZERO  # Puppet HUD ver 2: where an Essence comes i
 static var debuff_count := 0  # how many debuff circles are shown right now (Puppet HUD ver 2 squeezes them into its six squares' width)
 
 ## Chooses which HUD the values are: Puppet HUD ver 2 (true) or New UI (false). The fight screen calls it when it is built.
-static func use(on: bool) -> void:
-	hud2 = on
+static func use(on: bool, as_minh := false) -> void:
+	minh = on and as_minh
+	hud2 = on  # (true for theme MinhHUD too: it is the same code path with the values of Hud2Layout.apply_minh())
 	if on:
-		Hud2Layout.apply()
+		if as_minh:
+			Hud2Layout.apply_minh()
+		else:
+			Hud2Layout.apply()
 		return
 	BAG_AT = Vector2(701.0, 970.0)
 	MENU_BTN = Rect2(17.0, 917.0, 106.0, 26.0)

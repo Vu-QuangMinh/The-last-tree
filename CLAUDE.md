@@ -25,7 +25,7 @@
 - `scripts/ui/fight_screen.gd` is the 5k-line fight UI; read it by function (grep `func _`), never whole. Other screens: `map_screen`, `campfire_screen`, `shop_screen`, `apothecary_screen`, `fuse_screen`, `loadout_screen`, `settings_screen`, `tutorial_screen`.
 - Look & theme: `ui_skin.gd` (art lookup, null when art is missing), `ui_theme.gd`, `backdrop.gd`/`backdrop_fx.gd`, `puppet_stage.gd` (+ generated `puppet_layout.gd`), `spell_card.gd`, `creature.gd`, `enemy_view.gd`, `spell_fx.gd`, `vfx.gd`.
 - Autoloads: `audio.gd`, `save_manager.gd` (settings: theme / font / show_hotkeys), `game_data.gd`, `events.gd`. Entry: `scenes/main.tscn` + `scripts/main.gd`.
-- Themes: only `new` and `puppet` (the Default and Cirus looks were dropped; an old save that says so opens in New; the Cirus art is parked in `assets/_Archive/Circus`). `UiSkin.is_circus()` is just `is_puppet()` (Puppet kept the layout first made for Cirus). Art is in `assets/{Global,New,Puppet}/`: see `assets/README.md`.
+- Themes picked in Settings: `puppet`, `new_ui`, `hud2` (Puppet HUD ver 2) and `minhhud` (MinhHUD, 2026-11-10: `Hud2Layout.minh`, art `assets/Puppet/UI/MinhHUD/`, see `docs/art_progress.md`); the last three share the New UI HUD code path (`NewUiLayout.use`). Themes: only `new` and `puppet` (the Default and Cirus looks were dropped; an old save that says so opens in New; the Cirus art is parked in `assets/_Archive/Circus`). `UiSkin.is_circus()` is just `is_puppet()` (Puppet kept the layout first made for Cirus). Art is in `assets/{Global,New,Puppet}/`: see `assets/README.md`.
 
 ## Testing the game while the user is working: silent and out of the way
 

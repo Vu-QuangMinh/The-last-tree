@@ -21,12 +21,15 @@ func run(t: SceneTree) -> void:
 	for v in fs._views.values():
 		cr = v.creature
 	cr._bk_foot_on = 1.0
-	for k in 5:
-		cr._bk_lf_target = float(k)
-		cr._bk_lf = float(k)
-		cr._bk_rh_target = 6.5
-		cr._bk_rh = 6.5
-		await t.create_timer(0.25).timeout
-		cr._bk_lf = float(k)
-		cr._bk_foot_on = 1.0
-		root.get_texture().get_image().save_png("%s/leg_%d.png" % [out, k + 1])
+	# the foot at 5 places (0, .25, .5, .75, 1) x down / raised (and one in between): forced, the song's own logic is held off by re-setting every step
+	var n := 0
+	for up in [0.0, 1.0]:
+		for k in 5:
+			for _i in 6:
+				cr._bk_lf = float(k) / 4.0
+				cr._bk_up = up
+				cr._bk_foot_on = 1.0
+				cr._bk_rh = 6.5
+				await t.process_frame
+			n += 1
+			root.get_texture().get_image().save_png("%s/leg_%02d.png" % [out, n])

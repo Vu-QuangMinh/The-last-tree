@@ -8,6 +8,7 @@ Writes assets/Puppet/Enemies/Act2/pianist/back/rh_01..12.png and prints the numb
 Run:  "D:/GitHub Projects/Tachnen/.venv/Scripts/python.exe" tools/import_pianist_frames.py"""
 import json
 import os
+import sys
 
 import numpy as np
 from PIL import Image
@@ -60,6 +61,12 @@ print("common crop box", (x0, y0, x1, y1), "size", (x1 - x0, y1 - y0))
 info = []
 for k, a in enumerate(reg, 1):
     im = Image.fromarray(a).crop((x0, y0, x1, y1))
+    try:  # (no white outline: needs scipy; if this python has none, run  python312 tools/alpha_bleed.py back/rh_*.png  afterwards)
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from alpha_bleed import bleed
+        im = bleed(im)
+    except ImportError:
+        print("alpha_bleed skipped (no scipy here): run tools/alpha_bleed.py on rh_*.png with a python that has scipy")
     im.save(os.path.join(OUT, "rh_%02d.png" % k))
     al = np.array(im)[:, :, 3] > 128
     hat = al[:60]

@@ -661,13 +661,15 @@ var _pianist_back: PianistBackRig  # (his pieces seen from behind, the user's de
 var _bk_hand := 0.6  # 0..1 along the keyboard (the high notes' hand) and the foot (the low notes'), jumping to each key as it is struck
 var _bk_foot := 0.2
 var _bk_rh := 6.5  # the picture of the right hand now (0..11, walks towards its target) and of the left foot (0..4)
-var _bk_lf := 0.0
+var _bk_lf := 0.0  # the left foot's place along the keys, 0..1
 var _bk_rh_target := 6.5
 var _bk_started := false  # the music has started once: from then on the figure is the frames, before it the idle position of the PDF
 var _bk_idle := 1.0
 var _bk_lf_target := 0.0
+var _bk_up := 1.0  # the left foot: 1 = raised (so it does not touch the keys; also while it travels), 0 = down on the key (only as the note sounds)
 var _bk_foot_on := 0.0
 var _pt_t := -1.0  # seconds into the sign sequence (-1: not running)
+var _bk_warm := false  # Engage was pressed but the music has not started yet: the leg and the hand are moving to the first notes' places
 var _bk_slam := 0.0  # 0..1: the last chord (The End)
 var _slam_on := false
 var _pianist_tried := false
@@ -680,6 +682,11 @@ func pianist_point(_sec := 0.0) -> float:
 	return PianistBackRig.SEQ_TIME
 
 
+## Engage: until the music starts (a couple of seconds) he takes the playing position: the leg goes onto the keys and the hand to where the first note is.
+func pianist_warm_up() -> void:
+	_bk_warm = true
+
+
 ## The last chord: both arms and his whole back come down on the keys.
 func pianist_slam() -> void:
 	_slam_on = true
@@ -690,38 +697,57 @@ func _back_state() -> Dictionary:
 	var d := get_process_delta_time()
 	var playing_now: bool = song != null and song.playing()
 	var tm: float = song.time() if song != null else 0.0
-	var tap_f := 0.0
 	var rt := _bk_rh_target  # (where the right hand wants to be: 0..11)
-	var lt := _bk_lf_target  # (the same for the left foot: 0..4)
+	var lt := _bk_lf_target  # (the same for the left foot: 0..1 along the keys)
+	var want_up := 1.0  # (the foot stays raised, except for a short tap as each note of the left hand sounds)
+	if playing_now:
+		_bk_warm = false
+	if _bk_warm and song != null:
+		_bk_started = true
+		var r0: Dictionary = song.first_at(0)
+		if not r0.is_empty():
+			rt = float(r0.rt) * float(PianistBackRig.FRAMES - 1)
+		var l0: Dictionary = song.first_at(1)
+		if not l0.is_empty():
+			lt = float(l0.lt)
 	if playing_now:
 		_bk_started = true
 		var rh: Dictionary = song.hand_at(0, tm)  # the right hand: the pitch of the note it struck last, between the lowest and the highest note of its part
 		if not rh.is_empty():
 			rt = float(rh.rt) * float(PianistBackRig.FRAMES - 1)
-		var lh: Dictionary = song.hand_at(1, tm)  # the left foot: the picture of the pitch of the left hand's last note (low note = picture 1 ... high note = picture 5)
+		var lh: Dictionary = song.hand_at(1, tm)  # the left foot: over the key of the left hand's last note; once that tap is over it already travels (raised) to the next note's key
 		if not lh.is_empty():
-			lt = float(lh.frame)
-			tap_f = clampf(1.0 - (tm - float(lh.t)) / 0.2, 0.0, 1.0)
+			var age := tm - float(lh.t)
+			lt = float(lh.lt)
+			var nxt := float(lh.next_t)
+			if nxt >= 0.0 and age >= 0.1 and nxt - tm < 0.35:
+				lt = float(lh.next_lt)
+			if age < 0.1 or (nxt >= 0.0 and nxt - tm < 0.05):
+				want_up = 0.0  # (down on the key exactly as the note sounds, then up again)
 	if _pt_t >= 0.0:
 		rt = 6.5  # (the sign sequence starts from the picture that is nearest to its own first one: the hand out on the keys)
 	elif _bk_slam > 0.3:
 		rt = float(PianistBackRig.FRAMES - 3)  # (the last chord: right_hand_10: the arm stretched out)
-		lt = 0.0  # (and the left foot: leg picture 1, the lowest note: the bass of the chord)
+		lt = 0.0  # (and the left foot: the lowest place, the bass of the chord)
+		want_up = 0.0
 	elif page_flip >= 0.0:
 		rt = 0.0  # (the page turn: right_hand_01: the hand comes back to the body)
 	_bk_rh_target = rt
 	_bk_lf_target = lt
 	# the pictures are walked through, not jumped to: a leap of the melody sweeps through the pictures in between (the figure's frames lie on each other, so it is smooth)
-	_bk_rh = move_toward(_bk_rh, rt, d * 70.0)
-	_bk_lf = move_toward(_bk_lf, lt, d * 40.0)
+	_bk_rh = move_toward(_bk_rh, rt, d * (6.0 if _bk_warm else 70.0))  # (slowly while he gets into position)
+	# the foot slides only while it is raised (it never drags over the keys); it comes down and goes up fast
+	if _bk_up > 0.6:
+		_bk_lf = move_toward(_bk_lf, lt, d * (0.8 if _bk_warm else 7.0))
+	_bk_up = move_toward(_bk_up, want_up, d * 16.0)
 	_bk_idle = 0.0 if _bk_started else 1.0  # (the idle position of the PDF until the music starts, then it fades into the frames)
-	_bk_foot_on = move_toward(_bk_foot_on, 1.0 if (playing_now or _bk_slam > 0.3) else 0.0, d * 5.0)
+	_bk_foot_on = move_toward(_bk_foot_on, 1.0 if (playing_now or _bk_warm or _bk_slam > 0.3) else 0.0, d * 5.0)
 	if _pt_t >= 0.0:
 		_pt_t += d
 		if _pt_t >= PianistBackRig.SEQ_TIME:
 			_pt_t = -1.0
 	_bk_slam = move_toward(_bk_slam, 1.0 if _slam_on else 0.0, d * 9.0)
-	return {"rh": _bk_rh, "foot_frame": roundi(_bk_lf), "tap_f": tap_f, "foot_on": _bk_foot_on, "page": page_flip, "pt": _pt_t, "idle": _bk_idle,
+	return {"rh": _bk_rh, "foot_x": _bk_lf, "foot_up": _bk_up, "foot_on": _bk_foot_on, "page": page_flip, "pt": _pt_t, "idle": _bk_idle,
 		"sheet": (maxi(1, _enemy.page) - 1) % 4 if _enemy != null else 0, "slam": _bk_slam,
 		"left": clampf(tm / maxf(song.length, 1.0), 0.0, 1.0) if song != null else 0.0}
 

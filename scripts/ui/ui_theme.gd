@@ -583,7 +583,11 @@ static func use_play_style(b: Button, always := false) -> void:
 ## Puppet Stage: the wooden button of the Chant strip (kind "chant", "clear" or "pass"; Undo uses "clear"), blank: the word is the button's text.
 static func puppet_button_styles(kind: String, art := true) -> Dictionary:
 	var out := {}
-	if art and UiSkin.is_hud2() and UiSkin.tex("hud2_btn_" + kind) != null:  # (Puppet HUD ver 2: the user's own painted buttons from the PDF, the word is in the picture; hover = the same picture lit, pressed = its own pressed picture)
+	if art and UiSkin.is_minhhud() and kind != "clear":  # (MinhHUD: the round Chant / Pass button is one picture drawn by Hud2Layout; these Buttons only take the clicks)
+		for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+			out[state] = StyleBoxEmpty.new()
+		return out
+	if art and (UiSkin.is_hud2() or UiSkin.is_minhhud()) and UiSkin.tex("hud2_btn_" + kind) != null:  # (Puppet HUD ver 2: the user's own painted buttons from the PDF, the word is in the picture; hover = the same picture lit, pressed = its own pressed picture)
 		var pressed := "hud2_btn_%s_pressed" % kind
 		for state in ["normal", "hover", "pressed", "disabled"]:
 			var b := UiSkin.box(pressed if state == "pressed" and UiSkin.tex(pressed) != null else "hud2_btn_" + kind)
@@ -602,10 +606,10 @@ static func style_puppet_button(b: Button, kind: String, size: int, art := true)
 	var st := puppet_button_styles(kind, art)
 	for k in st:
 		b.add_theme_stylebox_override(k, st[k])
-	if art and UiSkin.is_hud2():
+	if art and (UiSkin.is_hud2() or UiSkin.is_minhhud()):
 		b.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS  # (the painted pictures are big and drawn small: mipmaps keep them smooth)
 	b.add_theme_font_size_override("font_size", size)
-	var ink := Color(1.0, 0.93, 0.78) if UiSkin.is_hud2() and art else Color(0.96, 0.72, 0.42)  # (HUD ver 2: cream words on the lighter wood)
+	var ink := Color(1.0, 0.93, 0.78) if (UiSkin.is_hud2() or UiSkin.is_minhhud()) and art else Color(0.96, 0.72, 0.42)  # (HUD ver 2: cream words on the lighter wood)
 	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 		b.add_theme_color_override(c, ink)
 	b.add_theme_color_override("font_disabled_color", Color(0.62, 0.55, 0.48))
