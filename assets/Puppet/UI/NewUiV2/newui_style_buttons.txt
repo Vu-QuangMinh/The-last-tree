@@ -1,0 +1,7 @@
+Style: a photograph of a real handmade push-button from an antique Czech marionette puppet theatre control panel, built by a craftsman: a solid hardwood body painted with thick hand-applied enamel paint, vivid saturated colour with strong depth, visible brush strokes and rich surface detail, worn at the edges with tiny chips and scuffs where the pale undercoat shows through, a thick polished rim ring and raised lettering of real aged solid brass with fine tool marks, scratches, dark patina in the crevices and warm bright highlights, soft rounded corners, a raised cushion-like face with deep soft shadows between the layers. Photorealistic, physically based materials, high contrast and crisp micro-detail, subtle ambient occlusion in the joints. Absolutely NOT a cartoon, NOT an illustration, NOT a painting, NOT flat colours, NOT washed out, NOT faded, NOT low contrast, NOT vector art, NOT plastic, NOT a 3D game render.
+
+Lighting: soft studio light from the upper left with gentle natural shading and real depth, small crisp specular highlights on the brass only, no strong glare.
+
+Composition: this one button only, seen straight from the front with no perspective, centred and filling the image with a small even margin. Isolated on a pure black seamless background (#000000), as if cut out: no cast shadow, no reflection, no gradient, no table, no other objects, no hands.
+
+The only letters are the one word named in the prompt, in raised aged-brass serif capitals. No other letters, numbers, logos or watermark.

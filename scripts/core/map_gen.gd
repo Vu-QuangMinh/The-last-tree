@@ -127,6 +127,71 @@ static func reachable(rows: Array, floor_idx: int, col: int) -> Array:
 	return rows[floor_idx][col].next
 
 
+# ------------------------------------------------------------------ the Curtain map (a setting: Ship of Fools style)
+## A honeycomb of C_ROWS x C_COLS rooms, every tile filled (odd rows sit half a tile to the right), the boss above.
+## Each move goes to a tile next to yours: one of the two above, or one beside you on the same row (never back down,
+## never to a tile you stood on). The Curtain falls behind you: every CURTAIN_EVERY moves it swallows the lowest row
+## still open (RunState.curtain_rows). If it swallows the row you stand on, the only way left is the boss.
+## Going up keeps you ahead; every step sideways uses up some of that lead (8 rows, every 2 moves: 6 at most, so 8 to 14
+## rooms an act; tools/curtain_sim.gd measures it).
+## Row 1 is all fights; 2 merchants, 2 camps (An Abandoned Camp) and 3 elites are placed, a quarter of the rest are "?".
+const C_ROWS := 8
+const C_COLS := 5
+const CURTAIN_EVERY := 2
+const C_PLACE := [["shop", 2, 2, 6], ["rest", 2, 3, 7], ["elite", 3, 2, 7]]  # [type, how many, lowest row, highest row]
+const C_EVENTS := 0.25
+
+
+static func generate_curtain(rng: RandomNumberGenerator) -> Array:
+	var rows := []
+	for f in C_ROWS:
+		var r := []
+		for c in C_COLS:
+			r.append({"type": "fight" if f == 0 else "", "next": [], "col": c})
+		rows.append(r)
+	for p in C_PLACE:
+		var spots := []
+		for f in range(p[2], p[3] + 1):
+			for c in C_COLS:
+				if rows[f][c].type == "" and not _hex_near(rows, f, c, p[0]):
+					spots.append(Vector2i(f, c))
+		for k in p[1]:
+			if spots.is_empty():
+				break
+			var at: Vector2i = spots.pop_at(rng.randi() % spots.size())
+			rows[at.x][at.y].type = p[0]
+			spots = spots.filter(func(s: Vector2i): return not _hex_near(rows, s.x, s.y, p[0]))  # (two of a kind never side by side)
+	for f in range(1, C_ROWS):
+		for n in rows[f]:
+			if n.type == "":
+				n.type = "event" if rng.randf() < C_EVENTS else "fight"
+	var boss_row := []
+	boss_row.resize(C_COLS)
+	boss_row[C_COLS / 2] = {"type": "boss", "next": [], "col": C_COLS / 2}
+	rows.append(boss_row)
+	return rows
+
+
+## The two tiles above (row, col) on the honeycomb (odd rows sit half a tile to the right).
+static func hex_up(row: int, col: int, cols: int) -> Array:
+	var cand := [col - 1, col] if row % 2 == 0 else [col, col + 1]
+	return cand.filter(func(c): return c >= 0 and c < cols)
+
+
+## Is a tile of this type next to (row, col)?
+static func _hex_near(rows: Array, row: int, col: int, type: String) -> bool:
+	var near := [Vector2i(row, col - 1), Vector2i(row, col + 1)]
+	for c in hex_up(row, col, C_COLS):
+		near.append(Vector2i(row + 1, c))
+	if row > 0:
+		for c in ([col, col + 1] if row % 2 == 1 else [col - 1, col]):  # (the two below)
+			near.append(Vector2i(row - 1, c))
+	for p in near:
+		if p.x >= 0 and p.x < rows.size() and p.y >= 0 and p.y < C_COLS and rows[p.x][p.y] != null and rows[p.x][p.y].type == type:
+			return true
+	return false
+
+
 ## How many rooms of each kind this map has (for the legend).
 static func counts(rows: Array) -> Dictionary:
 	var out := {}

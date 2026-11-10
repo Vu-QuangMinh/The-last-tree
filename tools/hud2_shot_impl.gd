@@ -64,6 +64,8 @@ func run(t: SceneTree) -> void:
 				root.get_texture().get_image().save_png("%s/h2_pass%02d.png" % [out, k / 15])
 		print("pass: closest two rolling orbs ", min_p)
 	if OS.get_environment("HUD_BONUS") != "":  # (HUD_BONUS=n: n bonus Essence at once; they must fly to the top of the tube, roll down, wait, and leave one by one in the order they came in, never overlapping)
+		if OS.get_environment("HUD_SLOW") != "":  # (HUD_SLOW=0.2: the game runs at that speed, so a picture every frame catches every moment)
+			Engine.time_scale = float(OS.get_environment("HUD_SLOW"))
 		for i in int(OS.get_environment("HUD_BONUS")):
 			fs.fight.player.add_element(["F", "W", "A"][i % 3])
 		fs._refresh_all()
@@ -80,9 +82,22 @@ func run(t: SceneTree) -> void:
 					min_d = minf(min_d, cs[i].distance_to(cs[j]))
 					if cs[i].distance_to(cs[j]) < 50.0:
 						print("frame ", k, " close: ", cs[i], cs[j], " d=", cs[i].distance_to(cs[j]))
-			if k % 6 == 0:
-				root.get_texture().get_image().save_png("%s/h2_bonus%02d.png" % [out, k / 6])
+			if OS.get_environment("HUD_TRACE") != "":  # (HUD_TRACE=1: where every visible Essence of the Bag strip is, per frame, page px)
+				for c in fs._stock_row.get_children():
+					if c is ElementIcon and c.modulate.a > 0.05 and (c.get_global_transform() * c.pivot_offset).x > 1300.0:
+						print("trace ", k, " ", c.get_global_transform() * c.pivot_offset, " a=", snappedf(c.modulate.a, 0.01), " s=", snappedf(c.scale.x, 0.01))
+			var every := int(OS.get_environment("HUD_EVERY")) if OS.get_environment("HUD_EVERY") != "" else 6  # (HUD_EVERY=n: a picture every n frames)
+			if k % every == 0:
+				root.get_texture().get_image().save_png("%s/h2_bonus%02d.png" % [out, k / every])
 		print("closest two rolling orbs: ", min_d, " (one orb is ", 60.0 * 0.9375, ")")
+	if OS.get_environment("HUD_DUMP") != "":  # (HUD_DUMP=file.json: every HUD picture of the screen in draw order, for tools/export_ui_pdf.py: [{"tex", "rect": [x, y, w, h], "z", "order", "alpha"}])
+		var items: Array = []
+		var order := [0]
+		_walk_hud(fs, 0, items, order)
+		var jf := FileAccess.open(OS.get_environment("HUD_DUMP"), FileAccess.WRITE)
+		jf.store_string(JSON.stringify(items))
+		jf.close()
+		print("dumped ", items.size(), " pictures")
 	if OS.get_environment("HUD_CHANT") != "":  # (HUD_CHANT=n: put n Essence in the chant (the rings lie in the tray), press the REAL Chant button, then shoot the flip of the round button into Release, HUD_PRESS=1 also shoots Chant pressed and Pass pressed first)
 		for i in int(OS.get_environment("HUD_CHANT")):
 			fs._add_stock_index(i)
@@ -118,3 +133,32 @@ func run(t: SceneTree) -> void:
 	for b in [fs._cast_btn, fs._clear_btn, fs._end_btn, fs._menu_btn]:
 		print("button ", b.text, " rect ", b.get_global_rect(), " disabled ", b.disabled)
 	t.quit()
+
+
+func _walk_hud(n: Node, z: int, items: Array, order: Array) -> void:
+	var zz := z
+	if n is CanvasItem and n.z_index != 0 and n.z_as_relative:
+		zz += n.z_index
+	elif n is CanvasItem and not n.z_as_relative:
+		zz = n.z_index
+	if n is CanvasItem and not n.is_visible_in_tree():
+		return
+	order[0] += 1
+	var tex: Texture2D = null
+	var rect := Rect2()
+	if n is TextureRect and n.texture != null:
+		tex = n.texture
+		rect = n.get_global_rect()
+	elif n is Control:
+		for sn in ["panel", "normal"]:
+			var sb: StyleBox = n.get_theme_stylebox(sn) if n.has_theme_stylebox(sn) else null
+			if sb is StyleBoxTexture and sb.texture != null:
+				tex = sb.texture
+				rect = n.get_global_rect()
+				break
+	if tex != null and tex.resource_path.contains("/UI/") and not tex.resource_path.contains("Essence") and not tex.resource_path.contains("/Icons") and rect.position.y > 850.0:
+		var gt: Transform2D = n.get_global_transform()
+		var r2: Rect2 = gt * Rect2(Vector2.ZERO, n.size)
+		items.append({"tex": tex.resource_path, "rect": [r2.position.x, r2.position.y, r2.size.x, r2.size.y], "z": zz, "order": order[0], "alpha": n.modulate.a, "name": str(n.name)})
+	for c in n.get_children():
+		_walk_hud(c, zz, items, order)

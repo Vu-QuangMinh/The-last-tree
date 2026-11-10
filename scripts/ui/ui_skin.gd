@@ -10,8 +10,8 @@ extends RefCounted
 ## root, in ROOTS' order) that holds <name>.png or <name>.jpg wins, so a picture can be moved between those folders freely.
 
 const ASSETS := "res://assets/"
-const OPTIONS := ["puppet", "new_ui", "hud2", "minhhud"]  # (what the player picks in Settings; "new" is for tools)
-const LABELS := ["Puppet", "New UI", "Puppet HUD ver 2", "MinhHUD"]
+const OPTIONS := ["puppet", "new_ui", "newui2", "hud2", "minhhud"]  # (what the player picks in Settings; "new" is for tools)
+const LABELS := ["Puppet", "New UI", "NewUI Ver2", "Puppet HUD ver 2", "MinhHUD"]
 ## Puppet Stage theme: pieces that would clash with the stage (the painted stump under an enemy) are hidden.
 const PUPPET_HIDDEN := ["enemy_stand"]
 
@@ -32,7 +32,7 @@ static func theme_id() -> String:
 	if _tool_new:
 		return "new"
 	var id := str(SaveManager.setting("theme", "puppet"))
-	return id if id == "new_ui" or id == "hud2" or id == "minhhud" else "puppet"
+	return id if id == "new_ui" or id == "newui2" or id == "hud2" or id == "minhhud" else "puppet"
 
 
 static var _tool_new := false  # set_theme("new"): a tool or test asking for the New look
@@ -66,7 +66,13 @@ static func is_puppet() -> bool:
 ## New UI and Puppet HUD ver 2: the Puppet look with the HUD laid out as in NewUiLayout (one code path; NewUiLayout.use() picks which of the two layouts its values are).
 static func is_new_ui() -> bool:
 	var id := theme_id()
-	return id == "new_ui" or id == "hud2" or id == "minhhud"
+	return id == "new_ui" or id == "newui2" or id == "hud2" or id == "minhhud"
+
+
+## Theme NewUI Ver2 (2026-11-10): the New UI HUD (same layout, same code) with the parts redrawn in the artifact cabinet's style: assets/Puppet/UI/NewUiV2/ holds them under the
+## New UI sprites' own names and path_of() looks there first (tools/make_newui_cabinet_art.py + tools/import_newui2_art.py).
+static func is_newui2() -> bool:
+	return theme_id() == "newui2"
 
 
 ## Theme MinhHUD (assets/Puppet/UI/MinhHUD/MinhHUD.pdf): the same HUD code path as Puppet HUD ver 2 (NewUiLayout.hud2 is true for it too) with the values of Hud2Layout.apply_minh().
@@ -82,7 +88,7 @@ static func is_hud2() -> bool:
 static func set_theme(id: String) -> void:
 	_tool_new = id == "new"
 	if not _tool_new:
-		SaveManager.set_setting("theme", id if id == "new_ui" or id == "hud2" or id == "minhhud" else "puppet")
+		SaveManager.set_setting("theme", id if id == "new_ui" or id == "newui2" or id == "hud2" or id == "minhhud" else "puppet")
 	_tex.clear()  # the same name now means another picture
 	_paths.clear()
 	UiTheme.reset()  # the shared Theme is rebuilt for the next screen
@@ -98,8 +104,9 @@ static func apply_clear_color() -> void:
 static func path_of(name: String) -> String:
 	if not _paths.has(name):
 		var found := ""
+		var folders: Array = ["UI/NewUiV2"] + FOLDERS if is_newui2() else FOLDERS  # (NewUI Ver2: its own pictures win over the New UI's of the same name)
 		for root in roots():
-			for folder in FOLDERS:
+			for folder in folders:
 				for ext in [".png", ".jpg"]:  # (the room backgrounds are jpg: big, flat-coloured pictures)
 					var p: String = root + folder + "/" + name + ext
 					if ResourceLoader.exists(p):

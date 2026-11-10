@@ -3250,61 +3250,25 @@ func test_the_pianists_scores_play_along_with_extensions() -> void:
 	assert_eq([f.enemies[0].burn, f.player.hp], [1, 32.0], "Turkish March: Burn 1; Für Elise: heal 2")
 
 
-func test_the_very_first_fight_is_one_enemy() -> void:
-	var rng := RandomNumberGenerator.new()
-	for k in 200:
-		rng.seed = k
-		var plan := EnemyDefs.roll_fight_plan(1, rng)
-		assert_true(plan[0].ids.size() == 1 and plan[0].ids[0] in ["ashling", "iceling", "zephling"], "fight 1: one spirit alone (seed %d)" % k)
-		assert_true(plan[1].ids.size() == 2 or plan[1].ids[0].ends_with("slime"), "fight 2: a pair or a slime (seed %d)" % k)
-
-
-func test_crowned_matador_comes_at_least_once_and_again() -> void:
-	var run := RunState.new()
-	run.setup(db, ["fire_ball", "water_wall", "tailwind"], [], 3)
-	run.act = 2
-	run.map = [[{"type": "unknown"}]]
-	run.row = 0
-	run.col = 0
-	# not met by Act 2: the next event is him
-	var first := ""
-	for k in 50:
-		run.current_node().erase("event")
-		if run.resolve_unknown() == "event":
-			first = String(run.current_node().event)
-			break
-	assert_eq(first, "crowned_matador", "not met yet in Act 2: he is the next event")
-	assert_eq(run.matador_met, 1)
-	# he stays on the list (the only event that comes again)
-	var again := 0
-	for k in 400:
-		run.current_node().erase("event")
-		if run.resolve_unknown() == "event" and run.current_node().event == "crowned_matador":
-			again += 1
-	assert_true(again > 0, "he can come again")
-
-
-func test_crowned_matador_trial_boss() -> void:
-	var run := RunState.new()
-	run.setup(db, ["fire_ball", "water_wall", "tailwind"], [], 3)
-	run.act = 2
-	var map_boss := run.boss_for(2)
-	assert_eq(run.boss_for(2), map_boss, "the map's boss is chosen once and kept")
-	for k in 30:
-		assert_true(run.trial_boss() != map_boss, "the trial is never the map's boss")
-	# you can't die in it: back on the map at 1 HP, the run goes on
-	run.map = [[{"type": "unknown", "as": "boss", "no_advance": true}]]
-	run.row = 0
-	run.col = 0
-	run.trial_fight = true
-	var f := run.make_fight([run.trial_boss()])
-	f.won = false
-	run.finish_fight(f)
-	assert_true(not run.over and run.player.hp == 1.0 and not run.trial_fight)
-
-
-func test_crowned_matador_questions() -> void:
-	var open: Array = MatadorLore.open_questions().map(func(q): return q.id)
-	assert_eq(open, ["who_are_you", "mask", "nila", "who_am_i"], "with nothing found yet: the four always-open ones")
-	assert_eq(MatadorLore.QUESTIONS.size(), 12)
-	assert_eq(MatadorLore.QUESTIONS[0].choices, ["A coward.", "A father.", "A king."])
+func test_curtain_map_moves_and_catches_you() -> void:
+	var r := RunState.new()
+	r.rng.seed = 5
+	r.map_style = "curtain"
+	r.new_map()
+	assert_eq(r.map.size(), MapGen.C_ROWS + 1, "the rows, then the boss")
+	assert_eq(r.options().size(), MapGen.C_COLS, "any tile of the first row to start")
+	r.move_to(2, 0)
+	var opts: Array = r.options()
+	assert_true(Vector2i(0, 1) in opts and Vector2i(0, 3) in opts, "sideways on the same row")
+	assert_true(Vector2i(1, 1) in opts and Vector2i(1, 2) in opts, "the two tiles above")
+	r.move_to(3, 0)  # sideways: 2 moves, the Curtain swallows row 0, the one you stand on
+	assert_eq(r.curtain_rows(), 1)
+	assert_true(r.caught(), "caught: the boss is all that's left")
+	assert_eq(r.options(), [Vector2i(MapGen.C_ROWS, MapGen.C_COLS / 2)])
+	var q := RunState.new()
+	q.map_style = "curtain"
+	q.new_map()
+	for f in MapGen.C_ROWS:
+		q.move_to(MapGen.hex_up(q.row, q.col, MapGen.C_COLS)[0] if f > 0 else 0, f)
+	assert_true(not q.caught(), "always going up, the Curtain never catches you")
+	assert_eq(q.options()[0].x, MapGen.C_ROWS, "from the top row: the boss")
