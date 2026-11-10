@@ -3264,3 +3264,27 @@ func test_the_pianists_scores_play_along_with_extensions() -> void:
 	f.player.hp = 30.0
 	f._score_extension()
 	assert_eq([f.enemies[0].burn, f.player.hp], [1, 32.0], "Turkish March: Burn 1; Für Elise: heal 2")
+
+
+func test_curtain_map_moves_and_catches_you() -> void:
+	var r := RunState.new()
+	r.rng.seed = 5
+	r.map_style = "curtain"
+	r.new_map()
+	assert_eq(r.map.size(), MapGen.C_ROWS + 1, "the rows, then the boss")
+	assert_eq(r.options().size(), MapGen.C_COLS, "any tile of the first row to start")
+	r.move_to(2, 0)
+	var opts: Array = r.options()
+	assert_true(Vector2i(0, 1) in opts and Vector2i(0, 3) in opts, "sideways on the same row")
+	assert_true(Vector2i(1, 1) in opts and Vector2i(1, 2) in opts, "the two tiles above")
+	r.move_to(3, 0)  # sideways: 2 moves, the Curtain swallows row 0, the one you stand on
+	assert_eq(r.curtain_rows(), 1)
+	assert_true(r.caught(), "caught: the boss is all that's left")
+	assert_eq(r.options(), [Vector2i(MapGen.C_ROWS, MapGen.C_COLS / 2)])
+	var q := RunState.new()
+	q.map_style = "curtain"
+	q.new_map()
+	for f in MapGen.C_ROWS:
+		q.move_to(MapGen.hex_up(q.row, q.col, MapGen.C_COLS)[0] if f > 0 else 0, f)
+	assert_true(not q.caught(), "always going up, the Curtain never catches you")
+	assert_eq(q.options()[0].x, MapGen.C_ROWS, "from the top row: the boss")
