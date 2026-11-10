@@ -344,6 +344,9 @@ func _test_event(id: String) -> void:
 	for a in ["thornbark", "wind_chime", "ember_charm"]:  # (and something to give away: the Mystery Shed, the Recycler)
 		if not (a in run.artifacts):
 			run.artifacts.append(a)
+	if id == TestModeScreen.SHOP_ID:
+		_enter_test_room({"type": "shop", "act": 1, "row": 3})  # (the Events tab's shop button: the real shop room)
+		return
 	_enter_test_room({"type": "event", "act": 1, "row": 3, "event": id})
 
 
@@ -1301,6 +1304,13 @@ func _save_quest() -> void:
 
 
 func _show_shop(stock: Array, first := true) -> void:
+	# the shop is always the stage shop: with no stage up (Test mode, back from the wax seal screen), put it up first
+	if not (is_instance_valid(current) and current is FightScreen and (current.map_mode or current._hud_hidden())):
+		var base := _new_fight_screen(run.make_fight([]))
+		base.map_mode = true
+		_swap(base)
+	if current.get("_peek"):
+		current.peek_hud(false)
 	var sh := ShopScreen.new()
 	sh.setup(run, stock)
 	sh.intro = first  # (Puppet Stage: the cart rolls in and the goods are laid out only on arrival, not when coming back from the wax seal)
@@ -1319,7 +1329,7 @@ func _show_shop(stock: Array, first := true) -> void:
 			seal.setup(run, ids[k])
 			seal.done.connect(func(): _show_shop(stock, false))
 			_swap(seal)))
-	_put(sh)
+	_set_overlay(sh)
 
 
 func _show_loadout(ids: Array) -> void:

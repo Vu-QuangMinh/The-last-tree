@@ -268,6 +268,9 @@ func _show_tab(k: int) -> void:
 		_tab_buttons[i].modulate = Color.WHITE if i == k else Color(0.6, 0.6, 0.6)  # (the open tab stands out)
 
 
+const SHOP_ID := "__shop"  # (the Events tab's shop button: not an event id)
+
+
 ## Events: every "?" event, one button each. You go straight into it (a throwaway run: 999 Leaves, full HP), and come back here.
 func _events_page() -> Control:
 	var v := VBoxContainer.new()
@@ -282,6 +285,11 @@ func _events_page() -> Control:
 	flow.add_theme_constant_override("v_separation", 10)
 	flow.custom_minimum_size = Vector2(1840, 0)
 	v.add_child(flow)
+	# the shop room too (the merchant, his stock and his quests), the way a run meets it
+	var shop := UiTheme.button("🛒 The Shop", func(): event_requested.emit(SHOP_ID), 20)
+	shop.custom_minimum_size = Vector2(420, 56)
+	shop.tooltip_text = "The merchant's shop, as it is in a run: his stock, prices and quests (999 Leaves to spend)."
+	flow.add_child(shop)
 	for ev in MapEvents.ALL:
 		var id: String = ev.id
 		var b := UiTheme.button(ev.title, func(): event_requested.emit(id), 20)
