@@ -240,8 +240,11 @@ var _overlay: Control
 var _book_overlay: Control
 
 
+var _test_stage_shop := false  # Test mode's Events > The Merchant: the shop is shown over the stage, as on the real map (the cart rolls in)
+
+
 func _stage_flow() -> bool:
-	return UiSkin.is_puppet() and not _test_mode
+	return UiSkin.is_puppet() and (not _test_mode or _test_stage_shop)
 
 
 func _on_stage() -> bool:
@@ -344,6 +347,14 @@ func _test_event(id: String) -> void:
 	for a in ["thornbark", "wind_chime", "ember_charm"]:  # (and something to give away: the Mystery Shed, the Recycler)
 		if not (a in run.artifacts):
 			run.artifacts.append(a)
+	if id == "merchant":  # (the merchant is a room, not one of the "?" events: Test mode lists him with them; as on the real map, over the stage)
+		_test_stage_shop = UiSkin.is_puppet()
+		if _test_stage_shop:
+			var base := _new_fight_screen(run.make_fight([]))
+			base.map_mode = true
+			_swap(base)
+		_enter_test_room({"type": "shop", "act": 1, "row": 3})
+		return
 	_enter_test_room({"type": "event", "act": 1, "row": 3, "event": id})
 
 
@@ -465,6 +476,7 @@ func start_run() -> void:
 func show_map() -> void:
 	if _test_mode and _test_back_to_tabs:
 		_test_back_to_tabs = false  # (an event from test mode's Events tab: back to it)
+		_test_stage_shop = false
 		_test_mode = false
 		open_test_mode()
 		return
@@ -1303,6 +1315,7 @@ func _save_quest() -> void:
 func _show_shop(stock: Array, first := true) -> void:
 	var sh := ShopScreen.new()
 	sh.setup(run, stock)
+	sh.edit_allowed = _test_mode  # (Test mode: F6 = the shelf layout editor)
 	sh.intro = first  # (Puppet Stage: the cart rolls in and the goods are laid out only on arrival, not when coming back from the wax seal)
 	sh.quest = _merchant_quest()
 	sh.quest_changed.connect(_save_quest)

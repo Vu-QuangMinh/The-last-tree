@@ -288,9 +288,11 @@ const HINT_X := 1920.0 - HINT_W + 6.0  # (flush with the right edge, like the fi
 ## against the right edge under the Leaves' frame. Returns {panel, body}: `body` is the RichTextLabel (set its `text` to change the words).
 static func hint_panel(title: String, text: String, px := 0, min_h := 0.0, text_w := HINT_TEXT_W) -> Dictionary:
 	var p := PanelContainer.new()
-	var paper := UiSkin.box("dialogue_panel", [14, 14, 14, 14], [30, 20, 30, 22])
+	var cream := UiTheme.has_dialogue_board()
+	var paper: StyleBox = UiTheme.dialogue_board([32, 22, 32, 24]) if cream else UiSkin.box("dialogue_panel", [14, 14, 14, 14], [30, 20, 30, 22])
 	if paper != null:
 		p.add_theme_stylebox_override("panel", paper)
+		p.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	else:
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = Color(0.43, 0.06, 0.12)
@@ -308,7 +310,7 @@ static func hint_panel(title: String, text: String, px := 0, min_h := 0.0, text_
 	var head := HBoxContainer.new()
 	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(head)
-	var who := UiTheme.label(title, 22 if px <= 0 else maxi(18, px - 4), Color(0.95, 0.78, 0.4))
+	var who := UiTheme.label(title, 22 if px <= 0 else maxi(18, px - 4), UiTheme.BOARD_NAME if cream else Color(0.95, 0.78, 0.4))
 	UiTheme.apply_header(who, "event", 22 if px <= 0 else maxi(18, px - 4))
 	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	who.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -323,15 +325,17 @@ static func hint_panel(title: String, text: String, px := 0, min_h := 0.0, text_
 	r.add_theme_font_size_override("normal_font_size", UiTheme.px(size_px))  # (Font Edit > Body text > Size %)
 	r.add_theme_font_size_override("bold_font_size", UiTheme.px(size_px))
 	r.add_theme_constant_override("line_separation", 2)
-	r.add_theme_color_override("default_color", Color(0.98, 0.93, 0.8))
+	r.add_theme_color_override("default_color", UiTheme.BOARD_INK if cream else Color(0.98, 0.93, 0.8))
 	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	r.text = Keywords.colorize(text.replace("\n\n", "\n") if text.length() > 500 and px < 30 else text)
+	r.text = Keywords.colorize(text.replace("\n\n", "\n") if text.length() > 500 and px < 30 else text, cream)
 	v.add_child(r)
 	return {"panel": p, "body": r, "col": v}
 
 
 ## A choice, Continue or Next in an event: the primary (gold) button of the family.
 static func dialogue_button(text: String, cb: Callable, size := 24) -> Button:
+	if text != "Back" and UiTheme.has_dialogue_board():
+		return UiTheme.gold_button(text, cb, size)  # (the gold plaque goes with the cream board, whatever the theme's primary button is)
 	return UiTheme.button(text, cb, size, "back" if text == "Back" else "primary")
 
 
@@ -729,7 +733,7 @@ func offer_items(entries: Array, tag: String) -> void:
 ## The words of the hint panel are changed (the wax: what to click, what is sealed).
 func set_hint(text: String) -> void:
 	if _hint_body != null:
-		_hint_body.text = Keywords.colorize(text)
+		_hint_body.text = Keywords.colorize(text, UiTheme.has_dialogue_board())
 		_hint_body.visible = true
 		_fit_box.call_deferred()
 
@@ -2217,7 +2221,7 @@ func _show_page() -> void:
 		_btn_row.remove_child(c)
 		if not (c in _page_last):
 			c.queue_free()
-	_hint_body.text = Keywords.colorize(String(_pages[_page_i])) if not _pages.is_empty() else ""
+	_hint_body.text = Keywords.colorize(String(_pages[_page_i]), UiTheme.has_dialogue_board()) if not _pages.is_empty() else ""
 	_hint_body.visible = not _pages.is_empty() and String(_pages[_page_i]) != ""
 	if _page_i < _pages.size() - 1:
 		var more := dialogue_button("Go on...", func():
@@ -2403,7 +2407,7 @@ func start_fuse(text: String) -> void:
 		move_child(_fz_dim, _box.get_index())
 	_fz_dim.create_tween().tween_property(_fz_dim, "color:a", 0.55, 0.3)
 	if _hint_body != null:
-		_hint_body.text = Keywords.colorize("Click or drag two spells into the two boards. The pattern of the first one goes first. The new spell shows beside them.")
+		_hint_body.text = Keywords.colorize("Click or drag two spells into the two boards. The pattern of the first one goes first. The new spell shows beside them.", UiTheme.has_dialogue_board())
 		_hint_body.visible = true
 		_fit_box.call_deferred()
 	var sw := SpellCard.W * FZ_SLOT_ZOOM + FZ_RIM * 2.0  # (a card at its own size on its board)

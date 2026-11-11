@@ -328,6 +328,9 @@ func finish_fight(f: Fight) -> void:
 		player.heal(player.max_hp * 0.5)  # (a boss met in an event: its rewards, but the act goes on)
 	elif kind == "boss":
 		player.heal(player.max_hp * 0.5)
+		var sm := _notes()
+		if sm != null and sm.has_method("boss_beaten"):
+			sm.call("boss_beaten", act)  # (unlocks the next stage of the main menu)
 		if act >= ACTS:
 			over = true
 			won = true

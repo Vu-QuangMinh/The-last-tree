@@ -7,7 +7,8 @@ extends Control
 
 const RIVET_PX := 7.5
 const ROPE_W := 4.5
-const STRING_W := 1.6  # the black string a puppet hangs on (it replaced the rope)
+const STRING_W := 1.6  # the string a puppet hangs on (Minh's thin string, it replaced the rope)
+const STRING_COLOR := Color(0.24, 0.15, 0.08, 0.95)  # (2026-11-11: no longer black: a dark brown)
 const SEGMENTS := 14
 const TOP_Y := -40.0  # the ropes end above the screen, behind the ceiling
 
@@ -64,11 +65,8 @@ func _draw() -> void:
 		var pts := EnemyRopes.points(target[0])
 		for i in pts.size():
 			var at: Vector2 = target[1].rope_point(pts[i])
-			if not fs.rope_mode:
-				draw_circle(at, STRING_W * 1.3, Color(0.03, 0.03, 0.03))  # (a puppet string: just a small knot where it is tied on)
-				continue
-			var big: bool = not drag.is_empty() and drag.id == target[0] and drag.i == i
-			var tex := _rivet_tex(int(ceil(RIVET_PX * (1.4 if big else 1.0))))  # (the rope mode: the rivet, to grab and drag)
+			var big: bool = fs.rope_mode and not drag.is_empty() and drag.id == target[0] and drag.i == i
+			var tex := _rivet_tex(int(ceil(RIVET_PX * (1.4 if big else 1.0))))  # (the copper button the string is tied to, in a fight too; in the rope mode it is also what you grab and drag)
 			draw_texture(tex, at - tex.get_size() * 0.5)  # (never snapped to whole pixels: the puppet moves smoothly and the rivet must move with it)
 
 
@@ -104,4 +102,4 @@ class RopeLines extends Control:
 				_rope(Vector2(rest.x, RopeRig.TOP_Y), cr.rope_point(pts[i]), float(i) * 1.7 + rest.x * 0.01)
 
 	func _rope(top: Vector2, end: Vector2, _phase: float) -> void:
-		draw_line(top, end, Color(0.03, 0.03, 0.03, 0.9), RopeRig.STRING_W, true)  # (a puppet's string: thin, black and pulled tight)
+		draw_line(top, end, RopeRig.STRING_COLOR, RopeRig.STRING_W, true)  # (a puppet's string: thin, dark brown and pulled tight)

@@ -132,6 +132,17 @@ static func tex(name: String) -> Texture2D:
 
 ## A StyleBoxTexture: margins = [left, top, right, bottom] for 9-slice (all 0 = the whole image stretched to fit).
 ## content = [left, top, right, bottom] padding for whatever sits inside.
+## NewUI Ver2: a nine-patch (ScaledBox) of its big pictures (UI/NewUiV2/) of the given names (the pictures of different proportions it chooses from), or null when this theme has none of them.
+static func scaled_box(names: Array, texel_frac: float, content: Array) -> ScaledBox:
+	if not is_newui2():
+		return null
+	var texs: Array = []
+	for n: String in names:
+		if path_of(n).contains("/NewUiV2/") and tex(n) != null:
+			texs.append(tex(n))
+	return ScaledBox.make(texs, texel_frac, content) if not texs.is_empty() else null
+
+
 static func box(name: String, margins := [0, 0, 0, 0], content := [0, 0, 0, 0]) -> StyleBoxTexture:
 	var t := tex(name)
 	if t == null:

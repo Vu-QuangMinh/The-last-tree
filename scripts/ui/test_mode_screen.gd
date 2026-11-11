@@ -56,6 +56,17 @@ func setup(p_state: Dictionary) -> void:
 
 
 ## Your picks live in a file, so they are still there the next time the game starts.
+## 2026-11-11: every button of this screen is 30% narrower and 30% taller than before (a button that sizes itself to its words can't get narrower than them: it only gets taller).
+const BTN_W := 0.7
+const BTN_H := 1.3
+
+
+func _shape(b: Button, size := Vector2.ZERO) -> Button:
+	var s := size if size != Vector2.ZERO else b.get_combined_minimum_size()
+	b.custom_minimum_size = Vector2(s.x * BTN_W if size != Vector2.ZERO else s.x, s.y * BTN_H)
+	return b
+
+
 func _load_state() -> void:
 	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
 	if f == null:
@@ -162,6 +173,7 @@ func _ready() -> void:
 			state.enemy_tab = g
 			_build_enemy_grid(groups), 15)
 		tb.toggle_mode = true
+		_shape(tb)
 		etabs.add_child(tb)
 		_enemy_tab_buttons.append(tb)
 	_build_enemy_grid(groups)
@@ -176,6 +188,7 @@ func _ready() -> void:
 	for k in KINDS.size():
 		var kb := UiTheme.button(KINDS[k], func(): _set_kind(k), 17)
 		kb.toggle_mode = true
+		_shape(kb)
 		ah.add_child(kb)
 		_kind_buttons.append(kb)
 	_active_head = UiTheme.heading("", 22, UiTheme.ACCENT)
@@ -212,7 +225,7 @@ func _ready() -> void:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lh.add_child(spacer)
-	var roll := UiTheme.button("🎲 Random spell", _roll_random, 18)
+	var roll := _shape(UiTheme.button("🎲 Random spell", _roll_random, 18))
 	roll.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	lh.add_child(roll)
 	_spell_only.append(roll)
@@ -236,9 +249,9 @@ func _ready() -> void:
 	bh.add_theme_constant_override("separation", 16)
 	bh.alignment = BoxContainer.ALIGNMENT_END
 	root.add_child(bh)
-	bh.add_child(UiTheme.button("Main menu", func(): back.emit(), 20))
+	bh.add_child(_shape(UiTheme.button("Main menu", func(): back.emit(), 20)))
 	_fight_btn = UiTheme.button("Fight!", func(): fight_requested.emit(state.enemies.duplicate(), state.spells.duplicate(), state.artifacts.duplicate(), state.bottles.duplicate()), 24)
-	_fight_btn.custom_minimum_size = Vector2(240, 54)
+	_shape(_fight_btn, Vector2(240, 54))
 	bh.add_child(_fight_btn)
 	_refresh()
 	_build_list()
@@ -246,7 +259,7 @@ func _ready() -> void:
 	var pages := [root, _events_page(), _custom_page()]
 	for k in TABS.size():
 		var b := UiTheme.button(TABS[k], func(): _show_tab(k), 22)
-		b.custom_minimum_size = Vector2(200, 48)
+		_shape(b, Vector2(200, 48))
 		b.toggle_mode = true
 		tabs.add_child(b)
 		_tab_buttons.append(b)
@@ -285,9 +298,13 @@ func _events_page() -> Control:
 	for ev in MapEvents.ALL:
 		var id: String = ev.id
 		var b := UiTheme.button(ev.title, func(): event_requested.emit(id), 20)
-		b.custom_minimum_size = Vector2(420, 56)
+		_shape(b, Vector2(420, 56))
 		b.tooltip_text = ev.text
 		flow.add_child(b)
+	var mb := UiTheme.button("The Merchant", func(): event_requested.emit("merchant"), 20)  # (the merchant's shop with his quests: a room on the map, listed here too)
+	_shape(mb, Vector2(420, 56))
+	mb.tooltip_text = "The merchant's shop and his quests."
+	flow.add_child(mb)
 	v.add_child(_back_row())
 	return v
 
@@ -316,7 +333,7 @@ func _custom_page() -> Control:
 	for c in CUSTOM:
 		var id: String = c[0]
 		var b := UiTheme.button(c[1], func(): custom_requested.emit(id), 20)
-		b.custom_minimum_size = Vector2(420, 56)
+		_shape(b, Vector2(420, 56))
 		b.tooltip_text = c[2]
 		flow.add_child(b)
 	v.add_child(_back_row())
@@ -331,7 +348,7 @@ func _back_row() -> Control:
 	box.add_child(spacer)
 	var bh := HBoxContainer.new()
 	bh.alignment = BoxContainer.ALIGNMENT_END
-	bh.add_child(UiTheme.button("Main menu", func(): back.emit(), 20))
+	bh.add_child(_shape(UiTheme.button("Main menu", func(): back.emit(), 20)))
 	box.add_child(bh)
 	return box
 

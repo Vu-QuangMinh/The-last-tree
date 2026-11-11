@@ -228,9 +228,6 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 	for e in enemies:
 		_plan(e)
 	_shield_wall()
-	for lamp in enemies.filter(func(x): return x.id == "bog_lamp"):
-		for fish in enemies.filter(func(x): return x.has_passive("lure")):
-			lamp.set_meta("summoner", fish)  # (it goes out with the fish)
 	_fold_wing()
 	_log("The fight begins.")
 
@@ -2046,7 +2043,6 @@ func _enemy_phase() -> void:
 			if not e.intent2.is_empty() and not over and not e.is_dead():
 				await _do_move(e, e.intent2)  # (the Corrector's small screen)
 		await anim.call({"type": "enemy_done", "enemy": e})
-		await _lamp_back(e)
 		if (e.has_passive("gem_crown") or e.has_passive("shell")) and not e.armor.has(true) and e.size() > 1:
 			e.set_armor(0)
 		e.end_turn()
@@ -2095,6 +2091,12 @@ func _plan(e: EnemyState) -> void:
 		# (the Fire Dragon's head and tail: any of their moves, at random; no second fireball while one still hangs there)
 		var pool := moves.filter(func(m): return not (m.kind == "summon" and (alive().size() >= MAX_ENEMIES or alive().any(func(x): return x.def.get("dragon", "") == "fireball"))))
 		e.intent = pool[rng.randi() % pool.size()]
+		if e.has_passive("lure"):  # (the Bog Lantern's lamp: 2 turns of its usual moves, then the flash, and the clock starts over)
+			var clock: int = int(e.get_meta("lamp_clock", 2))
+			if clock <= 0:
+				e.intent = e.def.lamp_move
+				clock = 3
+			e.set_meta("lamp_clock", clock - 1)
 		return
 	e.intent = moves[e.move_index % moves.size()]
 	e.move_index += 1
@@ -3062,46 +3064,6 @@ func _shield_wall() -> void:
 			e.behind = wall and not e.is_dead()
 
 
-## The Bog Lantern's turn is over: a lamp that is out (dark, still on its hook) waits one enemy turn, then lights up again with
-## its clock at 2.
-func _lamp_back(e: EnemyState) -> void:
-	if not e.has_passive("lure") or e.is_dead():
-		return
-	var lamps := enemies.filter(func(x): return x.id == "bog_lamp")
-	if lamps.is_empty():
-		return
-	var lamp: EnemyState = lamps[0]
-	if not lamp.is_dead():
-		e.lamp_wait = false
-		return
-	if not e.lamp_wait:
-		e.lamp_wait = true
-		return
-	e.lamp_wait = false
-	lamp.knocked = false
-	lamp.reset_hp(String(lamp.def.hp))
-	lamp.move_index = 0
-	lamp.fresh = true
-	_plan(lamp)
-	_log("%s's lamp lights up again." % e.name)
-	anim.call({"type": "sfx", "name": "sfx_lamp_glow"})
-	await anim.call({"type": "lamp_lit", "enemy": lamp})
-
-
-## A lamp put out stays on its hook, dark (knocked: it can't be touched); when the fish is gone, so is the lamp.
-func _lamps_dark() -> void:
-	var fish_up := alive().any(func(x): return x.has_passive("lure"))
-	for x: EnemyState in enemies:
-		if x.id != "bog_lamp":
-			continue
-		if x.is_dead() and fish_up and not x.knocked:
-			x.knocked = true
-			x.intent = {"kind": "hold"}
-			_log("The lamp goes dark.")
-		elif not fish_up and x.knocked:
-			x.knocked = false
-
-
 ## What casting this spell burns you for (Ignite stacks).
 func ignite_damage(id: String) -> int:
 	return int(player.ignite_dmg.get(id, IGNITE_DAMAGE))
@@ -3149,7 +3111,6 @@ func _skeleton_down() -> void:
 
 func _cleanup() -> void:
 	_skeleton_down()
-	_lamps_dark()
 	_shield_wall()
 	_falls_and_heads()
 	_rebirths()

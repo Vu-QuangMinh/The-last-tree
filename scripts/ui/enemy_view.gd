@@ -92,6 +92,14 @@ class StunStars extends Control:
 			_star(Vector2(cos(a) * RX, sin(a) * RY), r, a * 0.6, lerpf(0.55, 1.0, (front + 1.0) / 2.0))
 
 	func _star(c: Vector2, r: float, turn: float, alpha: float) -> void:
+		var pic := UiSkin.tex("stun_star")  # (the star is a picture, 2026-11-11; only its path, the ellipse, is drawn here)
+		if pic != null:
+			texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+			var side := r * 2.6
+			draw_set_transform(c, turn * 0.5, Vector2.ONE)
+			draw_texture_rect(pic, Rect2(-side / 2.0, -side / 2.0, side, side), false, Color(1, 1, 1, alpha))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			return
 		var pts := PackedVector2Array()
 		for k in 10:
 			var ang := turn - PI / 2.0 + PI * float(k) / 5.0

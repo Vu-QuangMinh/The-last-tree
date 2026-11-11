@@ -205,7 +205,7 @@ class _Strings extends Control:
 
 	func _draw() -> void:
 		for k in screen._hung.size():
-			draw_line(Vector2(ChoiceScreen.HANG_X[k], ChoiceScreen.HANG_TOP), screen._centre(k), Color(0.03, 0.03, 0.03, 0.9), RopeRig.STRING_W, true)
+			draw_line(Vector2(ChoiceScreen.HANG_X[k], ChoiceScreen.HANG_TOP), screen._centre(k), RopeRig.STRING_COLOR, RopeRig.STRING_W, true)
 
 
 ## The cards glow on and off (one after the other), to say "one of these goes".

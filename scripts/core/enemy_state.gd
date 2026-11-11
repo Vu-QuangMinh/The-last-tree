@@ -44,7 +44,6 @@ var flying := false  # your chant can't hit it; any Essence it loses brings it d
 var fly_size := 0  # its Essence while in the air (fewer: it has been hit)
 var grounded := 0  # stunned by its fall: the turns it skips
 var mad_hits := 0  # the Maddened Soldier: the extra hits your chants have earned on his next attack
-var lamp_wait := false  # the Bog Lantern's lamp is out: it grows back at the end of the next enemy turn
 var shield_up := false  # the Shield Bearer has armoured himself for the fight
 var behind := false  # the Necromancer, while his Shield Bearer stands: nothing you do can touch it
 var winged := false  # the Fire Dragon's wing is folded over it: nothing you do can touch it this turn

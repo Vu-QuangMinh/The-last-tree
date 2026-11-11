@@ -74,7 +74,7 @@ const SHAPES := {
 	"gale_sprite": 1, "mirror_wisp": 1, "storm_imp": 1, "hush_moth": 1, "leech_bat": 1, "echo_wraith": 1, "storm_rider": 1,
 	"stone_knight": 2, "warded_golem": 2, "lockwarden": 2, "woodcutter": 2, "invoker": 2, "forge_spirit": 1, "yin_yang_beast": 4, "yin_yang_clone": 4, "inverter": 2, "mimic_chest": 3,
 	"cinder_hound": 4, "bramble_matron": 5, "mirror_knight": 2, "void_archon": 1, "pickpocket_imp": 4, 
-	"rot_snake": 4, "sentinel": 2, "blue_sentinel": 2, "headless_horseman": 4, "scav_rat": 4, "scav_hyena": 4, "scav_vulture": 1, "scav_beetle": 4, "mad_soldier": 2, "tree_dweller_a": 5, "tree_dweller_b": 5, "bog_fish": 4, "bog_lamp": 1, "bug_hunter": 2, "mob_pitchfork": 2, "mob_slingshot": 2, "mob_torch": 2, "shield_bearer": 2, "necromancer": 5,
+	"rot_snake": 4, "sentinel": 2, "blue_sentinel": 2, "headless_horseman": 4, "scav_rat": 4, "scav_hyena": 4, "scav_vulture": 1, "scav_beetle": 4, "mad_soldier": 2, "tree_dweller": 5, "bog_fish": 4, "bug_hunter": 2, "mob_pitchfork": 2, "mob_slingshot": 2, "mob_torch": 2, "shield_bearer": 2, "necromancer": 5,
 	"tidecaller": 5, "frost_hex": 5, "ashling": 1, "last_winter": 1,
 	"dragon_tail": 4, "dragon_head": 4, "dragon_fireball": 1, "wyvern_tail": 4, "wyvern_head": 4, "wyvern_fireball": 1,  # (the Fire Dragon and the Winter Wyvern: stand-ins until its pieces are drawn)
 }
@@ -158,6 +158,8 @@ func setup(e: EnemyState) -> void:
 			_veil1_lit = _puppet_tex("veiled_eyes_lit", 2)
 			_saw_veil1 = false
 			_unveil_t = -1.0
+		_fall_tex = _puppet_tex(file + "_fallen") if e.def.get("flying", false) else null  # (a flyer knocked out of the air lies there stunned: its own picture)
+		_thrown_tex = _puppet_tex("headless_horseman_thrown") if e.id == "headless_horseman" else null  # (the Horseman after he has thrown his head: the hand is empty)
 		if e.id == "anxious_armadillo":
 			_sad_tex = _puppet_tex("anxious_armadillo_sad", 2)
 		_small_tv = _puppet_tex("corrector_small_screen", 2) if e.id == "corrector" else null
@@ -864,6 +866,9 @@ func has_rig() -> bool:
 var reach := Vector2.ZERO
 var sad_forever := false  # the Handyman's body, once every hand is down: he keeps the crying face (Face.pdf)
 var _sad_tex: Texture2D
+var _fall_tex: Texture2D  # a flyer that has been knocked down
+var head_gone := false  # the Horseman has thrown his head (set by the fight screen the moment it flies)
+var _thrown_tex: Texture2D  # the Headless Horseman with his head thrown
 const SAMURAI_POSES := ["in_no_kamae", "ko_gasumi", "sha_no_kamae"]
 const SAMURAI_H := 1.725  # the Samurai's height (helmet to feet, idle), in art squares
 const RETAINER_BIG := 1.4  # his pictures are a square with a small man in it: drawn this much bigger than the other puppets' squares
@@ -1194,6 +1199,10 @@ func _draw_art(blink_on: bool) -> void:
 		tex = _pose_tex[_ret_pose]  # (the Retainer acting a move out)
 	if _sad_tex != null and (sad_forever or _sad_t > 0.0):
 		tex = _sad_tex
+	if _fall_tex != null and _enemy != null and not _enemy.flying:
+		tex = _fall_tex
+	if _thrown_tex != null and _enemy != null and (head_gone or (_enemy.has_meta("headless") and not _enemy.intent.get("head", false))):
+		tex = _thrown_tex  # (the head is announced as his next move and thrown with it: after that his hand is empty)
 	var veil2: bool = enemy_id == "veiled_eyes" and _veil_tex.size() == 2 and _veil_tex[0] != null and _enemy != null and _enemy.phase >= 2
 	if veil2:
 		tex = _veil_tex[0]

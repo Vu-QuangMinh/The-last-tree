@@ -3302,7 +3302,6 @@ func _sync_views() -> void:
 ## its enemy) never lands on its neighbour's model or cards (the Wizard's floating spells); 20 px when the row is full.
 const ENEMY_GAP_MAX := 150.0
 const SAMURAI_GAP := -110.0
-const LAMP_GAP := -185.0
 const DUO_GAP := -236.0
 
 
@@ -3322,8 +3321,6 @@ func _space_enemy_row() -> void:
 	var gap := clampf((1840.0 - total) / float(places.size() - 1), 20.0, ENEMY_GAP_MAX)
 	if views.all(func(v): return v.enemy.has_passive("avenger") or v.enemy.has_passive("retainer")):
 		gap = SAMURAI_GAP  # (the Samurai and his Retainer stand side by side, their puppets may overlap a little)
-	if views.size() == 2 and views[0].enemy.id == "bog_lamp" and views[1].enemy.has_passive("lure"):
-		gap = LAMP_GAP  # (the Bog Lantern: its lamp hangs on the fish's hook, over the fish's left side)
 	if views.size() == 2 and views[0].enemy.has_passive("big_shield") and views[1].enemy.has_passive("behind_shield"):
 		gap = DUO_GAP  # (the Undying Duo: the Necromancer stands right behind his Shield Bearer, a little to the right)
 	_enemy_row.add_theme_constant_override("separation", int(gap))
@@ -4249,7 +4246,17 @@ func _build_test_buttons() -> void:
 		["Auto-ball", _auto_ball, "Test mode: shoots new Essence out of the machine until the bag holds 10."]]
 	for k in specs.size():
 		var b := UiTheme.button(specs[k][0], specs[k][1], 15)
-		if _puppet_strips():
+		if UiSkin.is_newui2() and UiSkin.tex("btn_teal") != null:  # (NewUI Ver2: the user's teal button, with the word on it)
+			UiTheme.use_heading_font(b)
+			for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+				var sb := UiSkin.scaled_box(["btn_teal"], 0.28, [8, 2, 8, 3])
+				sb.modulate_color = {"hover": Color(1.25, 1.22, 1.15), "pressed": Color(0.62, 0.6, 0.58)}.get(state, Color.WHITE)
+				b.add_theme_stylebox_override(state, sb)
+			for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+				b.add_theme_color_override(c, Color(1.0, 0.95, 0.82))
+			b.add_theme_color_override("font_outline_color", Color(0.05, 0.15, 0.13))
+			b.add_theme_constant_override("outline_size", 3)
+		elif _puppet_strips():
 			UiTheme.use_heading_font(b)
 			UiTheme.style_puppet_button(b, "clear", 15, false)
 		b.tooltip_text = specs[k][2]
@@ -6586,6 +6593,7 @@ func _anim_event(ev: Dictionary) -> void:
 			if ev.get("head", false) and head_v:
 				Audio.play("sfx_head_scream")
 				await get_tree().create_timer(0.55).timeout  # (he screams first, then it flies)
+				head_v.creature.head_gone = true  # (the picture with the empty hand and no pumpkin, from the moment it leaves him)
 				await OrphanFx.throw_item(self, head_v.creature.global_position + Vector2(head_v.creature.size.x * 0.5, 40.0), _attack_point(), "head")
 			Audio.play("sfx_silence_apply")
 			_refresh_all()
@@ -7245,8 +7253,13 @@ func _talk() -> void:
 	for v in _views.values():
 		v.set_talk(true, 0.0, BossTalk.speaker(tree) if v.enemy.is_boss and not v.enemy.has_passive("hand") else "")
 	var box := PanelContainer.new()
-	var talk_art := UiSkin.box("dialogue_panel", [14, 14, 14, 14], [TALK_PAD, 20, TALK_PAD, 22])  # (the same painted board as an event's words)
+	var cream := UiTheme.has_dialogue_board()  # (the same cream board as an event's words and the merchant's)
+	var talk_art: StyleBox = UiTheme.dialogue_board([TALK_PAD, 22, TALK_PAD, 24]) if cream else UiSkin.box("dialogue_panel", [14, 14, 14, 14], [TALK_PAD, 20, TALK_PAD, 22])
 	box.add_theme_stylebox_override("panel", talk_art if talk_art != null else _talk_box_style())
+	box.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	var c_name := "#8a4a0a" if cream else "#ffcf7a"  # (a speaker's name, the narration and "You:" are darker on the cream board)
+	var c_note := "#6a5a44" if cream else "#c8bfa8"
+	var c_you := "#1f559e" if cream else "#9ec9ff"
 	box.custom_minimum_size = Vector2(TALK_W, 0)
 	box.position = Vector2((1920.0 - TALK_W) / 2.0, 545)
 	box.z_index = 30
@@ -7272,6 +7285,8 @@ func _talk() -> void:
 		text.fit_content = true
 		text.scroll_active = false
 		text.custom_minimum_size = Vector2(TALK_W - 2.0 * TALK_PAD, 0)
+		if cream:
+			text.add_theme_color_override("default_color", UiTheme.BOARD_INK)
 		text.add_theme_font_size_override("normal_font_size", 21)
 		text.add_theme_font_size_override("italics_font_size", 21)
 		text.add_theme_font_size_override("bold_font_size", 21)
@@ -7292,7 +7307,7 @@ func _talk() -> void:
 			lines.append("[i][color=#c8bfa8]%s[/color][/i]" % node.note)
 		if node.has("reply2"):
 			lines.append("[color=#ffcf7a][b]%s:[/b][/color] \"%s\"%s" % [BossTalk.speaker(tree), node.reply2, (" [i][color=#c8bfa8]%s[/color][/i]" % node.note2) if node.has("note2") else ""])
-		text.text = "\n".join(lines)
+		text.text = "\n".join(lines).replace("#ffcf7a", c_name).replace("#c8bfa8", c_note).replace("#9ec9ff", c_you)
 		col.add_child(text)
 		Audio.play_voice(BossTalk.voice_paths(tree, fight.talk_id, node))  # (his recorded line, if there is one)
 		if node.has("show"):

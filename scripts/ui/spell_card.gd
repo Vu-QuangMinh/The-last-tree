@@ -115,6 +115,7 @@ func _ready() -> void:
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(top)
 	var nb := PanelContainer.new()
+	var plaque := _name_plaque()  # (2026-11-11: the user's painted red / blue / yellow plaque; a fused spell keeps the flat plum banner)
 	var nbs := StyleBoxFlat.new()
 	nbs.bg_color = name_col
 	nbs.border_color = Color(1, 0.85, 0.3) if spell.get("upgraded", false) else name_col.darkened(0.45)
@@ -124,7 +125,14 @@ func _ready() -> void:
 	nbs.content_margin_right = _z(8)
 	nbs.content_margin_top = _z(1)
 	nbs.content_margin_bottom = _z(1)
-	nb.add_theme_stylebox_override("panel", nbs)
+	if plaque != null:
+		plaque.content_margin_left = _z(8)
+		plaque.content_margin_right = _z(8)
+		plaque.content_margin_top = _z(1)
+		plaque.content_margin_bottom = _z(1)
+		nb.add_theme_stylebox_override("panel", plaque)
+	else:
+		nb.add_theme_stylebox_override("panel", nbs)
 	nb.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	nb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var name_l := UiTheme.label(spell.name, _zi(22), Color.WHITE)
@@ -321,6 +329,21 @@ const FRAME_SRC := 64.0  # px of the frame's width in the artist's picture (at i
 static var _frame_cache := {}  # zoom -> [texture, margin]
 
 
+## The painted plaque behind the spell's name: red (damage), blue (defense) or yellow (utility), made of the user's pictures (Card/card_plaque_*.png, cropped, never scaled). A golden tint when the spell is upgraded.
+## Null (the flat banner) for a fused spell or when the picture is missing.
+func _name_plaque() -> ScaledBox:
+	if spell.get("fused", false):
+		return null
+	var kind := String(spell.kind)
+	var t := UiSkin.tex("card_plaque_" + kind) if kind in ["damage", "defense", "utility"] else null
+	if t == null:
+		return null
+	var b := ScaledBox.make([t], 0.22, [0, 0, 0, 0])
+	if spell.get("upgraded", false):
+		b.modulate_color = Color(1.3, 1.15, 0.8)
+	return b
+
+
 func _frame_art() -> StyleBoxTexture:
 	var t: Texture2D = UiSkin.tex("spell_card_frame")
 	if t == null:
@@ -486,7 +509,7 @@ func _on_hover(on: bool) -> void:
 	if not on and Time.get_ticks_msec() < _hold_until:
 		return  # (held big after a click)
 	# only let go when the mouse has really left the card (not when something flickers on top of it)
-	if not on and is_visible_in_tree() and get_global_rect().has_point(get_global_mouse_position()):
+	if not on and is_visible_in_tree() and Rect2(Vector2.ZERO, size).has_point(get_global_transform().affine_inverse() * get_global_mouse_position()):  # (in its own, scaled, space: a card inside a zoomed cart)
 		return
 	_hover = on
 	if is_instance_valid(_zoom):
@@ -816,38 +839,29 @@ func refresh() -> void:
 		_orbit.visible = fires > 0 and charges == 0 and state == ""
 
 
-## Rare and Legendary cards: a metal triangle over each corner, green (Rare) or gold (Legendary). Common cards have none.
+## Rare and Legendary cards: ONE metal corner plate (Card/rarity_corner_rare.png / _legendary.png) in the top-left corner, tucked into the wooden part of the card (inset = the frame's content margins), not over the iron rim. Common cards have none.
 class RarityCorners extends Control:
-	const METAL := {"rare": [Color(0.16, 0.55, 0.24), Color(0.72, 1.0, 0.66), Color(0.03, 0.2, 0.07)],
-		"legendary": [Color(0.86, 0.6, 0.12), Color(1.0, 0.95, 0.62), Color(0.38, 0.22, 0.02)]}  # [metal, shine, dark edge]
+	const SIDE := 35.2  # (80% of the old 44)
+	const SHIFT := Vector2(-5.0, -5.0)  # (5 px up and 5 px left of where it was)
 	var rarity := "rare"
 	var zoom := 1.0
+	var inset := Vector2.ZERO
 
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-	func _draw() -> void:
-		var m: Array = METAL.get(rarity, METAL.rare)
-		var s := 22.0 * zoom
-		var inset := 1.0 * zoom
-		for k in 4:
-			var fx := 1.0 if k % 2 == 1 else 0.0  # (right corners)
-			var fy := 1.0 if k >= 2 else 0.0  # (bottom corners)
-			var c := Vector2(lerpf(inset, size.x - inset, fx), lerpf(inset, size.y - inset, fy))
-			var dx := -1.0 if fx > 0.5 else 1.0
-			var dy := -1.0 if fy > 0.5 else 1.0
-			var a := c + Vector2(s * dx, 0.0)
-			var b := c + Vector2(0.0, s * dy)
-			# the plate: bright where the light catches its corner, darker along its long edge
-			draw_polygon(PackedVector2Array([c, a, b]), PackedColorArray([m[1], m[0], m[0].darkened(0.25)]))
-			# a bevel along the long edge, then a dark outline
-			var a2 := c + Vector2(s * 0.78 * dx, 0.0)
-			var b2 := c + Vector2(0.0, s * 0.78 * dy)
-			draw_line(a2, b2, Color(m[1], 0.55), maxf(1.0, 1.5 * zoom), true)
-			draw_polyline(PackedVector2Array([c, a, b, c]), m[2], maxf(1.0, 1.6 * zoom), true)
-			# a rivet
-			var r := c + Vector2(s * 0.28 * dx, s * 0.28 * dy)
-			draw_circle(r, 2.6 * zoom, m[2])
-			draw_circle(r, 1.8 * zoom, m[0])
-			draw_circle(r + Vector2(-0.8, -0.8) * zoom, 0.9 * zoom, m[1])
+	func _ready() -> void:
+		var t := UiSkin.tex("rarity_corner_" + rarity)
+		if t == null:
+			return
+		var s := SIDE * zoom
+		var r := TextureRect.new()
+		r.texture = t
+		r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		r.stretch_mode = TextureRect.STRETCH_SCALE
+		r.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		r.position = inset + SHIFT * zoom
+		r.size = Vector2(s, s)
+		add_child(r)

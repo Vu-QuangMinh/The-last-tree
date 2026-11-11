@@ -231,6 +231,24 @@ func set_setting(key: String, value) -> void:
 	save_game()
 
 
+## The stages the main menu may show: Act 1 always, and each next one once the boss before it has been beaten. (Players from before this rule: best_act says how far they got.)
+func unlocked_stages() -> Array:
+	var out := [1]
+	var beaten: Array = data.stats.get("bosses_beaten", [])
+	for a in [2, 3]:
+		if beaten.has(a - 1) or int(data.stats.get("best_act", 0)) >= a or int(data.stats.get("wins", 0)) > 0:
+			out.append(a)
+	return out
+
+
+func boss_beaten(act: int) -> void:
+	var beaten: Array = data.stats.get("bosses_beaten", [])
+	if not beaten.has(act):
+		beaten.append(act)
+		data.stats["bosses_beaten"] = beaten
+		save_game()
+
+
 func record_run(seedlings: int, act_reached: int, kills: int, victory: bool) -> void:
 	data.seedlings += seedlings
 	data.stats.runs += 1

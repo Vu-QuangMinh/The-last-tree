@@ -43,7 +43,7 @@ func _ready() -> void:
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui.add_child(title)
 	var hint := Label.new()
-	hint.text = "Left click a puppet: rivet + rope  ·  drag a rivet: move it  ·  right click a rivet: remove it  ·  F5: leave"
+	hint.text = "Left click a puppet: copper button + string  ·  drag a button: move it  ·  right click a button: remove it  ·  F5: leave"
 	hint.position = Vector2(0, 158)
 	hint.size = Vector2(1920, 26)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

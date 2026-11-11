@@ -1149,13 +1149,13 @@ func test_act2_tier15_maddened_soldier() -> void:
 
 
 func test_act2_tier15_tree_dwellers() -> void:
-	var f := _fight(["tree_dweller_a", "tree_dweller_b"], ["fire_ball"], "")
-	assert_eq(f.enemies.map(func(x): return x.size()), [6, 6])
+	var f := _fight(["tree_dweller"], ["fire_ball"], "")
+	assert_eq(f.enemies.map(func(x): return x.size()), [12])
 	await f.end_player_turn()
-	assert_eq(f.player.poison, 3, "2 Poison from each, and the new turn has already ticked it down by 1")
-	f.enemies[0].remove_right(6)
+	assert_eq(f.player.poison, 3, "4 Poison (2 from each of the two), and the new turn has already ticked it down by 1")
+	f.enemies[0].remove_right(12)
 	f._cleanup()
-	assert_eq(f.alive().size(), 1, "each has its own Essence")
+	assert_true(f.alive().is_empty(), "one tree, one set of Essence")
 	assert_eq(EnemyDefs.POOLS[2].easy.size(), 5)
 
 
@@ -1306,34 +1306,20 @@ func test_ignite_stacks_and_shows_what_it_burns() -> void:
 
 
 func test_act2_tier1_bog_lantern() -> void:
-	var f := _fight(["bog_lamp", "bog_fish"], ["fire_ball"], "")
-	var fish: EnemyState = f.enemies[1]
-	var lamp: EnemyState = f.enemies[0]
-	assert_eq([fish.size(), lamp.size()], [12, 2])
-	assert_eq(lamp.intent.kind, "glow", "the clock starts at 2")
-	await f.end_player_turn()
-	assert_eq(lamp.intent.kind, "stun", "1 left: next it stuns")
-	assert_eq(f.player.stun_turns, 0)
-	await f.end_player_turn()
-	assert_eq(f.player.stun_turns, 1, "at 0: Stunned for a turn")
-	assert_eq(lamp.intent.kind, "glow", "and back to 2")
+	var f := _fight(["bog_fish"], ["fire_ball"], "")
+	var fish: EnemyState = f.enemies[0]
+	assert_eq(f.enemies.size(), 1, "the lamp is part of the fish: one enemy")
+	assert_eq(fish.size(), 12)
+	assert_true(fish.intent.kind != "stun", "turn 1: one of its usual moves")
 	f.player.stun_turns = 0
-	lamp.remove_right(2)
-	f._cleanup()
-	assert_eq(fish.size(), 12, "killing the lamp doesn't hurt the fish")
-	assert_true(lamp.knocked and lamp in f.enemies, "it stays on its hook, dark")
 	await f.end_player_turn()
-	assert_true(not f.alive().any(func(x): return x.id == "bog_lamp"), "it stays out for a turn")
+	assert_true(fish.intent.kind != "stun", "turn 2: still its usual moves")
 	await f.end_player_turn()
-	var back: Array = f.alive().filter(func(x): return x.id == "bog_lamp")
-	assert_eq(back.size(), 1, "then it grows back")
-	assert_eq(back[0].intent.kind, "glow", "with its clock at 2")
+	assert_eq(fish.intent.kind, "stun", "turn 3: the lamp flashes")
+	f.player.stun_turns = 0
 	await f.end_player_turn()
-	assert_eq(back[0].intent.kind, "stun")
-	assert_true(back[0] == lamp, "the same lamp, lit again")
-	fish.remove_right(12)
-	f._cleanup()
-	assert_true(f.alive().is_empty(), "the lamp goes out with the fish")
+	assert_eq(f.player.stun_turns, 1, "and you are Stunned for a turn")
+	assert_true(fish.intent.kind != "stun", "then the clock starts over")
 
 
 func test_act2_tier1_bug_hunter() -> void:
