@@ -62,6 +62,10 @@ var fight_plan: Array = []  # this act's normal fights, in the order they will b
 var fight_plan_act := 0  # the act that list was rolled for
 var encounter_extra: Array = []  # the extra Essence each of those enemies will have (rolled once)
 var first_run := false  # the player's very first run (and the Anxious Armadillo not met yet): he waits in Act 2's 2nd fight
+var map_style := "classic"  # "curtain": the Ship of Fools style map (Settings, picked when the run starts; see MapGen.generate_curtain)
+var visited: Array = []  # the Curtain map: "row:col" of every tile you stood on this act
+var turns := 0  # the Curtain map: moves made this act (the Curtain falls one row every MapGen.CURTAIN_EVERY)
+var curtain_hold := 0  # the Curtain map: rows it was held back
 var fight_rooms: Array = []  # "act:row:col" of every normal fight room entered (to count Act 2's fights)
 var fused := {}  # id -> spell dict, for spells forged at campfires ("fused_1", ...)
 var inverted: Array = []  # spell ids inverted for the run: a spell plays as an anti-spell, and back
@@ -186,7 +190,7 @@ func gain_bottle(id: String) -> bool:
 
 ## Enemy strength within the act, 1-8, spread over the act's floors.
 func depth() -> int:
-	return clampi(int(ceil((row + 1) * 7.0 / MapGen.FLOORS)), 1, 8)
+	return clampi(int(ceil((row + 1) * 7.0 / maxf(1.0, map.size() - 1))), 1, 8)
 
 
 ## The floor you're on (1-based; the boss is one past the last floor).
@@ -211,10 +215,66 @@ func current_kind() -> String:
 	return n.get("as", n.get("type", ""))
 
 
-func move_to(c: int) -> Dictionary:
-	row += 1
+func move_to(c: int, r := -2) -> Dictionary:
+	row = row + 1 if r == -2 else r
 	col = c
+	if is_curtain():
+		turns += 1
+		visited.append("%d:%d" % [row, col])
 	return current_node()
+
+
+## A new act's map, in this run's style.
+func new_map() -> void:
+	map = MapGen.generate_curtain(rng) if map_style == "curtain" else MapGen.generate(rng)
+	row = -1
+	col = map[0].size() / 2
+	visited.clear()
+	turns = 0
+	curtain_hold = 0
+
+
+func is_curtain() -> bool:
+	return map_style == "curtain"
+
+
+## The Curtain map: how many rows (from the bottom) the Curtain has swallowed.
+func curtain_rows() -> int:
+	return maxi(0, turns / MapGen.CURTAIN_EVERY - curtain_hold)
+
+
+## The Curtain map: moves left before it falls one more row.
+func curtain_in() -> int:
+	return MapGen.CURTAIN_EVERY - turns % MapGen.CURTAIN_EVERY
+
+
+## The Curtain map: it swallowed the row you stand on: the boss is all that's left.
+func caught() -> bool:
+	return is_curtain() and row >= 0 and row < map.size() - 1 and curtain_rows() > row
+
+
+## The rooms you can go to next, as Vector2i(row, col).
+func options() -> Array:
+	if not is_curtain():
+		return choices().map(func(c): return Vector2i(row + 1, c))
+	var top := map.size() - 2  # (the last row of tiles; the boss is above it)
+	var out := []
+	if row >= top or caught():
+		for n in map[top + 1]:
+			if n != null:
+				out.append(Vector2i(top + 1, n.col))
+		return out
+	var cols: int = map[0].size()
+	if row < 0:
+		for c in cols:
+			out.append(Vector2i(0, c))
+		return out
+	for c in MapGen.hex_up(row, col, cols):
+		out.append(Vector2i(row + 1, c))
+	for c in [col - 1, col + 1]:
+		if c >= 0 and c < cols and not ("%d:%d" % [row, c] in visited):
+			out.append(Vector2i(row, c))
+	return out
 
 
 ## Enemy ids for the fight at the current node.
@@ -338,8 +398,7 @@ func finish_fight(f: Fight) -> void:
 		else:
 			act += 1
 			row = -1
-			col = MapGen.COLS / 2
-			map = MapGen.generate(rng)
+			new_map()
 
 
 ## The Seed of Life: lose with it intact and the fight starts over.

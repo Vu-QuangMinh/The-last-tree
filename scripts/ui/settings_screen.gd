@@ -53,6 +53,8 @@ func _build() -> void:
 	v.add_child(_volume_row("Music", Audio.music_level, func(x): Audio.set_music_level(x)))
 	v.add_child(UiTheme.heading("Music tracks", 22, UiTheme.ACCENT))
 	v.add_child(_music_edit_row())
+	v.add_child(UiTheme.heading("Game", 22, UiTheme.ACCENT))
+	v.add_child(_tick_row("Curtain map (Ship of Fools style; from your next new run)", "curtain_map", false))
 	v.add_child(_tick_row("Dev Mode", "dev_mode", false))
 	_cream_buttons(self)
 	if UiSkin.is_newui2():

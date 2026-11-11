@@ -457,6 +457,9 @@ func start_run() -> void:
 	run = RunState.new()
 	run.artifact_gained.connect(_on_artifact_found)
 	run.setup(GameData.db, SaveManager.unlocked_spells(), SaveManager.unlocked_artifacts())
+	if SaveManager.setting("curtain_map", false):  # (the Ship of Fools style map: the run keeps it, whatever the setting says later)
+		run.map_style = "curtain"
+		run.new_map()
 	run.first_run = int(SaveManager.data.stats.get("runs", 0)) == 0 and not SaveManager.setting("armadillo_met", false)
 	var offer := Artifacts.keepsakes(run.rng, 3)
 	if _stage_flow():
@@ -493,7 +496,7 @@ func show_map() -> void:
 		return
 	var m := MapScreen.new()
 	m.setup(run)
-	m.node_chosen.connect(_on_node)
+	m.node_chosen.connect(func(col: int): _on_node(col, m.chosen_row))
 	m.codex_pressed.connect(open_codex)
 	m.menu_requested.connect(func(): run = null; show_menu())
 	_swap(m)
@@ -513,10 +516,11 @@ func _show_stage_map() -> void:
 	if draw_drapes:  # the red drapes are drawn together over the stage, and the map is let down in front of them
 		m.drop_delay = 2.6  # (as long as the drapes take to close, and the two frames they wait)
 	m.node_chosen.connect(func(col: int):
+		var row := m.chosen_row
 		await m.lower()  # (the map is pulled all the way up first, then the drapes are pulled apart)
 		if st != null and is_instance_valid(st) and st.curtains.has_art():
 			await st.curtains.open()
-		_on_node(col))
+		_on_node(col, row))
 	m.codex_pressed.connect(open_codex)
 	m.menu_requested.connect(func(): run = null; show_menu())
 	_set_overlay(m)
@@ -663,8 +667,8 @@ func _next_rope_set() -> void:
 	_rope_busy = false
 
 
-func _on_node(col: int) -> void:
-	var node := run.move_to(col)
+func _on_node(col: int, row := -2) -> void:
+	var node := run.move_to(col, row)
 	var kind: String = node.type
 	if kind == "rest":  # (a map saved with the old campfire room: it is An Abandoned Camp now)
 		node["type"] = "event"
