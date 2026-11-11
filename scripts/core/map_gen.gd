@@ -128,66 +128,142 @@ static func reachable(rows: Array, floor_idx: int, col: int) -> Array:
 
 
 # ------------------------------------------------------------------ the Curtain map (a setting: Ship of Fools style)
-## A honeycomb of C_ROWS x C_COLS rooms, every tile filled (odd rows sit half a tile to the right), the boss above.
-## Each move goes to a tile next to yours: one of the two above, or one beside you on the same row (never back down,
-## never to a tile you stood on). The Curtain falls behind you: every CURTAIN_EVERY moves it swallows the lowest row
-## still open (RunState.curtain_rows). If it swallows the row you stand on, the only way left is the boss.
-## Going up keeps you ahead; every step sideways uses up some of that lead (8 rows, every 2 moves: 6 at most, so 8 to 14
-## rooms an act; tools/curtain_sim.gd measures it).
-## Row 1 is all fights; 2 merchants, 2 camps (An Abandoned Camp) and 3 elites are placed, a quarter of the rest are "?".
-const C_ROWS := 8
-const C_COLS := 5
+## Ship of Fools' map turned on its side: flat-topped hexagons in C_LANES lanes side by side, the middle lane the
+## longest (C_LONG tiles), each lane out one tile shorter (12, 11, 10, 9): a long hexagon, the boss above its top tip.
+## The map is kept by LEVEL: tiles on lanes next to each other sit half a tile apart, so a level is half a tile high
+## and a lane only has a tile on every other level. rows[level] holds that level's tiles, left to right; each tile
+## keeps its "lane" and "x" (its lane, 0 = the middle). The boss is alone on the last level.
+## Each move goes forward to a tile that touches yours: straight up (2 levels) or up-left / up-right (1 level). The
+## tiles at or below your level are behind you for good.
+## The Curtain closes in from the boss's side: every CURTAIN_EVERY moves it swallows one more level from the top
+## (RunState.curtain_from). When it reaches a tile you could go to, you may go to the boss instead; when it covers all
+## of them, the boss is the only way on. So the slower you climb (more steps sideways), the more rooms you see; the
+## Curtain decides how many (tools/curtain_sim.gd measures it).
+const C_LANES := 7
+const C_LONG := 12
 const CURTAIN_EVERY := 2
-const C_PLACE := [["shop", 2, 2, 6], ["rest", 2, 3, 7], ["elite", 3, 2, 7]]  # [type, how many, lowest row, highest row]
-const C_EVENTS := 0.25
+## Placed first, on every map: [type, [lowest level, highest level] for each one]. Campfires: one in each third of the
+## map; merchants: one in each half; treasure (a free artifact, as in a treasure room) and tailwinds (a free move: no room,
+## and the Curtain doesn't count it) anywhere past the start. Plus one pair of portals (see _place_portals).
+const C_SURE := [["rest", [[4, 8], [10, 14], [16, 20]]], ["shop", [[3, 10], [12, 19]]], ["treasure", [[5, 12], [12, 19]]],
+	["wind", [[2, 7], [7, 12], [12, 16], [16, 20]]]]
+## The rest of the rooms are rolled; a kind in C_SPECIAL never touches another of its kind, and none comes too early.
+const C_WEIGHTS := {"fight": 52.0, "event": 28.0, "elite": 14.0, "shop": 2.0, "rest": 3.0}
+const C_FROM_LEVEL := {"elite": 5, "shop": 3, "rest": 4}
+const C_SPECIAL := ["elite", "shop", "rest", "treasure", "portal", "wind"]
+const FREE_TILES := ["wind", "portal"]  # (no room on these: see RunState.free_step)
+
+
+## The level a lane starts on, and how many tiles it has.
+static func lane_start(lane: int) -> int:
+	return absi(lane - C_LANES / 2)
+
+
+static func lane_len(lane: int) -> int:
+	return C_LONG - absi(lane - C_LANES / 2)
 
 
 static func generate_curtain(rng: RandomNumberGenerator) -> Array:
+	var top := 2 * (C_LONG - 1)  # (the middle lane's last level)
 	var rows := []
-	for f in C_ROWS:
-		var r := []
-		for c in C_COLS:
-			r.append({"type": "fight" if f == 0 else "", "next": [], "col": c})
-		rows.append(r)
-	for p in C_PLACE:
-		var spots := []
-		for f in range(p[2], p[3] + 1):
-			for c in C_COLS:
-				if rows[f][c].type == "" and not _hex_near(rows, f, c, p[0]):
-					spots.append(Vector2i(f, c))
-		for k in p[1]:
-			if spots.is_empty():
-				break
-			var at: Vector2i = spots.pop_at(rng.randi() % spots.size())
-			rows[at.x][at.y].type = p[0]
-			spots = spots.filter(func(s: Vector2i): return not _hex_near(rows, s.x, s.y, p[0]))  # (two of a kind never side by side)
-	for f in range(1, C_ROWS):
-		for n in rows[f]:
-			if n.type == "":
-				n.type = "event" if rng.randf() < C_EVENTS else "fight"
-	var boss_row := []
-	boss_row.resize(C_COLS)
-	boss_row[C_COLS / 2] = {"type": "boss", "next": [], "col": C_COLS / 2}
-	rows.append(boss_row)
+	for level in top + 1:
+		rows.append([])
+	for lane in C_LANES:
+		for i in lane_len(lane):
+			rows[lane_start(lane) + 2 * i].append({"type": "", "next": [], "lane": lane, "x": float(lane - C_LANES / 2)})
+	for level in rows.size():
+		rows[level].sort_custom(func(a, b): return a.lane < b.lane)
+		for c in rows[level].size():
+			rows[level][c].col = c
+	rows[0][0].type = "fight"
+	_place_portals(rows, rng)
+	for sure in C_SURE:
+		for span in sure[1]:
+			var spots := []
+			for level in range(span[0], mini(span[1], top) + 1):
+				for n in rows[level]:
+					if n.type == "" and not _hex_near(rows, level, n.col, sure[0]):
+						spots.append(n)
+			if not spots.is_empty():
+				spots[rng.randi() % spots.size()].type = sure[0]
+	for level in rows.size():
+		for n in rows[level]:
+			if n.type != "":
+				continue
+			var banned := {}
+			for k in C_FROM_LEVEL:
+				if level < C_FROM_LEVEL[k]:
+					banned[k] = true
+			for t in C_SPECIAL:
+				if _hex_near(rows, level, n.col, t):
+					banned[t] = true
+			n.type = _roll_from(rng, C_WEIGHTS, banned)
+	rows.append([{"type": "boss", "next": [], "col": 0, "lane": C_LANES / 2, "x": 0.0}])
 	return rows
 
 
-## The two tiles above (row, col) on the honeycomb (odd rows sit half a tile to the right).
-static func hex_up(row: int, col: int, cols: int) -> Array:
-	var cand := [col - 1, col] if row % 2 == 0 else [col, col + 1]
-	return cand.filter(func(c): return c >= 0 and c < cols)
+## One pair of portals on the same level, at the two edges of the map (the whirlpools of Ship of Fools): through one
+## and out of the other, to the far side without losing any height. Each keeps "link": [level, col] of the other.
+static func _place_portals(rows: Array, rng: RandomNumberGenerator) -> void:
+	var pairs := []
+	for level in range(6, 17):
+		for lanes in [[0, C_LANES - 1], [1, C_LANES - 2]]:
+			var a := at_lane(rows, level, lanes[0])
+			var b := at_lane(rows, level, lanes[1])
+			if a.x >= 0 and b.x >= 0:
+				pairs.append([a, b])
+	if pairs.is_empty():
+		return
+	var pick: Array = pairs[rng.randi() % pairs.size()]
+	for k in 2:
+		var me: Vector2i = pick[k]
+		var other: Vector2i = pick[1 - k]
+		rows[me.x][me.y].type = "portal"
+		rows[me.x][me.y].link = [other.x, other.y]
 
 
-## Is a tile of this type next to (row, col)?
-static func _hex_near(rows: Array, row: int, col: int, type: String) -> bool:
-	var near := [Vector2i(row, col - 1), Vector2i(row, col + 1)]
-	for c in hex_up(row, col, C_COLS):
-		near.append(Vector2i(row + 1, c))
-	if row > 0:
-		for c in ([col, col + 1] if row % 2 == 1 else [col - 1, col]):  # (the two below)
-			near.append(Vector2i(row - 1, c))
-	for p in near:
-		if p.x >= 0 and p.x < rows.size() and p.y >= 0 and p.y < C_COLS and rows[p.x][p.y] != null and rows[p.x][p.y].type == type:
+static func _roll_from(rng: RandomNumberGenerator, weights: Dictionary, banned: Dictionary) -> String:
+	var total := 0.0
+	for t in weights:
+		if not banned.has(t):
+			total += weights[t]
+	var r := rng.randf() * total
+	for t in weights:
+		if banned.has(t):
+			continue
+		if r < weights[t]:
+			return t
+		r -= weights[t]
+	return "fight"
+
+
+## The tile on this lane at this level, as Vector2i(level, col) (or (-1, -1): none).
+static func at_lane(rows: Array, level: int, lane: int) -> Vector2i:
+	if level < 0 or level >= rows.size():
+		return Vector2i(-1, -1)
+	for n in rows[level]:
+		if int(n.get("lane", -1)) == lane and n.type != "boss":
+			return Vector2i(level, n.col)
+	return Vector2i(-1, -1)
+
+
+## The tiles you can step forward to from (level, col): up-left and up-right (a level up, the lanes beside) and
+## straight up (two levels up, the same lane).
+static func hex_up(rows: Array, level: int, col: int) -> Array:
+	var lane: int = rows[level][col].lane
+	var out := []
+	for p in [at_lane(rows, level + 1, lane - 1), at_lane(rows, level + 2, lane), at_lane(rows, level + 1, lane + 1)]:
+		if p.x >= 0:
+			out.append(p)
+	return out
+
+
+## Is a tile of this type touching (level, col)? (Its six neighbours: the three above and the three below.)
+static func _hex_near(rows: Array, level: int, col: int, type: String) -> bool:
+	var lane: int = rows[level][col].lane
+	for d in [[1, -1], [2, 0], [1, 1], [-1, -1], [-2, 0], [-1, 1]]:
+		var p := at_lane(rows, level + d[0], lane + d[1])
+		if p.x >= 0 and rows[p.x][p.y].type == type:
 			return true
 	return false
 

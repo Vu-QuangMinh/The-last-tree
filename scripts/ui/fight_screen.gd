@@ -6637,6 +6637,24 @@ func _anim_event(ev: Dictionary) -> void:
 			# a few sentences, one bubble each, held long enough to read (about 3 words a second, plus a moment)
 			for line in ev.lines:
 				await _speech(ev.enemy, line, 1.0 + String(line).split(" ").size() / 3.0)
+		"curse_pain":
+			# the Curse of Pain: the sigil flares, and it hurts
+			Audio.play("sfx_burn_apply", -2.0, 0.8)
+			var pc := _card_for(ev.id)
+			if pc:
+				Vfx.make(_fx, 70).burst(pc.global_position + pc.size * pc.scale / 2.0, 18, Color(1.0, 0.25, 0.1), Vector2(80, 260), Vector2(0.25, 0.5), Vector2(4, 8), Vfx.SPARK)
+			_shake(5.0)
+			_refresh_all()
+			await _wait(0.3)
+		"curse_fizzle":
+			# the Curse of Betrayal: the spell gives out in a puff of smoke
+			Audio.play("elem_remove", -2.0, 0.7)
+			var fc := _card_for(ev.id)
+			if fc:
+				Vfx.make(_fx, 70).burst(fc.global_position + fc.size * fc.scale / 2.0, 22, Color(0.35, 0.3, 0.3), Vector2(40, 160), Vector2(0.5, 0.9), Vector2(8, 16), Vfx.SMOKE)
+				_callout("[b]Fizzled![/b]", fc.global_position + Vector2(fc.size.x * fc.scale.x / 2.0, -10.0), Color(0.85, 0.8, 0.75), 1.2)
+			_refresh_all()
+			await _wait(0.5)
 		"virus_hit":
 			Audio.play("sfx_poison_apply")
 			var vc := _card_for(ev.id)

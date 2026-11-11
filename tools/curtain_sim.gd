@@ -7,11 +7,12 @@ const N := 2000
 
 
 func _init() -> void:
-	for style in ["rush", "careful", "greedy", "max", "random"]:
+	create_timer(120).timeout.connect(quit)
+	for style in ["rush", "hunter", "climber", "slow", "random"]:
 		var total := 0
 		var lo := 999
 		var hi := 0
-		var caught := 0
+		var forced := 0
 		var kinds := {}
 		for k in N:
 			var r := RunState.new()
@@ -19,13 +20,17 @@ func _init() -> void:
 			r.map_style = "curtain"
 			r.new_map()
 			var n := 0
-			while true:
+			while n < 60:
 				var opts: Array = r.options()
-				if opts[0].x == r.map.size() - 1:
-					if r.caught():
-						caught += 1
-					break
 				var o: Vector2i = _pick(r, opts, style)
+				if o.x == r.map.size() - 1:
+					if opts.size() == 1:
+						forced += 1
+					break
+				if r.is_free_tile(o.x, o.y):  # (a tailwind or a portal: no room)
+					kinds[r.map[o.x][o.y].type] = kinds.get(r.map[o.x][o.y].type, 0) + 1
+					r.free_step(o.y, o.x)
+					continue
 				var node := r.move_to(o.y, o.x)
 				n += 1
 				kinds[node.type] = kinds.get(node.type, 0) + 1
@@ -33,30 +38,33 @@ func _init() -> void:
 			lo = mini(lo, n)
 			hi = maxi(hi, n)
 		var per := []
-		for t in ["fight", "event", "elite", "shop", "rest"]:
+		for t in ["fight", "event", "elite", "shop", "rest", "treasure", "portal", "wind"]:
 			per.append("%s %.1f" % [t, kinds.get(t, 0) / float(N)])
-		print("%-8s rooms before the boss: avg %.1f (min %d, max %d) · caught by the Curtain %d%% · %s" % [style, total / float(N), lo, hi, 100 * caught / N, ", ".join(per)])
+		print("%-8s rooms before the boss: avg %.1f (min %d, max %d) · the Curtain forced the boss %d%% · %s" % [style, total / float(N), lo, hi, 100 * forced / N, ", ".join(per)])
 	quit()
 
 
-## rush: always up. careful: sideways only for a camp, merchant or elite, and only with a move to spare.
-## greedy: sideways for anything but a fight, while it is safe. max: sideways whenever it is safe. random: anything.
+## rush: straight up, and the boss as soon as it is offered. hunter: a merchant, camp, elite or "?" when there is one.
+## climber: a mix (straight up half the time). slow: always to the side (a level at a time). random: anything.
+## Only rush takes the boss before the Curtain forces it.
 func _pick(r: RunState, opts: Array, style: String) -> Vector2i:
-	var up := opts.filter(func(o): return o.x > r.row)
-	var side := opts.filter(func(o): return o.x == r.row)
+	var boss := Vector2i(r.map.size() - 1, 0)
+	var tiles := opts.filter(func(o): return o != boss)
+	if tiles.is_empty() or (style == "rush" and boss in opts):
+		return boss
 	if style == "random":
 		return opts[r.rng.randi() % opts.size()]
-	var safe_side := side.filter(func(_o): return (r.turns + 1) / MapGen.CURTAIN_EVERY - r.curtain_hold <= r.row)
-	var good := func(o: Vector2i) -> bool: return r.map[o.x][o.y].type in ["elite", "shop", "rest"]
-	if style == "careful":
-		safe_side = safe_side.filter(func(_o): return (r.turns + 2) / MapGen.CURTAIN_EVERY - r.curtain_hold <= r.row)
-		safe_side = safe_side.filter(good)
-	elif style == "greedy":
-		safe_side = safe_side.filter(func(o): return r.map[o.x][o.y].type != "fight")
-	elif style == "rush":
-		safe_side = []
-	if not safe_side.is_empty():
-		return safe_side[r.rng.randi() % safe_side.size()]
-	var best := up.filter(good)
-	var from: Array = best if not best.is_empty() else up
+	var straight := tiles.filter(func(o): return o.x == r.row + 2)
+	var side := tiles.filter(func(o): return o.x != r.row + 2)
+	var from: Array = tiles
+	match style:
+		"rush":
+			from = straight if not straight.is_empty() else tiles
+		"slow":
+			from = side if not side.is_empty() else tiles
+		"climber":
+			from = straight if (not straight.is_empty() and r.rng.randf() < 0.5) else (side if not side.is_empty() else tiles)
+		"hunter":
+			var good := tiles.filter(func(o): return r.map[o.x][o.y].type in ["elite", "shop", "rest", "event", "treasure"])
+			from = good if not good.is_empty() else tiles
 	return from[r.rng.randi() % from.size()]

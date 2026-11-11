@@ -6,7 +6,7 @@ extends RefCounted
 ##         Legendary, cursed artifact (+1 each: the Hungry Satchel, the Broken Crown, the Tangled Grimoire).
 ##   pool "normal": keepsakes, elites, treasure and the merchant. starter = available from the first run.
 ##   pool "boss":   only from bosses: element income relics and the Legendary slot artifacts.
-##   pool "curse":  stronger, but each one hurts you somehow. Treasure rooms offer one.
+##   pool "curse":  stronger, but picking one up curses one of your spells (RunState.curse). Treasure rooms offer one.
 ## aspect: which part of the game it helps (the wiki groups them by this).
 
 const ALL := [
@@ -25,7 +25,7 @@ const ALL := [
 	{"id": "prism_shard", "name": "Prism Shard", "aspect": "Essence income", "desc": "Conjured Essence doesn't fade.", "cost": 35, "starter": false, "pool": "normal", "tier": "rare", "icon": "🔮"},
 	# ---- spells
 	{"id": "spell_pouch", "name": "Spell Pouch", "aspect": "Spell slots", "desc": "+1 spell slot.", "cost": 0, "starter": false, "pool": "none", "tier": "rare", "icon": "👝"},  # (retired: kept so old saves load)
-	{"id": "spell_satchel", "name": "Hungry Satchel", "aspect": "Cursed", "desc": "+1 spell slot. CURSE: eats 2 random spells from your spellbook.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "🎒"},
+	{"id": "spell_satchel", "name": "Hungry Satchel", "aspect": "Cursed", "desc": "+1 spell slot. Cursed: picking it up puts a curse on one of your spells.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "🎒"},
 	{"id": "chant_bell", "name": "Chant Bell", "aspect": "Spells", "desc": "Your first spell each turn is cast twice.", "cost": 50, "starter": false, "pool": "normal", "tier": "rare", "icon": "🔔"},
 	{"id": "echo_shell", "name": "Echo Shell", "aspect": "Spells", "desc": "Every 10th spell charges it: the next spell is cast twice.", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "🐚"},
 	{"id": "bandolier", "name": "Bandolier", "aspect": "Bottles", "desc": "+2 bottle slots, and 2 random bottles.", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "🎽"},
@@ -36,7 +36,7 @@ const ALL := [
 	{"id": "magic_box", "name": "Magic Box", "aspect": "Refund", "desc": "Every 6th spell you cast: Refund its pattern after the Release.", "cost": 0, "starter": false, "pool": "normal", "tier": "rare", "icon": "🎵", "unlock_by": "invoker_talk", "flavor": "With the right tune, it may reveal a secret."},
 	{"id": "nice_lute", "name": "A Nice Lute", "aspect": "Spells", "desc": "Every 10th spell you cast: apply 1 Weaken to all enemies.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🪕", "flavor": "The music it creates makes people weak in the knee."},
 	{"id": "cactus_heart", "name": "Cactus Heart", "aspect": "Thorns", "desc": "Thorns 1. Heal 5 HP for each Essence your Thorns take.", "cost": 0, "starter": true, "pool": "none", "tier": "rare", "icon": "🌵", "flavor": "It still hums, if you hold it close."},
-	{"id": "ever_thirsting", "name": "Ever Thirsting", "aspect": "Cursed", "desc": "CURSE: you lose 1 Water at the start of each fight.", "cost": 0, "starter": true, "pool": "none", "tier": "common", "icon": "🏜", "flavor": "The water spirit's parting gift. Your throat has been dry ever since."},
+	{"id": "ever_thirsting", "name": "Ever Thirsting", "aspect": "Cursed", "desc": "Cursed: picking it up puts a curse on one of your spells.", "cost": 0, "starter": true, "pool": "none", "tier": "common", "icon": "🏜", "flavor": "The water spirit's parting gift. Your throat has been dry ever since."},
 	{"id": "dollar_bill", "name": "Dollar Bill", "aspect": "Merchant", "desc": "The merchant's prices are 20% lower.", "cost": 0, "starter": false, "pool": "normal", "tier": "common", "unlock_by": "mystery_shack", "icon": "💵", "flavor": "\"Wow, this is worthless.\""},
 	{"id": "half_eaten_candy", "name": "Half-Eaten Candy", "aspect": "Health", "desc": "Heal 2 HP after each fight.", "cost": 0, "starter": false, "pool": "normal", "tier": "common", "unlock_by": "mystery_shack", "icon": "🍬", "flavor": "Still a little sticky."},
 	{"id": "mystery_book", "name": "Mystery Book", "aspect": "Spell slots", "desc": "+1 spell slot. You can carry more than one: they stack.", "cost": 0, "starter": false, "pool": "normal", "tier": "rare", "stack": true, "unlock_by": "mystery_shack", "icon": "📕", "flavor": "A six-fingered hand on the cover. Inside, strange symbols, and a triangle that seems to be watching you."},
@@ -67,11 +67,11 @@ const ALL := [
 	{"id": "tide_heart", "name": "Tide Heart", "aspect": "Essence income", "desc": "+1 Water each turn.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "💙"},
 	{"id": "gale_heart", "name": "Gale Heart", "aspect": "Essence income", "desc": "+1 Air each turn.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "💚"},
 	# ---- cursed: strong, with a price
-	{"id": "blood_pact", "name": "Blood Pact", "aspect": "Cursed", "desc": "+1 Random each turn. CURSE: -12 max HP.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "🩸"},
-	{"id": "broken_crown", "name": "Broken Crown", "aspect": "Cursed", "desc": "+1 spell slot. CURSE: -15 max HP.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "👑"},
-	{"id": "tangled_grimoire", "name": "Tangled Grimoire", "aspect": "Cursed", "desc": "+1 spell slot. CURSE: 4 random spells need 1 more Essence.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "📖"},
-	{"id": "glass_heart", "name": "Glass Heart", "aspect": "Cursed", "desc": "Your Release also removes 1 rightmost Essence of each enemy it hits. CURSE: you take 25% more damage.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "💔"},
-	{"id": "withered_idol", "name": "Withered Idol", "aspect": "Cursed", "desc": "+2 Random each turn. CURSE: -1 spell slot.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "🗿"},
+	{"id": "blood_pact", "name": "Blood Pact", "aspect": "Cursed", "desc": "+1 Random each turn. Cursed: picking it up puts a curse on one of your spells.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "🩸"},
+	{"id": "broken_crown", "name": "Broken Crown", "aspect": "Cursed", "desc": "+1 spell slot. Cursed: picking it up puts a curse on one of your spells.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "👑"},
+	{"id": "tangled_grimoire", "name": "Tangled Grimoire", "aspect": "Cursed", "desc": "+1 spell slot. Cursed: picking it up puts a curse on one of your spells.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "📖"},
+	{"id": "glass_heart", "name": "Glass Heart", "aspect": "Cursed", "desc": "Your Release also removes 1 rightmost Essence of each enemy it hits. Cursed: picking it up puts a curse on one of your spells.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "💔"},
+	{"id": "withered_idol", "name": "Withered Idol", "aspect": "Cursed", "desc": "+2 Random each turn. Cursed: picking it up puts a curse on one of your spells.", "cost": 0, "starter": true, "pool": "curse", "tier": "rare", "icon": "🗿"},
 ]
 
 

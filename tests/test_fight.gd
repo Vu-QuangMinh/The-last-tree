@@ -164,12 +164,13 @@ func test_prefight_essence_matches_the_fight() -> void:
 		assert_eq(real, shown, "seed %d: what the preview shows is what you fight" % seed)
 
 
-func test_withered_idol_gives_2_elements_costs_a_slot() -> void:
+func test_withered_idol_gives_2_elements_and_a_curse() -> void:
 	var run := RunState.new()
 	run.setup(db, [], [], 4)
 	var slots := run.active_slots()
 	run.gain_artifact("withered_idol")
-	assert_eq(run.active_slots(), slots - 1)
+	assert_eq(run.active_slots(), slots, "no slot lost any more: a curse instead")
+	assert_eq(run.pending_curses.size(), 1)
 	var f := run.make_fight(["ashling"])
 	assert_eq(f.player.next_draw.size(), PlayerState.BASE_DRAW + 2)
 
@@ -751,16 +752,7 @@ func test_climate_change_rewards_follow_the_water() -> void:
 		assert_eq(run.artifacts.size(), before + 1, "2 Water: a common artifact")
 		assert_eq(Artifacts.get_def(run.artifacts[-1]).tier, "common")
 	assert_true(Artifacts.is_curse("ever_thirsting") and Artifacts.get_def("ever_thirsting").pool == "none", "found nowhere else")
-	# Ever Thirsting: one Water fewer to start the fight
-	var counts := []
-	for arts in [[], ["ever_thirsting"]]:
-		var g := Fight.new(db, PlayerState.new())
-		g.artifacts = arts
-		g.loadout = [db.get_spell("fire_ball")]
-		g.rng.seed = 77
-		g.start(["ashling"], 1, 1)
-		counts.append([g.player.stock.size(), g.player.stock.filter(func(x): return x.el == "W").size()])
-	assert_eq([counts[0][0] - counts[1][0], counts[0][1] - counts[1][1]], [1, 1], "one Water fewer to start with")
+	# Ever Thirsting: no Water lost any more; picking it up curses a spell instead (see test_curses)
 
 
 func test_church_of_aole() -> void:
@@ -2067,18 +2059,12 @@ func test_slot_artifacts_bring_their_curses() -> void:
 	for id in ["inferno", "tidecaller", "searing_brand", "frost_nova"]:
 		run.learn_spell(id)
 	var n := run.spellbook.size()
-	run.gain_artifact("spell_satchel")
-	assert_eq(run.spellbook.size(), n - 2, "the Hungry Satchel eats 2 spells")
-	assert_true(run.curse_note.begins_with("It ate"), run.curse_note)
 	var hp := run.player.max_hp
-	run.gain_artifact("broken_crown")
-	assert_eq(run.player.max_hp, hp - 15.0, "the Broken Crown costs 15 max HP")
-	var before := {}
-	for id in run.spellbook:
-		before[id] = String(run.spell(id).pattern).length()
-	run.gain_artifact("tangled_grimoire")
-	var longer := run.spellbook.filter(func(id): return String(run.spell(id).pattern).length() == before[id] + 1)
-	assert_eq(longer.size(), mini(4, run.spellbook.size()), "4 spells need 1 more Essence")
+	for a in ["spell_satchel", "broken_crown", "tangled_grimoire"]:
+		run.gain_artifact(a)
+		assert_true(run.curse_note.begins_with("Curse of"), run.curse_note)
+	assert_true(run.spellbook.size() >= n - 2 and run.player.max_hp == hp, "no spells eaten, no max HP lost (Separation may tear a fusion apart)")
+	assert_eq(run.pending_curses.size(), 3, "three curses instead")
 	assert_eq(run.active_slots(), 8)
 
 
@@ -3255,20 +3241,114 @@ func test_curtain_map_moves_and_catches_you() -> void:
 	r.rng.seed = 5
 	r.map_style = "curtain"
 	r.new_map()
-	assert_eq(r.map.size(), MapGen.C_ROWS + 1, "the rows, then the boss")
-	assert_eq(r.options().size(), MapGen.C_COLS, "any tile of the first row to start")
-	r.move_to(2, 0)
+	var top := 2 * (MapGen.C_LONG - 1)
+	assert_eq(r.map.size(), top + 2, "the levels, then the boss")
+	var tiles := 0
+	for f in top + 1:
+		tiles += r.map[f].size()
+	assert_eq(tiles, 72, "Ship of Fools' shape on its side: lanes of 9, 10, 11, 12, 11, 10, 9")
+	assert_eq(r.options(), [Vector2i(0, 0)], "the bottom tip to start")
+	r.move_to(0, 0)
 	var opts: Array = r.options()
-	assert_true(Vector2i(0, 1) in opts and Vector2i(0, 3) in opts, "sideways on the same row")
-	assert_true(Vector2i(1, 1) in opts and Vector2i(1, 2) in opts, "the two tiles above")
-	r.move_to(3, 0)  # sideways: 2 moves, the Curtain swallows row 0, the one you stand on
-	assert_eq(r.curtain_rows(), 1)
-	assert_true(r.caught(), "caught: the boss is all that's left")
-	assert_eq(r.options(), [Vector2i(MapGen.C_ROWS, MapGen.C_COLS / 2)])
+	assert_eq(opts.size(), 3, "up-left, straight up, up-right")
+	assert_true(opts.all(func(o): return o.x == 1 or o.x == 2))
+	var boss := Vector2i(top + 1, 0)
+	assert_true(not (boss in opts))
+	r.turns = (top + 1 - 2) * MapGen.CURTAIN_EVERY  # (the Curtain has come down to level 2: straight up is under it)
+	assert_true(boss in r.options(), "the Curtain reaches a tile you could go to: the boss is offered")
+	assert_true(not r.caught())
+	r.turns = (top + 1 - 1) * MapGen.CURTAIN_EVERY  # (down to level 1: everything ahead is under it)
+	assert_eq(r.options(), [boss])
+	assert_true(r.caught(), "covered: the boss is all that's left")
+
+
+
+
+func test_curtain_map_has_its_sure_rooms_and_free_tiles() -> void:
+	for seed in 30:
+		var r := RunState.new()
+		r.rng.seed = seed + 1
+		r.map_style = "curtain"
+		r.new_map()
+		var counts := MapGen.counts(r.map)
+		assert_true(counts.get("rest", 0) >= 3, "at least 3 campfires (map %d: %d)" % [seed, counts.get("rest", 0)])
+		assert_true(counts.get("shop", 0) >= 2, "at least 2 merchants")
+		assert_true(counts.get("treasure", 0) >= 2, "treasure")
+		assert_eq(counts.get("portal", 0), 2, "one pair of portals")
+		assert_true(counts.get("wind", 0) >= 3, "tailwinds")
 	var q := RunState.new()
+	q.rng.seed = 3
 	q.map_style = "curtain"
 	q.new_map()
-	for f in MapGen.C_ROWS:
-		q.move_to(MapGen.hex_up(q.row, q.col, MapGen.C_COLS)[0] if f > 0 else 0, f)
-	assert_true(not q.caught(), "always going up, the Curtain never catches you")
-	assert_eq(q.options()[0].x, MapGen.C_ROWS, "from the top row: the boss")
+	var ends := []
+	for f in q.map.size():
+		for n in q.map[f]:
+			if n.type == "portal":
+				ends.append(Vector2i(f, n.col))
+	assert_eq(ends[0].x, ends[1].x, "the two portals are on the same level")
+	q.free_step(ends[0].y, ends[0].x)
+	assert_eq(Vector2i(q.row, q.col), ends[1], "in one portal, out of the other")
+	assert_eq(q.turns, 1, "a portal counts as a move")
+	for f in q.map.size():
+		for n in q.map[f]:
+			if n.type == "wind":
+				var before := q.turns
+				q.free_step(n.col, f)
+				assert_eq(q.turns, before, "a tailwind is a free move")
+				assert_eq(Vector2i(q.row, q.col), Vector2i(f, n.col))
+				return
+
+
+
+func test_curses() -> void:
+	var run := RunState.new()
+	run.setup(db, [], [], 9)
+	for id in ["inferno", "tidecaller", "searing_brand", "frost_nova", "water_wall", "fire_ball", "tailwind"]:
+		run.learn_spell(id)
+	run.loadout = ["inferno", "tidecaller", "fire_ball"]
+	# each kind does what it says
+	var c := run.curse("burden")
+	assert_eq(String(run.spell(c.spell).pattern).length(), String(db.get_spell(c.spell).pattern).length() + 1, "Burden: 1 more Essence")
+	c = run.curse("fragility")
+	var d0 := db.get_spell(c.spell)
+	assert_eq(int(run.spell(c.spell).durability), (int(d0.durability) - 1) if d0.has("durability") else 3, "Fragility: 1 less, or 3")
+	c = run.curse("pain")
+	assert_eq(int(run.spell(c.spell).pain), 3)
+	c = run.curse("hesitation")
+	assert_eq(int(run.spell(c.spell).get("cooldown", 0)), int(db.get_spell(c.spell).get("cooldown", 0)) + 1)
+	c = run.curse("betrayal")
+	assert_true(run.spell(c.spell).betrayal)
+	c = run.curse("binding")
+	assert_true(c.spell in run.loadout, "Binding: forced into the row")
+	assert_true(not run.toggle_active(c.spell) and run.refusal.begins_with("Curse of Binding"), "and it can't leave")
+	c = run.curse("void")
+	assert_true(not (c.spell in run.loadout), "the Void: out of the row")
+	assert_true(not run.toggle_active(c.spell) and run.refusal.begins_with("Curse of the Void"), "and it can't come back")
+	# Separation: a fused spell is torn back into its two spells, which can't be fused again
+	assert_true(run.curse("separation").is_empty(), "no fusion: Separation can't land")
+	var f := run.fuse_preview("water_wall", "tailwind")
+	run.fuse_commit(f, "water_wall", "tailwind")
+	c = run.curse("separation")
+	assert_true(not (f.id in run.spellbook) and "water_wall" in run.spellbook and "tailwind" in run.spellbook, "back to the two spells")
+	assert_true(not run.can_fuse("water_wall") and not run.can_fuse("tailwind"), "they can't be fused again")
+
+
+func test_curse_of_pain_and_betrayal_in_a_fight() -> void:
+	var f := _fight(["ashling"], ["water_wall"], "WW")
+	f.loadout[0] = f.loadout[0].duplicate(true)
+	f.loadout[0].pain = 3
+	f.player.hp = 30.0
+	f.cast_chant(_all(2))
+	f.resolve_spell("water_wall")
+	assert_eq(f.player.hp, 27.0, "Pain: 3 damage for casting it")
+	var fizzles := 0
+	for k in 40:
+		var g := _fight(["ashling"], ["water_wall"], "WW")
+		g.rng.seed = k
+		g.loadout[0] = g.loadout[0].duplicate(true)
+		g.loadout[0].betrayal = true
+		g.cast_chant(_all(2))
+		g.resolve_spell("water_wall")
+		if g.player.shield == 0.0:
+			fizzles += 1
+	assert_true(fizzles > 8 and fizzles < 32, "Betrayal: about half the casts fizzle (%d of 40)" % fizzles)

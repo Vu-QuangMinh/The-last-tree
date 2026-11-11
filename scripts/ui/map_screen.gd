@@ -4,6 +4,7 @@ extends Control
 ## the boss at the top. Scroll with the mouse wheel; click a glowing room to go there.
 
 signal node_chosen(col: int)
+signal moved_free  # (the Curtain map: a step onto a tailwind or a portal, no room: save the run)
 var chosen_row := -2  # (the row of the room chosen: the Curtain map can go sideways; -2 = the next row up)
 signal codex_pressed
 signal test_room_chosen(room: Dictionary)  # Dev Mode: Room Test
@@ -18,9 +19,11 @@ const LOOK := {
 	"shop": ["🛒", "Merchant", Color(0.2, 0.55, 0.3), "Spend Leaves on spells, artifacts, an upgrade or a meal."],
 	"event": ["❓", "Unknown", Color(0.45, 0.3, 0.65), "Usually a strange encounter with choices; sometimes a fight, a merchant or treasure."],
 	"boss": ["👑", "Boss", Color(0.55, 0.1, 0.35), "The guardian of this act."],
+	"portal": ["🌀", "Portal", Color(0.3, 0.45, 0.95), "Step in and come out of the other portal, across the map. No room here."],
+	"wind": ["💨", "Tailwind", Color(0.55, 0.8, 0.9), "A free move: no room, the Curtain doesn't count it, and you choose again at once."],
 }
 ## New theme: room type -> the painted ring / icon names (assets/New/Map/map_ring_<x>.png, map_icon_<x>.png)
-const ART := {"fight": "normal", "elite": "elite", "rest": "campfire", "treasure": "treasure", "shop": "merchant", "event": "unknown", "boss": "boss"}
+const ART := {"fight": "normal", "elite": "elite", "rest": "campfire", "treasure": "treasure", "shop": "merchant", "event": "unknown", "boss": "boss", "portal": "portal", "wind": "wind"}  # (portal / wind: no painted art yet, their emoji show)
 const ROW_H := 168.0  # (96 * 1.75: the map was stretched taller)
 const COL_W := 138.0
 const INK := Color(0.28, 0.2, 0.12)
@@ -63,6 +66,7 @@ const WHEEL_SOUND_MS := 140  # the winch is heard this long after each notch of 
 var _drop_v := 0.0
 var _land_t := -1.0  # seconds since the map first reached its place (-1 = not yet / over)
 var _base := {}  # Vector2i(floor, col) -> the room button's own place
+var _tip: Label  # the line at the bottom (on the stage: it tells what the Curtain is doing)
 
 
 func setup(p_run: RunState) -> void:
@@ -96,7 +100,7 @@ func _ready() -> void:
 		_world.z_index = WORLD_Z
 		_world.visible = false  # (hidden from the first frame: it is shown by rise(), when it is let down; before, it flashed for a frame at its place)
 		add_child(_world)
-		_content.custom_minimum_size = Vector2(1920, rows * ROW_H + 140)
+		_content.custom_minimum_size = Vector2(1920, _map_height(rows))
 		_content.size = _content.custom_minimum_size
 		_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_content.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS  # (the big rope and knot pictures are shrunk a lot)
@@ -124,7 +128,7 @@ func _ready() -> void:
 		_scroll = ScrollContainer.new()
 		_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 		sheet.add_child(_scroll)
-		_content.custom_minimum_size = Vector2(_map_w, _test_height() if testing else rows * ROW_H + 140)
+		_content.custom_minimum_size = Vector2(_map_w, _test_height() if testing else _map_height(rows))
 		_scroll.add_child(_content)
 	if not testing:
 		_content.draw.connect(_draw_paths)
@@ -159,14 +163,14 @@ func _ready() -> void:
 		left.add_child(UiTheme.label(["", "Act I", "Act II", "Act III"][run.act], 40, Color.WHITE))
 	if not testing:
 		left.add_child(UiTheme.label(["", "The Edge of the Wood", "The Rotting Hollow", "The Last Winter"][run.act], 24, Color(0.85, 1, 0.75)))
-		left.add_child(UiTheme.label("Floor %d of %d, then the boss" % [maxi(0, run.floor_no()), run.map.size() - 1], 18, UiTheme.MUTED))
+		left.add_child(UiTheme.label(("Room %d" % (run.turns + 1)) if run.is_curtain() else "Floor %d of %d, then the boss" % [maxi(0, run.floor_no()), run.map.size() - 1], 18, UiTheme.MUTED))
 		if run.is_curtain():
 			left.add_child(UiTheme.label(_curtain_text(), 20, Color(1, 0.6, 0.5)))
 		var gap := Control.new()
 		gap.custom_minimum_size = Vector2(0, 14)
 		left.add_child(gap)
 		var counts := MapGen.counts(run.map)
-		for t in (["fight", "elite", "event", "shop", "rest", "boss"] if run.is_curtain() else ["fight", "elite", "event", "shop", "treasure", "boss"]):
+		for t in (["fight", "elite", "event", "shop", "rest", "treasure", "portal", "wind", "boss"] if run.is_curtain() else ["fight", "elite", "event", "shop", "treasure", "boss"]):
 			left.add_child(_legend_row(t, counts.get(t, 0)))
 	var hud := HudBar.new()
 	hud.setup(run)
@@ -177,7 +181,7 @@ func _ready() -> void:
 	if on_stage:
 		tip = UiTheme.label("Act %s · %s · floor %d of %d: choose a glowing room, scroll to look ahead" % [["", "I", "II", "III"][run.act], ["", "The Edge of the Wood", "The Rotting Hollow", "The Last Winter"][run.act], maxi(0, run.floor_no()), run.map.size() - 1], 20, CHALK)
 		if run.is_curtain():  # (instead of the scrolling hint: the line is only so long)
-			tip.text = "Act %s · %s · floor %d of %d   ·   %s" % [["", "I", "II", "III"][run.act], ["", "The Edge of the Wood", "The Rotting Hollow", "The Last Winter"][run.act], maxi(0, run.floor_no()), run.map.size() - 1, _curtain_text()]
+			tip.text = "Act %s · %s · room %d   ·   %s" % [["", "I", "II", "III"][run.act], ["", "The Edge of the Wood", "The Rotting Hollow", "The Last Winter"][run.act], run.turns + 1, _curtain_text()]
 		tip.add_theme_constant_override("outline_size", 5)
 		tip.add_theme_color_override("font_outline_color", Color(0.12, 0.06, 0.03))
 		tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -185,6 +189,7 @@ func _ready() -> void:
 		tip.position = Vector2(0, 1038)
 		tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(tip)
+	_tip = tip
 	# start with your position in view (the bottom of the map at the start of an act)
 	await get_tree().process_frame
 	await get_tree().process_frame  # (the scroll area has its real size only now)
@@ -413,12 +418,17 @@ func _test_button(i: int) -> Control:
 	return b
 
 
+func _map_height(rows: int) -> float:
+	return (rows + 2) * LEVEL_H + 140.0 if run.is_curtain() else rows * ROW_H + 140.0
+
+
 ## The Curtain map: what the Curtain is doing, in a few words.
 func _curtain_text() -> String:
 	if run.caught():
-		return "The Curtain has caught you: on to the boss!"
+		return "The Curtain covers the way ahead: on to the boss!"
 	var n := run.curtain_in()
-	return "The Curtain falls in %d move%s" % [n, "" if n == 1 else "s"]
+	var near := "  (it is close: you may go to the boss)" if Vector2i(run.map.size() - 1, 0) in run.options() else ""
+	return "The Curtain closes in %d move%s%s" % [n, "" if n == 1 else "s", near]
 
 
 func _pos(f: int, c: int) -> Vector2:
@@ -428,9 +438,9 @@ func _pos(f: int, c: int) -> Vector2:
 	var y := (rows - f) * ROW_H + 10.0
 	var cols: int = run.map[0].size()
 	var x := _cx + (c - (cols - 1) / 2.0) * _col_w
-	if run.is_curtain():  # the honeycomb: odd rows sit half a tile to the right, every tile touching its neighbours (the boss nests on top)
-		x = _cx + (c - (cols - 1) / 2.0 + (0.5 if f % 2 == 1 else 0.0) - 0.25) * HEX_W
-		return Vector2(x, y)
+	if run.is_curtain():  # the honeycomb on its side: each tile knows its lane (MapGen.generate_curtain); the boss sits two levels above the top tip
+		var level := f + (1 if f == rows - 1 else 0)
+		return Vector2(_cx + float(run.map[f][c].get("x", 0.0)) * LANE_W, (rows + 1 - level) * LEVEL_H + 40.0)
 	# a little wobble so it doesn't look like a grid
 	if run.map[f].size() > c and run.map[f][c] != null and run.map[f][c].type != "boss":
 		x += sin(f * 3.1 + c * 1.7) * 22.0
@@ -449,7 +459,7 @@ func _node_button(f: int, n: Dictionary, _choices: Array) -> Control:  # (what y
 	var look: Array = LOOK.get(n.type, LOOK.fight)
 	var boss: bool = n.type == "boss"
 	var hex := test_rooms.is_empty() and run.is_curtain()  # (the Curtain map: the room is a hexagon tile, drawn in _draw_hexes; this is its icon and its click)
-	var sz := (120.0 if boss else 92.0) if hex else (110.0 if boss else 66.0)
+	var sz := (110.0 if boss else 80.0) if hex else (110.0 if boss else 66.0)
 	var b := Button.new()
 	b.text = look[0]
 	b.add_theme_font_size_override("font_size", 52 if boss else 30)
@@ -466,7 +476,7 @@ func _node_button(f: int, n: Dictionary, _choices: Array) -> Control:  # (what y
 	var gone := false  # (the Curtain map: swallowed by the Curtain, or left behind)
 	if not testing and run.is_curtain():
 		visited = here or ("%d:%d" % [f, n.col]) in run.visited
-		gone = not visited and not boss and (f < run.curtain_rows() or f < run.row)
+		gone = not visited and not boss and (f >= run.curtain_from() or f <= run.row)
 	# New theme: a painted ring, with the room's icon in it (a visited room is just its ring with a leaf; you are the sprout)
 	var ring_name: String = "map_ring_" + str(ART.get(n.type, "normal"))
 	var icon_name: String = _icon_name(n.type)
@@ -516,9 +526,13 @@ func _node_button(f: int, n: Dictionary, _choices: Array) -> Control:  # (what y
 			b.text = "✦"
 			b.add_theme_color_override("font_disabled_color", Color(0.1, 0.5, 0.1))
 	if gone:
-		b.modulate = Color(0.22, 0.12, 0.16, 0.85) if f < run.curtain_rows() else Color(0.6, 0.58, 0.55, 0.6)
+		b.modulate = Color(0.35, 0.15, 0.2, 0.7) if hex and f >= run.curtain_from() else Color(0.6, 0.58, 0.55, 0.6)
+	if hex and b.text != "":
+		b.add_theme_font_size_override("font_size", 56)
+		for k in ["font_color", "font_disabled_color", "font_hover_color", "font_pressed_color"]:
+			b.add_theme_color_override(k, Color.WHITE)
 	if hex:  # the button covers most of the tile (click anywhere on it); the ring and icon stay their size in its middle
-		var big := HEX_W * 0.8
+		var big := HEX_R * 1.45
 		var off := Vector2(big - sz, big - sz) / 2.0
 		for ch in b.get_children():
 			if ch is Control:
@@ -596,8 +610,42 @@ func _walk_to(f: int, col: int) -> void:
 					_eaten["%d_%d_%d_%d" % [run.row, run.col, col, i]] = true
 		_content.queue_redraw(), 0.0, 1.0, secs).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await tw.finished
+	if run.is_free_tile(f, col):  # (the Curtain map: a tailwind or a portal: no room, the map stays and you go again)
+		var portal: bool = run.map[f][col].type == "portal"
+		run.free_step(col, f)
+		Audio.play("spell_glow" if portal else "map_node_select")
+		if portal:  # out of the other portal: the marker fades out here and in there
+			var fade := create_tween()
+			fade.tween_property(marker, "modulate:a", 0.0, 0.25)
+			fade.tween_callback(func(): marker.position = _pos(run.row, run.col) - Vector2(sz, sz) / 2.0)
+			fade.tween_property(marker, "modulate:a", 1.0, 0.25)
+			await fade.finished
+		marker.queue_free()
+		_rebuild_rooms()
+		_moving = false
+		moved_free.emit()
+		return
 	chosen_row = f
 	node_chosen.emit(col)
+
+
+## The rooms built again where they are (after a free step on the Curtain map), without letting the map down again.
+func _rebuild_rooms() -> void:
+	for key in _buttons:
+		_buttons[key].queue_free()
+	_buttons.clear()
+	_base.clear()
+	for f in run.map.size():
+		for n in run.map[f]:
+			if n == null:
+				continue
+			var nb := _node_button(f, n, [])
+			_buttons[Vector2i(f, n.col)] = nb
+			_base[Vector2i(f, n.col)] = nb.position
+			_content.add_child(nb)
+	if on_stage and _tip != null and run.is_curtain():
+		_tip.text = "Act %s · %s · room %d   ·   %s" % [["", "I", "II", "III"][run.act], ["", "The Edge of the Wood", "The Rotting Hollow", "The Last Winter"][run.act], run.turns + 1, _curtain_text()]
+	_content.queue_redraw()
 
 
 func _draw_paths() -> void:
@@ -641,73 +689,64 @@ func _draw_paths() -> void:
 					_content.draw_texture_rect(knot, Rect2(bp + Vector2(-ks.x / 2.0, -BOSS_R * 1.05 - ks.y * 0.52), ks), false)
 
 
-## The Curtain map: a dark red cloth over the rows it swallowed, and a path from your tile to each tile you can go to.
+## The Curtain map: the hexagon tiles (the Curtain's are drawn dark: it closes in from the top).
 func _draw_curtain() -> void:
 	_draw_hexes()
-	var eaten := run.curtain_rows()
-	if eaten > 0:
-		# the cloth's edge runs along the tops of the last row it swallowed (a zigzag, tile by tile)
-		var f := eaten - 1
-		var w := _content.size.x
-		var bottom := _content.size.y
-		var edge := PackedVector2Array()
-		var y0 := _pos(f, 0).y + _dy(f)
-		edge.append(Vector2(0.0, y0 - HEX_R * 0.5))
-		for c in run.map[f].size():
-			var at := _pos(f, c) + Vector2(0.0, _dy(f))
-			edge.append(at + Vector2(-HEX_W * 0.5, -HEX_R * 0.5))
-			edge.append(at + Vector2(0.0, -HEX_R))
-			edge.append(at + Vector2(HEX_W * 0.5, -HEX_R * 0.5))
-		edge.append(Vector2(w, y0 - HEX_R * 0.5))
-		var cloth := edge.duplicate()
-		cloth.append(Vector2(w, bottom))
-		cloth.append(Vector2(0.0, bottom))
-		_content.draw_colored_polygon(cloth, Color(0.28, 0.03, 0.06, 0.6))
-		for i in 18:  # (the folds of the cloth)
-			var x := w * (i + 0.5) / 18.0
-			_content.draw_line(Vector2(x, y0), Vector2(x, bottom), Color(0.12, 0.0, 0.02, 0.3), 10.0)
-		_content.draw_polyline(edge, Color(0.85, 0.65, 0.3, 0.95), 5.0, true)  # (its golden hem)
 
 
-const HEX_R := ROW_H / 1.5  # the Curtain map's tiles: pointy-top hexagons, one row 1.5 radii above the next...
-const HEX_W := HEX_R * 1.7320508  # ... and sqrt(3) radii wide, so they fit together with no gap
+const HEX_R := 92.0  # the Curtain map's tiles: flat-topped hexagons this far from centre to corner...
+const LEVEL_H := HEX_R * 0.8660254  # ... a level is half a tile high (lanes next to each other sit half a tile apart)...
+const LANE_W := HEX_R * 1.5  # ... and the lanes are 1.5 radii apart, so the tiles fit together with no gap
 const HEX_WOOD := Color(0.6, 0.43, 0.27)
+const CURTAIN_RED := Color(0.3, 0.05, 0.1)
 
 
 ## The Curtain map: every room is a wooden hexagon, the tiles packed edge to edge. Its colour tells its state: the ones
-## you can go to are lit with a gold rim, the ones you stood on are pale, the ones left behind or swallowed are dark.
+## you can go to are lit with a gold rim, the ones you stood on are pale, the ones behind you are faded, and the ones
+## under the Curtain are its dark red cloth.
 func _draw_hexes() -> void:
 	var opts: Array = run.options()
+	var under := run.curtain_from()
 	for f in run.map.size():
 		for n in run.map[f]:
 			if n == null:
 				continue
 			var at := _pos(f, n.col) + Vector2(0.0, _dy(f))
+			var boss: bool = n.type == "boss"
 			var here: bool = f == run.row and n.col == run.col
 			var can: bool = Vector2i(f, n.col) in opts
 			var stood: bool = here or ("%d:%d" % [f, n.col]) in run.visited
-			var gone: bool = not stood and n.type != "boss" and (f < run.curtain_rows() or f < run.row)
+			var covered: bool = not boss and f >= under
+			var gone: bool = not stood and not boss and f <= run.row
 			var fill: Color = HEX_WOOD.lerp(LOOK.get(n.type, LOOK.fight)[2], 0.22)
-			if n.type == "boss":
+			if boss:
 				fill = Color(0.42, 0.12, 0.2)
-			if can:
+			if covered:
+				fill = CURTAIN_RED
+			elif can:
 				fill = fill.lightened(0.28)
 			elif here:
 				fill = Color(0.45, 0.62, 0.32)
 			elif stood:
 				fill = fill.lerp(Color(0.85, 0.8, 0.7), 0.45)
 			elif gone:
-				fill = fill.darkened(0.6)
+				fill = fill.lerp(Color(0.8, 0.76, 0.68), 0.55)
 			var outer := _hex_points(at, HEX_R - 2.0)
-			var inner := _hex_points(at, HEX_R - 12.0)
+			var inner := _hex_points(at, HEX_R - 11.0)
 			_content.draw_colored_polygon(outer, fill.darkened(0.35))  # (the tile's bevelled edge)
 			_content.draw_colored_polygon(inner, fill)
-			for i in 6:  # (wood grain: a few faint lines across the tile)
-				var gy := at.y - HEX_R * 0.6 + i * HEX_R * 0.24
-				var half := HEX_W * 0.4 * (1.0 - absf(gy - at.y) / HEX_R * 0.5)
-				_content.draw_line(Vector2(at.x - half, gy), Vector2(at.x + half, gy + 3.0), Color(0, 0, 0, 0.07), 2.0)
+			if covered:  # (the folds of the cloth)
+				for i in 5:
+					var gx := at.x - HEX_R * 0.6 + i * HEX_R * 0.3
+					_content.draw_line(Vector2(gx, at.y - LEVEL_H * 0.85), Vector2(gx, at.y + LEVEL_H * 0.85), Color(0.12, 0.0, 0.03, 0.5), 7.0)
+			else:  # (wood grain: a few faint lines across the tile)
+				for i in 5:
+					var gy := at.y - LEVEL_H * 0.7 + i * LEVEL_H * 0.35
+					_content.draw_line(Vector2(at.x - HEX_R * 0.6, gy), Vector2(at.x + HEX_R * 0.6, gy + 3.0), Color(0, 0, 0, 0.07), 2.0)
 			var rim := Color(0.22, 0.13, 0.06)
 			var rim_w := 3.0
+			if covered:
+				rim = Color(0.75, 0.55, 0.25, 0.8)  # (the cloth's golden hem)
 			if can:
 				rim = Color(1.0, 0.82, 0.25)
 				rim_w = 7.0
@@ -718,10 +757,11 @@ func _draw_hexes() -> void:
 			_content.draw_polyline(outer, rim, rim_w, true)
 
 
+## A flat-topped hexagon (corners left and right).
 func _hex_points(c: Vector2, r: float) -> PackedVector2Array:
 	var pts := PackedVector2Array()
 	for i in 6:
-		var a := deg_to_rad(60.0 * i - 90.0)
+		var a := deg_to_rad(60.0 * i)
 		pts.append(c + Vector2(cos(a), sin(a)) * r)
 	return pts
 

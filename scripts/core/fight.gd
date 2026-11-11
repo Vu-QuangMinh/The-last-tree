@@ -200,7 +200,7 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 			if el != "":
 				player.add_element("?" if painted else (el if el != "?" else _random_element()))  # (repainted: an Any Essence)
 				_log("The Mysterious Hand steals a %s from %s." % [Elements.NAMES.get(el, "Essence"), e.name])
-	player.dmg_taken_mult = 1.25 if has_artifact("glass_heart") else 1.0
+	player.dmg_taken_mult = 1.0
 	var start_n := PlayerState.START_ELEMENTS + (int(_an("wind_chime")) if has_artifact("wind_chime") else 0)
 	# you always start with one of each element; the rest are random (in a random order)
 	var hand := ["F", "W", "A"]
@@ -213,13 +213,6 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 		hand[j] = tmp
 	for el in hand:
 		player.add_element(el)
-	if has_artifact("ever_thirsting"):
-		# Ever Thirsting (a curse): a Water of your first hand dries up
-		for k in player.stock.size():
-			if player.stock[k].el == "W":
-				player.stock.remove_at(k)
-				_log("Ever Thirsting: a Water dries up.")
-				break
 	if has_artifact("ember_charm"):
 		for i in int(_an("ember_charm")):
 			player.add_element("F")
@@ -699,6 +692,20 @@ func resolve_spell(id: String, target_idx := -1) -> void:
 				player.echo_charged = true
 				_log("Echo Shell is charged: your next spell is cast twice.")
 	_wear(spell)  # (Durability: one cast, one point, however many times it's echoed)
+	if int(spell.get("pain", 0)) > 0:
+		# the Curse of Pain: casting it hurts you
+		player.take_effect(float(spell.pain))
+		_log("Curse of Pain: %s hurts you for %d." % [spell.name, int(spell.pain)])
+		await anim.call({"type": "curse_pain", "id": id})
+		_check_end()
+		if over:
+			return
+	if spell.get("betrayal", false) and rng.randf() < 0.5:
+		# the Curse of Betrayal: half the time it fizzles out
+		_log("Curse of Betrayal: %s fizzles out." % spell.name)
+		await anim.call({"type": "curse_fizzle", "id": id})
+		_cleanup()
+		return
 	if has_artifact("magic_box"):
 		player.box_casts += 1
 		if player.box_casts % 6 == 0:

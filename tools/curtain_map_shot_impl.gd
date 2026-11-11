@@ -25,14 +25,19 @@ func run(t: SceneTree) -> void:
 		guard += 1
 	await t.create_timer(4.5).timeout
 	t.root.get_texture().get_image().save_png(dir + "/curtain_1_start.png")
-	# three moves (up, up, sideways): the Curtain has swallowed the first row
-	m.run.move_to(2, 0)
-	m.run.move_to(MapGen.hex_up(0, 2, MapGen.C_COLS)[0], 1)
-	m.run.move_to(m.run.col - 1, 1)
+	# three moves forward (to the side twice, then straight up)
+	m.run.move_to(0, 0)
+	for k in 3:
+		var o: Vector2i = m.run.options()[0 if k < 2 else 1]
+		m.run.move_to(o.y, o.x)
+	m.run.turns += 8  # (and the Curtain a little way down, to see it)
 	_map(m).queue_free()
 	m._overlay = null
 	m.show_map()
 	await t.create_timer(4.5).timeout
 	t.root.get_texture().get_image().save_png(dir + "/curtain_2_moves.png")
-	print("rows eaten ", m.run.curtain_rows(), " at row ", m.run.row, " options ", m.run.options())
+	_map(m)._scroll_to = _map(m)._scroll_max() * 0.45  # (up to the middle: the widest rows)
+	await t.create_timer(1.5).timeout
+	t.root.get_texture().get_image().save_png(dir + "/curtain_3_top.png")
+	print("curtain from level ", m.run.curtain_from(), " at row ", m.run.row, " options ", m.run.options())
 	t.quit()

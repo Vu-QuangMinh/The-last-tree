@@ -47,6 +47,17 @@ var met: Array = []  # enemy ids met this run, oldest first
 var upgraded: Array = []  # (legacy: upgrades are wax seals now, see `seals`)
 var burdens := {}  # spell id -> Essence added to the end of its pattern (the Tangled Grimoire's curse)
 var curse_note := ""  # what the last cursed artifact just did (shown when it's found)
+## Curses: a red burning sigil on one of your spells (docs: picking up a cursed artifact, some events). spell id -> the
+## curses on it (a spell can carry several). See curse() and spell().
+const CURSES := ["burden", "fragility", "pain", "hesitation", "binding", "void", "betrayal", "separation"]
+const CURSE_NAMES := {"burden": "Curse of Burden", "fragility": "Curse of Fragility", "pain": "Curse of Pain", "hesitation": "Curse of Hesitation",
+	"binding": "Curse of Binding", "void": "Curse of the Void", "betrayal": "Curse of Betrayal", "separation": "Curse of Separation"}
+const CURSE_TEXT := {"burden": "It needs 1 more Essence.", "fragility": "Its Durability is 1 lower (3 if it had none).",
+	"pain": "Casting it hurts you for 3.", "hesitation": "Cooldown +1.", "binding": "It can't leave your active row.",
+	"void": "It can't go in your active row.", "betrayal": "Half the time, casting it does nothing.", "separation": "Torn out of its fusion; it can't be fused again."}
+var curses := {}
+var pending_curses: Array = []  # [{kind, spell, parts, fused}]: each one the screen shows as it lands (then it is taken off)
+var refusal := ""  # why the last loadout move was refused (a curse), for the screen to say
 var seals := {}  # spell id -> [indices of its pattern sealed by upgrades]: those Essence are no longer needed
 var amber := START_AMBER
 var seen_events: Array = []
@@ -144,8 +155,6 @@ func active_slots() -> int:
 		if a in artifacts:
 			n += 1
 	n += artifacts.count("mystery_book")  # (+1 for every Mystery Book: they stack)
-	if "withered_idol" in artifacts:
-		n -= 1
 	return clampi(n, 3, MAX_ACTIVE)
 
 
@@ -162,6 +171,22 @@ func spell(id: String) -> Dictionary:
 		s.pattern = String(s.pattern) + extra  # cursed: it needs more Essence
 		s.size = String(s.pattern).length()
 		s.burden = extra
+	var cs: Array = curses.get(id, [])
+	if not cs.is_empty() and not s.is_empty():
+		s = s.duplicate(true)
+		s.curses = cs.duplicate()  # (the card shows their sigils)
+		var frag := cs.count("fragility")
+		if frag > 0:
+			s.durability = maxi(1, int(s.get("durability", 4)) - frag)  # (no Durability: it gets 3)
+		var hes := cs.count("hesitation")
+		if hes > 0:
+			s.cooldown = int(s.get("cooldown", 0)) + hes
+		if "pain" in cs:
+			s.pain = 3 * cs.count("pain")
+		if "betrayal" in cs:
+			s.betrayal = true
+		if "separation" in cs:
+			s.no_fuse = true
 	var sl: Array = seals.get(id, [])
 	if sl.is_empty() or s.is_empty():
 		return s
@@ -227,11 +252,30 @@ func move_to(c: int, r := -2) -> Dictionary:
 	return current_node()
 
 
+## The Curtain map: you stepped on a tile with no room. A tailwind: you stand there and go again at once (the Curtain
+## doesn't count it). A portal: it counts as a move, and you come out of the other portal.
+func free_step(c: int, r: int) -> void:
+	var n: Dictionary = map[r][c]
+	row = r
+	col = c
+	visited.append("%d:%d" % [r, c])
+	if n.type == "portal":
+		turns += 1
+		var to: Array = n.get("link", [r, c])
+		row = int(to[0])
+		col = int(to[1])
+		visited.append("%d:%d" % [row, col])
+
+
+func is_free_tile(r: int, c: int) -> bool:
+	return is_curtain() and r >= 0 and r < map.size() and c >= 0 and c < map[r].size() and map[r][c].type in MapGen.FREE_TILES
+
+
 ## A new act's map, in this run's style.
 func new_map() -> void:
 	map = MapGen.generate_curtain(rng) if map_style == "curtain" else MapGen.generate(rng)
 	row = -1
-	col = map[0].size() / 2
+	col = 0 if is_curtain() else MapGen.COLS / 2
 	visited.clear()
 	turns = 0
 	curtain_hold = 0
@@ -241,42 +285,32 @@ func is_curtain() -> bool:
 	return map_style == "curtain"
 
 
-## The Curtain map: how many rows (from the bottom) the Curtain has swallowed.
-func curtain_rows() -> int:
-	return maxi(0, turns / MapGen.CURTAIN_EVERY - curtain_hold)
+## The Curtain map: the lowest level it has swallowed (it closes in from the boss's side, one level every
+## MapGen.CURTAIN_EVERY moves). Everything from there up is under it; the boss's own level never counts.
+func curtain_from() -> int:
+	return maxi(0, map.size() - 1 - turns / MapGen.CURTAIN_EVERY + curtain_hold)
 
 
-## The Curtain map: moves left before it falls one more row.
+## The Curtain map: moves left before it swallows one more level.
 func curtain_in() -> int:
 	return MapGen.CURTAIN_EVERY - turns % MapGen.CURTAIN_EVERY
 
 
-## The Curtain map: it swallowed the row you stand on: the boss is all that's left.
+## The Curtain map: it covers every tile you could go to: the boss is all that's left.
 func caught() -> bool:
-	return is_curtain() and row >= 0 and row < map.size() - 1 and curtain_rows() > row
+	return is_curtain() and row >= 0 and row < map.size() - 1 and options().size() == 1 and options()[0].x == map.size() - 1
 
 
-## The rooms you can go to next, as Vector2i(row, col).
+## The rooms you can go to next, as Vector2i(row, col). The Curtain map: the tiles ahead that touch yours and are not
+## under the Curtain; and the boss as soon as the Curtain reaches one of them (or there is nothing ahead).
 func options() -> Array:
 	if not is_curtain():
 		return choices().map(func(c): return Vector2i(row + 1, c))
-	var top := map.size() - 2  # (the last row of tiles; the boss is above it)
-	var out := []
-	if row >= top or caught():
-		for n in map[top + 1]:
-			if n != null:
-				out.append(Vector2i(top + 1, n.col))
-		return out
-	var cols: int = map[0].size()
-	if row < 0:
-		for c in cols:
-			out.append(Vector2i(0, c))
-		return out
-	for c in MapGen.hex_up(row, col, cols):
-		out.append(Vector2i(row + 1, c))
-	for c in [col - 1, col + 1]:
-		if c >= 0 and c < cols and not ("%d:%d" % [row, c] in visited):
-			out.append(Vector2i(row, c))
+	var boss := Vector2i(map.size() - 1, 0)
+	var ahead: Array = map[0].map(func(n): return Vector2i(0, n.col)) if row < 0 else MapGen.hex_up(map, row, col)
+	var out := ahead.filter(func(p: Vector2i): return p.x < curtain_from())
+	if out.size() < ahead.size() or ahead.is_empty():
+		out.append(boss)
 	return out
 
 
@@ -549,21 +583,11 @@ func gain_artifact(id: String) -> void:
 	if id == "mystery_book" and artifacts.count("mystery_book") >= 3 and not ("summoning_bill" in spellbook):
 		learn_spell("summoning_bill")  # (three Mystery Books: their pages glow, and a spell writes itself into your mind)
 	curse_note = ""
-	if id == "blood_pact":
-		player.max_hp -= 12
-		player.hp = minf(player.hp, player.max_hp)
-	if id == "broken_crown":
-		player.max_hp -= 15
-		player.hp = minf(player.hp, player.max_hp)
-		curse_note = "−15 max HP."
-	if id == "spell_satchel":
-		# it eats 2 random spells (you always keep at least one)
-		var eaten := lose_random_spells(2)
-		curse_note = "It ate %s." % " and ".join(eaten) if not eaten.is_empty() else ""
-	if id == "tangled_grimoire":
-		# 4 random spells each need 1 more Essence
-		var hit := burden_random_spells(4)
-		curse_note = "Now needing 1 more Essence: %s." % ", ".join(hit) if not hit.is_empty() else ""
+	if Artifacts.is_curse(id):
+		# a cursed artifact: one of the 8 curses, at random, lands on one of your spells
+		var c := curse()
+		if not c.is_empty():
+			curse_note = "%s on %s." % [CURSE_NAMES[c.kind], spell(String(c.spell)).get("name", c.spell) if c.kind != "separation" else String(c.fused.name)]
 	artifact_gained.emit(id)  # (the UI shows the artifact that was found, and what its curse did)
 	if id == "bandolier":
 		for b in Bottles.random(rng, 2):
@@ -576,12 +600,6 @@ func gain_artifact(id: String) -> void:
 func remove_artifact(id: String) -> void:
 	artifacts.erase(id)
 	artifacts_plus.erase(id)
-	if id == "blood_pact":
-		player.max_hp += 12
-	if id == "broken_crown":
-		player.max_hp += 15
-	if id == "tangled_grimoire":
-		burdens.clear()  # the curse lasts as long as you keep the artifact
 	while player.bottles.size() > bottle_slots():
 		player.bottles.pop_back()
 	while loadout.size() > active_slots():
@@ -649,7 +667,7 @@ func fuse_preview(id_a: String, id_b: String, drop := -1) -> Dictionary:
 		"id": "fused_%d" % (_fuse_count + 1), "name": fusion_name(id_a, id_b, a.name, b.name),
 		"pattern": "", "effects": effects, "rarity": rarity,
 		"flavor": "Forged at a campfire from %s and %s." % [a.name, b.name],
-		"fused": true, "fused_from": [a.name, b.name],
+		"fused": true, "fused_from": [a.name, b.name], "fused_ids": [id_a, id_b],
 	}
 	var cd := maxi(int(a.get("cooldown", 0)), int(b.get("cooldown", 0)))
 	if cd > 0:
@@ -1040,12 +1058,9 @@ func event_outcome(opt: Dictionary, bottle_at := -1, spell_id := "") -> Dictiona
 				due_events[String(d.event)] = int(d.n)
 			"soak":
 				# the Broken Bridge: a random active spell gets wet, and needs 1 more Water (at the end of its pattern)
-				var pool := loadout.filter(func(x): return String(spell(x).get("pattern", "")) != "")
-				if pool.is_empty():
-					pool = spellbook.filter(func(x): return String(spell(x).get("pattern", "")) != "")
-				if not pool.is_empty():
-					var wet: String = pool[rng.randi() % pool.size()]
-					burdens[wet] = String(burdens.get(wet, "")) + "W"
+				var c := curse("burden", "W")  # (the river: the Curse of Burden, and the Essence it adds is Water)
+				if not c.is_empty():
+					var wet: String = c.spell
 					res.soaked = wet  # (the stage shows the Water flying into its card)
 					res.text = String(res.text).replace("{spell}", spell(wet).name)
 					res.spell = wet
@@ -1242,12 +1257,12 @@ func lose_random_spells(n: int) -> Array:
 
 ## n random spells each need 1 more Essence (a random one, added to the end of the pattern). Returns their names.
 func burden_random_spells(n: int) -> Array:
-	var pool := spellbook.duplicate()
 	var names := []
-	for k in mini(n, pool.size()):
-		var sid: String = pool.pop_at(rng.randi() % pool.size())
-		burdens[sid] = String(burdens.get(sid, "")) + Elements.random(rng)
-		names.append(spell(sid).name)
+	for k in n:
+		var c := curse("burden")  # (each one the Curse of Burden, with its sigil)
+		if c.is_empty():
+			break
+		names.append(spell(String(c.spell)).name)
 	return names
 
 
@@ -1395,10 +1410,26 @@ func move_active(from: int, to: int) -> void:
 ## spellbook, on top of spell `onto` ("" = empty space). Dropped on another spell, the two switch places (in the row,
 ## between the row and the book, or in the book's order). False when it can't go there (the active row is full).
 func drop_spell(id: String, to_active: bool, onto := "") -> bool:
+	refusal = ""
 	if not (id in spellbook) or onto == id:
 		return id in spellbook
 	var from_active := id in loadout
 	var onto_active := onto in loadout
+	# the curses: a Bound spell never leaves the row (it may move within it), a Void one never goes in
+	var leaving := ""
+	if to_active and not from_active and "void" in curses.get(id, []):
+		refusal = "Curse of the Void: %s can't go in your active row." % spell(id).name
+		return false
+	if to_active and onto_active and not from_active:
+		leaving = onto  # (it would take the place of that one, which goes back to the book)
+	if not to_active and from_active:
+		leaving = id
+		if onto != "" and onto in spellbook and not onto_active and "void" in curses.get(onto, []):
+			refusal = "Curse of the Void: %s can't go in your active row." % spell(onto).name
+			return false
+	if leaving != "" and "binding" in curses.get(leaving, []):
+		refusal = "Curse of Binding: %s can't leave your active row." % spell(leaving).name
+		return false
 	if to_active:
 		if onto_active:
 			var j := loadout.find(onto)
@@ -1429,11 +1460,126 @@ func drop_spell(id: String, to_active: bool, onto := "") -> bool:
 	return true
 
 
+## A curse lands on one of your spells (a red burning sigil): `kind` one of CURSES, or "" for a random one that can
+## apply. Burden, Fragility, Pain, Hesitation, the Void and Betrayal pick a random active spell; Binding a spell NOT in
+## the row (it is forced in, taking the place of a random unbound one if the row is full); Separation a fused spell (it is
+## torn back into its two spells, which both carry the sigil and can't be fused again). Returns {kind, spell, ...} (also
+## queued in pending_curses for the screen), or {} when nothing could be cursed.
+func curse(kind := "", el := "") -> Dictionary:
+	var kinds: Array = CURSES.filter(func(k): return _can_curse(k)) if kind == "" else ([kind] if _can_curse(kind) else [])
+	if kinds.is_empty():
+		return {}
+	var k: String = kinds[rng.randi() % kinds.size()]
+	var res := {"kind": k}
+	match k:
+		"separation":
+			var pool := spellbook.filter(func(x): return fused.has(x) and not _fused_parts(x).is_empty())
+			var fid: String = pool[rng.randi() % pool.size()]
+			res.fused = spell(fid)
+			var parts := _unfuse(fid)
+			for p in parts:
+				_mark_curse(p, "separation")
+			res.spell = parts[0]
+			res.parts = parts
+		"binding":
+			var pool := spellbook.filter(func(x): return not (x in loadout) and not ("void" in curses.get(x, [])))
+			var id: String = pool[rng.randi() % pool.size()]
+			if loadout.size() >= active_slots():
+				var out := loadout.filter(func(x): return not ("binding" in curses.get(x, [])))
+				if not out.is_empty():
+					loadout.erase(out[rng.randi() % out.size()])
+			if loadout.size() < active_slots():
+				loadout.append(id)
+			_mark_curse(id, "binding")
+			res.spell = id
+		"void":
+			var pool := loadout.filter(func(x): return not ("binding" in curses.get(x, [])))
+			var id: String = pool[rng.randi() % pool.size()]
+			loadout.erase(id)
+			_mark_curse(id, "void")
+			res.spell = id
+		_:
+			var pool := _active_pool()
+			if k == "burden":
+				pool = pool.filter(func(x): return String(spell(x).get("pattern", "")) != "")
+			var id: String = pool[rng.randi() % pool.size()]
+			if k == "burden":
+				burdens[id] = String(burdens.get(id, "")) + (el if el != "" else Elements.random(rng))
+			_mark_curse(id, k)
+			res.spell = id
+	pending_curses.append(res)
+	return res
+
+
+func _active_pool() -> Array:
+	return loadout.duplicate() if not loadout.is_empty() else spellbook.duplicate()
+
+
+func _can_curse(k: String) -> bool:
+	match k:
+		"separation":
+			return spellbook.any(func(x): return fused.has(x) and not _fused_parts(x).is_empty())
+		"binding":
+			return spellbook.any(func(x): return not (x in loadout) and not ("void" in curses.get(x, [])))
+		"void":
+			return loadout.size() > 1 and loadout.any(func(x): return not ("binding" in curses.get(x, [])))
+		"burden":
+			return _active_pool().any(func(x): return String(spell(x).get("pattern", "")) != "")
+	return not _active_pool().is_empty()
+
+
+func _mark_curse(id: String, k: String) -> void:
+	var cs: Array = curses.get(id, [])
+	cs.append(k)
+	curses[id] = cs
+
+
+## The two spells a fused one was made from (by id; an older fusion only knew their names).
+func _fused_parts(fid: String) -> Array:
+	var f: Dictionary = fused.get(fid, {})
+	if f.has("fused_ids"):
+		return f.fused_ids.filter(func(x): return not db.get_spell(String(x)).is_empty())
+	var out := []
+	for nm in f.get("fused_from", []):
+		for sp in db.all_spells:
+			if sp.name == nm:
+				out.append(sp.id)
+				break
+	return out if out.size() == 2 else []
+
+
+## Undo a fusion: the fused spell is gone, its two spells are back (in the active row if it was there and there is room).
+func _unfuse(fid: String) -> Array:
+	var parts := _fused_parts(fid)
+	var was_active := fid in loadout
+	var at := loadout.find(fid)
+	spellbook.erase(fid)
+	loadout.erase(fid)
+	fused.erase(fid)
+	seals.erase(fid)
+	for p in parts:
+		if not (p in spellbook):
+			spellbook.append(p)
+	if was_active:
+		for p in parts:
+			if loadout.size() < active_slots() and not (p in loadout):
+				loadout.insert(clampi(at, 0, loadout.size()), p)
+				at += 1
+	return parts
+
+
 ## Loadout editing (before each encounter).
 func toggle_active(id: String) -> bool:
+	refusal = ""
 	if id in loadout:
+		if "binding" in curses.get(id, []):
+			refusal = "Curse of Binding: %s can't leave your active row." % spell(id).name
+			return false
 		loadout.erase(id)
 		return true
+	if "void" in curses.get(id, []):
+		refusal = "Curse of the Void: %s can't go in your active row." % spell(id).name
+		return false
 	if loadout.size() >= active_slots() or not (id in spellbook):
 		return false
 	loadout.append(id)

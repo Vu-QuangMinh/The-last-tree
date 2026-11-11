@@ -61,6 +61,7 @@ var _shade: ColorRect
 var _orbit: OrbitSpark  # pending: the chant you're building will wake this spell
 var _flame: CardBadge  # Ignite
 var _virus: CardBadge
+var _curse_marks: _CurseMarks
 var _cracks: CrackOverlay
 
 
@@ -265,6 +266,11 @@ func _ready() -> void:
 	_virus.margins = _orbit.margins
 	_virus.visible = false
 	add_child(_virus)
+	_curse_marks = _CurseMarks.new()  # the red burning sigils of its curses, top right (RunState.curse)
+	_curse_marks.zoom = zoom
+	_curse_marks.margins = _orbit.margins
+	_curse_marks.kinds = spell.get("curses", []).duplicate()
+	add_child(_curse_marks)
 	_cracks = CrackOverlay.new()
 	_cracks.zoom = zoom
 	_cracks.margins = _orbit.margins
@@ -851,3 +857,27 @@ class RarityCorners extends Control:
 			draw_circle(r, 2.6 * zoom, m[2])
 			draw_circle(r, 1.8 * zoom, m[0])
 			draw_circle(r + Vector2(-0.8, -0.8) * zoom, 0.9 * zoom, m[1])
+
+
+## The red burning sigils of the curses on this spell, in a row from the top right corner inwards (one per curse).
+class _CurseMarks extends Control:
+	var kinds: Array = []
+	var margins := [6.0, 7.0, 6.0, 5.0]
+	var zoom := 1.0
+	var _t := 0.0
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _process(d: float) -> void:
+		if kinds.is_empty() or not is_visible_in_tree():
+			return
+		_t += d
+		queue_redraw()
+
+	func _draw() -> void:
+		var frame := Rect2(Vector2(-margins[0], -margins[1]), size + Vector2(margins[0] + margins[2], margins[1] + margins[3]))
+		var rr := 13.0 * zoom
+		for k in kinds.size():
+			var c := frame.position + Vector2(frame.size.x - rr * 1.4 - k * rr * 2.4, rr * 1.4)
+			CurseSigil.draw_sigil(self, String(kinds[k]), c, rr, _t + k)

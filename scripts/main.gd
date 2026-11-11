@@ -468,7 +468,29 @@ func start_run() -> void:
 		show_map())
 
 
+## The curses that have just landed (RunState.pending_curses), one after the other: each with its sigil flying onto its card.
+var _cursing := false
+
+
+func _play_curses() -> void:
+	if _cursing or run == null:
+		return
+	_cursing = true
+	while run != null and not run.pending_curses.is_empty():
+		var c: Dictionary = run.pending_curses.pop_front()
+		var sc := CurseScene.new()
+		sc.kind = String(c.kind)
+		sc.spell = run.spell(String(c.spell))
+		if c.kind == "separation":
+			sc.fused = c.get("fused", {})
+			sc.parts = c.get("parts", []).map(func(id): return run.spell(String(id)))
+		overlay_layer.add_child(sc)
+		await sc.done
+	_cursing = false
+
+
 func show_map() -> void:
+	_play_curses.call_deferred()  # (a curse from an event lands as you come back to the map)
 	if _test_mode and _test_back_to_tabs:
 		_test_back_to_tabs = false  # (an event from test mode's Events tab: back to it)
 		_test_mode = false
@@ -488,6 +510,7 @@ func show_map() -> void:
 	var m := MapScreen.new()
 	m.setup(run)
 	m.node_chosen.connect(func(col: int): _on_node(col, m.chosen_row))
+	m.moved_free.connect(func(): _checkpoint("map"))
 	m.codex_pressed.connect(open_codex)
 	m.menu_requested.connect(func(): run = null; show_menu())
 	_swap(m)
@@ -512,6 +535,7 @@ func _show_stage_map() -> void:
 		if st != null and is_instance_valid(st) and st.curtains.has_art():
 			await st.curtains.open()
 		_on_node(col, row))
+	m.moved_free.connect(func(): _checkpoint("map"))
 	m.codex_pressed.connect(open_codex)
 	m.menu_requested.connect(func(): run = null; show_menu())
 	_set_overlay(m)
@@ -1485,8 +1509,7 @@ func _pick_artifact(id: String) -> void:
 func _on_artifact_found(id: String) -> void:
 	if _picked:
 		Audio.play("artifact_get")
-		if run != null and run.curse_note != "":
-			Events.toast.emit("CURSE: " + run.curse_note, UiTheme.DANGER)
+		_play_curses.call_deferred()  # (a cursed artifact: its curse lands on one of your spells)
 		return
 	var ov := Control.new()
 	ov.size = Vector2(1920, 1080)
@@ -1537,6 +1560,7 @@ func _on_artifact_found(id: String) -> void:
 		var tw := ov.create_tween()
 		tw.tween_property(ov, "modulate:a", 0.0, 0.2)
 		tw.tween_callback(ov.queue_free)
+		tw.tween_callback(_play_curses)  # (then the curse it carried lands on one of your spells)
 	ov.gui_input.connect(func(ev: InputEvent): if ev is InputEventMouseButton and ev.pressed: close.call())
 	card.clicked.connect(close)
 	get_tree().create_timer(4.0).timeout.connect(close)
