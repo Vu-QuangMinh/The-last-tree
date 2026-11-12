@@ -79,7 +79,7 @@ Source of truth for art: `assets/ui/Fight UI.pdf`, cut into `assets/ui/new/<fold
 **Art still missing**
 - Backgrounds: Treasure Room, Screen Victory (they fall back to the act's picture).
 - Treasure chest closed / open, Treasure Card Frame Cursed (prompts in `treasure_art_prompts.txt`).
-- Icons per room (see `map_room_art_prompts.txt` for what is already drawn): Fuse screen (title flame, eye "See all", warning, wake, arrow), Merchant (cart for the title, price tag, Buy coin), event cost/reward glyphs (Max HP, Leaves, artifact, spell, Legendary, Cursed, purple resin), tutorial pointing hands + Sprout box, Elite / Boss badges, Resin icon (still drawn in code: `ResinIcon`).
+- Icons per room (see `map_room_art_prompts.txt` for what is already drawn): Fuse screen (title flame, eye "See all", warning, wake, arrow), Merchant (cart for the title, price tag, Buy coin), event cost/reward glyphs (Max HP, Leaves, artifact, spell, Legendary, Cursed, purple resin), tutorial pointing hands + Sprout box, Elite / Boss badges, Resin icon (no icon yet).
 - Other rooms are still plain screens over their backgrounds (campfire is the only one rebuilt from separate objects).
 
 **Code**
