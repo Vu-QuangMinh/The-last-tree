@@ -6,6 +6,7 @@ var enemy_id := ""
 var tint := Color(0.6, 0.6, 0.6)
 var accent := Color(1, 1, 1)
 var big := 1.0
+const DRAWN_ONLY := ["bug_hunter"]  # drawn in code until their new art comes (the Bug Hunter is a bell head now, its robot picture is out of date)
 var ground_drop := 0.0  # a flyer: how far (px) below its picture the real ground is (its shadow lies there; set by EnemyView)
 var flash := 0.0
 var bob := 0.0
@@ -149,7 +150,7 @@ func setup(e: EnemyState) -> void:
 				var tc := _puppet_tex(e.id + "_" + c, int(e.def.get("act", 1)))
 				if tc != null:
 					_art["yin_" + c] = tc
-		var t := _puppet_tex(file, int(e.def.get("act", 1)))
+		var t := _puppet_tex(file, int(e.def.get("act", 1))) if not (e.id in DRAWN_ONLY) else null
 		if t != null:
 			_art = {"angry": t, "normal": t, "hurt": t}
 		if e.id == "veiled_eyes":  # (phase 1 is the plain file; phase 2 the spider, and its twin with the eyes glowing: tools/import_veiled_eyes.py)
@@ -413,6 +414,9 @@ func _draw() -> void:
 	if enemy_id == "pianist":
 		_draw_pianist(c, s, body)
 		return
+	if enemy_id == "bug_hunter":
+		_draw_bell_head(c, s)
+		return
 	var eye_y := -s * 0.15
 	match shape:
 		0:  # blob
@@ -564,6 +568,78 @@ func _draw_sword_stance(c: Vector2, s: float) -> void:
 	draw_line(hilt - dir.orthogonal() * s * 0.1, hilt + dir.orthogonal() * s * 0.1, Color(0.75, 0.6, 0.25), maxf(3.0, s * 0.06), true)  # the guard
 	draw_line(hilt, hilt + dir * s * 1.5, Color(0.85, 0.88, 0.92), maxf(3.0, s * 0.06), true)  # the blade
 	draw_line(hilt + dir * s * 0.1, hilt + dir * s * 1.45, Color(1, 1, 1, 0.8), maxf(1.0, s * 0.02), true)  # its edge catching the light
+
+
+## The Bug Hunter (drawn until it has art): a brass bell for a head, with a hanging loop on top and a face engraved on it,
+## on two thin jointed legs, a striker in its hands. It attacks by striking its own head: the striker swings up and hits
+## the bell, which shakes as it rings (bell_t 0..1 while it does; see FightScreen._bell_strike).
+var bell_t := -1.0
+
+
+func _draw_bell_head(c: Vector2, s: float) -> void:
+	var brass := Color(0.78, 0.62, 0.3) if not dead else Color(0.2, 0.2, 0.2, 0.4)
+	var dark := brass.darkened(0.45)
+	var t := bell_t
+	var hit_t := 0.28  # (when the striker meets the bell)
+	var shake := 0.0
+	if t >= hit_t:
+		shake = sin((t - hit_t) * 70.0) * 0.09 * exp(-(t - hit_t) * 4.0)
+	# the legs (thin, jointed), then the arms, behind the bell
+	for side in [-1.0, 1.0]:
+		var hip := c + Vector2(side * s * 0.22, s * 0.32)
+		var knee := c + Vector2(side * s * 0.28, s * 0.62)
+		var foot := c + Vector2(side * s * 0.2, s * 0.95)
+		draw_polyline(PackedVector2Array([hip, knee, foot]), dark, maxf(4.0, s * 0.09), true)
+		draw_circle(knee, s * 0.06, brass)
+		draw_rect(Rect2(foot - Vector2(s * 0.12, s * 0.03), Vector2(s * 0.24, s * 0.07)), dark)
+	# the striker: at rest it hangs down and to the right; striking, it swings up and over onto the bell
+	var hand := c + Vector2(s * 0.42, s * 0.42)
+	var rest := 0.75  # (radians: down and to the right)
+	var up := -2.2  # (up and over the head)
+	var a := rest
+	if t >= 0.0:
+		if t < hit_t:
+			a = lerpf(rest, up, smoothstep(0.0, hit_t, t))
+		else:
+			a = lerpf(up, rest, smoothstep(hit_t, 1.0, t))
+	var tip := hand + Vector2.from_angle(a) * s * 0.85
+	# the bell: swings about its loop as it rings
+	var pivot := c + Vector2(0, -s * 1.05)
+	draw_set_transform(pivot, shake)
+	var top := -s * 0.05
+	var rim := s * 1.32
+	var pts := PackedVector2Array()
+	for k in 21:
+		var u := float(k) / 20.0  # 0..1 down the left side
+		var w := lerpf(s * 0.3, s * 0.62, pow(u, 1.6))
+		pts.append(Vector2(-w, lerpf(top + s * 0.1, rim, u)))
+	for k in 21:
+		var u := 1.0 - float(k) / 20.0
+		var w := lerpf(s * 0.3, s * 0.62, pow(u, 1.6))
+		pts.append(Vector2(w, lerpf(top + s * 0.1, rim, u)))
+	draw_colored_polygon(pts, brass)
+	draw_circle(Vector2(0, top + s * 0.14), s * 0.3, brass)  # (the dome)
+	draw_rect(Rect2(-s * 0.66, rim - s * 0.12, s * 1.32, s * 0.14), brass.darkened(0.15))  # (the rim)
+	draw_line(Vector2(-s * 0.6, rim - s * 0.2), Vector2(s * 0.6, rim - s * 0.2), dark, 2.0, true)
+	draw_arc(Vector2(0, top - s * 0.08), s * 0.09, 0, TAU, 16, dark, maxf(3.0, s * 0.05), true)  # (the hanging loop)
+	draw_line(Vector2(-s * 0.15, top + s * 0.15), Vector2(-s * 0.08, rim * 0.85), Color(1, 0.95, 0.8, 0.35), maxf(3.0, s * 0.06), true)  # (a shine)
+	# the face engraved on it: two curling brows, two eyes, a little crack
+	for side in [-1.0, 1.0]:
+		draw_arc(Vector2(side * s * 0.2, s * 0.55), s * 0.13, PI * (1.1 if side < 0 else 1.4), PI * (1.6 if side < 0 else 1.9), 10, dark, 2.0, true)
+		draw_arc(Vector2(side * s * 0.2, s * 0.72), s * 0.07, 0, TAU, 12, dark, 2.0, true)
+	draw_polyline(PackedVector2Array([Vector2(s * 0.4, rim - s * 0.15), Vector2(s * 0.34, rim * 0.75), Vector2(s * 0.38, rim * 0.6)]), dark, 1.5, true)
+	draw_set_transform(Vector2.ZERO)
+	# the arm and the striker, in front of the bell (it comes down onto it)
+	draw_line(c + Vector2(s * 0.3, s * 0.25), hand, dark, maxf(3.0, s * 0.07), true)
+	draw_line(hand, tip, Color(0.55, 0.42, 0.22), maxf(3.0, s * 0.06), true)
+	draw_circle(tip, s * 0.13, brass.lightened(0.1))
+	draw_circle(hand, s * 0.07, brass)
+	# the sound: rings spreading out from the bell while it rings
+	if t >= hit_t and not dead:
+		var k := (t - hit_t) / (1.0 - hit_t)
+		for j in 3:
+			var kk := fmod(k * 1.5 + j * 0.33, 1.0)
+			draw_arc(pivot + Vector2(0, s * 0.6), s * (0.8 + kk * 0.9), -PI * 0.85, -PI * 0.15, 24, Color(1.0, 0.9, 0.5, 0.6 * (1.0 - kk) * (1.0 - k)), 3.0, true)
 
 
 ## The Pianist (drawn until he has art): tall and thin like Slender Man, black suit, white collar, a top hat, at a

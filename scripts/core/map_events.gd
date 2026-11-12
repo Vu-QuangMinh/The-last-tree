@@ -138,6 +138,11 @@ const ALL := [
 	# Skipping Stones (Act 2): each throw skips 1-21 times; 20 or more impresses the lake's spirit (a random common
 	# artifact, and the event ends). Otherwise you may throw again, or walk away. (2 chances in 21: 10.5 throws on average.)
 	{"id": "skipping_stones", "acts": [2], "title": "Skipping Stones", "text": "You come upon a lake so still that it looks like glass. There is nothing to do here, and an awful lot of flat stones.", "options": [{"label": "Skip a stone", "outcomes": [{"chance": 1.0, "text": "", "do": [{"op": "skip_stone"}]}]}, {"label": "Walk away", "outcomes": [{"chance": 1.0, "ok": "Peace and quiet", "text": "You dust off your hands and leave the lake to its stillness.", "do": []}]}]},
+	# The Crowned Matador (any act; docs/story.md): a dice game against his red cloth, then he answers your questions (the
+	# game's lore master: MatadorLore). Played on the stage by MatadorScene. The one event that comes again: he is never
+	# taken off the list once met, and he comes at least once every run (see RunState.resolve_unknown).
+	{"id": "crowned_matador", "acts": [1, 2, 3], "title": "The Crowned Matador", "scene": "matador", "repeatable": true, "weight": 0.6,
+		"text": "A matador with a kingly crown and a golden mask.", "options": []},
 ]
 
 

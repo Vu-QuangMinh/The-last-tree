@@ -23,8 +23,8 @@ void fragment() {
 	vec2 px = UV * size;
 	float inside = 1.0 - smoothstep(-1.0, 0.5, rounded_box(px - size * 0.5, size * 0.5, radius));
 	float t = TIME + seed * 13.7;
-	// a glitch for a moment in every ~1.6 s (a little irregular), stronger while fizzling
-	float cyc = fract(t / 1.6 + hash(vec2(floor(t / 1.6), seed)) * 0.3);
+	// a glitch for a moment in every ~2.3 s (a little irregular), stronger while fizzling
+	float cyc = fract(t / 2.3 + hash(vec2(floor(t / 2.3), seed)) * 0.3);
 	float g = max(step(cyc, 0.09), fizzle);
 	// bands of the picture jump sideways
 	float band = floor(px.y / 9.0);
@@ -37,10 +37,10 @@ void fragment() {
 	col.r = texture(screen_tex, base + vec2(split, 0.0)).r;
 	col.g = texture(screen_tex, base).g;
 	col.b = texture(screen_tex, base - vec2(split, 0.0)).b;
-	// faint scanlines rolling down
-	col *= 0.9 + 0.1 * sin((px.y - t * 30.0) * 1.3);
+	// faint scanlines rolling down (they only darken a little: the card stays light)
+	col *= 0.96 + 0.04 * sin((px.y - t * 30.0) * 1.3);
 	// static: a hint always, a burst while glitching, all of it as it fizzles away
 	float n = hash(px + vec2(frame * 1.7, frame * 3.3));
-	col = mix(col, vec3(n), clamp(0.05 + 0.4 * g * (1.0 - fizzle) + fizzle * 0.95, 0.0, 1.0));
+	col = mix(col, vec3(n), clamp(0.03 + 0.4 * g * (1.0 - fizzle) + fizzle * 0.95, 0.0, 1.0));
 	COLOR = vec4(col, inside);
 }

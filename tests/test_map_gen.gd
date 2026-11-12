@@ -1,5 +1,5 @@
 extends TestCase
-## MapGen: the Slay-the-Spire style act map and the Curtain honeycomb.
+## MapGen: the Slay-the-Spire style act map.
 
 
 func _map(seed_v: int) -> Array:
@@ -78,13 +78,3 @@ func test_counts_add_up() -> void:
 		sum += int(cnt[k])
 	assert_eq(sum, total, "counts() sees every node")
 	assert_eq(int(cnt.get("boss", 0)), 1, "exactly one boss")
-
-
-func test_curtain_map() -> void:
-	for sd in [1, 2, 3]:
-		var rng := RandomNumberGenerator.new()
-		rng.seed = sd
-		var rows := MapGen.generate_curtain(rng)
-		var cnt := MapGen.counts(rows)
-		assert_eq(int(cnt.get("boss", 0)), 1, "one boss on the Curtain map (seed %d)" % sd)
-		assert_true(int(cnt.get("shop", 0)) >= 1, "the Curtain map has a merchant")

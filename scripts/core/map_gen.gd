@@ -21,6 +21,10 @@ const CAMP_EVENT := "lost_camp"  # the floor before the boss
 
 
 static func generate(rng: RandomNumberGenerator) -> Array:
+	return _least_clumped(func() -> Array: return _generate_once(rng))
+
+
+static func _generate_once(rng: RandomNumberGenerator) -> Array:
 	var rows := []
 	for f in FLOORS:
 		var r := []
@@ -55,6 +59,7 @@ static func generate(rng: RandomNumberGenerator) -> Array:
 		if n != null:
 			n.next = [COLS / 2]
 	_assign_types(rows, rng)
+	_unclump(rows)
 	rows.append(boss_row)
 	return rows
 
@@ -98,7 +103,7 @@ static func _assign_types(rows: Array, rng: RandomNumberGenerator) -> void:
 						banned[sib.type] = true
 			if floor_no < 5:
 				banned["elite"] = true
-			n.type = _roll(rng, banned)
+			n.type = _roll_from(rng, _spread(rows, f, n.col, WEIGHTS, banned), banned)
 
 
 static func _roll(rng: RandomNumberGenerator, banned: Dictionary) -> String:
@@ -127,69 +132,174 @@ static func reachable(rows: Array, floor_idx: int, col: int) -> Array:
 	return rows[floor_idx][col].next
 
 
-# ------------------------------------------------------------------ the Curtain map (a setting: Ship of Fools style)
-## A honeycomb of C_ROWS x C_COLS rooms, every tile filled (odd rows sit half a tile to the right), the boss above.
-## Each move goes to a tile next to yours: one of the two above, or one beside you on the same row (never back down,
-## never to a tile you stood on). The Curtain falls behind you: every CURTAIN_EVERY moves it swallows the lowest row
-## still open (RunState.curtain_rows). If it swallows the row you stand on, the only way left is the boss.
-## Going up keeps you ahead; every step sideways uses up some of that lead (8 rows, every 2 moves: 6 at most, so 8 to 14
-## rooms an act; tools/curtain_sim.gd measures it).
-## Row 1 is all fights; 2 merchants, 2 camps (An Abandoned Camp) and 3 elites are placed, a quarter of the rest are "?".
-const C_ROWS := 8
-const C_COLS := 5
-const CURTAIN_EVERY := 2
-const C_PLACE := [["shop", 2, 2, 6], ["rest", 2, 3, 7], ["elite", 3, 2, 7]]  # [type, how many, lowest row, highest row]
-const C_EVENTS := 0.25
+static func _roll_from(rng: RandomNumberGenerator, weights: Dictionary, banned: Dictionary) -> String:
+	var total := 0.0
+	for t in weights:
+		if not banned.has(t):
+			total += weights[t]
+	var r := rng.randf() * total
+	for t in weights:
+		if banned.has(t):
+			continue
+		if r < weights[t]:
+			return t
+		r -= weights[t]
+	return "fight"
 
 
-static func generate_curtain(rng: RandomNumberGenerator) -> Array:
-	var rows := []
-	for f in C_ROWS:
-		var r := []
-		for c in C_COLS:
-			r.append({"type": "fight" if f == 0 else "", "next": [], "col": c})
-		rows.append(r)
-	for p in C_PLACE:
-		var spots := []
-		for f in range(p[2], p[3] + 1):
-			for c in C_COLS:
-				if rows[f][c].type == "" and not _hex_near(rows, f, c, p[0]):
-					spots.append(Vector2i(f, c))
-		for k in p[1]:
-			if spots.is_empty():
-				break
-			var at: Vector2i = spots.pop_at(rng.randi() % spots.size())
-			rows[at.x][at.y].type = p[0]
-			spots = spots.filter(func(s: Vector2i): return not _hex_near(rows, s.x, s.y, p[0]))  # (two of a kind never side by side)
-	for f in range(1, C_ROWS):
-		for n in rows[f]:
-			if n.type == "":
-				n.type = "event" if rng.randf() < C_EVENTS else "fight"
-	var boss_row := []
-	boss_row.resize(C_COLS)
-	boss_row[C_COLS / 2] = {"type": "boss", "next": [], "col": C_COLS / 2}
-	rows.append(boss_row)
-	return rows
+## The rooms touching (level, col), as Vector2i(level, col): the rooms linked to it (below and above) and the rooms
+## beside it on its floor. (The boss doesn't count.)
+static func touching(rows: Array, level: int, col: int) -> Array:
+	var out := []
+	for c in [col - 1, col + 1]:
+		if c >= 0 and c < rows[level].size() and rows[level][c] != null:
+			out.append(Vector2i(level, c))
+	if level > 0:
+		for c in rows[level - 1].size():
+			var nd = rows[level - 1][c]
+			if nd != null and col in nd.next:
+				out.append(Vector2i(level - 1, c))
+	if level + 1 < rows.size():
+		for c in rows[level][col].next:
+			var nd = rows[level + 1][c]
+			if nd != null and nd.type != "boss":
+				out.append(Vector2i(level + 1, c))
+	return out
 
 
-## The two tiles above (row, col) on the honeycomb (odd rows sit half a tile to the right).
-static func hex_up(row: int, col: int, cols: int) -> Array:
-	var cand := [col - 1, col] if row % 2 == 0 else [col, col + 1]
-	return cand.filter(func(c): return c >= 0 and c < cols)
+## Fights and events spread out: no big clumps. A room that would join a group of touching rooms of its kind is less likely
+## the bigger that group would get (each room already in it multiplies the chance by CLUMP_FADE), and never makes a group
+## bigger than CLUMP_MAX. Small groups (2-3) still happen. tools/map_clump_check.gd measures it.
+const CLUMP_MAX := {"fight": 4, "event": 3}
+const CLUMP_FADE := 0.3
 
 
-## Is a tile of this type next to (row, col)?
-static func _hex_near(rows: Array, row: int, col: int, type: String) -> bool:
-	var near := [Vector2i(row, col - 1), Vector2i(row, col + 1)]
-	for c in hex_up(row, col, C_COLS):
-		near.append(Vector2i(row + 1, c))
-	if row > 0:
-		for c in ([col, col + 1] if row % 2 == 1 else [col - 1, col]):  # (the two below)
-			near.append(Vector2i(row - 1, c))
-	for p in near:
-		if p.x >= 0 and p.x < rows.size() and p.y >= 0 and p.y < C_COLS and rows[p.x][p.y] != null and rows[p.x][p.y].type == type:
-			return true
-	return false
+static func _spread(rows: Array, level: int, col: int, weights: Dictionary, banned: Dictionary) -> Dictionary:
+	var w := weights.duplicate()
+	var sizes := {}
+	for t in CLUMP_MAX:
+		if not w.has(t) or banned.has(t):
+			continue
+		var size := _group_if(rows, level, col, t)
+		sizes[t] = size
+		w[t] = 0.0 if size > CLUMP_MAX[t] else w[t] * pow(CLUMP_FADE, size - 1)
+	# fights and events only trade places with each other: together they keep their share, so elites, merchants and
+	# campfires come up exactly as often as before
+	var before := 0.0
+	var after := 0.0
+	for t in sizes:
+		before += weights[t]
+		after += w[t]
+	if after <= 0.0:  # (both would make too big a group: the one whose group stays smallest)
+		for t in sizes:
+			w[t] = 1.0 / sizes[t]
+			after += w[t]
+	for t in sizes:
+		w[t] *= before / after
+	return w
+
+
+## A few maps are made and the one whose biggest group of fights / events is smallest is kept (MAP_TRIES).
+const MAP_TRIES := 8
+
+
+static func _least_clumped(make: Callable) -> Array:
+	var best: Array = []
+	var best_score := 1 << 30
+	for i in MAP_TRIES:
+		var rows: Array = make.call()
+		var score := biggest_group(rows, "fight") + biggest_group(rows, "event")
+		if score < best_score:
+			best_score = score
+			best = rows
+	return best
+
+
+## The size of the biggest group of touching `t` rooms on this map.
+static func biggest_group(rows: Array, t: String) -> int:
+	var seen := {}
+	var best := 0
+	for level in rows.size():
+		for col in rows[level].size():
+			var nd = rows[level][col]
+			if nd == null or nd.type != t or seen.has(Vector2i(level, col)):
+				continue
+			var g := _group_of(rows, level, col, t)
+			for q in g:
+				seen[q] = true
+			best = maxi(best, g.size())
+	return best
+
+
+## After the rooms are rolled: a group of fights (or events) still bigger than CLUMP_MAX gets rooms switched to the other
+## kind, one at a time (the one touching most of its own kind first), where the switch doesn't make the other kind's group
+## too big. The first floor and set rooms (the camp before the boss) are never switched.
+static func _unclump(rows: Array) -> void:
+	var other := {"fight": "event", "event": "fight"}
+	for rnd in 200:
+		var flipped := false
+		for t in CLUMP_MAX:
+			for level in rows.size():
+				for col in rows[level].size():
+					var nd = rows[level][col]
+					if nd == null or nd.type != t or level == 0 or nd.get("forced", false):
+						continue
+					if _group_if(rows, level, col, t) <= CLUMP_MAX[t]:
+						continue
+					# this room is in a group that's too big: the best room of that group to switch
+					var best := Vector2i(-1, -1)
+					var best_k := -1
+					for q in _group_of(rows, level, col, t):
+						var qn = rows[q.x][q.y]
+						if q.x == 0 or qn.get("forced", false):
+							continue
+						qn.type = other[t]
+						var ok: bool = _group_if(rows, q.x, q.y, other[t]) <= CLUMP_MAX[other[t]]
+						qn.type = t
+						if not ok:
+							continue
+						var k := 0
+						for r in touching(rows, q.x, q.y):
+							if rows[r.x][r.y].type == t:
+								k += 1
+						if k > best_k:
+							best_k = k
+							best = q
+					if best.x >= 0:
+						rows[best.x][best.y].type = other[t]
+						flipped = true
+		if not flipped:
+			return
+
+
+## The rooms of the group of touching `t` rooms that (level, col) belongs to.
+static func _group_of(rows: Array, level: int, col: int, t: String) -> Array:
+	var seen := {Vector2i(level, col): true}
+	var todo := [Vector2i(level, col)]
+	var out := []
+	while not todo.is_empty():
+		var p: Vector2i = todo.pop_back()
+		out.append(p)
+		for q in touching(rows, p.x, p.y):
+			if not seen.has(q) and rows[q.x][q.y].type == t:
+				seen[q] = true
+				todo.append(q)
+	return out
+
+
+## How big the group of touching `t` rooms would be if the room at (level, col) were a `t` too.
+static func _group_if(rows: Array, level: int, col: int, t: String) -> int:
+	var seen := {Vector2i(level, col): true}
+	var todo := [Vector2i(level, col)]
+	var size := 0
+	while not todo.is_empty():
+		var p: Vector2i = todo.pop_back()
+		size += 1
+		for q in touching(rows, p.x, p.y):
+			if not seen.has(q) and rows[q.x][q.y].type == t:
+				seen[q] = true
+				todo.append(q)
+	return size
 
 
 ## How many rooms of each kind this map has (for the legend).

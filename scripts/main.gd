@@ -377,9 +377,6 @@ func start_run() -> void:
 	run = RunState.new()
 	run.artifact_gained.connect(_on_artifact_found)
 	run.setup(GameData.db, SaveManager.unlocked_spells(), SaveManager.unlocked_artifacts())
-	if SaveManager.setting("curtain_map", false):  # (the Ship of Fools style map: the run keeps it, whatever the setting says later)
-		run.map_style = "curtain"
-		run.new_map()
 	run.first_run = int(SaveManager.data.stats.get("runs", 0)) == 0 and not SaveManager.setting("armadillo_met", false)
 	var offer := Artifacts.keepsakes(run.rng, 3)
 	if _stage_flow():
@@ -396,7 +393,29 @@ func start_run() -> void:
 		show_map())
 
 
+## The curses that have just landed (RunState.pending_curses), one after the other: each with its sigil flying onto its card.
+var _cursing := false
+
+
+func _play_curses() -> void:
+	if _cursing or run == null:
+		return
+	_cursing = true
+	while run != null and not run.pending_curses.is_empty():
+		var c: Dictionary = run.pending_curses.pop_front()
+		var sc := CurseScene.new()
+		sc.kind = String(c.kind)
+		sc.spell = run.spell(String(c.spell))
+		if c.kind == "separation":
+			sc.fused = c.get("fused", {})
+			sc.parts = c.get("parts", []).map(func(id): return run.spell(String(id)))
+		overlay_layer.add_child(sc)
+		await sc.done
+	_cursing = false
+
+
 func show_map() -> void:
+	_play_curses.call_deferred()  # (a curse from an event lands as you come back to the map)
 	if _test_mode and _test_back_to_tabs:
 		_test_back_to_tabs = false  # (an event from test mode's Events tab: back to it)
 		_test_stage_shop = false
@@ -416,7 +435,7 @@ func show_map() -> void:
 		return
 	var m := MapScreen.new()
 	m.setup(run)
-	m.node_chosen.connect(func(col: int): _on_node(col, m.chosen_row))
+	m.node_chosen.connect(_on_node)
 	m.codex_pressed.connect(open_codex)
 	m.menu_requested.connect(func(): run = null; show_menu())
 	_swap(m)
@@ -436,11 +455,10 @@ func _show_stage_map() -> void:
 	if draw_drapes:  # the red drapes are drawn together over the stage, and the map is let down in front of them
 		m.drop_delay = 2.6  # (as long as the drapes take to close, and the two frames they wait)
 	m.node_chosen.connect(func(col: int):
-		var row := m.chosen_row
 		await m.lower()  # (the map is pulled all the way up first, then the drapes are pulled apart)
 		if st != null and is_instance_valid(st) and st.curtains.has_art():
 			await st.curtains.open()
-		_on_node(col, row))
+		_on_node(col))
 	m.codex_pressed.connect(open_codex)
 	m.menu_requested.connect(func(): run = null; show_menu())
 	_set_overlay(m)
@@ -463,8 +481,8 @@ func _new_fight_screen(f: Fight) -> FightScreen:
 
 # ------------------------------------------------------------------ Dev Mode: Room Test
 
-func _on_node(col: int, row := -2) -> void:
-	var node := run.move_to(col, row)
+func _on_node(col: int) -> void:
+	var node := run.move_to(col)
 	var kind: String = node.type
 	if kind == "rest":  # (a map saved with the old campfire room: it is An Abandoned Camp now)
 		node["type"] = "event"
@@ -680,8 +698,7 @@ func _pick_artifact(id: String) -> void:
 func _on_artifact_found(id: String) -> void:
 	if _picked:
 		Audio.play("artifact_get")
-		if run != null and run.curse_note != "":
-			Events.toast.emit("CURSE: " + run.curse_note, UiTheme.DANGER)
+		_play_curses.call_deferred()  # (a cursed artifact: its curse lands on one of your spells)
 		return
 	var ov := Control.new()
 	ov.size = Vector2(1920, 1080)
@@ -732,6 +749,7 @@ func _on_artifact_found(id: String) -> void:
 		var tw := ov.create_tween()
 		tw.tween_property(ov, "modulate:a", 0.0, 0.2)
 		tw.tween_callback(ov.queue_free)
+		tw.tween_callback(_play_curses)  # (then the curse it carried lands on one of your spells)
 	ov.gui_input.connect(func(ev: InputEvent): if ev is InputEventMouseButton and ev.pressed: close.call())
 	card.clicked.connect(close)
 	get_tree().create_timer(4.0).timeout.connect(close)
@@ -808,6 +826,11 @@ func _after_fight(f: Fight) -> void:
 	for spell_name in ([] if _test_mode else SaveManager.boss_unlocks(f.defeated)):
 		Events.toast.emit("New spell unlocked: %s" % spell_name, Color(1, 0.85, 0.4))
 	var act_before := run.act
+	if not f.won and run.trial_fight:
+		run.finish_fight(f)  # (the Crowned Matador's trial: you wake on the map at 1 HP)
+		Events.toast.emit("The trial is over. You wake at 1 HP.", Color(1, 0.85, 0.5))
+		show_map()
+		return
 	if not f.won and run.can_revive():
 		# the Seed of Life: back to the start of this fight's preparation, as you were going in
 		run.revive()
@@ -855,6 +878,8 @@ func _after_fight(f: Fight) -> void:
 				ch.chosen.connect(func(i):
 					_pick_artifact(relics[i].id)
 					go.call()))
+	if act_before == 2 and run.act == 3 and not _test_mode:
+		MatadorLore.flag("act2_end")  # (the end of Act 2 reached: the basement can be asked about)
 	if run.act != act_before:
 		steps.append(func(go):
 			var s := _message("Act %d cleared" % act_before, "You heal half your HP and press deeper into the wood.", ["Onward"], Color(0.9, 0.7, 1))

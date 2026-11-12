@@ -125,23 +125,19 @@ const E := {
 	"tree_dweller": {"name": "Tree Dweller", "act": 2, "size": 1.6, "member": true, "no_extra": true, "no_bonus": true, "hp": "WFAWFAAWFAAW",
 		"moves": [{"kind": "poison", "n": 4}],
 		"flavor": "He stood his post, and she stood hers. The bark has almost reached her eyes."},
-	# The Orphans: a tall bramble bush with children behind it. They throw whatever they find: the damage is rolled when the
-	# throw is planned (see THROWN). The bush killed, it is pulled up and the children run off to the left, laughing.
-	"orphan_bush": {"name": "The Orphans", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "AWFAWWFAA", "passives": ["thrown_junk"],
-		"moves": [{"kind": "attack", "n": 3}],
-		"flavor": "Somebody behind it is trying very hard not to laugh."},
 	# The Bog Lantern (2026-11-11, ONE enemy): an enormous angler fish on two legs with its lamp hanging from the stalk in front of it. Any of
 	# its moves, at random, but its lamp runs a clock of 3 turns (see Fight._plan): on the third its move is the flash, which Stuns you.
 	"bog_fish": {"name": "Bog Lantern", "act": 2, "member": true, "size": 2.0, "no_extra": true, "no_bonus": true, "hp": "WAFWWAFAWAFW", "passives": ["lure"], "random_moves": true,
 		"moves": [{"kind": "attack", "n": 5}, {"kind": "poison", "n": 3}, {"kind": "grow_thorns", "n": 2}],
 		"lamp_move": {"kind": "stun", "turns": 1, "name": "Lamp flash"},
 		"flavor": "Don't look at the light."},
-	# Bug Hunter 1.0: an assembly-line robot with two things in mind at once: its laser (5 every turn) and a clock of 3 turns;
-	# on its 4th turn it calls a Sentinel (red or blue). Only once: after that, only the laser.
-	"bug_hunter": {"name": "Bug Hunter 1.0", "act": 2, "call_once": true, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAFFWAWW",
+	# The Bug Hunter: a little brass bell on legs, its head the bell, a striker in its hands. It hunts bugs: it strikes its
+	# own head (5 every turn: the bell rings and shakes) and keeps a clock of 3 turns; on its 4th turn it rings the alarm
+	# and a Sentinel (red or blue) comes to destroy the bug. Only once: after that, only the strikes. (Was a robot.)
+	"bug_hunter": {"name": "The Bug Hunter", "act": 2, "call_once": true, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAFFWAWW",
 		"moves": [{"kind": "attack", "n": 5, "also": {"kind": "summon_clock", "n": 3}}, {"kind": "attack", "n": 5, "also": {"kind": "summon_clock", "n": 2}},
 			{"kind": "attack", "n": 5, "also": {"kind": "summon_clock", "n": 1}}, {"kind": "attack", "n": 5, "also": {"kind": "summon", "ids": ["sentinel", "blue_sentinel"], "n": 1}}],
-		"flavor": "Task: remove bugs. You are a bug."},
+		"flavor": "It hunts for bugs. When it finds one, it rings."},
 	# ---------------- act 3
 	"inverter": {"name": "Inverter", "act": 3, "hp": "FWFW", "moves": [{"kind": "invert"}, {"kind": "attack", "n": 5}, {"kind": "armor", "pos": 0}],
 		"flavor": "Fire becomes water, water becomes fire."},
@@ -231,13 +227,13 @@ const E := {
 		"moves": [{"kind": "attack", "n": 2, "hits": 2}, {"kind": "silence", "turns": 3, "n": 2}],
 		"moves_black": [{"kind": "silence", "turns": 3, "n": 2}, {"kind": "attack", "n": 2, "hits": 2}],
 		"flavor": "Half a beast, all the temper."},
-	# The Invoker (an Act 1 boss): he never attacks. He conjures 3 of his 10 spells (no repeats) as cards on his side and
-	# keeps them: each turn he casts one he chose, plus every one your chant matched; a cast spell leaves his side, and
-	# once all three are gone he conjures a new set. At 0 Essence he rises again with 15 more, takes a turn to speak, and
-	# from then on chants Quas / Wex / Exort, one a turn: that Essence is stripped from his spells' patterns for the rest
-	# of the fight (they get easier to set off).
+	# The Invoker (an Act 1 boss): he never attacks. His three spells (INVOKER_SPELLS, 3 Essence each) hang over him as
+	# cards the whole fight (a cast one stays, back to its native pattern). Each turn he casts one he chose (it glows), plus every one your chant
+	# contained; then the first Essence of each of his spells (that isn't one yet) becomes Any, so they get easier and
+	# easier to set off. At 0 Essence he rises again with 15 more, takes a turn to speak, and two more spells join his
+	# three (Ghost Walk, Chaos Meteor), all whole again.
 	"invoker": {"name": "Good Ol' Wizard", "act": 1, "boss": true, "hp": "FWAFWAFWAFWAFWAFWAFW", "hp2": "AWFAWFAWFAWFAWF",
-		"invokes": true, "hidden_intent": true, "passives": ["invoker", "invoker_rebirth"], "tint": Color(0.5, 0.3, 0.72),
+		"invokes": true, "passives": ["invoker", "invoker_rebirth"], "tint": Color(0.5, 0.3, 0.72),
 		"moves": [{"kind": "invoke"}],
 		"flavor": "Ten spells, three words, no patience."},
 	# (two Forge Spirits come at once: their rows share no start, so one chant can't take both down)
@@ -375,7 +371,6 @@ const PASSIVE_TEXT := {
 	"flying": "Flying: your chant can't hit it. Damage from a spell or a bottle brings it down, and it is stunned for a turn.",
 	"shell": "Shell: its first Essence is always armoured, until it is its last one.",
 	"maddened": "Maddened: every spell you cast this turn is one more hit on his attack. It starts over each turn.",
-	"thrown_junk": "Thrown Junk: throws whatever is at hand, for 2 to 10 damage. Usually about 3, but sometimes an axe.",
 	"lure": "Lure: its lamp hangs on its hook and shines brighter every turn. On every third turn it flashes instead of its usual move, and you are Stunned.",
 	"last_fuse": "Last Fuse: at 0 Essence it reboots with 4 Essence. Destroy those, or on its turn it explodes for 10 and dies.",
 	"big_shield": "Big Shield: guards the Necromancer, who can't be touched while it stands. On its last Essence it swings instead. Fallen, it can be raised again.",
@@ -388,8 +383,8 @@ const PASSIVE_TEXT := {
 	"slime_burst": "Burst: when it dies, two small slimes pop out.",
 	"hand": "A hand with 10 Essence: knocked out, it drops off and lies on the floor, and the next hand grows in its place. Once every hand has fallen, he pulls them all back up for his last stand, 2 Essence each; those hands shatter for good when beaten.",
 	"handyman": "The Handyman himself: 1 Essence. Once his hands are all down he cries, shakes, and takes them back; when those are beaten too he shows himself: 1 Essence, and a 999 blow.",
-	"invoker": "Good Ol' Wizard: every turn he conjures 3 spells. On his turn he casts every one your chant matched, or else the one it came closest to.",
-	"invoker_rebirth": "Second wind: at 0 Essence he rises again with 10 more, and starts chanting Quas, Wex or Exort, one a turn: each strips that Essence (Water, Air, Fire) from his spells for the rest of the fight.",
+	"invoker": "Good Ol' Wizard: three spells hang over him. On his turn he casts the one he chose (it glows), and every one your chant contained. Each turn the first Essence of each of them becomes Any, so they get easier to set off.",
+	"invoker_rebirth": "Second wind: at 0 Essence he rises again with 15 more, and Ghost Walk and Chaos Meteor join his spells.",
 	"yinyang_split": "Split: when it dies for good, it splits into two Yin Yang Cubs (10 Essence each), one white and one black.",
 	"shield_rage": "Enraged: every time you gain Shield, it gains Power +1 (its attacks deal 1 more damage).",
 	"envenomed": "Envenomed: every hit that takes HP from you also gives you 1 Poison (hits your Shield stops don't).",
@@ -439,9 +434,8 @@ const BIOS := {
 	"scav_beetle": "Its shell never comes off, and it hits harder than it looks.",
 	"mad_soldier": "Weak on his own, but every spell you cast this turn adds a swing. Cast less, or kill him fast.",
 	"tree_dweller": "Rooted to the spot, and never stops shooting: a man and a woman, a bow each. Four Poison a turn, every turn.",
-	"orphan_bush": "Mud, stones, sticks, and now and then something much worse. Nobody ever taught them not to.",
 	"bog_fish": "An enormous angler fish on two legs. Bites, spits Poison, or grows more Thorns, whichever it feels like, and every third turn its lamp flashes and Stuns you.",
-	"bug_hunter": "An assembly-line arm with a laser, and a clock: on its 4th turn it calls a Sentinel. Take it apart before the alarm goes off.",
+	"bug_hunter": "A brass bell on legs that hunts for bugs. It strikes its own head to hurt you, and on its 4th turn it rings the alarm for a Sentinel. Silence it before then.",
 	"inverter": "Fire becomes water, water becomes fire, and your plans become confetti.",
 	"warded_golem": "Short chants bounce right off. Say something meaningful: at least four Essence long.",
 	"echo_wraith": "Everything it does, it does twice. Everything it does, it does twice.",
@@ -489,29 +483,20 @@ const INVOKER_CHANTS := {
 }
 ## One of these each time he conjures a new set of spells.
 const INVOKER_SUMMON_LINES := ["Knowledge is power!", "Behold, the pinnacle of wizardry!", "Concentration!", "More!", "Boundless knowledge!", "I challenge you!"]
-## His spells cost 2 Essence: the pattern they had without its middle one (Ice Wall and Deafening Blast share WF, so
-## they never come in the same set).
+## His spells, in this order, 3 Essence each (Dota 2's Invoker: Quas = Water, Wex = Air, Exort = Fire). The first three
+## hang over him the whole fight; "phase": 2 ones join them in his second wind. "cast" is the move he makes when one goes
+## off, "desc" / "desc_fmt" (with "dmg") its card text.
 const INVOKER_SPELLS := [
-	{"id": "inv_cold_snap", "name": "Cold Snap", "pattern": "WW", "kind": "damage", "desc_fmt": "Deal %d damage to you, 4 times.", "dmg": [1],
-		"cast": {"kind": "attack", "n": 1, "hits": 4}},
-	{"id": "inv_ghost_walk", "name": "Ghost Walk", "pattern": "WA", "kind": "utility", "desc": "He cleanses all his debuffs.",
-		"cast": {"kind": "cleanse_self"}},
-	{"id": "inv_ice_wall", "name": "Ice Wall", "pattern": "WF", "kind": "defense", "desc": "He Armours 3 of his Essence.",
-		"cast": {"kind": "armor", "pos": -1, "count": 3}},
-	{"id": "inv_emp", "name": "EMP", "pattern": "AA", "kind": "utility", "desc_fmt": "You lose 2 random Essence from your bag, and take %d damage.", "dmg": [2],
-		"cast": {"kind": "drain_essence", "n": 2, "also": {"kind": "attack", "n": 2}}},
-	{"id": "inv_tornado", "name": "Tornado", "pattern": "AW", "kind": "damage", "desc_fmt": "Deal %d damage to you and Silence 1 of your spells (1 turn).", "dmg": [3],
-		"cast": {"kind": "attack", "n": 3, "also": {"kind": "silence", "n": 1, "turns": 1}}},
-	{"id": "inv_alacrity", "name": "Alacrity", "pattern": "AF", "kind": "utility", "desc": "He gains Power +2.",
-		"cast": {"kind": "empower", "n": 2}},
-	{"id": "inv_sun_strike", "name": "Sun Strike", "pattern": "FF", "kind": "damage", "desc_fmt": "Deal %d damage to you.", "dmg": [10],
-		"cast": {"kind": "attack", "n": 10}},
-	{"id": "inv_forge_spirit", "name": "Forge Spirit", "pattern": "FW", "kind": "utility", "desc": "He summons 2 Forge Spirits (3 Essence each, attack for 3).",
+	{"id": "inv_ice_wall", "name": "Ice Wall", "pattern": "WWF", "kind": "defense", "desc": "He Armours 1 of his Essence and Freezes 1 of yours.",
+		"cast": {"kind": "armor", "pos": -1, "count": 1, "also": {"kind": "freeze", "n": 1}}},
+	{"id": "inv_forge_spirit", "name": "Forge Spirit", "pattern": "FFW", "kind": "utility", "desc": "He summons 2 Forge Spirits (3 Essence each, attack for 3).",
 		"cast": {"kind": "summon", "list": ["forge_spirit", "forge_spirit_b"], "n": 2, "flank": true}},
-	{"id": "inv_chaos_meteor", "name": "Chaos Meteor", "pattern": "FA", "kind": "damage", "desc_fmt": "Deal %d damage to you, 3 times, and Ignite 3 of your spells.", "dmg": [2],
+	{"id": "inv_deafening_blast", "name": "Deafening Blast", "pattern": "WAF", "kind": "damage", "desc_fmt": "Deal %d damage to you and Silence 1 of your spells.", "dmg": [5],
+		"cast": {"kind": "attack", "n": 5, "also": {"kind": "silence", "n": 1, "turns": 1}}},
+	{"id": "inv_ghost_walk", "name": "Ghost Walk", "pattern": "WWA", "kind": "utility", "phase": 2, "desc": "He is Impervious through your next turn (no status sticks to him).",
+		"cast": {"kind": "impervious_self", "turns": 1}},
+	{"id": "inv_chaos_meteor", "name": "Chaos Meteor", "pattern": "FFA", "kind": "damage", "phase": 2, "desc_fmt": "Deal %d damage to you, 3 times, and Ignite 3 of your spells.", "dmg": [2],
 		"cast": {"kind": "attack", "n": 2, "hits": 3, "also": {"kind": "ignite_spell", "n": 3, "turns": 1}}},
-	{"id": "inv_deafening_blast", "name": "Deafening Blast", "pattern": "WF", "kind": "damage", "desc_fmt": "Deal %d damage to you and Disarm you (your next Release does nothing).", "dmg": [5],
-		"cast": {"kind": "attack", "n": 5, "also": {"kind": "disarm", "turns": 1}}},
 ]
 
 
@@ -628,8 +613,7 @@ const POOLS := {
 	},
 	2: {
 		"easy": [
-			{"name": "The Orphans", "ids": ["orphan_bush"], "w": 1.0},
-				{"name": "Bug Hunter 1.0", "ids": ["bug_hunter"], "w": 1.0},
+				{"name": "The Bug Hunter", "ids": ["bug_hunter"], "w": 1.0},
 			{"name": "Starving Mobs", "ids": ["mob_pitchfork", "mob_slingshot", "mob_torch"], "w": 1.0},
 			{"name": "Maddened Soldier", "ids": ["mad_soldier"], "w": 1.0},
 			{"name": "The Tree Dweller", "ids": ["tree_dweller"], "w": 1.0},
@@ -649,19 +633,7 @@ const POOLS := {
 	},
 }
 
-## What the Orphans throw: [damage, item, weight]. 3 is the most common, the heavy things are rare, 10 is always the axe.
-const THROWN := [[2, "mud", 20], [3, "stone", 30], [4, "stick", 18], [5, "brick", 12], [6, "pot", 8], [7, "shovel", 5], [8, "sword", 3], [9, "boulder", 2], [10, "axe", 2]]
-
-
-static func throw_roll(rng: RandomNumberGenerator) -> Dictionary:
-	var r := rng.randf() * 100.0
-	for t in THROWN:
-		r -= float(t[2])
-		if r < 0.0:
-			return {"kind": "attack", "n": t[0], "throw": t[1]}
-	return {"kind": "attack", "n": 3, "throw": "stone"}
-
-
+const FIRST_SPIRITS := ["ashling", "iceling", "zephling"]  # the run's first fight is one of these, alone
 const PLAN_LENGTH := 12  # more than a path through an act can hold
 const EASY_FIGHTS := 2  # the first two fights of an act are easy,
 const MEDIUM_FIGHTS := 2  # the next two medium, the rest hard
@@ -677,6 +649,10 @@ static func roll_fight_plan(act: int, rng: RandomNumberGenerator) -> Array:
 		var pool: Array = pools[kind]
 		if kind == "hard" and pool.size() < 3:
 			pool = pool + pools.medium  # (too few hard fights yet to keep from repeating: the medium ones help out)
+		if act == 1 and i == 0:
+			pool = pool.filter(func(enc): return enc.ids.size() == 1 and enc.ids[0] in FIRST_SPIRITS)  # (the very first fight of a run: one spirit alone)
+		elif act == 1 and i == 1:
+			pool = pool.filter(func(enc): return not (enc.ids.size() == 1 and enc.ids[0] in FIRST_SPIRITS))  # (the second: a pair of spirits, or a slime)
 		if i == EASY_FIGHTS or i == EASY_FIGHTS + MEDIUM_FIGHTS:
 			var before: Array = plan[-1].ids
 			var fresh := pool.filter(func(enc): return not enc.ids.any(func(id): return id in before))
@@ -779,11 +755,9 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			if full:
 				s += ". A spell turned anti gives it 1 Essence of its pattern; one turned back gains 1 random Essence"
 		"invoke":
-			s = "Cast his glowing spells"
-			if m.has("word"):
-				s = "Chant %s %s" % [INVOKER_WORDS[m.word], Elements.NAMES[m.word]]  # (just what he'll say: "Chant Quas" + the Water icon)
+			s = "Cast %s, then convert" % m.get("spell", "a spell")
 			if full:
-				s = "Cast the spell he chose this turn, and every one your chant contains" + ((", then chant %s (his spells lose every %s)" % [INVOKER_WORDS[m.word], Elements.NAMES[m.word]]) if m.has("word") else "")
+				s = "Cast %s and every spell your chant contains, then the first Essence of each of his spells becomes Any (they get easier to set off)" % m.get("spell", "the spell he chose")
 		"cleanse_self":
 			s = "Cleanse all its debuffs"
 		"bottle":

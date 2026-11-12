@@ -297,7 +297,7 @@ func _finish() -> void:
 			else:
 				await _slam("Victory!", Color(0.75, 1.0, 0.5), Color(0.1, 0.28, 0.05), 140)
 		await scr.get_tree().create_timer(0.5).timeout
-	elif scr.run != null and scr.run.can_revive():
+	elif scr.run != null and scr.run.can_revive() and not scr.run.trial_fight:  # (the Matador's trial: no Seed of Life spent, you just wake on the map)
 		await _seed_revival()
 	else:
 		if scr.stage_flow and scr._stage != null and ResourceLoader.exists(UiSkin.theme_dir() + "Stage/Shared/sign_defeat.png"):  # Puppet Stage: the Defeat board drops in
@@ -653,9 +653,6 @@ func _fuse_on_card(card: SpellCard, el: String) -> Vector2:
 func _anim(ev: Dictionary) -> void:
 	await _anim_event(ev)
 	_cull_dead()
-	if scr._orphans_running:
-		scr._orphans_running = false
-		await _wait(FightScreen.OrphanFx.WAIT)  # (the fight ends once the children have run off)
 
 
 ## The Necromancer acts: he leans further out from behind his Shield Bearer, then back.
@@ -680,10 +677,7 @@ func _cull_dead() -> void:
 			scr._views.erase(e)
 			if is_instance_valid(old):
 				if is_instance_valid(old.creature):
-					if e.has_passive("thrown_junk"):
-						FightScreen.OrphanFx.run_away(scr, old.creature.get_global_rect(), Creature._puppet_tex("orphan_bush", 2))
-						scr._orphans_running = true
-					elif old.creature.has_rig():
+					if old.creature.has_rig():
 						_shatter_arm(old.creature)
 					else:
 						PuppetShatter.spawn(scr, old.creature)
@@ -1110,7 +1104,7 @@ func _anim_event(ev: Dictionary) -> void:
 				Audio.play("sfx_head_scream")
 				await scr.get_tree().create_timer(0.55).timeout  # (he screams first, then it flies)
 				head_v.creature.head_gone = true  # (the picture with the empty hand and no pumpkin, from the moment it leaves him)
-				await FightScreen.OrphanFx.throw_item(scr, head_v.creature.global_position + Vector2(head_v.creature.size.x * 0.5, 40.0), _attack_point(), "head")
+				await FightScreen.ThrowFx.throw_item(scr, head_v.creature.global_position + Vector2(head_v.creature.size.x * 0.5, 40.0), _attack_point(), "head")
 			Audio.play("sfx_silence_apply")
 			scr._h_hud._refresh_all()
 			await _wait(0.15)
@@ -1145,6 +1139,11 @@ func _anim_event(ev: Dictionary) -> void:
 			await scr._h_talk._page_turn(ev.enemy)
 		"speech":
 			await scr._h_talk._speech(ev.enemy, ev.text, float(ev.get("hold", 1.5)))
+		"invoker_convert":
+			# his move: the first Essence of each of his spells turns to Any (the cards are built again with the new pattern)
+			Audio.play("spell_glow")
+			scr._h_hud._refresh_all()
+			await _wait(0.45)
 		"invoker_summon":
 			# a new set of spells: his line, and the cards buzz in out of him (see EnemyView._refresh_invoked)
 			Audio.play("spell_glow")
@@ -1171,6 +1170,24 @@ func _anim_event(ev: Dictionary) -> void:
 			# a few sentences, one bubble each, held long enough to read (about 3 words a second, plus a moment)
 			for line in ev.lines:
 				await scr._h_talk._speech(ev.enemy, line, 1.0 + String(line).split(" ").size() / 3.0)
+		"curse_pain":
+			# the Curse of Pain: the sigil flares, and it hurts
+			Audio.play("sfx_burn_apply", -2.0, 0.8)
+			var pc := _card_for(ev.id)
+			if pc:
+				Vfx.make(scr._fx, 70).burst(pc.global_position + pc.size * pc.scale / 2.0, 18, Color(1.0, 0.25, 0.1), Vector2(80, 260), Vector2(0.25, 0.5), Vector2(4, 8), Vfx.SPARK)
+			_shake(5.0)
+			scr._h_hud._refresh_all()
+			await _wait(0.3)
+		"curse_fizzle":
+			# the Curse of Betrayal: the spell gives out in a puff of smoke
+			Audio.play("elem_remove", -2.0, 0.7)
+			var fc := _card_for(ev.id)
+			if fc:
+				Vfx.make(scr._fx, 70).burst(fc.global_position + fc.size * fc.scale / 2.0, 22, Color(0.35, 0.3, 0.3), Vector2(40, 160), Vector2(0.5, 0.9), Vector2(8, 16), Vfx.SMOKE)
+				_callout("[b]Fizzled![/b]", fc.global_position + Vector2(fc.size.x * fc.scale.x / 2.0, -10.0), Color(0.85, 0.8, 0.75), 1.2)
+			scr._h_hud._refresh_all()
+			await _wait(0.5)
 		"virus_hit":
 			Audio.play("sfx_poison_apply")
 			var vc := _card_for(ev.id)
@@ -2329,6 +2346,24 @@ func _move_words(m: Dictionary, e: EnemyState) -> String:
 	return " + ".join(parts)
 
 
+## The Bug Hunter strikes its own head: the striker swings up onto the bell, it rings and shakes. `alarm`: it rings the
+## alarm for a Sentinel (three strikes, louder, longer). Returns when the first ring lands (the hit shows then).
+func _bell_strike(v: EnemyView, alarm: bool) -> void:
+	if not is_instance_valid(v) or not is_instance_valid(v.creature):
+		return
+	var c := v.creature
+	var dur := 1.0
+	var tw := c.create_tween()
+	tw.tween_property(c, "bell_t", 1.0, dur).from(0.0)
+	if alarm:
+		tw.tween_property(c, "bell_t", 1.0, dur).from(0.0)
+		tw.tween_property(c, "bell_t", 1.0, dur).from(0.0)
+	tw.tween_callback(func(): c.bell_t = -1.0)
+	await _wait(dur * 0.28)
+	Audio.play("bell_alarm" if alarm else "bell_strike", -2.0)
+	_shake(3.0 if alarm else 2.0)
+
+
 ## The attacker lunges at you: slash marks, a shake, and the HP bar (or the Shield glass) takes the hit.
 func _enemy_attack(ev: Dictionary) -> void:
 	var v: EnemyView = scr._views.get(ev.enemy)
@@ -2347,13 +2382,15 @@ func _enemy_attack(ev: Dictionary) -> void:
 		tw.parallel().tween_property(hedge, "squash", 1.0, 0.2)
 		await _wait(0.2)
 	elif v and String(ev.get("throw", "")) != "":
-		target = await FightScreen.OrphanFx.throw_item(scr, v.creature.global_position + Vector2(v.creature.size.x * 0.5, 40.0), target, String(ev.throw))  # (the hit shows where it lands)
+		target = await FightScreen.ThrowFx.throw_item(scr, v.creature.global_position + Vector2(v.creature.size.x * 0.5, 40.0), target, String(ev.throw))  # (the hit shows where it lands)
 	elif v and v.creature.has_rig() and ev.enemy.id == "hand_spear":
 		target = await _spear_stab(v, float(ev.n))  # (the spear thrusts up into your HP bar: the hit lands there)
 	elif v and v.creature.has_rig() and ev.enemy.id == "hand_sword":
 		target = await _sword_slash(v, float(ev.n))  # (the blade cuts across your HP bar: the hit lands there)
 	elif v and v.creature.has_rig() and ev.enemy.id == "hand_crossbow" and _arrow_tex() != null:
 		target = await _arrow_shot(v, float(ev.n))  # (the bolt flies up and sticks in your HP bar: the hit lands there)
+	elif v and ev.enemy.id == "bug_hunter":
+		await _bell_strike(v, false)  # (it strikes its own head: the bell rings, and that is the hit)
 	elif v and v.creature.has_samurai():
 		await _wait(v.creature.samurai_strike(int(ev.get("hit", 0)), int(ev.get("hits", 1))))  # (the swing plays; the blow lands when his sword comes down)
 	elif v and v.creature.has_rig():
@@ -2794,6 +2831,9 @@ func _enemy_move_fx(ev: Dictionary) -> void:
 	if kind == "steal":
 		await _steal_fx(ev, v)
 		return
+	if kind == "summon" and v and ev.enemy.id == "bug_hunter":
+		await _bell_strike(v, true)  # (it rings the alarm: a Sentinel is on its way)
+		await _wait(1.6)
 	var move_sfx := String(ev.get("move", {}).get("sfx", ""))
 	if move_sfx == "gong":
 		Audio.play("gong", -2.0)

@@ -267,7 +267,7 @@
   {
    "id": "fan_the_flames",
    "name": "Fan the Flames",
-   "pattern": "AF",
+   "pattern": "FWF",
    "effects": [
     {
      "op": "stoke",
@@ -275,7 +275,8 @@
     }
    ],
    "flavor": "Double the fire already there.",
-   "rarity": "common"
+   "rarity": "common",
+   "durability": 2
   },
   {
    "id": "wildfire",
@@ -2097,7 +2098,7 @@
   },
   {
    "id": "ash_and_ember",
-   "name": "Ash and Ember",
+   "name": "Adam's Fervor",
    "pattern": "FA",
    "effects": [
     {
@@ -2112,7 +2113,7 @@
    ],
    "flavor": "Feed every fire at once.",
    "rarity": "rare",
-   "durability": 1
+   "durability": 2
   },
   {
    "id": "water_whip",

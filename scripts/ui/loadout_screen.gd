@@ -344,6 +344,8 @@ func _drop() -> void:
 		Audio.play("elem_remove", -6.0)  # let go away from both: it goes back
 	elif run.drop_spell(id, t.active, t.id):
 		Audio.play("loadout_swap")
+	elif run.refusal != "":
+		Events.toast.emit(run.refusal, UiTheme.DANGER)  # (a curse: Binding, or the Void)
 	else:
 		Events.toast.emit("Your active row is full. Drop it on a spell to switch them, or take one out first.", UiTheme.DANGER)
 	_refresh.call_deferred()
@@ -352,6 +354,8 @@ func _drop() -> void:
 func _toggle(id: String) -> void:
 	if run.toggle_active(id):
 		Audio.play("loadout_swap")
+	elif run.refusal != "":
+		Events.toast.emit(run.refusal, UiTheme.DANGER)  # (a curse: Binding, or the Void)
 	else:
 		Events.toast.emit("Your active row is full. Remove a spell first.", UiTheme.DANGER)
 	_refresh.call_deferred()

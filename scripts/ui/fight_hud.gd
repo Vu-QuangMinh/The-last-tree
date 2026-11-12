@@ -1221,15 +1221,19 @@ func _build_spells() -> void:
 	scr._spell_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	scr._cards.clear()
 	var n := scr.fight.shown_spells().size()
-	var gap := 10.0
+	var gap := FightScreen.SPELL_GAP
 	var row_w := FightScreen.ROW_WIDTH
 	if _puppet_strips():  # (Puppet: the row is centred, and its right end stops at the Chant strip's: the cards must not cover the lottery machine)
 		row_w = minf(row_w, 2.0 * (scr._h_machine._bag_at().x + PuppetLayout.FRAME_CHANT.x - 960.0))
-	var fit := minf(1.0, (row_w - gap * maxf(0, n - 1)) / maxf(1.0, n * SpellCard.W))
-	if scr._nu_ui:  # (New UI: the cards are the size the page draws them, 8.58 apart, around the middle of its row of eight; more than eight would shrink to fit)
-		gap = NewUiLayout.SPELL_GAP
-		fit = minf(NewUiLayout.SPELL_FIT, (FightScreen.ROW_WIDTH - gap * maxf(0, n - 1)) / maxf(1.0, n * SpellCard.W))
+	if scr._nu_ui:  # (New UI: the row is centred where the page has it, as wide as the screen allows around that point)
+		var right_end := 1795.0 if UiSkin.is_hud2() and not UiSkin.is_minhhud() else 1920.0 - FightScreen.SPELL_MARGIN  # (Puppet HUD ver 2: its glass tube stands up at the far right)
+		row_w = 2.0 * minf(NewUiLayout.SPELL_CENTER_X - FightScreen.SPELL_MARGIN, right_end - NewUiLayout.SPELL_CENTER_X)
 		scr._spell_row.position.x = NewUiLayout.SPELL_CENTER_X - 960.0
+	# one size for every card, whatever their number: as big as SPELL_ROW_FITS cards side by side with a small gap between
+	# them (fewer cards keep that size and gap, centred; only more than that shrink to fit)
+	var fit := minf(1.0, (row_w - gap * (FightScreen.SPELL_ROW_FITS - 1)) / (FightScreen.SPELL_ROW_FITS * SpellCard.W))
+	fit = minf(fit, (row_w - gap * maxf(0, n - 1)) / maxf(1.0, n * SpellCard.W))
+	fit = floorf(SpellCard.W * fit) / SpellCard.W  # (a whole number of pixels wide: every gap comes out exactly the same)
 	scr._spell_row.add_theme_constant_override("separation", roundi(gap))
 	for s in scr.fight.shown_spells():
 		var card := SpellCard.make(s)
@@ -1260,10 +1264,7 @@ func _sync_views() -> void:
 	for e in scr._views:  # (Puppet Stage: a puppet that was defeated breaks into pieces)
 		var old: EnemyView = scr._views[e]
 		if e.is_dead() and not e.knocked and not _hand_going_down(e) and is_instance_valid(old) and is_instance_valid(old.creature):
-			if e.has_passive("thrown_junk"):
-				FightScreen.OrphanFx.run_away(scr, old.creature.get_global_rect(), Creature._puppet_tex("orphan_bush", 2))
-				scr._orphans_running = true
-			elif old.creature.has_rig():
+			if old.creature.has_rig():
 				scr._h_anim._shatter_arm(old.creature)
 			else:
 				PuppetShatter.spawn(scr, old.creature)

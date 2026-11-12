@@ -3,7 +3,6 @@ extends RefCounted
 ## Moved out of scripts/main.gd (docs/plan_dot3_kien_truc.md): the code is unchanged except that main's own members are reached through `main.`.
 
 var main: Main
-var _rope_i := 0
 
 
 func _init(p_main: Main) -> void:
@@ -12,6 +11,7 @@ func _init(p_main: Main) -> void:
 
 var _test_room := {}  # the Room Test room that was entered last ({type, act, ...})
 var _rope_sets: Array = []
+var _rope_i := 0
 var _rope_busy := false
 ## Test mode: the sandbox screen (your picks are kept between fights in _test_state). Nothing here touches the
 ## saved run, unlocks or stats.

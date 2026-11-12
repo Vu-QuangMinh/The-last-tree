@@ -13,12 +13,19 @@ func _show_event(ev: Dictionary) -> void:
 	var slot := Audio.event_slot(String(ev.get("id", "")))
 	if slot != "" and not ev.get("again", false):
 		Audio.play_music(slot)  # (the event's own music; the map's comes back with the map)
+	if ev.get("scene", "") == "matador":
+		_matador_scene(ev)
+		return
 	if ev.has("scene"):
 		_bear_scene(ev)  # (played out on the stage itself)
 		return
+	if ev.get("id", "") == "church_of_aole":
+		MatadorLore.flag("aole")  # (the name Aole met: the Crowned Matador can be asked about her)
 	var labels: Array = ev.options.map(func(o): return o.label)
 	var pick := func(i: int):
 		var o: Dictionary = ev.options[i]
+		if o.has("next") and ev.get("id", "") == "church_of_aole":
+			MatadorLore.flag("church_listened")  # (you stayed and listened: the four horsemen can be asked about)
 		if o.has("next"):
 			# a second page: its own words and options (the Bard: "Can I have it?")
 			var page := ev.duplicate()
@@ -202,6 +209,26 @@ func _event_result(ev: Dictionary, opt: Dictionary, bottle_at: int, spell_id := 
 
 ## They See Me Rolling / the bear's revenge, on the stage with his puppet. Stopping him pays; stepping aside sets up
 ## his revenge; the revenge is an elite fight with the Enraged Rolling Bear, you Stunned on the first turn.
+## The Crowned Matador: his dice game and his questions, on the stage (MatadorScene). "boss": his trial, a boss of this act
+## (not the one at the end of the map), with its full rewards; the act goes on, and you can't die in it.
+func _matador_scene(_ev: Dictionary) -> void:
+	var sc := MatadorScene.new()
+	sc.run = main.run
+	sc.finished.connect(func(result: String):
+		if result == "boss":
+			var n := main.run.current_node()
+			n["as"] = "boss"
+			n["no_advance"] = true
+			main.run.trial_fight = true
+			main.run.no_talk_next = true
+			var ids: Array = [main.run.trial_boss()]
+			main.run.set_encounter(ids)
+			main._show_loadout(ids)
+			return
+		main.show_map())
+	_stage_overlay(sc)
+
+
 func _bear_scene(ev: Dictionary) -> void:
 	var sc := BearRollScene.new()
 	sc.mode = "revenge" if ev.scene == "bear_revenge" else "meet"

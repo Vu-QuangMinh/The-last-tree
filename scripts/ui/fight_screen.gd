@@ -778,6 +778,9 @@ const BOTTOM_MARGIN := 20.0
 
 const ROW_WIDTH := 1860.0
 const SPELL_ROW_LEFT := 20.0  # (Puppet: how far left a long spell row may reach)
+const SPELL_ROW_FITS := 8  # the cards are sized so this many fit in a row
+const SPELL_GAP := 12.0  # between two cards
+const SPELL_MARGIN := 16.0  # between the row and the screen's edge
 
 
 ## A Handyman hand that has just been brought down but is not yet marked knocked out (that happens a moment later, in Fight._handyman_step):
@@ -1147,13 +1150,9 @@ signal _wild_painted(got: Array)
 var _reforming := {}  # EnemyState -> PuppetShatter: a boss pulling itself back together (see "reform")
 
 
-const OrphanFx := preload("res://scripts/ui/orphan_fx.gd")
+const ThrowFx := preload("res://scripts/ui/orphan_fx.gd")
 @warning_ignore("unused_private_class_variable")
 var _slot_w := {}  # EnemyState -> the width of its place
-@warning_ignore("unused_private_class_variable")
-var _orphans_running := false  # the bush has just been pulled up: the fight waits for the children to run off
-
-
 const EXTENSION_NAMES := ["Extension!", "Double Extension!", "Triple Extension!", "Quadruple Extension!", "Quintuple Extension!"]
 const SLAM_ANGLE := -35.0  # degrees: low on the left, high on the right
 
@@ -1549,6 +1548,10 @@ func _retainer_yields(r: EnemyState) -> void:
 
 func _player_point() -> Vector2:
 	return _h_anim._player_point()
+
+
+func _bell_strike(v: EnemyView, alarm: bool) -> void:
+	await _h_anim._bell_strike(v, alarm)
 
 
 func _enemy_attack(ev: Dictionary) -> void:

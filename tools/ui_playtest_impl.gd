@@ -61,7 +61,6 @@ func run(t: SceneTree, p_out: String) -> void:
 					continue
 				spent[cur.get_instance_id()] = true
 				var pick := _pick(rs)
-				cur.chosen_row = pick.x
 				cur.node_chosen.emit(pick.y)
 			"LoadoutScreen":
 				await _wait_frames(3)

@@ -200,7 +200,7 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 			if el != "":
 				player.add_element("?" if painted else (el if el != "?" else _random_element()))  # (repainted: an Any Essence)
 				_log("The Mysterious Hand steals a %s from %s." % [Elements.NAMES.get(el, "Essence"), e.name])
-	player.dmg_taken_mult = 1.25 if has_artifact("glass_heart") else 1.0
+	player.dmg_taken_mult = 1.0
 	var start_n := PlayerState.START_ELEMENTS + (int(_an("wind_chime")) if has_artifact("wind_chime") else 0)
 	# you always start with one of each element; the rest are random (in a random order)
 	var hand := ["F", "W", "A"]
@@ -213,13 +213,6 @@ func start(enemy_ids: Array, p_act: int, p_depth: int) -> void:
 		hand[j] = tmp
 	for el in hand:
 		player.add_element(el)
-	if has_artifact("ever_thirsting"):
-		# Ever Thirsting (a curse): a Water of your first hand dries up
-		for k in player.stock.size():
-			if player.stock[k].el == "W":
-				player.stock.remove_at(k)
-				_log("Ever Thirsting: a Water dries up.")
-				break
 	if has_artifact("ember_charm"):
 		for i in int(_an("ember_charm")):
 			player.add_element("F")
@@ -696,6 +689,20 @@ func resolve_spell(id: String, target_idx := -1) -> void:
 				player.echo_charged = true
 				_log("Echo Shell is charged: your next spell is cast twice.")
 	_wear(spell)  # (Durability: one cast, one point, however many times it's echoed)
+	if int(spell.get("pain", 0)) > 0:
+		# the Curse of Pain: casting it hurts you
+		player.take_effect(float(spell.pain))
+		_log("Curse of Pain: %s hurts you for %d." % [spell.name, int(spell.pain)])
+		await anim.call({"type": "curse_pain", "id": id})
+		_check_end()
+		if over:
+			return
+	if spell.get("betrayal", false) and rng.randf() < 0.5:
+		# the Curse of Betrayal: half the time it fizzles out
+		_log("Curse of Betrayal: %s fizzles out." % spell.name)
+		await anim.call({"type": "curse_fizzle", "id": id})
+		_cleanup()
+		return
 	if has_artifact("magic_box"):
 		player.box_casts += 1
 		if player.box_casts % 6 == 0:
@@ -2129,12 +2136,10 @@ func _plan(e: EnemyState) -> void:
 		e.intent = {"kind": "grounded"}
 	if e.def.get("call_once", false):
 		if e.has_meta("called"):
-			e.intent = e.def.moves[0].duplicate()  # (Bug Hunter 1.0: its Sentinel came; from now on only the laser)
+			e.intent = e.def.moves[0].duplicate()  # (the Bug Hunter: its Sentinel came; from now on only its strikes)
 			e.intent.erase("also")
 		elif e.intent.get("also", {}).get("kind", "") == "summon":
 			e.set_meta("called", true)
-	if e.has_passive("thrown_junk"):
-		e.intent = EnemyDefs.throw_roll(rng)  # (the Orphans: rolled now, so you can see what is coming)
 	if e.has_passive("big_shield") and e.size() <= 1:
 		e.intent = {"kind": "attack", "n": 1}
 	if e.has_passive("behind_shield") and enemies.any(func(x): return x.has_passive("big_shield") and x.knocked):
@@ -2253,70 +2258,56 @@ func _shield_gained(got: float) -> void:
 			_log("%s is enraged by your Shield: Power %d." % [e.name, e.power])
 
 
-## The Invoker keeps his 3 spells until he has cast every one of them; then he conjures 3 new ones (no repeats), with a
-## line to go with them. Each is stripped of the Essence his words took. In his second wind his intent also says the
-## word he'll chant after casting (one he hasn't said yet).
+## The Invoker: his spells stay over him the whole fight (all whole again, plus the second-wind ones, when he rises).
+## Each turn he picks one to cast, whatever you chant (it glows), then converts (see _invoke).
 func _invoker_plan(e: EnemyState) -> void:
-	if e.conjured.is_empty() or e.conjured.all(func(s): return s.get("spent", false)):
+	if e.conjured.is_empty():
 		_invoker_summon(e)
-	_strip_conjured(e)
-	_pick_next(e)
-	e.intent = {"kind": "invoke"}
-	if e.phase == 2:
-		var left := ["W", "A", "F"].filter(func(x): return not (x in e.stripped))
-		if not left.is_empty():
-			e.intent.word = left[rng.randi() % left.size()]
+	e.invoke_next = rng.randi() % e.conjured.size()
+	e.intent = {"kind": "invoke", "spell": String(e.conjured[e.invoke_next].name)}
 
 
+## His spells, in their order: the first three, and in his second wind the "phase": 2 ones too.
 func _invoker_summon(e: EnemyState) -> void:
-	var pool := EnemyDefs.INVOKER_SPELLS.duplicate(true)
 	e.conjured.clear()
-	for k in mini(invoke_count, pool.size()):
-		if pool.is_empty():
-			break
-		var sp: Dictionary = pool.pop_at(rng.randi() % pool.size())
-		pool = pool.filter(func(x): return x.pattern != sp.pattern)  # (no two of a set share a pattern)
+	for src in EnemyDefs.INVOKER_SPELLS:
+		if int(src.get("phase", 1)) > e.phase:
+			continue
+		var sp: Dictionary = src.duplicate(true)
+		sp.erase("phase")
 		sp.rarity = "rare"
 		sp.rarity_name = "Rare"
 		sp.power = false
 		sp.effects = []
 		sp.base = sp.pattern
-		sp.rank = rng.randf()
+		sp.size = String(sp.pattern).length()
 		e.conjured.append(sp)
 	var summon_lines := EnemyDefs.INVOKER_SUMMON_LINES
 	anim.call({"type": "invoker_summon", "enemy": e, "line": summon_lines[randi() % summon_lines.size()]})  # (randi: the line doesn't touch the fight's own dice)
 
 
-func _strip_conjured(e: EnemyState) -> void:
-	for sp in e.conjured:
-		var p := String(sp.base)
-		for x in e.stripped:
-			p = p.replace(x, "")
-		sp.pattern = p
-		# the card still shows his whole pattern; the Essence his words freed glow, and needn't be chanted
-		sp.full_pattern = sp.base
-		var lit := []
-		for i in String(sp.base).length():
-			if String(sp.base)[i] in e.stripped:
-				lit.append(i)
-		sp.lit = lit
-
-
-## The spell the Invoker casts this turn whatever you chant: one of this set he hasn't cast yet (random among them).
-func _pick_next(e: EnemyState) -> void:
-	var pool := []
-	for i in e.conjured.size():
-		if not e.conjured[i].get("spent", false):
-			pool.append(i)
-	e.invoke_next = pool[rng.randi() % pool.size()] if not pool.is_empty() else -1
+## His conversion each turn: the first Essence of each of his spells that isn't Any yet becomes Any.
+func _invoker_convert(e: EnemyState, skip: Array = []) -> void:
+	var changed := false
+	for k in e.conjured.size():
+		if k in skip:
+			continue  # (cast this turn: it stays whole until next turn)
+		var sp: Dictionary = e.conjured[k]
+		var p := String(sp.pattern)
+		for i in p.length():
+			if p[i] != "?":
+				sp.pattern = p.substr(0, i) + "?" + p.substr(i + 1)
+				changed = true
+				break
+	if changed:
+		_log("%s's spells shift: one more Essence of each becomes Any." % e.name)
+		await anim.call({"type": "invoker_convert", "enemy": e})
 
 
 ## Which of the Invoker's spells go off this turn: the one he chose (invoke_next), and every one your chant contains.
 func invoke_picks(e: EnemyState, c: String) -> Array:
 	var out := []
 	for i in e.conjured.size():
-		if e.conjured[i].get("spent", false):
-			continue  # (cast already: gone from his side until his next set)
 		if i == e.invoke_next or _missing(String(e.conjured[i].pattern), c) == 0:
 			out.append(i)
 	return out
@@ -2342,17 +2333,17 @@ func _missing(p: String, c: String) -> int:
 	return n
 
 
-## His turn: he casts what your chant set off, then (second wind) chants his word.
+## His turn: he casts the spell he chose and what your chant set off, then converts (see _invoker_convert).
 func _invoke(e: EnemyState, m: Dictionary) -> void:
 	if e.has_meta("catch_breath"):
-		# (just risen for his second wind: this turn he only speaks; he casts from the next one)
+		# (just risen for his second wind: this turn he only speaks; from the next one he goes on)
 		e.remove_meta("catch_breath")
 		_log("%s gathers himself." % e.name)
 		return
 	var picks := invoke_picks(e, heard)
 	if e.invoke_all:
 		e.invoke_all = false
-		picks = range(e.conjured.size()).filter(func(i): return not e.conjured[i].get("spent", false))  # (gold dust: all he has left, whatever you chanted)
+		picks = range(e.conjured.size())  # (gold dust: all of them, whatever you chanted)
 	for i in picks:
 		if over or e.is_dead():
 			return
@@ -2361,13 +2352,10 @@ func _invoke(e: EnemyState, m: Dictionary) -> void:
 			e.cast_ids.append(sp.id)
 		_log("%s casts %s!" % [e.name, sp.name])
 		await anim.call({"type": "invoke", "enemy": e, "idx": i})
-		sp.spent = true  # (cast: it leaves his side; once all three are, he conjures a new set)
+		sp.pattern = sp.base  # (cast: back to its native pattern, no Any)
 		await _do_move(e, sp.cast)
-	if m.has("word") and not over and not e.is_dead():
-		e.stripped.append(m.word)
-		_strip_conjured(e)
-		_log("%s chants \"%s!\" His spells lose every %s." % [e.name, EnemyDefs.INVOKER_WORDS[m.word], Elements.NAMES[m.word]])
-		await anim.call({"type": "speech", "enemy": e, "text": EnemyDefs.INVOKER_CHANTS[m.word]})
+	if m.get("kind", "") == "invoke" and not over and not e.is_dead():
+		await _invoker_convert(e, picks)
 
 
 ## A summoner down for good (not one about to rise again: that is checked first) takes everything it summoned with it.
@@ -2441,6 +2429,7 @@ func _rebirths() -> void:
 			anim.call({"type": "reform", "enemy": e})  # (he bursts into pieces, and they fly back into him)
 			e.set_meta("say_first", ["You have improved, but can you withstand the might of wizardry?"])
 			e.set_meta("catch_breath", true)  # (his next turn he only says it: no spell yet)
+			e.conjured.clear()  # (his spells come back whole at his next plan, Ghost Walk and Chaos Meteor with them)
 		if e.has_passive("last_fuse") and e.phase == 1 and e.is_dead():
 			# Bug Hunter 1.0 reboots: one more turn, with 5 Essence, and that turn it explodes (unless they are destroyed first)
 			e.phase = 2
@@ -2760,6 +2749,11 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 		"cleanse_self":
 			_cleanse_enemy(e)
 			_log("%s cleanses himself." % e.name)
+			await anim.call({"type": "mend", "enemy": e})
+		"impervious_self":
+			# (Ghost Walk: no status sticks to him through your next turn; see end_player_turn)
+			e.impervious = maxi(e.impervious, int(m.get("turns", 1)))
+			_log("%s fades from sight: Impervious through your next turn." % e.name)
 			await anim.call({"type": "mend", "enemy": e})
 		"bottle":
 			# the Retainer's bottle: the Samurai is cleansed, and Impervious through your next turn

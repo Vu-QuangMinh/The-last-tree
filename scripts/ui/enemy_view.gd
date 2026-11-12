@@ -115,15 +115,7 @@ var _hung := false
 var _lifted := false
 
 
-func _peek_orphans() -> void:
-	await get_tree().process_frame
-	if is_instance_valid(creature):
-		preload("res://scripts/ui/orphan_fx.gd").peek_forever(creature)
-
-
 func setup(e: EnemyState, f: Fight) -> void:
-	if e.has_passive("thrown_junk"):
-		_peek_orphans.call_deferred()
 	enemy = e
 	fight = f
 	custom_minimum_size = Vector2(300, 470)
@@ -625,15 +617,15 @@ func _make_clickable(c: Control, index: int) -> void:
 
 
 ## The intent bubble (null if it has none this turn).
-## The Invoker's spells, as big as yours: one at each side of him and one above his head (never in front of him), further ones
-## lower at his sides. They hover, each drifting up and down on its own beat like his orbs. Plain cards (no conjured static): they
+## The Invoker's spells, as big as yours: his three in a row above his head, all at the same height, in their order. They hover, each drifting up and down on its own beat like his orbs. Plain cards (no conjured static): they
 ## appear, and fade away when cast or when the turn ends. The ones that will go off this turn glow gold. Their numbers follow his Power.
 const INVOKER_LIFT := 150.0  # how far the Invoker's model sits above where models usually stand
-const INVOKED_SPOTS := [Vector2(-290, -60), Vector2(340, -60), Vector2(25, -282), Vector2(-290, 150), Vector2(340, 150)]
+const INVOKED_Y := -257.0  # (low enough to clear the curtain's valance)
+const INVOKED_STEP := 270.0  # (a card and a small gap)
 var _float_t := 0.0
 
 
-## The Invoker's cards hover: a slow drift up and down and a little sideways, each on its own beat (like the orbs over his hand).
+## The Invoker's cards hover: a slow drift up and down and a little sideways, all together.
 func _process(d: float) -> void:
 	if _spell_cards.is_empty():
 		return
@@ -641,7 +633,7 @@ func _process(d: float) -> void:
 	for i in _spell_cards.size():
 		var c = _spell_cards[i]  # (untyped: a card may have been freed)
 		if is_instance_valid(c) and c.has_meta("home") and not c.has_meta("arriving"):
-			var ph := i * 2.1
+			var ph := 0.0  # (all three on the same beat: always level with each other)
 			c.position = (c.get_meta("home") as Vector2) + Vector2(sin(_float_t * 1.4 + ph) * 2.5, sin(_float_t * 2.2 + ph) * 6.0)
 
 
@@ -661,7 +653,7 @@ func _refresh_invoked(picks: Array) -> void:
 		for k in enemy.conjured.size():
 			var card := SpellCard.make(enemy.conjured[k])
 			card.size = Vector2(SpellCard.W, SpellCard.H)
-			card.position = INVOKED_SPOTS[mini(k, INVOKED_SPOTS.size() - 1)]
+			card.position = Vector2(25.0 + (k - (enemy.conjured.size() - 1) / 2.0) * INVOKED_STEP, INVOKED_Y)  # (one row, centred over him)
 			card.set_meta("home", card.position)
 			_spell_row.add_child(card)
 			_spell_cards.append(card)
@@ -676,19 +668,18 @@ func _refresh_invoked(picks: Array) -> void:
 						card.remove_meta("arriving")).call()
 	for i in _spell_cards.size():
 		var card: SpellCard = _spell_cards[i]
-		card.visible = not enemy.conjured[i].get("spent", false)  # (cast: gone until his next set)
 		card.fires = 1 if i in picks else 0
 		card.refresh()
 
 
-## The Invoker casts one of his spells: its card flares and fizzles away.
+## The Invoker casts one of his spells: its card flares (it stays).
 func flash_invoked(i: int) -> void:
 	if i < 0 or i >= _spell_cards.size() or not is_instance_valid(_spell_cards[i]):
 		return
 	var card: SpellCard = _spell_cards[i]
 	var tw := card.create_tween()
 	tw.tween_property(card, "modulate", Color(2.0, 1.8, 1.2), 0.12)
-	tw.tween_property(card, "modulate", Color(1, 1, 1, 0), 0.3)
+	tw.tween_property(card, "modulate", Color.WHITE, 0.3)  # (it stays over him)
 
 
 ## Talking to a boss: only the creature shows (no intent, no Essence row, no statuses) until you Engage.
