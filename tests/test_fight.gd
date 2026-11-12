@@ -2317,73 +2317,54 @@ func test_invoker() -> void:
 	var e: EnemyState = f.enemies[0]
 	assert_eq(e.size(), 20)
 	assert_true("invoker" in EnemyDefs.BOSSES[1] and not ("woodcutter" in EnemyDefs.BOSSES[1]), "the Woodcutter is out for now")
-	# 3 spells, no repeats
-	assert_eq(e.conjured.size(), 3)
-	var ids := e.conjured.map(func(s): return s.id)
-	assert_true(ids[0] != ids[1] and ids[1] != ids[2] and ids[0] != ids[2])
-	# a chant that contains a pattern sets that spell off; otherwise the closest one
-	e.conjured = [EnemyDefs.INVOKER_SPELLS[6].duplicate(true), EnemyDefs.INVOKER_SPELLS[0].duplicate(true), EnemyDefs.INVOKER_SPELLS[3].duplicate(true)]
-	for i in 3:
-		e.conjured[i].rank = i
-		e.conjured[i].base = e.conjured[i].pattern
+	# his three, always the same, in this order, 3 Essence each
+	assert_eq(e.conjured.map(func(s): return s.name), ["Ice Wall", "Forge Spirit", "Deafening Blast"])
+	assert_eq(e.conjured.map(func(s): return s.pattern), ["WWF", "FFW", "WAF"])
+	assert_eq(e.intent.kind, "invoke")
+	assert_eq(e.intent.spell, e.conjured[e.invoke_next].name, "his intent names the spell he chose")
+	# what your chant contains goes off too
+	e.invoke_next = -1
+	assert_eq(f.invoke_picks(e, ""), [], "no pick, no chant: nothing")
+	assert_eq(f.invoke_picks(e, "AFFW"), [1], "Forge Spirit's FFW is in the chant")
+	assert_eq(f.invoke_picks(e, "WWFWAF"), [0, 2], "Ice Wall and Deafening Blast")
 	e.invoke_next = 2
-	assert_eq(f.invoke_picks(e, "FFFWWW"), [0, 1, 2], "Sun Strike and Cold Snap matched, plus EMP, his choice")
-	assert_eq(f.invoke_picks(e, "AAF"), [2], "nothing matched: just his choice")
-	assert_eq(f.invoke_picks(e, ""), [2], "whatever you chant (or not)")
-	# he picks one he hasn't cast yet
-	e.conjured[0].spent = true
-	e.conjured[1].spent = true
-	f._pick_next(e)
-	assert_eq(e.invoke_next, 2, "the only one not cast yet")
-	assert_eq(f.invoke_picks(e, "FFFWWW"), [2], "a cast spell can't go off again")
-	e.conjured[0].erase("spent")
-	e.conjured[1].erase("spent")
+	assert_eq(f.invoke_picks(e, ""), [2], "his own pick, whatever you chant")
 	# his Power shows on the cards
-	assert_eq(Fight.invoker_desc(e.conjured[0], e), "Deal %d damage to you." % (10 + e.dmg_bonus))
-	e.dmg_bonus += 2
-	assert_eq(Fight.invoker_desc(e.conjured[0], e), "Deal %d damage to you." % (10 + e.dmg_bonus))
-	e.dmg_bonus -= 2
-	e.invoke_next = 0
-	# his turn: Sun Strike hits for 10
-	f.heard = "FFF"
+	assert_eq(Fight.invoker_desc(e.conjured[2], e), "Deal %d damage to you and Silence 1 of your spells." % (5 + e.dmg_bonus))
+	# his turn: Deafening Blast (his pick), then the first Essence of each becomes Any; the cast card stays
 	f.player.hp = 50
-	f.player.shield = 0
-	f._do_move(e, {"kind": "invoke"})
-	assert_eq(f.player.hp, 40.0 - e.dmg_bonus)
-	# second wind at 0 Essence: 20 more, then he chants a word that strips that Essence from his spells
+	f.heard = ""
+	f._do_move(e, e.intent)
+	assert_eq(f.player.hp, 45.0 - e.dmg_bonus)
+	assert_eq(e.conjured.size(), 3, "a cast spell stays over him")
+	assert_eq(e.conjured.map(func(s): return s.pattern), ["?WF", "?FW", "WAF"], "the cast one stays whole")
+	e.invoke_next = 0
+	f._do_move(e, e.intent)
+	assert_eq(e.conjured.map(func(s): return s.pattern), ["WWF", "??W", "?AF"], "one more each turn; a cast one back to native")
+	# second wind at 0 Essence: 15 more, a turn to speak, then Ghost Walk and Chaos Meteor join his three (all whole)
 	e.elements.clear()
 	f._cleanup()
 	assert_eq(f.alive().size(), 1, "not dead yet")
 	assert_eq(e.phase, 2)
 	assert_eq(e.size(), 15, "phase 2: 15 Essence")
-	# his first turn risen: he only speaks
 	var hp0 := f.player.hp
 	f._do_move(e, e.intent)
 	assert_eq(f.player.hp, hp0, "no spell on the turn he rises")
-	assert_true(e.stripped.is_empty())
 	f._plan(e)
-	assert_true(e.intent.has("word"))
-	var w: String = e.intent.word
-	f.heard = "Q"
-	f._do_move(e, e.intent)
-	assert_true(w in e.stripped)
-	for sp in e.conjured:
-		assert_true(not String(sp.pattern).contains(w), "every %s is gone from %s" % [w, sp.name])
+	assert_eq(e.conjured.map(func(s): return s.name), ["Ice Wall", "Forge Spirit", "Deafening Blast", "Ghost Walk", "Chaos Meteor"])
+	assert_eq(e.conjured.map(func(s): return s.pattern), ["WWF", "FFW", "WAF", "WWA", "FFA"], "whole again")
 
 
-func test_invoker_keeps_his_spells_until_all_are_cast() -> void:
+func test_invoker_spells_stay_once_cast() -> void:
 	var f := _fight(["invoker"], ["fire_ball"], "")
 	var e: EnemyState = f.enemies[0]
 	f.player.hp = 999
-	var first := e.conjured.map(func(s): return s.id)
-	for turn in 3:
-		f.heard = ""
-		f._do_move(e, e.intent)
-		assert_eq(e.conjured.filter(func(s): return s.get("spent", false)).size(), turn + 1, "one cast per turn")
-		f._plan(e)
-		if turn < 2:
-			assert_eq(e.conjured.map(func(s): return s.id), first, "he keeps the same set")
-	assert_true(e.conjured.all(func(s): return not s.get("spent", false)), "all three cast: a new set")
+	e.invoke_next = -1
+	f.heard = "WWFFFWWAF"
+	f._do_move(e, e.intent)
+	assert_eq(f.alive().size(), 3, "all three went off (two Forge Spirits)")
+	f._plan(e)
+	assert_eq(e.conjured.map(func(s): return s.name), ["Ice Wall", "Forge Spirit", "Deafening Blast"], "still there")
 
 
 func test_summons_fall_with_their_summoner() -> void:
@@ -2399,7 +2380,7 @@ func test_summons_fall_with_their_summoner() -> void:
 	# the Invoker rising again is not a death: his Forge Spirits stay
 	var h := _fight(["invoker"], ["fire_ball"], "")
 	var w: EnemyState = h.enemies[0]
-	h._do_move(w, EnemyDefs.INVOKER_SPELLS[7].cast)
+	h._do_move(w, {"kind": "summon", "list": ["forge_spirit", "forge_spirit_b"], "n": 2, "flank": true})
 	assert_eq(h.alive().size(), 3)
 	w.elements.clear()
 	h._cleanup()
@@ -2411,22 +2392,20 @@ func test_invoker_spell_effects() -> void:
 	var f := _fight(["invoker"], ["fire_ball", "water_wall", "tailwind"], "FFWWAA")
 	var e: EnemyState = f.enemies[0]
 	f.player.hp = 99
-	f._do_move(e, EnemyDefs.INVOKER_SPELLS[3].cast)  # EMP
-	assert_eq(f.player.stock.size(), 4, "2 Essence drained")
-	f._do_move(e, EnemyDefs.INVOKER_SPELLS[9].cast)  # Deafening Blast
-	assert_eq(f.player.disarmed_turns, 1)
-	f._do_move(e, EnemyDefs.INVOKER_SPELLS[8].cast)  # Chaos Meteor
+	var sp := EnemyDefs.INVOKER_SPELLS
+	f._do_move(e, sp[2].cast)  # Deafening Blast
+	assert_eq(f.player.silenced.size(), 1, "Deafening Blast silences 1")
+	f.player.silenced.clear()
+	f._do_move(e, sp[4].cast)  # Chaos Meteor
 	assert_eq(f.player.ignited.size(), 3)
-	f._do_move(e, EnemyDefs.INVOKER_SPELLS[2].cast)  # Ice Wall
-	assert_eq(e.armor.count(true), 3)
-	e.burn = 3
-	f._do_move(e, EnemyDefs.INVOKER_SPELLS[1].cast)  # Ghost Walk
-	assert_eq(e.burn, 0)
-	f._do_move(e, EnemyDefs.INVOKER_SPELLS[7].cast)  # Forge Spirit
-	assert_eq(f.alive().size(), 3, "2 Forge Spirits")
-	var spirits := f.alive().filter(func(x): return x.id.begins_with("forge_spirit"))
-	assert_eq(spirits.map(func(x): return x.size()), [3, 3])
-	assert_true(spirits[0].hp_text() != spirits[1].hp_text(), "different rows")
+	var frozen := func() -> int: return f.player.stock.filter(func(s): return s.frozen).size()
+	f._do_move(e, sp[0].cast)  # Ice Wall
+	assert_eq(e.armor.count(true), 1, "Ice Wall: Armour 1")
+	assert_eq(frozen.call(), 1, "and Freeze 1")
+	f._do_move(e, sp[3].cast)  # Ghost Walk
+	assert_eq(e.impervious, 1, "Ghost Walk: Impervious through your next turn")
+	f.end_player_turn()
+	assert_eq(e.impervious, 0, "gone after it")
 
 
 func test_no_spell_poisons_enemies() -> void:
@@ -3285,7 +3264,10 @@ func test_curtain_map_has_its_sure_rooms_and_free_tiles() -> void:
 		for n in q.map[f]:
 			if n.type == "portal":
 				ends.append(Vector2i(f, n.col))
-	assert_eq(ends[0].x, ends[1].x, "the two portals are on the same level")
+	ends.sort()
+	assert_true(ends[0].x <= MapGen.PORTAL_EARLY[1] and ends[1].x >= MapGen.PORTAL_LATE[0], "one portal in the first part of the map, one in the last")
+	var lanes := [q.map[ends[0].x][ends[0].y].lane, q.map[ends[1].x][ends[1].y].lane]
+	assert_true((lanes[0] <= 1 and lanes[1] >= 5) or (lanes[0] >= 5 and lanes[1] <= 1), "near opposite edges: opposite quarters")
 	q.free_step(ends[0].y, ends[0].x)
 	assert_eq(Vector2i(q.row, q.col), ends[1], "in one portal, out of the other")
 	assert_eq(q.turns, 1, "a portal counts as a move")
@@ -3352,3 +3334,23 @@ func test_curse_of_pain_and_betrayal_in_a_fight() -> void:
 		if g.player.shield == 0.0:
 			fizzles += 1
 	assert_true(fizzles > 8 and fizzles < 32, "Betrayal: about half the casts fizzle (%d of 40)" % fizzles)
+
+
+func test_curtain_map_fights_before_a_rest() -> void:
+	for seed in 12:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = seed + 1
+		var rows := MapGen.generate_curtain(rng)
+		assert_eq(MapGen.rest_rule_breaks(rows), [], "map %d: 4 fights before the first campfire / merchant, and between campfires" % seed)
+		var c := MapGen.counts(rows)
+		assert_true(c.get("rest", 0) >= 3 and c.get("shop", 0) >= 2, "map %d still has its 3 campfires and 2 merchants" % seed)
+	# the rule itself, on a little hand-made map: start (a fight), then a campfire straight up: 1 fight before it
+	var rows := MapGen.generate_curtain(RandomNumberGenerator.new())
+	for f in rows.size() - 1:
+		for nd in rows[f]:
+			nd.type = "fight"
+	var up: Vector2i = MapGen.hex_up(rows, 0, 0)[1]
+	rows[up.x][up.y].type = "rest"
+	assert_eq(MapGen.rest_rule_breaks(rows), [up], "1 fight before a campfire breaks the rule")
+	rows[MapGen.hex_up(rows, 0, 0)[0].x][MapGen.hex_up(rows, 0, 0)[0].y].type = "wind"
+	assert_eq(MapGen.rest_rule_breaks(rows), [up], "a tailwind doesn't change it")

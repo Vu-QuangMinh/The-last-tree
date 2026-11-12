@@ -3103,6 +3103,9 @@ func _fit_bottom() -> void:
 
 const ROW_WIDTH := 1860.0
 const SPELL_ROW_LEFT := 20.0  # (Puppet: how far left a long spell row may reach)
+const SPELL_ROW_FITS := 8  # the cards are sized so this many fit in a row
+const SPELL_GAP := 12.0  # between two cards
+const SPELL_MARGIN := 16.0  # between the row and the screen's edge
 
 
 func _build_spells() -> void:
@@ -3114,16 +3117,19 @@ func _build_spells() -> void:
 	_spell_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_cards.clear()
 	var n := fight.shown_spells().size()
-	var gap := 10.0
+	var gap := SPELL_GAP
 	var row_w := ROW_WIDTH
-	var full_w := n * SpellCard.W + gap * maxf(0, n - 1)
 	if _puppet_strips():  # (Puppet: the row is centred, and its right end stops at the Chant strip's: the cards must not cover the lottery machine)
 		row_w = minf(row_w, 2.0 * (_bag_at().x + PuppetLayout.FRAME_CHANT.x - 960.0))
-	var fit := minf(1.0, (row_w - gap * maxf(0, n - 1)) / maxf(1.0, n * SpellCard.W))
-	if _nu_ui:  # (New UI: the cards are the size the page draws them, 8.58 apart, around the middle of its row of eight; more than eight would shrink to fit)
-		gap = NewUiLayout.SPELL_GAP
-		fit = minf(NewUiLayout.SPELL_FIT, (ROW_WIDTH - gap * maxf(0, n - 1)) / maxf(1.0, n * SpellCard.W))
+	if _nu_ui:  # (New UI: the row is centred where the page has it, as wide as the screen allows around that point)
+		var right_end := 1795.0 if UiSkin.is_hud2() and not UiSkin.is_minhhud() else 1920.0 - SPELL_MARGIN  # (Puppet HUD ver 2: its glass tube stands up at the far right)
+		row_w = 2.0 * minf(NewUiLayout.SPELL_CENTER_X - SPELL_MARGIN, right_end - NewUiLayout.SPELL_CENTER_X)
 		_spell_row.position.x = NewUiLayout.SPELL_CENTER_X - 960.0
+	# one size for every card, whatever their number: as big as SPELL_ROW_FITS cards side by side with a small gap between
+	# them (fewer cards keep that size and gap, centred; only more than that shrink to fit)
+	var fit := minf(1.0, (row_w - gap * (SPELL_ROW_FITS - 1)) / (SPELL_ROW_FITS * SpellCard.W))
+	fit = minf(fit, (row_w - gap * maxf(0, n - 1)) / maxf(1.0, n * SpellCard.W))
+	fit = floorf(SpellCard.W * fit) / SpellCard.W  # (a whole number of pixels wide: every gap comes out exactly the same)
 	_spell_row.add_theme_constant_override("separation", roundi(gap))
 	for s in fight.shown_spells():
 		var card := SpellCard.make(s)
@@ -6611,6 +6617,11 @@ func _anim_event(ev: Dictionary) -> void:
 			await _page_turn(ev.enemy)
 		"speech":
 			await _speech(ev.enemy, ev.text, float(ev.get("hold", 1.5)))
+		"invoker_convert":
+			# his move: the first Essence of each of his spells turns to Any (the cards are built again with the new pattern)
+			Audio.play("spell_glow")
+			_refresh_all()
+			await _wait(0.45)
 		"invoker_summon":
 			# a new set of spells: his line, and the cards buzz in out of him (see EnemyView._refresh_invoked)
 			Audio.play("spell_glow")

@@ -685,7 +685,7 @@ func _next_rope_set() -> void:
 func _on_node(col: int, row := -2) -> void:
 	var node := run.move_to(col, row)
 	var kind: String = node.type
-	if kind == "rest":  # (a map saved with the old campfire room: it is An Abandoned Camp now)
+	if kind == "rest" and not run.is_curtain():  # (the classic map: a map saved with the old campfire room: it is An Abandoned Camp now. The Curtain map's campfires are real ones: rest or cook in full)
 		node["type"] = "event"
 		node["event"] = MapGen.CAMP_EVENT
 		node["forced"] = true

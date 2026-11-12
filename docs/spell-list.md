@@ -25,7 +25,7 @@
 | Dustdevil | AAF | Common | Utility | Spell |  | Rearrange 2. |
 | Ember | F | Common | Offensive | Spell |  | Apply 1 Burn to an enemy. Lose 2 HP. |
 | Ember Storm | FAF | Common | Offensive | Spell |  | Apply 1 Burn to all enemies. |
-| Fan the Flames | AF | Common | Offensive | Spell |  | Double an enemy's Burn. |
+| Fan the Flames | FWF | Common | Offensive | Durability 2 |  | Double an enemy's Burn. Durability 2. |
 | Fire Ball | FF | Common | Offensive | Starter |  | Deal 1 Right damage to an enemy. |
 | Flame Lash | FF | Common | Offensive | Spell |  | Apply 1 Burn to 2 different enemies. |
 | Flare | FF | Common | Offensive | Spell |  | Apply 1 Burn to an enemy for every 2 Fire in your chant. |
@@ -96,7 +96,7 @@
 | All In | F | Rare | Utility | Spell |  | Infuse your upcoming Essence. |
 | Aole's Blessing | AAA | Rare | Utility | Power |  | Each turn: gain 1 Random. |
 | Arctic Wind | WA | Rare | Defensive | Durability 1 |  | Apply 1 Freeze to an enemy. Durability 1. |
-| Ash and Ember | FA | Rare | Offensive | Durability 1 |  | Apply 1 Burn to all enemies. Double all enemies' Burn. Durability 1. |
+| Adam's Fervor | FA | Rare | Offensive | Durability 2 |  | Apply 1 Burn to all enemies. Double all enemies' Burn. Durability 2. |
 | Ashen Veil | FAA | Rare | Defensive | Durability 2 |  | Become Ethereal this turn. Gain 2 Vulnerable. Durability 2. |
 | Ashfall | F | Rare | Offensive | Spell | 1 | Apply 1 Burn to all enemies. Cooldown 1. |
 | Aurora | WAWA | Rare | Defensive | Spell |  | Heal 7 HP. Cleanse all your debuffs. Gain 5 Shield. |
@@ -109,7 +109,7 @@
 | Cataclysm | AF?FA | Rare | Offensive | Spell | 2 | Apply 3 Burn to all enemies. Cooldown 2. |
 | Cauterize | FW | Rare | Utility | Power |  | Prevent an enemy from Mending. |
 | Cinder Rain | AF | Rare | Offensive | Spell |  | Randomly deal 1 damage 3 times. |
-| Corrode | WFF | Rare | Offensive | Spell |  | Deal up to 3 damage to an enemy's Fire. |
+| Corrode | WFF | Rare | Offensive | Spell |  | Remove up to 3 Fire from an enemy. |
 | Crosswind | AA | Rare | Defensive | Spell |  | Apply 1 Weaken to all enemies. |
 | Cyclone Edge | A?AF | Rare | Offensive | Spell |  | Deal 2 Left damage to all enemies. |
 | Daedalus's Barrel | FFFA | Rare | Offensive | Spell |  | Snipe 3. |
@@ -149,7 +149,7 @@
 | Recall | FAW | Rare | Utility | Spell |  | Refund 2. |
 | Reforge | WFF | Rare | Utility | Durability 1 |  | Seal 1 Essence of another spell for this fight. Durability 1. |
 | Resonance | AFW | Rare | Utility | Spell |  | Duplicate 1. Heal 3 HP for each Extension it causes. |
-| Searing Mist | FFW | Rare | Offensive | Spell |  | Deal up to 3 damage to an enemy's Fire. |
+| Searing Mist | FFW | Rare | Offensive | Spell |  | Remove up to 3 Fire from an enemy. |
 | Shadows in the Flame | FFA | Rare | Utility | Spell |  | Conjure 2 spells. |
 | Silent Tide | WFW | Rare | Defensive | Anti-spell |  | Gain 3 Shield. |
 | Siphon | AWAWA | Rare | Offensive | Spell |  | Instant Steal 1. |
@@ -175,7 +175,7 @@
 | Tsunami Ward | WWW | Rare | Defensive | Spell |  | Gain 6 Shield. |
 | Twin Comets | FF | Rare | Offensive | Spell |  | Apply 2 Burn to 2 different enemies. |
 | Undercurrent | WW | Rare | Offensive | Durability 1 |  | Steal up to 2 Water from an enemy. Durability 1. |
-| Vacuum | AAF | Rare | Offensive | Spell |  | Deal up to 3 damage to an enemy's Air. |
+| Vacuum | AAF | Rare | Offensive | Spell |  | Remove up to 3 Air from an enemy. |
 | Water Prison | WWW | Rare | Defensive | Power |  | Each turn: gain 5 Lasting Shield. Your chant holds at most 6 Essence. |
 | Wellspring Rite | ?W | Rare | Defensive | Spell |  | Heal 3 HP. |
 | Whirlpool | AWA | Rare | Offensive | Durability 3 |  | Deal 1 Right damage and apply 1 Weaken to all enemies. Durability 3. |

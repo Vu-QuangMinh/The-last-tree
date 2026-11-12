@@ -232,13 +232,13 @@ const E := {
 		"moves": [{"kind": "attack", "n": 2, "hits": 2}, {"kind": "silence", "turns": 3, "n": 2}],
 		"moves_black": [{"kind": "silence", "turns": 3, "n": 2}, {"kind": "attack", "n": 2, "hits": 2}],
 		"flavor": "Half a beast, all the temper."},
-	# The Invoker (an Act 1 boss): he never attacks. He conjures 3 of his 10 spells (no repeats) as cards on his side and
-	# keeps them: each turn he casts one he chose, plus every one your chant matched; a cast spell leaves his side, and
-	# once all three are gone he conjures a new set. At 0 Essence he rises again with 15 more, takes a turn to speak, and
-	# from then on chants Quas / Wex / Exort, one a turn: that Essence is stripped from his spells' patterns for the rest
-	# of the fight (they get easier to set off).
+	# The Invoker (an Act 1 boss): he never attacks. His three spells (INVOKER_SPELLS, 3 Essence each) hang over him as
+	# cards the whole fight (a cast one stays, back to its native pattern). Each turn he casts one he chose (it glows), plus every one your chant
+	# contained; then the first Essence of each of his spells (that isn't one yet) becomes Any, so they get easier and
+	# easier to set off. At 0 Essence he rises again with 15 more, takes a turn to speak, and two more spells join his
+	# three (Ghost Walk, Chaos Meteor), all whole again.
 	"invoker": {"name": "Good Ol' Wizard", "act": 1, "boss": true, "hp": "FWAFWAFWAFWAFWAFWAFW", "hp2": "AWFAWFAWFAWFAWF",
-		"invokes": true, "hidden_intent": true, "passives": ["invoker", "invoker_rebirth"], "tint": Color(0.5, 0.3, 0.72),
+		"invokes": true, "passives": ["invoker", "invoker_rebirth"], "tint": Color(0.5, 0.3, 0.72),
 		"moves": [{"kind": "invoke"}],
 		"flavor": "Ten spells, three words, no patience."},
 	# (two Forge Spirits come at once: their rows share no start, so one chant can't take both down)
@@ -388,8 +388,8 @@ const PASSIVE_TEXT := {
 	"slime_burst": "Burst: when it dies, two small slimes pop out.",
 	"hand": "A hand with 10 Essence: knocked out, it drops off and lies on the floor, and the next hand grows in its place. Once every hand has fallen, he pulls them all back up for his last stand, 2 Essence each; those hands shatter for good when beaten.",
 	"handyman": "The Handyman himself: 1 Essence. Once his hands are all down he cries, shakes, and takes them back; when those are beaten too he shows himself: 1 Essence, and a 999 blow.",
-	"invoker": "Good Ol' Wizard: every turn he conjures 3 spells. On his turn he casts every one your chant matched, or else the one it came closest to.",
-	"invoker_rebirth": "Second wind: at 0 Essence he rises again with 10 more, and starts chanting Quas, Wex or Exort, one a turn: each strips that Essence (Water, Air, Fire) from his spells for the rest of the fight.",
+	"invoker": "Good Ol' Wizard: three spells hang over him. On his turn he casts the one he chose (it glows), and every one your chant contained. Each turn the first Essence of each of them becomes Any, so they get easier to set off.",
+	"invoker_rebirth": "Second wind: at 0 Essence he rises again with 15 more, and Ghost Walk and Chaos Meteor join his spells.",
 	"yinyang_split": "Split: when it dies for good, it splits into two Yin Yang Cubs (10 Essence each), one white and one black.",
 	"shield_rage": "Enraged: every time you gain Shield, it gains Power +1 (its attacks deal 1 more damage).",
 	"envenomed": "Envenomed: every hit that takes HP from you also gives you 1 Poison (hits your Shield stops don't).",
@@ -490,29 +490,20 @@ const INVOKER_CHANTS := {
 }
 ## One of these each time he conjures a new set of spells.
 const INVOKER_SUMMON_LINES := ["Knowledge is power!", "Behold, the pinnacle of wizardry!", "Concentration!", "More!", "Boundless knowledge!", "I challenge you!"]
-## His spells cost 2 Essence: the pattern they had without its middle one (Ice Wall and Deafening Blast share WF, so
-## they never come in the same set).
+## His spells, in this order, 3 Essence each (Dota 2's Invoker: Quas = Water, Wex = Air, Exort = Fire). The first three
+## hang over him the whole fight; "phase": 2 ones join them in his second wind. "cast" is the move he makes when one goes
+## off, "desc" / "desc_fmt" (with "dmg") its card text.
 const INVOKER_SPELLS := [
-	{"id": "inv_cold_snap", "name": "Cold Snap", "pattern": "WW", "kind": "damage", "desc_fmt": "Deal %d damage to you, 4 times.", "dmg": [1],
-		"cast": {"kind": "attack", "n": 1, "hits": 4}},
-	{"id": "inv_ghost_walk", "name": "Ghost Walk", "pattern": "WA", "kind": "utility", "desc": "He cleanses all his debuffs.",
-		"cast": {"kind": "cleanse_self"}},
-	{"id": "inv_ice_wall", "name": "Ice Wall", "pattern": "WF", "kind": "defense", "desc": "He Armours 3 of his Essence.",
-		"cast": {"kind": "armor", "pos": -1, "count": 3}},
-	{"id": "inv_emp", "name": "EMP", "pattern": "AA", "kind": "utility", "desc_fmt": "You lose 2 random Essence from your bag, and take %d damage.", "dmg": [2],
-		"cast": {"kind": "drain_essence", "n": 2, "also": {"kind": "attack", "n": 2}}},
-	{"id": "inv_tornado", "name": "Tornado", "pattern": "AW", "kind": "damage", "desc_fmt": "Deal %d damage to you and Silence 1 of your spells (1 turn).", "dmg": [3],
-		"cast": {"kind": "attack", "n": 3, "also": {"kind": "silence", "n": 1, "turns": 1}}},
-	{"id": "inv_alacrity", "name": "Alacrity", "pattern": "AF", "kind": "utility", "desc": "He gains Power +2.",
-		"cast": {"kind": "empower", "n": 2}},
-	{"id": "inv_sun_strike", "name": "Sun Strike", "pattern": "FF", "kind": "damage", "desc_fmt": "Deal %d damage to you.", "dmg": [10],
-		"cast": {"kind": "attack", "n": 10}},
-	{"id": "inv_forge_spirit", "name": "Forge Spirit", "pattern": "FW", "kind": "utility", "desc": "He summons 2 Forge Spirits (3 Essence each, attack for 3).",
+	{"id": "inv_ice_wall", "name": "Ice Wall", "pattern": "WWF", "kind": "defense", "desc": "He Armours 1 of his Essence and Freezes 1 of yours.",
+		"cast": {"kind": "armor", "pos": -1, "count": 1, "also": {"kind": "freeze", "n": 1}}},
+	{"id": "inv_forge_spirit", "name": "Forge Spirit", "pattern": "FFW", "kind": "utility", "desc": "He summons 2 Forge Spirits (3 Essence each, attack for 3).",
 		"cast": {"kind": "summon", "list": ["forge_spirit", "forge_spirit_b"], "n": 2, "flank": true}},
-	{"id": "inv_chaos_meteor", "name": "Chaos Meteor", "pattern": "FA", "kind": "damage", "desc_fmt": "Deal %d damage to you, 3 times, and Ignite 3 of your spells.", "dmg": [2],
+	{"id": "inv_deafening_blast", "name": "Deafening Blast", "pattern": "WAF", "kind": "damage", "desc_fmt": "Deal %d damage to you and Silence 1 of your spells.", "dmg": [5],
+		"cast": {"kind": "attack", "n": 5, "also": {"kind": "silence", "n": 1, "turns": 1}}},
+	{"id": "inv_ghost_walk", "name": "Ghost Walk", "pattern": "WWA", "kind": "utility", "phase": 2, "desc": "He is Impervious through your next turn (no status sticks to him).",
+		"cast": {"kind": "impervious_self", "turns": 1}},
+	{"id": "inv_chaos_meteor", "name": "Chaos Meteor", "pattern": "FFA", "kind": "damage", "phase": 2, "desc_fmt": "Deal %d damage to you, 3 times, and Ignite 3 of your spells.", "dmg": [2],
 		"cast": {"kind": "attack", "n": 2, "hits": 3, "also": {"kind": "ignite_spell", "n": 3, "turns": 1}}},
-	{"id": "inv_deafening_blast", "name": "Deafening Blast", "pattern": "WF", "kind": "damage", "desc_fmt": "Deal %d damage to you and Disarm you (your next Release does nothing).", "dmg": [5],
-		"cast": {"kind": "attack", "n": 5, "also": {"kind": "disarm", "turns": 1}}},
 ]
 
 
@@ -772,11 +763,9 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			if full:
 				s += ". A spell turned anti gives it 1 Essence of its pattern; one turned back gains 1 random Essence"
 		"invoke":
-			s = "Cast his glowing spells"
-			if m.has("word"):
-				s = "Chant %s %s" % [INVOKER_WORDS[m.word], Elements.NAMES[m.word]]  # (just what he'll say: "Chant Quas" + the Water icon)
+			s = "Cast %s, then convert" % m.get("spell", "a spell")
 			if full:
-				s = "Cast the spell he chose this turn, and every one your chant contains" + ((", then chant %s (his spells lose every %s)" % [INVOKER_WORDS[m.word], Elements.NAMES[m.word]]) if m.has("word") else "")
+				s = "Cast %s and every spell your chant contains, then the first Essence of each of his spells becomes Any (they get easier to set off)" % m.get("spell", "the spell he chose")
 		"cleanse_self":
 			s = "Cleanse all its debuffs"
 		"bottle":

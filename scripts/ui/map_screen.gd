@@ -14,7 +14,7 @@ signal menu_requested  # Main Menu from the pause menu (the run is saved on the 
 const LOOK := {
 	"fight": ["⚔", "Fight", Color(0.45, 0.36, 0.28), "A normal fight. Rewards: a spell and Leaves."],
 	"elite": ["👹", "Elite", Color(0.75, 0.15, 0.12), "A tough fight. Rewards: a spell (better odds), an artifact and more Leaves."],
-	"rest": ["🔥", "Campfire", Color(0.9, 0.5, 0.1), "An Abandoned Camp: rest a little, or half-cook two spells into one."],
+	"rest": ["🔥", "Campfire", Color(0.9, 0.5, 0.1), "Rest (heal 30% of your max HP), or cook two spells into one."],
 	"treasure": ["🎁", "Treasure", Color(0.85, 0.65, 0.1), "Pick an artifact. One of them is cursed."],
 	"shop": ["🛒", "Merchant", Color(0.2, 0.55, 0.3), "Spend Leaves on spells, artifacts, an upgrade or a meal."],
 	"event": ["❓", "Unknown", Color(0.45, 0.3, 0.65), "Usually a strange encounter with choices; sometimes a fight, a merchant or treasure."],
@@ -419,7 +419,7 @@ func _test_button(i: int) -> Control:
 
 
 func _map_height(rows: int) -> float:
-	return (rows + 2) * LEVEL_H + 140.0 if run.is_curtain() else rows * ROW_H + 140.0
+	return VIEW_H if run.is_curtain() else rows * ROW_H + 140.0  # (the Curtain map fits the view: no scrolling)
 
 
 ## The Curtain map: what the Curtain is doing, in a few words.
@@ -438,9 +438,9 @@ func _pos(f: int, c: int) -> Vector2:
 	var y := (rows - f) * ROW_H + 10.0
 	var cols: int = run.map[0].size()
 	var x := _cx + (c - (cols - 1) / 2.0) * _col_w
-	if run.is_curtain():  # the honeycomb on its side: each tile knows its lane (MapGen.generate_curtain); the boss sits two levels above the top tip
+	if run.is_curtain():  # the honeycomb, left to right like Ship of Fools: a level is half a tile across, a lane is a row; the boss sits two levels past the far tip
 		var level := f + (1 if f == rows - 1 else 0)
-		return Vector2(_cx + float(run.map[f][c].get("x", 0.0)) * LANE_W, (rows + 1 - level) * LEVEL_H + 40.0)
+		return Vector2(_cx + (level - rows / 2.0) * LEVEL_W, VIEW_H / 2.0 + float(run.map[f][c].get("x", 0.0)) * LANE_H)
 	# a little wobble so it doesn't look like a grid
 	if run.map[f].size() > c and run.map[f][c] != null and run.map[f][c].type != "boss":
 		x += sin(f * 3.1 + c * 1.7) * 22.0
@@ -459,7 +459,7 @@ func _node_button(f: int, n: Dictionary, _choices: Array) -> Control:  # (what y
 	var look: Array = LOOK.get(n.type, LOOK.fight)
 	var boss: bool = n.type == "boss"
 	var hex := test_rooms.is_empty() and run.is_curtain()  # (the Curtain map: the room is a hexagon tile, drawn in _draw_hexes; this is its icon and its click)
-	var sz := (110.0 if boss else 80.0) if hex else (110.0 if boss else 66.0)
+	var sz := (84.0 if boss else 62.0) if hex else (110.0 if boss else 66.0)
 	var b := Button.new()
 	b.text = look[0]
 	b.add_theme_font_size_override("font_size", 52 if boss else 30)
@@ -528,7 +528,7 @@ func _node_button(f: int, n: Dictionary, _choices: Array) -> Control:  # (what y
 	if gone:
 		b.modulate = Color(0.35, 0.15, 0.2, 0.7) if hex and f >= run.curtain_from() else Color(0.6, 0.58, 0.55, 0.6)
 	if hex and b.text != "":
-		b.add_theme_font_size_override("font_size", 56)
+		b.add_theme_font_size_override("font_size", 42)
 		for k in ["font_color", "font_disabled_color", "font_hover_color", "font_pressed_color"]:
 			b.add_theme_color_override(k, Color.WHITE)
 	if hex:  # the button covers most of the tile (click anywhere on it); the ring and icon stay their size in its middle
@@ -564,7 +564,7 @@ func _node_button(f: int, n: Dictionary, _choices: Array) -> Control:  # (what y
 func _walk_to(f: int, col: int) -> void:
 	_moving = true
 	var to := _pos(f, col)
-	var from := to + Vector2(0, ROW_H)  # (the start of the act: from just below the first row)
+	var from := to + (Vector2(-LEVEL_W * 2.0, 0) if run.is_curtain() else Vector2(0, ROW_H))  # (the start of the act: from just before the first room)
 	var walk_edge := false
 	if run.row >= 0:
 		from = _pos(run.row, run.col)
@@ -694,9 +694,9 @@ func _draw_curtain() -> void:
 	_draw_hexes()
 
 
-const HEX_R := 92.0  # the Curtain map's tiles: flat-topped hexagons this far from centre to corner...
-const LEVEL_H := HEX_R * 0.8660254  # ... a level is half a tile high (lanes next to each other sit half a tile apart)...
-const LANE_W := HEX_R * 1.5  # ... and the lanes are 1.5 radii apart, so the tiles fit together with no gap
+const HEX_R := 70.0  # the Curtain map's tiles: pointy-topped hexagons this far from centre to corner (the whole map fits the screen)...
+const LEVEL_W := HEX_R * 0.8660254  # ... a level is half a tile across (lanes next to each other sit half a tile apart)...
+const LANE_H := HEX_R * 1.5  # ... and the lanes are rows 1.5 radii apart, so the tiles fit together with no gap
 const HEX_WOOD := Color(0.6, 0.43, 0.27)
 const CURTAIN_RED := Color(0.3, 0.05, 0.1)
 
@@ -737,12 +737,12 @@ func _draw_hexes() -> void:
 			_content.draw_colored_polygon(inner, fill)
 			if covered:  # (the folds of the cloth)
 				for i in 5:
-					var gx := at.x - HEX_R * 0.6 + i * HEX_R * 0.3
-					_content.draw_line(Vector2(gx, at.y - LEVEL_H * 0.85), Vector2(gx, at.y + LEVEL_H * 0.85), Color(0.12, 0.0, 0.03, 0.5), 7.0)
+					var gx := at.x - HEX_R * 0.5 + i * HEX_R * 0.25
+					_content.draw_line(Vector2(gx, at.y - HEX_R * 0.7), Vector2(gx, at.y + HEX_R * 0.7), Color(0.12, 0.0, 0.03, 0.5), 6.0)
 			else:  # (wood grain: a few faint lines across the tile)
 				for i in 5:
-					var gy := at.y - LEVEL_H * 0.7 + i * LEVEL_H * 0.35
-					_content.draw_line(Vector2(at.x - HEX_R * 0.6, gy), Vector2(at.x + HEX_R * 0.6, gy + 3.0), Color(0, 0, 0, 0.07), 2.0)
+					var gy := at.y - HEX_R * 0.55 + i * HEX_R * 0.27
+					_content.draw_line(Vector2(at.x - HEX_R * 0.55, gy), Vector2(at.x + HEX_R * 0.55, gy + 3.0), Color(0, 0, 0, 0.07), 2.0)
 			var rim := Color(0.22, 0.13, 0.06)
 			var rim_w := 3.0
 			if covered:
@@ -757,11 +757,11 @@ func _draw_hexes() -> void:
 			_content.draw_polyline(outer, rim, rim_w, true)
 
 
-## A flat-topped hexagon (corners left and right).
+## A pointy-topped hexagon (corners up and down).
 func _hex_points(c: Vector2, r: float) -> PackedVector2Array:
 	var pts := PackedVector2Array()
 	for i in 6:
-		var a := deg_to_rad(60.0 * i)
+		var a := deg_to_rad(60.0 * i - 90.0)
 		pts.append(c + Vector2(cos(a), sin(a)) * r)
 	return pts
 

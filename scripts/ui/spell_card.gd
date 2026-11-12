@@ -10,6 +10,7 @@ const W := 250.0
 const KIND_COLORS := {"damage": Color(0.74, 0.22, 0.18), "defense": Color(0.2, 0.42, 0.72), "utility": Color(0.78, 0.58, 0.12)}
 ## A fused spell's name banner: the plum of the purple wax seal (its frame keeps its category colour).
 const FUSED_COLOR := Color(0.365, 0.216, 0.325)
+const POWER_COLOR := Color(0.88, 0.47, 0.1)  # a Power's name banner
 const PARCHMENT := Color(0.93, 0.87, 0.72)
 const RARITY_COLORS := {"common": Color(0.35, 0.3, 0.25), "rare": Color(0.1, 0.35, 0.75), "legendary": Color(0.75, 0.45, 0.0), "unique": Color(0.55, 0.1, 0.55)}
 const INK := Color(0.1, 0.08, 0.06)
@@ -88,7 +89,7 @@ func _ready() -> void:
 		mouse_entered.connect(_on_hover.bind(true))
 		mouse_exited.connect(_on_hover.bind(false))
 	var kc: Color = KIND_COLORS[spell.kind]
-	var name_col: Color = FUSED_COLOR if spell.get("fused", false) else kc
+	var name_col: Color = POWER_COLOR if spell.get("power", false) else (FUSED_COLOR if spell.get("fused", false) else kc)  # (a Power: an orange banner)
 	_box = StyleBoxFlat.new()
 	_box.bg_color = PARCHMENT
 	_box.set_corner_radius_all(_zi(10))
@@ -201,13 +202,7 @@ func _ready() -> void:
 		mid.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		mid.add_child(d)
 		v.add_child(mid)
-	var tags := []  # (no rarity or type words: the metal corners show the rarity, the colours the type)
-	if spell.power:
-		tags.append("POWER")
-	if spell.get("fused", false):
-		tags.append("FUSED")
-	if spell.get("anti", false):
-		tags.append("ANTI-SPELL")
+	var tags := []  # (no rarity, type, Power, Fused or Anti-spell words: the corners, the banner and the dark holo card show those)
 	if spell.get("ephemeral", false):
 		tags.append("EPHEMERAL")
 	var tag_l := UiTheme.label(" · ".join(tags), _zi(13), RARITY_COLORS.common)
@@ -566,7 +561,7 @@ func _add_holo() -> void:
 
 ## Ephemeral (conjured) cards look like a TV with bad reception: a little see-through, faint rolling scanlines, and a
 ## glitch every second or two (see ephemeral_static.gdshader).
-const EPHEMERAL_ALPHA := 0.78
+const EPHEMERAL_ALPHA := 0.95  # (barely see-through: it must stay easy to read)
 static var _static_shader_res: Shader
 var _static_mat: ShaderMaterial
 

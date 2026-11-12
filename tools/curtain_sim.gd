@@ -3,7 +3,7 @@ extends SceneTree
 ## godot --headless --path . -s tools/curtain_sim.gd
 
 
-const N := 2000
+const N := 400
 
 
 func _init() -> void:

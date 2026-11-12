@@ -308,6 +308,7 @@ func options() -> Array:
 		return choices().map(func(c): return Vector2i(row + 1, c))
 	var boss := Vector2i(map.size() - 1, 0)
 	var ahead: Array = map[0].map(func(n): return Vector2i(0, n.col)) if row < 0 else MapGen.hex_up(map, row, col)
+	ahead = ahead.filter(func(p: Vector2i): return not ("%d:%d" % [p.x, p.y] in visited))  # (out of a portal, back toward the start: no room twice)
 	var out := ahead.filter(func(p: Vector2i): return p.x < curtain_from())
 	if out.size() < ahead.size() or ahead.is_empty():
 		out.append(boss)

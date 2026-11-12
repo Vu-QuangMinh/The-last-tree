@@ -63,7 +63,7 @@ const INFO := {
 	"grow_thorns": ["Thorns", "It curls up tighter. Each time your Release hits it, you take its Thorns as damage."],
 	"stunned": ["Knocked out", "It skips its action, and comes back whole at the start of your next turn."],
 	"revive": ["Resurrecting", "It's down: it has no Essence and can't be targeted. It gets back up, whole, when the hourglass runs out."],
-	"invoke": ["Invoke", ""],
+	"invoke": ["Invoke", "He casts the spell that glows, and every one your chant contained. Then the first Essence of each of his spells becomes Any: they get easier to set off."],
 	"cleanse_self": ["Cleanse", "Removes every debuff on it."],
 	"drain_essence": ["Drain", "Takes Essence out of your bag."],
 	"disarm": ["Disarm", "Your next Release does nothing."],
