@@ -41,7 +41,7 @@ func run(t: SceneTree) -> void:
 	await t.create_timer(9.0).timeout
 	_count(m, "first entry")
 	print("--- Test mode (Fight! / quit to the test screen)")
-	m._test_state = {"enemies": ["handyman"]}
+	m._test_flow._test_state = {"enemies": ["handyman"]}
 	for k in 3:
 		m.open_test_mode()
 		await t.create_timer(1.5).timeout

@@ -11,7 +11,7 @@ func run(t: SceneTree) -> void:
 	var m = load("res://scripts/main.gd").new()
 	root.add_child(m)
 	await t.create_timer(0.8).timeout
-	m._test_state = {"enemies": ["winged_tortoise"], "artifacts": ["ember_charm", "thornbark", "iron_bark"], "bottles": ["fire_flask", "healing_tonic"]}
+	m._test_flow._test_state = {"enemies": ["winged_tortoise"], "artifacts": ["ember_charm", "thornbark", "iron_bark"], "bottles": ["fire_flask", "healing_tonic"]}
 	m.open_test_mode()
 	await t.create_timer(1.5).timeout
 	m.current.fight_requested.emit(m.current.state.enemies.duplicate(), m.current.state.spells.duplicate(), m.current.state.artifacts.duplicate(), m.current.state.bottles.duplicate())
