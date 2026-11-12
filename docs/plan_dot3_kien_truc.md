@@ -6,8 +6,13 @@ Dựa trên `docs/audit_2026-11-12.md` mục 5 đợt 3 (hạng mục 15–21). 
 
 | Hạng mục | Trạng thái |
 |---|---|
-| 20. Bổ sung test | **Đã làm** (2026-11-12): `tests/test_map_gen.gd`, `test_fuse_rules.gd`, `test_save_manager.gd` (206 tests). Còn thiếu: `run_state` rewards, tách `test_fight.gd` theo act/boss (xem L20b). |
-| 15–19, 21 | Chưa làm. Mục 17 (enemy sang JSON) **cần bàn với Minh trước** vì đổi cách cả hai sửa `enemy_defs.gd`. |
+| 20. Test | **Xong**: `test_map_gen`, `test_fuse_rules`, `test_save_manager`, `test_run_state`; runner coi lỗi engine là test hỏng. Chưa làm: tách `test_fight.gd` (3k dòng) theo act/boss. |
+| 21. Smoke UI | **Xong**: `tools/smoke_flow.gd` (5 theme). `tools/ui_playtest.gd` hỏng từ trước (kẹt `busy` ở trận 1, luồng stage mới), chưa sửa. |
+| 19. Core bỏ tra SaveManager | **Xong**: `BossTalk.store`, `RunState.default_store`. |
+| 18. Tách `main.gd` | **Xong**: `event_flow.gd`, `test_flow.gd` (1695 -> 935 dòng). |
+| 15. Tách `fight_screen.gd` | **Xong một phần**: 9299 -> 1587 dòng, 5 helper. Chưa đạt: còn 7 chỗ `is_puppet()`/`is_newui2()` trong file chính (theme chưa chọn một lần ở `_ready`). |
+| 16. `LayoutSet` | **Chưa làm** (~200 chỗ gọi `NewUiLayout.X`, ít lợi ích hành vi; nếu làm: chụp giá trị mọi static var từng theme trước/sau và so từng byte). |
+| 17. Enemy sang JSON | **Chưa làm, cần Minh đồng ý** (JSON làm mất kiểu int/float và các ghi chú trong `enemy_defs.gd`; nên dùng `var_to_str` hoặc cast khi nạp). |
 
 ## Thứ tự đề nghị
 
