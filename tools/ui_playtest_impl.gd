@@ -8,6 +8,7 @@ var shots := 0
 var log_lines: Array = []
 var fights := 0
 var last_screen := ""
+var spent := {}  # instance ids of screens that were already answered (map, loadout)
 
 
 func run(t: SceneTree, p_out: String) -> void:
@@ -15,6 +16,7 @@ func run(t: SceneTree, p_out: String) -> void:
 	out = p_out
 	DirAccess.make_dir_recursive_absolute(out)
 	tree.root.get_node("SaveManager").use_test_file("user://ui_playtest_save.json")
+	tree.root.get_node("SaveManager").clear_run()  # (a run left behind by an earlier stopped test would make the menu ask about it)
 	Engine.time_scale = 12.0
 	main = load("res://scenes/main.tscn").instantiate()
 	tree.root.add_child(main)
@@ -24,6 +26,8 @@ func run(t: SceneTree, p_out: String) -> void:
 		steps += 1
 		await tree.process_frame
 		var cur: Control = main.current
+		if is_instance_valid(main._overlay):  # (the stage flow: the map, the loadout and the rewards are laid over the fight screen)
+			cur = main._overlay
 		if not is_instance_valid(cur):
 			continue
 		var name: String = cur.get_script().get_global_name()
@@ -41,23 +45,43 @@ func run(t: SceneTree, p_out: String) -> void:
 				await _wait_frames(3)
 				if shots < 30:
 					await _snap("choice_" + cur.title.to_snake_case())
+				cur = _fresh(name)
+				if cur == null:
+					continue
 				cur.chosen.emit(0)
 			"MapScreen":
 				await _wait_frames(3)
 				var rs: RunState = main.run
 				if rs.row == -1:
 					await _snap("map_act%d" % rs.act)
-				cur.node_chosen.emit(_pick_col(rs))
+				cur = _fresh(name)
+				if cur == null:
+					continue
+				if spent.has(cur.get_instance_id()):  # (the map lowers itself over a few seconds after a pick: do not pick twice)
+					continue
+				spent[cur.get_instance_id()] = true
+				var pick := _pick(rs)
+				cur.chosen_row = pick.x
+				cur.node_chosen.emit(pick.y)
 			"LoadoutScreen":
 				await _wait_frames(3)
 				if main.run.current_node().type == "boss":
 					await _snap("loadout_boss_act%d" % main.run.act)
+				cur = _fresh(name)
+				if cur == null:
+					continue
+				if spent.has(cur.get_instance_id()):
+					continue
+				spent[cur.get_instance_id()] = true
 				cur.confirmed.emit()
 			"FightScreen":
 				await _play_fight(cur)
 			"ShopScreen":
 				await _wait_frames(3)
 				await _snap("shop")
+				cur = _fresh(name)
+				if cur == null:
+					continue
 				for i in cur.stock.size():
 					if cur.stock[i].kind == "spell" and run_amber_ok(cur, i):
 						cur._buy(i)
@@ -66,6 +90,9 @@ func run(t: SceneTree, p_out: String) -> void:
 			"MessageScreen":
 				await _wait_frames(3)
 				await _snap("message_" + cur.title.to_snake_case().left(30))
+				cur = _fresh(name)
+				if cur == null:
+					continue
 				log_lines.append("   " + cur.title + " | " + cur.body.replace("\n", " "))
 				if cur.title.begins_with("The last tree"):
 					ended = true
@@ -77,21 +104,30 @@ func run(t: SceneTree, p_out: String) -> void:
 	tree.quit()
 
 
+## The screen on top right now if it is still the `name` one (the earlier awaits may have replaced it), else null.
+func _fresh(name: String) -> Control:
+	var cur: Control = main._overlay if is_instance_valid(main._overlay) else main.current
+	if not is_instance_valid(cur) or cur.get_script().get_global_name() != name:
+		return null
+	return cur
+
+
 func run_amber_ok(shop, i: int) -> bool:
 	return shop.run.amber >= shop.stock[i].price
 
 
-func _pick_col(rs: RunState) -> int:
-	var opts := rs.choices()
+## The next room to walk to, as Vector2i(row, col): the one the scoring likes best (rests when hurt, no elites when hurt).
+func _pick(rs: RunState) -> Vector2i:
+	var opts := rs.options()
 	var low := rs.player.hp < rs.player.max_hp * 0.5
-	var best: int = opts[0]
+	var best: Vector2i = opts[0]
 	var best_s := -99.0
-	for c in opts:
-		var ty: String = rs.map[rs.row + 1][c].type
-		var s: float = {"fight": 2.0, "elite": -2.0 if low else 1.5, "rest": 3.0 if low else 0.0, "treasure": 2.5, "boss": 0.0, "event": 2.2, "shop": 2.4}[ty]
+	for o in opts:
+		var ty: String = rs.map[o.x][o.y].type
+		var s: float = {"fight": 2.0, "elite": -2.0 if low else 1.5, "rest": 3.0 if low else 0.0, "treasure": 2.5, "boss": 0.0, "event": 2.2, "shop": 2.4}.get(ty, 0.0)
 		if s > best_s:
 			best_s = s
-			best = c
+			best = o
 	return best
 
 

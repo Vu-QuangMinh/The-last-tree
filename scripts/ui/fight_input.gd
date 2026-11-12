@@ -175,7 +175,7 @@ func _begin_build_drag(pointer: Vector2) -> void:
 		scr._grab_cursor = AimCursor.new()  # (the pointer is a fist round the Essence while you drag it)
 		scr._grab_cursor.mode = "grab"
 		scr.add_child(scr._grab_cursor)
-		scr.Input.mouse_mode = scr.Input.MOUSE_MODE_HIDDEN
+		Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
 	if not scr._h_hud._puppet_strips():
 		scr._h_anim._elem_sound("grab")
 	scr._h_hud._refresh_stock()
@@ -762,7 +762,7 @@ func _drag_feedback() -> void:
 		scr._grab_cursor.queue_free()
 		scr._grab_cursor = null
 		if not scr._picking_any:
-			scr.Input.mouse_mode = scr.Input.MOUSE_MODE_VISIBLE
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var panel: Control = null
 	if not scr._steal_drag.is_empty():
 		var chant_drop := _steal_into_chant
@@ -927,7 +927,7 @@ func _end_casting() -> void:
 			if c != scr._grab_cursor:
 				c.queue_free()
 		scr._aim_cursor = null
-		scr.Input.mouse_mode = scr.Input.MOUSE_MODE_VISIBLE
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var any := false
 	for v in scr._views.values():
 		if is_instance_valid(v) and v.keep_big:
@@ -983,7 +983,7 @@ func _pick_any_essence(spell: Dictionary, cancellable: bool, only: EnemyState = 
 	scr._aim_cursor = AimCursor.new()
 	scr._aim_cursor.mode = _pick_style
 	scr.add_child(scr._aim_cursor)
-	scr.Input.mouse_mode = scr.Input.MOUSE_MODE_HIDDEN
+	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
 	var what: String = Elements.NAMES.get(_pick_el, "Essence")  # (a spell that takes one kind names it: "an enemy's Fire")
 	var paint: String = "an Any Essence" if scr.fight.paint_to == "?" else Elements.NAMES[scr.fight.paint_to]
 	var how: String = {"hand": ("drag an enemy's %s down into your chant" if _steal_into_chant else "drag an enemy's %s down into your bag") % what, "brush": "paint an enemy's Essence: it becomes %s" % paint}.get(_pick_style, "shoot an enemy's %s off" % what)
@@ -1002,7 +1002,7 @@ func _pick_any_essence(spell: Dictionary, cancellable: bool, only: EnemyState = 
 	if is_instance_valid(scr._aim_cursor):
 		scr._aim_cursor.queue_free()
 	scr._aim_cursor = null
-	scr.Input.mouse_mode = scr.Input.MOUSE_MODE_VISIBLE
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	for v in scr._views.values():
 		if is_instance_valid(v):
 			v.keep_big = v.keep_big or (_casting and v.pick_mode)

@@ -20,6 +20,7 @@ func _theme_run(t: SceneTree, theme: String) -> void:
 	var root: Window = t.root
 	var save = root.get_node("SaveManager")
 	save.use_test_file("user://smoke_flow_save.json")
+	save.clear_run()  # (a run left behind by an earlier stopped test would make the menu ask about it)
 	UiSkin.set_theme(theme)
 	var m: Main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(m)
