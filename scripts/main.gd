@@ -17,6 +17,8 @@ var _rope_busy := false
 
 
 func _ready() -> void:
+	BossTalk.store = SaveManager  # (the core never looks the save up itself)
+	RunState.default_store = SaveManager
 	# the game starts full screen (F11 toggles it); a test or tool run keeps its own small window
 	var args := OS.get_cmdline_args()
 	if not ("-s" in args or "--script" in args or "--headless" in args or DisplayServer.get_name() == "headless"):

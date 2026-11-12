@@ -832,11 +832,11 @@ func can_choose(opt: Dictionary) -> bool:
 var note_store: Object = null  # (where the note is kept: the SaveManager; a test sets its own)
 
 
+static var default_store: Object = null  # (main.gd sets it to the SaveManager at start)
+
+
 func _notes() -> Object:
-	if note_store != null:
-		return note_store
-	var tree := Engine.get_main_loop() as SceneTree
-	return tree.root.get_node_or_null("SaveManager") if tree != null else null
+	return note_store if note_store != null else default_store
 
 
 func note_spell_id() -> String:
