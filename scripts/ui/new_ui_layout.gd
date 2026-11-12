@@ -398,7 +398,6 @@ class Bar extends HpBar:
 		var iw := f.size.x
 		var h := f.size.y
 		var tint := Color.WHITE.lerp(Color(1.5, 1.3, 1.3), _flash * 0.7)
-		var p := parts()
 		_poly(node, _pill(), NewUiLayout.LIQUID_TRACK, false)
 		var xr := clampf(_xr, 0.0, iw)
 		var xs := clampf(_xs, 0.0, xr)

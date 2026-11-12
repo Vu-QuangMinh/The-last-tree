@@ -9,10 +9,10 @@ func run(t: SceneTree) -> void:
 	save.use_test_file("user://layers_save.json")
 	save.data.settings["theme"] = "puppet"
 	var gd = root.get_node("GameData")
-	var run := RunState.new()
-	run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
-	run.gain_artifact("ember_charm")
-	var f := run.make_fight(["greenseer", "yin_yang_clone", "rolling_bear"])
+	var rs := RunState.new()
+	rs.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
+	rs.gain_artifact("ember_charm")
+	var f := rs.make_fight(["greenseer", "yin_yang_clone", "rolling_bear"])
 	# a transparent 3840 x 2160 viewport that shows the screen's 1920 x 1080 layout at 2x
 	var vp := SubViewport.new()
 	vp.size = Vector2i(3840, 2160)
@@ -22,7 +22,7 @@ func run(t: SceneTree) -> void:
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(vp)
 	var fs := FightScreen.new()
-	fs.setup(run, f)
+	fs.setup(rs, f)
 	vp.add_child(fs)
 	await t.create_timer(7.0).timeout
 	fs._prompt.visible = false

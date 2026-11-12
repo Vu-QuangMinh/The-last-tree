@@ -9,16 +9,16 @@ func run(t: SceneTree) -> void:
 	save.use_test_file("user://trinity_shot_save.json")
 	save.data.settings["theme"] = "puppet"
 	var gd = root.get_node("GameData")
-	var run := RunState.new()
-	run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
-	run.loadout.clear()
+	var rs := RunState.new()
+	rs.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
+	rs.loadout.clear()
 	for id in Fight.TRINITY_PARTS:
-		run.learn_spell(id)
-		if not (id in run.loadout):
-			run.loadout.append(id)
-	var f := run.make_fight(["greenseer"])
+		rs.learn_spell(id)
+		if not (id in rs.loadout):
+			rs.loadout.append(id)
+	var f := rs.make_fight(["greenseer"])
 	var fs := FightScreen.new()
-	fs.setup(run, f)
+	fs.setup(rs, f)
 	root.add_child(fs)
 	await t.create_timer(3.5).timeout
 	root.get_texture().get_image().save_png(out + "/trinity_row.png")

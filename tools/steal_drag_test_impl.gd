@@ -59,7 +59,6 @@ func run(t: SceneTree) -> void:
 	await t.create_timer(1.5).timeout
 	print("row scale after ", fs._spell_row.scale, " hover_off ", SpellCard.hover_off, " picking ", fs._picking_any, " ghost count ", fs._fx.get_child_count())
 	# dragging your own orb: a fist, and the chant's sockets stay
-	var uid: int = fs.fight.player.stock[0].uid
 	fs._press_element("stock", 0)
 	fs._begin_build_drag(Vector2(900, 900))
 	fs._grab_cursor.point = Vector2(900, 800)

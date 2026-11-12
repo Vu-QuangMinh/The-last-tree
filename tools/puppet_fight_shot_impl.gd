@@ -8,14 +8,14 @@ func run(t: SceneTree) -> void:
 	save.use_test_file("user://puppet_shot_save.json")
 	save.data.settings["theme"] = OS.get_environment("SHOT_THEME") if OS.get_environment("SHOT_THEME") != "" else "puppet"
 	var gd = root.get_node("GameData")
-	var run := RunState.new()
-	run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
+	var rs := RunState.new()
+	rs.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
 	if OS.get_environment("SHOT_ACT") != "":
-		run.act = int(OS.get_environment("SHOT_ACT"))
+		rs.act = int(OS.get_environment("SHOT_ACT"))
 	var ids: Array = Array(OS.get_environment("SHOT_ENEMIES").split(",")) if OS.get_environment("SHOT_ENEMIES") != "" else ["greenseer", "yin_yang_clone", "rolling_bear"]
-	var f := run.make_fight(ids)
+	var f := rs.make_fight(ids)
 	var fs := FightScreen.new()
-	fs.setup(run, f)
+	fs.setup(rs, f)
 	root.add_child(fs)
 	await t.create_timer(6.0 if OS.get_environment("SHOT_THEME") == "" else 3.0).timeout
 	if OS.get_environment("SHOT_PICK") != "":  # which control is under each chant slot?
@@ -25,13 +25,13 @@ func run(t: SceneTree) -> void:
 		fs.chant_idx.clear()
 		fs._chant_changed()
 		await t.create_timer(1.0).timeout
-		for round in 3:
-			var uid: int = fs.fight.player.stock[round].uid
+		for rnd in 3:
+			var uid: int = fs.fight.player.stock[rnd].uid
 			var bi: Control = fs._bag_icons[uid]
 			var bc := bi.get_global_rect().get_center()
 			await _click(root, t, bc)
 			await t.create_timer(1.2).timeout
-			print("after bag click ", round, ": chant ", fs.chant_idx)
+			print("after bag click ", rnd, ": chant ", fs.chant_idx)
 		var s0: Control = fs._chant_row.get_child(0)
 		await _click(root, t, s0.get_global_rect().get_center())
 		await t.create_timer(1.0).timeout
@@ -54,56 +54,6 @@ func run(t: SceneTree) -> void:
 			await _drag(root, t, from, goal)
 			await t.create_timer(1.0).timeout
 			print("drag slot 0 onto the bag: chant ", fs.chant_idx)
-		t.quit()
-		return
-		var r0: Rect2 = fs._chant_row.get_child(0).get_global_rect()
-		print("slot0 rect ", r0, " slot1 rect ", fs._chant_row.get_child(1).get_global_rect())
-		for gy in 5:
-			var line := ""
-			for gx in 7:
-				var pt := r0.position + Vector2(r0.size.x * (gx + 0.5) / 7.0, r0.size.y * (gy + 0.5) / 5.0)
-				var mv0 := InputEventMouseMotion.new()
-				mv0.position = pt
-				mv0.global_position = pt
-				root.push_input(mv0)
-				await t.process_frame
-				var hc := root.gui_get_hovered_control()
-				line += (str(hc.get_class()) + ":" + str(hc.name).left(12) if hc != null else "none") + " | "
-			print("grid ", gy, ": ", line)
-		for i in [0, 0]:
-			var slot: Control = fs._chant_row.get_child(i)
-			var c := slot.get_global_rect().get_center()
-			var ev := InputEventMouseMotion.new()
-			ev.position = c
-			ev.global_position = c
-			root.push_input(ev)
-			await t.process_frame
-			var dn := InputEventMouseButton.new()
-			dn.button_index = MOUSE_BUTTON_LEFT
-			dn.pressed = true
-			dn.position = c
-			dn.global_position = c
-			root.push_input(dn)
-			await t.process_frame
-			print("slot ", i, " after press: _press=", fs._press, " busy=", fs.busy, " phase=", fs.phase, " row children=", fs._chant_row.get_child_count(), " slot valid=", is_instance_valid(slot))
-			for step in (0 if i == 0 and fs.chant_idx.size() == 1 else 4):
-				var mv := InputEventMouseMotion.new()
-				mv.position = c + Vector2(0, -60.0 * (step + 1))
-				mv.global_position = mv.position
-				root.push_input(mv)
-				await t.process_frame
-			print("  dragging: ", is_instance_valid(fs._bdrag))
-			var up := InputEventMouseButton.new()
-			up.button_index = MOUSE_BUTTON_LEFT
-			up.pressed = false
-			up.position = c + Vector2(0, -240)
-			up.global_position = up.position
-			root.push_input(up)
-			await t.create_timer(1.0).timeout
-			print("  chant now: ", fs.chant_idx)
-			if fs.chant_idx.size() < 2:
-				fs._add_stock_index(fs.fight.player.stock.size() - 1 - fs.chant_idx.size())
-				await t.create_timer(1.0).timeout
 		t.quit()
 		return
 	if OS.get_environment("SHOT_KILL") != "":  # the first enemy is defeated: it breaks into pieces

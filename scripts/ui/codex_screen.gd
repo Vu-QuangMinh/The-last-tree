@@ -93,7 +93,7 @@ func _entry(id: String) -> Control:
 	var lines := []
 	for ps in d.get("passives", []):
 		lines.append(EnemyDefs.PASSIVE_TEXT[ps])
-	lines.append("Moves: " + " → ".join(d.moves.map(func(m): return EnemyDefs.describe_move(m, 0, true)).filter(func(t): return t != "")))
+	lines.append("Moves: " + " → ".join(d.moves.map(func(m): return EnemyDefs.describe_move(m, 0, true)).filter(func(s): return s != "")))
 	if d.has("moves2"):
 		lines.append("Below half Essence: " + " → ".join(d.moves2.map(func(m): return EnemyDefs.describe_move(m))))
 	lines.append("\"%s\"" % d.get("flavor", ""))
@@ -114,7 +114,7 @@ func _artifact_entry(a: Dictionary) -> Control:
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 10)
 	var art := UiSkin.artifact_icon(a.id, 40)
-	head.add_child(art if art != null else UiTheme.label(String(a.get("icon", "◆")), 30, Color.WHITE))
+	head.add_child((art as Control) if art != null else UiTheme.label(String(a.get("icon", "◆")), 30, Color.WHITE))
 	head.add_child(UiTheme.label(a.name, 22, Color(1, 0.85, 0.5)))
 	v.add_child(head)
 	var d := UiTheme.label(a.desc, 15, UiTheme.MUTED)

@@ -141,15 +141,15 @@ func _add(it: Item, delay: float) -> Item:
 
 
 ## One particle. Its layer follows its shape (smoke, shards, crystals and thorns are solid; the rest is light).
-func part(pos: Vector2, vel: Vector2, col: Color, life: float, size: float, shape := GLOW, delay := 0.0) -> Item:
+func part(pos: Vector2, vel: Vector2, col: Color, life: float, sz: float, shape := GLOW, delay := 0.0) -> Item:
 	var it := Item.new()
 	it.pos = pos
 	it.vel = vel
 	it.col = col
 	it.col1 = Color(col, 0.0)
 	it.life = life
-	it.size0 = size
-	it.size1 = size * 0.3
+	it.size0 = sz
+	it.size1 = sz * 0.3
 	it.shape = shape
 	it.add = not (shape in SOLID)
 	it.rot = randf() * TAU
@@ -158,11 +158,11 @@ func part(pos: Vector2, vel: Vector2, col: Color, life: float, size: float, shap
 
 
 ## A spray of particles from one point: `arc` wide around the direction `aim`.
-func burst(at: Vector2, n: int, col: Color, speed: Vector2, life: Vector2, size: Vector2, shape := SPARK, delay := 0.0, arc := TAU, aim := 0.0) -> Array:
+func burst(at: Vector2, n: int, col: Color, speed: Vector2, life: Vector2, sz: Vector2, shape := SPARK, delay := 0.0, arc := TAU, aim := 0.0) -> Array:
 	var out := []
 	for i in n:
 		var ang := aim + randf_range(-arc / 2.0, arc / 2.0)
-		var it := part(at, Vector2.from_angle(ang) * randf_range(speed.x, speed.y), col, randf_range(life.x, life.y), randf_range(size.x, size.y), shape, delay)
+		var it := part(at, Vector2.from_angle(ang) * randf_range(speed.x, speed.y), col, randf_range(life.x, life.y), randf_range(sz.x, sz.y), shape, delay)
 		if shape == SPARK:
 			it.stretch = 0.5
 			it.drag = 4.0
@@ -171,9 +171,9 @@ func burst(at: Vector2, n: int, col: Color, speed: Vector2, life: Vector2, size:
 
 
 ## A still bloom of light that swells a little and fades.
-func glow(at: Vector2, size: float, col: Color, life: float, delay := 0.0) -> Item:
-	var it := part(at, Vector2.ZERO, col, life, size * 0.7, GLOW, delay)
-	it.size1 = size
+func glow(at: Vector2, sz: float, col: Color, life: float, delay := 0.0) -> Item:
+	var it := part(at, Vector2.ZERO, col, life, sz * 0.7, GLOW, delay)
+	it.size1 = sz
 	return it
 
 

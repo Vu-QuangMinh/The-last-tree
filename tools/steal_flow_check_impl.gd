@@ -22,7 +22,6 @@ func run(t: SceneTree) -> void:
 	fs._sync_views()
 	await t.create_timer(6.0).timeout  # (the unveiling)
 	var t0 := Time.get_ticks_msec()
-	var shots := t.create_timer(0.0)
 	var done := [false]
 	(func():
 		await f._steal_spell(e)

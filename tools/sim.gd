@@ -87,9 +87,9 @@ func _avg(a: Array) -> float:
 	return t / maxf(1, a.size())
 
 
-func _play_run(seed: int, spells: Array, arts: Array) -> Dictionary:
+func _play_run(p_seed: int, spells: Array, arts: Array) -> Dictionary:
 	var run := RunState.new()
-	run.setup(db, spells, arts, seed)
+	run.setup(db, spells, arts, p_seed)
 	if forced == "" and not _spells_mode():
 		var start: Array = Artifacts.keepsakes(run.rng, 3)
 		if not start.is_empty():
@@ -150,12 +150,12 @@ func _play_run(seed: int, spells: Array, arts: Array) -> Dictionary:
 				_pick_loadout(run)
 				var hp0 := run.player.hp
 				var f := run.make_fight(ids)
-				f.chooser = func(s, cands): return _choose_target(f, cands)
-				f.mover = func(s, e): return _pick_move(f, e)
-				f.picker = func(s, e): return _pick_pluck(f, e)
-				f.placer = func(s, el): return _best_insert(f, el)
+				f.chooser = func(_s, cands): return _choose_target(f, cands)
+				f.mover = func(_s, e): return _pick_move(f, e)
+				f.picker = func(_s, e): return _pick_pluck(f, e)
+				f.placer = func(_s, el): return _best_insert(f, el)
 				f.chant_picker = func(s): return _best_duplicate(f, s)
-				f.arranger = func(s): return _best_rearrange(f)
+				f.arranger = func(_s): return _best_rearrange(f)
 				var turns := 0
 				while not f.over and turns < TURN_CAP:
 					turns += 1

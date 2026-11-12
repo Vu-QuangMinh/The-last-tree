@@ -751,12 +751,12 @@ func _show_event(ev: Dictionary) -> void:
 			var g := FishGame.new()
 			g.act = run.act
 			g.finished.connect(func(wh, ba, sw):
-				var res := run.fish_reward(wh, ba, sw)
+				var reward := run.fish_reward(wh, ba, sw)
 				if UiSkin.is_puppet():
-					_tally_on_stage(ev, String(res.text), "Enjoy your fish!")  # (the old man and his stream stay; the tally goes in the box)
+					_tally_on_stage(ev, String(reward.text), "Enjoy your fish!")  # (the old man and his stream stay; the tally goes in the box)
 					return
-				var after := _message(ev.title, res.text, ["Continue"], Color(0.8, 0.7, 1))
-				after.pressed.connect(func(_k): show_map()))
+				var after_l := _message(ev.title, reward.text, ["Continue"], Color(0.8, 0.7, 1))
+				after_l.pressed.connect(func(_k): show_map()))
 			_stage_overlay(g)
 			return
 		if o.has("recycle"):
@@ -778,8 +778,8 @@ func _show_event(ev: Dictionary) -> void:
 			_room_bg = "campfire_fuse"
 			fs.back.connect(func(): _show_event(ev))
 			fs.fused.connect(func(_sp):
-				var after := _message(ev.title, String(o.text), ["Continue"], Color(0.8, 0.7, 1))
-				after.pressed.connect(func(_k): show_map()))
+				var after_l := _message(ev.title, String(o.text), ["Continue"], Color(0.8, 0.7, 1))
+				after_l.pressed.connect(func(_k): show_map()))
 			_swap(fs)
 			return
 		if o.has("outcomes") or o.has("by_water") or o.has("by_kind"):
@@ -1109,7 +1109,7 @@ func _result_how(ev: Dictionary, opt: Dictionary, text: String, spell_id: String
 
 
 ## The Recycler, on his stage: your item goes into him, he hands back three, and the one you click is yours (then his words and Continue).
-func _recycle_on_stage(ev: Dictionary, opt: Dictionary, give: String, opt_index: int) -> void:
+func _recycle_on_stage(_ev: Dictionary, opt: Dictionary, give: String, opt_index: int) -> void:
 	var es: EventStage = _overlay
 	var kind: String = opt.recycle
 	var offer := run.recycle_offer(kind, give)
@@ -1180,7 +1180,7 @@ func _event_recycle(ev: Dictionary, opt: Dictionary, give_now := "") -> void:
 		var offer := run.recycle_offer(kind, give)
 		var finish := func(i: int) -> void:
 			run.recycle(kind, give, offer[i])
-			var shown: Control = SpellCard.make(run.spell(offer[i])) if kind == "spell" else (ArtifactCard.make(Artifacts.view(offer[i], false)) if kind == "artifact" else null)
+			var shown: Control = (SpellCard.make(run.spell(offer[i])) as Control) if kind == "spell" else ((ArtifactCard.make(Artifacts.view(offer[i], false)) as Control) if kind == "artifact" else null)
 			var after := _message(ev.title, String(opt.text), ["Continue"], Color(0.8, 0.7, 1), shown)
 			after.pressed.connect(func(_k): show_map())
 		var sub := "\"RECYCLE!\" He tosses it onto his cart, rummages through the pile, and holds out three things. Take one."
@@ -1294,7 +1294,7 @@ func _note_pick(ev: Dictionary) -> void:
 
 
 ## A Note to Yourself, on the stage: you left `left_id` in the note and took what it held; told in the hint panel, with the card you took.
-func _note_done(ev: Dictionary, left_id: String) -> void:
+func _note_done(_ev: Dictionary, left_id: String) -> void:
 	var left: String = run.spell(left_id).name
 	var took := run.note_swap(left_id)
 	var es: EventStage = _overlay
@@ -1410,7 +1410,7 @@ func _stage_encounter(ids: Array, l: LoadoutScreen) -> void:
 	_set_overlay(l)
 
 
-func _begin_stage_fight(fs: FightScreen, f: Fight, ids: Array, l: LoadoutScreen) -> void:
+func _begin_stage_fight(fs: FightScreen, _f: Fight, ids: Array, l: LoadoutScreen) -> void:
 	if l.has_meta("begun"):
 		return
 	l.set_meta("begun", true)

@@ -8,10 +8,10 @@ func run(t: SceneTree) -> void:
 	save.use_test_file("user://character_panel_save.json")
 	save.data.settings["theme"] = "puppet"
 	var gd = root.get_node("GameData")
-	var run := RunState.new()
-	run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
-	run.amber = 1234
-	var f := run.make_fight(["greenseer", "yin_yang_clone", "rolling_bear"])
+	var rs := RunState.new()
+	rs.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
+	rs.amber = 1234
+	var f := rs.make_fight(["greenseer", "yin_yang_clone", "rolling_bear"])
 	var p = f.player
 	p.hp = 37.0
 	p.shield = 12.0
@@ -43,7 +43,7 @@ func run(t: SceneTree) -> void:
 	var aids: Array = Artifacts.ALL.map(func(a): return a.id)
 	f.artifacts = aids.slice(0, 24)
 	var fs := FightScreen.new()
-	fs.setup(run, f)
+	fs.setup(rs, f)
 	root.add_child(fs)
 	await t.create_timer(3.0).timeout
 	await t.create_timer(0.3).timeout

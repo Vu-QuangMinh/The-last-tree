@@ -6,16 +6,16 @@ func run(t: SceneTree) -> void:
 	save.use_test_file("user://top_hud_save.json")
 	save.data.settings["theme"] = "puppet"
 	var gd = root.get_node("GameData")
-	var run := RunState.new()
-	run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
-	var counts: Array = OS.get_environment("HUD_N").split(",") if OS.get_environment("HUD_N") != "" else ["3", "2"]
+	var rs := RunState.new()
+	rs.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
+	var counts: Array = Array(OS.get_environment("HUD_N").split(",")) if OS.get_environment("HUD_N") != "" else ["3", "2"]
 	var arts: Array = ["heartwood_seed", "ember_charm", "lucky_acorn", "wind_chime", "second_wind", "blood_pact", "withered_idol", "thornbark", "chant_bell"]
 	for k in int(counts[0]):
-		run.artifacts.append(arts[k])
-	run.player.bottles.clear()
+		rs.artifacts.append(arts[k])
+	rs.player.bottles.clear()
 	for k in int(counts[1]):
-		run.player.bottles.append(String(Bottles.ALL[k % Bottles.ALL.size()].id))
-	var f := run.make_fight(["ashling"])
+		rs.player.bottles.append(String(Bottles.ALL[k % Bottles.ALL.size()].id))
+	var f := rs.make_fight(["ashling"])
 	var nd := int(OS.get_environment("HUD_DEBUFFS")) if OS.get_environment("HUD_DEBUFFS") != "" else 0
 	if nd > 0:
 		var pl = f.player
@@ -29,7 +29,7 @@ func run(t: SceneTree) -> void:
 		if nd > 7: pl.shield = 6.0
 		if nd > 8: pl.blind_turns = 2
 	var fs := FightScreen.new()
-	fs.setup(run, f)
+	fs.setup(rs, f)
 	root.add_child(fs)
 	await t.create_timer(7.0).timeout
 	root.get_texture().get_image().save_png(out + "/a_normal.png")

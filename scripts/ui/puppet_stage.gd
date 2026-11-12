@@ -99,20 +99,20 @@ static func _load(path: String) -> Texture2D:
 var act_no := 1  # whose pictures the stage is made of
 
 
-func _stage_path(name: String) -> String:
+func _stage_path(p_name: String) -> String:
 	var dir := UiSkin.theme_dir() + "Stage/"
-	if name == "props/hanging_sign":
+	if p_name == "props/hanging_sign":
 		return dir + "Shared/hanging_sign.png"
-	var folder: String = "Props" if name.begins_with("props/") else String(STAGE_FOLDERS.get(name, ""))
+	var folder: String = "Props" if p_name.begins_with("props/") else String(STAGE_FOLDERS.get(p_name, ""))
 	for a in [act_no, 1]:
-		var p := "%sAct%d/%s/%s.png" % [dir, a, folder, name.get_file()]
+		var p := "%sAct%d/%s/%s.png" % [dir, a, folder, p_name.get_file()]
 		if ResourceLoader.exists(p):
 			return p
 	return ""
 
 
-func _pic(name: String) -> Texture2D:
-	var path := _stage_path(name)
+func _pic(p_name: String) -> Texture2D:
+	var path := _stage_path(p_name)
 	return _load(path) if path != "" else null
 
 

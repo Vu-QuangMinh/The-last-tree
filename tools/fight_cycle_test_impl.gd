@@ -38,8 +38,8 @@ func d_visible(d: Dictionary) -> bool:
 
 
 func _to_fight(m, n: int) -> void:
-	var run = m.run
-	m._overlay.node_chosen.emit(run.choices()[0])
+	var rs = m.run
+	m._overlay.node_chosen.emit(rs.choices()[0])
 	await t.create_timer(1.0).timeout
 	await _shot("enc%d_board" % n)
 	await t.create_timer(11.0).timeout
@@ -72,7 +72,7 @@ func run(p_t: SceneTree) -> void:
 	fs.fight.won = true
 	fs._finish()
 	await t.create_timer(5.0).timeout
-	var mid := _report(fs, "fight 1 after the win (HUD sunk)")
+	_report(fs, "fight 1 after the win (HUD sunk)")
 	await _shot("after_win")
 	for k in 8:
 		var ov = m._overlay

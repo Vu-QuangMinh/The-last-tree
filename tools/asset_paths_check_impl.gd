@@ -81,9 +81,9 @@ func run(t: SceneTree) -> void:
 	if wood == null:
 		fails += 1
 	for cat in ["boss", "fight", "map", "menu"]:
-		var tr: Array = audio.list_tracks(cat)
-		print("music ", cat, ": ", tr.size())
-		if tr.is_empty():
+		var tracks: Array = audio.list_tracks(cat)
+		print("music ", cat, ": ", tracks.size())
+		if tracks.is_empty():
 			fails += 1
 	print("RESULT: ", "ALL OK" if fails == 0 else "%d FAILED" % fails)
 	t.quit()

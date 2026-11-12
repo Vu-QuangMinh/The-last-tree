@@ -78,7 +78,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 ## Takes a picture of the screen behind the menu and saves it in SHOT_DIR. The menu itself is hidden for the shot;
 ## "without UI" hides the host's other children too, except the scenery (backdrop, stage) and `world_keep`.
 func _screenshot(with_ui: bool) -> void:
-	var hidden: Array = []
+	var hidden_nodes: Array = []
 	visible = false
 	if not with_ui:
 		for c in get_parent().get_children():
@@ -87,12 +87,12 @@ func _screenshot(with_ui: bool) -> void:
 			if c in world_keep or c is Backdrop or c is PuppetStage or c is StageLights:
 				continue
 			c.visible = false
-			hidden.append(c)
+			hidden_nodes.append(c)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
-	for c in hidden:
+	for c in hidden_nodes:
 		if is_instance_valid(c):
 			c.visible = true
 	visible = true

@@ -20,8 +20,8 @@ func run(t: SceneTree) -> void:
 	await t.create_timer(4.0).timeout  # (the drapes are drawn first)
 	m._overlay.chosen.emit(0)  # the keepsake
 	await t.create_timer(4.6).timeout
-	var run = m.run
-	var col: int = run.choices()[0]
+	var rs = m.run
+	var col: int = rs.choices()[0]
 	m._overlay.node_chosen.emit(col)
 	await t.create_timer(0.4).timeout
 	await _shot(t, out, "1_board")

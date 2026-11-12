@@ -488,7 +488,7 @@ static func _ethereal(v: Vfx, from: Vector2, dests: Array) -> float:
 
 
 ## The killing blow: the screen darkens, two huge slashes cross the target, and it bursts in red.
-static func _execute(v: Vfx, from: Vector2, dests: Array) -> float:
+static func _execute(v: Vfx, _from: Vector2, dests: Array) -> float:
 	v.flash(Color(0, 0, 0, 0.6), 0.8, 0.0, false)
 	for d in dests:
 		var at: Vector2 = d.body
@@ -644,8 +644,8 @@ static func _swirl(v: Vfx, from: Vector2, dests: Array, col: Color) -> float:
 static func _snipe(v: Vfx, from: Vector2, dests: Array, col: Color) -> float:
 	for d in dests:
 		var at: Vector2 = d.row
-		var tr := v.beam(from, at, Color(1, 0.92, 0.7, 0.95), 0.1, 5.0, 0.0, 0.08)
-		tr.w0 = 2.0
+		var core := v.beam(from, at, Color(1, 0.92, 0.7, 0.95), 0.1, 5.0, 0.0, 0.08)
+		core.w0 = 2.0
 		v.beam(from, at, Color(col, 0.45), 0.16, 14.0, 0.0, 0.08)
 		v.emit(at, 0.1, 0.0, Callable(), func(vv: Vfx, _a: Vector2) -> void:
 			vv.glow(at, 150, Color(1, 0.97, 0.85, 1.0), 0.1)

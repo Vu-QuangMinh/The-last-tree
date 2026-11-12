@@ -29,12 +29,12 @@ func run(t: SceneTree) -> void:
 	await t.create_timer(6.0).timeout
 	print("overlay now: ", main._overlay, " valid ", is_instance_valid(main._overlay), " current ", main.current)
 	var es: EventStage = main._overlay as EventStage if is_instance_valid(main._overlay) else null
-	print("tally page: ", es != null, " underwater: ", es._stage.is_underwater() if es != null and es._stage != null else "?")
+	print("tally page: ", es != null, " underwater: ", str(es._stage.is_underwater()) if es != null and es._stage != null else "?")
 	root.get_texture().get_image().save_png(out + "/fish_4_tally.png")
 	var stage: PuppetStage = es._stage
 	es.continued.emit()
 	await t.create_timer(8.0).timeout
-	print("after Continue underwater: ", stage.is_underwater() if is_instance_valid(stage) else "stage gone")
+	print("after Continue underwater: ", str(stage.is_underwater()) if is_instance_valid(stage) else "stage gone")
 	root.get_texture().get_image().save_png(out + "/fish_5_after.png")
 	print("FISH DONE")
 	t.quit()

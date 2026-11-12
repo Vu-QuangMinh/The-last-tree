@@ -703,19 +703,19 @@ static func _pick_encounter(pool: Array, rng: RandomNumberGenerator, recent: Arr
 
 
 ## Enemy ids for a node. floor is 1-based within the act. seen: ids met earlier this run (avoided when possible).
-static func encounter(kind: String, act: int, floor: int, rng: RandomNumberGenerator, seen: Array = []) -> Array:
+static func encounter(kind: String, act: int, floor_n: int, rng: RandomNumberGenerator, seen: Array = []) -> Array:
 	match kind:
 		"boss":
 			var bosses: Array = BOSSES[act]
 			return [bosses[rng.randi() % bosses.size()]]
 		"elite":
-			var pool := elites(act)
-			var fresh := pool.filter(func(id): return not (ids_of(id)[0] in seen))
+			var elite_pool := elites(act)
+			var fresh := elite_pool.filter(func(id): return not (ids_of(id)[0] in seen))
 			if not fresh.is_empty():
-				pool = fresh
-			return ids_of(pool[rng.randi() % pool.size()])  # (a mini boss comes alone: no escorts)
+				elite_pool = fresh
+			return ids_of(elite_pool[rng.randi() % elite_pool.size()])  # (a mini boss comes alone: no escorts)
 	var pool := normals(act)
-	var count := group_size(act, floor, rng)
+	var count := group_size(act, floor_n, rng)
 	var out := []
 	for i in count:
 		# prefer enemies not already in this fight or met recently
@@ -734,8 +734,8 @@ const GROUP_ODDS := {
 }
 
 
-static func group_size(act: int, floor: int, rng: RandomNumberGenerator) -> int:
-	if act == 1 and floor <= 2:
+static func group_size(act: int, floor_n: int, rng: RandomNumberGenerator) -> int:
+	if act == 1 and floor_n <= 2:
 		return 1
 	var odds: Array = GROUP_ODDS.get(act, GROUP_ODDS[3])
 	var r := rng.randf()

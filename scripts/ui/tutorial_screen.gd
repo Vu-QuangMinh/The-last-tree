@@ -333,8 +333,8 @@ func _on_blocked(_action: String) -> void:
 
 # ------------------------------------------------------------------ spotlights
 
-func _focus_fn(name: String) -> Callable:
-	return func(): return _focus_rect(name)
+func _focus_fn(p_name: String) -> Callable:
+	return func(): return _focus_rect(p_name)
 
 
 func _rect_of(c: Control) -> Rect2:
@@ -343,9 +343,9 @@ func _rect_of(c: Control) -> Rect2:
 	return Rect2(c.global_position, c.size * c.get_global_transform().get_scale())
 
 
-func _focus_rect(name: String) -> Rect2:
-	var what := name.get_slice(":", 0)
-	var arg := name.get_slice(":", 1) if name.contains(":") else ""
+func _focus_rect(p_name: String) -> Rect2:
+	var what := p_name.get_slice(":", 0)
+	var arg := p_name.get_slice(":", 1) if p_name.contains(":") else ""
 	if fs == null or not is_instance_valid(fs):
 		return Rect2()
 	match what:

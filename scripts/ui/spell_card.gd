@@ -80,7 +80,7 @@ static func make(p_spell: Dictionary, p_compact := false) -> SpellCard:
 
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(W, 120 if compact else H) * zoom
+	custom_minimum_size = Vector2(W, 120.0 if compact else H) * zoom
 	# the magnified copy must never catch the mouse, or the real card loses its hover and its clicks
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if is_zoom_copy else Control.MOUSE_FILTER_STOP
 	if not is_zoom_copy:
@@ -766,7 +766,6 @@ func refresh() -> void:
 		if t != _rules.text:
 			_rules.text = t
 			_fit_text()
-	var n := charges if charges > 0 else fires
 	_count.text = ""  # (no ×N: a spell no longer fires more than once for a long chant)
 	# the frame is the spell's function colour; gold when the chant matches it or it's alive
 	var border: Color = KIND_COLORS[spell.kind].darkened(0.15)

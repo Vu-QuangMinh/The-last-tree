@@ -61,9 +61,9 @@ const BTN_W := 0.7
 const BTN_H := 1.3
 
 
-func _shape(b: Button, size := Vector2.ZERO) -> Button:
-	var s := size if size != Vector2.ZERO else b.get_combined_minimum_size()
-	b.custom_minimum_size = Vector2(s.x * BTN_W if size != Vector2.ZERO else s.x, s.y * BTN_H)
+func _shape(b: Button, sz := Vector2.ZERO) -> Button:
+	var s := sz if sz != Vector2.ZERO else b.get_combined_minimum_size()
+	b.custom_minimum_size = Vector2(s.x * BTN_W if sz != Vector2.ZERO else s.x, s.y * BTN_H)
 	return b
 
 
@@ -423,13 +423,13 @@ func _enemy_thumb(id: String) -> Button:
 	if tex == null:
 		tex = Creature._puppet_tex(first + "_white", act)
 	if tex != null:
-		var tr := TextureRect.new()
-		tr.texture = tex
-		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 6)
-		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		b.add_child(tr)
+		var trect := TextureRect.new()
+		trect.texture = tex
+		trect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 6)
+		trect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		trect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		trect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(trect)
 	var shade := ColorRect.new()
 	shade.color = Color(0, 0, 0, 0.6)
 	shade.anchor_top = 1.0

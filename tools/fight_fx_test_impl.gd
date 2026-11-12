@@ -20,10 +20,10 @@ func run(p_t: SceneTree) -> void:
 	var save = root.get_node("SaveManager")
 	save.use_test_file("user://fx_test_save.json")
 	save.data.settings["theme"] = "puppet"
-	var run := RunState.new()
-	run.setup(root.get_node("GameData").db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
+	var rs := RunState.new()
+	rs.setup(root.get_node("GameData").db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
 	var fs := FightScreen.new()
-	fs.setup(run, run.make_fight(["greenseer", "rolling_bear", "yin_yang_clone"]))
+	fs.setup(rs, rs.make_fight(["greenseer", "rolling_bear", "yin_yang_clone"]))
 	fs.stage_flow = true
 	root.add_child(fs)
 	await t.create_timer(3.0).timeout
@@ -68,12 +68,11 @@ func run(p_t: SceneTree) -> void:
 				rolling2.append(c)
 		if rolling2.size() > 1:
 			worst2 = minf(worst2, _min_gap(rolling2))
-	print("launch into the bag: smallest gap between two rolling balls ", snappedf(worst2, 0.1) if worst2 < 1e8 else "(no overlap possible)", " px")
+	print("launch into the bag: smallest gap between two rolling balls ", str(snappedf(worst2, 0.1)) if worst2 < 1e8 else "(no overlap possible)", " px")
 	if worst2 < FightScreen.BAG_PX - 3.0:
 		fails += 1
 	# 4) the player's HP blocks break when the hit lands, not before
 	var p = fs.fight.player
-	var marks := {}
 	p.hp = 30.0
 	var e = fs.fight.enemies[0] if not fs.fight.enemies.is_empty() else null
 	var before_pieces: int = fs._hp_bar._pieces.size()

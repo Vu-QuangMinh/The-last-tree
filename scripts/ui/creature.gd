@@ -599,8 +599,8 @@ func _draw_corrector(c: Vector2, side: float, mod: Color) -> void:
 	elif not phase2:
 		_small_on = false
 		_boot_t = -1.0
-	var big := Rect2(origin + CORR_SCREEN.position * side, CORR_SCREEN.size * side)
-	_screen_show(big, _enemy.intent if _enemy != null else {}, mod, 1.0)
+	var big_r := Rect2(origin + CORR_SCREEN.position * side, CORR_SCREEN.size * side)
+	_screen_show(big_r, _enemy.intent if _enemy != null else {}, mod, 1.0)
 	if phase2:
 		var k := 1.0
 		if _boot_t >= 0.0:
@@ -660,8 +660,6 @@ func _screen_show(r: Rect2, m: Dictionary, mod: Color, a: float) -> void:
 
 var _pianist_rig: PianistRig  # (his pieces seen from the front: the first set of pictures; kept as a fallback)
 var _pianist_back: PianistBackRig  # (his pieces seen from behind, the user's design; used when its pictures exist)
-var _bk_hand := 0.6  # 0..1 along the keyboard (the high notes' hand) and the foot (the low notes'), jumping to each key as it is struck
-var _bk_foot := 0.2
 var _bk_rh := 6.5  # the picture of the right hand now (0..11, walks towards its target) and of the left foot (0..4)
 var _bk_lf := 0.0  # the left foot's place along the keys, 0..1
 var _bk_rh_target := 6.5
@@ -919,8 +917,8 @@ func retainer_yield() -> void:
 
 
 ## The Samurai swings: returns the seconds until the blow lands (see SamuraiRig.strike).
-func samurai_strike(hit: int, hits: int) -> float:
-	return _samurai.strike(hit, hits) if _samurai != null else 0.0
+func samurai_strike(hit_i: int, hits: int) -> float:
+	return _samurai.strike(hit_i, hits) if _samurai != null else 0.0
 
 
 func has_samurai() -> bool:
@@ -1027,10 +1025,10 @@ func _fold_pose(f: float, th1: float, th2: float, sd: float, rest: Vector2) -> D
 	var p2 := fposmod(PI - th2 if mirror else th2, TAU)
 	var tuck_len := rest * 0.55
 	if f < 0.5:
-		var s := smoothstep(0.0, 1.0, f / 0.5)
-		var u := lerpf(p1, FOLD_TUCK_UPPER, s)
-		var l := lerpf(p2, FOLD_TUCK_LOWER, s)
-		return {"u": PI - u if mirror else u, "l": PI - l if mirror else l, "len": rest.lerp(tuck_len, s)}
+		var s0 := smoothstep(0.0, 1.0, f / 0.5)
+		var u := lerpf(p1, FOLD_TUCK_UPPER, s0)
+		var l := lerpf(p2, FOLD_TUCK_LOWER, s0)
+		return {"u": PI - u if mirror else u, "l": PI - l if mirror else l, "len": rest.lerp(tuck_len, s0)}
 	var s := smoothstep(0.0, 1.0, (f - 0.5) / 0.5)
 	var tu: float = PI - FOLD_TUCK_UPPER if mirror else FOLD_TUCK_UPPER
 	var tl: float = PI - FOLD_TUCK_LOWER if mirror else FOLD_TUCK_LOWER
@@ -1211,7 +1209,7 @@ func _draw_art(blink_on: bool) -> void:
 			_saw_veil1 = true
 		elif _saw_veil1 and _unveil_t < 0.0 and _unveil_tex.size() == 4 and not _unveil_tex.has(null):
 			_unveil_t = 0.0  # (it was phase 1 on this screen and now it is phase 2: the veil breaks and the spider comes out)
-	var unveiling: bool = veil2 and _unveil_t >= 0.0
+	var is_unveiling: bool = veil2 and _unveil_t >= 0.0
 	var side := _art_side()
 	var c := Vector2(size.x / 2.0, size.y - side * 0.5 + sin(bob) * 4.0)
 	if _shake > 0.0:
@@ -1224,7 +1222,7 @@ func _draw_art(blink_on: bool) -> void:
 		fly = Vector2(sin(ft * 1.1) * 8.0, sin(ft * 2.3) * 10.0)
 	if _puppet and not dead and steal_pose <= 0.0 and _dragon == null:  # (carrying a card it hangs in the air: no shadow over the card)
 		var shadow_side := side * (1.0 - 0.15 * clampf(ground_drop / 80.0, 0.0, 1.0))  # (a flyer's shadow: on the floor below it, a little smaller)
-		_draw_puppet_shadow(_unveil_tex[0] if unveiling and _unveil_t < UNVEIL_LEGS[0] else tex, Vector2(c.x + fly.x * 0.5, size.y + ground_drop), shadow_side)  # (the spider's shadow only once its legs are out)
+		_draw_puppet_shadow(_unveil_tex[0] if is_unveiling and _unveil_t < UNVEIL_LEGS[0] else tex, Vector2(c.x + fly.x * 0.5, size.y + ground_drop), shadow_side)  # (the spider's shadow only once its legs are out)
 	if _puppet:  # a puppet doesn't bob: it hangs on its rope and swings from the top of it (see _process), and a hit knocks it back
 		var tip := 0.0 if dead or enemy_id == "handyman" else _swing_a  # (the Handyman's body does not swing: six arms hang on it)
 		if _dragon != null:
@@ -1247,7 +1245,7 @@ func _draw_art(blink_on: bool) -> void:
 	elif blink_on or flash > 0.0:
 		var b := 1.0 + 0.9 * maxf(flash, 1.0 if blink_on else 0.0)
 		mod = Color(b, b, b)
-	if unveiling and _puppet and not dead:
+	if is_unveiling and _puppet and not dead:
 		_draw_unveil(tex, c, side, mod)
 	elif veil2 and steal_pose > 0.0 and _puppet and not dead and _unveil_tex.size() == 4 and not _unveil_tex.has(null):
 		_draw_steal_pose(Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side)), side, mod)
@@ -1264,7 +1262,7 @@ func _draw_art(blink_on: bool) -> void:
 		draw_texture_rect(tex, Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side)), false, mod)
 	if enemy_id == "corrector" and _puppet and not dead:
 		_draw_corrector(c, side, mod)
-	if enemy_id == "veiled_eyes" and _puppet and not dead and not unveiling:
+	if enemy_id == "veiled_eyes" and _puppet and not dead and not is_unveiling:
 		_draw_veiled_eyes_art(c, side, mod, veil2)
 	if _puppet and not dead:
 		for fl in _floaters:  # (they hover: a slow drift up and down and a little sideways, each on its own beat)
@@ -1292,8 +1290,8 @@ func dragon_ball_width() -> float:
 	return _dragon.ball_width() * get_global_transform().get_scale().x if _dragon != null else 0.0
 
 
-func dragon_fx_tex(name: String) -> Texture2D:
-	return _dragon.fx_tex.get(name) if _dragon != null else null
+func dragon_fx_tex(p_name: String) -> Texture2D:
+	return _dragon.fx_tex.get(p_name) if _dragon != null else null
 
 
 func dragon_hide_ball() -> void:
@@ -1401,11 +1399,11 @@ func rope_alpha(frac: Vector2) -> float:
 		return 0.0
 	var key := tex.resource_path
 	if not _alpha_cache.has(key):
-		var img := tex.get_image()
-		if img.is_compressed():
-			img.decompress()
-		img.resize(128, 128, Image.INTERPOLATE_BILINEAR)
-		_alpha_cache[key] = img
+		var im := tex.get_image()
+		if im.is_compressed():
+			im.decompress()
+		im.resize(128, 128, Image.INTERPOLATE_BILINEAR)
+		_alpha_cache[key] = im
 	var img: Image = _alpha_cache[key]
 	return img.get_pixel(int(frac.x * img.get_width()), int(frac.y * img.get_height())).a
 
@@ -1426,8 +1424,8 @@ func puppet_bounds() -> Rect2:
 		var img := tex.get_image()
 		if img.is_compressed():
 			img.decompress()
-		var r := img.get_used_rect()
-		_bounds_cache[key] = Rect2(Vector2(r.position) / Vector2(img.get_size()), Vector2(r.size) / Vector2(img.get_size()))
+		var used := img.get_used_rect()
+		_bounds_cache[key] = Rect2(Vector2(used.position) / Vector2(img.get_size()), Vector2(used.size) / Vector2(img.get_size()))
 	var f: Rect2 = _bounds_cache[key]
 	var side := _art_side()
 	var origin := Vector2(size.x / 2.0 - side / 2.0, size.y - side)
@@ -1491,9 +1489,9 @@ func _draw_veiled(c: Vector2, s: float, body: Color, blink_on: bool) -> void:
 		draw_circle(ball, r * 1.04, Color(0, 0, 0, 0.5))
 		draw_circle(ball, r, body)
 		draw_circle(ball + Vector2(-r * 0.35, -r * 0.4), r * 0.25, Color(1, 1, 1, 0.08))  # (a dull sheen)
-		var cue: Variant = _eyes_cue()
-		var lit_l: bool = _hypno > 0.0 or cue == "both" or cue == "left"
-		var lit_r: bool = _hypno > 0.0 or cue == "both" or cue == "right"
+		var eye_cue: Variant = _eyes_cue()
+		var lit_l: bool = _hypno > 0.0 or eye_cue == "both" or eye_cue == "left"
+		var lit_r: bool = _hypno > 0.0 or eye_cue == "both" or eye_cue == "right"
 		for side in [-1, 1]:
 			_human_eye(ball + Vector2(side * r * 0.4, -r * 0.12), r * 0.3, Vector2.ZERO, false, blink_on)
 		_draw_veil(ball, r, 0.0)

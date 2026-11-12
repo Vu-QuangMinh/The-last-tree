@@ -24,7 +24,6 @@ func run(t: SceneTree, p_out: String) -> void:
 		steps += 1
 		await tree.process_frame
 		var cur: Control = main.current
-		var overlay: Node = main.overlay_layer
 		if not is_instance_valid(cur):
 			continue
 		var name: String = cur.get_script().get_global_name()
@@ -45,10 +44,10 @@ func run(t: SceneTree, p_out: String) -> void:
 				cur.chosen.emit(0)
 			"MapScreen":
 				await _wait_frames(3)
-				var run: RunState = main.run
-				if run.row == -1:
-					await _snap("map_act%d" % run.act)
-				cur.node_chosen.emit(_pick_col(run))
+				var rs: RunState = main.run
+				if rs.row == -1:
+					await _snap("map_act%d" % rs.act)
+				cur.node_chosen.emit(_pick_col(rs))
 			"LoadoutScreen":
 				await _wait_frames(3)
 				if main.run.current_node().type == "boss":
@@ -82,13 +81,13 @@ func run_amber_ok(shop, i: int) -> bool:
 	return shop.run.amber >= shop.stock[i].price
 
 
-func _pick_col(run: RunState) -> int:
-	var opts := run.choices()
-	var low := run.player.hp < run.player.max_hp * 0.5
+func _pick_col(rs: RunState) -> int:
+	var opts := rs.choices()
+	var low := rs.player.hp < rs.player.max_hp * 0.5
 	var best: int = opts[0]
 	var best_s := -99.0
 	for c in opts:
-		var ty: String = run.map[run.row + 1][c].type
+		var ty: String = rs.map[rs.row + 1][c].type
 		var s: float = {"fight": 2.0, "elite": -2.0 if low else 1.5, "rest": 3.0 if low else 0.0, "treasure": 2.5, "boss": 0.0, "event": 2.2, "shop": 2.4}[ty]
 		if s > best_s:
 			best_s = s

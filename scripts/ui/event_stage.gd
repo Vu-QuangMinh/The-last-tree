@@ -333,10 +333,10 @@ static func hint_panel(title: String, text: String, px := 0, min_h := 0.0, text_
 
 
 ## A choice, Continue or Next in an event: the primary (gold) button of the family.
-static func dialogue_button(text: String, cb: Callable, size := 24) -> Button:
+static func dialogue_button(text: String, cb: Callable, px := 24) -> Button:
 	if text != "Back" and UiTheme.has_dialogue_board():
-		return UiTheme.gold_button(text, cb, size)  # (the gold plaque goes with the cream board, whatever the theme's primary button is)
-	return UiTheme.button(text, cb, size, "back" if text == "Back" else "primary")
+		return UiTheme.gold_button(text, cb, px)  # (the gold plaque goes with the cream board, whatever the theme's primary button is)
+	return UiTheme.button(text, cb, px, "back" if text == "Back" else "primary")
 
 
 ## The game's own wooden panel frame (panel_wood_frame) as the background of a box drawn here; a flat dark box when the art is missing.
@@ -519,8 +519,6 @@ func _take_cursor(lay: Dictionary) -> void:
 func _choice_text() -> String:
 	var q := String(ev.get("prompt", ""))
 	return q if q != "" else String(ev.get("text", ""))
-	if _opt_buttons.is_empty() and String(ev.get("prompt", "")) == "" and is_instance_valid(_box):
-		_box.create_tween().tween_property(_box, "modulate:a", 0.0, 0.3)  # (every choice is a prop: nothing left to say in the box)
 
 
 func _start_voices(lay: Dictionary) -> void:
@@ -740,7 +738,7 @@ func set_hint(text: String) -> void:
 
 ## The Recycler takes the item `give_id` (it shrinks into him), the other items fade, and he hands back the `offer` entries (they come out of him into the row):
 ## a click on one emits `traded`. The words of the hint panel become `say`.
-func trade(give_id: String, offer: Array, say: String) -> void:
+func trade(give_id: String, offer: Array, words: String) -> void:
 	_busy = true
 	_hide_tag()
 	var rec := _prop_role("recycler")
@@ -779,7 +777,7 @@ func trade(give_id: String, offer: Array, say: String) -> void:
 		if is_instance_valid(r.node):
 			(r.node as Control).queue_free()
 	_item_views.clear()
-	_page_text(say, [])  # (his words; no Back now: the item is on his cart)
+	_page_text(words, [])  # (his words; no Back now: the item is on his cart)
 	_hover = -1
 	items = offer
 	_offer_tag = "Take this one"
@@ -1265,11 +1263,11 @@ func _react(how: String) -> void:
 		"vine_utility":  # it does nothing: the tree does not move or change
 			pass
 		"turtle_help":  # you flip him over: he lands on his feet with a thud, shakes himself and flies off
-			var tr := _prop_role("turtle")
-			if not tr.is_empty():
-				tr["gone"] = true
-				var tn: TextureRect = tr.node
-				_swap_pic(tr, "event_flying_turtle_front")
+			var turtle := _prop_role("turtle")
+			if not turtle.is_empty():
+				turtle["gone"] = true
+				var tn: TextureRect = turtle.node
+				_swap_pic(turtle, "event_flying_turtle_front")
 				tn.pivot_offset = tn.size / 2.0
 				tn.rotation = PI
 				var ttw := create_tween()
@@ -2104,7 +2102,7 @@ func _walk_on(node: Control, home: Vector2, from: String, delay: float) -> void:
 		tw.tween_property(node, "position:x", home.x, 0.8).set_delay(delay).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 
-func _build_text(lay: Dictionary) -> void:
+func _build_text(_lay: Dictionary) -> void:
 	# the story is told in the box at the front of the stage (where the fight's UI stands); the choices are buttons in it
 	var hp := hint_panel(String(ev.get("title", "")), "", BOX_PX, 0.0, BOX_TEXT_W)
 	var panel: PanelContainer = hp.panel
@@ -2740,11 +2738,11 @@ func _edit_undo() -> void:
 
 
 ## Put prop `k` at `pos` with `size`; its home follows, so it stays there when the rocking and floating start again.
-func _edit_place(k: int, pos: Vector2, size: Vector2) -> void:
+func _edit_place(k: int, pos: Vector2, sz: Vector2) -> void:
 	var r: Dictionary = _props[k]
 	var n: TextureRect = r.node
-	n.size = size
-	n.pivot_offset = Vector2(size.x / 2.0, size.y)
+	n.size = sz
+	n.pivot_offset = Vector2(sz.x / 2.0, sz.y)
 	n.position = pos
 	r["home"] = pos
 	if _edit_box != null:

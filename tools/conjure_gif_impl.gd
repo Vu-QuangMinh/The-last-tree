@@ -14,16 +14,16 @@ func run(t: SceneTree) -> void:
 	var save = root.get_node("SaveManager")
 	save.use_test_file("user://conjure_gif_save.json")
 	var gd = root.get_node("GameData")
-	var run := RunState.new()
-	run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 21)
-	run.learn_spell("stormcaller")
-	var f := run.make_fight(["puddle_slime"])
+	var rs := RunState.new()
+	rs.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 21)
+	rs.learn_spell("stormcaller")
+	var f := rs.make_fight(["puddle_slime"])
 	for e in f.enemies:
 		e.elements = ["W", "W", "W", "W", "W", "W", "W", "W", "W", "W"]
 		e.armor.resize(10)
 		e.armor.fill(false)
 	var fs := FightScreen.new()
-	fs.setup(run, f)
+	fs.setup(rs, f)
 	root.add_child(fs)
 	await _frames(20)
 	fs.auto_release = false  # keep the turn open so the conjured spells can be cast for the recording

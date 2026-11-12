@@ -10,11 +10,11 @@ func run(t: SceneTree) -> void:
 	save.use_test_file("user://turn_timing_save.json")
 	save.data.settings["theme"] = theme
 	var gd = root.get_node("GameData")
-	var run := RunState.new()
-	run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
-	var f := run.make_fight(["greenseer", "rolling_bear"])
+	var rs := RunState.new()
+	rs.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
+	var f := rs.make_fight(["greenseer", "rolling_bear"])
 	var fs := FightScreen.new()
-	fs.setup(run, f)
+	fs.setup(rs, f)
 	root.add_child(fs)
 	var t0 := Time.get_ticks_msec()
 	var last := ""

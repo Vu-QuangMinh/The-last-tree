@@ -432,7 +432,7 @@ static func get_theme() -> Theme:
 	tip.content_margin_top = 14
 	tip.content_margin_bottom = 14
 	var tip_art := UiSkin.frame("bubble_dark", 16, [20, 14, 20, 14])  # (the painted dark plaque, when it is there)
-	t.set_stylebox("panel", "TooltipPanel", tip_art if tip_art != null else tip)
+	t.set_stylebox("panel", "TooltipPanel", (tip_art as StyleBox) if tip_art != null else tip)
 	t.set_color("font_color", "TooltipLabel", TEXT)
 	t.set_font_size("font_size", "TooltipLabel", 21)
 	t.set_color("font_hover_color", "Button", Color.WHITE)

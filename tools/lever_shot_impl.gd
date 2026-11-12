@@ -7,10 +7,10 @@ func run(t: SceneTree) -> void:
 	save.use_test_file("user://lever_shot_save.json")
 	save.data.settings["theme"] = "puppet"
 	var gd = root.get_node("GameData")
-	var run := RunState.new()
-	run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
+	var rs := RunState.new()
+	rs.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
 	var fs := FightScreen.new()
-	fs.setup(run, run.make_fight(["ashling"]))
+	fs.setup(rs, rs.make_fight(["ashling"]))
 	root.add_child(fs)
 	await t.create_timer(3.0).timeout
 	var m: SlotMachine = fs._machine

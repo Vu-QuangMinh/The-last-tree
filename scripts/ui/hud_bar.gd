@@ -62,7 +62,9 @@ func _ready() -> void:
 		_label2 = UiTheme.label("", 20, Color.WHITE)
 		info.add_child(_label2)
 	var codex := UiTheme.button("Codex", func(): codex_pressed.emit())
-	var wiki := UiTheme.button(UiTheme.hk("Wiki", "F1"), func(): get_tree().root.get_node("Main").open_wiki() if get_tree().root.has_node("Main") else null)
+	var wiki := UiTheme.button(UiTheme.hk("Wiki", "F1"), func():
+		if get_tree().root.has_node("Main"):
+			get_tree().root.get_node("Main").open_wiki())
 	if _on_stage:
 		h.queue_free()  # (a two-line block in the corner, clear of the top frame)
 		var box := VBoxContainer.new()

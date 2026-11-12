@@ -303,9 +303,9 @@ func draw_part(ci: Control, base: Transform2D, mod: Color, role: String) -> void
 	var c := _chain({"neck": neck, "throat": throat, "head": head, "jaw": jaw}, lunge)
 	# the tail: scaled about its root (it comes toward you), then each segment on the one before
 	var jr: Vector2 = DragonLayout.JOINT.tail1
-	var tr := Transform2D(0.0, Vector2(tail_s, tail_s), 0.0, Vector2.ZERO)
-	tr.origin = jr - tr.basis_xform(jr) + Vector2(0.0, tail_dy)
-	var t1 := tr * _rot(tail[0], DragonLayout.JOINT.tail1)
+	var tail_t := Transform2D(0.0, Vector2(tail_s, tail_s), 0.0, Vector2.ZERO)
+	tail_t.origin = jr - tail_t.basis_xform(jr) + Vector2(0.0, tail_dy)
+	var t1 := tail_t * _rot(tail[0], DragonLayout.JOINT.tail1)
 	var t2 := t1 * _rot(tail[1], DragonLayout.JOINT.tail2)
 	var t3 := t2 * _rot(tail[2], DragonLayout.JOINT.tail3)
 	var xf := {"body": Transform2D.IDENTITY, "neck": c.neck, "throat": c.throat, "head": c.head, "jaw": c.jaw,

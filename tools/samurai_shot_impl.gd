@@ -13,11 +13,11 @@ func run(t: SceneTree) -> void:
 	save.use_test_file("user://samurai_shot_save.json")
 	save.data.settings["theme"] = "puppet"
 	var gd = root.get_node("GameData")
-	var run := RunState.new()
-	run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
-	var f := run.make_fight(["samurai", "samurai_retainer"])
+	var rs := RunState.new()
+	rs.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
+	var f := rs.make_fight(["samurai", "samurai_retainer"])
 	var fs := FightScreen.new()
-	fs.setup(run, f)
+	fs.setup(rs, f)
 	root.add_child(fs)
 	await t.create_timer(3.5).timeout
 	_shot(root, out + "/samurai_stage.png")

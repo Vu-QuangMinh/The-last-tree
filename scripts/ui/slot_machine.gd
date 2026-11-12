@@ -61,7 +61,6 @@ var _lever_tw: Tween
 var _lever_k := 0.0
 var _chase_tw: Tween
 var _flash_tw: Tween
-var _stopped := 0
 var _veils: Array = []  # Confuse: a black veil over each reel (you can't see what is coming next)
 
 

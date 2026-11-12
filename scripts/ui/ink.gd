@@ -19,7 +19,7 @@ static func noise(a: float, b: float) -> float:
 
 
 ## The outline of a rounded rectangle, every point nudged a little: it looks drawn by hand.
-static func wobbly_rect(r: Rect2, radius: float, seed: int, amp := 1.6) -> PackedVector2Array:
+static func wobbly_rect(r: Rect2, radius: float, p_seed: int, amp := 1.6) -> PackedVector2Array:
 	var pts := PackedVector2Array()
 	var corners := [r.position + Vector2(radius, radius), Vector2(r.end.x - radius, r.position.y + radius),
 		r.end - Vector2(radius, radius), Vector2(r.position.x + radius, r.end.y - radius)]
@@ -29,14 +29,14 @@ static func wobbly_rect(r: Rect2, radius: float, seed: int, amp := 1.6) -> Packe
 		for s in 7:
 			var a: float = start[c] + s * (PI / 2.0) / 6.0
 			var p: Vector2 = corners[c] + Vector2.from_angle(a) * radius
-			pts.append(p + Vector2(noise(k, seed), noise(seed, k)) * amp)
+			pts.append(p + Vector2(noise(k, p_seed), noise(p_seed, k)) * amp)
 			k += 1
 		# a couple of points along each straight side so the edge isn't ruler-straight
 		var next_c: Vector2 = corners[(c + 1) % 4] + Vector2.from_angle(start[(c + 1) % 4]) * radius
 		var this_end: Vector2 = pts[pts.size() - 1]
 		for s in 3:
 			var q := this_end.lerp(next_c, (s + 1) / 4.0)
-			pts.append(q + Vector2(noise(k, seed + 3), noise(seed + 3, k)) * amp)
+			pts.append(q + Vector2(noise(k, p_seed + 3), noise(p_seed + 3, k)) * amp)
 			k += 1
 	pts.append(pts[0])
 	return pts
@@ -44,24 +44,24 @@ static func wobbly_rect(r: Rect2, radius: float, seed: int, amp := 1.6) -> Packe
 
 ## A sticker-like panel: hard offset shadow, bright fill, a light inner edge, a thick wobbly ink outline and a
 ## patch of pencil hatching in the lower-right corner.
-static func panel(ci: CanvasItem, r: Rect2, fill: Color, seed: int, radius := 14.0, ink_w := 4.0) -> void:
+static func panel(ci: CanvasItem, r: Rect2, fill: Color, p_seed: int, radius := 14.0, ink_w := 4.0) -> void:
 	var b := boil()
-	var shadow := wobbly_rect(r.grow(1.0), radius, seed + b)
+	var shadow := wobbly_rect(r.grow(1.0), radius, p_seed + b)
 	var sh := PackedVector2Array()
 	for p in shadow:
 		sh.append(p + Vector2(6, 7))
 	ci.draw_colored_polygon(sh, Color(0, 0, 0, 0.35))
-	var outline := wobbly_rect(r, radius, seed + b)
+	var outline := wobbly_rect(r, radius, p_seed + b)
 	ci.draw_colored_polygon(outline, fill)
 	# a lighter band along the top: light from above
 	var top := Rect2(r.position + Vector2(radius * 0.6, 5), Vector2(r.size.x - radius * 1.2, 3))
 	ci.draw_rect(top, Color(1, 1, 1, 0.14))
-	hatch(ci, Rect2(r.end - Vector2(minf(90.0, r.size.x * 0.35), minf(34.0, r.size.y * 0.45)), Vector2(minf(90.0, r.size.x * 0.35), minf(34.0, r.size.y * 0.45))).grow(-6.0), Color(INK, 0.28), 7.0, seed)
+	hatch(ci, Rect2(r.end - Vector2(minf(90.0, r.size.x * 0.35), minf(34.0, r.size.y * 0.45)), Vector2(minf(90.0, r.size.x * 0.35), minf(34.0, r.size.y * 0.45))).grow(-6.0), Color(INK, 0.28), 7.0, p_seed)
 	ci.draw_polyline(outline, INK, ink_w)
 
 
 ## Pencil hatching: short diagonal strokes filling a rectangle, each a little uneven.
-static func hatch(ci: CanvasItem, r: Rect2, col: Color, spacing := 7.0, seed := 0) -> void:
+static func hatch(ci: CanvasItem, r: Rect2, col: Color, spacing := 7.0, p_seed := 0) -> void:
 	var n := int((r.size.x + r.size.y) / spacing)
 	for i in n:
 		var d := i * spacing
@@ -74,19 +74,19 @@ static func hatch(ci: CanvasItem, r: Rect2, col: Color, spacing := 7.0, seed := 
 			z = Vector2(r.position.x, r.end.y - (r.position.x - z.x))
 		if a.y > r.end.y or z.y < r.position.y:
 			continue
-		var j := noise(i, seed) * 1.5
+		var j := noise(i, p_seed) * 1.5
 		ci.draw_line(a + Vector2(j, 0), z + Vector2(0, j), col, 1.6)
 
 
 ## Turn a PanelContainer into an inked panel (its children sit inside the margins).
-static func style_panel(p: PanelContainer, fill: Color, seed: int, radius := 14.0, margin := 14.0) -> void:
+static func style_panel(p: PanelContainer, fill: Color, p_seed: int, radius := 14.0, margin := 14.0) -> void:
 	var e := StyleBoxEmpty.new()
 	e.content_margin_left = margin
 	e.content_margin_right = margin
 	e.content_margin_top = margin - 4.0
 	e.content_margin_bottom = margin
 	p.add_theme_stylebox_override("panel", e)
-	p.draw.connect(func(): panel(p, Rect2(Vector2.ZERO, p.size), fill, seed, radius))
+	p.draw.connect(func(): panel(p, Rect2(Vector2.ZERO, p.size), fill, p_seed, radius))
 	var tick := Ticker.new()
 	tick.target = p
 	p.add_child(tick)
@@ -94,7 +94,7 @@ static func style_panel(p: PanelContainer, fill: Color, seed: int, radius := 14.
 
 ## A bright sticker-style button: saturated fill, ink outline, hard shadow; lighter when hovered, pushed down
 ## when pressed. Its background is drawn by a node behind it, so the label stays on top.
-static func button(b: Button, fill: Color, seed := 0) -> void:
+static func button(b: Button, fill: Color, p_seed := 0) -> void:
 	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
 		var e := StyleBoxEmpty.new()
 		e.content_margin_left = 18
@@ -111,7 +111,7 @@ static func button(b: Button, fill: Color, seed := 0) -> void:
 	var back := ButtonBack.new()
 	back.button = b
 	back.fill = fill
-	back.seed = seed
+	back.ink_seed = p_seed
 	b.add_child(back)
 
 
@@ -134,7 +134,7 @@ class Ticker extends Control:
 class ButtonBack extends Control:
 	var button: Button
 	var fill := Color.WHITE
-	var seed := 0
+	var ink_seed := 0
 
 	func _ready() -> void:
 		show_behind_parent = true
@@ -153,7 +153,7 @@ class ButtonBack extends Control:
 		var down := button.button_pressed or (button.is_hovered() and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT))
 		var off := Vector2(0, 4) if down else Vector2.ZERO
 		var r := Rect2(off + Vector2(2, 2), size - Vector2(4, 10))
-		var outline := Ink.wobbly_rect(r, 12.0, seed + Ink.boil(), 1.2)
+		var outline := Ink.wobbly_rect(r, 12.0, ink_seed + Ink.boil(), 1.2)
 		if not down:
 			var sh := PackedVector2Array()
 			for p in outline:

@@ -151,9 +151,9 @@ func test_upgraded_artifact_uses_its_plus_number() -> void:
 
 
 func test_prefight_essence_matches_the_fight() -> void:
-	for seed in [3, 11, 29]:
+	for sd in [3, 11, 29]:
 		var run := RunState.new()
-		run.setup(db, [], [], seed)
+		run.setup(db, [], [], sd)
 		run.act = 2  # deeper: enemies get extra random Essence
 		var ids := run.encounter_ids()
 		var shown := []
@@ -161,7 +161,7 @@ func test_prefight_essence_matches_the_fight() -> void:
 			shown.append("".join(run.encounter_hp(i)))
 		var f := run.make_fight(ids)
 		var real := f.enemies.map(func(e): return e.hp_text())
-		assert_eq(real, shown, "seed %d: what the preview shows is what you fight" % seed)
+		assert_eq(real, shown, "seed %d: what the preview shows is what you fight" % sd)
 
 
 func test_withered_idol_gives_2_elements_costs_a_slot() -> void:
@@ -414,15 +414,15 @@ func test_lens_refunds_about_a_quarter_of_its_element() -> void:
 
 
 func test_every_fight_starts_with_one_of_each_element() -> void:
-	for seed in 40:
+	for sd in 40:
 		var f := Fight.new(db, PlayerState.new())
-		f.rng.seed = seed
+		f.rng.seed = sd
 		f.loadout = [db.get_spell("fire_ball")]
 		f.start(["ashling"], 1, 1)
 		var els: Array = f.player.stock.map(func(s): return s.el)
 		assert_eq(els.size(), PlayerState.START_ELEMENTS)
 		for el in ["F", "W", "A"]:
-			assert_true(el in els, "seed %d: start hand %s has no %s" % [seed, "".join(els), el])
+			assert_true(el in els, "seed %d: start hand %s has no %s" % [sd, "".join(els), el])
 
 
 func test_early_enemies_have_three_essence() -> void:
@@ -533,7 +533,7 @@ func test_remove_a_kind_lets_you_choose_which() -> void:
 	var e: EnemyState = f.enemies[0]
 	_set_hp(e, "FWFAF")
 	var asked := []
-	f.picker = func(_s, en):
+	f.picker = func(_s, _en):
 		asked.append(f.pick_el)
 		return 4 if asked.size() == 1 else 0
 	f._apply({"op": "purge", "el": "F", "n": 2, "target": "target"}, f.loadout[0], {"target": e})
@@ -1467,7 +1467,6 @@ func test_refund_disturbance_and_the_pool() -> void:
 	f.chant_picker = func(_s): return picks.pop_front()
 	f.cast_chant(_all(3))
 	f._apply({"op": "retain", "n": 2}, f.loadout[0], {}, f.turn_ctx)
-	var bag := f.player.stock.size()
 	f.finish_turn()
 	var els := f.player.stock.map(func(s): return s.el)
 	assert_true("F" in els and "A" in els, "the F and the A came back")
@@ -2193,7 +2192,6 @@ func test_storm_crown_refunds_an_air_each_chant() -> void:
 	_set_hp(f.enemies[0], "WWWWWWWWWW")
 	f.player.hp = 99
 	f.player.passives["refund_air"] = 1
-	var before := f.player.stock.size()
 	f.cast(_all(1))  # chant the F: after the Release, an Air comes back
 	assert_true(f.player.stock.any(func(s): return s.el == "A" and not s.temp), "an Air in the bag")
 	assert_eq(db.get_spell("storm_crown").effects[0].key, "steal_each_chant", "(Storm Crown is Jaeler's Knife now)")

@@ -91,7 +91,7 @@ func _ready() -> void:
 	sb.set_corner_radius_all(14)
 	sb.set_content_margin_all(12)
 	var board := UiSkin.frame("bubble_dark", 16, [16, 12, 16, 12])
-	panel.add_theme_stylebox_override("panel", board if board != null else sb)
+	panel.add_theme_stylebox_override("panel", (board as StyleBox) if board != null else sb)
 	panel.position = Vector2(560, 770)
 	panel.custom_minimum_size = Vector2(800, 0)
 	add_child(panel)
@@ -184,7 +184,7 @@ func _show_chant() -> void:
 			rs.set_border_width_all(2)
 			rs.set_corner_radius_all(int(ORB / 2.0))
 			var socket := UiSkin.box("frame_round_socket")
-			ring.add_theme_stylebox_override("panel", socket if socket != null else rs)
+			ring.add_theme_stylebox_override("panel", (socket as StyleBox) if socket != null else rs)
 			ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			_chant_row.add_child(ring)
 

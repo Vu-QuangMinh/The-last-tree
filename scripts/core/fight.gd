@@ -1769,7 +1769,7 @@ func _targets(eff: Dictionary, spell: Dictionary, tctx: Dictionary) -> Array:
 		for e in live:
 			left[e] = e.armor.count(false)
 		for k in eff.n:
-			var cands := live.filter(func(e): return left[e] > 0)
+			var cands := live.filter(func(x): return left[x] > 0)
 			if cands.is_empty():
 				break
 			var e: EnemyState = cands[rng.randi() % cands.size()]
@@ -2283,8 +2283,8 @@ func _invoker_summon(e: EnemyState) -> void:
 		sp.base = sp.pattern
 		sp.rank = rng.randf()
 		e.conjured.append(sp)
-	var lines := EnemyDefs.INVOKER_SUMMON_LINES
-	anim.call({"type": "invoker_summon", "enemy": e, "line": lines[randi() % lines.size()]})  # (randi: the line doesn't touch the fight's own dice)
+	var summon_lines := EnemyDefs.INVOKER_SUMMON_LINES
+	anim.call({"type": "invoker_summon", "enemy": e, "line": summon_lines[randi() % summon_lines.size()]})  # (randi: the line doesn't touch the fight's own dice)
 
 
 func _strip_conjured(e: EnemyState) -> void:
@@ -2336,8 +2336,8 @@ static func invoker_desc(sp: Dictionary, e: EnemyState) -> String:
 func _missing(p: String, c: String) -> int:
 	var n := p.length()
 	for k in range(n, 0, -1):
-		for start in n - k + 1:
-			if not Chant.occurrences(p.substr(start, k), c).is_empty():
+		for off in n - k + 1:
+			if not Chant.occurrences(p.substr(off, k), c).is_empty():
 				return n - k
 	return n
 

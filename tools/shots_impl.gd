@@ -23,14 +23,14 @@ func run(t: SceneTree) -> void:
 	if OS.get_environment("SHOT_THEME") != "":
 		UiSkin.set_theme(OS.get_environment("SHOT_THEME"))  # "new" renders the New theme
 	var gd = root.get_node("GameData")
-	var run := RunState.new()
-	run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
-	run.gain_artifact("ember_charm")
+	var rs := RunState.new()
+	rs.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
+	rs.gain_artifact("ember_charm")
 	for id in ["inferno", "kindle"]:
-		run.learn_spell(id)
+		rs.learn_spell(id)
 	var sh := ShopScreen.new()
-	run.amber = 130
-	sh.setup(run, run.shop_stock())
+	rs.amber = 130
+	sh.setup(rs, rs.shop_stock())
 	await _shot(sh, "02c_shop")
 	var ev := MapEvents.get_event("mushroom_ring")
 	var ms := MessageScreen.new()
@@ -46,12 +46,12 @@ func run(t: SceneTree) -> void:
 		bd.act = act
 		await _wait(40)
 		await _shot(bd, "01b_bg_act%d" % act)
-	run.move_to(run.choices()[0])
+	rs.move_to(rs.choices()[0])
 	var m := MapScreen.new()
-	m.setup(run)
+	m.setup(rs)
 	await _shot(m, "02_map")
 	var l := LoadoutScreen.new()
-	l.setup(run, ["stone_knight", "gale_sprite", "echo_wraith"])
+	l.setup(rs, ["stone_knight", "gale_sprite", "echo_wraith"])
 	await _shot(l, "03_loadout", true, true)
 	var cr: Creature = l.find_children("*", "Creature", true, false)[0]
 	var tp := PanelContainer.new()
@@ -60,11 +60,11 @@ func run(t: SceneTree) -> void:
 	tp.position = cr.global_position + Vector2(60, 150)
 	l.add_child(tp)
 	await _shot(l, "03b_loadout_hover")
-	var f := run.make_fight(["stone_knight", "ashling", "gale_sprite"])
+	var f := rs.make_fight(["stone_knight", "ashling", "gale_sprite"])
 	f.enemies[0].set_armor(1)
 	f.enemies[1].burn = 2
 	var fs := FightScreen.new()
-	fs.setup(run, f)
+	fs.setup(rs, f)
 	root.add_child(fs)
 	await tree.process_frame
 	f.player.stock.clear()
@@ -180,7 +180,7 @@ func run(t: SceneTree) -> void:
 	var ch := ChoiceScreen.new()
 	ch.title = "Victory"
 	ch.subtitle = "Learn a new spell."
-	ch.spells = run.spell_offer(3)
+	ch.spells = rs.spell_offer(3)
 	root.add_child(ch)
 	await _wait(6)
 	var rc: Array = ch.find_children("*", "SpellCard", true, false)
@@ -222,7 +222,7 @@ func run(t: SceneTree) -> void:
 	await _wait(12)
 	await _shot(bfs, "11b_crowded_hover")
 	var fz := FuseScreen.new()
-	fz.setup(run)
+	fz.setup(rs)
 	root.add_child(fz)
 	await _wait(3)
 	fz._toggle("water_wall")
@@ -244,10 +244,10 @@ func _wait(n: int) -> void:
 func _check_bag(fs: FightScreen) -> void:
 	var seq := [4, 5, 6, 4, 7, 5]  # stock indices: the first toggle of an index adds it to the chant, the second removes it
 	var bad := 0
-	for round in 2:
+	for rnd in 2:
 		for i in seq:
 			fs._toggle_stock(i)
-			await _wait(round * 12 + 3)  # round 0: quick successive clicks, round 1: let each flight finish
+			await _wait(rnd * 12 + 3)  # round 0: quick successive clicks, round 1: let each flight finish
 		await _wait(40)
 		var spots := []
 		for uid in fs._bag_icons:

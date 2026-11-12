@@ -6,31 +6,31 @@ extends SceneTree
 func _init() -> void:
 	await process_frame
 	create_timer(90.0).timeout.connect(quit)
-	var root: Window = root_window()
+	var win: Window = root_window()
 	var out: String = OS.get_cmdline_user_args()[0]
-	var save = root.get_node("SaveManager")
+	var save = win.get_node("SaveManager")
 	save.use_test_file("user://shop_editor_flow.json")
 	save.data.settings["theme"] = "puppet"
 	var main = load("res://scenes/main.tscn").instantiate()
-	root.add_child(main)
+	win.add_child(main)
 	await create_timer(1.5).timeout
 	main._test_event("merchant")
 	await create_timer(11.0).timeout
 	var sh = main._overlay
 	print("edit_allowed: ", sh.edit_allowed)
-	_key(root, KEY_F6)
+	_key(win, KEY_F6)
 	await process_frame
 	print("editing: ", sh._editing)
 	var shelf_c: Vector2 = sh._shelf.get_global_rect().get_center() + Vector2(0, -150)  # (the gap between the planks' backs: empty shelf area)
 	var w0: float = sh._shelf_w()
 	var cx0: float = sh._shelf_cx()
-	await _click_drag(root, shelf_c, Vector2(60, -10))
+	await _click_drag(win, shelf_c, Vector2(60, -10))
 	print("shelf selected: ", sh._sel, " cx ", cx0, " -> ", sh._shelf_cx())
 	for i in 5:
-		_wheel(root, shelf_c, true)
+		_wheel(win, shelf_c, true)
 		await process_frame
 	print("shelf width ", w0, " -> ", sh._shelf_w())
-	root.get_texture().get_image().save_png(out + "/editor_1.png")
+	win.get_texture().get_image().save_png(out + "/editor_1.png")
 	var slots: Array = sh._edit_slots()
 	var a0: Control = null
 	for d in slots:
@@ -38,20 +38,20 @@ func _init() -> void:
 			a0 = d["box"]
 	var ap: Vector2 = a0.get_global_rect().get_center() + Vector2(0, -20)
 	var s0: Array = (sh._lay["art"]["slots"] as Array)[0].duplicate()
-	await _click_drag(root, ap, Vector2(0, -50))
+	await _click_drag(win, ap, Vector2(0, -50))
 	print("slot selected: ", sh._sel, " art slot0 ", s0, " -> ", sh._lay["art"]["slots"][0])
 	var px0: float = float(sh._lay["art"]["px"])
 	for i in 5:
-		_wheel(root, ap, true)
+		_wheel(win, ap, true)
 		await process_frame
 	await create_timer(0.8).timeout
 	print("art px ", px0, " -> ", sh._lay["art"]["px"], "  boxes: ", sh._boxes.size())
-	root.get_texture().get_image().save_png(out + "/editor_2.png")
-	_key(root, KEY_Z, true)
+	win.get_texture().get_image().save_png(out + "/editor_2.png")
+	_key(win, KEY_Z, true)
 	await create_timer(0.8).timeout
 	print("after undo art px ", sh._lay["art"]["px"])
 	var amber: int = main.run.amber
-	_key(root, KEY_F6)
+	_key(win, KEY_F6)
 	await process_frame
 	print("saved: ", FileAccess.file_exists("res://data/shop_layout_overrides.json"), " editing ", sh._editing, " amber ", amber, " -> ", main.run.amber)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("res://data/shop_layout_overrides.json"))
@@ -62,7 +62,7 @@ func root_window() -> Window:
 	return root
 
 
-func _key(w: Window, code: Key, ctrl := false) -> void:
+func _key(_w: Window, code: Key, ctrl := false) -> void:
 	for pressed in [true, false]:
 		var e := InputEventKey.new()
 		e.keycode = code

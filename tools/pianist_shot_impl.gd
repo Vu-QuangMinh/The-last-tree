@@ -9,12 +9,12 @@ func run(t: SceneTree) -> void:
 	save.use_test_file("user://pianist_shot_save.json")
 	save.data.settings["theme"] = "puppet"
 	var gd = root.get_node("GameData")
-	var run := RunState.new()
-	run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
-	var f := run.make_fight(["pianist"])
+	var rs := RunState.new()
+	rs.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
+	var f := rs.make_fight(["pianist"])
 	var fs := FightScreen.new()
 	fs.test_mode = true
-	fs.setup(run, f)
+	fs.setup(rs, f)
 	root.add_child(fs)
 	await t.create_timer(5.0).timeout
 	fs._pianist_start()

@@ -273,7 +273,7 @@ func _leave_button() -> Button:
 
 ## New theme: the merchant himself stands above the Leave button (behind the goods, so they never get covered).
 ## Click him (or the mark over his head) to talk. Once he's drunk he sits on his chair: his own picture ("merchant_drunk").
-func _place_merchant(leave_btn: Control, behind: Control) -> void:
+func _place_merchant(leave_btn: Control, _behind: Control) -> void:
 	var t := UiSkin.tex("merchant_full") if UiSkin.tex("merchant_full") != null else UiSkin.tex("merchant_portrait")  # (Puppet: the whole merchant)
 	if MerchantQuests.is_drunk(quest) and UiSkin.tex("merchant_drunk") != null:
 		t = UiSkin.tex("merchant_drunk")
@@ -593,17 +593,17 @@ func _refresh() -> void:
 				slot.mouse_filter = Control.MOUSE_FILTER_PASS
 				if bt != null:
 					var k := minf(_bottle_px() / float(bt.get_width()), _bottle_px() / float(bt.get_height()))
-					var tr := TextureRect.new()
-					tr.texture = bt
-					tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-					tr.stretch_mode = TextureRect.STRETCH_SCALE
-					tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-					tr.size = Vector2(float(bt.get_width()), float(bt.get_height())) * k
-					tr.position = Vector2((_bottle_px() - tr.size.x) / 2.0, _bottle_px() - tr.size.y)
-					tr.pivot_offset = Vector2(tr.size.x / 2.0, tr.size.y)
-					tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-					slot.add_child(tr)
-					ic = tr
+					var trect := TextureRect.new()
+					trect.texture = bt
+					trect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+					trect.stretch_mode = TextureRect.STRETCH_SCALE
+					trect.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+					trect.size = Vector2(float(bt.get_width()), float(bt.get_height())) * k
+					trect.position = Vector2((_bottle_px() - trect.size.x) / 2.0, _bottle_px() - trect.size.y)
+					trect.pivot_offset = Vector2(trect.size.x / 2.0, trect.size.y)
+					trect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+					slot.add_child(trect)
+					ic = trect
 				else:
 					ic = UiTheme.label(b.icon, 64, Color.WHITE)
 					ic.size = Vector2(_bottle_px(), _bottle_px())
@@ -662,19 +662,19 @@ func _refresh() -> void:
 				var slot := Control.new()
 				slot.custom_minimum_size = Vector2(gw, gh)
 				slot.mouse_filter = Control.MOUSE_FILTER_PASS
-				var tr := TextureRect.new()
-				tr.texture = gt
-				tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-				tr.stretch_mode = TextureRect.STRETCH_SCALE
-				tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-				tr.size = Vector2(gw, gh)
-				tr.pivot_offset = Vector2(gw / 2.0, gh)
-				tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				slot.add_child(tr)
+				var trect := TextureRect.new()
+				trect.texture = gt
+				trect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				trect.stretch_mode = TextureRect.STRETCH_SCALE
+				trect.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+				trect.size = Vector2(gw, gh)
+				trect.pivot_offset = Vector2(gw / 2.0, gh)
+				trect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				slot.add_child(trect)
 				var nm := "A hot meal" if it.kind == "heal" else "Wax seal"
 				box.set_meta("tip", Keywords.tooltip(nm, "Heal %d HP." % int(run.player.max_hp * RunState.REST_HEAL) if it.kind == "heal" else "Seal one Essence of a spell's pattern: it won't be needed any more."))
 				box.set_meta("tip_tex", gt)
-				box.set_meta("pic", tr)
+				box.set_meta("pic", trect)
 				box.set_meta("pic_w", gw)
 				box.set_meta("pic_h", gh)
 				box.add_child(slot)
@@ -926,16 +926,16 @@ func _pic_rect(file: String, r: Rect2, parent: Control) -> TextureRect:
 	var t := _art(file)
 	if t == null:
 		return null
-	var tr := TextureRect.new()
-	tr.texture = t
-	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tr.stretch_mode = TextureRect.STRETCH_SCALE
-	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tr.position = r.position
-	tr.size = r.size
-	tr.pivot_offset = r.size / 2.0
-	parent.add_child(tr)
-	return tr
+	var trect := TextureRect.new()
+	trect.texture = t
+	trect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	trect.stretch_mode = TextureRect.STRETCH_SCALE
+	trect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	trect.position = r.position
+	trect.size = r.size
+	trect.pivot_offset = r.size / 2.0
+	parent.add_child(trect)
+	return trect
 
 
 func _ready_stage() -> void:
@@ -1361,7 +1361,6 @@ func _stage_layout(old: Array) -> void:
 	var hang_new: Array[Dictionary] = []
 	var sh_new: Array[Dictionary] = []
 	var n_bottle := 0
-	var bottles_total := _boxes.filter(func(x): return is_instance_valid(x) and x.get_meta("kind") == "bottle").size()
 	var camp_top := _ground - 230.0
 	var camp_foot := _ground + 12.0
 	if _camp != null:

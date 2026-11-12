@@ -132,7 +132,6 @@ func _process(d: float) -> void:
 		if _actors.size() < MAX_ACTORS:
 			_spawn()
 	var width := maxf(size.x, 1920.0)
-	var r := _y_range()
 	for a in _actors.duplicate():
 		var n: Node2D = a.node
 		a.t += d
