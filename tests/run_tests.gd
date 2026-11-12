@@ -1,20 +1,18 @@
 extends SceneTree
-## Headless test runner.
-## Usage: godot_console --headless --path . -s tests/run_tests.gd [-- filter]
-
-
+## Headless unit-test runner (the only one). Starts after the first frame so the autoloads (Audio, SaveManager, GameData) exist.
+##   "C:\Program Files\Godot\Godot.exe" --headless --path . --script res://tests/run_tests.gd [-- filter]
+## filter = part of "test_file.gd:test_name". Exit 0 = all passed, 1 = a test failed, 2 = the 240 s guard fired.
 func _init() -> void:
+	await process_frame
+	create_timer(240.0).timeout.connect(func(): quit(2))
 	var filter := ""
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
 		filter = args[0]
-	var files: Array[String] = []
-	for f in DirAccess.get_files_at("res://tests"):
-		if f.begins_with("test_") and f.ends_with(".gd") and f != "test_case.gd":
-			files.append(f)
-	files.sort()
 	var total := 0
 	var failed := 0
+	var files: Array = Array(DirAccess.get_files_at("res://tests")).filter(func(f): return f.begins_with("test_") and f.ends_with(".gd") and f != "test_case.gd")
+	files.sort()
 	for f in files:
 		var script: GDScript = load("res://tests/" + f)
 		if script == null or not script.can_instantiate():
@@ -24,9 +22,7 @@ func _init() -> void:
 			continue
 		for m in script.get_script_method_list():
 			var name: String = m.name
-			if not name.begins_with("test_"):
-				continue
-			if filter != "" and not (f + ":" + name).contains(filter):
+			if not name.begins_with("test_") or (filter != "" and not (f + ":" + name).contains(filter)):
 				continue
 			total += 1
 			var inst = script.new()

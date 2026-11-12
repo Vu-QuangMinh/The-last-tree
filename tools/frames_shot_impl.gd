@@ -28,7 +28,6 @@ func run(t: SceneTree) -> void:
 	callout.position = Vector2(100, 260)
 	fs._speech_bubble(func(): return Vector2(1000, 420), "Not so fast, scoundrel.", 6.0)
 	fs._dillo_say(Vector2(1300, 300), "Ouch! My shell!", 6.0)
-	var pill := IntentChip.new()
 	var msg := MessageScreen.new()
 	msg.title = "Choose"
 	msg.body = "Pick one."

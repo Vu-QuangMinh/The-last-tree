@@ -125,8 +125,6 @@ var _talk_pending := false  # a boss to talk to: _arrive starts it once everythi
 var _talking := false  # talking to a boss before the fight (BossTalk): only the boss, the backdrop and your bag
 var _prompt: Label
 var _info: Label
-var _info_row: Control  # Puppet Stage: the same line written in the wooden alphabet (UiSkin.letters)
-var _info_text := ""
 var _hp_bar: HpBar
 var _minh_lever: TextureRect  # MinhHUD: the lever on the hub
 var _minh_disc: MinhParts.Disc  # MinhHUD: the round Chant / Pass button (flips into Release)
@@ -638,8 +636,8 @@ var _prepare_on := false
 var _prepare_players: Array = []
 
 
-func _play_prepare(name: String) -> void:
-	var p := Audio.play_held(name, PREPARE_DB.get(name, 0.0), randf_range(0.97, 1.03))
+func _play_prepare(p_name: String) -> void:
+	var p := Audio.play_held(p_name, PREPARE_DB.get(p_name, 0.0), randf_range(0.97, 1.03))
 	if p != null:
 		_prepare_players.append(p)
 
@@ -947,7 +945,6 @@ func _build_strips_classic() -> void:
 const TUBE_BALL_STEP := 54.0
 
 var _tube_gear: TextureRect
-var _tube_plate: TextureRect
 var _tube_handle: TextureRect
 var _crank_tween: Tween
 var _launching := 0  # Essence rolling out of the tube right now
@@ -1693,7 +1690,7 @@ func _build_strips_puppet() -> void:
 	var cap := PuppetLayout.CAP
 	var margins := [int(cap.x), 0, int(cap.y), 0]  # (3 slices: a cap at each end, a plain middle, no stretch in height)
 	var cp := PanelContainer.new()
-	cp.add_theme_stylebox_override("panel", StyleBoxEmpty.new() if _nu_ui else UiSkin.box("chant_frame", margins))  # (New UI: the dark block of the page is the Chant strip)
+	cp.add_theme_stylebox_override("panel", (StyleBoxEmpty.new() as StyleBox) if _nu_ui else UiSkin.box("chant_frame", margins))  # (New UI: the dark block of the page is the Chant strip)
 	_chant_panel = cp
 	cp.position = _bag_at() + _chant_at()
 	cp.custom_minimum_size = PuppetLayout.FRAME_CHANT
@@ -1749,7 +1746,7 @@ func _build_strips_puppet() -> void:
 	# and the port's ring on top of them.
 	var sp := PanelContainer.new()
 	_bag_panel = sp
-	sp.add_theme_stylebox_override("panel", StyleBoxEmpty.new() if _nu_ui else UiSkin.box("bag_frame", margins))  # (New UI: the Bag tray is drawn in NewUiLayout.Back)
+	sp.add_theme_stylebox_override("panel", (StyleBoxEmpty.new() as StyleBox) if _nu_ui else UiSkin.box("bag_frame", margins))  # (New UI: the Bag tray is drawn in NewUiLayout.Back)
 	sp.position = _bag_at()
 	sp.custom_minimum_size = PuppetLayout.FRAME_BAG
 	var inner := Control.new()
@@ -1834,31 +1831,31 @@ func _build_minh_pipe(holder: Control) -> void:
 			box.size = clip[0].size
 			box.z_index = clip[2]
 			box.modulate.a = clip[3]
-			var tr := TextureRect.new()
-			tr.texture = pipe
-			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			tr.stretch_mode = TextureRect.STRETCH_SCALE
-			tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-			tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			tr.position = Vector2(img.position.x + clip[1], img.position.y) - clip[0].position
-			tr.size = img.size
-			box.add_child(tr)
+			var trect := TextureRect.new()
+			trect.texture = pipe
+			trect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			trect.stretch_mode = TextureRect.STRETCH_SCALE
+			trect.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+			trect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			trect.position = Vector2(img.position.x + clip[1], img.position.y) - clip[0].position
+			trect.size = img.size
+			box.add_child(trect)
 			holder.add_child(box)
 	var lever := UiSkin.tex("minhhud_lever")
 	if lever != null:
 		var lr := Rect2(1710.894, 753.503, 20.323, 148.617)
-		var tr := TextureRect.new()
-		tr.texture = lever
-		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tr.stretch_mode = TextureRect.STRETCH_SCALE
-		tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-		tr.position = lr.position - _bag_at()
-		tr.size = lr.size
-		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		tr.z_index = 63
-		tr.pivot_offset = H.M_LOOP_C - lr.position
-		holder.add_child(tr)
-		_minh_lever = tr
+		var trect := TextureRect.new()
+		trect.texture = lever
+		trect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		trect.stretch_mode = TextureRect.STRETCH_SCALE
+		trect.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		trect.position = lr.position - _bag_at()
+		trect.size = lr.size
+		trect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		trect.z_index = 63
+		trect.pivot_offset = H.M_LOOP_C - lr.position
+		holder.add_child(trect)
+		_minh_lever = trect
 	var cap := MinhParts.Cap.new()
 	cap.position = -_bag_at()
 	cap.z_index = 64
@@ -1891,17 +1888,17 @@ func _build_hud2_tube(holder: Control) -> void:
 		var t := UiSkin.tex(sp[0])
 		if t == null:
 			continue
-		var tr := TextureRect.new()
-		tr.texture = t
-		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tr.stretch_mode = TextureRect.STRETCH_SCALE
-		tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		var trect := TextureRect.new()
+		trect.texture = t
+		trect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		trect.stretch_mode = TextureRect.STRETCH_SCALE
+		trect.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		var r := Hud2Layout.s(sp[1])
-		tr.position = r.position - _bag_at()  # (local to the Bag strip)
-		tr.size = r.size
-		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		tr.z_index = sp[2]
-		holder.add_child(tr)
+		trect.position = r.position - _bag_at()  # (local to the Bag strip)
+		trect.size = r.size
+		trect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		trect.z_index = sp[2]
+		holder.add_child(trect)
 	var bt := UiSkin.tex("hud2_board_right")
 	if bt != null:
 		var px := bt.get_width() / Hud2Layout.BOARD_RIGHT.size.x  # (source px per pt)
@@ -2238,15 +2235,15 @@ func _tube_launch(balls: Array) -> void:
 	# when does each ball arrive? one after the other, 0.12 s apart, the first one furthest
 	var travel: Array = []
 	var starts: Array = []
-	var arrive := 0.0
+	var arrive_t := 0.0
 	var last_start := 0.0
 	for j in n:
 		var d: float = float(starts_x[j]) - balls[j][1].x
 		var t := 0.25 + maxf(0.0, d) / 820.0
 		travel.append(t)
-		arrive = t if j == 0 else maxf(t, arrive + 0.12)
-		starts.append(arrive - t)
-		last_start = maxf(last_start, arrive - t)
+		arrive_t = t if j == 0 else maxf(t, arrive_t + 0.12)
+		starts.append(arrive_t - t)
+		last_start = maxf(last_start, arrive_t - t)
 	_tube_hold_until = Time.get_ticks_msec() + int((last_start + 2.0) * 1000.0)  # the tube reloads 2 s after the last ball is away
 	_tube_prep = false
 	for j in n:
@@ -2336,22 +2333,7 @@ func _tray_k() -> float:
 
 ## The reels at rest show next turn's draw (in the Bag's order, three at most): what is about to spawn.
 func _sync_reels() -> void:
-	return  # (the faces on the reels are pictures of what was rolled at the lever: a bonus Essence never changes them)
-	if _machine == null or _machine.busy or not _reels_armed:
-		return
-	var ranked: Array = []
-	for i in fight.player.next_draw.size():
-		var d: Dictionary = fight.player.next_draw[i]
-		ranked.append([maxi(0, "FWA".find(d.el) + 1), i, d])
-	ranked.sort_custom(func(a, b): return a[0] < b[0] or (a[0] == b[0] and a[1] < b[1]))
-	var els: Array = []
-	for r in ranked:
-		if els.size() < 3:
-			els.append(r[2].el)
-	if els == _reel_shown:
-		return
-	_reel_shown = els.duplicate()
-	_machine.set_faces(els, true)
+	return  # (the faces on the reels are pictures of what was rolled at the lever: a bonus Essence never changes them; the old body that re-ranked them is in git history before 2026-11-12)
 
 
 func _path_point(pts: Array, at: float) -> Vector2:
@@ -3305,7 +3287,6 @@ func _sync_views() -> void:
 ## its enemy) never lands on its neighbour's model or cards (the Wizard's floating spells); 20 px when the row is full.
 const ENEMY_GAP_MAX := 150.0
 const SAMURAI_GAP := -110.0
-const LAMP_GAP := -185.0
 const DUO_GAP := -236.0
 
 
@@ -3325,8 +3306,6 @@ func _space_enemy_row() -> void:
 	var gap := clampf((1840.0 - total) / float(places.size() - 1), 20.0, ENEMY_GAP_MAX)
 	if views.all(func(v): return v.enemy.has_passive("avenger") or v.enemy.has_passive("retainer")):
 		gap = SAMURAI_GAP  # (the Samurai and his Retainer stand side by side, their puppets may overlap a little)
-	if views.size() == 2 and views[0].enemy.id == "bog_lamp" and views[1].enemy.has_passive("lure"):
-		gap = LAMP_GAP  # (the Bog Lantern: its lamp hangs on the fish's hook, over the fish's left side)
 	if views.size() == 2 and views[0].enemy.has_passive("big_shield") and views[1].enemy.has_passive("behind_shield"):
 		gap = DUO_GAP  # (the Undying Duo: the Necromancer stands right behind his Shield Bearer, a little to the right)
 	_enemy_row.add_theme_constant_override("separation", int(gap))
@@ -4008,7 +3987,7 @@ func _show_help() -> void:
 	sb.shadow_size = 6
 	sb.shadow_offset = Vector2(4, 5)
 	var paper := UiSkin.box("panel_paper_frame", [46, 46, 46, 46] if UiSkin.is_puppet() else [24, 24, 24, 24], [36, 28, 34, 34] if UiSkin.is_puppet() else [24, 14, 22, 22])
-	p.add_theme_stylebox_override("panel", paper if paper != null else sb)
+	p.add_theme_stylebox_override("panel", (paper as StyleBox) if paper != null else sb)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.z_index = 99
 	p.position = Vector2(24, 112)
@@ -4252,7 +4231,17 @@ func _build_test_buttons() -> void:
 		["Auto-ball", _auto_ball, "Test mode: shoots new Essence out of the machine until the bag holds 10."]]
 	for k in specs.size():
 		var b := UiTheme.button(specs[k][0], specs[k][1], 15)
-		if _puppet_strips():
+		if UiSkin.is_newui2() and UiSkin.tex("btn_teal") != null:  # (NewUI Ver2: the user's teal button, with the word on it)
+			UiTheme.use_heading_font(b)
+			for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+				var sb := UiSkin.scaled_box(["btn_teal"], 0.28, [8, 2, 8, 3])
+				sb.modulate_color = {"hover": Color(1.25, 1.22, 1.15), "pressed": Color(0.62, 0.6, 0.58)}.get(state, Color.WHITE)
+				b.add_theme_stylebox_override(state, sb)
+			for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+				b.add_theme_color_override(c, Color(1.0, 0.95, 0.82))
+			b.add_theme_color_override("font_outline_color", Color(0.05, 0.15, 0.13))
+			b.add_theme_constant_override("outline_size", 3)
+		elif _puppet_strips():
 			UiTheme.use_heading_font(b)
 			UiTheme.style_puppet_button(b, "clear", 15, false)
 		b.tooltip_text = specs[k][2]
@@ -4731,32 +4720,32 @@ func _seed_revival() -> void:
 	for c in _arts.get_children():
 		if c is ArtifactBar.ArtifactChip and c.id == "seed_of_life":
 			from = c.get_global_rect().get_center()
-	var seed := ArtifactBar.ArtifactChip.make("seed_of_life")
-	seed.z_index = 90
-	seed.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_fx.add_child(seed)
+	var seed_chip := ArtifactBar.ArtifactChip.make("seed_of_life")
+	seed_chip.z_index = 90
+	seed_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fx.add_child(seed_chip)
 	await get_tree().process_frame
-	seed.pivot_offset = seed.size / 2.0
-	seed.position = from - seed.size / 2.0 - _fx.global_position
+	seed_chip.pivot_offset = seed_chip.size / 2.0
+	seed_chip.position = from - seed_chip.size / 2.0 - _fx.global_position
 	Audio.play("spell_glow")
 	# it shines where it is
-	var shine := seed.create_tween()
+	var shine := seed_chip.create_tween()
 	for k in 3:
-		shine.tween_property(seed, "modulate", Color(2.4, 2.4, 1.8), 0.12)
-		shine.parallel().tween_property(seed, "scale", Vector2(1.35, 1.35), 0.12)
-		shine.tween_property(seed, "modulate", Color(1.3, 1.3, 1.1), 0.12)
-		shine.parallel().tween_property(seed, "scale", Vector2.ONE, 0.12)
+		shine.tween_property(seed_chip, "modulate", Color(2.4, 2.4, 1.8), 0.12)
+		shine.parallel().tween_property(seed_chip, "scale", Vector2(1.35, 1.35), 0.12)
+		shine.tween_property(seed_chip, "modulate", Color(1.3, 1.3, 1.1), 0.12)
+		shine.parallel().tween_property(seed_chip, "scale", Vector2.ONE, 0.12)
 	await shine.finished
 	# then flies to the middle, growing
-	var mid := Vector2(960, 470) - seed.size / 2.0 - _fx.global_position
-	var fly := seed.create_tween().set_parallel(true)
-	fly.tween_property(seed, "position", mid, 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	fly.tween_property(seed, "scale", Vector2(5, 5), 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	fly.tween_property(seed, "modulate", Color(2.0, 2.0, 1.6), 0.8)
+	var mid := Vector2(960, 470) - seed_chip.size / 2.0 - _fx.global_position
+	var fly := seed_chip.create_tween().set_parallel(true)
+	fly.tween_property(seed_chip, "position", mid, 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	fly.tween_property(seed_chip, "scale", Vector2(5, 5), 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	fly.tween_property(seed_chip, "modulate", Color(2.0, 2.0, 1.6), 0.8)
 	var v := Vfx.make(_fx, 85)
 	v.shaker = _shake
-	v.emit(Vector2(960, 470), 0.8, 0.0, func(vv: Vfx, it: Vfx.Item, _d: float) -> void:
-		var p := seed.global_position + seed.size * seed.scale / 2.0 - _fx.global_position
+	v.emit(Vector2(960, 470), 0.8, 0.0, func(vv: Vfx, _it: Vfx.Item, _d: float) -> void:
+		var p := seed_chip.global_position + seed_chip.size * seed_chip.scale / 2.0 - _fx.global_position
 		var g := vv.part(p + Vector2(randf_range(-20, 20), randf_range(-20, 20)), Vector2(randf_range(-60, 60), randf_range(-60, 60)), Color(0.8, 1.0, 0.7, 0.8), 0.5, 10.0, Vfx.STAR)
 		g.spin = 4.0)
 	await fly.finished
@@ -4768,7 +4757,7 @@ func _seed_revival() -> void:
 	v.ring(at, 30, 700, Color(0.8, 1.0, 0.7), 0.9, 18.0)
 	v.burst(at, 60, Color(0.85, 1.0, 0.75), Vector2(300, 1100), Vector2(0.5, 1.0), Vector2(6, 12), Vfx.STAR)
 	v.shake(10.0)
-	seed.queue_free()
+	seed_chip.queue_free()
 	await _wait(0.5)
 	_banner("The Seed of Life gives you a second chance", Color(0.75, 1.0, 0.6), 2.0)
 	await _wait(2.2)
@@ -5246,8 +5235,8 @@ func _update_hover_info(d: float, m := Vector2(-1, -1)) -> void:
 				avoid = v.puppet_global_rect()
 				break
 			# the sprite itself: everything about the enemy, and under it what it is about to do (the same words as its intent bubble)
-			var body := v.puppet_global_rect()
-			if body.has_point(m) and not v.enemy.is_dead():
+			var body_r := v.puppet_global_rect()
+			if body_r.has_point(m) and not v.enemy.is_dead():
 				key = "body:%d" % v.get_instance_id()
 				text = v.info_text()
 				var said: String = chip.get_meta("info", "") if chip != null else ""
@@ -5256,7 +5245,7 @@ func _update_hover_info(d: float, m := Vector2(-1, -1)) -> void:
 
 " + said
 				anchor = Rect2(m - Vector2(20, 20), Vector2(40, 40))
-				avoid = body
+				avoid = body_r
 				break
 	if key != _hover_key:
 		_hover_key = key
@@ -5493,10 +5482,10 @@ func _mover(spell: Dictionary, _hint: EnemyState) -> Array:
 func _picker(spell: Dictionary, e: EnemyState) -> int:
 	if _prepicked.has(e):
 		# chosen already, straight from the enemies' Essence
-		var idx: int = _prepicked[e]
+		var pre: int = _prepicked[e]
 		_prepicked.erase(e)
-		tut.emit("picked", idx)
-		return idx
+		tut.emit("picked", pre)
+		return pre
 	var v: EnemyView = _views.get(e)
 	if v == null:
 		return e.armor.find(false)
@@ -6031,10 +6020,10 @@ func _wild_painter(spell: Dictionary) -> Array:
 		if not st.done:
 			st.done = true
 			_wild_painted.emit(["chant", i])
-	var on_enemy := func(got: Array) -> void:
+	var on_enemy := func(pair: Array) -> void:
 		if not st.done:
 			st.done = true
-			_wild_painted.emit(["enemy", got[0], got[1]] if got.size() == 2 else [])
+			_wild_painted.emit(["enemy", pair[0], pair[1]] if pair.size() == 2 else [])
 	_chant_done.connect(on_chant)
 	_any_picked.connect(on_enemy)
 	if fight.spoken and not fight.chant.is_empty():
@@ -6582,6 +6571,7 @@ func _anim_event(ev: Dictionary) -> void:
 			if ev.get("head", false) and head_v:
 				Audio.play("sfx_head_scream")
 				await get_tree().create_timer(0.55).timeout  # (he screams first, then it flies)
+				head_v.creature.head_gone = true  # (the picture with the empty hand and no pumpkin, from the moment it leaves him)
 				await ThrowFx.throw_item(self, head_v.creature.global_position + Vector2(head_v.creature.size.x * 0.5, 40.0), _attack_point(), "head")
 			Audio.play("sfx_silence_apply")
 			_refresh_all()
@@ -7168,10 +7158,10 @@ func _break_card_wood(card: SpellCard) -> void:
 ## A spell card breaks like glass: a picture of it is cut into shards (a Delaunay triangulation, denser around the
 ## impact) that burst out, tumble and fall, then fade. The sound of breaking glass, then the pieces clinking down.
 func _shatter_card(card: SpellCard) -> void:
-	var size := Vector2(SpellCard.W, SpellCard.H)
+	var card_size := Vector2(SpellCard.W, SpellCard.H)
 	var pad := Vector2(8, 8)
 	var vp := SubViewport.new()
-	vp.size = Vector2i(size + pad * 2.0)
+	vp.size = Vector2i(card_size + pad * 2.0)
 	vp.transparent_bg = true
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(vp)
@@ -7189,16 +7179,16 @@ func _shatter_card(card: SpellCard) -> void:
 	card.modulate.a = 0.0
 	Audio.play("sfx_glass_break")
 	# the cut: corners, edge points, and more points near the impact
-	var impact := pad + size * Vector2(randf_range(0.35, 0.65), randf_range(0.35, 0.6))
-	var pts := PackedVector2Array([pad, pad + Vector2(size.x, 0), pad + size, pad + Vector2(0, size.y)])
+	var impact := pad + card_size * Vector2(randf_range(0.35, 0.65), randf_range(0.35, 0.6))
+	var pts := PackedVector2Array([pad, pad + Vector2(card_size.x, 0), pad + card_size, pad + Vector2(0, card_size.y)])
 	for i in 6:
-		pts.append(pad + Vector2(size.x * randf(), 0))
-		pts.append(pad + Vector2(size.x * randf(), size.y))
+		pts.append(pad + Vector2(card_size.x * randf(), 0))
+		pts.append(pad + Vector2(card_size.x * randf(), card_size.y))
 	for i in 3:
-		pts.append(pad + Vector2(0, size.y * randf()))
-		pts.append(pad + Vector2(size.x, size.y * randf()))
+		pts.append(pad + Vector2(0, card_size.y * randf()))
+		pts.append(pad + Vector2(card_size.x, card_size.y * randf()))
 	for i in 10:
-		pts.append(pad + Vector2(randf() * size.x, randf() * size.y))
+		pts.append(pad + Vector2(randf() * card_size.x, randf() * card_size.y))
 	for i in 8:
 		pts.append(impact + Vector2.from_angle(randf() * TAU) * randf_range(8, 45))
 	var tris := Geometry2D.triangulate_delaunay(pts)
@@ -7264,8 +7254,13 @@ func _talk() -> void:
 	for v in _views.values():
 		v.set_talk(true, 0.0, BossTalk.speaker(tree) if v.enemy.is_boss and not v.enemy.has_passive("hand") else "")
 	var box := PanelContainer.new()
-	var talk_art := UiSkin.box("dialogue_panel", [14, 14, 14, 14], [TALK_PAD, 20, TALK_PAD, 22])  # (the same painted board as an event's words)
+	var cream := UiTheme.has_dialogue_board()  # (the same cream board as an event's words and the merchant's)
+	var talk_art: StyleBox = UiTheme.dialogue_board([TALK_PAD, 22, TALK_PAD, 24]) if cream else UiSkin.box("dialogue_panel", [14, 14, 14, 14], [TALK_PAD, 20, TALK_PAD, 22])
 	box.add_theme_stylebox_override("panel", talk_art if talk_art != null else _talk_box_style())
+	box.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	var c_name := "#8a4a0a" if cream else "#ffcf7a"  # (a speaker's name, the narration and "You:" are darker on the cream board)
+	var c_note := "#6a5a44" if cream else "#c8bfa8"
+	var c_you := "#1f559e" if cream else "#9ec9ff"
 	box.custom_minimum_size = Vector2(TALK_W, 0)
 	box.position = Vector2((1920.0 - TALK_W) / 2.0, 545)
 	box.z_index = 30
@@ -7291,6 +7286,8 @@ func _talk() -> void:
 		text.fit_content = true
 		text.scroll_active = false
 		text.custom_minimum_size = Vector2(TALK_W - 2.0 * TALK_PAD, 0)
+		if cream:
+			text.add_theme_color_override("default_color", UiTheme.BOARD_INK)
 		text.add_theme_font_size_override("normal_font_size", 21)
 		text.add_theme_font_size_override("italics_font_size", 21)
 		text.add_theme_font_size_override("bold_font_size", 21)
@@ -7311,7 +7308,7 @@ func _talk() -> void:
 			lines.append("[i][color=#c8bfa8]%s[/color][/i]" % node.note)
 		if node.has("reply2"):
 			lines.append("[color=#ffcf7a][b]%s:[/b][/color] \"%s\"%s" % [BossTalk.speaker(tree), node.reply2, (" [i][color=#c8bfa8]%s[/color][/i]" % node.note2) if node.has("note2") else ""])
-		text.text = "\n".join(lines)
+		text.text = "\n".join(lines).replace("#ffcf7a", c_name).replace("#c8bfa8", c_note).replace("#9ec9ff", c_you)
 		col.add_child(text)
 		Audio.play_voice(BossTalk.voice_paths(tree, fight.talk_id, node))  # (his recorded line, if there is one)
 		if node.has("show"):
@@ -7659,7 +7656,7 @@ func _speech_bubble(head_at: Callable, text: String, hold := 1.0) -> void:
 	sb.content_margin_top = 6
 	sb.content_margin_bottom = 6
 	var bubble_art := UiSkin.frame("bubble_dark", 16, [20, 8, 20, 8])  # (the painted dark plaque; the flat box is only for a missing picture)
-	bubble.add_theme_stylebox_override("panel", bubble_art if bubble_art != null else sb)
+	bubble.add_theme_stylebox_override("panel", (bubble_art as StyleBox) if bubble_art != null else sb)
 	bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bubble.z_index = 90
 	var l := UiTheme.label(text, 30, Color(0.96, 0.94, 0.9))
@@ -7796,7 +7793,7 @@ func _dillo_say(at: Vector2, text: String, hold: float, hanging := false) -> voi
 	sb.content_margin_top = 6
 	sb.content_margin_bottom = 6
 	var bubble_art := UiSkin.frame("bubble_dark", 16, [20, 8, 20, 8])  # (the painted dark plaque; the flat box is only for a missing picture)
-	bubble.add_theme_stylebox_override("panel", bubble_art if bubble_art != null else sb)
+	bubble.add_theme_stylebox_override("panel", (bubble_art as StyleBox) if bubble_art != null else sb)
 	bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bubble.z_index = 210
 	var l := UiTheme.label(text, 30, Color(0.96, 0.94, 0.9))
@@ -7851,25 +7848,25 @@ func _attune_chooser(spell: Dictionary) -> String:
 	var px := 120.0
 	for i in els.size():
 		var el: String = els[i]
-		var ic := ElementIcon.make(el, px)
-		ic.size = Vector2(px, px)
-		ic.pivot_offset = ic.size / 2.0
-		ic.position = from - ic.size / 2.0
-		ic.scale = Vector2(0.3, 0.3)
-		ic.z_index = 72
-		ic.highlight = true
-		ic.mouse_filter = Control.MOUSE_FILTER_STOP
-		ic.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		add_child(ic)
-		var to := Vector2(960 + (i - (els.size() - 1) / 2.0) * 260, 440) - ic.size / 2.0
-		var tw := ic.create_tween().set_parallel(true)
-		tw.tween_property(ic, "position", to, 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT).set_delay(i * 0.12)
-		tw.tween_property(ic, "scale", Vector2.ONE, 0.8).set_trans(Tween.TRANS_SINE).set_delay(i * 0.12)
-		var glow := ic.create_tween().set_loops()
-		glow.tween_property(ic, "modulate", Color(1.7, 1.6, 1.4), 0.6).set_trans(Tween.TRANS_SINE)
-		glow.tween_property(ic, "modulate", Color(1.2, 1.15, 1.05), 0.6).set_trans(Tween.TRANS_SINE)
-		ic.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _element_chosen.emit(el))
-		orbs[el] = ic
+		var orb := ElementIcon.make(el, px)
+		orb.size = Vector2(px, px)
+		orb.pivot_offset = orb.size / 2.0
+		orb.position = from - orb.size / 2.0
+		orb.scale = Vector2(0.3, 0.3)
+		orb.z_index = 72
+		orb.highlight = true
+		orb.mouse_filter = Control.MOUSE_FILTER_STOP
+		orb.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		add_child(orb)
+		var to := Vector2(960 + (i - (els.size() - 1) / 2.0) * 260, 440) - orb.size / 2.0
+		var tw := orb.create_tween().set_parallel(true)
+		tw.tween_property(orb, "position", to, 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT).set_delay(i * 0.12)
+		tw.tween_property(orb, "scale", Vector2.ONE, 0.8).set_trans(Tween.TRANS_SINE).set_delay(i * 0.12)
+		var glow := orb.create_tween().set_loops()
+		glow.tween_property(orb, "modulate", Color(1.7, 1.6, 1.4), 0.6).set_trans(Tween.TRANS_SINE)
+		glow.tween_property(orb, "modulate", Color(1.2, 1.15, 1.05), 0.6).set_trans(Tween.TRANS_SINE)
+		orb.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _element_chosen.emit(el))
+		orbs[el] = orb
 	Audio.play("spell_glow")
 	_choosing_el = true
 	var chosen: String = await _element_chosen
@@ -7929,16 +7926,16 @@ func _element_chooser(spell: Dictionary, counts: Dictionary) -> String:
 	var px := 120.0
 	for i in 3:
 		var el: String = els[i]
-		var ic := ElementIcon.make(el, px)
-		ic.size = Vector2(px, px)
-		ic.pivot_offset = ic.size / 2.0
-		ic.position = from - ic.size / 2.0
-		ic.scale = Vector2(0.3, 0.3)
-		ic.z_index = 72
-		ic.highlight = true
-		ic.mouse_filter = Control.MOUSE_FILTER_STOP
-		ic.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		add_child(ic)
+		var orb := ElementIcon.make(el, px)
+		orb.size = Vector2(px, px)
+		orb.pivot_offset = orb.size / 2.0
+		orb.position = from - orb.size / 2.0
+		orb.scale = Vector2(0.3, 0.3)
+		orb.z_index = 72
+		orb.highlight = true
+		orb.mouse_filter = Control.MOUSE_FILTER_STOP
+		orb.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		add_child(orb)
 		var n := UiTheme.label("−%d Essence" % counts.get(el, 0), 24, Color(1, 0.95, 0.85))
 		n.add_theme_constant_override("outline_size", 6)
 		n.add_theme_color_override("font_outline_color", Color.BLACK)
@@ -7946,17 +7943,17 @@ func _element_chooser(spell: Dictionary, counts: Dictionary) -> String:
 		n.size = Vector2(px + 80, 30)
 		n.position = Vector2(-40, px + 12)
 		n.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		ic.add_child(n)
+		orb.add_child(n)
 		# float softly up out of the card, then keep shining
-		var to := Vector2(960 + (i - 1) * 260, 440) - ic.size / 2.0
-		var tw := ic.create_tween().set_parallel(true)
-		tw.tween_property(ic, "position", to, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT).set_delay(i * 0.12)
-		tw.tween_property(ic, "scale", Vector2.ONE, 1.0).set_trans(Tween.TRANS_SINE).set_delay(i * 0.12)
-		var glow := ic.create_tween().set_loops()
-		glow.tween_property(ic, "modulate", Color(1.7, 1.6, 1.4), 0.6).set_trans(Tween.TRANS_SINE)
-		glow.tween_property(ic, "modulate", Color(1.2, 1.15, 1.05), 0.6).set_trans(Tween.TRANS_SINE)
-		ic.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _element_chosen.emit(el))
-		orbs[el] = ic
+		var to := Vector2(960 + (i - 1) * 260, 440) - orb.size / 2.0
+		var tw := orb.create_tween().set_parallel(true)
+		tw.tween_property(orb, "position", to, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT).set_delay(i * 0.12)
+		tw.tween_property(orb, "scale", Vector2.ONE, 1.0).set_trans(Tween.TRANS_SINE).set_delay(i * 0.12)
+		var glow := orb.create_tween().set_loops()
+		glow.tween_property(orb, "modulate", Color(1.7, 1.6, 1.4), 0.6).set_trans(Tween.TRANS_SINE)
+		glow.tween_property(orb, "modulate", Color(1.2, 1.15, 1.05), 0.6).set_trans(Tween.TRANS_SINE)
+		orb.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _element_chosen.emit(el))
+		orbs[el] = orb
 	Audio.play("spell_glow")
 	_choosing_el = true
 	var chosen: String = await _element_chosen
@@ -8108,7 +8105,7 @@ func _callout_panel(bbcode: String, col: Color) -> PanelContainer:
 	sb.content_margin_top = 8
 	sb.content_margin_bottom = 8
 	var callout_art := UiSkin.frame("bubble_dark", 16, [18, 10, 18, 10], col.lerp(Color.WHITE, 0.7))  # (a little of the callout's colour on the painted plaque)
-	p.add_theme_stylebox_override("panel", callout_art if callout_art != null else sb)
+	p.add_theme_stylebox_override("panel", (callout_art as StyleBox) if callout_art != null else sb)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.z_index = 60
 	var r := RichTextLabel.new()
@@ -8688,10 +8685,10 @@ func _enemy_attack(ev: Dictionary) -> void:
 		tw.tween_property(c, "position", home, 0.2 * sl)
 		tw.parallel().tween_property(c, "scale", Vector2.ONE, 0.2 * sl)
 		await _wait(maxf(0.2 * sl, c.dragon_hit_time()))  # (the Winter Wyvern's bite or slam takes longer to land)
-	var blocked: bool = ev.get("blocked", false)
-	ImpactFx.burst(_fx, target, blocked and ev.n == 0)
+	var was_blocked: bool = ev.get("blocked", false)
+	ImpactFx.burst(_fx, target, was_blocked and ev.n == 0)
 	Audio.play("sfx_player_hit" if ev.n > 0 else "release_armour_block")
-	if blocked:
+	if was_blocked:
 		_hp_bar.crack()
 	# bigger hits feel bigger: more shake, a red flash, and a moment's hit-stop on heavy blows
 	var hurt: float = float(ev.n) / maxf(1.0, fight.player.max_hp)
@@ -8762,7 +8759,7 @@ func _fireball_fly(v: EnemyView) -> Vector2:
 
 ## The Sword Hand strikes: its arm reaches up over the screen to your HP bar, the blade held back at one side, then cuts across the part of the bar the
 ## hit takes away. Returns the point the blade lands on (the caller plays the impact and the damage there).
-func _sword_slash(v: EnemyView, dmg: float) -> Vector2:
+func _sword_slash(v: EnemyView, _dmg: float) -> Vector2:
 	var cr: Creature = v.creature
 	var target := _hp_bar.get_global_rect().get_center() + Vector2(-20.0, 0.0)  # (the whole bar, not the part this hit took: that part moves with your HP, and so would the cut; 20 px to the left of the middle)
 	cr.tip_z = PuppetStage.CEILING_Z + 3
@@ -8870,7 +8867,7 @@ func _aim_release(cr: Creature) -> void:
 
 
 ## The Spear Hand strikes: the spear reaches up below your HP bar, then thrusts up into the part of the bar the hit takes away.
-func _spear_stab(v: EnemyView, dmg: float) -> Vector2:
+func _spear_stab(v: EnemyView, _dmg: float) -> Vector2:
 	var cr: Creature = v.creature
 	var target := _hp_bar.get_global_rect().get_center()
 	cr.tip_z = PuppetStage.CEILING_Z + 3
@@ -9140,7 +9137,6 @@ func _enemy_move_fx(ev: Dictionary) -> void:
 	elif ENEMY_KIND_SFX.has(kind):
 		Audio.play(ENEMY_KIND_SFX[kind])
 	var look: Array = IntentChip.LOOK.get(kind, ["✦", Color.WHITE])
-	var info: Array = IntentChip.INFO.get(kind, [kind.capitalize(), ""])
 	if v and v.creature.has_rig():  # (a Handyman hand: its arm acts it out, a little gentler than a blow)
 		_arm_swing(v.creature, 0.6)
 		await _wait(0.23)
@@ -9245,7 +9241,6 @@ func _release_step(ev: Dictionary) -> void:
 			continue
 		var comet := Comet.launch(_fx, from, v.hp_point(h[1]), col)
 		var j: int = h[1]
-		var target: EnemyState = h[0]
 		comet.arrived.connect(func():
 			if is_instance_valid(v): v.pop(j)
 			Audio.play(impact))

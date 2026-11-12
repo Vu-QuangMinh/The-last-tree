@@ -73,7 +73,7 @@ func _check(fs, label: String) -> int:
 		var hk = t.root.gui_get_hovered_control()
 		var okk: bool = hk == slots[k] or (hk != null and slots[k].is_ancestor_of(hk))
 		if not okk:
-			print(label, ": SLOT ", k, " of ", slots.size(), " is covered by ", hk, " ", hk.get_path() if hk != null else "")
+			print(label, ": SLOT ", k, " of ", slots.size(), " is covered by ", hk, " ", str(hk.get_path()) if hk != null else "")
 			fails += 1
 	# 3) click a filled slot: the ball goes back to the bag
 	await _click(slots[0].get_global_rect().get_center())

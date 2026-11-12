@@ -12,9 +12,10 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import paths
 import asset_paths as AP
 
-IMAGESET = r"D:\GitHub Projects\ImageSet"
+IMAGESET = paths.IMAGESET
 DIR = os.path.join(AP.PUPPET, "UI", "MinhHUD")
 FRAMES = os.path.join(DIR, "_Frames")  # tools/export_minhhud_frames.py: one flat layout frame per part (same name as the object)
 SETS = [("MinhHUD v3 Wide", "16:9", ["Artifact Cabinet", "Chant Tray", "Glass Tray", "HUD Base"], "minhhud_prompts.txt"),
@@ -51,7 +52,7 @@ def find_raw(set_name, obj):
             return path
     except (OSError, ValueError):
         pass
-    for root in (os.path.join(IMAGESET, "output"), r"E:\GitHub\ImageSet\output"):
+    for root in (os.path.join(IMAGESET, "output"), (paths.IMAGESET_OUT + r"\output")):
         folder = os.path.join(root, set_name)
         files = [os.path.join(folder, f) for f in os.listdir(folder) if f.startswith(obj + "_") and f.lower().endswith(".png")] if os.path.isdir(folder) else []
         if files:

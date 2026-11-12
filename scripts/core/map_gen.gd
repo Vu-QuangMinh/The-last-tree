@@ -236,7 +236,7 @@ static func biggest_group(rows: Array, t: String) -> int:
 ## too big. The first floor and set rooms (the camp before the boss) are never switched.
 static func _unclump(rows: Array) -> void:
 	var other := {"fight": "event", "event": "fight"}
-	for round in 200:
+	for rnd in 200:
 		var flipped := false
 		for t in CLUMP_MAX:
 			for level in rows.size():

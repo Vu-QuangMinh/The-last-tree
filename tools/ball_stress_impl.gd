@@ -136,16 +136,16 @@ func run(p_t: SceneTree) -> void:
 	print("start: balls ", fs.fight.player.stock.size(), " stalls ", stalls, " overlaps ", overlaps)
 	# 2) quick clicks and quick drags down, without waiting for the flights
 	var bag_y := 1010.0
-	for round in 3:
+	for rnd in 3:
 		fs.chant_idx.clear()
 		fs._chant_changed()
-		await _settle(1.2, "r%d clear" % round)
+		await _settle(1.2, "r%d clear" % rnd)
 		for k in 4:
 			var uid: int = fs.fight.player.stock[k].uid
 			await _click(fs._bag_icons[uid].get_global_rect().get_center())
 			await t.process_frame
-		await _settle(1.0, "r%d four clicks" % round)
-		_chant_check("r%d four quick clicks" % round, 4)
+		await _settle(1.0, "r%d four clicks" % rnd)
+		_chant_check("r%d four quick clicks" % rnd, 4)
 		for k in 4:
 			var slots: Array = fs._chant_row.get_children().filter(func(c): return c is Panel)
 			if slots.is_empty():
@@ -153,8 +153,8 @@ func run(p_t: SceneTree) -> void:
 			var from: Vector2 = slots[0].get_global_rect().get_center()
 			await _drag(from, Vector2(from.x, bag_y))
 			await t.create_timer(0.12).timeout
-		await _settle(1.2, "r%d four drags down" % round)
-		_chant_check("r%d four quick drags down" % round, 0)
+		await _settle(1.2, "r%d four drags down" % rnd)
+		_chant_check("r%d four quick drags down" % rnd, 0)
 	# 3) a whole turn; the new hand rolls out and is clicked and dragged while it rolls
 	fs.chant_idx.clear()
 	fs._add_stock_index(0)
@@ -166,7 +166,7 @@ func run(p_t: SceneTree) -> void:
 	await t.create_timer(0.5).timeout
 	await _wait_idle("build", 40.0)
 	print("turn 2 reached: stalls ", stalls, " overlaps ", overlaps)
-	for round in 2:
+	for rnd in 2:
 		fs.chant_idx.clear()
 		fs._chant_changed()
 		await t.create_timer(0.2).timeout
@@ -177,8 +177,8 @@ func run(p_t: SceneTree) -> void:
 				await _click(ic.get_global_rect().get_center())
 				tried += 1
 				await t.create_timer(0.08).timeout
-		await _settle(3.0, "r%d turn2 clicks" % round)
-		print("turn 2 round ", round, ": clicked ", tried, " balls, chant ", fs.chant_idx.size())
+		await _settle(3.0, "r%d turn2 clicks" % rnd)
+		print("turn 2 round ", rnd, ": clicked ", tried, " balls, chant ", fs.chant_idx.size())
 		while fs.chant_idx.size() > 0:
 			var sl: Array = fs._chant_row.get_children().filter(func(c): return c is Panel)
 			var c0: Vector2 = sl[0].get_global_rect().get_center()
@@ -187,9 +187,9 @@ func run(p_t: SceneTree) -> void:
 			await t.create_timer(0.3).timeout
 			if fs.chant_idx.size() == before:
 				stuck += 1
-				notes.append("turn 2 round %d: a chant ball could not be dragged down (chant still %d)" % [round, before])
+				notes.append("turn 2 round %d: a chant ball could not be dragged down (chant still %d)" % [rnd, before])
 				break
-		await _settle(1.5, "r%d turn2 drags" % round)
+		await _settle(1.5, "r%d turn2 drags" % rnd)
 	# 4) several turns with spells that send Essence through the pipe (Tailwind: draw next turn), cast by clicking its card; then new hands roll out
 	for turn in 4:
 		var p := fs.fight.player

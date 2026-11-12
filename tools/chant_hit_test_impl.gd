@@ -9,10 +9,10 @@ func run(t: SceneTree) -> void:
 	var save = root.get_node("SaveManager")
 	save.use_test_file("user://chant_hit_save.json")
 	save.data.settings["theme"] = "puppet"
-	var run := RunState.new()
-	run.setup(root.get_node("GameData").db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
+	var rs := RunState.new()
+	rs.setup(root.get_node("GameData").db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
 	var fs := FightScreen.new()
-	fs.setup(run, run.make_fight(ids))
+	fs.setup(rs, rs.make_fight(ids))
 	root.add_child(fs)
 	await t.create_timer(3.0).timeout
 	for k in 6:

@@ -10,10 +10,11 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import import_event_art as I
+import paths
 import asset_paths as AP
 from PIL import Image
 
-OUT = r"E:\GitHub\ImageSet\output"
+OUT = (paths.IMAGESET_OUT + r"\output")
 STAGE4 = os.path.join(AP.PUPPET, "Stage", "Act4")
 
 

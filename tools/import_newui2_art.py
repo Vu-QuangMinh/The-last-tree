@@ -11,14 +11,15 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import paths
 import asset_paths as AP
 
-sys.path.insert(0, r"D:\GitHub Projects\Tachnen")
+sys.path.insert(0, paths.TACHNEN)
 from PIL import Image, ImageDraw, ImageEnhance
 
 UI = os.path.join(AP.PUPPET, "UI")
 OUT = os.path.join(UI, "NewUiV2")
-RAW = [r"E:\GitHub\ImageSet\output", r"D:\GitHub Projects\ImageSet\output"]
+RAW = [(paths.IMAGESET_OUT + r"\output"), (paths.IMAGESET + r"\output")]
 # part -> (ImageSet set folder, [output sprite names], old sprite it replaces (for the size), kind)
 PIECES = {
     "Block Wide": ("NewUI Cabinet 21x9", ["nu_block_wide"], "NewUi/nu_block_wide", "plain"),

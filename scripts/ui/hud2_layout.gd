@@ -94,8 +94,8 @@ static func apply() -> void:
 	L.BOTTLE_PX = 46.0
 	var hp_c := (HP_TUBE.position + HP_TUBE.size / 2.0) * K
 	L.HP_BAR = Rect2(hp_c - Vector2(319.84, 45.01) / 2.0, Vector2(319.84, 45.01))
-	var tr := s(ART_TRAY)
-	L.ACT_TEXT = Rect2(tr.position.x, BOARD_LEFT.position.y * K, tr.size.x, tr.position.y - BOARD_LEFT.position.y * K)  # (the line "Act - Floor - Turn" is centred over the artifact tray, in the strip of the board above it)
+	var tray := s(ART_TRAY)
+	L.ACT_TEXT = Rect2(tray.position.x, BOARD_LEFT.position.y * K, tray.size.x, tray.position.y - BOARD_LEFT.position.y * K)  # (the line "Act - Floor - Turn" is centred over the artifact tray, in the strip of the board above it)
 	L.DEBUFF_AT = DEBUFF_SQ.position * K + (DEBUFF_SQ.size * K - Vector2.ONE * 42.0) / 2.0
 	L.DEBUFF_STEP = DEBUFF_STEP * K
 	L.DEBUFF_PX = 42.0

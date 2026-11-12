@@ -91,12 +91,12 @@ const SEED_MEND_PRICE := 100
 const BOTTLE_DROP := {"fight": 0.25, "elite": 0.5, "boss": 1.0}
 
 
-func setup(p_db: SpellDB, p_unlocked_spells: Array, p_unlocked_artifacts: Array, seed := 0) -> void:
+func setup(p_db: SpellDB, p_unlocked_spells: Array, p_unlocked_artifacts: Array, p_seed := 0) -> void:
 	db = p_db
 	unlocked_spells = p_unlocked_spells
 	unlocked_artifacts = p_unlocked_artifacts
-	if seed != 0:
-		rng.seed = seed
+	if p_seed != 0:
+		rng.seed = p_seed
 	else:
 		rng.randomize()
 	for s in db.starters():
@@ -393,6 +393,9 @@ func finish_fight(f: Fight) -> void:
 		player.heal(player.max_hp * 0.5)  # (a boss met in an event: its rewards, but the act goes on)
 	elif kind == "boss":
 		player.heal(player.max_hp * 0.5)
+		var sm := _notes()
+		if sm != null and sm.has_method("boss_beaten"):
+			sm.call("boss_beaten", act)  # (unlocks the next stage of the main menu)
 		if act >= ACTS:
 			over = true
 			won = true
@@ -1244,7 +1247,7 @@ func _do_event_option(opt: Dictionary) -> Dictionary:
 				return {"text": "Your bottle slots are full. You keep your Leaves."}
 			return {"text": "You take: %s." % ", ".join(got)}
 		"spell":
-			var pool := unlocked_spells.filter(func(id): return not (id in spellbook) and db.get_spell(id).get("rarity", "") == opt.rarity and not db.get_spell(id).get("starter", false))
+			var pool := unlocked_spells.filter(func(sid): return not (sid in spellbook) and db.get_spell(sid).get("rarity", "") == opt.rarity and not db.get_spell(sid).get("starter", false))
 			if pool.is_empty():
 				amber += opt.get("amber", 0)
 				return {"text": "There was nothing left to learn. You keep your Leaves."}
@@ -1411,7 +1414,7 @@ func drop_spell(id: String, to_active: bool, onto := "") -> bool:
 ## torn back into its two spells, which both carry the sigil and can't be fused again). Returns {kind, spell, ...} (also
 ## queued in pending_curses for the screen), or {} when nothing could be cursed.
 func curse(kind := "", el := "") -> Dictionary:
-	var kinds: Array = CURSES.filter(func(k): return _can_curse(k)) if kind == "" else ([kind] if _can_curse(kind) else [])
+	var kinds: Array = CURSES.filter(func(kn): return _can_curse(kn)) if kind == "" else ([kind] if _can_curse(kind) else [])
 	if kinds.is_empty():
 		return {}
 	var k: String = kinds[rng.randi() % kinds.size()]

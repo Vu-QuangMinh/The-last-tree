@@ -30,7 +30,6 @@ func run(t: SceneTree) -> void:
 	var key := "the rest of your spells. Powers fire once, then leave the row for the rest of the fight."
 	print("theme: ", save.data.settings.get("theme"), "  style for the line: ", styles.get(key))
 	# the player's settings without the line's own style: open the Loadout, change the line as the player did (size, font, a nudge), Save, open it again
-	var line_style = styles.get(key)
 	styles.erase(key)
 	var lab: Label = await _open_loadout(main, save)
 	var p0 := lab.global_position

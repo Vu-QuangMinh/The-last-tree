@@ -14,10 +14,11 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import paths
 import asset_paths as AP
 
-IMAGESET = r"D:\GitHub Projects\ImageSet"
-OUT = r"E:\GitHub\ImageSet\output"
+IMAGESET = paths.IMAGESET
+OUT = (paths.IMAGESET_OUT + r"\output")
 DIR = os.path.join(AP.PUPPET, "UI", "NewUiV2")
 REFS = os.path.join(DIR, "_Refs")
 PDF = os.path.join(DIR, "HUD.pdf")

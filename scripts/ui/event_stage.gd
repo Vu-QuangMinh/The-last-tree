@@ -288,9 +288,11 @@ const HINT_X := 1920.0 - HINT_W + 6.0  # (flush with the right edge, like the fi
 ## against the right edge under the Leaves' frame. Returns {panel, body}: `body` is the RichTextLabel (set its `text` to change the words).
 static func hint_panel(title: String, text: String, px := 0, min_h := 0.0, text_w := HINT_TEXT_W) -> Dictionary:
 	var p := PanelContainer.new()
-	var paper := UiSkin.box("dialogue_panel", [14, 14, 14, 14], [30, 20, 30, 22])
+	var cream := UiTheme.has_dialogue_board()
+	var paper: StyleBox = UiTheme.dialogue_board([32, 22, 32, 24]) if cream else UiSkin.box("dialogue_panel", [14, 14, 14, 14], [30, 20, 30, 22])
 	if paper != null:
 		p.add_theme_stylebox_override("panel", paper)
+		p.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	else:
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = Color(0.43, 0.06, 0.12)
@@ -308,7 +310,7 @@ static func hint_panel(title: String, text: String, px := 0, min_h := 0.0, text_
 	var head := HBoxContainer.new()
 	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(head)
-	var who := UiTheme.label(title, 22 if px <= 0 else maxi(18, px - 4), Color(0.95, 0.78, 0.4))
+	var who := UiTheme.label(title, 22 if px <= 0 else maxi(18, px - 4), UiTheme.BOARD_NAME if cream else Color(0.95, 0.78, 0.4))
 	UiTheme.apply_header(who, "event", 22 if px <= 0 else maxi(18, px - 4))
 	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	who.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -323,16 +325,18 @@ static func hint_panel(title: String, text: String, px := 0, min_h := 0.0, text_
 	r.add_theme_font_size_override("normal_font_size", UiTheme.px(size_px))  # (Font Edit > Body text > Size %)
 	r.add_theme_font_size_override("bold_font_size", UiTheme.px(size_px))
 	r.add_theme_constant_override("line_separation", 2)
-	r.add_theme_color_override("default_color", Color(0.98, 0.93, 0.8))
+	r.add_theme_color_override("default_color", UiTheme.BOARD_INK if cream else Color(0.98, 0.93, 0.8))
 	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	r.text = Keywords.colorize(text.replace("\n\n", "\n") if text.length() > 500 and px < 30 else text)
+	r.text = Keywords.colorize(text.replace("\n\n", "\n") if text.length() > 500 and px < 30 else text, cream)
 	v.add_child(r)
 	return {"panel": p, "body": r, "col": v}
 
 
 ## A choice, Continue or Next in an event: the primary (gold) button of the family.
-static func dialogue_button(text: String, cb: Callable, size := 24) -> Button:
-	return UiTheme.button(text, cb, size, "back" if text == "Back" else "primary")
+static func dialogue_button(text: String, cb: Callable, px := 24) -> Button:
+	if text != "Back" and UiTheme.has_dialogue_board():
+		return UiTheme.gold_button(text, cb, px)  # (the gold plaque goes with the cream board, whatever the theme's primary button is)
+	return UiTheme.button(text, cb, px, "back" if text == "Back" else "primary")
 
 
 ## The game's own wooden panel frame (panel_wood_frame) as the background of a box drawn here; a flat dark box when the art is missing.
@@ -515,8 +519,6 @@ func _take_cursor(lay: Dictionary) -> void:
 func _choice_text() -> String:
 	var q := String(ev.get("prompt", ""))
 	return q if q != "" else String(ev.get("text", ""))
-	if _opt_buttons.is_empty() and String(ev.get("prompt", "")) == "" and is_instance_valid(_box):
-		_box.create_tween().tween_property(_box, "modulate:a", 0.0, 0.3)  # (every choice is a prop: nothing left to say in the box)
 
 
 func _start_voices(lay: Dictionary) -> void:
@@ -729,14 +731,14 @@ func offer_items(entries: Array, tag: String) -> void:
 ## The words of the hint panel are changed (the wax: what to click, what is sealed).
 func set_hint(text: String) -> void:
 	if _hint_body != null:
-		_hint_body.text = Keywords.colorize(text)
+		_hint_body.text = Keywords.colorize(text, UiTheme.has_dialogue_board())
 		_hint_body.visible = true
 		_fit_box.call_deferred()
 
 
 ## The Recycler takes the item `give_id` (it shrinks into him), the other items fade, and he hands back the `offer` entries (they come out of him into the row):
 ## a click on one emits `traded`. The words of the hint panel become `say`.
-func trade(give_id: String, offer: Array, say: String) -> void:
+func trade(give_id: String, offer: Array, words: String) -> void:
 	_busy = true
 	_hide_tag()
 	var rec := _prop_role("recycler")
@@ -775,7 +777,7 @@ func trade(give_id: String, offer: Array, say: String) -> void:
 		if is_instance_valid(r.node):
 			(r.node as Control).queue_free()
 	_item_views.clear()
-	_page_text(say, [])  # (his words; no Back now: the item is on his cart)
+	_page_text(words, [])  # (his words; no Back now: the item is on his cart)
 	_hover = -1
 	items = offer
 	_offer_tag = "Take this one"
@@ -1261,11 +1263,11 @@ func _react(how: String) -> void:
 		"vine_utility":  # it does nothing: the tree does not move or change
 			pass
 		"turtle_help":  # you flip him over: he lands on his feet with a thud, shakes himself and flies off
-			var tr := _prop_role("turtle")
-			if not tr.is_empty():
-				tr["gone"] = true
-				var tn: TextureRect = tr.node
-				_swap_pic(tr, "event_flying_turtle_front")
+			var turtle := _prop_role("turtle")
+			if not turtle.is_empty():
+				turtle["gone"] = true
+				var tn: TextureRect = turtle.node
+				_swap_pic(turtle, "event_flying_turtle_front")
 				tn.pivot_offset = tn.size / 2.0
 				tn.rotation = PI
 				var ttw := create_tween()
@@ -2100,7 +2102,7 @@ func _walk_on(node: Control, home: Vector2, from: String, delay: float) -> void:
 		tw.tween_property(node, "position:x", home.x, 0.8).set_delay(delay).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 
-func _build_text(lay: Dictionary) -> void:
+func _build_text(_lay: Dictionary) -> void:
 	# the story is told in the box at the front of the stage (where the fight's UI stands); the choices are buttons in it
 	var hp := hint_panel(String(ev.get("title", "")), "", BOX_PX, 0.0, BOX_TEXT_W)
 	var panel: PanelContainer = hp.panel
@@ -2217,7 +2219,7 @@ func _show_page() -> void:
 		_btn_row.remove_child(c)
 		if not (c in _page_last):
 			c.queue_free()
-	_hint_body.text = Keywords.colorize(String(_pages[_page_i])) if not _pages.is_empty() else ""
+	_hint_body.text = Keywords.colorize(String(_pages[_page_i]), UiTheme.has_dialogue_board()) if not _pages.is_empty() else ""
 	_hint_body.visible = not _pages.is_empty() and String(_pages[_page_i]) != ""
 	if _page_i < _pages.size() - 1:
 		var more := dialogue_button("Go on...", func():
@@ -2403,7 +2405,7 @@ func start_fuse(text: String) -> void:
 		move_child(_fz_dim, _box.get_index())
 	_fz_dim.create_tween().tween_property(_fz_dim, "color:a", 0.55, 0.3)
 	if _hint_body != null:
-		_hint_body.text = Keywords.colorize("Click or drag two spells into the two boards. The pattern of the first one goes first. The new spell shows beside them.")
+		_hint_body.text = Keywords.colorize("Click or drag two spells into the two boards. The pattern of the first one goes first. The new spell shows beside them.", UiTheme.has_dialogue_board())
 		_hint_body.visible = true
 		_fit_box.call_deferred()
 	var sw := SpellCard.W * FZ_SLOT_ZOOM + FZ_RIM * 2.0  # (a card at its own size on its board)
@@ -2625,7 +2627,7 @@ const HANDLE := 16.0
 func _input(e: InputEvent) -> void:
 	if not edit_allowed or not (e is InputEventKey) or not e.pressed:
 		return
-	if e.keycode == KEY_F6 and not e.echo:
+	if e.is_action_pressed("dev_layout_edit"):
 		_edit_toggle()
 		get_viewport().set_input_as_handled()
 		return
@@ -2736,11 +2738,11 @@ func _edit_undo() -> void:
 
 
 ## Put prop `k` at `pos` with `size`; its home follows, so it stays there when the rocking and floating start again.
-func _edit_place(k: int, pos: Vector2, size: Vector2) -> void:
+func _edit_place(k: int, pos: Vector2, sz: Vector2) -> void:
 	var r: Dictionary = _props[k]
 	var n: TextureRect = r.node
-	n.size = size
-	n.pivot_offset = Vector2(size.x / 2.0, size.y)
+	n.size = sz
+	n.pivot_offset = Vector2(sz.x / 2.0, sz.y)
 	n.position = pos
 	r["home"] = pos
 	if _edit_box != null:

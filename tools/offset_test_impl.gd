@@ -25,10 +25,10 @@ func run(t: SceneTree) -> void:
 	var pos := []
 	for with_style in [false, true]:
 		save.data.settings["text_styles"] = {"the rest of your spells. Powers fire once, then leave the row for the rest of the fight.": {"font": "default", "px": 0, "spacing": 0.0, "color": "", "dx": 0, "dy": -30}} if with_style else {}
-		var run := RunState.new()
-		run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
+		var rs := RunState.new()
+		rs.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
 		var l := LoadoutScreen.new()
-		l.setup(run, ["stone_knight"])
+		l.setup(rs, ["stone_knight"])
 		root.add_child(l)
 		await t.create_timer(0.7).timeout
 		for n in l.find_children("*", "Label", true, false):

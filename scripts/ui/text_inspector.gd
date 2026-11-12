@@ -196,7 +196,7 @@ func _bar_input(ev: InputEvent) -> void:
 
 
 func _input(ev: InputEvent) -> void:
-	if ev is InputEventKey and ev.pressed and not ev.echo and (ev.keycode == KEY_F7 or ev.keycode == KEY_ESCAPE):
+	if ev is InputEventKey and ev.pressed and not ev.echo and (ev.is_action_pressed("dev_text_inspector") or ev.keycode == KEY_ESCAPE):
 		if _unsaved():
 			_banner.text = "Unsaved changes!  Press Save to keep them, or Cancel to drop them."  # (F7 / Esc never throws work away by itself)
 			_banner.add_theme_color_override("font_color", Color(1, 0.45, 0.35))

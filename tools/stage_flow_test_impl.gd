@@ -20,8 +20,8 @@ func run(t: SceneTree) -> void:
 	await t.create_timer(4.6).timeout
 	await _shot(t, "1_map")
 	print("current: ", m.current, " overlay: ", m._overlay)
-	var run = m.run
-	var col: int = run.choices()[0]
+	var rs = m.run
+	var col: int = rs.choices()[0]
 	m._overlay.node_chosen.emit(col)
 	await t.create_timer(0.3).timeout
 	await _shot(t, "2a_encounter")
@@ -30,7 +30,7 @@ func run(t: SceneTree) -> void:
 	var st = m.current.get_stage()
 	print("clearing: ", st.is_clearing(), " clear: ", st.is_clear())
 	await t.create_timer(0.5).timeout
-	print("after node: current ", m.current, " overlay ", m._overlay, " kind ", run.current_kind())
+	print("after node: current ", m.current, " overlay ", m._overlay, " kind ", rs.current_kind())
 	m._overlay.confirmed.emit()  # begun at ~3 s: too early, the stage is still being cleared
 	await t.create_timer(1.0).timeout
 	var fs0 = m.current

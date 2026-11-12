@@ -61,7 +61,6 @@ var _lever_tw: Tween
 var _lever_k := 0.0
 var _chase_tw: Tween
 var _flash_tw: Tween
-var _stopped := 0
 var _veils: Array = []  # Confuse: a black veil over each reel (you can't see what is coming next)
 
 
@@ -162,7 +161,7 @@ func build() -> void:
 			var fp := _strip_pic(fl[0], fl[1].position)
 			fp.size = fl[1].size
 			fp.flip_h = funnel_flip
-			(behind if fl[2] == "behind" else over).add_child(fp)
+			(back if fl[2] == "behind" else over).add_child(fp)  # (the funnel's back layer goes in `back`, not `behind`: `behind` lies under the HUD plates, which hid it)
 	if straight:
 		# the straight tube (UI/SlotMachine/slot_tube_straight.png, 2 px per pt) lies behind the Bag strip and goes in under the cabinet; its clamp is over the Essence
 		if tube_strip.size != Vector2.ZERO:

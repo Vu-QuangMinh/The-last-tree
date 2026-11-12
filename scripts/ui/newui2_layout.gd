@@ -51,8 +51,8 @@ const RACK3_C0 := 174.96  # a rack's first bottle (middle x) and the step; the b
 const RACK3_STEP := 61.0
 const RACK5_C0 := 100.46
 const RACK5_STEP := 50.0
-const BOTTLE_CY := 990.32
-const BOTTLE_PX_V2 := 38.0
+const BOTTLE_CY := 1005.0  # (2026-11-11: bigger bottles standing on the lower yellow tray, their necks at the upper tray)
+const BOTTLE_PX_V2 := 54.0
 const DEBUFF0 := Vector2(377.26, 937.23)  # the debuff rings: four to a row, the first row (the lower one) is filled first, the next goes up
 const DEBUFF_STEP_X := 36.24
 const DEBUFF_STEP_Y := 35.88
@@ -87,6 +87,7 @@ static func apply() -> void:
 	L.DEBUFF_AT = DEBUFF0
 	L.DEBUFF_STEP = DEBUFF_STEP_X
 	L.DEBUFF_ROW = DEBUFF_STEP_Y
+	L.DEBUFF_AREA_ROWS = 2
 	L.DEBUFF_PX = DEBUFF_RING
 	L.DEBUFF_COLS = 4
 	L.MOUTH_X = MOUTH_X_ABS - L.BAG_AT.x
@@ -108,7 +109,7 @@ static func set_rack(slots: int) -> void:
 	var step: float = RACK5_STEP if five else RACK3_STEP
 	var c0: float = RACK5_C0 if five else RACK3_C0
 	L.BOTTLE_CELL = Vector2(step, 44.0)
-	L.BOTTLE_PX = BOTTLE_PX_V2
+	L.BOTTLE_PX = minf(BOTTLE_PX_V2, step - 2.0)
 	L.BOTTLE_AT = Vector2(c0 - L.BOTTLE_PX / 2.0 - (L.BOTTLE_CELL.x - L.BOTTLE_PX) / 2.0, BOTTLE_CY - L.BOTTLE_PX / 2.0 - (L.BOTTLE_CELL.y - L.BOTTLE_PX) / 2.0)
 
 

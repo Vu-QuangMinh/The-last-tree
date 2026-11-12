@@ -14,9 +14,10 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import paths
 import asset_paths as AP
 
-TACHNEN = r"D:\GitHub Projects\Tachnen"
+TACHNEN = paths.TACHNEN
 sys.path.insert(0, TACHNEN)
 import numpy as np
 from PIL import Image, ImageEnhance
@@ -95,7 +96,7 @@ PIECES = {
     "scroll_bar_grabber": ("Panels", "Scroll Grabber", "Panels", (20, 38), "plain"),
     "volume_bar_grabber": ("Panels", "Volume Knob", "Panels", (28, 28), "plain"),
 }
-IMAGESET_OUT = r"D:\GitHub Projects\ImageSet\output"
+IMAGESET_OUT = (paths.IMAGESET + r"\output")
 FROM_SETS = {"Buttons": "Puppet Buttons", "Essence": "Puppet Essence", "Fx": "Puppet Fx", "Icons": "Puppet Icons Extra", "Hint": "Puppet Hint",
              "Panels": "Puppet Panel Parts", "Card": "Puppet Card", "Misc": "Puppet Cursor", "Treasure": "Puppet Treasure", "MapRings": "Puppet Map Rings"}  # UI folder -> ImageSet set whose output/ folder holds its raw pictures
 _proc = None

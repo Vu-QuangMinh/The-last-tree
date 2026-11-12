@@ -75,7 +75,7 @@ const SHAPES := {
 	"gale_sprite": 1, "mirror_wisp": 1, "storm_imp": 1, "hush_moth": 1, "leech_bat": 1, "echo_wraith": 1, "storm_rider": 1,
 	"stone_knight": 2, "warded_golem": 2, "lockwarden": 2, "woodcutter": 2, "invoker": 2, "forge_spirit": 1, "yin_yang_beast": 4, "yin_yang_clone": 4, "inverter": 2, "mimic_chest": 3,
 	"cinder_hound": 4, "bramble_matron": 5, "mirror_knight": 2, "void_archon": 1, "pickpocket_imp": 4, 
-	"rot_snake": 4, "sentinel": 2, "blue_sentinel": 2, "headless_horseman": 4, "scav_rat": 4, "scav_hyena": 4, "scav_vulture": 1, "scav_beetle": 4, "mad_soldier": 2, "tree_dweller_a": 5, "tree_dweller_b": 5, "bog_fish": 4, "bog_lamp": 1, "bug_hunter": 2, "mob_pitchfork": 2, "mob_slingshot": 2, "mob_torch": 2, "shield_bearer": 2, "necromancer": 5,
+	"rot_snake": 4, "sentinel": 2, "blue_sentinel": 2, "headless_horseman": 4, "scav_rat": 4, "scav_hyena": 4, "scav_vulture": 1, "scav_beetle": 4, "mad_soldier": 2, "tree_dweller": 5, "bog_fish": 4, "bug_hunter": 2, "mob_pitchfork": 2, "mob_slingshot": 2, "mob_torch": 2, "shield_bearer": 2, "necromancer": 5,
 	"tidecaller": 5, "frost_hex": 5, "ashling": 1, "last_winter": 1,
 	"dragon_tail": 4, "dragon_head": 4, "dragon_fireball": 1, "wyvern_tail": 4, "wyvern_head": 4, "wyvern_fireball": 1,  # (the Fire Dragon and the Winter Wyvern: stand-ins until its pieces are drawn)
 }
@@ -159,6 +159,8 @@ func setup(e: EnemyState) -> void:
 			_veil1_lit = _puppet_tex("veiled_eyes_lit", 2)
 			_saw_veil1 = false
 			_unveil_t = -1.0
+		_fall_tex = _puppet_tex(file + "_fallen") if e.def.get("flying", false) else null  # (a flyer knocked out of the air lies there stunned: its own picture)
+		_thrown_tex = _puppet_tex("headless_horseman_thrown") if e.id == "headless_horseman" else null  # (the Horseman after he has thrown his head: the hand is empty)
 		if e.id == "anxious_armadillo":
 			_sad_tex = _puppet_tex("anxious_armadillo_sad", 2)
 		_small_tv = _puppet_tex("corrector_small_screen", 2) if e.id == "corrector" else null
@@ -578,10 +580,10 @@ func _draw_bell_head(c: Vector2, s: float) -> void:
 	var brass := Color(0.78, 0.62, 0.3) if not dead else Color(0.2, 0.2, 0.2, 0.4)
 	var dark := brass.darkened(0.45)
 	var t := bell_t
-	var hit := 0.28  # (when the striker meets the bell)
+	var hit_t := 0.28  # (when the striker meets the bell)
 	var shake := 0.0
-	if t >= hit:
-		shake = sin((t - hit) * 70.0) * 0.09 * exp(-(t - hit) * 4.0)
+	if t >= hit_t:
+		shake = sin((t - hit_t) * 70.0) * 0.09 * exp(-(t - hit_t) * 4.0)
 	# the legs (thin, jointed), then the arms, behind the bell
 	for side in [-1.0, 1.0]:
 		var hip := c + Vector2(side * s * 0.22, s * 0.32)
@@ -596,10 +598,10 @@ func _draw_bell_head(c: Vector2, s: float) -> void:
 	var up := -2.2  # (up and over the head)
 	var a := rest
 	if t >= 0.0:
-		if t < hit:
-			a = lerpf(rest, up, smoothstep(0.0, hit, t))
+		if t < hit_t:
+			a = lerpf(rest, up, smoothstep(0.0, hit_t, t))
 		else:
-			a = lerpf(up, rest, smoothstep(hit, 1.0, t))
+			a = lerpf(up, rest, smoothstep(hit_t, 1.0, t))
 	var tip := hand + Vector2.from_angle(a) * s * 0.85
 	# the bell: swings about its loop as it rings
 	var pivot := c + Vector2(0, -s * 1.05)
@@ -633,8 +635,8 @@ func _draw_bell_head(c: Vector2, s: float) -> void:
 	draw_circle(tip, s * 0.13, brass.lightened(0.1))
 	draw_circle(hand, s * 0.07, brass)
 	# the sound: rings spreading out from the bell while it rings
-	if t >= hit and not dead:
-		var k := (t - hit) / (1.0 - hit)
+	if t >= hit_t and not dead:
+		var k := (t - hit_t) / (1.0 - hit_t)
 		for j in 3:
 			var kk := fmod(k * 1.5 + j * 0.33, 1.0)
 			draw_arc(pivot + Vector2(0, s * 0.6), s * (0.8 + kk * 0.9), -PI * 0.85, -PI * 0.15, 24, Color(1.0, 0.9, 0.5, 0.6 * (1.0 - kk) * (1.0 - k)), 3.0, true)
@@ -673,8 +675,8 @@ func _draw_corrector(c: Vector2, side: float, mod: Color) -> void:
 	elif not phase2:
 		_small_on = false
 		_boot_t = -1.0
-	var big := Rect2(origin + CORR_SCREEN.position * side, CORR_SCREEN.size * side)
-	_screen_show(big, _enemy.intent if _enemy != null else {}, mod, 1.0)
+	var big_r := Rect2(origin + CORR_SCREEN.position * side, CORR_SCREEN.size * side)
+	_screen_show(big_r, _enemy.intent if _enemy != null else {}, mod, 1.0)
 	if phase2:
 		var k := 1.0
 		if _boot_t >= 0.0:
@@ -734,8 +736,6 @@ func _screen_show(r: Rect2, m: Dictionary, mod: Color, a: float) -> void:
 
 var _pianist_rig: PianistRig  # (his pieces seen from the front: the first set of pictures; kept as a fallback)
 var _pianist_back: PianistBackRig  # (his pieces seen from behind, the user's design; used when its pictures exist)
-var _bk_hand := 0.6  # 0..1 along the keyboard (the high notes' hand) and the foot (the low notes'), jumping to each key as it is struck
-var _bk_foot := 0.2
 var _bk_rh := 6.5  # the picture of the right hand now (0..11, walks towards its target) and of the left foot (0..4)
 var _bk_lf := 0.0  # the left foot's place along the keys, 0..1
 var _bk_rh_target := 6.5
@@ -940,6 +940,9 @@ func has_rig() -> bool:
 var reach := Vector2.ZERO
 var sad_forever := false  # the Handyman's body, once every hand is down: he keeps the crying face (Face.pdf)
 var _sad_tex: Texture2D
+var _fall_tex: Texture2D  # a flyer that has been knocked down
+var head_gone := false  # the Horseman has thrown his head (set by the fight screen the moment it flies)
+var _thrown_tex: Texture2D  # the Headless Horseman with his head thrown
 const SAMURAI_POSES := ["in_no_kamae", "ko_gasumi", "sha_no_kamae"]
 const SAMURAI_H := 1.725  # the Samurai's height (helmet to feet, idle), in art squares
 const RETAINER_BIG := 1.4  # his pictures are a square with a small man in it: drawn this much bigger than the other puppets' squares
@@ -990,8 +993,8 @@ func retainer_yield() -> void:
 
 
 ## The Samurai swings: returns the seconds until the blow lands (see SamuraiRig.strike).
-func samurai_strike(hit: int, hits: int) -> float:
-	return _samurai.strike(hit, hits) if _samurai != null else 0.0
+func samurai_strike(hit_i: int, hits: int) -> float:
+	return _samurai.strike(hit_i, hits) if _samurai != null else 0.0
 
 
 func has_samurai() -> bool:
@@ -1098,10 +1101,10 @@ func _fold_pose(f: float, th1: float, th2: float, sd: float, rest: Vector2) -> D
 	var p2 := fposmod(PI - th2 if mirror else th2, TAU)
 	var tuck_len := rest * 0.55
 	if f < 0.5:
-		var s := smoothstep(0.0, 1.0, f / 0.5)
-		var u := lerpf(p1, FOLD_TUCK_UPPER, s)
-		var l := lerpf(p2, FOLD_TUCK_LOWER, s)
-		return {"u": PI - u if mirror else u, "l": PI - l if mirror else l, "len": rest.lerp(tuck_len, s)}
+		var s0 := smoothstep(0.0, 1.0, f / 0.5)
+		var u := lerpf(p1, FOLD_TUCK_UPPER, s0)
+		var l := lerpf(p2, FOLD_TUCK_LOWER, s0)
+		return {"u": PI - u if mirror else u, "l": PI - l if mirror else l, "len": rest.lerp(tuck_len, s0)}
 	var s := smoothstep(0.0, 1.0, (f - 0.5) / 0.5)
 	var tu: float = PI - FOLD_TUCK_UPPER if mirror else FOLD_TUCK_UPPER
 	var tl: float = PI - FOLD_TUCK_LOWER if mirror else FOLD_TUCK_LOWER
@@ -1270,6 +1273,10 @@ func _draw_art(blink_on: bool) -> void:
 		tex = _pose_tex[_ret_pose]  # (the Retainer acting a move out)
 	if _sad_tex != null and (sad_forever or _sad_t > 0.0):
 		tex = _sad_tex
+	if _fall_tex != null and _enemy != null and not _enemy.flying:
+		tex = _fall_tex
+	if _thrown_tex != null and _enemy != null and (head_gone or (_enemy.has_meta("headless") and not _enemy.intent.get("head", false))):
+		tex = _thrown_tex  # (the head is announced as his next move and thrown with it: after that his hand is empty)
 	var veil2: bool = enemy_id == "veiled_eyes" and _veil_tex.size() == 2 and _veil_tex[0] != null and _enemy != null and _enemy.phase >= 2
 	if veil2:
 		tex = _veil_tex[0]
@@ -1278,7 +1285,7 @@ func _draw_art(blink_on: bool) -> void:
 			_saw_veil1 = true
 		elif _saw_veil1 and _unveil_t < 0.0 and _unveil_tex.size() == 4 and not _unveil_tex.has(null):
 			_unveil_t = 0.0  # (it was phase 1 on this screen and now it is phase 2: the veil breaks and the spider comes out)
-	var unveiling: bool = veil2 and _unveil_t >= 0.0
+	var is_unveiling: bool = veil2 and _unveil_t >= 0.0
 	var side := _art_side()
 	var c := Vector2(size.x / 2.0, size.y - side * 0.5 + sin(bob) * 4.0)
 	if _shake > 0.0:
@@ -1291,7 +1298,7 @@ func _draw_art(blink_on: bool) -> void:
 		fly = Vector2(sin(ft * 1.1) * 8.0, sin(ft * 2.3) * 10.0)
 	if _puppet and not dead and steal_pose <= 0.0 and _dragon == null:  # (carrying a card it hangs in the air: no shadow over the card)
 		var shadow_side := side * (1.0 - 0.15 * clampf(ground_drop / 80.0, 0.0, 1.0))  # (a flyer's shadow: on the floor below it, a little smaller)
-		_draw_puppet_shadow(_unveil_tex[0] if unveiling and _unveil_t < UNVEIL_LEGS[0] else tex, Vector2(c.x + fly.x * 0.5, size.y + ground_drop), shadow_side)  # (the spider's shadow only once its legs are out)
+		_draw_puppet_shadow(_unveil_tex[0] if is_unveiling and _unveil_t < UNVEIL_LEGS[0] else tex, Vector2(c.x + fly.x * 0.5, size.y + ground_drop), shadow_side)  # (the spider's shadow only once its legs are out)
 	if _puppet:  # a puppet doesn't bob: it hangs on its rope and swings from the top of it (see _process), and a hit knocks it back
 		var tip := 0.0 if dead or enemy_id == "handyman" else _swing_a  # (the Handyman's body does not swing: six arms hang on it)
 		if _dragon != null:
@@ -1314,7 +1321,7 @@ func _draw_art(blink_on: bool) -> void:
 	elif blink_on or flash > 0.0:
 		var b := 1.0 + 0.9 * maxf(flash, 1.0 if blink_on else 0.0)
 		mod = Color(b, b, b)
-	if unveiling and _puppet and not dead:
+	if is_unveiling and _puppet and not dead:
 		_draw_unveil(tex, c, side, mod)
 	elif veil2 and steal_pose > 0.0 and _puppet and not dead and _unveil_tex.size() == 4 and not _unveil_tex.has(null):
 		_draw_steal_pose(Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side)), side, mod)
@@ -1331,7 +1338,7 @@ func _draw_art(blink_on: bool) -> void:
 		draw_texture_rect(tex, Rect2(c - Vector2(side, side) * 0.5, Vector2(side, side)), false, mod)
 	if enemy_id == "corrector" and _puppet and not dead:
 		_draw_corrector(c, side, mod)
-	if enemy_id == "veiled_eyes" and _puppet and not dead and not unveiling:
+	if enemy_id == "veiled_eyes" and _puppet and not dead and not is_unveiling:
 		_draw_veiled_eyes_art(c, side, mod, veil2)
 	if _puppet and not dead:
 		for fl in _floaters:  # (they hover: a slow drift up and down and a little sideways, each on its own beat)
@@ -1359,8 +1366,8 @@ func dragon_ball_width() -> float:
 	return _dragon.ball_width() * get_global_transform().get_scale().x if _dragon != null else 0.0
 
 
-func dragon_fx_tex(name: String) -> Texture2D:
-	return _dragon.fx_tex.get(name) if _dragon != null else null
+func dragon_fx_tex(p_name: String) -> Texture2D:
+	return _dragon.fx_tex.get(p_name) if _dragon != null else null
 
 
 func dragon_hide_ball() -> void:
@@ -1468,11 +1475,11 @@ func rope_alpha(frac: Vector2) -> float:
 		return 0.0
 	var key := tex.resource_path
 	if not _alpha_cache.has(key):
-		var img := tex.get_image()
-		if img.is_compressed():
-			img.decompress()
-		img.resize(128, 128, Image.INTERPOLATE_BILINEAR)
-		_alpha_cache[key] = img
+		var im := tex.get_image()
+		if im.is_compressed():
+			im.decompress()
+		im.resize(128, 128, Image.INTERPOLATE_BILINEAR)
+		_alpha_cache[key] = im
 	var img: Image = _alpha_cache[key]
 	return img.get_pixel(int(frac.x * img.get_width()), int(frac.y * img.get_height())).a
 
@@ -1493,8 +1500,8 @@ func puppet_bounds() -> Rect2:
 		var img := tex.get_image()
 		if img.is_compressed():
 			img.decompress()
-		var r := img.get_used_rect()
-		_bounds_cache[key] = Rect2(Vector2(r.position) / Vector2(img.get_size()), Vector2(r.size) / Vector2(img.get_size()))
+		var used := img.get_used_rect()
+		_bounds_cache[key] = Rect2(Vector2(used.position) / Vector2(img.get_size()), Vector2(used.size) / Vector2(img.get_size()))
 	var f: Rect2 = _bounds_cache[key]
 	var side := _art_side()
 	var origin := Vector2(size.x / 2.0 - side / 2.0, size.y - side)
@@ -1558,9 +1565,9 @@ func _draw_veiled(c: Vector2, s: float, body: Color, blink_on: bool) -> void:
 		draw_circle(ball, r * 1.04, Color(0, 0, 0, 0.5))
 		draw_circle(ball, r, body)
 		draw_circle(ball + Vector2(-r * 0.35, -r * 0.4), r * 0.25, Color(1, 1, 1, 0.08))  # (a dull sheen)
-		var cue: Variant = _eyes_cue()
-		var lit_l: bool = _hypno > 0.0 or cue == "both" or cue == "left"
-		var lit_r: bool = _hypno > 0.0 or cue == "both" or cue == "right"
+		var eye_cue: Variant = _eyes_cue()
+		var lit_l: bool = _hypno > 0.0 or eye_cue == "both" or eye_cue == "left"
+		var lit_r: bool = _hypno > 0.0 or eye_cue == "both" or eye_cue == "right"
 		for side in [-1, 1]:
 			_human_eye(ball + Vector2(side * r * 0.4, -r * 0.12), r * 0.3, Vector2.ZERO, false, blink_on)
 		_draw_veil(ball, r, 0.0)

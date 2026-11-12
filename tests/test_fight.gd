@@ -151,9 +151,9 @@ func test_upgraded_artifact_uses_its_plus_number() -> void:
 
 
 func test_prefight_essence_matches_the_fight() -> void:
-	for seed in [3, 11, 29]:
+	for sd in [3, 11, 29]:
 		var run := RunState.new()
-		run.setup(db, [], [], seed)
+		run.setup(db, [], [], sd)
 		run.act = 2  # deeper: enemies get extra random Essence
 		var ids := run.encounter_ids()
 		var shown := []
@@ -161,7 +161,7 @@ func test_prefight_essence_matches_the_fight() -> void:
 			shown.append("".join(run.encounter_hp(i)))
 		var f := run.make_fight(ids)
 		var real := f.enemies.map(func(e): return e.hp_text())
-		assert_eq(real, shown, "seed %d: what the preview shows is what you fight" % seed)
+		assert_eq(real, shown, "seed %d: what the preview shows is what you fight" % sd)
 
 
 func test_withered_idol_gives_2_elements_and_a_curse() -> void:
@@ -415,15 +415,15 @@ func test_lens_refunds_about_a_quarter_of_its_element() -> void:
 
 
 func test_every_fight_starts_with_one_of_each_element() -> void:
-	for seed in 40:
+	for sd in 40:
 		var f := Fight.new(db, PlayerState.new())
-		f.rng.seed = seed
+		f.rng.seed = sd
 		f.loadout = [db.get_spell("fire_ball")]
 		f.start(["ashling"], 1, 1)
 		var els: Array = f.player.stock.map(func(s): return s.el)
 		assert_eq(els.size(), PlayerState.START_ELEMENTS)
 		for el in ["F", "W", "A"]:
-			assert_true(el in els, "seed %d: start hand %s has no %s" % [seed, "".join(els), el])
+			assert_true(el in els, "seed %d: start hand %s has no %s" % [sd, "".join(els), el])
 
 
 func test_early_enemies_have_three_essence() -> void:
@@ -534,7 +534,7 @@ func test_remove_a_kind_lets_you_choose_which() -> void:
 	var e: EnemyState = f.enemies[0]
 	_set_hp(e, "FWFAF")
 	var asked := []
-	f.picker = func(_s, en):
+	f.picker = func(_s, _en):
 		asked.append(f.pick_el)
 		return 4 if asked.size() == 1 else 0
 	f._apply({"op": "purge", "el": "F", "n": 2, "target": "target"}, f.loadout[0], {"target": e})
@@ -1125,13 +1125,13 @@ func test_act2_tier15_maddened_soldier() -> void:
 
 
 func test_act2_tier15_tree_dwellers() -> void:
-	var f := _fight(["tree_dweller_a", "tree_dweller_b"], ["fire_ball"], "")
-	assert_eq(f.enemies.map(func(x): return x.size()), [6, 6])
+	var f := _fight(["tree_dweller"], ["fire_ball"], "")
+	assert_eq(f.enemies.map(func(x): return x.size()), [12])
 	await f.end_player_turn()
-	assert_eq(f.player.poison, 3, "2 Poison from each, and the new turn has already ticked it down by 1")
-	f.enemies[0].remove_right(6)
+	assert_eq(f.player.poison, 3, "4 Poison (2 from each of the two), and the new turn has already ticked it down by 1")
+	f.enemies[0].remove_right(12)
 	f._cleanup()
-	assert_eq(f.alive().size(), 1, "each has its own Essence")
+	assert_true(f.alive().is_empty(), "one tree, one set of Essence")
 	assert_eq(EnemyDefs.POOLS[2].easy.size(), 4, "(the Orphans are gone)")
 
 
@@ -1282,34 +1282,20 @@ func test_ignite_stacks_and_shows_what_it_burns() -> void:
 
 
 func test_act2_tier1_bog_lantern() -> void:
-	var f := _fight(["bog_lamp", "bog_fish"], ["fire_ball"], "")
-	var fish: EnemyState = f.enemies[1]
-	var lamp: EnemyState = f.enemies[0]
-	assert_eq([fish.size(), lamp.size()], [12, 2])
-	assert_eq(lamp.intent.kind, "glow", "the clock starts at 2")
-	await f.end_player_turn()
-	assert_eq(lamp.intent.kind, "stun", "1 left: next it stuns")
-	assert_eq(f.player.stun_turns, 0)
-	await f.end_player_turn()
-	assert_eq(f.player.stun_turns, 1, "at 0: Stunned for a turn")
-	assert_eq(lamp.intent.kind, "glow", "and back to 2")
+	var f := _fight(["bog_fish"], ["fire_ball"], "")
+	var fish: EnemyState = f.enemies[0]
+	assert_eq(f.enemies.size(), 1, "the lamp is part of the fish: one enemy")
+	assert_eq(fish.size(), 12)
+	assert_true(fish.intent.kind != "stun", "turn 1: one of its usual moves")
 	f.player.stun_turns = 0
-	lamp.remove_right(2)
-	f._cleanup()
-	assert_eq(fish.size(), 12, "killing the lamp doesn't hurt the fish")
-	assert_true(lamp.knocked and lamp in f.enemies, "it stays on its hook, dark")
 	await f.end_player_turn()
-	assert_true(not f.alive().any(func(x): return x.id == "bog_lamp"), "it stays out for a turn")
+	assert_true(fish.intent.kind != "stun", "turn 2: still its usual moves")
 	await f.end_player_turn()
-	var back: Array = f.alive().filter(func(x): return x.id == "bog_lamp")
-	assert_eq(back.size(), 1, "then it grows back")
-	assert_eq(back[0].intent.kind, "glow", "with its clock at 2")
+	assert_eq(fish.intent.kind, "stun", "turn 3: the lamp flashes")
+	f.player.stun_turns = 0
 	await f.end_player_turn()
-	assert_eq(back[0].intent.kind, "stun")
-	assert_true(back[0] == lamp, "the same lamp, lit again")
-	fish.remove_right(12)
-	f._cleanup()
-	assert_true(f.alive().is_empty(), "the lamp goes out with the fish")
+	assert_eq(f.player.stun_turns, 1, "and you are Stunned for a turn")
+	assert_true(fish.intent.kind != "stun", "then the clock starts over")
 
 
 func test_act2_tier1_bug_hunter() -> void:
@@ -1457,7 +1443,6 @@ func test_refund_disturbance_and_the_pool() -> void:
 	f.chant_picker = func(_s): return picks.pop_front()
 	f.cast_chant(_all(3))
 	f._apply({"op": "retain", "n": 2}, f.loadout[0], {}, f.turn_ctx)
-	var bag := f.player.stock.size()
 	f.finish_turn()
 	var els := f.player.stock.map(func(s): return s.el)
 	assert_true("F" in els and "A" in els, "the F and the A came back")
@@ -2177,7 +2162,6 @@ func test_storm_crown_refunds_an_air_each_chant() -> void:
 	_set_hp(f.enemies[0], "WWWWWWWWWW")
 	f.player.hp = 99
 	f.player.passives["refund_air"] = 1
-	var before := f.player.stock.size()
 	f.cast(_all(1))  # chant the F: after the Release, an Air comes back
 	assert_true(f.player.stock.any(func(s): return s.el == "A" and not s.temp), "an Air in the bag")
 	assert_eq(db.get_spell("storm_crown").effects[0].key, "steal_each_chant", "(Storm Crown is Jaeler's Knife now)")

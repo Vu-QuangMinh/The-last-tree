@@ -3,8 +3,6 @@ extends RefCounted
 
 func run(t: SceneTree) -> void:
 	var root: Window = t.root
-	var args := OS.get_cmdline_user_args()
-	var out: String = args[0] if args.size() > 0 else "user://"
 	var save = root.get_node("SaveManager")
 	save.use_test_file("user://tm_shot_save.json")
 	save.data.settings["theme"] = "puppet"

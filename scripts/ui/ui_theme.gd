@@ -432,7 +432,7 @@ static func get_theme() -> Theme:
 	tip.content_margin_top = 14
 	tip.content_margin_bottom = 14
 	var tip_art := UiSkin.frame("bubble_dark", 16, [20, 14, 20, 14])  # (the painted dark plaque, when it is there)
-	t.set_stylebox("panel", "TooltipPanel", tip_art if tip_art != null else tip)
+	t.set_stylebox("panel", "TooltipPanel", (tip_art as StyleBox) if tip_art != null else tip)
 	t.set_color("font_color", "TooltipLabel", TEXT)
 	t.set_font_size("font_size", "TooltipLabel", 21)
 	t.set_color("font_hover_color", "Button", Color.WHITE)
@@ -475,6 +475,22 @@ static func _button_art(state: String) -> StyleBox:
 	return UiSkin.box("button_small_" + key, [12, 12, 12, 14], [12, 2, 12, 9])
 
 
+## The plain cream dialogue board (UI/Panels/dialogue_board_cream.png: light ivory card, thin honey-wood rim, nothing else) as a nine-patch: every dialogue box (an event's story,
+## a boss's talk, the merchant) uses it, so it never stretches out of shape and every conversation looks the same. null when the picture is missing (the theme has none).
+const BOARD_INK := Color(0.17, 0.11, 0.07)  # (the words on it)
+const BOARD_NAME := Color(0.52, 0.27, 0.06)  # (a speaker's name, a heading)
+const BOARD_NOTE := Color(0.42, 0.34, 0.26)  # (narration, in italics)
+
+
+static func dialogue_board(pad: Array) -> StyleBox:
+	var t := UiSkin.tex("dialogue_board_cream")
+	return ScaledBox.make([t], 0.085, pad) if t != null else null
+
+
+static func has_dialogue_board() -> bool:
+	return UiSkin.tex("dialogue_board_cream") != null
+
+
 ## The button family (btn_<kind>.png, cut from the ImageSet plaques by tools/cut_dialogue_panel.py): one carved walnut plaque with a brass line, painted a colour for what the
 ## button does. Buttons that do the same thing look the same everywhere:
 ##   primary (ochre gold)  go on / start / confirm: Continue, Next, Begin the fight, Engage!, the choices of an event
@@ -504,6 +520,10 @@ static func kind_for(text: String) -> String:
 static func family_box(kind: String, state: String) -> StyleBox:
 	if state == "focus":
 		return StyleBoxEmpty.new() if UiSkin.tex("btn_" + kind) != null else null
+	var big := UiSkin.scaled_box(["btn_" + kind], 0.28, [16, 3, 16, 5])  # (NewUI Ver2: the user's own buttons, Btn/*.png, one picture each: hover = lighter, pressed = darker)
+	if big != null:
+		big.modulate_color = {"hover": Color(1.25, 1.22, 1.15), "pressed": Color(0.62, 0.6, 0.58), "disabled": Color(0.5, 0.5, 0.5)}.get(state, Color.WHITE)
+		return big
 	var b := UiSkin.box("btn_" + kind, [20, 14, 20, 14], [16, 3, 16, 5])
 	if b == null:
 		return null
@@ -523,16 +543,51 @@ static func skin_button(b: Button, kind: String, size := 0) -> void:
 		return
 	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
 		b.add_theme_stylebox_override(state, family_box(kind, state))
-	var ink: Color = FAMILY_TEXT.get(kind, Color(0.98, 0.93, 0.8))
+	var texts: Dictionary = FAMILY_TEXT
+	if UiSkin.path_of("btn_" + kind).contains("/NewUiV2/"):  # (NewUI Ver2: every button takes cream words; primary is the teal one since 2026-11-11)
+		texts = {}
+	var ink: Color = texts.get(kind, Color(0.98, 0.93, 0.8))
 	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 		b.add_theme_color_override(c, ink)
-	b.add_theme_color_override("font_disabled_color", ink.darkened(0.3) if kind in FAMILY_TEXT else Color(0.7, 0.66, 0.6))
-	var dark := kind in FAMILY_TEXT
+	b.add_theme_color_override("font_disabled_color", ink.darkened(0.3) if kind in texts else Color(0.7, 0.66, 0.6))
+	var dark := kind in texts
 	b.add_theme_constant_override("outline_size", 0 if dark else 3)
 	if not dark:
 		b.add_theme_color_override("font_outline_color", Color(0.1, 0.05, 0.03))
 	if size > 0:
 		b.add_theme_font_size_override("font_size", size)
+
+
+## The GOLD plaque (Puppet's UI/Buttons/btn_primary.png) as a button in every theme, with dark words: the buttons of the cream dialogue boards (Next, Continue, the choices) use it
+## whatever the theme's own primary button is (NewUI Ver2's is teal), so they go with the board.
+const GOLD_BUTTON := "res://assets/Puppet/UI/Buttons/btn_primary.png"
+
+
+static func gold_button(text: String, cb: Callable, size := 18) -> Button:
+	var b := button(text, cb, size)
+	if not ResourceLoader.exists(GOLD_BUTTON):
+		return b
+	var t: Texture2D = load(GOLD_BUTTON)
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		var sb := StyleBoxTexture.new()
+		sb.texture = t
+		sb.texture_margin_left = 20
+		sb.texture_margin_top = 14
+		sb.texture_margin_right = 20
+		sb.texture_margin_bottom = 14
+		sb.content_margin_left = 16
+		sb.content_margin_top = 3
+		sb.content_margin_right = 16
+		sb.content_margin_bottom = 5
+		sb.modulate_color = {"hover": Color(1.14, 1.12, 1.05), "pressed": Color(0.78, 0.74, 0.68), "disabled": Color(0.55, 0.55, 0.55)}.get(state, Color.WHITE)
+		b.add_theme_stylebox_override(state, sb)
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	var ink: Color = FAMILY_TEXT["primary"]
+	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		b.add_theme_color_override(c, ink)
+	b.add_theme_color_override("font_disabled_color", ink.darkened(0.3))
+	b.add_theme_constant_override("outline_size", 0)
+	return b
 
 
 ## The wooden Menu button's look (normal / hover / pressed): New theme only; empty in Default.
@@ -635,6 +690,10 @@ static func chant_button_styles() -> Dictionary:
 
 
 static func panel_box(alpha := 0.88, radius := 12) -> StyleBox:
+	var big := UiSkin.scaled_box(["board_pause_menu", "panel_square", "panel_wood_frame", "panel_banner"], 0.14, [26, 22, 26, 22])  # (NewUI Ver2: the HUD's own panels, the one nearest to the box's proportions)
+	if big != null:
+		big.modulate_color = Color(1, 1, 1, clampf(alpha + 0.1, 0.0, 1.0))
+		return big
 	var art := UiSkin.box("panel_wood_frame", [34, 34, 34, 34] if UiSkin.is_puppet() else [30, 30, 30, 30], [26, 22, 26, 22] if UiSkin.is_puppet() else [18, 14, 18, 14])  # (the Puppet panel has a carved rim and corner pieces)
 	if art != null:
 		art.modulate_color = Color(1, 1, 1, clampf(alpha + 0.1, 0.0, 1.0))

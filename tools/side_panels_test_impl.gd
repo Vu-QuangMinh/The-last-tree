@@ -16,15 +16,15 @@ func run(t: SceneTree) -> void:
 	await t.create_timer(0.5).timeout
 	m.start_run()
 	await t.create_timer(3.5).timeout
-	var run = m.run
+	var rs = m.run
 	for id in ["wind_chime", "bandolier"]:
-		run.gain_artifact(id)
-	run.gain_bottle("fire_flask")
-	run.gain_bottle("water_flask")
-	run.gain_bottle("fire_flask")
+		rs.gain_artifact(id)
+	rs.gain_bottle("fire_flask")
+	rs.gain_bottle("water_flask")
+	rs.gain_bottle("fire_flask")
 	m._overlay.chosen.emit(0)
 	await t.create_timer(5.0).timeout
-	m._overlay.node_chosen.emit(run.choices()[0])
+	m._overlay.node_chosen.emit(rs.choices()[0])
 	await t.create_timer(3.0).timeout
 	await _shot(t, "1_map_corner")
 	m._overlay.confirmed.emit()

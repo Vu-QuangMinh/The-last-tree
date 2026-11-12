@@ -23,11 +23,11 @@ func run(t: SceneTree) -> void:
 	var save = root.get_node("SaveManager")
 	save.use_test_file("user://vfx_save.json")
 	var gd = root.get_node("GameData")
-	var run := RunState.new()
-	run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
-	var f := run.make_fight(["stone_knight", "ashling", "gale_sprite"])
+	var rs := RunState.new()
+	rs.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
+	var f := rs.make_fight(["stone_knight", "ashling", "gale_sprite"])
 	var fs := FightScreen.new()
-	fs.setup(run, f)
+	fs.setup(rs, f)
 	root.add_child(fs)
 	for i in 10:
 		await tree.process_frame

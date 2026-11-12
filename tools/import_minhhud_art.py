@@ -9,13 +9,14 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import paths
 import asset_paths as AP
 
-sys.path.insert(0, r"D:\GitHub Projects\Tachnen")
+sys.path.insert(0, paths.TACHNEN)
 from PIL import Image, ImageDraw
 
 OUT = os.path.join(AP.PUPPET, "UI", "MinhHUD")
-RAW = [r"E:\GitHub\ImageSet\output", r"D:\GitHub Projects\ImageSet\output"]
+RAW = [(paths.IMAGESET_OUT + r"\output"), (paths.IMAGESET + r"\output")]
 # object name -> (ImageSet set folder, output name)
 PIECES = {
     "Artifact Cabinet": ("MinhHUD v3 Wide", "minhhud_artifact_cabinet"),

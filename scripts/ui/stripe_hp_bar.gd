@@ -40,8 +40,8 @@ func _painted() -> bool:
 	return UiSkin.tex("hp_bar_frame") != null and UiSkin.tex("hp_piece_00") != null
 
 
-func _piece(k: int, shield: bool) -> Texture2D:
-	return UiSkin.tex("hp_%s_%02d" % ["shield" if shield else "piece", k])
+func _piece(k: int, is_shield: bool) -> Texture2D:
+	return UiSkin.tex("hp_%s_%02d" % ["shield" if is_shield else "piece", k])
 
 
 ## Where in the canvas (design px) a stripe's picture really draws something.

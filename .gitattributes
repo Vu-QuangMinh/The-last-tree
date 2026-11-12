@@ -1,2 +1,44 @@
-# Auto detect text files and perform LF normalization
+# Default: let git decide text/binary, normalise text to LF in the repo
 * text=auto
+
+# Godot and code files are always LF (Godot writes LF; the editor on Windows otherwise flips project.godot back and forth)
+*.gd        text eol=lf
+*.tscn      text eol=lf
+*.tres      text eol=lf
+*.godot     text eol=lf
+*.cfg       text eol=lf
+*.gdshader  text eol=lf
+*.json      text eol=lf
+*.md        text eol=lf
+*.py        text eol=lf
+*.txt       text eol=lf
+*.uid       text eol=lf
+*.import    text eol=lf
+*.gitignore text eol=lf
+*.gitattributes text eol=lf
+
+# Binary: never normalise, never textual diff
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.webp  binary
+*.gif   binary
+*.psd   binary
+*.pdf   binary
+*.wav   binary
+*.ogg   binary
+*.mp3   binary
+*.m4a   binary
+*.mid   binary
+*.ttf   binary
+*.TTF   binary
+*.otf   binary
+*.OTF   binary
+*.xlsx  binary
+*.exe   binary
+*.dll   binary
+
+# Heavy source media goes through Git LFS from now on (history before this commit stays as plain blobs)
+*.wav  filter=lfs diff=lfs merge=lfs -text
+*.pdf  filter=lfs diff=lfs merge=lfs -text
+*.psd  filter=lfs diff=lfs merge=lfs -text

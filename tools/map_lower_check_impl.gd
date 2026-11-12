@@ -8,13 +8,13 @@ func run(t: SceneTree) -> void:
 	save.use_test_file("user://map_lower_save.json")
 	save.data.settings["theme"] = "puppet"
 	var gd = root.get_node("GameData")
-	var run := RunState.new()
-	run.setup(gd.db, [], [], 0)
-	run.act = 3
-	run.row = 5
+	var rs := RunState.new()
+	rs.setup(gd.db, [], [], 0)
+	rs.act = 3
+	rs.row = 5
 	var m := MapScreen.new()
 	m.on_stage = true
-	m.setup(run)
+	m.setup(rs)
 	root.add_child(m)
 	await t.create_timer(0.3).timeout
 	m.rise()

@@ -112,14 +112,14 @@ func _add_master_limiter() -> void:
 
 
 ## How many dB quieter this copy of `name` must be because copies of it are still playing (-1000 = too many: do not play it). Records it when it plays.
-func _stack_gain(name: String, length: float) -> float:
+func _stack_gain(p_name: String, length: float) -> float:
 	var now := Time.get_ticks_msec()
-	var live: Array = (_active.get(name, []) as Array).filter(func(t): return t > now)
+	var live: Array = (_active.get(p_name, []) as Array).filter(func(t): return t > now)
 	if live.size() >= STACK_MAX:
-		_active[name] = live
+		_active[p_name] = live
 		return -1000.0
 	live.append(now + int(length * 1000.0))
-	_active[name] = live
+	_active[p_name] = live
 	return -minf(STACK_MAX_DB, STACK_STEP_DB * (live.size() - 1))
 
 
@@ -162,15 +162,15 @@ var _sfx_index := {}  # SFX folder -> {sound name: path}, for the sounds that si
 
 
 ## Where the sound `name` is: right in `dir`, else in one of the sub-folders of `dir` (the sounds are sorted into folders by kind; the name alone finds them).
-func _sfx_path(dir: String, name: String) -> String:
-	var flat := dir + name + ".wav"
+func _sfx_path(dir: String, p_name: String) -> String:
+	var flat := dir + p_name + ".wav"
 	if ResourceLoader.exists(flat):
 		return flat
 	if not _sfx_index.has(dir):
 		var found := {}
 		_scan_sfx(dir, found)
 		_sfx_index[dir] = found
-	return (_sfx_index[dir] as Dictionary).get(name, flat)
+	return (_sfx_index[dir] as Dictionary).get(p_name, flat)
 
 
 func _scan_sfx(dir: String, found: Dictionary) -> void:
@@ -199,9 +199,9 @@ func _load(path: String, quiet := false) -> AudioStream:
 
 
 ## Load a sound into the cache ahead of time, so its first play does not hitch.
-func warm(name: String) -> void:
-	if _load(_sfx_path(UiSkin.theme_dir() + "SFX/", name), true) == null:
-		_load(_sfx_path(GLOBAL_SFX_DIR, name))
+func warm(p_name: String) -> void:
+	if _load(_sfx_path(UiSkin.theme_dir() + "SFX/", p_name), true) == null:
+		_load(_sfx_path(GLOBAL_SFX_DIR, p_name))
 
 
 var _voice: AudioStreamPlayer
@@ -247,10 +247,10 @@ func stop_voice() -> void:
 
 
 ## Is there a sound called `name` (in the theme's SFX or the global ones, in any sub-folder)?
-func has_sfx(name: String) -> bool:
-	if _silenced.has(name):
+func has_sfx(p_name: String) -> bool:
+	if _silenced.has(p_name):
 		return false
-	return _override.has(name) or ResourceLoader.exists(_sfx_path(UiSkin.theme_dir() + "SFX/", name)) or ResourceLoader.exists(_sfx_path(GLOBAL_SFX_DIR, name))
+	return _override.has(p_name) or ResourceLoader.exists(_sfx_path(UiSkin.theme_dir() + "SFX/", p_name)) or ResourceLoader.exists(_sfx_path(GLOBAL_SFX_DIR, p_name))
 
 
 var _override := {}  # sound name -> a stream that plays instead of the file (the SFX Test screen installs a new sample while the game runs)
@@ -259,14 +259,14 @@ var _override := {}  # sound name -> a stream that plays instead of the file (th
 var _silenced := {}  # sound names that have no sound now, whatever file is still imported (the SFX Test screen chose the game's older sound instead)
 
 
-func set_override(name: String, stream: AudioStream) -> void:
-	_override[name] = stream
-	_silenced.erase(name)
+func set_override(p_name: String, stream: AudioStream) -> void:
+	_override[p_name] = stream
+	_silenced.erase(p_name)
 
 
-func silence(name: String) -> void:
-	_override.erase(name)
-	_silenced[name] = true
+func silence(p_name: String) -> void:
+	_override.erase(p_name)
+	_silenced[p_name] = true
 
 
 ## A .wav (16 bit PCM) read straight from the disk, outside the imported resources (null when it cannot be read).
@@ -303,8 +303,8 @@ func wav_from_file(path: String) -> AudioStreamWAV:
 const VOICE_NAMES := ["merchant_greeting", "getout", "recycler_reuse", "recycler_trade", "witch_blood", "well_whisper", "sprite_help_me", "sfx_cactus_whisper", "merry puppets"]
 
 
-static func is_voice(name: String) -> bool:
-	return name.begins_with("evv_") or name.begins_with("mv_") or name.begins_with("hm_") or name in VOICE_NAMES
+static func is_voice(p_name: String) -> bool:
+	return p_name.begins_with("evv_") or p_name.begins_with("mv_") or p_name.begins_with("hm_") or p_name in VOICE_NAMES
 
 
 ## Cut every voice at once: the boss's recorded lines, the events' and the merchant's lines, the greetings. Called when the screen changes.
@@ -318,20 +318,20 @@ func stop_all_voices() -> void:
 
 ## One-shot SFX. Safe to call for a name that has no file yet (it just stays silent).
 ## from: start this many seconds into the sound (to skip the silence some recordings begin with).
-func play(name: String, volume_db := 0.0, pitch := 1.0, from := 0.0, stackable := true) -> void:  # (stackable false: a volley of the same sound, every shot is heard at full level)
-	if _silenced.has(name):
+func play(p_name: String, volume_db := 0.0, pitch := 1.0, from := 0.0, stackable := true) -> void:  # (stackable false: a volley of the same sound, every shot is heard at full level)
+	if _silenced.has(p_name):
 		return
-	if is_voice(name):
-		play_held(name, volume_db, pitch)  # (a voice has a player of its own, so it can be cut)
+	if is_voice(p_name):
+		play_held(p_name, volume_db, pitch)  # (a voice has a player of its own, so it can be cut)
 		return
-	var s: AudioStream = _override.get(name, null)
+	var s: AudioStream = _override.get(p_name, null)
 	if s == null:
-		s = _load(_sfx_path(UiSkin.theme_dir() + "SFX/", name), true)  # (the theme's own sound, if it has one)
+		s = _load(_sfx_path(UiSkin.theme_dir() + "SFX/", p_name), true)  # (the theme's own sound, if it has one)
 	if s == null:
-		s = _load(_sfx_path(GLOBAL_SFX_DIR, name))
+		s = _load(_sfx_path(GLOBAL_SFX_DIR, p_name))
 	if s == null:
 		return
-	var stack := _stack_gain(name, maxf(0.0, s.get_length() - from) / maxf(0.1, pitch)) if stackable else 0.0
+	var stack := _stack_gain(p_name, maxf(0.0, s.get_length() - from) / maxf(0.1, pitch)) if stackable else 0.0
 	if stack < -100.0:
 		return
 	var p: AudioStreamPlayer = _pool[_pool_i]
@@ -343,17 +343,17 @@ func play(name: String, volume_db := 0.0, pitch := 1.0, from := 0.0, stackable :
 
 
 ## A sound the caller can stop again (see stop_held): it has a player of its own, freed when it ends or is stopped. Returns null when there is no such file.
-func play_held(name: String, volume_db := 0.0, pitch := 1.0) -> AudioStreamPlayer:
-	var s := _load(_sfx_path(UiSkin.theme_dir() + "SFX/", name), true)
+func play_held(p_name: String, volume_db := 0.0, pitch := 1.0) -> AudioStreamPlayer:
+	var s := _load(_sfx_path(UiSkin.theme_dir() + "SFX/", p_name), true)
 	if s == null:
-		s = _load(_sfx_path(GLOBAL_SFX_DIR, name))
+		s = _load(_sfx_path(GLOBAL_SFX_DIR, p_name))
 	if s == null:
 		return null
 	var p := AudioStreamPlayer.new()
 	p.stream = s
 	p.volume_db = _db(sfx_level * overall_level) + volume_db
 	p.pitch_scale = pitch
-	if is_voice(name):
+	if is_voice(p_name):
 		p.set_meta("voice", true)
 	add_child(p)
 	p.finished.connect(p.queue_free)
@@ -362,10 +362,10 @@ func play_held(name: String, volume_db := 0.0, pitch := 1.0) -> AudioStreamPlaye
 
 
 ## How long a sound file lasts, seconds (0 when there is no such file).
-func get_sfx_length(name: String) -> float:
-	var s := _load(_sfx_path(UiSkin.theme_dir() + "SFX/", name), true)
+func get_sfx_length(p_name: String) -> float:
+	var s := _load(_sfx_path(UiSkin.theme_dir() + "SFX/", p_name), true)
 	if s == null:
-		s = _load(_sfx_path(GLOBAL_SFX_DIR, name))
+		s = _load(_sfx_path(GLOBAL_SFX_DIR, p_name))
 	return s.get_length() if s != null else 0.0
 
 

@@ -36,8 +36,8 @@ static func _puff_texture() -> Texture2D:
 
 
 ## `name`: the picture (UiSkin name); `centre`: where it stands, in `parent`'s coordinates; `px`: the size of its square.
-static func play(parent: Node, name: String, centre: Vector2, px: float) -> void:
-	var t := UiSkin.tex(name)
+static func play(parent: Node, p_name: String, centre: Vector2, px: float) -> void:
+	var t := UiSkin.tex(p_name)
 	if t == null:
 		return
 	var v := BottleVapor.new()

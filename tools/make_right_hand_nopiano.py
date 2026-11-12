@@ -1,5 +1,6 @@
 r"""2026-11-10: ImageSet (Gemini) removes ONLY the piano from the 12 right-hand frames (pianist/right_hand_frames/source/frame_NN.png, 720 px squares) and the results are
 copied to right_hand_frames/source/No-piano/frame_NN.png.   python tools/make_right_hand_nopiano.py run [accounts...]   |   copy"""
+import paths
 import glob
 import json
 import os
@@ -10,7 +11,7 @@ import tempfile
 
 DIR = r"D:\GitHub Projects\The-last-tree\assets\Puppet\Enemies\Act2\pianist\right_hand_frames\source"
 OUT = os.path.join(DIR, "No-piano")
-RAW = r"E:\GitHub\ImageSet\output\Pianist Right Hand NoPiano"
+RAW = (paths.IMAGESET_OUT + r"\output\Pianist Right Hand NoPiano")
 PROMPT = ("Edit image 2 (the source frame). REMOVE ONLY the black grand piano: its case, lid, lid prop, keyboard with all the keys, music desk and legs, and the sheet music. "
           "KEEP EVERYTHING ELSE EXACTLY as it is in the source, unchanged: the carved wooden puppet pianist seen from behind (top hat, head, black tailcoat, belt, coat tails), his arm(s) and hand(s) "
           "and leg(s), and the wooden stool he sits on, in exactly the same pose, position, size, angle, colours and wood carving. "
@@ -29,7 +30,7 @@ def run(accounts):
     spec = {"set_name": "Pianist Right Hand NoPiano", "style": STYLE, "ratio": "1:1", "objects": objs, "status_path": status, "retries": 1, "accounts": accounts}
     sp = os.path.join(tempfile.gettempdir(), "rh_nopiano_spec.json")
     json.dump(spec, open(sp, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-    imageset = r"D:\GitHub Projects\ImageSet"
+    imageset = paths.IMAGESET
     code = subprocess.call([os.path.join(imageset, ".venv", "Scripts", "python.exe"), "main.py", "--batch", sp, "--background"], cwd=imageset)
     st = json.load(open(status, encoding="utf-8"))
     print("ImageSet:", st.get("state"), st.get("done"), "/", st.get("total"), st.get("errors"), "exit", code, flush=True)

@@ -9,11 +9,11 @@ func run(t: SceneTree) -> void:
 	save.use_test_file("user://handyman_shot_save.json")
 	save.data.settings["theme"] = "puppet"
 	var gd = root.get_node("GameData")
-	var run := RunState.new()
-	run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
-	var f := run.make_fight(["handyman"])
+	var rs := RunState.new()
+	rs.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
+	var f := rs.make_fight(["handyman"])
 	var fs := FightScreen.new()
-	fs.setup(run, f)
+	fs.setup(rs, f)
 	root.add_child(fs)
 	await t.create_timer(4.0).timeout
 	print("player marker ", fs._player_panel.get_global_rect(), "  hp bar ", fs._hp_bar.get_global_rect(), "  point ", fs._player_point())
@@ -59,7 +59,7 @@ func run(t: SceneTree) -> void:
 	for e in fs._views:
 		var v: EnemyView = fs._views[e]
 		var ch := v.intent_chip()
-		print("%-14s creature mid %s  name %s  hp %s  chip %s  bounds %s" % [e.id, v.creature.global_position + v.creature.size / 2.0, v._name.global_position, v._hp_row.global_position, ch.global_position if ch else "-", v.creature.puppet_bounds()])
+		print("%-14s creature mid %s  name %s  hp %s  chip %s  bounds %s" % [e.id, v.creature.global_position + v.creature.size / 2.0, v._name.global_position, v._hp_row.global_position, str(ch.global_position) if ch else "-", v.creature.puppet_bounds()])
 	# clicks: the middle of each arm and its text take them, an empty corner of the view does not
 	for e in fs._views:
 		var v: EnemyView = fs._views[e]
@@ -73,7 +73,7 @@ func run(t: SceneTree) -> void:
 	tv.targeted = true
 	tv.refresh({})
 	await t.create_timer(0.5).timeout
-	print("marker: ", tv._marker, " visible ", tv._marker.visible if tv._marker else "-", " rect ", tv._marker.get_global_rect() if tv._marker else "-", " alpha ", tv._marker.modulate.a if tv._marker else "-", " creature mid ", tv.creature.global_position + tv.creature.size / 2.0)
+	print("marker: ", tv._marker, " visible ", str(tv._marker.visible) if tv._marker else "-", " rect ", str(tv._marker.get_global_rect()) if tv._marker else "-", " alpha ", str(tv._marker.modulate.a) if tv._marker else "-", " creature mid ", tv.creature.global_position + tv.creature.size / 2.0)
 	_shot(root, out + "/hm_marker.png")
 	tv.targetable = false
 	tv.targeted = false

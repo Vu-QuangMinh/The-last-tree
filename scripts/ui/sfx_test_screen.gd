@@ -235,9 +235,9 @@ func _build_tiles(items: Array) -> void:
 			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 				_flip(id))
 		holder.add_child(catcher)
-		var back := _make_back(id, String(item.name), holder.custom_minimum_size)
-		back.visible = false
-		holder.add_child(back)
+		var back_card := _make_back(id, String(item.name), holder.custom_minimum_size)
+		back_card.visible = false
+		holder.add_child(back_card)
 		var mark := Label.new()
 		mark.position = Vector2(4, 2)
 		mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -247,7 +247,7 @@ func _build_tiles(items: Array) -> void:
 		mark.add_theme_constant_override("outline_size", 5)
 		holder.add_child(mark)
 		tile.add_child(holder)
-		_faces[id] = {"holder": holder, "card": card, "catcher": catcher, "back": back, "mark": mark, "busy": false}
+		_faces[id] = {"holder": holder, "card": card, "catcher": catcher, "back": back_card, "mark": mark, "busy": false}
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 3)
 		var bs: Array = []
@@ -299,10 +299,10 @@ func _effect_face(title: String, text: String) -> Control:
 
 
 ## The back of a card: a plain wooden board with a text box for why the sound has to be redone.
-func _make_back(id: String, spell_name: String, size: Vector2) -> Control:
+func _make_back(id: String, spell_name: String, sz: Vector2) -> Control:
 	var panel := PanelContainer.new()
-	panel.size = size
-	panel.custom_minimum_size = size
+	panel.size = sz
+	panel.custom_minimum_size = sz
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.2, 0.13, 0.08)
 	sb.border_color = Color(0.8, 0.5, 0.2)
@@ -408,8 +408,8 @@ func _paint_buttons(id: String) -> void:
 func _old_sound(key: String) -> String:
 	if not key.begins_with("fx_"):
 		return ""
-	var name: String = OLD_SFX.get(key.trim_prefix("fx_"), "")
-	return name if name != "" and Audio.has_sfx(name) else ""
+	var old_name: String = OLD_SFX.get(key.trim_prefix("fx_"), "")
+	return old_name if old_name != "" and Audio.has_sfx(old_name) else ""
 
 
 func _clicked(id: String, n: int) -> void:

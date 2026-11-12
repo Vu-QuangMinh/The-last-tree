@@ -137,7 +137,7 @@ var _pinned_text := ""
 
 ## Right-click pins whatever tooltip is under the mouse; any click closes it again.
 func _input(ev: InputEvent) -> void:
-	if ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_F5:
+	if ev.is_action_pressed("dev_rope_mode") and UiSkin.dev_keys():
 		_toggle_rope_mode()
 		get_viewport().set_input_as_handled()
 		return
@@ -215,14 +215,14 @@ func _pin_tooltip(content: Control) -> void:
 
 
 func _unhandled_input(ev: InputEvent) -> void:
-	if ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_F11:
+	if ev.is_action_pressed("ui_fullscreen"):
 		var full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)
 		get_viewport().set_input_as_handled()
-	if ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_F1:
+	if ev.is_action_pressed("ui_wiki"):
 		open_wiki()
 		get_viewport().set_input_as_handled()
-	if ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_F7:
+	if ev.is_action_pressed("dev_text_inspector") and UiSkin.dev_keys():
 		TextInspector.toggle(self)  # (the game stops; click any text to see and change its font, size, gap and colour)
 		get_viewport().set_input_as_handled()
 
@@ -240,8 +240,11 @@ var _overlay: Control
 var _book_overlay: Control
 
 
+var _test_stage_shop := false  # Test mode's Events > The Merchant: the shop is shown over the stage, as on the real map (the cart rolls in)
+
+
 func _stage_flow() -> bool:
-	return UiSkin.is_puppet() and not _test_mode
+	return UiSkin.is_puppet() and (not _test_mode or _test_stage_shop)
 
 
 func _on_stage() -> bool:
@@ -344,8 +347,13 @@ func _test_event(id: String) -> void:
 	for a in ["thornbark", "wind_chime", "ember_charm"]:  # (and something to give away: the Mystery Shed, the Recycler)
 		if not (a in run.artifacts):
 			run.artifacts.append(a)
-	if id == TestModeScreen.SHOP_ID:
-		_enter_test_room({"type": "shop", "act": 1, "row": 3})  # (the Events tab's shop button: the real shop room)
+	if id == "merchant":  # (the merchant is a room, not one of the "?" events: Test mode lists him with them; as on the real map, over the stage)
+		_test_stage_shop = UiSkin.is_puppet()
+		if _test_stage_shop:
+			var base := _new_fight_screen(run.make_fight([]))
+			base.map_mode = true
+			_swap(base)
+		_enter_test_room({"type": "shop", "act": 1, "row": 3})
 		return
 	_enter_test_room({"type": "event", "act": 1, "row": 3, "event": id})
 
@@ -490,6 +498,7 @@ func show_map() -> void:
 	_play_curses.call_deferred()  # (a curse from an event lands as you come back to the map)
 	if _test_mode and _test_back_to_tabs:
 		_test_back_to_tabs = false  # (an event from test mode's Events tab: back to it)
+		_test_stage_shop = false
 		_test_mode = false
 		open_test_mode()
 		return
@@ -767,12 +776,12 @@ func _show_event(ev: Dictionary) -> void:
 			var g := FishGame.new()
 			g.act = run.act
 			g.finished.connect(func(wh, ba, sw):
-				var res := run.fish_reward(wh, ba, sw)
+				var reward := run.fish_reward(wh, ba, sw)
 				if UiSkin.is_puppet():
-					_tally_on_stage(ev, String(res.text), "Enjoy your fish!")  # (the old man and his stream stay; the tally goes in the box)
+					_tally_on_stage(ev, String(reward.text), "Enjoy your fish!")  # (the old man and his stream stay; the tally goes in the box)
 					return
-				var after := _message(ev.title, res.text, ["Continue"], Color(0.8, 0.7, 1))
-				after.pressed.connect(func(_k): show_map()))
+				var after_l := _message(ev.title, reward.text, ["Continue"], Color(0.8, 0.7, 1))
+				after_l.pressed.connect(func(_k): show_map()))
 			_stage_overlay(g)
 			return
 		if o.has("recycle"):
@@ -794,8 +803,8 @@ func _show_event(ev: Dictionary) -> void:
 			_room_bg = "campfire_fuse"
 			fs.back.connect(func(): _show_event(ev))
 			fs.fused.connect(func(_sp):
-				var after := _message(ev.title, String(o.text), ["Continue"], Color(0.8, 0.7, 1))
-				after.pressed.connect(func(_k): show_map()))
+				var after_l := _message(ev.title, String(o.text), ["Continue"], Color(0.8, 0.7, 1))
+				after_l.pressed.connect(func(_k): show_map()))
 			_swap(fs)
 			return
 		if o.has("outcomes") or o.has("by_water") or o.has("by_kind"):
@@ -1145,7 +1154,7 @@ func _result_how(ev: Dictionary, opt: Dictionary, text: String, spell_id: String
 
 
 ## The Recycler, on his stage: your item goes into him, he hands back three, and the one you click is yours (then his words and Continue).
-func _recycle_on_stage(ev: Dictionary, opt: Dictionary, give: String, opt_index: int) -> void:
+func _recycle_on_stage(_ev: Dictionary, opt: Dictionary, give: String, opt_index: int) -> void:
 	var es: EventStage = _overlay
 	var kind: String = opt.recycle
 	var offer := run.recycle_offer(kind, give)
@@ -1216,7 +1225,7 @@ func _event_recycle(ev: Dictionary, opt: Dictionary, give_now := "") -> void:
 		var offer := run.recycle_offer(kind, give)
 		var finish := func(i: int) -> void:
 			run.recycle(kind, give, offer[i])
-			var shown: Control = SpellCard.make(run.spell(offer[i])) if kind == "spell" else (ArtifactCard.make(Artifacts.view(offer[i], false)) if kind == "artifact" else null)
+			var shown: Control = (SpellCard.make(run.spell(offer[i])) as Control) if kind == "spell" else ((ArtifactCard.make(Artifacts.view(offer[i], false)) as Control) if kind == "artifact" else null)
 			var after := _message(ev.title, String(opt.text), ["Continue"], Color(0.8, 0.7, 1), shown)
 			after.pressed.connect(func(_k): show_map())
 		var sub := "\"RECYCLE!\" He tosses it onto his cart, rummages through the pile, and holds out three things. Take one."
@@ -1330,7 +1339,7 @@ func _note_pick(ev: Dictionary) -> void:
 
 
 ## A Note to Yourself, on the stage: you left `left_id` in the note and took what it held; told in the hint panel, with the card you took.
-func _note_done(ev: Dictionary, left_id: String) -> void:
+func _note_done(_ev: Dictionary, left_id: String) -> void:
 	var left: String = run.spell(left_id).name
 	var took := run.note_swap(left_id)
 	var es: EventStage = _overlay
@@ -1353,15 +1362,9 @@ func _save_quest() -> void:
 
 
 func _show_shop(stock: Array, first := true) -> void:
-	# the shop is always the stage shop: with no stage up (Test mode, back from the wax seal screen), put it up first
-	if not (is_instance_valid(current) and current is FightScreen and (current.map_mode or current._hud_hidden())):
-		var base := _new_fight_screen(run.make_fight([]))
-		base.map_mode = true
-		_swap(base)
-	if current.get("_peek"):
-		current.peek_hud(false)
 	var sh := ShopScreen.new()
 	sh.setup(run, stock)
+	sh.edit_allowed = _test_mode  # (Test mode: F6 = the shelf layout editor)
 	sh.intro = first  # (Puppet Stage: the cart rolls in and the goods are laid out only on arrival, not when coming back from the wax seal)
 	sh.quest = _merchant_quest()
 	sh.quest_changed.connect(_save_quest)
@@ -1378,7 +1381,7 @@ func _show_shop(stock: Array, first := true) -> void:
 			seal.setup(run, ids[k])
 			seal.done.connect(func(): _show_shop(stock, false))
 			_swap(seal)))
-	_set_overlay(sh)
+	_put(sh)
 
 
 func _show_loadout(ids: Array) -> void:
@@ -1452,7 +1455,7 @@ func _stage_encounter(ids: Array, l: LoadoutScreen) -> void:
 	_set_overlay(l)
 
 
-func _begin_stage_fight(fs: FightScreen, f: Fight, ids: Array, l: LoadoutScreen) -> void:
+func _begin_stage_fight(fs: FightScreen, _f: Fight, ids: Array, l: LoadoutScreen) -> void:
 	if l.has_meta("begun"):
 		return
 	l.set_meta("begun", true)

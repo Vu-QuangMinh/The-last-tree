@@ -107,7 +107,7 @@ func _make_button(pair: Array) -> Button:
 	var sig = pair[1]
 	var puppet := UiSkin.is_puppet()
 	var b := UiTheme.button(pair[0], func(): if sig == null: get_tree().quit() elif sig is Signal: sig.emit() else: sig.call(), BTN_FONT if puppet else 26)
-	b.custom_minimum_size = BTN if puppet else Vector2(360, 60)
+	b.custom_minimum_size = BTN if puppet else Vector2(252, 78)
 	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	if pair[0] == "Play" or pair[0] == "Continue":
 		UiTheme.use_play_style(b)
@@ -118,9 +118,9 @@ func _make_button(pair: Array) -> Button:
 
 ## Puppet Stage: every button is 80% as tall and 50% as wide as before (170 x 42). Three columns side by side: the main one (Continue, New run,
 ## More..., Quit); the one More... opens on its right (Tutorial, How to play, Codex, Unlocks, Settings); and, in Dev Mode, the Dev one at the far right.
-const BTN := Vector2(170.0, 42.0)
-const BTN_FONT := 20
-const COL_STEP := 190.0  # distance between the columns' middles
+const BTN := Vector2(119.0, 55.0)  # (2026-11-11: 30% narrower and 30% taller than 170 x 42)
+const BTN_FONT := 17
+const COL_STEP := 140.0  # distance between the columns' middles
 var _more_col: VBoxContainer
 var _dev_col: VBoxContainer
 
@@ -174,7 +174,7 @@ func _dev_column() -> void:
 	for pair in [["Test mode", test_mode], ["Room Test", room_test], ["SFX Test", sfx_test]]:
 		var sig: Signal = pair[1]
 		var b := UiTheme.button(pair[0], func(): sig.emit(), BTN_FONT if puppet else 26)
-		b.custom_minimum_size = BTN if puppet else Vector2(360, 60)
+		b.custom_minimum_size = BTN if puppet else Vector2(252, 78)
 		d.add_child(b)
 
 
@@ -182,15 +182,19 @@ func _dev_column() -> void:
 ## (they leave to the left) and a new one is brought in from the right.
 const PROPS_EVERY := 45.0
 var _stage: PuppetStage
+var menu_act := 1  # which of the three stages this menu is shown on (random among the unlocked ones)
 
 
 func _stage_backdrop() -> void:
-	_stage = PuppetStage.new(1)
+	var pool: Array = SaveManager.unlocked_stages()  # (a new player sees Act 1 only; beating an act's boss unlocks the next stage)
+	menu_act = int(pool[randi() % pool.size()])
+	_stage = PuppetStage.new(menu_act)
 	add_child(_stage)
 	_stage.add_default_props()
 	_stage.fit(get_viewport_rect().size.x)
 	get_viewport().size_changed.connect(func() -> void: _stage.fit(get_viewport_rect().size.x))
 	var actors := MenuActors.new()
+	actors.act = menu_act
 	var fr := _stage.floor_range()
 	actors.floor_top = fr.x
 	actors.floor_bottom = fr.y
@@ -216,7 +220,7 @@ func _change_props() -> void:
 ## back at full size), drawn black (by modulate) at a low opacity and shifted down and right.
 const TITLE_W := 470.0
 const TITLE_Y := 150.0
-const TITLE_CROP := Rect2(0, 0, 1283, 654)  # the whole picture: Title.png is already cut to the carved sign (tools: ImageSet "Puppet Title", raw in _Source/Title A.png)
+const TITLE_CROP := Rect2(28, 66, 1325, 648)  # the visible part of the user's 2026-11-11 logo (Title.png, 1376 x 768): its alpha bounding box, so the empty margin does not push it off its place
 const SHADOW_OFFSET := Vector2(8.0, 12.0)
 const SHADOW_ALPHA := 0.4
 static var _shadow_tex: ImageTexture  # (made once)

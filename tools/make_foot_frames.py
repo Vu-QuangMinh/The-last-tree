@@ -3,6 +3,7 @@ so that the legs can be laid over the body frames of right_hand_frames without d
 python tools/make_foot_frames.py test      -> 2 test frames (0.6 s and 9.0 s)  [set "Pianist Foot Test"]
 python tools/make_foot_frames.py all       -> the 12 frames                     [set "Pianist Foot"]
 python tools/make_foot_frames.py redo NN.. -> redo frames (neighbouring moment +0.15 s)"""
+import paths
 import json
 import os
 import shutil
@@ -45,7 +46,7 @@ def generate(set_name, nums, redo=False):
         spec["redo"] = ["Foot %02d" % k for k in nums]
     spec_path = os.path.join(tempfile.gettempdir(), "foot_spec.json")
     json.dump(spec, open(spec_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-    imageset = r"D:\GitHub Projects\ImageSet"
+    imageset = paths.IMAGESET
     code = subprocess.call([os.path.join(imageset, ".venv", "Scripts", "python.exe"), "main.py", "--batch", spec_path, "--background"], cwd=imageset)
     st = json.load(open(status, encoding="utf-8"))
     print("ImageSet:", st.get("state"), st.get("done"), "/", st.get("total"), st.get("errors"), "exit", code, flush=True)
@@ -73,7 +74,7 @@ def user7(accounts, nopiano=False):
     spec = {"set_name": "Pianist Foot NoPiano" if nopiano else "Pianist Foot User", "style": STYLE, "ratio": "1:1", "objects": objs, "status_path": status, "retries": 1, "accounts": accounts}
     spec_path = os.path.join(tempfile.gettempdir(), "foot7_spec.json")
     json.dump(spec, open(spec_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-    imageset = r"D:\GitHub Projects\ImageSet"
+    imageset = paths.IMAGESET
     code = subprocess.call([os.path.join(imageset, ".venv", "Scripts", "python.exe"), "main.py", "--batch", spec_path, "--background"], cwd=imageset)
     st = json.load(open(status, encoding="utf-8"))
     print("ImageSet:", st.get("state"), st.get("done"), "/", st.get("total"), st.get("errors"), "exit", code, flush=True)

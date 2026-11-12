@@ -7,13 +7,14 @@ import subprocess
 import sys
 import tempfile
 
-IMAGESET = r"D:\GitHub Projects\ImageSet"
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import paths
+IMAGESET = paths.IMAGESET
 import asset_paths as AP
 
 DIR = os.path.join(AP.PUPPET, "UI", "MinhHUD")
-OUT = r"E:\GitHub\ImageSet\output"
+OUT = (paths.IMAGESET_OUT + r"\output")
 
 
 def newest(folder, start):

@@ -33,8 +33,8 @@ func run(t: SceneTree) -> void:
 	fs.begin_with_spells(spells, book, [])
 	for k in 10:
 		await t.create_timer(0.7).timeout
-		var bs := _buttons(fs)
-		print("t+%.1f talking %s voice %s buttons %s" % [0.7 * (k + 1), fs._talking, Audio.voice_busy(), bs.map(func(b): return b.disabled)])
+		var btns := _buttons(fs)
+		print("t+%.1f talking %s voice %s buttons %s" % [0.7 * (k + 1), fs._talking, Audio.voice_busy(), btns.map(func(b): return b.disabled)])
 		if k == 3:
 			root.get_texture().get_image().save_png(out + "/talk_1.png")
 	# wait for the first line to end, then answer at once and check that the answer is cut off by the next click

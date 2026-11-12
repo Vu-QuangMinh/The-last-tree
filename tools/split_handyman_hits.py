@@ -1,4 +1,4 @@
-"""The Handyman's grunts when he is hit (docs/dialogue/sfx_handy_got_hit.wav, one take) cut at its silences into assets/Puppet/SFX/sfx_handy_hit_<n>.wav
+"""The Handyman's grunts when he is hit (assets/Puppet/Voice/_Source/handyman/sfx_handy_got_hit.wav, one take) cut at its silences into assets/Puppet/SFX/sfx_handy_hit_<n>.wav
 (played by Creature.hit). Run with ReadAnyBook's python (numpy + soundfile):  rvc_env/Scripts/python.exe tools/split_handyman_hits.py"""
 import os
 import sys
@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from loudness import loudify
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(ROOT, 'docs', 'dialogue', 'sfx_handy_got_hit.wav')
+SRC = os.path.join(ROOT, 'assets', 'Puppet', 'Voice', '_Source', 'handyman', 'sfx_handy_got_hit.wav')
 OUT = os.path.join(ROOT, 'assets', 'Puppet', 'SFX') + os.sep
 d, sr = sf.read(SRC, dtype='float32', always_2d=True)
 m = np.abs(d).max(axis=1)

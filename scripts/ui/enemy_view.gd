@@ -92,6 +92,14 @@ class StunStars extends Control:
 			_star(Vector2(cos(a) * RX, sin(a) * RY), r, a * 0.6, lerpf(0.55, 1.0, (front + 1.0) / 2.0))
 
 	func _star(c: Vector2, r: float, turn: float, alpha: float) -> void:
+		var pic := UiSkin.tex("stun_star")  # (the star is a picture, 2026-11-11; only its path, the ellipse, is drawn here)
+		if pic != null:
+			texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+			var side := r * 2.6
+			draw_set_transform(c, turn * 0.5, Vector2.ONE)
+			draw_texture_rect(pic, Rect2(-side / 2.0, -side / 2.0, side, side), false, Color(1, 1, 1, alpha))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			return
 		var pts := PackedVector2Array()
 		for k in 10:
 			var ang := turn - PI / 2.0 + PI * float(k) / 5.0
@@ -164,7 +172,7 @@ func setup(e: EnemyState, f: Fight) -> void:
 	creature = Creature.new()
 	creature.setup(e)
 	creature.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	creature.offset_top = -PUPPET_TOP if UiSkin.is_puppet() else 22  # models stay below the intent bubble (Puppet Stage: the bubble is at its side)
+	creature.offset_top = -PUPPET_TOP if UiSkin.is_puppet() else 22.0  # models stay below the intent bubble (Puppet Stage: the bubble is at its side)
 	if e.def.get("dragon", "") == "fireball":
 		# the Dragon's fireball hangs in mid-air above the wing, smaller; its Essence go on top of it (see _layout_free)
 		creature.offset_top += 40.0 - FIREBALL_LIFT
@@ -420,8 +428,8 @@ func refresh(preview: Dictionary) -> void:
 	# framed block in the middle. Still one row, in order: left wall, her, right wall.
 	var place: Array = _wall_layout(e, px) if walled else []  # (walled: where each Essence goes, by index)
 	for i in e.size():
-		var hidden: bool = mask.size() > i and mask[i]
-		var icon := ElementIcon.make("hidden" if hidden else e.elements[i], px)
+		var is_hidden: bool = mask.size() > i and mask[i]
+		var icon := ElementIcon.make("hidden" if is_hidden else e.elements[i], px)
 		icon.armored = e.armor[i]
 		icon.wall = e.parts[i] != ""
 		icon.burning = e.is_lit(i)

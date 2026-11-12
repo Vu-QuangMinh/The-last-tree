@@ -267,7 +267,7 @@ func _add_move(row: HBoxContainer, m: Dictionary, e: EnemyState) -> void:
 			row.add_child(mend_art if mend_art != null else MendIcon.make(34))  # a red heart with a green up-arrow (the user's design: no "+")
 			if m.n > 1:
 				var digits := UiSkin.number(str(m.n), 34, false, 0.7)
-				row.add_child(digits if digits != null else _word(str(m.n), Color.WHITE))
+				row.add_child((digits as Control) if digits != null else _word(str(m.n), Color.WHITE))
 			row.add_child(ElementIcon.make("?" if m.el == "random" else m.el, 26))
 			return
 		"poison", "bleed", "glow", "summon_clock", "explode", "freeze", "steal", "summon", "invert_spells":
@@ -340,22 +340,22 @@ func _part(glyph: String, num: String, col: Color, kind := "") -> Control:
 	var art := UiSkin.icon(ART.get(kind, ""), 30)
 	if art != null:
 		# New theme: the painted icon straight on the bubble, number beside it
-		var h := HBoxContainer.new()
-		h.add_theme_constant_override("separation", 2)
-		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		h.add_child(art)
+		var hrow := HBoxContainer.new()
+		hrow.add_theme_constant_override("separation", 2)
+		hrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hrow.add_child(art)
 		if num != "":
 			var painted := UiSkin.number(num, 28, false, 0.7)  # the painted digits, like the attack's
 			if painted != null:
 				painted.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-				h.add_child(painted)
+				hrow.add_child(painted)
 			else:
 				var n := UiTheme.label(num, 22, Color.WHITE)
 				n.add_theme_constant_override("outline_size", 6)
 				n.add_theme_color_override("font_outline_color", Color(0.2, 0.1, 0.08))
 				n.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				h.add_child(n)
-		return h
+				hrow.add_child(n)
+		return hrow
 	var p := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = col.darkened(0.25)
@@ -365,7 +365,7 @@ func _part(glyph: String, num: String, col: Color, kind := "") -> Control:
 	sb.content_margin_top = 1
 	sb.content_margin_bottom = 1
 	var pill_art := UiSkin.frame("pill", 18, [10, 2, 12, 2], col.lerp(Color.WHITE, 0.45))
-	p.add_theme_stylebox_override("panel", pill_art if pill_art != null else sb)
+	p.add_theme_stylebox_override("panel", (pill_art as StyleBox) if pill_art != null else sb)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 3)

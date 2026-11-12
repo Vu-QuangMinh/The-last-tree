@@ -27,6 +27,7 @@ static var DEBUFF_AT := Vector2(324.9, 866.6)  # the debuff circles: eight in a 
 static var DEBUFF_STEP := 44.64
 static var DEBUFF_PX := 41.0
 static var DEBUFF_COLS := 8
+static var DEBUFF_AREA_ROWS := 0  # >0 (NewUI Ver2): the rings fill an area of this many rows from its TOP-left corner; 0: the bottom row stands at DEBUFF_AT and more rows grow up
 static var DEBUFF_ROW := 45.0  # the distance between two rows of debuff circles
 ## The Bag tray: the Essence rest in it from its left end to the tube's mouth.
 static var MOUTH_X := 802.0  # the middle of the tube's mouth, from the Bag strip's left (strip px): the Essence roll out of the tube there
@@ -56,6 +57,7 @@ static var debuff_count := 0  # how many debuff circles are shown right now (Pup
 ## Chooses which HUD the values are: Puppet HUD ver 2 (true) or New UI (false). The fight screen calls it when it is built.
 static func use(on: bool, as_minh := false, as_v2 := false) -> void:
 	DEBUFF_ROW = 45.0
+	DEBUFF_AREA_ROWS = 0
 	minh = on and as_minh
 	v2 = as_v2 and not on
 	hud2 = on  # (true for theme MinhHUD too: it is the same code path with the values of Hud2Layout.apply_minh())
@@ -138,7 +140,8 @@ static func debuff_slot(k: int, rows: int) -> Vector2:
 	if hud2:  # (one row over the page's six squares; more than six squeeze together inside the same width)
 		var step := minf(DEBUFF_STEP, (DEBUFF_STEP * (DEBUFF_COLS - 1)) / maxf(1.0, debuff_count - 1.0))
 		return DEBUFF_AT + Vector2(k * step, 0.0)
-	return DEBUFF_AT + Vector2((k % DEBUFF_COLS) * DEBUFF_STEP, (k / DEBUFF_COLS - (rows - 1)) * DEBUFF_ROW)
+	var lift := (DEBUFF_AREA_ROWS - 1) if DEBUFF_AREA_ROWS > 0 else (rows - 1)  # (the first ring is always the top-left one of the area)
+	return DEBUFF_AT + Vector2((k % DEBUFF_COLS) * DEBUFF_STEP, (k / DEBUFF_COLS - lift) * DEBUFF_ROW)
 
 
 ## The blocks, the slots, the Bag tray, the HP groove and the debuff circles of the HUD (in screen px: put it at the screen's origin).
@@ -395,7 +398,6 @@ class Bar extends HpBar:
 		var iw := f.size.x
 		var h := f.size.y
 		var tint := Color.WHITE.lerp(Color(1.5, 1.3, 1.3), _flash * 0.7)
-		var p := parts()
 		_poly(node, _pill(), NewUiLayout.LIQUID_TRACK, false)
 		var xr := clampf(_xr, 0.0, iw)
 		var xs := clampf(_xs, 0.0, xr)

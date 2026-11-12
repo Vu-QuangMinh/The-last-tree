@@ -10,11 +10,12 @@ import sys
 from PIL import Image, ImageDraw, ImageFilter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import paths
 import asset_paths as AP
 
 OUT = os.path.join(AP.PUPPET, "UI", "Panels")
 SRC = os.path.join(AP.PUPPET, "_Source", "Frames")
-RAW = r"E:\GitHub\ImageSet\output"  # (ImageSet keeps its pictures on E:)
+RAW = (paths.IMAGESET_OUT + r"\output")  # (ImageSet keeps its pictures on E:)
 # (ImageSet set, object name, file made, width, height; height 0 = keep the picture's own proportions)
 PIECES = [
     ("Puppet Frames Wide", "Frame Bubble Dark", "frame_bubble_dark", 192, 80),

@@ -86,10 +86,10 @@ class ArtifactChip extends PanelContainer:
 	var _t := 0.0
 
 	## px: the square it sits in (the run bar on the map uses a smaller one).
-	static func make(id: String, plus := false, px := SIZE) -> ArtifactChip:
+	static func make(p_id: String, plus := false, px := SIZE) -> ArtifactChip:
 		var c := ArtifactChip.new()
-		c.id = id
-		var a := Artifacts.view(id, plus)
+		c.id = p_id
+		var a := Artifacts.view(p_id, plus)
 		# no box: just a soft, faint outline of the square it sits in (a touch brighter under the mouse)
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = Color(0, 0, 0, 0)
@@ -113,7 +113,7 @@ class ArtifactChip extends PanelContainer:
 			if not c.charged:
 				c.create_tween().tween_property(c, "scale", Vector2.ONE, 0.08))
 		c.mouse_filter = Control.MOUSE_FILTER_STOP
-		var art := UiSkin.artifact_icon(id, px if UiSkin.is_puppet() else px * ICON / SIZE)  # New theme: the painted artifact (kept in proportion); otherwise its symbol
+		var art := UiSkin.artifact_icon(p_id, px if UiSkin.is_puppet() else px * ICON / SIZE)  # New theme: the painted artifact (kept in proportion); otherwise its symbol
 		if art != null:
 			art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 			art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -124,7 +124,7 @@ class ArtifactChip extends PanelContainer:
 			l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			c.add_child(l)
-		c.tooltip_text = ArtifactCard.tip(a, "" if UiSkin.is_puppet() else UiSkin.inline(UiSkin.ARTIFACT_ART.get(id, id), a.get("icon", ""), 28))  # (Puppet: the big picture of the hover board stands for it)
+		c.tooltip_text = ArtifactCard.tip(a, "" if UiSkin.is_puppet() else UiSkin.inline(UiSkin.ARTIFACT_ART.get(p_id, p_id), a.get("icon", ""), 28))  # (Puppet: the big picture of the hover board stands for it)
 		c._sb = sb
 		c._base_border = sb.border_color
 		c._base_tip = c.tooltip_text

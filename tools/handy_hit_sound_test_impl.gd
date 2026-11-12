@@ -38,7 +38,8 @@ func run(t: SceneTree) -> void:
 	var at1 := Creature._handy_hit_at
 	while twz.size() > 0:
 		twz.elements.pop_back()
-		twz.armor.pop_back() if twz.armor.size() > twz.elements.size() else null
+		if twz.armor.size() > twz.elements.size():
+			twz.armor.pop_back()
 	fs._views[twz].hit_flash()
 	print("killing blow made a normal grunt: ", Creature._handy_hit_at != at1)
 	t.quit()

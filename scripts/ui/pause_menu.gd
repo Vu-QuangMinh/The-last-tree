@@ -38,7 +38,9 @@ func _ready() -> void:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(center)
 	var panel := PanelContainer.new()
-	var board := UiSkin.box("board_pause_menu", [58, 58, 58, 58] if UiSkin.is_puppet() else [95, 90, 95, 94], [60, 56, 60, 56])
+	var board: StyleBox = UiSkin.scaled_box(["board_pause_menu", "panel_square", "panel_wood_frame", "panel_banner"], 0.14, [60, 56, 60, 56])  # (NewUI Ver2: the HUD's own board)
+	if board == null:
+		board = UiSkin.box("board_pause_menu", [58, 58, 58, 58] if UiSkin.is_puppet() else [95, 90, 95, 94], [60, 56, 60, 56])
 	panel.add_theme_stylebox_override("panel", board if board != null else UiTheme.panel_box(0.95, 16))
 	panel.custom_minimum_size = Vector2(420 if board != null else 380, 0)
 	center.add_child(panel)
@@ -46,7 +48,7 @@ func _ready() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 12)
 	panel.add_child(v)
-	var paused := UiTheme.heading("Paused", 28, Color(0.24, 0.1, 0.16) if UiSkin.is_circus() else Color.WHITE)  # (the Cirus board is cream)
+	var paused := UiTheme.heading("Paused", 28, Color(0.24, 0.1, 0.16) if UiSkin.is_circus() else (Color(1.0, 0.93, 0.78) if UiSkin.is_newui2() else Color.WHITE))  # (the Cirus board is cream)
 	paused.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER  # centred on the board
 	v.add_child(paused)
 	_add_button(v, "Resume", func(): resumed.emit())
@@ -76,7 +78,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 ## Takes a picture of the screen behind the menu and saves it in SHOT_DIR. The menu itself is hidden for the shot;
 ## "without UI" hides the host's other children too, except the scenery (backdrop, stage) and `world_keep`.
 func _screenshot(with_ui: bool) -> void:
-	var hidden: Array = []
+	var hidden_nodes: Array = []
 	visible = false
 	if not with_ui:
 		for c in get_parent().get_children():
@@ -85,12 +87,12 @@ func _screenshot(with_ui: bool) -> void:
 			if c in world_keep or c is Backdrop or c is PuppetStage or c is StageLights:
 				continue
 			c.visible = false
-			hidden.append(c)
+			hidden_nodes.append(c)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
-	for c in hidden:
+	for c in hidden_nodes:
 		if is_instance_valid(c):
 			c.visible = true
 	visible = true

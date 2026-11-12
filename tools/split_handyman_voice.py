@@ -1,11 +1,11 @@
-"""The Handyman's recorded lines (docs/dialogue/Handy_voice.wav, one long take) cut into one clip per line of his talk (scripts/core/boss_talk.gd node ids),
+"""The Handyman's recorded lines (assets/Puppet/Voice/_Source/handyman/Handy_voice.wav, one long take) cut into one clip per line of his talk (scripts/core/boss_talk.gd node ids),
 with the time of every word, so the game can show the words as they are said.
   1. Whisper (ReadAnyBook's faster-whisper, word timestamps) hears the take:
      cd "D:/GitHub Projects/ReadAnyBook" && ./rvc_env/Scripts/python.exe transcribe_to_srt.py --src <wav> --out <any>.srt --words-out <words.json> --lang en --model medium
   2. this script cuts the wav at the quietest moment of the pause between two lines (LINES below says which words open and close each line) and writes
      assets/Puppet/Voice/handyman/<id>.wav (48 kHz stereo 16 bit, a few ms of fade at both ends) + handyman_voice.json (id, file, length, text, and the words with
      their times inside the clip).
-Run with ReadAnyBook's python (numpy + soundfile):  rvc_env/Scripts/python.exe tools/split_handyman_voice.py [words.json]  (default: docs/dialogue/handy_voice_words.json, the words of the
+Run with ReadAnyBook's python (numpy + soundfile):  rvc_env/Scripts/python.exe tools/split_handyman_voice.py [words.json]  (default: assets/Puppet/Voice/_Source/handyman/handy_voice_words.json, the words of the
 current take; made by step 1 for a new take). Every clip is passed through loudness.loudify (compressed, speaking level -11 dB, peaks under -1 dB)"""
 import json
 import os
@@ -19,7 +19,7 @@ from loudness import loudify
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-SRC = os.path.join(ROOT, "docs", "dialogue", "Handy_voice.wav")
+SRC = os.path.join(ROOT, "assets", "Puppet", "Voice", "_Source", "handyman", "Handy_voice.wav")
 OUT = os.path.join(ROOT, "assets", "Puppet", "Voice", "handyman")
 # (BossTalk node id, number of the first word of the line, number of the last word) - counted in the whisper words, 0-based, found by reading words.json;
 # set below from the first words of each line so a new take only needs the words, not numbers
@@ -41,7 +41,7 @@ PAD_OUT = 0.30
 
 
 def main():
-    words = json.load(open(sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "docs", "dialogue", "handy_voice_words.json"), encoding="utf-8"))  # [[start, end, text], ...]
+    words = json.load(open(sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "assets", "Puppet", "Voice", "_Source", "handyman", "handy_voice_words.json"), encoding="utf-8"))  # [[start, end, text], ...]
     data, sr = sf.read(SRC, dtype="float32", always_2d=True)
     mono = np.abs(data).max(axis=1)
     # where each line starts: the first word that is its opening word, searched from the end of the previous line

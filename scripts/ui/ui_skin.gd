@@ -35,6 +35,11 @@ static func theme_id() -> String:
 	return id if id == "new_ui" or id == "newui2" or id == "hud2" or id == "minhhud" else "puppet"
 
 
+## Developer keys (F4 / F5 / F6 / F7 editors) work only when the game runs from the project, never in an exported build.
+static func dev_keys() -> bool:
+	return not OS.has_feature("template")
+
+
 static var _tool_new := false  # set_theme("new"): a tool or test asking for the New look
 
 
@@ -132,6 +137,17 @@ static func tex(name: String) -> Texture2D:
 
 ## A StyleBoxTexture: margins = [left, top, right, bottom] for 9-slice (all 0 = the whole image stretched to fit).
 ## content = [left, top, right, bottom] padding for whatever sits inside.
+## NewUI Ver2: a nine-patch (ScaledBox) of its big pictures (UI/NewUiV2/) of the given names (the pictures of different proportions it chooses from), or null when this theme has none of them.
+static func scaled_box(names: Array, texel_frac: float, content: Array) -> ScaledBox:
+	if not is_newui2():
+		return null
+	var texs: Array = []
+	for n: String in names:
+		if path_of(n).contains("/NewUiV2/") and tex(n) != null:
+			texs.append(tex(n))
+	return ScaledBox.make(texs, texel_frac, content) if not texs.is_empty() else null
+
+
 static func box(name: String, margins := [0, 0, 0, 0], content := [0, 0, 0, 0]) -> StyleBoxTexture:
 	var t := tex(name)
 	if t == null:
@@ -165,11 +181,11 @@ static func has_slot_frame() -> bool:
 
 ## New theme: ONE frame behind all the children of `row` (a row of artifact or bottle slots), drawn from the first child's
 ## left edge to the last one's right edge and growing with them. Does nothing in Default or while the row is empty.
-static func frame_behind(row: Control, pad := Vector2(16, 11), frame := "slot_strip") -> void:
+static func frame_behind(row: Control, pad := Vector2(16, 11), frame_name := "slot_strip") -> void:
 	if is_puppet():
 		pad = Vector2(12, 8)  # (the Puppet plaque has a thick carved rim: hug the slots, or it dwarfs them)
-	var sb := box(frame, [22, 16, 22, 16] if is_puppet() else [28, 0, 27, 0])
-	if sb == null and frame != "slot_strip":
+	var sb := box(frame_name, [22, 16, 22, 16] if is_puppet() else [28, 0, 27, 0])
+	if sb == null and frame_name != "slot_strip":
 		sb = box("slot_strip", [22, 16, 22, 16] if is_puppet() else [28, 0, 27, 0])
 	if sb == null:
 		return
@@ -338,18 +354,18 @@ static func seedling_count_button(b: Button, label: String, count: int, px := 26
 	var space := font.get_string_size(" ", HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	var pad := " ".repeat(maxi(1, ceili(gap / maxf(space, 1.0))))
 	b.text = head + pad + ")"
-	var icon := TextureRect.new()
-	icon.texture = t
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.size = Vector2(px, px)
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	b.add_child(icon)
+	var ic := TextureRect.new()
+	ic.texture = t
+	ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	ic.size = Vector2(px, px)
+	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(ic)
 	var place := func() -> void:
 		var full := font.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		var x0 := (b.size.x - full) / 2.0
 		var head_w := font.get_string_size(head, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		icon.position = Vector2(x0 + head_w + 3.0, (b.size.y - px) / 2.0 + 2.0)
+		ic.position = Vector2(x0 + head_w + 3.0, (b.size.y - px) / 2.0 + 2.0)
 	b.resized.connect(place)
 	place.call_deferred()
 

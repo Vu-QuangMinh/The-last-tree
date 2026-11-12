@@ -168,10 +168,10 @@ func run(t: SceneTree) -> void:
 	print("")
 	# scenery: the rule gives each kind its height (the picture is scaled to it); measured over 60 random layouts
 	var stats := {}
-	for seed in range(1, 61):
+	for sd in range(1, 61):
 		var s2 := PuppetStage.new(act)
 		t.root.add_child(s2)
-		s2.add_default_props(seed)
+		s2.add_default_props(sd)
 		for sp_d in s2._sprites:
 			var sp: Sprite2D = sp_d.node
 			if sp.texture == null:

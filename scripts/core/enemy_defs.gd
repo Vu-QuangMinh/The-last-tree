@@ -98,10 +98,10 @@ const E := {
 		"flavor": "Half of it is already dead. The other half hasn't noticed."},
 	# The Headless Horseman: two moves in turn. At 10 Essence or less his next move is to throw his head, which silences every spell;
 	# from then on he only has the first move.
-	"headless_horseman": {"name": "Headless Horseman", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAFWAAWFFWAFAWF", "passives": ["head_throw"],
+	"headless_horseman": {"name": "Headless Horseman", "act": 2, "size": 1.8, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAFWAAWFFWAFAWF", "passives": ["head_throw"],
 		"moves": [{"kind": "attack", "n": 6, "hits": 2}, {"kind": "silence", "turns": 1, "also": {"kind": "attack", "n": 4}}],
 		"head_move": {"kind": "silence", "all": true, "turns": 1, "head": true},
-		"flavor": "He holds it up to his neck to scream."},
+		"flavor": "He holds his head up high to scream, and hurt enough, he throws it."},
 	# The Scavengers: four animals with human posture, 6 Essence each. Flying: see EnemyState.flying.
 	"scav_rat": {"name": "Scavenger Rat", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAFWA",
 		"moves": [{"kind": "attack", "n": 1, "hits": 3}],
@@ -119,23 +119,18 @@ const E := {
 	# every spell you cast is one more hit on his next attack (that turn only: it starts over each turn).
 	"mad_soldier": {"name": "Maddened Soldier", "act": 2, "size": 1.5, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWWAFAFWAAWF", "passives": ["maddened"],
 		"moves": [{"kind": "attack", "n": 2}],
-		"flavor": "The sword isn't in his hands. It is his hands."},
-	# The Tree Dwellers: a tree with two people growing out of it as branches, each with a bow and its own 8 Essence.
-	"tree_dweller_a": {"name": "Tree Dweller", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WFAWFA",
-		"moves": [{"kind": "poison", "n": 2}],
-		"flavor": "He stood his post. He is still standing it."},
-	"tree_dweller_b": {"name": "Tree Dweller", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "AWFAAW",
-		"moves": [{"kind": "poison", "n": 2}],
-		"flavor": "The bark has almost reached her eyes."},
-	# The Bog Lantern: an enormous angler fish on two legs (any of its moves, at random), and its lamp, a separate enemy hanging on
-	# its hook, on a clock: 2, 1, then at 0 it stuns you and starts over. It is part of the fish: put out, it stays there, dark, and
-	# lights up again after a turn, its clock at 2.
+		"flavor": "He drags it because he can't put it down. He is smiling."},
+	# The Tree Dweller (2026-11-11, ONE enemy): a single tree with two people growing out of it as branches (a man on the left, a woman on
+	# the right), each with a bow: 2 Poison from each, so 4 a turn, and 12 Essence between them.
+	"tree_dweller": {"name": "Tree Dweller", "act": 2, "size": 1.6, "member": true, "no_extra": true, "no_bonus": true, "hp": "WFAWFAAWFAAW",
+		"moves": [{"kind": "poison", "n": 4}],
+		"flavor": "He stood his post, and she stood hers. The bark has almost reached her eyes."},
+	# The Bog Lantern (2026-11-11, ONE enemy): an enormous angler fish on two legs with its lamp hanging from the stalk in front of it. Any of
+	# its moves, at random, but its lamp runs a clock of 3 turns (see Fight._plan): on the third its move is the flash, which Stuns you.
 	"bog_fish": {"name": "Bog Lantern", "act": 2, "member": true, "size": 2.0, "no_extra": true, "no_bonus": true, "hp": "WAFWWAFAWAFW", "passives": ["lure"], "random_moves": true,
 		"moves": [{"kind": "attack", "n": 5}, {"kind": "poison", "n": 3}, {"kind": "grow_thorns", "n": 2}],
+		"lamp_move": {"kind": "stun", "turns": 1, "name": "Lamp flash"},
 		"flavor": "Don't look at the light."},
-	"bog_lamp": {"name": "Lamp", "act": 2, "hang": 150.0, "member": true, "no_extra": true, "no_bonus": true, "hp": "FF",
-		"moves": [{"kind": "glow", "n": 2}, {"kind": "stun", "turns": 1}],
-		"flavor": "Brighter. Brighter. Brighter."},
 	# The Bug Hunter: a little brass bell on legs, its head the bell, a striker in its hands. It hunts bugs: it strikes its
 	# own head (5 every turn: the bell rings and shakes) and keeps a clock of 3 turns; on its 4th turn it rings the alarm
 	# and a Sentinel (red or blue) comes to destroy the bug. Only once: after that, only the strikes. (Was a robot.)
@@ -376,7 +371,7 @@ const PASSIVE_TEXT := {
 	"flying": "Flying: your chant can't hit it. Damage from a spell or a bottle brings it down, and it is stunned for a turn.",
 	"shell": "Shell: its first Essence is always armoured, until it is its last one.",
 	"maddened": "Maddened: every spell you cast this turn is one more hit on his attack. It starts over each turn.",
-	"lure": "Lure: its lamp hangs on its hook. Put out, it goes dark for a turn, then lights up again, its clock back at 2.",
+	"lure": "Lure: its lamp hangs on its hook and shines brighter every turn. On every third turn it flashes instead of its usual move, and you are Stunned.",
 	"last_fuse": "Last Fuse: at 0 Essence it reboots with 4 Essence. Destroy those, or on its turn it explodes for 10 and dies.",
 	"big_shield": "Big Shield: guards the Necromancer, who can't be touched while it stands. On its last Essence it swings instead. Fallen, it can be raised again.",
 	"behind_shield": "Hiding: while the Shield Bearer stands, nothing you do can touch it.",
@@ -438,10 +433,8 @@ const BIOS := {
 	"scav_vulture": "Your chant can't reach it. Knock it down with a spell, and it lies stunned for a turn.",
 	"scav_beetle": "Its shell never comes off, and it hits harder than it looks.",
 	"mad_soldier": "Weak on his own, but every spell you cast this turn adds a swing. Cast less, or kill him fast.",
-	"tree_dweller_a": "Rooted to the spot, and never stops shooting. Two Poison a turn, every turn.",
-	"tree_dweller_b": "Rooted to the spot, and never stops shooting. Two Poison a turn, every turn.",
-	"bog_fish": "An enormous angler fish on two legs. Bites, spits Poison, or grows more Thorns, whichever it feels like.",
-	"bog_lamp": "Its clock runs 2, 1, 0, and at 0 you are Stunned. Put it out and it lights up again, but its clock starts over.",
+	"tree_dweller": "Rooted to the spot, and never stops shooting: a man and a woman, a bow each. Four Poison a turn, every turn.",
+	"bog_fish": "An enormous angler fish on two legs. Bites, spits Poison, or grows more Thorns, whichever it feels like, and every third turn its lamp flashes and Stuns you.",
 	"bug_hunter": "A brass bell on legs that hunts for bugs. It strikes its own head to hurt you, and on its 4th turn it rings the alarm for a Sentinel. Silence it before then.",
 	"inverter": "Fire becomes water, water becomes fire, and your plans become confetti.",
 	"warded_golem": "Short chants bounce right off. Say something meaningful: at least four Essence long.",
@@ -558,7 +551,6 @@ static func is_hidden(id: String) -> bool:
 ## Normal-fight enemies that only ever come together, as one (Test mode puts them on the stage together, never one alone).
 const LINKED := {
 	"undying_duo": {"name": "The Undying Duo", "act": 2, "ids": ["shield_bearer", "necromancer"]},
-	"bog_lantern": {"name": "The Bog Lantern", "act": 2, "ids": ["bog_lamp", "bog_fish"], "thumb": "bog_fish"},
 }
 
 
@@ -624,13 +616,13 @@ const POOLS := {
 				{"name": "The Bug Hunter", "ids": ["bug_hunter"], "w": 1.0},
 			{"name": "Starving Mobs", "ids": ["mob_pitchfork", "mob_slingshot", "mob_torch"], "w": 1.0},
 			{"name": "Maddened Soldier", "ids": ["mad_soldier"], "w": 1.0},
-			{"name": "The Tree Dwellers", "ids": ["tree_dweller_a", "tree_dweller_b"], "w": 1.0},
+			{"name": "The Tree Dweller", "ids": ["tree_dweller"], "w": 1.0},
 		],
 		"medium": [
 				{"name": "The Red Sentinel", "ids": ["sentinel"], "w": 1.0},
 		{"name": "The Blue Sentinel", "ids": ["blue_sentinel"], "w": 1.0},
 		{"name": "The Rot Snake", "ids": ["rot_snake"], "w": 1.0},
-		{"name": "The Bog Lantern", "ids": ["bog_lamp", "bog_fish"], "w": 1.0},
+		{"name": "The Bog Lantern", "ids": ["bog_fish"], "w": 1.0},
 		{"name": "The Undying Duo", "ids": ["shield_bearer", "necromancer"], "w": 1.0},
 		],
 		"hard": [
@@ -687,19 +679,19 @@ static func _pick_encounter(pool: Array, rng: RandomNumberGenerator, recent: Arr
 
 
 ## Enemy ids for a node. floor is 1-based within the act. seen: ids met earlier this run (avoided when possible).
-static func encounter(kind: String, act: int, floor: int, rng: RandomNumberGenerator, seen: Array = []) -> Array:
+static func encounter(kind: String, act: int, floor_n: int, rng: RandomNumberGenerator, seen: Array = []) -> Array:
 	match kind:
 		"boss":
 			var bosses: Array = BOSSES[act]
 			return [bosses[rng.randi() % bosses.size()]]
 		"elite":
-			var pool := elites(act)
-			var fresh := pool.filter(func(id): return not (ids_of(id)[0] in seen))
+			var elite_pool := elites(act)
+			var fresh := elite_pool.filter(func(id): return not (ids_of(id)[0] in seen))
 			if not fresh.is_empty():
-				pool = fresh
-			return ids_of(pool[rng.randi() % pool.size()])  # (a mini boss comes alone: no escorts)
+				elite_pool = fresh
+			return ids_of(elite_pool[rng.randi() % elite_pool.size()])  # (a mini boss comes alone: no escorts)
 	var pool := normals(act)
-	var count := group_size(act, floor, rng)
+	var count := group_size(act, floor_n, rng)
 	var out := []
 	for i in count:
 		# prefer enemies not already in this fight or met recently
@@ -718,8 +710,8 @@ const GROUP_ODDS := {
 }
 
 
-static func group_size(act: int, floor: int, rng: RandomNumberGenerator) -> int:
-	if act == 1 and floor <= 2:
+static func group_size(act: int, floor_n: int, rng: RandomNumberGenerator) -> int:
+	if act == 1 and floor_n <= 2:
 		return 1
 	var odds: Array = GROUP_ODDS.get(act, GROUP_ODDS[3])
 	var r := rng.randf()

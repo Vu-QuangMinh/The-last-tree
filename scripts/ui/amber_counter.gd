@@ -25,7 +25,7 @@ func _ready() -> void:
 	sb.content_margin_top = 4
 	sb.content_margin_bottom = 4
 	var pill := UiSkin.box("amber_counter_pill", [22, 20, 22, 20], [18, 4, 24, 6])
-	add_theme_stylebox_override("panel", pill if pill != null else sb)
+	add_theme_stylebox_override("panel", (pill as StyleBox) if pill != null else sb)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	tooltip_text = Keywords.tooltip("Leaves", "Your money for this run. Spend it at the merchant and in events; fights give more.")
 	var h := HBoxContainer.new()
@@ -52,7 +52,7 @@ func _ready() -> void:
 ## A leaf (the run's money): a green blade with a lighter midrib and veins, a little stem, and a soft shine.
 func _draw_gem() -> void:
 	var c := _gem.size / 2.0 + Vector2(1, 1)
-	var len := 15.0
+	var gem_len := 15.0
 	var w := 8.5
 	var ang := -0.65  # tilted, tip up and to the right
 	var dir := Vector2.from_angle(ang)
@@ -60,10 +60,10 @@ func _draw_gem() -> void:
 	var pts := PackedVector2Array()
 	for i in 21:
 		var t := float(i) / 20.0 * 2.0 - 1.0  # -1 (base) .. 1 (tip) along the top edge
-		pts.append(c + dir * t * len + side * sqrt(maxf(0.0, 1.0 - t * t)) * w)
+		pts.append(c + dir * t * gem_len + side * sqrt(maxf(0.0, 1.0 - t * t)) * w)
 	for i in range(19, 0, -1):
 		var t := float(i) / 20.0 * 2.0 - 1.0
-		pts.append(c + dir * t * len - side * sqrt(maxf(0.0, 1.0 - t * t)) * w)
+		pts.append(c + dir * t * gem_len - side * sqrt(maxf(0.0, 1.0 - t * t)) * w)
 	_gem.draw_colored_polygon(pts, Color(0.2, 0.55, 0.18))
 	var inner := PackedVector2Array()
 	for p in pts:
@@ -71,13 +71,13 @@ func _draw_gem() -> void:
 	_gem.draw_colored_polygon(inner, Color(0.42, 0.8, 0.3))
 	# midrib, veins and stem
 	var rib := Color(0.8, 1.0, 0.65, 0.9)
-	_gem.draw_line(c - dir * len * 1.25, c + dir * len * 0.85, rib, 1.6, true)
+	_gem.draw_line(c - dir * gem_len * 1.25, c + dir * gem_len * 0.85, rib, 1.6, true)
 	for k in [-0.45, 0.0, 0.45]:
-		var at: Vector2 = c + dir * len * k
+		var at: Vector2 = c + dir * gem_len * k
 		_gem.draw_line(at, at + (dir + side).normalized() * w * 0.75, Color(rib, 0.6), 1.0, true)
 		_gem.draw_line(at, at + (dir - side).normalized() * w * 0.75, Color(rib, 0.6), 1.0, true)
 	var shine := 0.25 + 0.2 * sin(_t * 2.0)
-	_gem.draw_circle(c + side * w * 0.35 - dir * len * 0.2, 3.0, Color(1, 1, 0.9, shine))
+	_gem.draw_circle(c + side * w * 0.35 - dir * gem_len * 0.2, 3.0, Color(1, 1, 0.9, shine))
 
 
 func _make_custom_tooltip(for_text: String) -> Object:

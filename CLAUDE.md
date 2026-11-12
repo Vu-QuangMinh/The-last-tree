@@ -1,10 +1,10 @@
 # Behind the Curtain: rules for Claude
 
 - Reply in Vietnamese (also set globally).
-- Art pipeline: `assets/New/_Source/Fight UI.pdf` -> `python tools/export_fight_ui.py` -> `assets/New/...` (layout of `assets/`: see `assets/README.md`; exporters write through `tools/asset_paths.py`) (see `docs/art_progress.md`). Godot: `C:\Program Files\Godot\Godot.exe`; new `class_name` files need `--headless --editor --quit` once; warnings are errors; tests: `--headless --script res://tests/run_tests.gd`.
+- Art pipeline: `assets/New/_Source/Fight UI.pdf` -> `python tools/export_fight_ui.py` -> `assets/New/...` (layout of `assets/`: see `assets/README.md`; exporters write through `tools/asset_paths.py`) (see `docs/art_progress.md`). Godot: `C:\Program Files\Godot\Godot.exe`; new `class_name` files need `--headless --editor --quit` once; warnings are errors (`project.godot` `[debug] gdscript/warnings/* = 2`, so `check_scripts` and `--check-only` fail on an unused variable / parameter, a shadowed name, an incompatible ternary...; only `unused_signal` stays a warning because `Events` is a signal bus); tests: `--headless --script res://tests/run_tests.gd`.
 - **When the user chats "Kết thúc phiên làm việc" ("end the work session"), do all of this at once:**
   1. Commit the work (exclude `project.godot` when it only differs by line endings, the `_Source` folders under `assets/` and other untracked scratch files; end the message with the Co-Authored-By line).
-  2. Record what was done and what is still waiting in `docs/art_progress.md` (Done / To do), and update the memory notes if something non-obvious was learned.
+  2. Record what was done in `docs/changelog/<YYYY-MM>_art.md` (new entry on top, create the month's file if missing) and what is still waiting in `docs/art_progress.md`, and update the memory notes if something non-obvious was learned.
   3. Push to the user's fork branch: `git push origin Banana-Fork`.
   Then reply with a short report: the commit, what was recorded, what is still pending.
 - Vu-QuangMinh also commits to this repo from an older copy and has dropped the user's work in merges before: after a pull, compare against the last commit by sonvtbatdan.
@@ -14,18 +14,23 @@
 
 - **No spell casts itself.** After Chant, every awake spell waits for the player's click, even one with nothing to aim at (shield, heal, a lone enemy). No `_auto_cast`.
 - **The Release is manual.** When every spell is cast the Release button pulses; the player presses it (E). There is no Undo (removed by the user, 2026-10-17): a cast spell can't be taken back; right-click or Esc puts back a *selected* spell (arrow / crosshair) before it's cast.
-- **Spell cards have no picture.** Classic layout: name banner on top, pattern orbs under it, coloured rules text, and no rarity or category words: Rare and Legendary cards get green / gold metal triangles on their 4 corners (`SpellCard.RarityCorners`), Commons none (2026-11-08). The card tooltip only explains its keywords (none: no tooltip); artifact tooltips are the name in its rarity colour (white / green / orange, red cursed) plus what it does. Wax seals on sealed orbs; anti-spells use the dark holo look; a fused anti-spell shows its two patterns as two rows.
+- **Spell cards have no picture.** Classic layout: name banner on top, pattern orbs under it, coloured rules text, and no rarity or category words: Rare and Legendary cards get ONE green / gold metal corner plate at the top-left only, inside the wood, off the iron rim (`SpellCard.RarityCorners`, 2026-11-11), Commons none (2026-11-08). The card tooltip only explains its keywords (none: no tooltip); artifact tooltips are the name in its rarity colour (white / green / orange, red cursed) plus what it does. Wax seals on sealed orbs; anti-spells use the dark holo look; a fused anti-spell shows its two patterns as two rows.
 - **Artifact slots**: no painted box, just a faint outline (72 px in fights, 56 px in the top bar).
 - **Mend intent**: a red heart with a green up-arrow (`MendIcon`), never a "+" sign.
 - **Chant button**: the amber face only, without the art's dark base strip.
 
+- **Dialogue boxes** (an event's story, a boss's talk, the merchant) all use ONE plain cream board, `UiTheme.dialogue_board()` (nine-patch of `UI/Panels/dialogue_board_cream.png`), with dark ink (`UiTheme.BOARD_INK`); the red `dialogue_panel` is only the fallback when the theme has no cream board (2026-11-11).
+
 ## Code map (read this before grepping)
 
 - `scripts/core/` = game logic, no UI: `fight.gd` (turn/spell resolution, 2k lines), `run_state.gd` (run progress, rewards), `enemy_defs.gd`/`enemy_state.gd`, `player_state.gd`, `spell_db.gd` (+ `docs/spells.xlsx`, `tools/dump_spells.gd`), `artifacts.gd`, `bottles.gd`, `map_gen.gd`/`map_events.gd`, `chant.gd`.
-- `scripts/ui/fight_screen.gd` is the 5k-line fight UI; read it by function (grep `func _`), never whole. Other screens: `map_screen`, `campfire_screen`, `shop_screen`, `apothecary_screen`, `fuse_screen`, `loadout_screen`, `settings_screen`, `tutorial_screen`.
+- `scripts/ui/fight_screen.gd` is the 5k-line fight UI; read it by function (grep `func _`), never whole. Other screens: `map_screen`, `campfire_screen`, `shop_screen`, `fuse_screen`, `loadout_screen`, `settings_screen`, `tutorial_screen`.
 - Look & theme: `ui_skin.gd` (art lookup, null when art is missing), `ui_theme.gd`, `backdrop.gd`/`backdrop_fx.gd`, `puppet_stage.gd` (+ generated `puppet_layout.gd`), `spell_card.gd`, `creature.gd`, `enemy_view.gd`, `spell_fx.gd`, `vfx.gd`.
+- Layout editors (Test mode): F5 enemy ropes/size (`data/enemy_ropes.json`), F6 in an event (`data/event_layout_overrides.json`) and F6 in the Merchant shop (`ShopScreen._edit_*`, `data/shop_layout_overrides.json`: shelf, slots, all artifacts / all bottles size). These data files are the user's own placing: never delete. Keys are InputMap actions `dev_*` in `project.godot`; they only work outside exported builds (`UiSkin.dev_keys()`). The F6 shop editor is off while the true cart exists (see next line).
+- Merchant shop (2026-11-11): when `Cart_true_empty.png` exists the shop is the TRUE CART: all goods (4 cards, 3 bottles, candle, soup, 3 artifacts) lie on it, children of `ShopScreen._cart_items` in picture px (slots = `TC_*` constants). Overview: the cart glows as one object under the mouse; click zooms the camera (stage + world scaled together, `_cam_apply`), merchant flipped; zoomed: click an item buys, price boxes under each, hover info board on the canopy (`_cart_info_update`), Back + coin frame top-left. Tests: `tools/shop_cart_flow.gd` (uses `ShopScreen.test_mouse`).
+- Debts and plans: `docs/audit_2026-11-12.md`, `docs/plan_dot1_don_kho.md`, `docs/plan_dot2_chuan_chung.md`.
 - Autoloads: `audio.gd`, `save_manager.gd` (settings: theme / font / show_hotkeys), `game_data.gd`, `events.gd`. Entry: `scenes/main.tscn` + `scripts/main.gd`.
-- Themes picked in Settings: `puppet`, `new_ui`, `hud2` (Puppet HUD ver 2) and `minhhud` (MinhHUD, 2026-11-10: `Hud2Layout.minh`, art `assets/Puppet/UI/MinhHUD/`, see `docs/art_progress.md`); the last three share the New UI HUD code path (`NewUiLayout.use`). Themes: only `new` and `puppet` (the Default and Cirus looks were dropped; an old save that says so opens in New; the Cirus art is parked in `assets/_Archive/Circus`). `UiSkin.is_circus()` is just `is_puppet()` (Puppet kept the layout first made for Cirus). Art is in `assets/{Global,New,Puppet}/`: see `assets/README.md`.
+- Themes picked in Settings: `puppet`, `new_ui`, `newui2` (NewUI Ver2, 2026-11-10: New UI HUD, art in `assets/Puppet/UI/NewUiV2/` found first by `UiSkin.path_of`), `hud2` (Puppet HUD ver 2) and `minhhud` (MinhHUD, 2026-11-10: `Hud2Layout.minh`, art `assets/Puppet/UI/MinhHUD/`, see `docs/art_progress.md`); the last three share the New UI HUD code path (`NewUiLayout.use`). Settings offers `OPTIONS = ["puppet", "new_ui", "newui2", "hud2", "minhhud"]`; art roots are `UiSkin.roots()` = Puppet, New, Global (Puppet first) for every option, or New, Global only while a tool has called `set_theme("new")` (a tools-only id); Default/Cirus were dropped, an old save naming them opens as `puppet` (`theme_id()`). `UiSkin.is_circus()` is just `is_puppet()` (Puppet kept the layout first made for Cirus). Art is in `assets/{Global,New,Puppet}/`: see `assets/README.md`.
 
 ## Testing the game while the user is working: silent and out of the way
 
@@ -36,7 +41,7 @@
 ## Verify (pick the cheapest that proves the change)
 
 1. Parse: `"C:\Program Files\Godot\Godot.exe" --headless --path . --script res://tools/check_scripts.gd`. New `class_name` file -> run `--headless --editor --quit` once first. Untyped `:=` from a Variant is an error.
-2. Logic: `--headless --script res://tests/run_tests.gd`.
+2. Logic: `--headless --script res://tests/run_tests.gd` (the only runner).
 3. Visual: `tools/shots.gd` / `tools/puppet_fight_shot.gd` (windowed; `SHOT_THEME=new|puppet`). Per global rules start it hidden/off-screen, kill only the PID you started, never the user's editor. A still shot cannot show tweens, sfx or shaders: say so.
 4. Real flow bugs: drive the actual screen functions (see `tools/ui_playtest.gd`, `stage_flow_test.gd`), not an isolated widget.
 

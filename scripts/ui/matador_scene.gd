@@ -435,7 +435,7 @@ class _Matador extends Control:
 		var sink := 0.0 if fall_t < 0.0 else smoothstep(0.3, 1.0, fall_t) * s * 3.2
 		var shrink := 1.0 if fall_t < 0.0 else 1.0 - 0.5 * smoothstep(0.3, 1.0, fall_t)
 		var lean := sin(laugh_t * 18.0) * 0.06 if laugh_t >= 0.0 else 0.0
-		var nod := sin(nod_t * PI) * 0.18 if nod_t >= 0.0 and nod_t < 1.0 else 0.0
+		var nod_a := sin(nod_t * PI) * 0.18 if nod_t >= 0.0 and nod_t < 1.0 else 0.0
 		draw_set_transform(feet + Vector2(0, sink), lean, Vector2(shrink, shrink))
 		var suit := Color(0.12, 0.06, 0.08)
 		var gold := Color(0.95, 0.75, 0.25)
@@ -455,7 +455,7 @@ class _Matador extends Control:
 			hand + Vector2(s * 0.05, s * 1.0 + wave), hand + Vector2(-s * 2.3, s * 1.1 - wave)]), Color(0.78, 0.06, 0.08))
 		draw_circle(hand, s * 0.07, gold)
 		# the head: a golden mask that always smiles, a kingly crown on top
-		draw_set_transform(feet + Vector2(0, sink) + Vector2(0, -s * 2.05) * shrink, lean + nod, Vector2(shrink, shrink))
+		draw_set_transform(feet + Vector2(0, sink) + Vector2(0, -s * 2.05) * shrink, lean + nod_a, Vector2(shrink, shrink))
 		draw_circle(Vector2.ZERO, s * 0.26, gold)
 		draw_arc(Vector2(0, s * 0.02), s * 0.13, 0.2, PI - 0.2, 12, Color(0.35, 0.22, 0.05), 3.0, true)  # (the smile)
 		for side in [-1.0, 1.0]:

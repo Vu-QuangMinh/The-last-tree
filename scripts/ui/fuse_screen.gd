@@ -141,7 +141,7 @@ func _make_slot(k: int) -> PanelContainer:
 	sb.set_border_width_all(3)
 	sb.set_corner_radius_all(12)
 	var slot := UiSkin.frame("card_slot", 20, [0, 0, 0, 0])
-	p.add_theme_stylebox_override("panel", slot if slot != null else sb)
+	p.add_theme_stylebox_override("panel", (slot as StyleBox) if slot != null else sb)
 	p.set_drag_forwarding(Callable(), func(_at, d): return _can_drop_slot(d), func(_at, d): _drop_slot(k, d))
 	return p
 
@@ -581,20 +581,20 @@ func _wax_seal(stage: Control, card: SpellCard, id: String, mid: Vector2) -> Spe
 	hint.size = Vector2(900, 40)
 	hint.position = Vector2(mid.x - 450, card.get_global_rect().end.y + 30.0) - stage.global_position
 	stage.add_child(hint)
-	var nearest := func(at: Vector2) -> int:
+	var nearest := func(pt: Vector2) -> int:
 		var orbs := card.live_orbs()
 		var best := -1
 		var best_d := WAX_SNAP
 		for k in orbs.size():
-			var d := (orbs[k] as Control).get_global_rect().get_center().distance_to(at)
+			var d := (orbs[k] as Control).get_global_rect().get_center().distance_to(pt)
 			if d < best_d:
 				best_d = d
 				best = k
 		return best
-	var orb_at := func(at: Vector2) -> int:  # the Essence right under the pointer (a click on it seals it, no need to carry the wax there)
+	var orb_at := func(pt: Vector2) -> int:  # the Essence right under the pointer (a click on it seals it, no need to carry the wax there)
 		var orbs := card.live_orbs()
 		for k in orbs.size():
-			if (orbs[k] as Control).get_global_rect().grow(10.0).has_point(at):
+			if (orbs[k] as Control).get_global_rect().grow(10.0).has_point(pt):
 				return k
 		return -1
 	var light := func(k: int) -> void:
@@ -623,9 +623,9 @@ func _wax_seal(stage: Control, card: SpellCard, id: String, mid: Vector2) -> Spe
 					st.picked = k
 				else:
 					light.call(-1)
-					var back := wax.create_tween().set_parallel()
-					back.tween_property(wax, "position", home - wax.size / 2.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-					back.tween_property(wax, "scale", Vector2.ONE, 0.2)
+					var back_tw := wax.create_tween().set_parallel()
+					back_tw.tween_property(wax, "position", home - wax.size / 2.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+					back_tw.tween_property(wax, "scale", Vector2.ONE, 0.2)
 					bob.play()
 		elif ev is InputEventMouseMotion:
 			if st.drag:

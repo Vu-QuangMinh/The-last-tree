@@ -44,15 +44,15 @@ func _ready() -> void:
 	_tabs.add_theme_font_size_override("font_size", 19)
 	v.add_child(_tabs)
 	var content := _content()
-	for name in TABS:
+	for nm in TABS:
 		var scroll := ScrollContainer.new()
-		scroll.name = name
+		scroll.name = nm
 		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 		var col := VBoxContainer.new()
 		col.custom_minimum_size = Vector2(1800, 0)
 		col.add_theme_constant_override("separation", 14)
 		scroll.add_child(col)
-		for entry in content[name]:
+		for entry in content[nm]:
 			col.add_child(_entry(entry[0], entry[1]))
 		_tabs.add_child(scroll)
 	_results_scroll = ScrollContainer.new()
@@ -96,10 +96,10 @@ func _on_search(q: String) -> void:
 		c.queue_free()
 	var content := _content()
 	var hits := 0
-	for name in TABS:
-		for entry in content[name]:
+	for nm in TABS:
+		for entry in content[nm]:
 			if (entry[0] + " " + entry[1]).to_lower().contains(q):
-				_results.add_child(_entry("%s  ·  [color=#8c9a8c]%s[/color]" % [entry[0], name], entry[1]))
+				_results.add_child(_entry("%s  ·  [color=#8c9a8c]%s[/color]" % [entry[0], nm], entry[1]))
 				hits += 1
 	if hits == 0:
 		_results.add_child(UiTheme.label("Nothing matches \"%s\"." % q, 20, UiTheme.MUTED))

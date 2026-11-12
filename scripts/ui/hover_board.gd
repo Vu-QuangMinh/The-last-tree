@@ -16,12 +16,19 @@ static func bare_theme() -> Theme:
 
 
 ## `tex`: the picture (null: words only); `bbcode`: the tooltip text (Keywords.tooltip).
-static func make(tex: Texture2D, bbcode: String, left_of: Control = null) -> Control:
+static func make(tex: Texture2D, bbcode: String, left_of: Control = null, framed := false, max_w := 440.0) -> Control:
 	var panel := PanelContainer.new()
 	var m: Array = PuppetTopHud.HOVER_MARGINS
-	var sb := UiSkin.box("artifact_hover_board", [int(m[0]), int(m[1]), int(m[2]), int(m[3])], [int(m[0]) + 8, int(m[1]) + 6, int(m[2]) + 8, int(m[3]) + 6])
+	var sb: StyleBox = UiSkin.box("artifact_hover_board", [int(m[0]), int(m[1]), int(m[2]), int(m[3])], [int(m[0]) + 8, int(m[1]) + 6, int(m[2]) + 8, int(m[3]) + 6])
+	var big := UiSkin.tex("frame_bubble_dark_full") if framed else null  # (`framed`: the shop's info board: the full-size painted dark plaque, a thin rim whatever the size)
+	if big != null:
+		var sbx := ScaledBox.make([big], 0.11, [28, 16, 28, 18])
+		sbx.corner_px = 18.0
+		sb = sbx
 	panel.add_theme_stylebox_override("panel", sb)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if big != null:
+		panel.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	panel.set_meta("bare", true)  # (a pinned copy is not put in the game's tooltip box)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
@@ -43,7 +50,9 @@ static func make(tex: Texture2D, bbcode: String, left_of: Control = null) -> Con
 		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(r)
 	var label := Keywords.make_tooltip(bbcode)
-	label.custom_minimum_size = Vector2(Keywords.natural_width(bbcode, 200.0, 440.0), 0.0)
+	var head := bbcode.split("
+[color=#8c9a8c]")[0] if framed else bbcode  # (the shop's info board is as wide as the NAME and WORDS need: the keyword explanations under the line wrap inside that width)
+	label.custom_minimum_size = Vector2(Keywords.natural_width(head, 150.0 if framed else 200.0, max_w), 0.0)
 	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(label)

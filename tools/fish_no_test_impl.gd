@@ -24,7 +24,7 @@ func run(t: SceneTree) -> void:
 	print("underwater at result: ", stage.is_underwater())
 	es.continued.emit()
 	await t.create_timer(4.0).timeout
-	print("underwater after Continue: ", stage.is_underwater() if is_instance_valid(stage) else "stage gone")
+	print("underwater after Continue: ", str(stage.is_underwater()) if is_instance_valid(stage) else "stage gone")
 	root.get_texture().get_image().save_png(out + "/no_4_after.png")
 	print("NO DONE")
 	t.quit()

@@ -48,7 +48,7 @@ func run(t: SceneTree) -> void:
 	var fr: Control = fs._machine.front
 	for k in range(fr.get_child_count() - 3, fr.get_child_count()):
 		var c: Control = fr.get_child(k)
-		print("lever part ", k, " ", c.get_class(), " global ", c.get_global_rect(), " vis ", c.is_visible_in_tree(), " tex ", (c as TextureRect).texture != null if c is TextureRect else "-")
+		print("lever part ", k, " ", c.get_class(), " global ", c.get_global_rect(), " vis ", c.is_visible_in_tree(), " tex ", str((c as TextureRect).texture != null) if c is TextureRect else "-")
 	# the HP drops: the liquid runs to its new place, overshoots and rocks (shots 0.12 s, 0.3 s and 0.55 s after)
 	f.player.hp = 14
 	fs._refresh_all()
@@ -142,7 +142,6 @@ func _flicker(t: SceneTree, root: Window, secs: float, label: String) -> void:
 		var img: Image = root.get_texture().get_image()
 		var kk := img.get_width() / 1920.0
 		if label == "heavy hit" and series["artifacts"].size() >= 8 and series["artifacts"].size() < 30:
-			var fsn = root.get_node("FightScreenDebug") if root.has_node("FightScreenDebug") else null
 			var nb = _dbg_fs._nu_back
 			print("frame ", series["artifacts"].size(), " back visible ", nb.visible, " in tree ", nb.is_visible_in_tree(), " mod ", nb.modulate, " self_mod ", nb.self_modulate, " pos ", nb.position, " gpos ", nb.global_position, " size ", nb.size, " z ", nb.z_index, " top_layer pos ", _dbg_fs._top_layer.position, " fs pos ", _dbg_fs.position, " scale ", _dbg_fs.scale, " time_scale ", Engine.time_scale)
 		if label == "heavy hit" and series["artifacts"].size() >= 10 and series["artifacts"].size() < 26:

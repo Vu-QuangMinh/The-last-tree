@@ -16,9 +16,10 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import paths
 import asset_paths as AP
 
-IMAGESET = r"D:\GitHub Projects\ImageSet"
+IMAGESET = paths.IMAGESET
 P = AP.PUPPET
 # set name, style file, prompts file, {picture name: (file written, longest edge)}
 JOBS = [
@@ -73,7 +74,7 @@ def generate(set_name, style, objs, ratio="1:1"):
         sys.exit("ImageSet did not finish (exit %s, %s): nothing was changed." % (code, st.get("state")))
 
 
-OUTPUTS = [os.path.join(IMAGESET, "output"), r"E:\GitHub\ImageSet\output"]  # (ImageSet's output folder was moved to E: on 2026-10-19: look in both)
+OUTPUTS = [os.path.join(IMAGESET, "output"), (paths.IMAGESET_OUT + r"\output")]  # (ImageSet's output folder was moved to E: on 2026-10-19: look in both)
 
 
 def newest(set_name, name):

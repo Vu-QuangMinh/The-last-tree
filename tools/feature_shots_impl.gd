@@ -15,17 +15,17 @@ func run(t: SceneTree) -> void:
 	var save = root.get_node("SaveManager")
 	save.use_test_file("user://feature_save.json")
 	var gd = root.get_node("GameData")
-	var run := RunState.new()
-	run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 11)
+	var rs := RunState.new()
+	rs.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 11)
 	for id in ["kindling_stone", "echo_shell", "bandolier"]:
-		run.gain_artifact(id)
+		rs.gain_artifact(id)
 	for id in ["inferno", "miasma", "arcane_barrage", "meteor"]:
-		run.learn_spell(id)
-	run.seal_spell("fire_ball", 1)
-	run.seal_spell("inferno", 0)
-	run.seal_spell("inferno", 2)
+		rs.learn_spell(id)
+	rs.seal_spell("fire_ball", 1)
+	rs.seal_spell("inferno", 0)
+	rs.seal_spell("inferno", 2)
 	# 1. the fight: statuses, bottles, charged artifacts, Burn / Poison marks, seals on cards
-	var f := run.make_fight(["stone_knight", "ashling", "gale_sprite"])
+	var f := rs.make_fight(["stone_knight", "ashling", "gale_sprite"])
 	f.enemies[1].burn = 2
 	f.enemies[0].burn = 1
 	f.player.shield = 5
@@ -35,7 +35,7 @@ func run(t: SceneTree) -> void:
 	f.player.kindling_charged = true
 	f.player.echo_casts = 7
 	var fs := FightScreen.new()
-	fs.setup(run, f)
+	fs.setup(rs, f)
 	root.add_child(fs)
 	await _wait(20)
 	await _shot("01_fight_status_bottles")
@@ -60,13 +60,13 @@ func run(t: SceneTree) -> void:
 	await _wait(3)
 	# 4. loadout: dragging a card
 	var l := LoadoutScreen.new()
-	l.setup(run, ["stone_knight", "ashling"])
+	l.setup(rs, ["stone_knight", "ashling"])
 	root.add_child(l)
 	await _wait(10)
 	var cards: Array = l._active_row.get_children().filter(func(c): return c is SpellCard)
 	var c0: SpellCard = cards[0]
 	var at := c0.get_global_rect().get_center()
-	l._press = {"id": run.loadout[0], "at": at, "card": c0}
+	l._press = {"id": rs.loadout[0], "at": at, "card": c0}
 	l._begin_drag(at)
 	for k in 14:
 		l._move_drag(at + Vector2(40.0 * k, -20))
@@ -80,8 +80,8 @@ func run(t: SceneTree) -> void:
 	await _wait(3)
 	# 5. the shop with bottles
 	var sh := ShopScreen.new()
-	run.amber = 200
-	sh.setup(run, run.shop_stock())
+	rs.amber = 200
+	sh.setup(rs, rs.shop_stock())
 	root.add_child(sh)
 	await _wait(10)
 	await _shot("05_shop")
@@ -89,7 +89,7 @@ func run(t: SceneTree) -> void:
 	await _wait(3)
 	# 6. the seal screen, before and after
 	var se := SealScreen.new()
-	se.setup(run, "meteor")
+	se.setup(rs, "meteor")
 	root.add_child(se)
 	await _wait(10)
 	await _shot("06_seal_pick")
@@ -103,7 +103,7 @@ func run(t: SceneTree) -> void:
 	await _wait(3)
 	# 7. fusing
 	var fu := FuseScreen.new()
-	fu.setup(run)
+	fu.setup(rs)
 	root.add_child(fu)
 	await _wait(5)
 	fu._toggle("water_wall")

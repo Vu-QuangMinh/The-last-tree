@@ -1,47 +1,51 @@
 # Behind the Curtain
 
-A Godot 4.6 chanting roguelite. You travel through three acts on a branching map and fight one encounter at a time, first person, with the enemies in front of you. Enemies' HP is a row of Fire, Water and Wind. You chant elements to break those rows and trigger your spells.
+A Godot 4.6 chanting roguelite (GL Compatibility renderer, also exported to the web). Three acts on a branching map, one encounter at a time, first person, enemies in front of you like puppets on a stage. Enemies' HP is a row of Fire, Water and Wind; you chant elements to break those rows and wake your spells.
 
 ## Play
 
-Open the folder in Godot 4.6 and press **F5**, or run:
+Open the folder in Godot 4.6 and press F5, or:
 
 ```
-C:\Tools\Godot\godot.exe --path "C:\Users\minhv\Documents\The last tree"
+"C:\Program Files\Godot\Godot.exe" --path .
 ```
 
-### New? Play the Tutorial
-Main menu → **Tutorial**: one scripted fight where Sprout walks you through elements, enemy HP, building a chant, the preview, spells, targeting, Shield, intents and the Release, then sums up the rest of a run.
+New? Main menu → **Tutorial**. Rules: main menu "How to play · Wiki" or **F1** anywhere.
 
-### The rules
-Everything is in the in-game **wiki** (main menu "How to play · Wiki", or **F1** anywhere): tabs for the basics, the chant, spells, keywords, enemies and intents, artifacts and the run, plus a search box.
+### The loop (the settled rules: see CLAUDE.md before changing any of them)
+1. Build a chant (up to 8 elements) and press **Chant**. Every active spell whose pattern appears in the chant wakes up, one charge per separate match, never more than its pattern's length.
+2. **No spell casts itself.** Click each awake spell to cast it (targeted spells ask for a target). Right-click / Esc puts back a *selected* spell before it is cast; a cast spell cannot be taken back.
+3. When every spell is cast the **Release** button pulses: press it (E). Every enemy loses the longest start of its HP row found in the chant, element by element. Then the enemies act.
 
-In short: build a chant (up to 8 elements) and press Chant. Every active spell whose pattern appears comes alive, one charge per separate match but never more than its pattern's length (WW triggers at most twice). Spells without a target cast themselves; click the targeted ones; spells that change the chant (Spark/Spring/Breath Word, Resonance, Triune Chant) can wake more spells. When nothing is left to cast, the chant is Released by itself: every enemy loses the longest start of its HP found in the chant, as the chant's elements fly at them one by one from left to right. Then the enemies act, using their moves in a fixed order.
+Cards are Common, Rare or Legendary. Campfires heal or fuse two spells. Elites give artifacts, bosses give Legendaries and talk before the fight.
 
-Cards are Common, Rare or Legendary. Normal fights offer 70% Common / 30% Rare cards, elites 3 Rares plus an artifact, bosses 3 Legendaries plus a relic that adds elements every turn. Campfires heal or Fuse two spells into one. Treasure always includes one cursed artifact.
+## Numbers
+214 spells in `data/spells.json` (the only source of spell data), 87 enemies in `scripts/core/enemy_defs.gd`, 7 bosses over 3 acts.
 
 ## Project layout
 | Path | What |
 |---|---|
-| `data/spells.json` | The 100 spells (16 Powers). The only source of spell data. |
-| `docs/spells.xlsx`, `docs/spell-list.md` | Readable spell tables generated from the JSON (`python tools/spell_report.py`) |
-| `docs/superpowers/specs/2026-09-27-the-last-tree-chant-design.md` | The design spec |
-| `scripts/core/` | Pure rules: `chant.gd` (matching), `fight.gd` (resolution order and enemy phase), `enemy_state.gd`, `player_state.gd`, `enemy_defs.gd` (the 30 enemies, including elites and bosses), `artifacts.gd`, `map_gen.gd`, `run_state.gd`, `spell_text.gd` |
-| `scripts/ui/` | Screens (menu, map, loadout, fight, choice, message, codex, unlocks) and widgets (element icons, spell cards, enemy views, procedural creatures and backdrop) |
-| `scripts/autoload/` | `Events`, `GameData` (spell DB), `SaveManager` (`user://save.json`: Seedlings, unlocks, codex, stats) |
+| `scripts/core/` | Rules only, no UI (RefCounted): `fight.gd`, `chant.gd`, `run_state.gd`, `enemy_defs.gd`, `enemy_state.gd`, `player_state.gd`, `spell_db.gd`, `artifacts.gd`, `bottles.gd`, `map_gen.gd`, `map_events.gd`, `boss_talk.gd`, `fuse_rules.gd` |
+| `scripts/ui/` | Screens and widgets, all built in code (`scenes/main.tscn` is the only scene). `fight_screen.gd` is the fight; `ui_skin.gd` finds art by name; `ui_theme.gd` fonts and boards |
+| `scripts/autoload/` | `Events` (signal bus), `GameData` (spell DB), `SaveManager` (`user://save.json` + `save_run.txt`), `Audio` |
+| `data/` | `spells.json`; the user's hand-placed layouts (`enemy_ropes.json`, `event_layout_overrides.json`, `shop_layout_overrides.json`): never delete |
+| `assets/` | `Global/` shared, `New/` and `Puppet/` per theme, same shape inside: see `assets/README.md` |
+| `tools/` | Godot test/screenshot scripts (`*_impl.gd` + 5-line wrapper) and Python art/sound pipelines: see `tools/README.md` |
+| `tests/` | Headless unit tests of the core |
+| `docs/` | `art_progress.md` (what is still to do), `changelog/` (what was done, by month), design notes, audit and plans |
 
-## Tools
+## Verify a change (cheapest first)
 ```
-# unit tests
-godot_console --headless --path . -s tests/run_tests.gd
-# parse-check every script
-godot_console --headless --path . -s tools/check_scripts.gd
-# balance sim: scripted player, full runs (modes: new = default unlocks, vet = everything unlocked)
-godot_console --headless --path . -s tools/sim.gd -- 60 new
-# spell strength: starters + one extra spell, per spell
-godot_console --headless --path . -s tools/sim.gd -- 12 spells
-# a full run played through the real UI, with screenshots (windowed)
-godot --path . --resolution 1920x1080 -s tools/ui_playtest.gd -- <out_dir>
-# static screenshots of every screen
-godot --path . --resolution 1920x1080 -s tools/shots.gd -- <out_dir>
+# every script parses (warnings are errors: project.godot [debug])
+"C:\Program Files\Godot\Godot.exe" --headless --path . --script res://tools/check_scripts.gd
+# unit tests (-- filter narrows to tests whose "file:name" contains it)
+"C:\Program Files\Godot\Godot.exe" --headless --path . --script res://tests/run_tests.gd
+# balance sim, headless
+"C:\Program Files\Godot\Godot.exe" --headless --path . --script res://tools/sim.gd -- 60 new
+# screenshots of every screen (windowed, off screen, no sound): SHOT_THEME=new|puppet
+"C:\Program Files\Godot\Godot.exe" --path . --position 6000,0 --no-focus --audio-driver Dummy --script res://tools/shots.gd -- <out_dir>
 ```
+After adding a `class_name` file or new art, run the editor once headless so Godot imports it: `--headless --editor --quit`.
+
+## Working here
+Two people commit to this repo. Read `CLAUDE.md` first: the settled rules, the code map, what is locked and what is free, and the end-of-session routine. `docs/audit_2026-11-12.md` lists the known debts and the plan to pay them.

@@ -8,11 +8,11 @@ func run(t: SceneTree) -> void:
 	EnemyRopes.file = "user://aa_ropes.json"
 	EnemyRopes.set_points("yeti", [Vector2(0.5, 0.2)])
 	var gd = root.get_node("GameData")
-	var run := RunState.new()
-	run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
-	var f := run.make_fight(["yeti"])
+	var rs := RunState.new()
+	rs.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
+	var f := rs.make_fight(["yeti"])
 	var fs := FightScreen.new()
-	fs.setup(run, f)
+	fs.setup(rs, f)
 	root.add_child(fs)
 	await t.create_timer(8.0).timeout
 	root.get_texture().get_image().save_png(out)

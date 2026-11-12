@@ -199,12 +199,12 @@ func _refresh_title() -> void:
 	elif _selected != "":
 		word = WORDS[_selected]
 	_title.text = word
-	var size: int = int(CampfireLayout.SIGN_TEXT.size)
+	var px: int = int(CampfireLayout.SIGN_TEXT.size)
 	var f := _title.get_theme_font("font")
 	var room: float = float(CampfireLayout.SIGN.get("board_w", 200)) * 0.82
-	while size > 14 and f.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > room:
-		size -= 1
-	_title.add_theme_font_size_override("font_size", size)
+	while px > 14 and f.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x > room:
+		px -= 1
+	_title.add_theme_font_size_override("font_size", px)
 
 
 ## The post rises out of the grass (or sinks back into it).

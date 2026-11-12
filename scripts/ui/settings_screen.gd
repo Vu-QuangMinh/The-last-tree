@@ -56,6 +56,20 @@ func _build() -> void:
 	v.add_child(UiTheme.heading("Game", 22, UiTheme.ACCENT))
 	v.add_child(_tick_row("Dev Mode", "dev_mode", false))
 	_cream_buttons(self)
+	if UiSkin.is_newui2():
+		_dark_ink(self)
+
+
+## NewUI Ver2: the settings board is a light panel, so its words (not the buttons') are dark.
+const DARK_INK := Color(0.13, 0.07, 0.04)
+
+
+func _dark_ink(n: Node) -> void:
+	for c in n.get_children():
+		if c is Label:
+			(c as Label).add_theme_color_override("font_color", DARK_INK)
+			(c as Label).add_theme_constant_override("outline_size", 0)
+		_dark_ink(c)
 
 
 ## Theme: Puppet (the HUD as it was) or New UI (the HUD of page 2 of Chant UI for puppet.pdf). Screens opened afterwards use it; a fight already on the screen keeps its own.
@@ -138,6 +152,10 @@ func _tick_row(text: String, key: String, default: bool) -> Control:
 	var on: bool = SaveManager.setting(key, default)
 	var frame := UiSkin.tex("artifact_slot_hover")
 	var tick := UiSkin.tex("card_overlay_used")
+	var v2 := UiSkin.is_newui2() and UiSkin.tex("nu2_check_box") != null and UiSkin.tex("nu2_check_mark") != null
+	if v2:  # (NewUI Ver2: its own tick box and brass check mark)
+		frame = UiSkin.tex("nu2_check_box")
+		tick = UiSkin.tex("nu2_check_mark")
 	if frame == null or tick == null:
 		var cb := CheckBox.new()
 		cb.text = text
@@ -160,10 +178,14 @@ func _tick_row(text: String, key: String, default: bool) -> Control:
 	ck.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	ck.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	ck.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	ck.offset_left = 9
-	ck.offset_top = 9
-	ck.offset_right = -9
-	ck.offset_bottom = -9
+	var inset := -3.0 if v2 else 9.0  # (the brass mark may stand out of the box a little)
+	ck.offset_left = inset
+	ck.offset_top = inset
+	ck.offset_right = -inset
+	ck.offset_bottom = -inset
+	if v2:
+		ck.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		fr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	ck.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ck.visible = on
 	box.add_child(ck)

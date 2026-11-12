@@ -11,9 +11,10 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import paths
 import asset_paths as AP
 
-IMAGESET = r"D:\GitHub Projects\ImageSet"
+IMAGESET = paths.IMAGESET
 DIR = os.path.join(AP.PUPPET, "UI", "Panels")
 REF = os.path.join(AP.PUPPET, "UI", "Panels", "dialogue_panel.png")
 SETS = [("Puppet Frames Wide", "16:9", ["Frame Bubble Dark", "Frame Plaque Cream", "Frame Pill", "Frame Card Slot"]),

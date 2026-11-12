@@ -10,6 +10,7 @@ const SKIP := ["handyman", "briar_hedge", "yin_yang", "hand_"]
 const EDGE := 20.0  # how close their feet may come to the far and near edges of the floor
 const MARGIN_X := 90.0
 
+var act := 1  # whose puppets walk on: the stage of the menu (Act 1 pictures: all of them; Acts 2 and 3: the plain enemies of that act)
 var floor_top := 600.0  # the y of the far edge of the floor and of its near edge (set by the menu from the stage)
 var floor_bottom := 860.0
 var _actors: Array[Dictionary] = []  # {node, sprite, shadow, state, goal, t, pause, life, phase, speed, side, base}
@@ -21,9 +22,14 @@ var _t := 0.0
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for f in DirAccess.get_files_at("res://assets/Puppet/Enemies/Act1"):
-		if f.ends_with(".png") and not SKIP.any(func(s: String) -> bool: return f.begins_with(s)):
-			_files.append(f.get_basename())
+	for f in DirAccess.get_files_at("res://assets/Puppet/Enemies/Act%d" % act):
+		if f.ends_with(".png") and not f.ends_with("_fallen.png") and not SKIP.any(func(s: String) -> bool: return f.begins_with(s)):
+			var id := f.get_basename()
+			if act != 1:
+				var d: Dictionary = EnemyDefs.E.get(id, {})
+				if d.is_empty() or int(d.get("act", 0)) != act or d.get("boss", false) or d.has("rig_part") or d.has("hang") or d.get("flying", false):
+					continue
+			_files.append(id)
 
 
 func _y_range() -> Vector2:
@@ -85,7 +91,7 @@ func _spawn() -> void:
 	if _files.is_empty():
 		return
 	var id: String = _files[randi() % _files.size()]
-	var tex := load("res://assets/Puppet/Enemies/Act1/%s.png" % id) as Texture2D
+	var tex := load("res://assets/Puppet/Enemies/Act%d/%s.png" % [act, id]) as Texture2D
 	if tex == null:
 		return
 	var width := maxf(size.x, 1920.0)
@@ -126,7 +132,6 @@ func _process(d: float) -> void:
 		if _actors.size() < MAX_ACTORS:
 			_spawn()
 	var width := maxf(size.x, 1920.0)
-	var r := _y_range()
 	for a in _actors.duplicate():
 		var n: Node2D = a.node
 		a.t += d

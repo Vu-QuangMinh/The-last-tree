@@ -10,14 +10,15 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import paths
 import asset_paths as AP
 
-sys.path.insert(0, r"D:\GitHub Projects\Tachnen")
+sys.path.insert(0, paths.TACHNEN)
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
 OUT = os.path.join(AP.PUPPET, "UI", "Hud2")
-RAW = [r"E:\GitHub\ImageSet\output", r"D:\GitHub Projects\ImageSet\output"]
+RAW = [(paths.IMAGESET_OUT + r"\output"), (paths.IMAGESET + r"\output")]
 # name -> (ImageSet set folder, output name, longest side in px (0 = as cut))
 PIECES = {"Button Chant": ("Puppet HUD2 v2 Slots", "hud2_btn_chant", 1024), "Button Pass": ("Puppet HUD2 v2 Slots", "hud2_btn_pass", 1024),
           "Button Clear": ("Puppet HUD2 v2 Slots", "hud2_btn_clear", 1024), "Slot Frame": ("Puppet HUD2 v2 Slots", "hud2_slot_frame", 512),

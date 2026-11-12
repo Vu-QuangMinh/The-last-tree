@@ -5,6 +5,8 @@ func run(t: SceneTree) -> void:
 	var root: Window = t.root
 	var save = root.get_node("SaveManager")
 	save.use_test_file("user://menu_shot_save.json")
+	if OS.get_environment("SHOT_ACTS") != "":  # (SHOT_ACTS=3: a player who has beaten the Act 1 and 2 bosses, so the menu may pick any stage)
+		save.data.stats["best_act"] = int(OS.get_environment("SHOT_ACTS"))
 	save.data.settings["theme"] = "puppet"
 	if OS.get_environment("SHOT_DEV") != "":
 		save.data.settings["dev_mode"] = true

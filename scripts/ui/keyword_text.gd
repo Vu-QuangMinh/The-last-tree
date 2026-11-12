@@ -6,12 +6,12 @@ extends RichTextLabel
 var on_parchment := false
 
 
-static func make(text: String, font_px := 20, p_on_parchment := false) -> KeywordText:
+static func make(p_text: String, font_px := 20, p_on_parchment := false) -> KeywordText:
 	var r := KeywordText.new()
 	r.on_parchment = p_on_parchment
 	r.add_theme_font_size_override("normal_font_size", font_px)
 	r.add_theme_font_size_override("bold_font_size", font_px)
-	r.set_rules(text)
+	r.set_rules(p_text)
 	return r
 
 
@@ -26,8 +26,8 @@ func _init() -> void:
 	meta_hover_ended.connect(func(_meta): tooltip_text = "")
 
 
-func set_rules(text: String, centered := true) -> void:
-	var body := Keywords.colorize(text, on_parchment, true)
+func set_rules(rules: String, centered := true) -> void:
+	var body := Keywords.colorize(rules, on_parchment, true)
 	self.text = ("[center]%s[/center]" % body) if centered else body
 
 
