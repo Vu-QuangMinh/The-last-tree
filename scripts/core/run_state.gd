@@ -76,10 +76,6 @@ var fight_plan: Array = []  # this act's normal fights, in the order they will b
 var fight_plan_act := 0  # the act that list was rolled for
 var encounter_extra: Array = []  # the extra Essence each of those enemies will have (rolled once)
 var first_run := false  # the player's very first run (and the Anxious Armadillo not met yet): he waits in Act 2's 2nd fight
-var map_style := "classic"  # "curtain": the Ship of Fools style map (Settings, picked when the run starts; see MapGen.generate_curtain)
-var visited: Array = []  # the Curtain map: "row:col" of every tile you stood on this act
-var turns := 0  # the Curtain map: moves made this act (the Curtain falls one row every MapGen.CURTAIN_EVERY)
-var curtain_hold := 0  # the Curtain map: rows it was held back
 var fight_rooms: Array = []  # "act:row:col" of every normal fight room entered (to count Act 2's fights)
 var fused := {}  # id -> spell dict, for spells forged at campfires ("fused_1", ...)
 var inverted: Array = []  # spell ids inverted for the run: a spell plays as an anti-spell, and back
@@ -128,6 +124,8 @@ static func from_save(d: Dictionary, p_db: SpellDB) -> RunState:
 			r.set(k, d[k])
 	r.rng.seed = d.rng_seed
 	r.rng.state = d.rng_state
+	if d.get("map_style", "") == "curtain":
+		r.new_map()  # (a run saved on the old Curtain map, now gone: this act starts again on a classic map)
 	for k in d.player:
 		if k in r.player:
 			r.player.set(k, d.player[k])
@@ -243,76 +241,22 @@ func current_kind() -> String:
 	return n.get("as", n.get("type", ""))
 
 
-func move_to(c: int, r := -2) -> Dictionary:
-	row = row + 1 if r == -2 else r
+func move_to(c: int) -> Dictionary:
+	row += 1
 	col = c
-	if is_curtain():
-		turns += 1
-		visited.append("%d:%d" % [row, col])
 	return current_node()
 
 
-## The Curtain map: you stepped on a tile with no room. A tailwind: you stand there and go again at once (the Curtain
-## doesn't count it). A portal: it counts as a move, and you come out of the other portal.
-func free_step(c: int, r: int) -> void:
-	var n: Dictionary = map[r][c]
-	row = r
-	col = c
-	visited.append("%d:%d" % [r, c])
-	if n.type == "portal":
-		turns += 1
-		var to: Array = n.get("link", [r, c])
-		row = int(to[0])
-		col = int(to[1])
-		visited.append("%d:%d" % [row, col])
-
-
-func is_free_tile(r: int, c: int) -> bool:
-	return is_curtain() and r >= 0 and r < map.size() and c >= 0 and c < map[r].size() and map[r][c].type in MapGen.FREE_TILES
-
-
-## A new act's map, in this run's style.
+## A new act's map.
 func new_map() -> void:
-	map = MapGen.generate_curtain(rng) if map_style == "curtain" else MapGen.generate(rng)
+	map = MapGen.generate(rng)
 	row = -1
-	col = 0 if is_curtain() else MapGen.COLS / 2
-	visited.clear()
-	turns = 0
-	curtain_hold = 0
+	col = MapGen.COLS / 2
 
 
-func is_curtain() -> bool:
-	return map_style == "curtain"
-
-
-## The Curtain map: the lowest level it has swallowed (it closes in from the boss's side, one level every
-## MapGen.CURTAIN_EVERY moves). Everything from there up is under it; the boss's own level never counts.
-func curtain_from() -> int:
-	return maxi(0, map.size() - 1 - turns / MapGen.CURTAIN_EVERY + curtain_hold)
-
-
-## The Curtain map: moves left before it swallows one more level.
-func curtain_in() -> int:
-	return MapGen.CURTAIN_EVERY - turns % MapGen.CURTAIN_EVERY
-
-
-## The Curtain map: it covers every tile you could go to: the boss is all that's left.
-func caught() -> bool:
-	return is_curtain() and row >= 0 and row < map.size() - 1 and options().size() == 1 and options()[0].x == map.size() - 1
-
-
-## The rooms you can go to next, as Vector2i(row, col). The Curtain map: the tiles ahead that touch yours and are not
-## under the Curtain; and the boss as soon as the Curtain reaches one of them (or there is nothing ahead).
+## The rooms you can go to next, as Vector2i(row, col).
 func options() -> Array:
-	if not is_curtain():
-		return choices().map(func(c): return Vector2i(row + 1, c))
-	var boss := Vector2i(map.size() - 1, 0)
-	var ahead: Array = map[0].map(func(n): return Vector2i(0, n.col)) if row < 0 else MapGen.hex_up(map, row, col)
-	ahead = ahead.filter(func(p: Vector2i): return not ("%d:%d" % [p.x, p.y] in visited))  # (out of a portal, back toward the start: no room twice)
-	var out := ahead.filter(func(p: Vector2i): return p.x < curtain_from())
-	if out.size() < ahead.size() or ahead.is_empty():
-		out.append(boss)
-	return out
+	return choices().map(func(c): return Vector2i(row + 1, c))
 
 
 ## Enemy ids for the fight at the current node.

@@ -1,12 +1,12 @@
 extends SceneTree
-## How evenly fights and events are spread on generated maps: for N maps of each style, the size of the biggest group
+## How evenly fights and events are spread on generated maps: for N maps, the size of the biggest group
 ## of touching fights / events, and how often a group of 4+ (fights) or 3+ (events) appears. Also the mix of room types.
 ## Usage: godot --headless --path . -s tools/map_clump_check.gd
 
 
 func _init() -> void:
 	create_timer(120).timeout.connect(quit)
-	for curtain in [false, true]:
+	if true:
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 12345
 		var n := 400
@@ -16,19 +16,19 @@ func _init() -> void:
 		var mix := {}
 		var total := 0
 		for i in n:
-			var rows: Array = MapGen.generate_curtain(rng) if curtain else MapGen.generate(rng)
+			var rows: Array = MapGen.generate(rng)
 			for r in rows:
 				for nd in r:
 					if nd != null and nd.type != "boss":
 						mix[nd.type] = mix.get(nd.type, 0) + 1
 						total += 1
 			for t in ["fight", "event"]:
-				var m := _biggest(rows, t, curtain)
+				var m := _biggest(rows, t)
 				biggest[t] += m
 				worst[t] = maxi(worst[t], m)
 				if m >= (4 if t == "fight" else 3):
 					big[t] += 1
-		print("%s map, %d maps:" % ["Curtain" if curtain else "Classic", n])
+		print("%d maps:" % n)
 		for t in ["fight", "event"]:
 			print("  %s: biggest group avg %.2f, worst %d, maps with a group of %d+: %d%%" % [t, biggest[t] / n, worst[t], 4 if t == "fight" else 3, roundi(100.0 * big[t] / n)])
 		var parts := []
@@ -38,7 +38,7 @@ func _init() -> void:
 	quit()
 
 
-func _biggest(rows: Array, t: String, curtain: bool) -> int:
+func _biggest(rows: Array, t: String) -> int:
 	var seen := {}
 	var best := 0
 	for level in rows.size():
@@ -52,7 +52,7 @@ func _biggest(rows: Array, t: String, curtain: bool) -> int:
 			while not todo.is_empty():
 				var p: Vector2i = todo.pop_back()
 				size += 1
-				for q in MapGen.touching(rows, p.x, p.y, curtain):
+				for q in MapGen.touching(rows, p.x, p.y):
 					if not seen.has(q) and rows[q.x][q.y].type == t:
 						seen[q] = true
 						todo.append(q)

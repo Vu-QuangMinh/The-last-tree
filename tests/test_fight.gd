@@ -3215,73 +3215,6 @@ func test_the_pianists_scores_play_along_with_extensions() -> void:
 	assert_eq([f.enemies[0].burn, f.player.hp], [1, 32.0], "Turkish March: Burn 1; Für Elise: heal 2")
 
 
-func test_curtain_map_moves_and_catches_you() -> void:
-	var r := RunState.new()
-	r.rng.seed = 5
-	r.map_style = "curtain"
-	r.new_map()
-	var top := 2 * (MapGen.C_LONG - 1)
-	assert_eq(r.map.size(), top + 2, "the levels, then the boss")
-	var tiles := 0
-	for f in top + 1:
-		tiles += r.map[f].size()
-	assert_eq(tiles, 72, "Ship of Fools' shape on its side: lanes of 9, 10, 11, 12, 11, 10, 9")
-	assert_eq(r.options(), [Vector2i(0, 0)], "the bottom tip to start")
-	r.move_to(0, 0)
-	var opts: Array = r.options()
-	assert_eq(opts.size(), 3, "up-left, straight up, up-right")
-	assert_true(opts.all(func(o): return o.x == 1 or o.x == 2))
-	var boss := Vector2i(top + 1, 0)
-	assert_true(not (boss in opts))
-	r.turns = (top + 1 - 2) * MapGen.CURTAIN_EVERY  # (the Curtain has come down to level 2: straight up is under it)
-	assert_true(boss in r.options(), "the Curtain reaches a tile you could go to: the boss is offered")
-	assert_true(not r.caught())
-	r.turns = (top + 1 - 1) * MapGen.CURTAIN_EVERY  # (down to level 1: everything ahead is under it)
-	assert_eq(r.options(), [boss])
-	assert_true(r.caught(), "covered: the boss is all that's left")
-
-
-
-
-func test_curtain_map_has_its_sure_rooms_and_free_tiles() -> void:
-	for seed in 30:
-		var r := RunState.new()
-		r.rng.seed = seed + 1
-		r.map_style = "curtain"
-		r.new_map()
-		var counts := MapGen.counts(r.map)
-		assert_true(counts.get("rest", 0) >= 3, "at least 3 campfires (map %d: %d)" % [seed, counts.get("rest", 0)])
-		assert_true(counts.get("shop", 0) >= 2, "at least 2 merchants")
-		assert_true(counts.get("treasure", 0) >= 2, "treasure")
-		assert_eq(counts.get("portal", 0), 2, "one pair of portals")
-		assert_true(counts.get("wind", 0) >= 3, "tailwinds")
-	var q := RunState.new()
-	q.rng.seed = 3
-	q.map_style = "curtain"
-	q.new_map()
-	var ends := []
-	for f in q.map.size():
-		for n in q.map[f]:
-			if n.type == "portal":
-				ends.append(Vector2i(f, n.col))
-	ends.sort()
-	assert_true(ends[0].x <= MapGen.PORTAL_EARLY[1] and ends[1].x >= MapGen.PORTAL_LATE[0], "one portal in the first part of the map, one in the last")
-	var lanes := [q.map[ends[0].x][ends[0].y].lane, q.map[ends[1].x][ends[1].y].lane]
-	assert_true((lanes[0] <= 1 and lanes[1] >= 5) or (lanes[0] >= 5 and lanes[1] <= 1), "near opposite edges: opposite quarters")
-	q.free_step(ends[0].y, ends[0].x)
-	assert_eq(Vector2i(q.row, q.col), ends[1], "in one portal, out of the other")
-	assert_eq(q.turns, 1, "a portal counts as a move")
-	for f in q.map.size():
-		for n in q.map[f]:
-			if n.type == "wind":
-				var before := q.turns
-				q.free_step(n.col, f)
-				assert_eq(q.turns, before, "a tailwind is a free move")
-				assert_eq(Vector2i(q.row, q.col), Vector2i(f, n.col))
-				return
-
-
-
 func test_curses() -> void:
 	var run := RunState.new()
 	run.setup(db, [], [], 9)
@@ -3336,21 +3269,13 @@ func test_curse_of_pain_and_betrayal_in_a_fight() -> void:
 	assert_true(fizzles > 8 and fizzles < 32, "Betrayal: about half the casts fizzle (%d of 40)" % fizzles)
 
 
-func test_curtain_map_fights_before_a_rest() -> void:
-	for seed in 12:
-		var rng := RandomNumberGenerator.new()
-		rng.seed = seed + 1
-		var rows := MapGen.generate_curtain(rng)
-		assert_eq(MapGen.rest_rule_breaks(rows), [], "map %d: 4 fights before the first campfire / merchant, and between campfires" % seed)
-		var c := MapGen.counts(rows)
-		assert_true(c.get("rest", 0) >= 3 and c.get("shop", 0) >= 2, "map %d still has its 3 campfires and 2 merchants" % seed)
-	# the rule itself, on a little hand-made map: start (a fight), then a campfire straight up: 1 fight before it
-	var rows := MapGen.generate_curtain(RandomNumberGenerator.new())
-	for f in rows.size() - 1:
-		for nd in rows[f]:
-			nd.type = "fight"
-	var up: Vector2i = MapGen.hex_up(rows, 0, 0)[1]
-	rows[up.x][up.y].type = "rest"
-	assert_eq(MapGen.rest_rule_breaks(rows), [up], "1 fight before a campfire breaks the rule")
-	rows[MapGen.hex_up(rows, 0, 0)[0].x][MapGen.hex_up(rows, 0, 0)[0].y].type = "wind"
-	assert_eq(MapGen.rest_rule_breaks(rows), [up], "a tailwind doesn't change it")
+func test_a_run_saved_on_the_old_curtain_map_gets_a_classic_map() -> void:
+	var run := RunState.new()
+	run.setup(db, ["fire_ball"], [], 7)
+	var d := run.to_save()
+	d["map_style"] = "curtain"
+	d["map"] = [[{"type": "fight", "next": [], "col": 0, "lane": 3, "x": 0.0}], [{"type": "boss", "next": [], "col": 0}]]
+	d["row"] = 0
+	var back := RunState.from_save(str_to_var(var_to_str(d)), db)
+	assert_eq(back.map.size(), MapGen.FLOORS + 1, "a classic map again")
+	assert_eq(back.row, -1, "from the start of the act")

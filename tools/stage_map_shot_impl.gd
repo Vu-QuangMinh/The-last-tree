@@ -17,7 +17,7 @@ func run(t: SceneTree) -> void:
 	await t.create_timer(0.5).timeout
 	m.start_run()
 	await t.create_timer(0.5).timeout
-	m.current.chosen.emit(0)  # the keepsake
+	m.show_map()  # (straight to the map: past the keepsake)
 	# wait for the map, then follow the drop: the world's y and a room's y every frame
 	var guard := 0
 	while not (is_instance_valid(m._overlay) and m._overlay is MapScreen and m._overlay._world != null) and guard < 600:
