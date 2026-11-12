@@ -2629,7 +2629,7 @@ const HANDLE := 16.0
 func _input(e: InputEvent) -> void:
 	if not edit_allowed or not (e is InputEventKey) or not e.pressed:
 		return
-	if e.keycode == KEY_F6 and not e.echo:
+	if e.is_action_pressed("dev_layout_edit"):
 		_edit_toggle()
 		get_viewport().set_input_as_handled()
 		return

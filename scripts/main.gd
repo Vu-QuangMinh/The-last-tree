@@ -137,7 +137,7 @@ var _pinned_text := ""
 
 ## Right-click pins whatever tooltip is under the mouse; any click closes it again.
 func _input(ev: InputEvent) -> void:
-	if ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_F5:
+	if ev.is_action_pressed("dev_rope_mode") and UiSkin.dev_keys():
 		_toggle_rope_mode()
 		get_viewport().set_input_as_handled()
 		return
@@ -215,14 +215,14 @@ func _pin_tooltip(content: Control) -> void:
 
 
 func _unhandled_input(ev: InputEvent) -> void:
-	if ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_F11:
+	if ev.is_action_pressed("ui_fullscreen"):
 		var full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)
 		get_viewport().set_input_as_handled()
-	if ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_F1:
+	if ev.is_action_pressed("ui_wiki"):
 		open_wiki()
 		get_viewport().set_input_as_handled()
-	if ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_F7:
+	if ev.is_action_pressed("dev_text_inspector") and UiSkin.dev_keys():
 		TextInspector.toggle(self)  # (the game stops; click any text to see and change its font, size, gap and colour)
 		get_viewport().set_input_as_handled()
 

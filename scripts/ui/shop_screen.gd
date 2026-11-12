@@ -1781,14 +1781,14 @@ static func _under(c: Control, p: Vector2) -> bool:
 
 ## A click on a good keeps it big for HOLD_SECS: a hanging one stays grown, a standing card keeps its magnified copy.
 func _input(ev: InputEvent) -> void:
-	if edit_allowed and _true_cart and ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_F6:
+	if edit_allowed and _true_cart and ev.is_action_pressed("dev_layout_edit"):
 		_cart_edit_toggle()
 		get_viewport().set_input_as_handled()
 		return
 	if _c_editing and _cart_edit_input(ev):
 		get_viewport().set_input_as_handled()
 		return
-	if edit_allowed and on_stage and not _true_cart and ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_F6:
+	if edit_allowed and on_stage and not _true_cart and ev.is_action_pressed("dev_layout_edit"):
 		_edit_toggle()
 		get_viewport().set_input_as_handled()
 		return

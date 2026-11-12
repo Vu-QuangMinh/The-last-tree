@@ -35,6 +35,11 @@ static func theme_id() -> String:
 	return id if id == "new_ui" or id == "newui2" or id == "hud2" or id == "minhhud" else "puppet"
 
 
+## Developer keys (F4 / F5 / F6 / F7 editors) work only when the game runs from the project, never in an exported build.
+static func dev_keys() -> bool:
+	return not OS.has_feature("template")
+
+
 static var _tool_new := false  # set_theme("new"): a tool or test asking for the New look
 
 

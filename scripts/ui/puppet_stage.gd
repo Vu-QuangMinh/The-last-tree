@@ -633,7 +633,7 @@ func _input(ev: InputEvent) -> void:
 	if not (ev is InputEventKey) or not ev.pressed:
 		return
 	var k: int = ev.keycode
-	if k == KEY_F4 and not ev.echo:
+	if ev.is_action_pressed("dev_stage_edit"):
 		_set_edit(not _edit_on)
 		get_viewport().set_input_as_handled()
 		return
