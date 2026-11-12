@@ -11,16 +11,17 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import paths
 import asset_paths as AP
 
-sys.path.insert(0, r"D:\GitHub Projects\Tachnen")
+sys.path.insert(0, paths.TACHNEN)
 import numpy as np
 from PIL import Image
 from scipy.ndimage import label
 
 OUT = os.path.join(AP.PUPPET, "Enemies", "Act2")
 SRC = os.path.join(AP.PUPPET, "Enemies", "_Source", "Act2")
-RAW = r"E:\GitHub\ImageSet\output"
+RAW = (paths.IMAGESET_OUT + r"\output")
 CUT_OPTS = {"model": "birefnet-general", "use_gpu": True, "gpu_mem_gb": 0, "alpha_matting": False, "am_fg": 240, "am_bg": 10,
             "am_erode": 10, "post_process_mask": True, "defringe": True, "alpha_cutoff": 0, "feather": 0.0, "bg_mode": "transparent",
             "bg_custom": "#00ff00", "trim": False, "pad": 0}

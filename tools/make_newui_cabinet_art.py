@@ -13,10 +13,11 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import paths
 import asset_paths as AP
 
-IMAGESET = r"D:\GitHub Projects\ImageSet"
-OUT = r"E:\GitHub\ImageSet\output"
+IMAGESET = paths.IMAGESET
+OUT = (paths.IMAGESET_OUT + r"\output")
 UI = os.path.join(AP.PUPPET, "UI")
 DIR = os.path.join(UI, "NewUiCabinet")
 PANEL = ("A wide flat HUD panel, a long trapezoid slightly narrower at the top, a single thick slab of dark stained walnut with rich visible grain, a thin polished aged-brass inlay line "

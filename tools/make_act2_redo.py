@@ -16,12 +16,13 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import paths
 import asset_paths as AP
 
-sys.path.insert(0, r"D:\GitHub Projects\Tachnen")
+sys.path.insert(0, paths.TACHNEN)
 from PIL import Image
 
-IMAGESET = r"D:\GitHub Projects\ImageSet"
+IMAGESET = paths.IMAGESET
 ENEMIES = os.path.join(AP.PUPPET, "Enemies")
 ACT2 = os.path.join(ENEMIES, "Act2")
 REFS = os.path.join(ENEMIES, "_Source", "Act2", "redo_refs")
@@ -68,7 +69,7 @@ def run_batch(set_name, style_file, prompts_file, refs_by_name):
 
 
 def newest(set_name, names):
-    base = os.path.join("E:/GitHub/ImageSet/output", set_name)  # (ImageSet writes its pictures on E:)
+    base = os.path.join((paths.IMAGESET_OUT + "/output"), set_name)  # (ImageSet writes its pictures on E:)
     files = {}
     for n in names:
         found = sorted(glob.glob(os.path.join(glob.escape(base), glob.escape(n) + "_*.png")), key=os.path.getmtime)

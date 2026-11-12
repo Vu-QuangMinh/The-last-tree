@@ -1,0 +1,8 @@
+# Python 3.12 (the same interpreter the exporters were written with). Tachnen's own .venv runs rembg/BiRefNet; ReadAnyBook's rvc_env runs the voice tools.
+pillow
+numpy
+scipy
+pymupdf
+openpyxl
+psd-tools
+soundfile

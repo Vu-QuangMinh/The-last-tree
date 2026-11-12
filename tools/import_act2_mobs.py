@@ -8,12 +8,13 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import paths
 import asset_paths as AP
 
-sys.path.insert(0, r"D:\GitHub Projects\Tachnen")
+sys.path.insert(0, paths.TACHNEN)
 from PIL import Image
 
-RAW = r"E:\GitHub\ImageSet\output\Act 2 Mobs"
+RAW = (paths.IMAGESET_OUT + r"\output\Act 2 Mobs")
 OUT = os.path.join(AP.PUPPET, "Enemies", "Act2")
 SRC = os.path.join(AP.PUPPET, "Enemies", "_Source", "Act2")
 CUT_OPTS = {"model": "birefnet-general", "use_gpu": True, "gpu_mem_gb": 0, "alpha_matting": False, "am_fg": 240, "am_bg": 10,

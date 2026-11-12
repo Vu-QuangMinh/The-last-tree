@@ -9,14 +9,15 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import paths
 import asset_paths as AP
 
-TACHNEN = r"D:\GitHub Projects\Tachnen"
+TACHNEN = paths.TACHNEN
 sys.path.insert(0, TACHNEN)
 from PIL import Image
 
-RAW = r"E:\GitHub\ImageSet\output\Puppet Events"
-RAWS = [RAW, r"E:\GitHub\ImageSet\output\Puppet Events Act2", r"E:\GitHub\ImageSet\output\Puppet Events Fixes", r"E:\GitHub\ImageSet\output\Puppet Events Fixes Wide"]  # (the second act's pictures have their own set and style)
+RAW = (paths.IMAGESET_OUT + r"\output\Puppet Events")
+RAWS = [RAW, (paths.IMAGESET_OUT + r"\output\Puppet Events Act2"), (paths.IMAGESET_OUT + r"\output\Puppet Events Fixes"), (paths.IMAGESET_OUT + r"\output\Puppet Events Fixes Wide")]  # (the second act's pictures have their own set and style)
 OUT = os.path.join(AP.PUPPET, "Events")
 CUT_OPTS = {"model": "birefnet-general", "use_gpu": True, "gpu_mem_gb": 0, "alpha_matting": False, "am_fg": 240, "am_bg": 10,
             "am_erode": 10, "post_process_mask": True, "defringe": True, "alpha_cutoff": 0, "feather": 0.0, "bg_mode": "transparent",
@@ -136,7 +137,7 @@ def main():
 
 def artifacts():
     """ImageSet set "Puppet Event Artifacts": the Mystery Shed's two prizes become artifact icons (128 px on the long edge, like the others)."""
-    raw = r"E:\GitHub\ImageSet\output\Puppet Event Artifacts"
+    raw = (paths.IMAGESET_OUT + r"\output\Puppet Event Artifacts")
     jobs = {"Artifact Half Eaten Candy": "half_eaten_candy", "Artifact Dollar Bill": "dollar_bill"}
     for name, art_id in jobs.items():
         files = [f for f in glob.glob(os.path.join(glob.escape(raw), glob.escape(name) + "_*.png")) if re.search(r"_\d{8}_\d{6}\.png$", f)]

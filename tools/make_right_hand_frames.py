@@ -2,6 +2,7 @@ r"""2026-11-09: 12 frames of the Pianist playing with his RIGHT hand: cut from t
 and the extra arm that grew on the left of the picture are removed; only the pianist (with his right arm) and the stool stay, on plain white.
 python tools/make_right_hand_frames.py extract   -> pianist/right_hand_frames/source/frame_NN.png
 python tools/make_right_hand_frames.py generate  -> ImageSet batch (accounts main, b, a2), raw output on E:\GitHub\ImageSet\output\Pianist Right Hand"""
+import paths
 import glob
 import os
 import shutil
@@ -60,7 +61,7 @@ def generate(only=None):
         spec["redo"] = ["Right Hand %02d" % k for k in only]
     spec_path = os.path.join(tempfile.gettempdir(), "right_hand_spec.json")
     json.dump(spec, open(spec_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-    imageset = r"D:\GitHub Projects\ImageSet"
+    imageset = paths.IMAGESET
     code = subprocess.call([os.path.join(imageset, ".venv", "Scripts", "python.exe"), "main.py", "--batch", spec_path, "--background"], cwd=imageset)
     st = json.load(open(status, encoding="utf-8"))
     print("ImageSet:", st.get("state"), st.get("done"), "/", st.get("total"), st.get("errors"), "exit", code, flush=True)

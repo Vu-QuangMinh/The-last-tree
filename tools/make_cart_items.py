@@ -2,6 +2,7 @@
 (Merchant/candle.png = the Wax seal) and the bowl of soup (Merchant/soup.png = A hot meal), plus Merchant/cart_items.json: where the two stand on the empty cart (fractions of its picture, measured from the difference between the
 full picture and the empty one). ImageSet (Gemini; stage B uses the stage A picture as its reference) -> Gemini star reversed -> BiRefNet cut -> trimmed, NEVER scaled. The old Cart.png is kept as Cart_old.png.
 Run:  "D:/GitHub Projects/Tachnen/.venv/Scripts/python.exe" tools/make_cart_items.py [--no-generate]"""
+import paths
 import json
 import os
 import shutil
@@ -10,7 +11,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import make_redo2 as m
 
-sys.path.insert(0, r"D:\GitHub Projects\Tachnen")
+sys.path.insert(0, paths.TACHNEN)
 import numpy as np
 from PIL import Image
 

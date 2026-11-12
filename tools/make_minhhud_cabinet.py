@@ -7,9 +7,10 @@ import subprocess
 import sys
 import tempfile
 
-IMAGESET = r"D:\GitHub Projects\ImageSet"
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import paths
+IMAGESET = paths.IMAGESET
 import asset_paths as AP
 
 DIR = os.path.join(AP.PUPPET, "UI", "MinhHUD")
@@ -36,8 +37,8 @@ def main():
     style = open(os.path.join(DIR, "minhhud_style_cabinet.txt"), encoding="utf-8").read().strip()
     bottle = "bottle" in sys.argv
     if bottle:
-        raw = [f for f in os.listdir(r"E:\GitHub\ImageSet\output\MinhHUD Cabinet v2") if f.startswith(NAME + "_")]
-        raw = os.path.join(r"E:\GitHub\ImageSet\output\MinhHUD Cabinet v2", sorted(raw)[-1])
+        raw = [f for f in os.listdir((paths.IMAGESET_OUT + r"\output\MinhHUD Cabinet v2")) if f.startswith(NAME + "_")]
+        raw = os.path.join((paths.IMAGESET_OUT + r"\output\MinhHUD Cabinet v2"), sorted(raw)[-1])
         o = {"name": BOTTLE_NAME, "prompt": BOTTLE_PROMPT, "refs": [
             {"label": "layout frame", "kind": "extra", "desc": "the old bottle cabinet: keep its near-square proportions and the single stand of three sockets at the bottom, with a lot of empty back wall above; ignore its materials, build the new one like the finished showcase",
              "images": [os.path.join(DIR, "Bottle cabinet", "Bottle Cabinet.png")]},

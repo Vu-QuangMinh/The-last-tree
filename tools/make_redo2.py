@@ -12,13 +12,14 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import paths
 import asset_paths as AP
 
-sys.path.insert(0, r"D:\GitHub Projects\Tachnen")
+sys.path.insert(0, paths.TACHNEN)
 from PIL import Image
 
-IMAGESET = r"D:\GitHub Projects\ImageSet"
-OUTROOT = "E:/GitHub/ImageSet/output"
+IMAGESET = paths.IMAGESET
+OUTROOT = (paths.IMAGESET_OUT + "/output")
 P = AP.PUPPET
 ACT2 = os.path.join(P, "Enemies", "Act2")
 V2 = os.path.join(P, "UI", "NewUiV2")
