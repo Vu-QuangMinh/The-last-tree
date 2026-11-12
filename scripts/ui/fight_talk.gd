@@ -132,13 +132,13 @@ func _talk() -> void:
 				lock.append([b, b.disabled])
 				b.disabled = true
 			_unlock_after_voice(lock)
-		await scr.get_tree().process_frame
+		await FightWait.frame(scr)
 		box.size = Vector2.ZERO
 		box.reset_size()
 		box.position = Vector2((1920.0 - box.size.x) / 2.0, maxf(650.0, 1050.0 - box.size.y))  # (under the stage, at the bottom; the HUD is out of the way while he talks)
 		chosen[0] = null
 		while chosen[0] == null:  # (a line that ends the talk: only Engage! is left, pressed when you've read it)
-			await scr.get_tree().process_frame
+			await FightWait.frame(scr)
 		Audio.stop_voice()  # (you answered: he stops)
 		if chosen[0].has("engage") or forced:
 			break
@@ -220,7 +220,7 @@ func _pianist_start() -> void:
 			if is_instance_valid(v.creature):
 				v.creature.song = scr._song
 				v.creature.pianist_warm_up()  # (he brings the leg and the hand to the first notes' places...)
-			await scr.get_tree().create_timer(FightScreen.PIANIST_LEAD_IN).timeout  # (...and only then the music starts: otherwise the leg would jump)
+			await FightWait.seconds(scr, FightScreen.PIANIST_LEAD_IN)  # (...and only then the music starts: otherwise the leg would jump)
 			if is_instance_valid(scr._song) and not scr.fight.over:
 				scr._song.play()
 			return
@@ -236,10 +236,10 @@ func _page_turn(e: EnemyState) -> void:
 	var total: float = v.creature.pianist_point()
 	var spent := 0.0
 	for kt in PianistBackRig.KNOCKS:
-		await scr.get_tree().create_timer(float(kt) - spent).timeout
+		await FightWait.seconds(scr, float(kt) - spent)
 		spent = float(kt)
 		Audio.play("sfx_knock_wood")
-	await scr.get_tree().create_timer(maxf(0.0, total - spent)).timeout
+	await FightWait.seconds(scr, maxf(0.0, total - spent))
 	Audio.play("page_flip")
 	var tw := scr.create_tween()
 	tw.tween_property(v.creature, "page_flip", 1.0, 1.1).from(0.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -276,7 +276,7 @@ func _pianist_finale() -> void:
 	scr._h_anim._slam("The End", Color(0.95, 0.92, 0.85), Color(0.1, 0.05, 0.05), 150)
 	scr.fight.song_ends()
 	scr._h_hud._refresh_all()
-	await scr.get_tree().create_timer(2.0).timeout
+	await FightWait.seconds(scr, 2.0)
 	if not scr.busy:
 		await scr._h_anim._finish()  # (a turn in progress ends itself: it sees the fight is over)
 
@@ -292,7 +292,7 @@ func _hypnotize_opening() -> void:
 
 func _unlock_after_voice(lock: Array) -> void:
 	while Audio.voice_busy() and scr.is_inside_tree():
-		await scr.get_tree().process_frame
+		await FightWait.frame(scr)
 	for l in lock:
 		if is_instance_valid(l[0]):
 			l[0].disabled = l[1]
@@ -391,7 +391,7 @@ func _speech_bubble(head_at: Callable, text: String, hold := 1.0) -> void:
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bubble.add_child(l)
 	scr._fx.add_child(bubble)
-	await scr.get_tree().process_frame
+	await FightWait.frame(scr)
 	var head: Vector2 = head_at.call()
 	bubble.global_position = head - Vector2(0, bubble.size.y)
 	bubble.pivot_offset = Vector2(0, bubble.size.y)
@@ -504,7 +504,7 @@ func _dillo_follow(string: Line2D, doll: Creature, tw: Tween) -> void:
 	while tw.is_running():
 		var h := _dillo_head(doll)
 		string.points = PackedVector2Array([Vector2(h.x, -40), h])
-		await scr.get_tree().process_frame
+		await FightWait.frame(scr)
 
 
 ## One of his lines: a black bubble at `at` (its tail corner), held `hold` seconds. `hanging`: it hangs down from there
@@ -528,7 +528,7 @@ func _dillo_say(at: Vector2, text: String, hold: float, hanging := false) -> voi
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bubble.add_child(l)
 	scr.add_child(bubble)
-	await scr.get_tree().process_frame
+	await FightWait.frame(scr)
 	var w := bubble.size
 	var pos := at + (Vector2(-w.x / 2.0, 0.0) if hanging else Vector2(10.0, -w.y))
 	pos.x = clampf(pos.x, 16.0, scr.get_viewport_rect().size.x - w.x - 16.0)

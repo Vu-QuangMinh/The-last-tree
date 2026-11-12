@@ -8,6 +8,8 @@ var flip := false  # the right wall is drawn mirrored
 var _t := 0.0
 var offset := Vector2.ZERO  # (its attack: it lunges by moving what it draws)
 var squash := 1.0
+var tex: Texture2D  # the painted wall (Enemies/Act1/briar_wall_left.png, used by both walls); null: drawn in code
+const ART_H := 1.12  # the picture is this many times taller than the wall's own box
 
 
 static func make(p_fill: float, p_flip: bool, sz: Vector2) -> HedgeWall:
@@ -16,6 +18,9 @@ static func make(p_fill: float, p_flip: bool, sz: Vector2) -> HedgeWall:
 	h.flip = p_flip
 	h.custom_minimum_size = sz
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var path := Creature.enemy_path("briar_wall_left.png", 1)  # (one picture for both walls: the right one is drawn mirrored)
+	if path != "" and UiSkin.is_puppet():
+		h.tex = load(path)
 	return h
 
 
@@ -37,6 +42,14 @@ func _draw() -> void:
 			var x := w * (0.28 + 0.11 * k)
 			var lean := (k - 2) * 0.25
 			draw_line(Vector2(x, ground - 12.0), Vector2(x + lean * 18.0, ground - 26.0 - (k % 2) * 8.0), Color(0.3, 0.2, 0.1), 3.0, true)
+		return
+	if tex != null:  # the painted wall: it stands on the ground and shrinks as its Essence are cut, bobbing a little
+		var ah := h * ART_H * clampf(0.4 + 0.6 * fill, 0.0, 1.0)
+		var sway := sin(_t * 1.6) * 1.2
+		var rect := Rect2(Vector2((w - ah) / 2.0, ground + 6.0 - ah + sway), Vector2(ah, ah))
+		if flip:  # (the left picture mirrored: its arm reaches towards the Matron, like the left wall's)
+			rect = Rect2(rect.position + Vector2(ah, 0.0), Vector2(-ah, ah))
+		draw_texture_rect(tex, rect, false)
 		return
 	var top := ground - (h - 12.0) * clampf(0.35 + 0.65 * fill, 0.0, 1.0)
 	# the bushes: overlapping leafy clumps, darker at the back

@@ -51,6 +51,7 @@ func _ready() -> void:
 	_player.stream = load("res://assets/Global/Music/Pianist/%s.wav" % song)
 	var au := get_node_or_null("/root/Audio")  # (the Audio autoload; absent in a test script)
 	if au != null:
+		_player.bus = au.BUS_MUSIC  # (a sound effect ducks the piece too, like any music)
 		_player.volume_db = linear_to_db(maxf(0.0001, au._music_gain()))
 	add_child(_player)
 	_player.finished.connect(_on_finished)

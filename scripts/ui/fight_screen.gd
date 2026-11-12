@@ -46,6 +46,21 @@ var chant_idx: Array = []  # stock indices in chant order
 var phase := "build"  # build: making the chant · spells: the chant is spoken, spells are alive
 var chant_mode := ""  # "insert": placing an infused element · "arrange": Rearrange · "pick": choosing an element to copy
 var chant_i := 0  # the gap / element highlighted in chant_mode
+var chant_block := ""  # with chant_mode "pick" for a Repaint: the colour the brush paints; chant Essence already that colour can't be picked ("" = no limit)
+
+
+func _chant_blocked(i: int) -> bool:
+	return chant_mode == "pick" and chant_block != "" and i >= 0 and i < fight.chant.size() and fight.chant[i] == chant_block
+
+
+## The next chant Essence a Repaint can pick, starting after `from` in direction `step` (or `from` itself when none else can be).
+func _chant_next(from: int, step: int, count: int) -> int:
+	var i := from
+	for _k in count:
+		i = (i + step + count) % count
+		if not _chant_blocked(i):
+			return i
+	return from
 @warning_ignore("unused_private_class_variable")
 var _step_pos := -1  # during the Release: the chant element flying right now
 @warning_ignore("unused_private_class_variable")
@@ -1002,11 +1017,11 @@ func _unhandled_input(ev: InputEvent) -> void:
 		var count := fight.chant.size() + (1 if chant_mode == "insert" else 0)
 		match ev.keycode:
 			KEY_TAB, KEY_RIGHT:
-				chant_i = (chant_i + 1) % count
+				chant_i = _chant_next(chant_i, 1, count)
 				Audio.play("ui_tab_target")
 				_h_hud._refresh_chant()
 			KEY_LEFT:
-				chant_i = (chant_i - 1 + count) % count
+				chant_i = _chant_next(chant_i, -1, count)
 				Audio.play("ui_tab_target")
 				_h_hud._refresh_chant()
 			KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
@@ -1153,11 +1168,11 @@ var _reforming := {}  # EnemyState -> PuppetShatter: a boss pulling itself back 
 const ThrowFx := preload("res://scripts/ui/orphan_fx.gd")
 @warning_ignore("unused_private_class_variable")
 var _slot_w := {}  # EnemyState -> the width of its place
-const EXTENSION_NAMES := ["Extension!", "Double Extension!", "Triple Extension!", "Quadruple Extension!", "Quintuple Extension!"]
+const EXTENSION_NAMES := ["Extension!", "Double Extension!", "Triple Extension!", "Quadruple Extension!", "Quintuple Extension!", "Sextuple Extension!", "Septuple Extension!", "Octuple Extension!"]  # (at most 8: one slam per spell an Extension wakes, and the active row holds 8 at most)
 const SLAM_ANGLE := -35.0  # degrees: low on the left, high on the right
 
 
-const WORD_COUNTS := ["double", "triple", "quadruple", "quintuple"]  # (UI/Banners/word_<name>.png: "Double" ... then "Extension" under it)
+const WORD_COUNTS := ["double", "triple", "quadruple", "quintuple", "sextuple", "septuple", "octuple"]  # (UI/Banners/word_<name>.png: "Double" ... then "Extension" under it)
 
 
 ## New theme: the end-of-fight banner ("victory" / "perfect" / "defeat"), built from separate painted layers that all share

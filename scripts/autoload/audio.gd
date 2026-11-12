@@ -41,6 +41,21 @@ const EVENT_MUSIC := {
 }
 var MUSIC_CATEGORIES: Array = MUSIC_SLOTS.map(func(r): return r[0])
 const POOL_SIZE := 12
+## Side-chain: every sound effect plays on the "SFX" bus, the music on the "Music" bus, and a compressor on the Music bus listens to the SFX bus: whenever a
+## sound effect is heard the music ducks, then swells back when it is over (like a mixing desk's side-chain). Tune it here.
+const BUS_SFX := "SFX"
+const BUS_MUSIC := "Music"
+## The sounds that give way to the others: they play on the "HitSfx" bus, whose own compressor listens to the SFX bus, so while an enemy's (or any other) sound
+## is playing they are pushed down, and the music is still ducked by them like by any sound (a second compressor on the Music bus listens to HitSfx).
+const BUS_HIT := "HitSfx"
+const LOW_PRIORITY := ["sfx_player_hit"]  # you taking a hit: heard clearly alone, but under the enemy's own sound when both play
+const HIT_THRESHOLD_DB := -20.0
+const HIT_RATIO := 1.8  # (about 2 x (peak - threshold) x 0.44: another sound peaking at -10 dB pushes it down ~9 dB)
+const HIT_RELEASE_MS := 250.0  # (it comes back quickly once the other sound is over)
+const DUCK_THRESHOLD_DB := -20.0  # a sound effect peaking over this level starts to push the music down
+const DUCK_RATIO := 2.0  # Godot's compressor pushes by about 2 x (peak - threshold) x (1 - 1 / ratio): a -3 dB sound ducks the music ~18 dB, a -10 dB one ~10 dB, a -20 dB one not at all (measured: tools/sidechain_test.gd)
+const DUCK_ATTACK_US := 2000.0  # (the compressor's fastest attack: the music is down by the time the sound lands)
+const DUCK_RELEASE_MS := 750.0  # how long the music takes to swell back after the sound
 ## The Music slider only ever reaches this much of a track's own volume (headroom, since
 ## music files tend to be mixed hot); the slider itself still reads 0-100%.
 const MUSIC_CEILING := 0.5
@@ -83,11 +98,14 @@ func _ready() -> void:
 	overall_level = SaveManager.setting("overall_volume", 1.0)
 	music_theme = String(SaveManager.setting("music_edit_theme", music_theme))
 	_add_master_limiter()
+	_setup_sidechain()
 	for i in POOL_SIZE:
 		var p := AudioStreamPlayer.new()
+		p.bus = BUS_SFX
 		add_child(p)
 		_pool.append(p)
 	_music = AudioStreamPlayer.new()
+	_music.bus = BUS_MUSIC
 	add_child(_music)
 	_music.finished.connect(func(): if _music.stream: _music.play())
 	_preview = AudioStreamPlayer.new()
@@ -96,6 +114,36 @@ func _ready() -> void:
 		_preview_path = ""
 		_music.stream_paused = false
 		preview_changed.emit(""))
+
+
+## The SFX and Music buses (both send to Master) and the side-chained compressor on the Music bus (once each).
+func _setup_sidechain() -> void:
+	for n in [BUS_SFX, BUS_HIT, BUS_MUSIC]:
+		if AudioServer.get_bus_index(n) == -1:
+			AudioServer.add_bus()
+			var i := AudioServer.bus_count - 1
+			AudioServer.set_bus_name(i, n)
+			AudioServer.set_bus_send(i, "Master")
+	_ensure_compressor(BUS_MUSIC, BUS_SFX, DUCK_THRESHOLD_DB, DUCK_RATIO, DUCK_RELEASE_MS)  # (every sound ducks the music ...)
+	_ensure_compressor(BUS_MUSIC, BUS_HIT, DUCK_THRESHOLD_DB, DUCK_RATIO, DUCK_RELEASE_MS)  # (... the low-priority ones too)
+	_ensure_compressor(BUS_HIT, BUS_SFX, HIT_THRESHOLD_DB, HIT_RATIO, HIT_RELEASE_MS)  # (and the others duck the low-priority ones)
+
+
+func _ensure_compressor(bus_name: String, sidechain: String, threshold: float, ratio: float, release_ms: float) -> void:
+	var bi := AudioServer.get_bus_index(bus_name)
+	for i in AudioServer.get_bus_effect_count(bi):
+		var e := AudioServer.get_bus_effect(bi, i)
+		if e is AudioEffectCompressor and (e as AudioEffectCompressor).sidechain == sidechain:
+			return
+	var c := AudioEffectCompressor.new()
+	c.sidechain = sidechain
+	c.threshold = threshold
+	c.ratio = ratio
+	c.attack_us = DUCK_ATTACK_US
+	c.release_ms = release_ms
+	c.gain = 0.0
+	c.mix = 1.0
+	AudioServer.add_bus_effect(bi, c)
 
 
 ## A limiter on the Master bus (once): whatever piles up, nothing goes over the ceiling, so many sounds at once never get too loud.
@@ -222,6 +270,7 @@ func play_voice(paths: Array) -> void:
 		return
 	if _voice == null:
 		_voice = AudioStreamPlayer.new()
+		_voice.bus = BUS_SFX
 		add_child(_voice)
 	_voice_run += 1
 	var mine := _voice_run
@@ -337,6 +386,7 @@ func play(p_name: String, volume_db := 0.0, pitch := 1.0, from := 0.0, stackable
 	var p: AudioStreamPlayer = _pool[_pool_i]
 	_pool_i = (_pool_i + 1) % _pool.size()
 	p.stream = s
+	p.bus = BUS_HIT if p_name in LOW_PRIORITY else BUS_SFX
 	p.volume_db = _db(sfx_level * overall_level) + volume_db + stack
 	p.pitch_scale = pitch
 	p.play(from)
@@ -350,6 +400,7 @@ func play_held(p_name: String, volume_db := 0.0, pitch := 1.0) -> AudioStreamPla
 	if s == null:
 		return null
 	var p := AudioStreamPlayer.new()
+	p.bus = BUS_SFX
 	p.stream = s
 	p.volume_db = _db(sfx_level * overall_level) + volume_db
 	p.pitch_scale = pitch

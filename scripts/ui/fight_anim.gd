@@ -247,7 +247,7 @@ func _stunned_turn() -> void:
 	_banner("Stunned!", Color(1.0, 0.85, 0.3), 1.0)
 	Audio.play("sfx_stun_apply")
 	scr._h_hud._refresh_all()
-	await scr.get_tree().create_timer(1.4).timeout
+	await FightWait.seconds(scr, 1.4)
 	if scr.fight.over or not scr.is_inside_tree():
 		return
 	scr.chant_idx.clear()
@@ -273,7 +273,7 @@ func _finish() -> void:
 	for r in scr.fight.enemies.filter(func(e): return e.has_meta("yielded")):
 		await _retainer_yields(r)
 	if scr.fight.won and scr.stage_flow and scr._stage != null:  # Puppet Stage: the Victory sign drops from behind the ceiling, the HUD sinks
-		await scr.get_tree().create_timer(0.5).timeout
+		await FightWait.seconds(scr, 0.5)
 		var perfect_run: bool = scr.fight.player.damage_taken <= 0.0
 		var boss_win := scr.fight.enemies.any(func(e): return e.def.get("boss", false))
 		if not boss_win:  # (a boss fight already played its own "boss_defeat": two victory sounds on top of each other were too much)
@@ -284,19 +284,19 @@ func _finish() -> void:
 		var sign_kind := "boss_defeated" if boss_win else ("perfect_victory" if perfect_run else "victory")  # (a boss always gets its own red board)
 		var sign_text := "Boss Defeated!" if boss_win else ("Perfect Victory!" if perfect_run else "Victory!")
 		await scr._stage.drop_sign(sign_text, Color(0.55, 0.08, 0.06) if boss_win else Color(0.30, 0.17, 0.07), sign_kind).finished
-		await scr.get_tree().create_timer(1.0).timeout
+		await FightWait.seconds(scr, 1.0)
 		await scr._h_hud._hud_down()
 		scr._stage.lift_sign()
-		await scr.get_tree().create_timer(0.5).timeout
+		await FightWait.seconds(scr, 0.5)
 	elif scr.fight.won:
-		await scr.get_tree().create_timer(0.3).timeout
+		await FightWait.seconds(scr, 0.3)
 		var perfect: bool = scr.fight.player.damage_taken <= 0.0
 		if not await _result_banner("perfect" if perfect else "victory"):
 			if perfect:
 				await _slam("Perfect Victory!", Color(0.55, 1.0, 0.75), Color(0.0, 0.3, 0.2), 120)
 			else:
 				await _slam("Victory!", Color(0.75, 1.0, 0.5), Color(0.1, 0.28, 0.05), 140)
-		await scr.get_tree().create_timer(0.5).timeout
+		await FightWait.seconds(scr, 0.5)
 	elif scr.run != null and scr.run.can_revive() and not scr.run.trial_fight:  # (the Matador's trial: no Seed of Life spent, you just wake on the map)
 		await _seed_revival()
 	else:
@@ -304,10 +304,10 @@ func _finish() -> void:
 			Audio.result_sting("defeat_stinger", "")  # (the music fades; no music follows: the end screen)
 			scr.set_meta("result_sfx", true)
 			await scr._stage.drop_sign("Defeat", Color(0.3, 0.1, 0.08), "defeat").finished
-			await scr.get_tree().create_timer(1.8).timeout
+			await FightWait.seconds(scr, 1.8)
 		elif not await _result_banner("defeat"):
 			_banner("The last tree falls…", UiTheme.DANGER, 1.6)
-			await scr.get_tree().create_timer(1.6).timeout
+			await FightWait.seconds(scr, 1.6)
 	scr.finished.emit(scr.fight.won)
 
 
@@ -323,7 +323,7 @@ func _seed_revival() -> void:
 	seed_chip.z_index = 90
 	seed_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	scr._fx.add_child(seed_chip)
-	await scr.get_tree().process_frame
+	await FightWait.frame(scr)
 	seed_chip.pivot_offset = seed_chip.size / 2.0
 	seed_chip.position = from - seed_chip.size / 2.0 - scr._fx.global_position
 	Audio.play("spell_glow")
@@ -431,7 +431,7 @@ func _power_fly(sp: Dictionary) -> void:
 				fx.move(at, target + Vector2(randf_range(-20, 20), randf_range(-8, 8)), randf_range(0.45, 0.75), th.rise * randf_range(0.6, 1.2), th.col, randf_range(4, 7), 0.0)
 		if t >= 1.0:
 			break
-		await scr.get_tree().process_frame
+		await FightWait.frame(scr)
 	pic.queue_free()
 	vp.queue_free()
 	await _wait(0.55)
@@ -559,6 +559,10 @@ func _fire_shot(v: EnemyView, index: int) -> void:
 
 
 func _emit_chant_done(i: int) -> void:
+	if scr._chant_blocked(i):  # (a Repaint can't paint an Essence that is already that colour: say so instead of ignoring the click)
+		Audio.play("ui_error")
+		scr._h_hud._refresh_chant()
+		return
 	if scr._allowed("place", i):
 		scr._chant_done.emit(i)
 
@@ -706,7 +710,7 @@ func _anim_event(ev: Dictionary) -> void:
 			if src:
 				await src.static_up(0.3)
 			scr._h_hud._build_spells()
-			await scr.get_tree().process_frame
+			await FightWait.frame(scr)
 			for id in ev.ids:
 				var c := _card_for(id)
 				if c:
@@ -733,7 +737,7 @@ func _anim_event(ev: Dictionary) -> void:
 				Audio.play("elem_remove", -2.0)
 				await _wait(0.4)
 			scr._h_hud._build_spells()
-			await scr.get_tree().process_frame
+			await FightWait.frame(scr)
 			var back := _card_for(ev.source)
 			if back:
 				Audio.play("spell_glow")
@@ -789,8 +793,8 @@ func _anim_event(ev: Dictionary) -> void:
 			var pv: EnemyView = scr._views.get(ev.enemy)
 			if pv:
 				# the row just left pick mode: let it settle at its normal size before aiming at the orb
-				await scr.get_tree().process_frame
-				await scr.get_tree().process_frame
+				await FightWait.frame(scr)
+				await FightWait.frame(scr)
 				var splash := PaintSplash.new()
 				var ic: Control = pv._hp_icons[ev.index] if ev.index < pv._hp_icons.size() else null
 				splash.el = String(ev.get("to", "?"))
@@ -836,7 +840,7 @@ func _anim_event(ev: Dictionary) -> void:
 		"charged":
 			# every woken spell's chant elements light up and fly into its card, all at once
 			scr._h_hud._refresh_chant()  # the spoken chant must be on the table before its elements can fly
-			await scr.get_tree().process_frame
+			await FightWait.frame(scr)
 			var hits: Array = ev.get("hits", [])
 			# read the whole chant, left to right, note by note
 			var all := []
@@ -1018,7 +1022,7 @@ func _anim_event(ev: Dictionary) -> void:
 			await _wait(1.4)
 			var vv: EnemyView = scr._views.get(ev.enemy)
 			while vv != null and is_instance_valid(vv.creature) and vv.creature.unveiling():  # (the Veiled Eyes' unveiling plays out before anything else)
-				await scr.get_tree().process_frame
+				await FightWait.frame(scr)
 		"spider_steal":
 			await _spider_steal(ev.enemy, ev.spell)
 		"boss_phase":
@@ -1043,7 +1047,7 @@ func _anim_event(ev: Dictionary) -> void:
 					await _wait(1.0)
 					await _spider_return(scr._spider_away)
 				while not dropped[0]:
-					await scr.get_tree().process_frame
+					await FightWait.frame(scr)
 			await _wait(0.25)
 		"spider_return":
 			await _spider_return(ev.enemy)
@@ -1102,7 +1106,7 @@ func _anim_event(ev: Dictionary) -> void:
 			var head_v: EnemyView = scr._views.get(ev.get("enemy"))
 			if ev.get("head", false) and head_v:
 				Audio.play("sfx_head_scream")
-				await scr.get_tree().create_timer(0.55).timeout  # (he screams first, then it flies)
+				await FightWait.seconds(scr, 0.55)  # (he screams first, then it flies)
 				head_v.creature.head_gone = true  # (the picture with the empty hand and no pumpkin, from the moment it leaves him)
 				await FightScreen.ThrowFx.throw_item(scr, head_v.creature.global_position + Vector2(head_v.creature.size.x * 0.5, 40.0), _attack_point(), "head")
 			Audio.play("sfx_silence_apply")
@@ -1362,7 +1366,7 @@ func _wake_fx(hits: Array, extension: bool) -> void:
 func _extension_slam(count := 1) -> void:
 	var text: String = FightScreen.EXTENSION_NAMES[count - 1] if count <= FightScreen.EXTENSION_NAMES.size() else "%d× Extension!" % count
 	var words: Array = ["extension"] if count == 1 else [FightScreen.WORD_COUNTS[count - 2], "extension"] if count - 2 < FightScreen.WORD_COUNTS.size() else []  # (the carved wooden lettering, when the theme has it)
-	await _slam(text, Color(1.0, 0.86, 0.25), Color(0.4, 0.08, 0.0), 128 if count == 1 else 104, words)
+	await _slam(text, Color(1.0, 0.86, 0.25), Color(0.4, 0.08, 0.0), 128 if count == 1 else 104, words, "sfx_extension", 1.0 + 0.07 * (count - 1))  # (its own reward sound; each one in a row a little higher)
 
 
 ## The carved lettering of a slam: one picture per word, stacked, centred in a box the size of the text it replaces (null when a picture is missing).
@@ -1388,16 +1392,16 @@ func _art_words(words: Array) -> Control:
 
 ## Big slanted words slapped onto the table (Extension!, Perfect!): they drop in huge, hit with a shake and a
 ## burst of sparks along their length, bounce, and fade.
-func _slam(text: String, col: Color, outline: Color, font_px: int, words := []) -> void:
+func _slam(text: String, col: Color, outline: Color, font_px: int, words := [], hit_sfx := "boss_phase_change", hit_pitch := 1.0) -> void:
 	var art: Control = _art_words(words) if not words.is_empty() else null
 	var l: Control = art if art != null else Label.new()
 	if art == null:
 		scr._h_hud._style_slam_label(l as Label, text, col, outline, font_px)
-	await _slam_finish(l)
+	await _slam_finish(l, hit_sfx, hit_pitch)
 
 
 ## The slam itself (shared by text and carved lettering): drops in huge, hits, bounces, fades.
-func _slam_finish(l: Control) -> void:
+func _slam_finish(l: Control, hit_sfx := "boss_phase_change", hit_pitch := 1.0) -> void:
 	l.size = Vector2(1500, 200)
 	l.position = Vector2(960 - 750, 330)
 	l.pivot_offset = l.size / 2.0
@@ -1414,7 +1418,7 @@ func _slam_finish(l: Control) -> void:
 	await tw.finished
 	# the hit
 	_shake(16.0)
-	Audio.play("boss_phase_change")
+	Audio.play(hit_sfx, 0.0, hit_pitch)
 	var along := Vector2.from_angle(deg_to_rad(FightScreen.SLAM_ANGLE))
 	for k in 4:
 		ImpactFx.burst(scr._fx, l.position + l.size / 2.0 + along * randf_range(-420, 420), false)
@@ -1524,8 +1528,8 @@ func _hourglass_dust(e: EnemyState) -> void:
 	copy.position = pad
 	copy.size = chip.size
 	vp.add_child(copy)
-	await scr.get_tree().process_frame
-	await scr.get_tree().process_frame
+	await FightWait.frame(scr)
+	await FightWait.frame(scr)
 	var img := vp.get_texture().get_image()
 	vp.queue_free()
 	chip.modulate.a = 0.0
@@ -1611,8 +1615,8 @@ func _card_picture(card: SpellCard) -> Array:
 	copy.is_zoom_copy = true
 	copy.position = pad
 	vp.add_child(copy)
-	await scr.get_tree().process_frame
-	await scr.get_tree().process_frame
+	await FightWait.frame(scr)
+	await FightWait.frame(scr)
 	var tex := ImageTexture.create_from_image(vp.get_texture().get_image())
 	vp.queue_free()
 	return [tex, pad]
@@ -1667,8 +1671,8 @@ func _shatter_card(card: SpellCard) -> void:
 	copy.cracks = 2
 	copy.position = pad
 	vp.add_child(copy)
-	await scr.get_tree().process_frame
-	await scr.get_tree().process_frame
+	await FightWait.frame(scr)
+	await FightWait.frame(scr)
 	var tex := ImageTexture.create_from_image(vp.get_texture().get_image())
 	vp.queue_free()
 	var origin := card.global_position - pad * card.scale
@@ -1721,7 +1725,7 @@ func _shatter_card(card: SpellCard) -> void:
 			n.modulate.a = clampf((dur - t) / 0.4, 0.0, 1.0)
 		if t >= dur:
 			break
-		await scr.get_tree().process_frame
+		await FightWait.frame(scr)
 	for sh in shards:
 		sh.n.queue_free()
 
@@ -1802,7 +1806,7 @@ func _card_for(id: String) -> SpellCard:
 ## A speech-bubble style callout that says what just happened, near whoever did it.
 func _callout(bbcode: String, at: Vector2, col: Color, life := 1.0) -> void:
 	var p := _callout_panel(bbcode, col)
-	await scr.get_tree().process_frame
+	await FightWait.frame(scr)
 	if not is_instance_valid(p):
 		return
 	p.position = Vector2(clampf(at.x - p.size.x / 2.0, 10, 1910 - p.size.x), clampf(at.y - p.size.y, 10, 1070 - p.size.y))
@@ -1820,7 +1824,7 @@ func _callout_beside(v: EnemyView, bbcode: String, col: Color, life := 1.0) -> v
 		_callout(bbcode, Vector2(960, 600), col, life)
 		return
 	var p := _callout_panel(bbcode, col)
-	await scr.get_tree().process_frame
+	await FightWait.frame(scr)
 	if not is_instance_valid(p) or not is_instance_valid(v):
 		return
 	var r := v.puppet_global_rect()
@@ -2087,7 +2091,7 @@ func _spider_steal(e: EnemyState, sp: Dictionary) -> void:
 		return
 	var cr := v.creature
 	while is_instance_valid(cr) and cr.unveiling():  # (it is still coming out of its veil: the theft comes after)
-		await scr.get_tree().process_frame
+		await FightWait.frame(scr)
 	if not is_instance_valid(cr):
 		return
 	var z := cr.z_index
@@ -2212,7 +2216,7 @@ func _mend_light(caster: EnemyState, gains: Array) -> void:
 	if cv == null or not is_instance_valid(cv.creature):
 		await _wait(0.2)
 		return
-	await scr.get_tree().process_frame  # (the rows were just rebuilt: let them lay out first)
+	await FightWait.frame(scr)  # (the rows were just rebuilt: let them lay out first)
 	var from := cv.creature.get_global_rect().get_center()
 	var dests := []
 	var i := 0
@@ -2305,7 +2309,7 @@ func _enemy_turn_start(ev: Dictionary) -> void:
 	var box := _callout_panel("[b]%s[/b]\n%s" % [ev.enemy.name, Keywords.colorize(words)], Color(1, 0.55, 0.4))
 	box.custom_minimum_size.x = 420
 	_turn_box = box
-	await scr.get_tree().process_frame
+	await FightWait.frame(scr)
 	if not is_instance_valid(box):
 		return
 	box.position = Vector2(960.0 - box.size.x / 2.0, FightScreen.TURN_BOX_Y)
@@ -2352,6 +2356,17 @@ func _bell_strike(v: EnemyView, alarm: bool) -> void:
 	if not is_instance_valid(v) or not is_instance_valid(v.creature):
 		return
 	var c := v.creature
+	if c.has_bug():
+		# its pieces act it out (BugHunterRig, the PDF): the arm lowers slowly, then comes up fast onto the bell: that instant is the blow (sound, rings, shudder)
+		var hits: Array = c.bug_strike(3 if alarm else 1)
+		await _wait(maxf(0.0, float(hits[0]) - 0.05))  # (the sounds start a hair before their blow)
+		Audio.play("bell_alarm" if alarm else "bell_strike", -2.0)
+		await _wait(0.05)
+		_shake(3.0 if alarm else 2.0)
+		for i in range(1, hits.size()):  # (the alarm: the other two blows, on their beat)
+			await _wait(float(hits[i]) - float(hits[i - 1]))
+			_shake(3.0)
+		return
 	var dur := 1.0
 	var tw := c.create_tween()
 	tw.tween_property(c, "bell_t", 1.0, dur).from(0.0)
@@ -2414,7 +2429,7 @@ func _enemy_attack(ev: Dictionary) -> void:
 		tw.parallel().tween_property(c, "scale", Vector2.ONE, 0.2 * sl)
 		await _wait(maxf(0.2 * sl, c.dragon_hit_time()))  # (the Winter Wyvern's bite or slam takes longer to land)
 	var was_blocked: bool = ev.get("blocked", false)
-	ImpactFx.burst(scr._fx, target, was_blocked and ev.n == 0)
+	SaberSlash.hit(scr._fx, _slash_point(), was_blocked and ev.n == 0, float(ev.n), scr.fight.player.max_hp)  # (the light-saber cuts, sparks and red vignette: the two cuts cross on the bar at the HP you have left)
 	Audio.play("sfx_player_hit" if ev.n > 0 else "release_armour_block")
 	if was_blocked:
 		scr._hp_bar.crack()
@@ -2506,6 +2521,17 @@ func _sword_slash(v: EnemyView, _dmg: float) -> Vector2:
 func _arrow_tex() -> Texture2D:
 	var path := Creature.enemy_path("handyman/arrow.png", 1)
 	return load(path) as Texture2D if path != "" else null
+
+
+## Where the saber cuts cross: on the HP bar at the HP you have left (HP is already down when the attack plays): 35 HP and a 5 damage hit = the 30 HP mark,
+## the edge between the part that stays and the part the hit took.
+func _slash_point() -> Vector2:
+	var mx := maxf(1.0, scr.fight.player.max_hp)
+	var frac := clampf(scr.fight.player.hp / mx, 0.02, 0.98)
+	if scr._hp_bar is StripeHpBar:
+		return scr._hp_bar.point_at(frac)  # (the bar's window starts after the ring)
+	var r := scr._hp_bar.get_global_rect()
+	return Vector2(r.position.x + r.size.x * frac, r.position.y + r.size.y * 0.5)
 
 
 ## Where the bolt sticks in the HP bar: the middle of the part the hit has just taken away (HP is already down when the attack plays).
@@ -2636,8 +2662,8 @@ func _shatter_arm(c: Creature) -> void:
 	copy.reach_angle = reach_angle
 	copy.position = Vector2(vp_size) / 2.0 - csize / 2.0
 	vp.add_child(copy)
-	await scr.get_tree().process_frame
-	await scr.get_tree().process_frame
+	await FightWait.frame(scr)
+	await FightWait.frame(scr)
 	var tex := ImageTexture.create_from_image(vp.get_texture().get_image())
 	vp.queue_free()
 	PuppetShatter.spawn_picture(scr, tex, Rect2(mid - Vector2(vp_size) / 2.0, Vector2(vp_size)), mid.y + 90.0)
@@ -2991,8 +3017,9 @@ func _deflect_comet(from: Vector2, target: Vector2, col: Color, who: EnemyState 
 
 
 func _wait(t: float) -> void:
-	if scr.is_inside_tree():
-		await scr.get_tree().create_timer(t).timeout
+	if is_instance_valid(scr) and not scr.is_inside_tree():  # (a screen that is out of the tree but alive: no wait, as before)
+		return
+	await FightWait.seconds(scr, t)  # (a screen that is gone: parked for good, see FightWait)
 
 
 func _float_text(text: String, pos: Vector2, col: Color) -> void:

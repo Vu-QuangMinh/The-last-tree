@@ -6,7 +6,7 @@ var enemy_id := ""
 var tint := Color(0.6, 0.6, 0.6)
 var accent := Color(1, 1, 1)
 var big := 1.0
-const DRAWN_ONLY := ["bug_hunter"]  # drawn in code until their new art comes (the Bug Hunter is a bell head now, its robot picture is out of date)
+const DRAWN_ONLY := []  # drawn in code until their new art comes (the Bug Hunter has its art now: BugHunterRig; _draw_bell_head stays as the fallback when its pieces are missing)
 var ground_drop := 0.0  # a flyer: how far (px) below its picture the real ground is (its shadow lies there; set by EnemyView)
 var flash := 0.0
 var bob := 0.0
@@ -39,6 +39,7 @@ var _art_shake_x := 0.0
 var _art_xf := Transform2D.IDENTITY  # the puppet's own transform in this Control (its feet, its tip), for pieces drawn on their own
 var _ret: RetainerRig  # the Retainer's front arm and what it carries (null: the finished pictures are used)
 var _samurai: SamuraiRig  # the Samurai's pieces (null: the single picture is used)
+var _bug: BugHunterRig  # the Bug Hunter's pieces (null: the single picture is used)
 var _dragon: DragonRig  # the Winter Wyvern's pieces (null: the single picture is used)
 var _floaters: Array = []  # [texture, centre fraction, phase] of the loose pieces hovering by the puppet (FLOATERS)
 var _unveil_tex: Array = []  # [ball without its veil, head, left legs, right legs] of the Veiled Eyes' unveiling (see _draw_unveil)
@@ -186,6 +187,7 @@ func setup(e: EnemyState) -> void:
 				if ft != null:
 					_floaters.append([ft, f[1], f[2]])
 		_samurai = SamuraiRig.load_rig(2) if e.id == "samurai" and _puppet else null
+		_bug = BugHunterRig.load_rig(2) if e.id == "bug_hunter" and _puppet else null
 		_ret = RetainerRig.load_rig(2) if e.id == "samurai_retainer" and _puppet else null
 		if e.id == "samurai_retainer":  # (his poses: one finished picture each; the one without a pose is the idle one)
 			for p in RETAINER_POSES:
@@ -335,6 +337,8 @@ func _process(d: float) -> void:
 	_spider_tick(d)
 	if _samurai != null:
 		_samurai.tick(d, _pose(), dead)
+	if _bug != null:
+		_bug.tick(d, dead)
 	if _ret != null:
 		_ret.tick(d, "fan" if _ret_key() == "fan" else "bottle")
 	if _dragon != null:
@@ -570,9 +574,10 @@ func _draw_sword_stance(c: Vector2, s: float) -> void:
 	draw_line(hilt + dir * s * 0.1, hilt + dir * s * 1.45, Color(1, 1, 1, 0.8), maxf(1.0, s * 0.02), true)  # its edge catching the light
 
 
-## The Bug Hunter (drawn until it has art): a brass bell for a head, with a hanging loop on top and a face engraved on it,
-## on two thin jointed legs, a striker in its hands. It attacks by striking its own head: the striker swings up and hits
-## the bell, which shakes as it rings (bell_t 0..1 while it does; see FightScreen._bell_strike).
+## The Bug Hunter (drawn until it has art): a brass bell for a body, with a hanging loop on top and ONE big eye on its
+## front, on two thin jointed legs, with two arms: the left holds a magnifying glass up by the eye, the right a striker.
+## It attacks by striking its own bell: the striker swings up and hits the bell, which shakes as it rings (bell_t 0..1
+## while it does; see FightScreen._bell_strike).
 var bell_t := -1.0
 
 
@@ -584,18 +589,19 @@ func _draw_bell_head(c: Vector2, s: float) -> void:
 	var shake := 0.0
 	if t >= hit_t:
 		shake = sin((t - hit_t) * 70.0) * 0.09 * exp(-(t - hit_t) * 4.0)
-	# the legs (thin, jointed), then the arms, behind the bell
+	# the legs (thin, jointed), behind the bell
 	for side in [-1.0, 1.0]:
-		var hip := c + Vector2(side * s * 0.22, s * 0.32)
+		var hip := c + Vector2(side * s * 0.22, s * 0.2)
 		var knee := c + Vector2(side * s * 0.28, s * 0.62)
 		var foot := c + Vector2(side * s * 0.2, s * 0.95)
 		draw_polyline(PackedVector2Array([hip, knee, foot]), dark, maxf(4.0, s * 0.09), true)
 		draw_circle(knee, s * 0.06, brass)
 		draw_rect(Rect2(foot - Vector2(s * 0.12, s * 0.03), Vector2(s * 0.24, s * 0.07)), dark)
 	# the striker: at rest it hangs down and to the right; striking, it swings up and over onto the bell
-	var hand := c + Vector2(s * 0.42, s * 0.42)
+	var shoulder_r := c + Vector2(s * 0.5, s * 0.08)
+	var hand := c + Vector2(s * 0.62, s * 0.4)
 	var rest := 0.75  # (radians: down and to the right)
-	var up := -2.2  # (up and over the head)
+	var up := -2.75  # (up and over, onto the bell below its eye)
 	var a := rest
 	if t >= 0.0:
 		if t < hit_t:
@@ -622,15 +628,39 @@ func _draw_bell_head(c: Vector2, s: float) -> void:
 	draw_rect(Rect2(-s * 0.66, rim - s * 0.12, s * 1.32, s * 0.14), brass.darkened(0.15))  # (the rim)
 	draw_line(Vector2(-s * 0.6, rim - s * 0.2), Vector2(s * 0.6, rim - s * 0.2), dark, 2.0, true)
 	draw_arc(Vector2(0, top - s * 0.08), s * 0.09, 0, TAU, 16, dark, maxf(3.0, s * 0.05), true)  # (the hanging loop)
-	draw_line(Vector2(-s * 0.15, top + s * 0.15), Vector2(-s * 0.08, rim * 0.85), Color(1, 0.95, 0.8, 0.35), maxf(3.0, s * 0.06), true)  # (a shine)
-	# the face engraved on it: two curling brows, two eyes, a little crack
-	for side in [-1.0, 1.0]:
-		draw_arc(Vector2(side * s * 0.2, s * 0.55), s * 0.13, PI * (1.1 if side < 0 else 1.4), PI * (1.6 if side < 0 else 1.9), 10, dark, 2.0, true)
-		draw_arc(Vector2(side * s * 0.2, s * 0.72), s * 0.07, 0, TAU, 12, dark, 2.0, true)
+	draw_line(Vector2(-s * 0.4, top + s * 0.35), Vector2(-s * 0.36, rim * 0.85), Color(1, 0.95, 0.8, 0.3), maxf(3.0, s * 0.05), true)  # (a shine)
+	# the one big eye: a heavy brass ring, the white, an amber iris, a slit pupil that follows the glass (and shrinks when hurt)
+	var eye := Vector2(0, s * 0.58)
+	var er := s * 0.27
+	draw_circle(eye, er * 1.2, dark)
+	draw_circle(eye, er * 1.08, brass.lightened(0.12))
+	draw_circle(eye, er, Color(0.96, 0.94, 0.86) if not dead else Color(0.3, 0.3, 0.3, 0.4))
+	if not dead:
+		var look := Vector2(-0.3, -0.12) + Vector2(sin(bob * 0.7), cos(bob * 0.5)) * 0.06  # (towards the glass, never still)
+		var iris := eye + look * er
+		draw_circle(iris, er * 0.55, Color(0.86, 0.5, 0.1))
+		draw_circle(iris, er * 0.4, Color(0.62, 0.28, 0.05))
+		var pr := er * (0.1 if hurt > 0.0 else 0.17)
+		draw_rect(Rect2(iris - Vector2(pr, er * 0.36), Vector2(pr * 2.0, er * 0.72)), Color(0.05, 0.03, 0.02))
+		draw_circle(iris + Vector2(-er * 0.18, -er * 0.2), er * 0.1, Color(1, 1, 1, 0.9))
+		draw_arc(eye, er, PI * 1.05, PI * 1.95, 20, dark, 3.0, true)  # (the upper lid's line)
 	draw_polyline(PackedVector2Array([Vector2(s * 0.4, rim - s * 0.15), Vector2(s * 0.34, rim * 0.75), Vector2(s * 0.38, rim * 0.6)]), dark, 1.5, true)
 	draw_set_transform(Vector2.ZERO)
-	# the arm and the striker, in front of the bell (it comes down onto it)
-	draw_line(c + Vector2(s * 0.3, s * 0.25), hand, dark, maxf(3.0, s * 0.07), true)
+	# the left arm: holds the magnifying glass up in front of the bell, by the eye
+	var shoulder_l := c + Vector2(-s * 0.5, s * 0.08)
+	var elbow_l := c + Vector2(-s * 0.8, s * 0.16 + sin(bob * 1.3) * s * 0.02)
+	var hand_l := c + Vector2(-s * 0.72, -s * 0.08 + sin(bob * 1.3) * s * 0.02)
+	var lens := hand_l + Vector2(s * 0.14, -s * 0.36)
+	var lr := s * 0.25
+	draw_polyline(PackedVector2Array([shoulder_l, elbow_l, hand_l]), dark, maxf(3.0, s * 0.07), true)
+	draw_circle(elbow_l, s * 0.05, brass)
+	draw_line(hand_l - (lens - hand_l).normalized() * s * 0.08, lens, Color(0.35, 0.22, 0.12), maxf(4.0, s * 0.07), true)  # (the handle)
+	draw_circle(lens, lr, Color(0.7, 0.88, 0.95, 0.28 if not dead else 0.1))  # (the glass)
+	draw_arc(lens, lr, 0, TAU, 28, brass.darkened(0.1), maxf(4.0, s * 0.07), true)  # (its brass rim)
+	draw_arc(lens, lr * 0.72, PI * 1.1, PI * 1.55, 10, Color(1, 1, 1, 0.7), 2.5, true)  # (a glint)
+	draw_circle(hand_l, s * 0.07, brass)
+	# the right arm and the striker, in front of the bell (it comes down onto it)
+	draw_polyline(PackedVector2Array([shoulder_r, shoulder_r + (hand - shoulder_r) * 0.5 + Vector2(s * 0.12, 0), hand]), dark, maxf(3.0, s * 0.07), true)
 	draw_line(hand, tip, Color(0.55, 0.42, 0.22), maxf(3.0, s * 0.06), true)
 	draw_circle(tip, s * 0.13, brass.lightened(0.1))
 	draw_circle(hand, s * 0.07, brass)
@@ -945,6 +975,7 @@ var head_gone := false  # the Horseman has thrown his head (set by the fight scr
 var _thrown_tex: Texture2D  # the Headless Horseman with his head thrown
 const SAMURAI_POSES := ["in_no_kamae", "ko_gasumi", "sha_no_kamae"]
 const SAMURAI_H := 1.725  # the Samurai's height (helmet to feet, idle), in art squares
+const BUG_H := 0.92  # the Bug Hunter's height (loop to feet), in art squares
 const RETAINER_BIG := 1.4  # his pictures are a square with a small man in it: drawn this much bigger than the other puppets' squares
 const RETAINER_CANVAS := 1500  # (the finished pictures of the Retainer are this many layout px wide)
 const RETAINER_POSES := ["gong", "gong2", "yield"]  # (finished pictures; the rest is RetainerRig)
@@ -995,6 +1026,15 @@ func retainer_yield() -> void:
 ## The Samurai swings: returns the seconds until the blow lands (see SamuraiRig.strike).
 func samurai_strike(hit_i: int, hits: int) -> float:
 	return _samurai.strike(hit_i, hits) if _samurai != null else 0.0
+
+
+## The Bug Hunter's striker: plays the strike (1 blow, or 3 for the alarm); returns the seconds until each blow lands ([] when it has no pieces).
+func bug_strike(blows: int) -> Array:
+	return _bug.strike(blows) if _bug != null else []
+
+
+func has_bug() -> bool:
+	return _bug != null
 
 
 func has_samurai() -> bool:
@@ -1296,9 +1336,6 @@ func _draw_art(blink_on: bool) -> void:
 	if ground_drop > 0.5 and not dead:
 		var ft := Time.get_ticks_msec() / 1000.0 + float(hash(enemy_id) % 97) * 0.13
 		fly = Vector2(sin(ft * 1.1) * 8.0, sin(ft * 2.3) * 10.0)
-	if _puppet and not dead and steal_pose <= 0.0 and _dragon == null:  # (carrying a card it hangs in the air: no shadow over the card)
-		var shadow_side := side * (1.0 - 0.15 * clampf(ground_drop / 80.0, 0.0, 1.0))  # (a flyer's shadow: on the floor below it, a little smaller)
-		_draw_puppet_shadow(_unveil_tex[0] if is_unveiling and _unveil_t < UNVEIL_LEGS[0] else tex, Vector2(c.x + fly.x * 0.5, size.y + ground_drop), shadow_side)  # (the spider's shadow only once its legs are out)
 	if _puppet:  # a puppet doesn't bob: it hangs on its rope and swings from the top of it (see _process), and a hit knocks it back
 		var tip := 0.0 if dead or enemy_id == "handyman" else _swing_a  # (the Handyman's body does not swing: six arms hang on it)
 		if _dragon != null:
@@ -1312,6 +1349,14 @@ func _draw_art(blink_on: bool) -> void:
 		_art_tip = tip
 		_art_xf = Transform2D(tip, hook) * Transform2D(0.0, org - hook)  # (the rope's anchor rides along with a flyer's drift)
 		draw_set_transform_matrix(_art_xf)
+		# the shadow lies on the floor under the feet and follows the swing: the feet and the head are where the puppet's own transform puts them
+		if not dead and steal_pose <= 0.0 and _dragon == null:  # (carrying a card it hangs in the air: no shadow over the card)
+			var shadow_side := side * (1.0 - 0.15 * clampf(ground_drop / 80.0, 0.0, 1.0))  # (a flyer's shadow: on the floor below it, a little smaller)
+			var feet_x := (_art_xf * Vector2.ZERO).x - fly.x * 0.5  # (a flyer's shadow follows only half its drift)
+			var head_dx := (_art_xf * Vector2(0.0, -side)).x - (_art_xf * Vector2.ZERO).x  # (how far the swing carries the head sideways of the feet)
+			_shadow_node().place(_unveil_tex[0] if is_unveiling and _unveil_t < UNVEIL_LEGS[0] else tex, Vector2(feet_x, size.y + ground_drop), side * 0.5 + head_dx * 0.9, shadow_side)  # (the spider's shadow only once its legs are out)
+		elif _shadow != null:
+			_shadow.visible = false
 		c = Vector2(0, -side * 0.5)
 		if veil2:
 			c.y -= side * VEIL2_LIFT  # (the spider hangs higher: its purple eyes stay level with the eyes under the veil)
@@ -1330,6 +1375,8 @@ func _draw_art(blink_on: bool) -> void:
 	elif _ret != null and _puppet and not (_ret_key() in RETAINER_POSES):
 		var rk := side / float(RETAINER_CANVAS)  # (his pieces on the same ground line and body place as the finished pictures' square)
 		_ret.draw(self, _art_xf * Transform2D(0.0, Vector2.ONE, 0.0, Vector2(10.0 * rk, -40.0 * rk)), rk, mod)
+	elif _bug != null and _puppet:
+		_bug.draw(self, _art_xf, side * BUG_H / _bug.height_px(), mod)  # (feet on the same line as the single picture's)
 	elif _samurai != null and _puppet:
 		_samurai.draw(self, _art_xf, side * SAMURAI_H / _samurai.height_px(), mod)  # (his pieces, feet on the same line as the single picture's)
 	elif _dragon != null and _puppet:
@@ -1380,22 +1427,17 @@ func dragon_hit_time() -> float:
 	return _dragon.hit_time(_enemy) if _dragon != null and _enemy != null else 0.0
 
 
-## Puppet Stage: the shadow the spotlight throws on the floor: its own silhouette lying flat BEHIND the puppet (up the screen from its
-## feet, squashed, leaning right), dark at the feet and fading away from them, with a soft edge (a few passes, each a little wider and fainter).
-func _draw_puppet_shadow(tex: Texture2D, feet: Vector2, side: float) -> void:
-	var depth := side * 0.5
-	var lean := side * 0.5
-	var passes := [[0.0, 0.62], [0.06, 0.38], [0.13, 0.2]]
-	for p in passes:
-		var grow: float = p[0]
-		var w := side * (1.0 + grow)
-		var d := depth * (1.0 + grow)
-		var near := Color(0, 0, 0, p[1])  # (at the feet)
-		var far := Color(0, 0, 0, p[1] * 0.3)  # (at the head)
-		var pts := PackedVector2Array([
-			feet + Vector2(-w / 2.0 + lean, -d), feet + Vector2(w / 2.0 + lean, -d),  # the head's two corners, on the floor behind
-			feet + Vector2(w / 2.0, 0.0), feet + Vector2(-w / 2.0, 0.0)])  # the feet
-		draw_polygon(pts, PackedColorArray([far, far, near, near]), PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]), tex)
+## Puppet Stage: the shadow the spotlight throws on the floor: its own silhouette lying flat BEHIND the puppet (PuppetShadow: a soft, blurred child drawn behind it),
+## dark at the feet, fading towards the head, leaning right and carried sideways by the puppet's swing.
+var _shadow: PuppetShadow  # the soft shadow on the floor (a child that draws behind this Control)
+
+
+func _shadow_node() -> PuppetShadow:
+	if _shadow == null:
+		_shadow = PuppetShadow.new()
+		add_child(_shadow)
+		move_child(_shadow, 0)
+	return _shadow
 
 
 ## Puppet Stage: the whole square the picture is drawn in, on the screen, and the picture itself (for the pieces it breaks into).

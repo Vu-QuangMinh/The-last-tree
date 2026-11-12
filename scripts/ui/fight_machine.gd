@@ -133,7 +133,7 @@ func _tube_hidden() -> Vector2:
 func _roll_in(ic: ElementIcon, to_x: float, delay: float) -> void:
 	scr._rolling_in += 1
 	if delay > 0.0:
-		await scr.get_tree().create_timer(delay).timeout
+		await FightWait.seconds(scr, delay)
 	if not is_instance_valid(ic) or ic.is_queued_for_deletion():
 		scr._rolling_in -= 1
 		return
@@ -175,6 +175,8 @@ func _no_overlap(ic: Control, x: float, ahead: Array, gap := -1.0) -> float:
 ## wind). New ones are spawned inside the red block and roll out of it one by one; the others slide along to make room. A
 ## ball a spell sent is already waiting in the red block and just rolls in. After a launch the tube stays empty for 2 s.
 func _sync_tube() -> void:
+	if not _screen_alive():  # (a timer below can fire after the screen is gone: F5 in the test room rebuilds it)
+		return
 	if not scr._h_hud._circus_strips() or scr.fight == null or scr._tube_prep:
 		return
 	if Time.get_ticks_msec() < _tube_hold_until:  # (the tube is resting after a launch)
@@ -322,7 +324,7 @@ func _stash_step(u: float, ic: ElementIcon, a: Vector2, b: Vector2) -> void:
 func _rolls_done() -> void:
 	var t0 := Time.get_ticks_msec()
 	while (scr._launching > 0 or scr._rolling_in > 0) and Time.get_ticks_msec() - t0 < 7000:
-		await scr.get_tree().process_frame
+		await FightWait.frame(scr)
 
 
 ## A batch of new Essence rolls out of the tube. At the start of a turn these ARE the Essence that were waiting in the
@@ -374,9 +376,9 @@ func _tube_launch(balls: Array) -> void:
 	var load_wait := 0.1
 	if dropped > 0:
 		load_wait = 0.8 + (dropped - 1) * 0.15
-	await scr.get_tree().create_timer(load_wait).timeout
+	await FightWait.seconds(scr, load_wait)
 	_turn_crank()
-	await scr.get_tree().create_timer(0.3).timeout
+	await FightWait.seconds(scr, 0.3)
 	# when does each ball arrive? one after the other, 0.12 s apart, the first one furthest
 	var travel: Array = []
 	var starts: Array = []
@@ -415,7 +417,7 @@ func _roll_ball(balls: Array, j: int, from_x: float, t: float, delay: float) -> 
 	var uid: int = balls[j][2]
 	var turns := roundf(maxf(0.0, from_x - balls[j][1].x) / (PI * FightScreen.BAG_PX))  # whole turns, so it comes to rest the right way up
 	scr._launching += 1
-	await scr.get_tree().create_timer(delay).timeout
+	await FightWait.seconds(scr, delay)
 	if not is_instance_valid(ic) or ic.is_queued_for_deletion():
 		scr._launching -= 1
 		return
@@ -612,7 +614,7 @@ func _roll_reels(els: Array) -> void:
 		return
 	Audio.play("sfx_lever_pull", -2.0)
 	scr._machine.lever_pull()
-	await scr.get_tree().create_timer(0.3).timeout
+	await FightWait.seconds(scr, 0.3)
 	await scr._machine.spin(els, 2.0)
 	scr._machine.lever_return()
 	scr._machine.busy = false
@@ -620,15 +622,23 @@ func _roll_reels(els: Array) -> void:
 	scr._reels_armed = true
 
 
+func _screen_alive() -> bool:
+	return is_instance_valid(scr) and scr.is_inside_tree()
+
+
 ## Once the balls of a spawn are all in the Bag (`wait` seconds is when the last one comes up out of the port), the machine rolls next turn's draw: the lever is
 ## pulled, the reels spin for 2 s and stop on the Essence that will spawn next turn.
 func _roll_next_on_reels(wait: float) -> void:
-	await scr.get_tree().create_timer(wait + 0.4).timeout
+	await FightWait.seconds(scr, wait + 0.4)
+	if not _screen_alive():  # (the screen can be gone by now: F5 rebuilds it in the test room)
+		return
 	var t0 := Time.get_ticks_msec()
-	while scr._launching > 0 and Time.get_ticks_msec() - t0 < 8000 and scr.is_inside_tree():
-		await scr.get_tree().process_frame
-	await scr.get_tree().create_timer(0.3).timeout
-	if not scr.is_inside_tree() or scr._machine == null or scr.fight == null or scr.fight.over or scr._machine.busy or scr._launching > 0 or Time.get_ticks_msec() < scr._turn_batch_until:
+	while scr._launching > 0 and Time.get_ticks_msec() - t0 < 8000 and _screen_alive():
+		await FightWait.frame(scr)
+	if not _screen_alive():
+		return
+	await FightWait.seconds(scr, 0.3)
+	if not _screen_alive() or scr._machine == null or scr.fight == null or scr.fight.over or scr._machine.busy or scr._launching > 0 or Time.get_ticks_msec() < scr._turn_batch_until:
 		return
 	var ranked: Array = []
 	for i in scr.fight.player.next_draw.size():
@@ -798,9 +808,9 @@ func _puppet_launch(balls: Array) -> void:
 			pic.scale = Vector2.ONE
 			pic.modulate.a = 1.0
 	# the machine is on the HUD: when the HUD is still below the screen (the fight is being set up) it waits
-	while (scr._h_hud._hud_hidden() or not scr._machine_ready) and scr.is_inside_tree():
-		await scr.get_tree().process_frame
-	if not scr.is_inside_tree() or scr._machine == null:
+	while (scr._h_hud._hud_hidden() or not scr._machine_ready) and _screen_alive():
+		await FightWait.frame(scr)
+	if not _screen_alive() or scr._machine == null:
 		scr._launching -= 1
 		scr._tube_prep = false
 		return
@@ -809,14 +819,14 @@ func _puppet_launch(balls: Array) -> void:
 		for j in order:
 			if role[j] == "reel":
 				finals.append(balls[j][0].el)
-		while scr._machine.busy and scr.is_inside_tree():  # (the reels are still rolling next turn's draw: wait for them)
-			await scr.get_tree().process_frame
+		while scr._machine.busy and _screen_alive():  # (the reels are still rolling next turn's draw: wait for them)
+			await FightWait.frame(scr)
 		if scr._reel_shown.is_empty():  # the first hand of a fight: nothing was rolled yet, so the lever is pulled now
 			if not finals.is_empty():
 				await _roll_reels(finals)
 		elif finals != scr._reel_shown:  # (what spawns is not what the reels showed: they show what really spawns)
 			scr._machine.set_faces(finals, true)
-			await scr.get_tree().create_timer(0.25).timeout
+			await FightWait.seconds(scr, 0.25)
 		scr._reel_shown = []
 		scr._reels_armed = false
 	var gap := 0.26 if scr._nu_ui else 0.2  # (New UI: the orbs run one after another, 160 px apart)

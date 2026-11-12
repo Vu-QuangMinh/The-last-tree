@@ -43,6 +43,7 @@ var drop_x := 1084.0  # where the Essence fall down behind the cabinet into the 
 var spawn_c := Vector2.INF
 var lever_shift := Vector2.ZERO
 var over := Control.new()  # (straight tube: its clamp, over the Essence)
+var funnel_back := Control.new()  # NewUI Ver2: the funnel's back layer, under the Essence. NOT in `back`: that one is scaled by `xs` and moved by `xp` (the old machine's px), but the layers' rects are in strip px like `over`'s
 ## Puppet HUD ver 2 has no machine: `headless` keeps this object as the place the Essence's trips are planned from (they come in at `drop_at`, strip px, the top of the vertical tube,
 ## and fall to the tray's row), draws nothing, and its reels and lever are over at once.
 var headless := false
@@ -133,7 +134,7 @@ static func _screen(t: TextureRect) -> TextureRect:
 
 
 func build() -> void:
-	for c in [back, behind, front, over]:
+	for c in [back, behind, front, over, funnel_back]:
 		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if headless:
 		return
@@ -161,7 +162,7 @@ func build() -> void:
 			var fp := _strip_pic(fl[0], fl[1].position)
 			fp.size = fl[1].size
 			fp.flip_h = funnel_flip
-			(back if fl[2] == "behind" else over).add_child(fp)  # (the funnel's back layer goes in `back`, not `behind`: `behind` lies under the HUD plates, which hid it)
+			(funnel_back if fl[2] == "behind" else over).add_child(fp)  # (the back layer goes in `funnel_back`: not `behind`, which lies under the HUD plates, and not `back`, which is scaled and moved for the old machine's px: it landed 190 px too low and 20 % too big, under the Bag strip)
 	if straight:
 		# the straight tube (UI/SlotMachine/slot_tube_straight.png, 2 px per pt) lies behind the Bag strip and goes in under the cabinet; its clamp is over the Essence
 		if tube_strip.size != Vector2.ZERO:

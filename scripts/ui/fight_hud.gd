@@ -148,7 +148,7 @@ func _prepare_sounds() -> void:
 	var s := Audio.get_sfx_length("sfx_scene_prepare")
 	if s > 0.0:
 		main_len = s
-	await scr.get_tree().create_timer(main_len).timeout
+	await FightWait.seconds(scr, main_len)
 	var last := 0
 	while _prepare_on and scr.is_inside_tree():
 		var k := randi_range(1, 4)
@@ -157,10 +157,10 @@ func _prepare_sounds() -> void:
 		last = k
 		_play_prepare("sfx_scene_prepare_short_%d" % k)
 		if randf() < 0.4:  # (a second one overlapping the first)
-			await scr.get_tree().create_timer(randf_range(0.4, 1.1)).timeout
+			await FightWait.seconds(scr, randf_range(0.4, 1.1))
 			if _prepare_on:
 				_play_prepare("sfx_scene_prepare_short_%d" % (k % 4 + 1))
-		await scr.get_tree().create_timer(randf_range(1.2, 2.4)).timeout
+		await FightWait.seconds(scr, randf_range(1.2, 2.4))
 
 
 ## Walking on: the old props are cleared away first (that began at the encounter board; if the fight was begun early, it is waited for), then the
@@ -171,16 +171,16 @@ func _arrive() -> void:
 		for e in scr._views:  # (the name would lie over the puppet and hide the spot to click)
 			if is_instance_valid(scr._views[e]):
 				scr._views[e].hide_name()
-		await scr.get_tree().create_timer(0.15).timeout
+		await FightWait.seconds(scr, 0.15)
 		_let_enemies_down()
 		return
 	_prepare_sounds()  # (the stage is being made ready: old props away, new ones and the enemies in)
 	if scr._stage.is_clearing():
 		await scr._stage.cleared
 	var tw := scr._stage.bring_props()
-	await scr.get_tree().create_timer(1.2).timeout  # (the enemies are let down after the first props: the props walk on, the puppets hang from their ropes)
+	await FightWait.seconds(scr, 1.2)  # (the enemies are let down after the first props: the props walk on, the puppets hang from their ropes)
 	_let_enemies_down()
-	await scr.get_tree().create_timer(PuppetStage.BRING_TIME - 1.2 - 1.0).timeout
+	await FightWait.seconds(scr, PuppetStage.BRING_TIME - 1.2 - 1.0)
 	_prepare_on = false
 	for p in _prepare_players:
 		Audio.stop_held(p, 0.4)
@@ -191,14 +191,14 @@ func _arrive() -> void:
 		if scr.hold_hud:
 			await scr.hud_released
 	while _dropping and scr.is_inside_tree():  # (the HUD comes up once the enemies hang in their places)
-		await scr.get_tree().process_frame
+		await FightWait.frame(scr)
 	if scr._talk_pending:
 		scr._talk_pending = false
 		await _hud_up()
 		if tw.is_running():
 			await tw.finished
 		_show_act_sign(true)
-		await scr.get_tree().create_timer(0.6).timeout  # (the cards have landed)
+		await FightWait.seconds(scr, 0.6)  # (the cards have landed)
 		scr._h_talk._talk()
 		return
 	_hud_up()
@@ -809,7 +809,7 @@ func _show_act_sign(from_arrival := false) -> void:
 		_act_sign_gen += 1
 	if from_arrival:
 		var gen := _act_sign_gen
-		await scr.get_tree().create_timer(PuppetTopHud.ACT_SHOWN).timeout
+		await FightWait.seconds(scr, PuppetTopHud.ACT_SHOWN)
 		if gen == _act_sign_gen and scr.is_inside_tree():
 			_lift_act_sign()
 
@@ -866,6 +866,21 @@ func _refresh_statuses_compact() -> void:
 			em.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			icon = em
 		icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		var sock := UiSkin.tex("nu_debuff_socket") if id == "thorns" else null
+		if sock != null:  # (Thorns: the little thorny branch is lost on its own: it sits in the green socket of the HUD, like a picture in its frame)
+			var bg := TextureRect.new()
+			bg.texture = sock
+			bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			bg.stretch_mode = TextureRect.STRETCH_SCALE
+			bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			holder.add_child(bg)
+			var inset := _status_px() * 0.13
+			icon.custom_minimum_size = Vector2.ZERO  # (else its own minimum size pushes it out of the inset)
+			icon.offset_left = inset
+			icon.offset_right = -inset
+			icon.offset_top = inset
+			icon.offset_bottom = -inset
 		holder.add_child(icon)
 		var digits := ""
 		for ch in String(b[0]):
@@ -941,7 +956,7 @@ func _resort_bag() -> void:
 	if not _puppet_strips() or scr._resort_wait or scr._keep_bag_order:
 		return
 	scr._resort_wait = true
-	await scr.get_tree().create_timer(0.45).timeout
+	await FightWait.seconds(scr, 0.45)
 	scr._resort_wait = false
 	if scr.fight == null or not scr.is_inside_tree() or scr._launching > 0 or scr._tube_prep:
 		return  # (another launch has begun: it calls this again when it is over)
@@ -1085,6 +1100,7 @@ func _build_strips_puppet() -> void:
 	sp.add_child(scr._machine.behind)
 	sp.move_child(scr._machine.behind, 0)
 	inner.add_child(scr._machine.back)
+	inner.add_child(scr._machine.funnel_back)  # (NewUI Ver2: the funnel's back layer, in strip px, under the Essence)
 	scr._stock_row = Control.new()
 	scr._stock_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	scr._stock_row.custom_minimum_size = Vector2(1100.0, PuppetLayout.FRAME_BAG.y)
@@ -1195,7 +1211,7 @@ func _fit_bottom() -> void:
 	for n in movers:
 		if n != null:
 			n.modulate.a = 0.0
-	await scr.get_tree().process_frame
+	await FightWait.frame(scr)
 	if not is_instance_valid(scr._bag_panel):
 		return
 	var dy := (scr.size.y if scr.size.y > 0.0 else 1080.0) - FightScreen.BOTTOM_MARGIN - (scr._bag_panel.position.y + scr._bag_panel.size.y)
@@ -1592,6 +1608,8 @@ func _refresh_chant() -> void:
 				ic.highlight = i == scr._step_pos or (scr.chant_mode == "pick" and i == scr.chant_i)
 				ic.dim = scr._step_pos >= 0 and i > scr._step_pos
 				if scr.chant_mode == "pick":
+					if scr._chant_blocked(i):
+						ic.dim = true  # (already the colour the brush paints)
 					var ci := i
 					slot.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 					slot.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: scr._h_anim._emit_chant_done(ci))

@@ -5,6 +5,8 @@ extends PanelContainer
 
 signal used(chip: BottleChip)
 
+const ART_GROW := 1.2  # the painted bottle is drawn 20% bigger than its cell
+
 var id := ""  # "" = an empty slot
 var index := -1
 var clickable := false
@@ -85,7 +87,7 @@ func _draw() -> void:
 	if id != "" and UiSkin.tex(_art_name()) != null:
 		# New theme: the painted bottle, filling most of its square (bobbing gently when you can drink it)
 		var bob := sin(_t * 2.4) * 1.5 if clickable and not UiSkin.is_puppet() else 0.0  # (Puppet: it stands still, like the artifacts)
-		UiSkin.draw_fit(self, _art_name(), size / 2.0 + Vector2(0, bob), minf(size.x, size.y) * 0.86)
+		UiSkin.draw_fit(self, _art_name(), size / 2.0 + Vector2(0, bob), minf(size.x, size.y) * 0.86 * ART_GROW)  # (centred on its cell, so a bigger bottle spills over the cell's edge evenly, the layout does not move)
 		return
 	if id == "":
 		# an empty slot: a faint flask outline

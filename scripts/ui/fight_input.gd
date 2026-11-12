@@ -355,7 +355,7 @@ func _auto_ball() -> void:
 	if scr.busy or scr._auto_busy or scr.phase != "build":
 		return
 	scr._auto_busy = true  # (Auto-fill must not start while the new Essence are still rolling into the bag)
-	scr.get_tree().create_timer(0.8).timeout.connect(func(): scr._auto_busy = false)
+	scr.get_tree().create_timer(0.8).timeout.connect(func(): if is_instance_valid(scr): scr._auto_busy = false)
 	var p := scr.fight.player
 	var need := 10 - p.stock.size()
 	if need <= 0:
@@ -739,7 +739,7 @@ func _update_hover_info(d: float, m := Vector2(-1, -1)) -> void:
 	p.add_child(body)
 	scr.add_child(p)
 	_hover_panel = p
-	await scr.get_tree().process_frame
+	await FightWait.frame(scr)
 	if not is_instance_valid(p):
 		return
 	if avoid.has_area():  # on the puppet's left, where its intent bubble stands (on its right when the left side has no room): never over the puppet
@@ -818,7 +818,7 @@ func _mover(spell: Dictionary, _hint: EnemyState) -> Array:
 	scr.move_view = rows[0]
 	scr._prompt.text = "%s: drag an Essence to another spot, in its own row or onto another enemy  ·  right-click to skip" % spell.name
 	scr._h_hud._refresh_all()
-	await scr.get_tree().process_frame  # (the rows grow for the move: lay them out first)
+	await FightWait.frame(scr)  # (the rows grow for the move: lay them out first)
 	var drags := {}  # EnemyView -> ChantDrag
 	for v in rows:
 		var d: ChantDrag = v.begin_row_drag(scr)
@@ -1216,7 +1216,7 @@ func _wild_arranger(spell: Dictionary) -> Array:
 			rows.append(v)
 	scr._prompt.text = "%s: drag an Essence to another spot, in your chant or in an enemy's row  ·  right-click: keep them" % spell.name
 	scr._h_hud._refresh_all()
-	await scr.get_tree().process_frame
+	await FightWait.frame(scr)
 	var drags := []
 	for v in rows:
 		var d: ChantDrag = v.begin_row_drag(scr)
@@ -1252,6 +1252,9 @@ func _wild_painter(spell: Dictionary) -> Array:
 	if scr.fight.spoken and not scr.fight.chant.is_empty():
 		scr.chant_mode = "pick"
 		scr.chant_i = 0
+		scr.chant_block = scr.fight.paint_to
+		if scr._chant_blocked(0):
+			scr.chant_i = scr._chant_next(0, 1, scr.fight.chant.size())
 	_pick_any_essence(spell, false, null, "brush")  # (it waits for an enemy pick on its own; a chant pick ends it)
 	if scr.chant_mode == "pick":
 		scr._prompt.text = "%s: paint an enemy's Essence, or click one of your chant" % spell.name
@@ -1259,6 +1262,7 @@ func _wild_painter(spell: Dictionary) -> Array:
 	var got: Array = await scr._wild_painted
 	scr._chant_done.disconnect(on_chant)
 	scr._any_picked.disconnect(on_enemy)
+	scr.chant_block = ""
 	if got.size() == 2 and scr._picking_any:
 		scr._any_picked.emit([])  # put the brush away
 	scr.chant_mode = ""
@@ -1323,8 +1327,12 @@ func _chant_picker(spell: Dictionary) -> int:
 	var to: String = scr.fight.current_eff.get("to", "?")
 	scr._prompt.text = ("%s: which Essence of the chant should be repainted %s?  ·  click it, or Tab + Enter" % [spell.name, "Any" if to == "?" else Elements.NAMES[to]]) if self_paint else \
 		"%s: which Essence of the chant should be duplicated?  ·  click it, or Tab + Enter" % spell.name
+	scr.chant_block = to if self_paint else ""
+	if scr._chant_blocked(scr.chant_i):
+		scr.chant_i = scr._chant_next(scr.chant_i, 1, scr.fight.chant.size())
 	scr._h_hud._refresh_all()
 	var i: int = await scr._chant_done
+	scr.chant_block = ""
 	scr.chant_mode = ""
 	scr._h_hud._refresh_all()
 	return i

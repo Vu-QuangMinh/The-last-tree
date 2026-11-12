@@ -2874,7 +2874,7 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 			_log("%s shines brighter." % e.name)
 		"summon_clock":
 			_log("%s's alarm ticks: %d." % [e.name, int(m.n) - 1])
-			await anim.call({"type": "sfx", "name": "sfx_lamp_glow"})
+			await anim.call({"type": "sfx", "name": "sfx_clock_tick"})
 		"recharge":
 			_log("%s powers down to recharge." % e.name)
 			await anim.call({"type": "sfx", "name": "sfx_power_down"})

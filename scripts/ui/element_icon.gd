@@ -224,6 +224,19 @@ func _draw() -> void:
 	elif dim:
 		a = 0.45
 	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 5.0)
+	if wall:  # (the ring of bramble goes UNDER the Essence: drawn first, the orb covers its inner rim)
+		var ring := _wall_ring()
+		if ring != null:  # (the painted ring: scaled so its opening is a little smaller than the orb)
+			var k := r * 0.81 / _wall_hole_px
+			draw_texture_rect(ring, Rect2(c - ring.get_size() * k * 0.5, ring.get_size() * k), false)
+		else:  # no picture: a ring of bramble drawn in code, dark green, with thorns sticking out
+			draw_arc(c, r + 1.5, 0, TAU, 32, Color(0.2, 0.32, 0.12), maxf(2.5, r * 0.22), true)
+			for k in 8:
+				var ta := k * TAU / 8.0 + 0.3
+				var tb := c + Vector2.from_angle(ta) * (r + 1.0)
+				var tt := c + Vector2.from_angle(ta) * (r + r * 0.42)
+				var ts := Vector2.from_angle(ta + PI / 2.0) * r * 0.12
+				draw_colored_polygon(PackedVector2Array([tb - ts, tt, tb + ts]), Color(0.36, 0.25, 0.12))
 	if highlight:
 		# lit (the chant is building this orb): a soft halo in the element's colour, breathing, behind the bead
 		var gc: Color = GLOW.get(el, Color(1, 0.95, 0.8))
@@ -326,15 +339,31 @@ func _draw() -> void:
 				draw_colored_polygon(PackedVector2Array([end - side * 0.4, end + dir * reach * 0.8, end + side * 0.4]), Color(1, 1, 0.95, 0.9))
 		for s in _sparks:
 			draw_circle(c + s[0], (2.0 + 3.0 * s[2]) * maxf(1.0, r / 40.0), Color(1.0, 0.97, 0.8, s[2]))
-	if wall:
-		# a ring of bramble: dark green, with thorns sticking out
-		draw_arc(c, r + 1.5, 0, TAU, 32, Color(0.2, 0.32, 0.12), maxf(2.5, r * 0.22), true)
-		for k in 8:
-			var ta := k * TAU / 8.0 + 0.3
-			var tb := c + Vector2.from_angle(ta) * (r + 1.0)
-			var tt := c + Vector2.from_angle(ta) * (r + r * 0.42)
-			var ts := Vector2.from_angle(ta + PI / 2.0) * r * 0.12
-			draw_colored_polygon(PackedVector2Array([tb - ts, tt, tb + ts]), Color(0.36, 0.25, 0.12))
+
+
+
+static var _wall_ring_tex: Texture2D
+static var _wall_hole_px := 1.0  # the radius (texture px) of the ring picture's empty middle
+
+
+## The painted ring of bramble round a hedge wall's Essence (UI/Essence/wall_ring.png), or null. Its opening is measured once: from the middle outwards until the first solid pixel.
+static func _wall_ring() -> Texture2D:
+	if _wall_ring_tex == null:
+		_wall_ring_tex = UiSkin.tex("wall_ring")
+		if _wall_ring_tex != null:
+			var im := _wall_ring_tex.get_image()
+			if im.is_compressed():
+				im.decompress()
+			var c := Vector2(im.get_width(), im.get_height()) * 0.5
+			var total := 0.0
+			for k in 24:
+				var dir := Vector2.from_angle(k * TAU / 24.0)
+				var d := 2.0
+				while d < c.x and im.get_pixelv(Vector2i(c + dir * d)).a < 0.4:
+					d += 1.0
+				total += d
+			_wall_hole_px = maxf(4.0, total / 24.0)
+	return _wall_ring_tex
 
 
 ## Burden: a dull grey stone sitting in a chant slot: lumpy, speckled, with a crack and a soft highlight.
