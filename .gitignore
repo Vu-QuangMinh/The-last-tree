@@ -24,3 +24,22 @@ assets/Puppet/_Source/Slot_machine.pdf
 
 # the 107 MB source PDF of the HUD ver 2 (GitHub refuses files over 100 MB); it stays on the artist machine
 assets/Puppet/UI/Hud2/Puppet HUD Nov.pdf
+
+# ---- 2026-11 housekeeping (docs/plan_dot1_don_kho.md T1.1)
+# Python bytecode of the tools
+__pycache__/
+*.pyc
+# screenshot folders written by tools/*_shot.gd and by hand (never part of the game)
+shots*/
+scrshot/
+screenshots/
+# hand backups next to data files (the real file is the one without .bak)
+*.bak.json
+# scratch folders beside the cut art: backups, references, redo batches (the game never reads them)
+assets/**/_Backup*/
+assets/**/_Refs/
+assets/**/_Redo/
+assets/**/redo_refs/
+# .m4a cannot be imported by Godot; keep such files outside the repo
+*.m4a
+*.m4a.txt
