@@ -1,4 +1,4 @@
-"""The Puppet Stage main menu title "Who is The Puppet": docs/title_reference.png (the user's lettering: black letters on grey) -> every letter becomes its own
+"""The Puppet Stage main menu title "Who is The Puppet": docs/_ref/title_reference.png (the user's lettering: black letters on grey) -> every letter becomes its own
 cut-out wooden piece (painted with milk paint on a wood grain, a dark walnut rim, paint worn off at the edges, scratches, a soft drop shadow) ->
 assets/Puppet/UI/Banners/game_title.png. The letters keep the reference's shapes and places; each is turned a hair, like hand-cut work.
 Run: python tools/make_game_title.py"""
@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import asset_paths as AP
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REF = os.path.join(HERE, "..", "docs", "title_reference.png")
+REF = os.path.join(HERE, "..", "docs", "_ref", "title_reference.png")
 OUT = os.path.join(AP.PUPPET, "UI", "Banners", "game_title.png")
 S = 2  # work at twice the size
 rng = np.random.default_rng(7)
