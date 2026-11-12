@@ -1,6 +1,6 @@
 ---
 name: game-feel-vfx
-description: How AAA games make effects feel powerful (layering, anticipation, hit-stop, trauma-based screen shake, flashes, additive glow, shockwaves, dissolve/noise/distortion shaders, sound sync, target reactions) and how to build them in Godot 4 2D for The Last Tree. Use this whenever the user asks for or complains about visual effects, "juice", game feel, impact, polish, spell/attack animations, fireballs, explosions, hits, deaths, screen shake, flashes, glow, light, particles, shaders, or says something "feels weak/flat/boring", even if they don't say "VFX".
+description: How AAA games make effects feel powerful (layering, anticipation, hit-stop, trauma-based screen shake, flashes, additive glow, shockwaves, dissolve/noise/distortion shaders, sound sync, target reactions) and how to build them in Godot 4 2D for Behind the Curtain. Use this whenever the user asks for or complains about visual effects, "juice", game feel, impact, polish, spell/attack animations, fireballs, explosions, hits, deaths, screen shake, flashes, glow, light, particles, shaders, or says something "feels weak/flat/boring", even if they don't say "VFX".
 ---
 
 # Game feel and VFX
