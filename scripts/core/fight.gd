@@ -79,7 +79,7 @@ var broken := {}  # spell id -> true: broken (worn out, or smashed by the Hammer
 var hammered := {}  # spell id -> true: smashed by the Hammer: it leaves the row for the rest of the fight
 var exhausted: Array = []  # spell ids Exhausted this fight: gone for the rest of the run
 ## Effects that put a status on an enemy: an Impervious one shrugs them off.
-const STATUS_OPS := ["burn", "stoke", "weak", "freeze", "disarm", "daze", "curse"]
+const STATUS_OPS := ["burn", "stoke", "weak", "stun", "disarm", "daze", "curse"]
 const TRINITY_PARTS := ["trinity_first", "trinity_second", "trinity_third"]
 var trinity_cast := {}  # Trinity Fragments cast this turn (base id -> true)
 var trinity_formed := false  # the three became Trinity this fight (the run keeps it: see RunState.finish_fight)
@@ -1143,11 +1143,11 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 				if eff.get("if_attacking", false) and e.intent.get("kind", "") != "attack":
 					continue  # (Against the Tide: only if it means to attack)
 				e.weak_turns = maxi(e.weak_turns, eff.turns)
-		"freeze":
+		"stun":  # (the old Freeze cards: 2026-11-12)
 			for e in targets:
 				if eff.has("if_burn") and e.burn < int(eff.if_burn):
 					continue  # (Frost Burn: only if it's burning that much)
-				e.freeze_turns = maxi(e.freeze_turns, eff.turns)  # (bosses too)
+				e.stun_turns = maxi(e.stun_turns, eff.turns)  # (bosses too)
 		"summon_bill":
 			player.death_note = "You summoned Bill to this world. He took over, killing everything."
 			_log(player.death_note)
@@ -2034,9 +2034,9 @@ func _enemy_phase() -> void:
 			# (something it has to say before it acts: the Invoker's second wind)
 			await anim.call({"type": "speech_lines", "enemy": e, "lines": e.get_meta("say_first")})
 			e.remove_meta("say_first")
-		await anim.call({"type": "enemy_turn", "enemy": e, "move": e.intent, "frozen": e.freeze_turns > 0})
-		if e.freeze_turns > 0:
-			_log("%s is frozen." % e.name)
+		await anim.call({"type": "enemy_turn", "enemy": e, "move": e.intent, "stunned": e.stun_turns > 0})
+		if e.stun_turns > 0:
+			_log("%s is stunned." % e.name)
 		elif e.grounded > 0:
 			e.grounded -= 1
 			_log("%s is stunned from its fall." % e.name)
@@ -2624,7 +2624,7 @@ func _reset_on_rebirth(e: EnemyState) -> void:
 func _cleanse_enemy(t: EnemyState) -> void:
 	t.burn = 0
 	t.weak_turns = 0
-	t.freeze_turns = 0
+	t.stun_turns = 0
 	t.dazed = 0
 	t.disarmed = 0
 
@@ -3185,9 +3185,13 @@ func _cleanup() -> void:
 				# two small slimes of different colours pop out
 				var kinds := ["purple_slime", "green_slime", "yellow_slime"]
 				kinds.remove_at(rng.randi() % 3)  # (the fight's own dice, so Undo and saved runs replay it the same)
+				var into: Array = []
+				e.set_meta("split_into", into)  # (the screen: its pieces fly into them, and they take its place in the row)
 				for k in kinds:
 					if alive().size() < MAX_ENEMIES:
 						var add := _spawn(k)
+						add.set_meta("split_parent", e)
+						into.append(add)
 						add.fresh = true
 						_plan(add)
 						anim.call({"type": "spawn", "enemy": add})

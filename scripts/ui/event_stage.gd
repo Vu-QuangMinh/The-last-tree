@@ -33,7 +33,7 @@ const LAYOUTS := {
 			{"img": "event_water_wisp", "role": "wisp", "x": 0.45, "h": 95.0, "dy": -34.0, "from": "right", "bob": true, "opt": "Give it a spell"}]},
 	"church_of_aole": {"props": [{"img": "event_church", "x": 0.5, "h": 530.0, "dy": -20.0, "from": "right"},
 			{"img": "event_priest", "x": 0.455, "h": 187.0, "dy": -18.0, "from": "left", "opt": "Stay awhile and listen"}], "sky": true, "no_hud": true},
-	"flying_turtle": {"result_how": {"Help him": "turtle_help"}, "no_hud": true, "center": true, "result_on_stage": true, "props": [{"img": "event_flying_turtle_flipped", "role": "turtle", "x": 0.45, "h": 200.0, "from": "top", "wriggle": true, "opt": "Help him"}]},
+	"flying_turtle": {"result_how": {"Help him": "turtle_help"}, "no_hud": true, "center": true, "result_on_stage": true, "props": [{"img": "enemy:winged_tortoise_fallen", "role": "turtle", "x": 0.45, "h": 200.0, "from": "top", "wriggle": true, "opt": "Help him"}]},
 	"turtle_falls": {"props": [], "center": true, "result_on_stage": true, "outro": {0: "shell_fall"}},
 	"mystery_shack": {"offer_on_stage": true, "offer_keep_props": true, "items_center_x": true, "result_on_stage": true, "result_artifact": true, "item_tags": {"Give each of them a new toy, so they don't have to fight (give 2 artifacts)": "Give each a new toy"},
 		"result_how": {"Side with the boy": "boy_wins", "Side with the girl": "girl_wins", "Give each": "toys"},
@@ -421,7 +421,7 @@ func _ready() -> void:
 			p = p.duplicate()
 			p.merge(saved[str(ei)], true)
 			p.erase("floor_edge")
-		var tex: Texture2D = UiSkin.tex(String(p.img))
+		var tex: Texture2D = _stage_tex(String(p.img))
 		if tex == null:
 			continue  # (no art for it yet: its option shows as a button)
 		var h: float = p.h
@@ -1267,7 +1267,7 @@ func _react(how: String) -> void:
 			if not turtle.is_empty():
 				turtle["gone"] = true
 				var tn: TextureRect = turtle.node
-				_swap_pic(turtle, "event_flying_turtle_front")
+				_swap_pic(turtle, "enemy:winged_tortoise")
 				tn.pivot_offset = tn.size / 2.0
 				tn.rotation = PI
 				var ttw := create_tween()
@@ -1890,8 +1890,23 @@ func _move_whispers(d: float) -> void:
 
 
 ## A figure changes its picture (same height, same standing place).
+## A prop's picture: an event picture by name, or "enemy:<id>" for a fight enemy's own picture (Enemies/Act1), cropped
+## to what is drawn on it (the enemy pictures are square with room around the body), so `h` is the body's height.
+static func _stage_tex(img: String) -> Texture2D:
+	if not img.begins_with("enemy:"):
+		return UiSkin.tex(img)
+	var path := "res://assets/Puppet/Enemies/Act1/%s.png" % img.substr(6)
+	if not ResourceLoader.exists(path):
+		return null
+	var full: Texture2D = load(path)
+	var at := AtlasTexture.new()
+	at.atlas = full
+	at.region = Rect2(full.get_image().get_used_rect())
+	return at
+
+
 func _swap_pic(r: Dictionary, img: String, flip := false) -> void:
-	var tex: Texture2D = UiSkin.tex(img)
+	var tex: Texture2D = _stage_tex(img)
 	if r.is_empty() or tex == null:
 		return
 	var n: TextureRect = r.node

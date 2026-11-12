@@ -166,7 +166,7 @@ var _pause_overlay: Control
 ## "chant_changed", summon_spells via "loadout_changed") are left out so they don't double up.
 const EFFECT_SFX := {
 	"strike": "sfx_damage_hit", "burn": "sfx_burn_apply",
-	"stoke": "sfx_burn_apply", "weak": "sfx_weaken_apply", "freeze": "sfx_freeze_apply",
+	"stoke": "sfx_burn_apply", "weak": "sfx_weaken_apply", "freeze": "sfx_freeze_apply", "stun": "sfx_stun_apply",
 	"expose": "sfx_expose_apply", "ethereal": "sfx_ethereal_apply", "shield": "sfx_shield_up",
 	"heal": "sfx_heal", "aegis": "sfx_aegis_up", "thorns": "sfx_shield_up", "draw": "sfx_draw_element",
 	"rotate": "sfx_convert", "swap": "sfx_convert", "convert": "sfx_convert", "purge": "sfx_purge",
@@ -3205,10 +3205,7 @@ func _sync_views() -> void:
 	for e in _views:  # (Puppet Stage: a puppet that was defeated breaks into pieces)
 		var old: EnemyView = _views[e]
 		if e.is_dead() and not e.knocked and not _hand_going_down(e) and is_instance_valid(old) and is_instance_valid(old.creature):
-			if old.creature.has_rig():
-				_shatter_arm(old.creature)
-			else:
-				PuppetShatter.spawn(self, old.creature)
+			_break_puppet(e, old.creature)
 	var had := _views.keys()
 	var drops := {}  # hand -> how far down on the floor its arm was (the view is rebuilt, the fall goes on from there)
 	for e in _views:
@@ -3243,6 +3240,10 @@ func _sync_views() -> void:
 		_slot_w.clear()
 	for i in live.size():  # (a newcomer stands next to the one before it in the fight: a split, a summon)
 		if not (live[i] in _row_order):
+			var par: Variant = live[i].get_meta("split_parent") if live[i].has_meta("split_parent") else null
+			if par != null and par in _row_order:
+				_row_order[_row_order.find(par)] = live[i]  # (the Giant Slime's first slime takes its place; the second stands next to it)
+				continue
 			var at := _row_order.find(live[i - 1]) + 1 if i > 0 else 0
 			_row_order.insert(at, live[i])
 	_views.clear()
@@ -3260,6 +3261,8 @@ func _sync_views() -> void:
 	for e in live:
 		var v := EnemyView.new()
 		v.setup(e, fight)
+		if e.has_meta("split_parent") and is_instance_valid(_splitting.get(e.get_meta("split_parent"))):
+			v.modulate.a = 0.0  # (not there yet: the Giant Slime's pieces are still flying into it)
 		v.clicked.connect(_on_enemy_clicked)
 		v.hp_clicked.connect(_on_hp_clicked)
 		if not hm:
@@ -4536,7 +4539,73 @@ func _on_cast() -> void:
 		await _damage_step()
 
 
+var _cast_queue: Array = []  # spell ids clicked while another spell was resolving: cast next, in the order clicked
+
+
+## A click on a card while another spell is resolving: one that needs no target waits its turn (numbered on the card).
+func _queue_cast(card: SpellCard) -> bool:
+	if not (_casting and phase == "spells") or card.charges <= 0 or aiming:
+		return false
+	var spell: Dictionary = card.spell
+	var first: Dictionary = spell.effects[0] if not spell.effects.is_empty() else {}
+	if _needs_pick(spell) or first.get("target", "") in ["target", "two"] or not _allowed("cast", spell.id):
+		return true  # (one you aim waits for the cast to end: the click does nothing)
+	if _cast_queue.count(spell.id) >= card.charges:
+		return true
+	_cast_queue.append(spell.id)
+	Audio.play("elem_pickup", -6.0)
+	_queue_badges()
+	return true
+
+
+## The next queued spell's card that can still be cast (those gone or spent meanwhile are dropped). take: off the queue.
+func _next_queued(take := false) -> SpellCard:
+	while not _cast_queue.is_empty():
+		var c := _card_for(_cast_queue[0])
+		if c != null and c.charges > 0 and phase == "spells" and not fight.over:
+			if take:
+				_cast_queue.pop_front()
+				_queue_badges()
+			return c
+		_cast_queue.pop_front()
+		_queue_badges()
+	return null
+
+
+## The queued spells' numbers over their cards (1 = next).
+var _queue_marks: Array = []
+
+
+func _queue_badges() -> void:
+	for m in _queue_marks:
+		if is_instance_valid(m):
+			m.queue_free()
+	_queue_marks.clear()
+	for c in _cards:
+		if not is_instance_valid(c):
+			continue
+		var at := _cast_queue.find(c.spell.id)
+		if at < 0:
+			continue
+		var r: Rect2 = c.get_global_rect()
+		var b := Label.new()
+		b.text = str(at + 1)
+		b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.z_index = 50
+		b.add_theme_font_size_override("font_size", 34)
+		b.add_theme_color_override("font_color", Color(1.0, 0.9, 0.45))
+		b.add_theme_color_override("font_outline_color", Color(0.15, 0.08, 0.02))
+		b.add_theme_constant_override("outline_size", 10)
+		b.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		b.size = Vector2(r.size.x, 44)
+		add_child(b)
+		b.global_position = Vector2(r.position.x, r.position.y - 46)
+		_queue_marks.append(b)
+
+
 func _on_card_clicked(card: SpellCard) -> void:
+	if busy and _queue_cast(card):
+		return
 	if phase != "spells" and card.charges > 0 and not busy:
 		# a stored spell: awake, but spells are cast after the chant
 		_float_text("Chant first", card.global_position + Vector2(card.size.x * card.scale.x / 2.0 - 60, -10), Color(1, 0.9, 0.55))
@@ -4576,9 +4645,15 @@ func _on_card_clicked(card: SpellCard) -> void:
 	busy = false
 	_refresh_all()
 	if fight.over:
+		_cast_queue.clear()
+		_queue_badges()
 		await _finish()
 	elif fight.page_turn_pending:
+		_cast_queue.clear()
+		_queue_badges()
 		await _page_turn_check()
+	elif _next_queued() != null:
+		await _on_card_clicked(_next_queued(true))  # (the next spell clicked while this one resolved)
 	elif not fight.has_valid_move() and auto_release:
 		# nothing left to cast: the chant is Released by itself
 		await _wait(0.3)
@@ -4618,6 +4693,8 @@ func _on_end_turn() -> void:
 func _damage_step() -> void:
 	if busy or fight.over:
 		return
+	_cast_queue.clear()
+	_queue_badges()
 	busy = true
 	end_confirm = false
 	tut.emit("releasing", null)
@@ -6112,6 +6189,37 @@ func _chant_picker(spell: Dictionary) -> int:
 var _reforming := {}  # EnemyState -> PuppetShatter: a boss pulling itself back together (see "reform")
 
 
+var _splitting := {}  # EnemyState -> PuppetShatter: the Giant Slime's pieces flying into its two slimes
+
+
+## A defeated puppet breaks: an arm (rig) falls apart, a puppet bursts; the Giant Slime's pieces fly into the slimes it splits into.
+func _break_puppet(e: EnemyState, c: Creature) -> void:
+	if c.has_rig():
+		_shatter_arm(c)
+		return
+	if e.has_meta("split_into") and not _splitting.has(e):
+		var fx := PuppetShatter.spawn_split(self, c, func() -> Array:
+			var boxes: Array = []
+			for s in e.get_meta("split_into"):
+				var v: EnemyView = _views.get(s)
+				if v != null and is_instance_valid(v) and is_instance_valid(v.creature):
+					boxes.append(PuppetShatter.painted_box(v.creature))
+			return boxes)
+		if fx != null:
+			_splitting[e] = fx
+			fx.reformed.connect(func() -> void:
+				_splitting.erase(e)
+				for s in e.get_meta("split_into"):
+					var v: EnemyView = _views.get(s)
+					if v != null and is_instance_valid(v):
+						v.modulate.a = 1.0
+						v.scale = Vector2(1.08, 0.92)
+						v.pivot_offset = Vector2(v.size.x / 2.0, v.size.y)
+						v.create_tween().tween_property(v, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT))
+			return
+	PuppetShatter.spawn(self, c)
+
+
 func _anim(ev: Dictionary) -> void:
 	await _anim_event(ev)
 	_cull_dead()
@@ -6145,10 +6253,7 @@ func _cull_dead() -> void:
 			_views.erase(e)
 			if is_instance_valid(old):
 				if is_instance_valid(old.creature):
-					if old.creature.has_rig():
-						_shatter_arm(old.creature)
-					else:
-						PuppetShatter.spawn(self, old.creature)
+					_break_puppet(e, old.creature)
 				var par := old.get_parent()
 				var at := old.get_index()
 				var w := maxf(old.custom_minimum_size.x, old.size.x)
@@ -8530,8 +8635,8 @@ func _effect_words(e: Dictionary) -> String:
 			return "Burn %d" % n
 		"weak":
 			return "Weakened"
-		"freeze":
-			return "Frozen"
+		"stun":
+			return "Stunned"
 		"expose":
 			return ""  # the paint splashes say it
 		"shield":
@@ -8568,7 +8673,7 @@ func _enemy_turn_start(ev: Dictionary) -> void:
 		tw.tween_property(actor.creature, "scale", Vector2(1.12, 1.12), 0.15)
 		tw.tween_property(actor.creature, "scale", Vector2.ONE, 0.2)
 	var m: Dictionary = ev.move
-	var words := "❄ Frozen: it skips its turn." if ev.frozen else _move_words(m, ev.enemy)
+	var words := "💫 Stunned: it skips its turn." if ev.get("stunned", false) else _move_words(m, ev.enemy)
 	await _file_turn_box()  # (in case the last one is still up)
 	# what it's about to do, in a box at the top of the screen; it stays up while the enemy acts
 	var box := _callout_panel("[b]%s[/b]\n%s" % [ev.enemy.name, Keywords.colorize(words)], Color(1, 0.55, 0.4))

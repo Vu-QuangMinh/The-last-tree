@@ -172,10 +172,6 @@
     "Thundering",
     "Front"
   ],
-  "geyser": [
-    "Erupting",
-    "Geyser"
-  ],
   "recall": [
     "Remembered",
     "Recall"
@@ -468,10 +464,6 @@
     "Hissing",
     "Vent"
   ],
-  "quench": [
-    "Quenching",
-    "Quench"
-  ],
   "tide_ward": [
     "Tide-warded",
     "Seawall"
@@ -556,10 +548,6 @@
     "Fanned-up",
     "Ashes"
   ],
-  "water_whip": [
-    "Whipping",
-    "Whip"
-  ],
   "thieving_wind": [
     "Pilfering",
     "Pilferer"
@@ -604,10 +592,6 @@
     "Coal-hot",
     "Coal"
   ],
-  "spray": [
-    "Splashing",
-    "Spray"
-  ],
   "flamecaller": [
     "Flame-called",
     "Caller"
@@ -648,10 +632,6 @@
     "Witching",
     "Witchfire"
   ],
-  "stormcaller": [
-    "Storm-called",
-    "Stormcaller"
-  ],
   "deep_freeze": [
     "Deep-frozen",
     "Permafrost"
@@ -680,10 +660,6 @@
     "Rainbowed",
     "Bridge"
   ],
-  "corrode": [
-    "Corroded",
-    "Rust"
-  ],
   "wind_shear": [
     "Shearing",
     "Shear"
@@ -703,10 +679,6 @@
   "mistral": [
     "Mistral-swept",
     "Mistral"
-  ],
-  "spirit_lantern": [
-    "Lantern-lit",
-    "Lantern"
   ],
   "soothing_mist": [
     "Soothing",
@@ -759,10 +731,6 @@
   "sky_sovereign": [
     "Sovereign",
     "Sovereign's Sky"
-  ],
-  "phoenix_dive": [
-    "Diving",
-    "Dive"
   ],
   "tidal_surge": [
     "Surging",

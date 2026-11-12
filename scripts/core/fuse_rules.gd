@@ -10,9 +10,9 @@ extends RefCounted
 ## - Riders follow the damage: if it went random, a rider aimed at "an enemy" goes random too. After a Barrage, a
 ##   stackable rider (Burn, Poison) is scattered one at a time ("apply 1 Burn 6 times", randomly) and any other one lands on
 ##   a random enemy; after a hit on one random enemy, the rider lands on that same enemy.
-## - The same rider on the same enemies adds up, wherever it is (Freeze 1 and Freeze 2 on it: Freeze 3).
-## - A conditional rider ("if it has 4+ Burn, Freeze it", "if it's attacking, Weaken it") fused with something that
-##   hits all enemies checks every enemy, at the end: "Then apply 1 Freeze to each one with 4+ Burn".
+## - The same rider on the same enemies adds up, wherever it is (Stun 1 and Stun 2 on it: Stun 3).
+## - A conditional rider ("if it has 4+ Burn, Stun it", "if it's attacking, Weaken it") fused with something that
+##   hits all enemies checks every enemy, at the end: "Then apply 1 Stun to each one with 4+ Burn".
 ## - Losing HP and healing in the same spell cancel out (heal 6, lose 5: heal 1).
 ## - Order: what it does to ONE enemy first (you pick it first), then what it does to several or all of them, then a
 ##   "then Execute", then what it does for you (Shield, healing, Essence, ...).
@@ -199,12 +199,12 @@ static func _follow_damage(effects: Array) -> Array:
 	return out
 
 
-## The number a rider carries ("n", or "turns" for Weaken / Freeze).
+## The number a rider carries ("n", or "turns" for Weaken / Stun).
 static func _amount_key(e: Dictionary) -> String:
 	return "turns" if e.has("turns") and not e.has("n") else "n"
 
 
-const RIDERS := ["burn", "poison", "weak", "freeze", "daze", "steal", "shield", "heal", "thorns", "aegis", "draw", "meteor_rain", "expose", "max_hp", "vulnerable"]
+const RIDERS := ["burn", "poison", "weak", "stun", "daze", "steal", "shield", "heal", "thorns", "aegis", "draw", "meteor_rain", "expose", "max_hp", "vulnerable"]
 
 
 ## Things that only happen once however often they're said (Ethereal twice is Ethereal), and a Cleanse of everything

@@ -2,7 +2,8 @@ class_name EnemyState
 extends RefCounted
 ## One enemy in a fight. HP is a row of Essence (left to right); `armor[i]` marks Essence that can't be
 ## removed this turn (it still counts for matching).
-## Burn N: at the start of its turn it loses its N rightmost Essence, then the Burn is gone.
+## Burn N: N of its Essence, picked at random when the Burn lands, catch fire; at the start of its turn the burning ones
+## are lost, then the Burn is gone.
 ## Fire ignores armour.
 
 ## Just summoned (or popped out mid-fight): it shows its intent first and only acts after a whole turn of yours.
@@ -15,7 +16,7 @@ var elements: Array = []  # element letters
 var armor: Array = []  # bool per element
 var painted: Array = []  # bool per element: repainted by a spell (stolen, it becomes an Any Essence in your bag)
 var dmg_bonus := 0
-var lit: Array = []  # (legacy, kept in step with elements; unused)
+var lit: Array = []  # which Essence are burning (Burn, 2026-11-12: random ones, not the rightmost), in step with elements
 var acting_part := ""  # which part is acting right now ("L" / "R": one of her walls; "": the enemy itself)
 var yin := ""  # the Yin Yang Beast's colour: "white" or "black" ("" for everyone else)
 var charge_dmg := -1
@@ -34,9 +35,24 @@ var stripped: Array = []  # the Invoker's words so far: Essence gone from his sp
 var power := 0  # Power: +1 damage per hit for each stack (her song; Empower)
 var wall_step := {"L": 0, "R": 0}  # where each wall is in its attack pattern (a regrown wall starts over)
 var parts: Array = []  # per Essence: "" = the enemy itself, "L" / "R" = a wall it stands behind (Bramble Matron)
-var burn := 0
+## How many of its Essence are burning (the lit ones). Setting it lower puts fires out (0: all); higher lights more at random.
+var burn: int:
+	get:
+		_fix_lit()
+		return lit.count(true)
+	set(v):
+		_fix_lit()
+		var have := lit.count(true)
+		for i in lit.size():
+			if have <= maxi(0, v):
+				break
+			if lit[i]:
+				lit[i] = false
+				have -= 1
+		if v > have:
+			_light(v - have, null)
 var weak_turns := 0
-var freeze_turns := 0
+var stun_turns := 0  # Stunned by your spell: the turns it skips
 var no_mend := false  # your Cauterizing Power is up: it can't Mend
 var awake := false  # the Sentinel has woken
 var dormant_turns := 0  # the turns it has stood still
@@ -155,9 +171,26 @@ func hp_text() -> String:
 	return "".join(elements)
 
 
-## Will this Essence burn away at the start of its next turn? (The rightmost `burn` of them.)
+## Will this Essence burn away at the start of its next turn?
 func is_lit(i: int) -> bool:
-	return i >= 0 and i < elements.size() and i >= elements.size() - burn
+	_fix_lit()
+	return i >= 0 and i < elements.size() and lit[i]
+
+
+## Sets `n` Essence that aren't burning yet on fire, picked at random (more than it has: the rest is lost). Returns how many.
+func _light(n: int, rng: RandomNumberGenerator) -> int:
+	_fix_lit()
+	var free: Array = []
+	for i in elements.size():
+		if not lit[i]:
+			free.append(i)
+	var done := 0
+	while done < n and not free.is_empty():
+		var k: int = (rng.randi() if rng != null else randi()) % free.size()
+		lit[free[k]] = true
+		free.remove_at(k)
+		done += 1
+	return done
 
 
 ## Keeps `lit` the same length as `elements` (anything new starts unlit).
@@ -182,24 +215,23 @@ func is_painted(i: int) -> bool:
 	return i >= 0 and i < painted.size() and painted[i]
 
 
-## Burn: add n to its Burn. Returns n.
-func ignite(n: int, _rng: RandomNumberGenerator = null) -> int:
+## Burn: n more of its Essence catch fire, at random (the fight's own dice). Returns how many did.
+func ignite(n: int, rng: RandomNumberGenerator = null) -> int:
 	if impervious > 0:
 		return 0  # (the Retainer's bottle: no status sticks)
 	if has_passive("burn_immune"):
 		return 0  # fireproof (Cinder Hound)
-	n = maxi(0, n)
-	burn += n
-	return n
+	return _light(maxi(0, n), rng)
 
 
-## Start of the enemy's turn (before it acts): Burn takes its `burn` rightmost Essence (armour doesn't stop
-## fire), then the Burn is used up.
+## Start of the enemy's turn (before it acts): its burning Essence are lost (armour doesn't stop fire), then the Burn
+## is used up. Returns them, left to right.
 func burn_off() -> Array:
+	_fix_lit()
 	var removed := []
-	for i in mini(burn, elements.size()):
-		removed.push_front(_remove_at(elements.size() - 1))
-	burn = 0
+	for i in range(elements.size() - 1, -1, -1):
+		if lit[i]:
+			removed.push_front(_remove_at(i))
 	return removed
 
 
@@ -448,13 +480,13 @@ func reset_hp(hp: String) -> void:
 	painted.clear()
 	_fix_lit()
 	burn = 0
-	freeze_turns = 0
+	stun_turns = 0
 
 
 func end_turn() -> void:
 	disarmed = maxi(0, disarmed - 1)
 	weak_turns = maxi(0, weak_turns - 1)
-	freeze_turns = maxi(0, freeze_turns - 1)
+	stun_turns = maxi(0, stun_turns - 1)
 	struck_this_turn = false
 
 
@@ -471,11 +503,11 @@ func describe_statuses() -> Array:
 	if power > 0:
 		out.append("Power %d (+%d damage per hit)" % [power, power])
 	if burn > 0:
-		out.append("Burn %d (loses its %d rightmost Essence at the start of its turn, then the Burn is gone)" % [burn, burn])
+		out.append("Burn %d (its %d burning Essence are lost at the start of its turn, then the Burn is gone)" % [burn, burn])
 	if weak_turns > 0:
 		out.append("Weakened %d turn%s (deals 50%% less)" % [weak_turns, "" if weak_turns == 1 else "s"])
-	if freeze_turns > 0:
-		out.append("Frozen (skips its next action)")
+	if stun_turns > 0:
+		out.append("Stunned (skips its next action)")
 	if flying:
 		pass  # (Flying: shown by the picture, no text)
 	if grounded > 0:

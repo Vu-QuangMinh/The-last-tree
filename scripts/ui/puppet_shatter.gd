@@ -16,11 +16,16 @@ var _t := 0.0
 ## into the puppet along the very paths they fell by (the flight is worked out first and played forward, then backward).
 signal reformed
 const STEP := 1.0 / 60.0
-const HOLD := 2.0  # seconds the pieces lie still on the floor
-const SHAKE := 1.0  # then they shake, harder and harder
-const BACK := 1.6  # then they are pulled back in (the whole thing: about 5.5 to 6 s)
+var HOLD := 2.0  # seconds the pieces lie still on the floor
+var SHAKE := 1.0  # then they shake, harder and harder
+var BACK := 1.6  # then they are pulled back in (the whole thing: about 5.5 to 6 s)
 var _reform := false
 var _track: Array = []  # per step: [[position, rotation] per piece]
+## Split (the Giant Slime, 2026-11-12): the same burst, but the pieces then fly into the NEW puppets, a share each, shrinking
+## to their size. `_split_to` gives the new puppets' painted boxes on the screen (asked when the pieces take off).
+var _split_to := Callable()
+var _box := Rect2()  # the painted part of the broken puppet, on the screen
+var _dest: Array = []  # per piece: [target position, scale], worked out when they take off
 
 
 ## Break `creature`'s puppet and pull it back together (see `reformed`). null when it has no cut-out.
@@ -36,6 +41,28 @@ static func spawn_reform(host: Node, creature: Creature) -> PuppetShatter:
 	fx._record()
 	Audio.play("wooden_ball_colide", 0.0, 0.7)
 	return fx
+
+
+## Break `creature`'s puppet; its pieces then fly into the puppets whose boxes `targets` returns (see `reformed`).
+static func spawn_split(host: Node, creature: Creature, targets: Callable) -> PuppetShatter:
+	var fx := spawn_reform(host, creature)
+	if fx != null:
+		fx._split_to = targets
+		fx.HOLD = 0.5
+		fx.SHAKE = 0.7
+		fx.BACK = 1.1
+	return fx
+
+
+## The painted part of a puppet on the screen (its picture without the empty margin round it).
+static func painted_box(creature: Creature) -> Rect2:
+	var tex := creature.puppet_tex()
+	var art := creature.puppet_art_rect()
+	if tex == null:
+		return art
+	var used := tex.get_image().get_used_rect()
+	var k := art.size.x / float(tex.get_width())
+	return Rect2(art.position + Vector2(used.position) * k, Vector2(used.size) * k)
 
 
 ## The flight worked out step by step (the same throw, gravity and bounces as a death), until every piece lies still.
@@ -85,6 +112,9 @@ func _play_reform(d: float) -> void:
 			Audio.play("wooden_ball_colide", -6.0, 0.5)
 	elif _t < dur + HOLD + SHAKE + BACK:
 		var r := (_t - dur - HOLD - SHAKE) / BACK
+		if _split_to.is_valid():
+			_fly_split(r)
+			return
 		k = last * (1.0 - r * r)  # back in along the same paths, slow at first, then sucked in fast
 	else:
 		reformed.emit()
@@ -102,6 +132,33 @@ func _play_reform(d: float) -> void:
 		if shake > 0.0:
 			n.position += Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 0.3)) * 5.0 * shake
 			n.rotation += randf_range(-1.0, 1.0) * 0.12 * shake
+
+
+## Split: every piece flies from where it lies to its place in one of the new puppets (the same spot of the body,
+## scaled down), on a little arc, turning upright and shrinking as it goes. No new puppet: the pieces just fade.
+func _fly_split(r: float) -> void:
+	var last := _track.size() - 1
+	if _dest.is_empty():
+		var boxes: Array = _split_to.call()
+		for m in _pieces.size():
+			if boxes.is_empty():
+				_dest.append([(_track[last][m][0] as Vector2), 1.0])
+				continue
+			var b: Rect2 = boxes[m % boxes.size()]
+			var rel: Vector2 = ((_track[0][m][0] as Vector2) - _box.get_center()) / _box.size
+			_dest.append([b.get_center() + rel * b.size, b.size.x / maxf(1.0, _box.size.x)])
+		if not boxes.is_empty():
+			Audio.play("enemy_spawn", -4.0, 1.3)
+	var e := r * r * (3.0 - 2.0 * r)
+	for m in _pieces.size():
+		var n: Node2D = _pieces[m].node
+		var from: Vector2 = _track[last][m][0]
+		var to: Vector2 = _dest[m][0]
+		n.position = from.lerp(to, e) + Vector2(0.0, -sin(PI * r) * 160.0)
+		n.rotation = lerpf(float(_track[last][m][1]), 0.0, e)
+		n.scale = Vector2.ONE * lerpf(1.0, float(_dest[m][1]), e)
+		if (_dest[m][1] as float) == 1.0 and _dest[m][0] == from:
+			n.modulate.a = 1.0 - r
 
 
 ## Break `creature`'s puppet where it stands (does nothing when it has no cut-out).
@@ -132,6 +189,7 @@ func setup(tex: Texture2D, art: Rect2, feet_y: float) -> void:
 	var used := img.get_used_rect()
 	var k := art.size.x / float(img.get_width())
 	var box := Rect2(art.position + Vector2(used.position) * k, Vector2(used.size) * k)  # (the painted part, on the screen)
+	_box = box
 	var centre := box.get_center()
 	var cells: Array = []
 	for attempt in 8:  # (cells that hold no paint are dropped; try again until there are enough)

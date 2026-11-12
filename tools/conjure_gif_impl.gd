@@ -16,7 +16,7 @@ func run(t: SceneTree) -> void:
 	var gd = root.get_node("GameData")
 	var rs := RunState.new()
 	rs.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 21)
-	rs.learn_spell("stormcaller")
+	rs.learn_spell("flamecaller")
 	var f := rs.make_fight(["puddle_slime"])
 	for e in f.enemies:
 		e.elements = ["W", "W", "W", "W", "W", "W", "W", "W", "W", "W"]
@@ -30,11 +30,11 @@ func run(t: SceneTree) -> void:
 	fs.phase = "spells"
 	f.spoken = true
 	f.chant = ["A", "F", "A"]
-	f.charges = {"stormcaller": 1}
+	f.charges = {"flamecaller": 1}
 	fs._refresh_all()
 	_record()
 	await _frames(10)
-	fs._on_card_clicked(fs._card_for("stormcaller"))
+	fs._on_card_clicked(fs._card_for("flamecaller"))
 	await _frames(70)
 	# cast the conjured spells one after the other: the first switches off, the last merges back
 	for sp in f.loadout.filter(func(s): return s.get("ephemeral", false)):

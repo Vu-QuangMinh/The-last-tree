@@ -204,10 +204,11 @@ func build(e: EnemyState, move := {}) -> void:
 	if not _hb.is_empty():
 		row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	add_child(row)
-	if e.freeze_turns > 0:
-		row.add_child(_part("❄", "", Color(0.5, 0.8, 1.0), "freeze"))
-		row.add_child(_word("skips", Color(0.7, 0.9, 1)))
-		tooltip_text = "[b][font_size=25]Frozen[/font_size][/b]\n" + UiSkin.inline("intent_freeze", "❄", 24) + " " + Keywords.colorize("Frozen: it skips its next action.")
+	if e.stun_turns > 0:
+		row.add_child(_part("💫", "", Color(1.0, 0.85, 0.3), "stunned"))
+		row.add_child(_word("skips", Color(1.0, 0.9, 0.6)))
+		tooltip_text = "[b][font_size=25]Stunned[/font_size][/b]
+" + UiSkin.inline("intent_stunned", "💫", 24) + " " + Keywords.colorize("Stunned: it skips its next action.")
 		return
 	var m: Dictionary = move if not move.is_empty() else e.intent
 	var lines := ["[b][font_size=25]%s intends to…[/font_size][/b]" % (e.name if move.is_empty() else "Her wall")]
