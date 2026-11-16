@@ -454,7 +454,7 @@
    "pattern": "WWW",
    "effects": [
     {
-     "op": "freeze",
+     "op": "stun",
      "turns": 1,
      "target": "target"
     }
@@ -677,19 +677,6 @@
     }
    ],
    "flavor": "Touch it and get burned.",
-   "rarity": "rare"
-  },
-  {
-   "id": "geyser",
-   "name": "RMK",
-   "pattern": "WFA",
-   "effects": [
-    {
-     "op": "expose",
-     "n": 3
-    }
-   ],
-   "flavor": "It erupts in every colour at once.",
    "rarity": "rare"
   },
   {
@@ -1827,19 +1814,6 @@
    "rarity": "common"
   },
   {
-   "id": "quench",
-   "name": "Quench",
-   "pattern": "WF",
-   "effects": [
-    {
-     "op": "heal",
-     "n": 3
-    }
-   ],
-   "flavor": "Douse every burning trouble.",
-   "rarity": "common"
-  },
-  {
    "id": "tide_ward",
    "name": "Tide Ward",
    "pattern": "WW",
@@ -2013,7 +1987,7 @@
    "pattern": "WA",
    "effects": [
     {
-     "op": "freeze",
+     "op": "stun",
      "turns": 1,
      "target": "target"
     }
@@ -2114,20 +2088,6 @@
    "flavor": "Feed every fire at once.",
    "rarity": "rare",
    "durability": 2
-  },
-  {
-   "id": "water_whip",
-   "name": "Water Whip",
-   "pattern": "WF",
-   "effects": [
-    {
-     "op": "pluck",
-     "n": 1,
-     "target": "target"
-    }
-   ],
-   "flavor": "Snap off whatever you like.",
-   "rarity": "common"
   },
   {
    "id": "thieving_wind",
@@ -2273,19 +2233,6 @@
    "rarity": "common"
   },
   {
-   "id": "spray",
-   "name": "Spray",
-   "pattern": "WA",
-   "effects": [
-    {
-     "op": "expose",
-     "n": 1
-    }
-   ],
-   "flavor": "Splash them, and see where they flinch.",
-   "rarity": "common"
-  },
-  {
    "id": "flamecaller",
    "name": "Shadows in the Flame",
    "pattern": "FFA",
@@ -2342,7 +2289,7 @@
      "target": "target"
     },
     {
-     "op": "freeze",
+     "op": "stun",
      "turns": 1,
      "target": "target",
      "if_burn": 4
@@ -2357,7 +2304,7 @@
    "pattern": "WAW",
    "effects": [
     {
-     "op": "freeze",
+     "op": "stun",
      "turns": 1,
      "target": "target"
     }
@@ -2440,25 +2387,12 @@
    "rarity": "legendary"
   },
   {
-   "id": "stormcaller",
-   "name": "Stormcaller",
-   "pattern": "A?A",
-   "effects": [
-    {
-     "op": "conjure",
-     "n": 2
-    }
-   ],
-   "flavor": "Two voices answer the storm.",
-   "rarity": "rare"
-  },
-  {
    "id": "deep_freeze",
    "name": "Deep Freeze",
    "pattern": "W?W",
    "effects": [
     {
-     "op": "freeze",
+     "op": "stun",
      "turns": 2,
      "target": "all"
     },
@@ -2564,21 +2498,6 @@
    "rarity": "legendary"
   },
   {
-   "id": "corrode",
-   "name": "Corrode",
-   "pattern": "WFF",
-   "effects": [
-    {
-     "op": "purge",
-     "el": "F",
-     "n": 3,
-     "target": "target"
-    }
-   ],
-   "flavor": "Eat the fire out of them.",
-   "rarity": "rare"
-  },
-  {
    "id": "wind_shear",
    "name": "Wind Shear",
    "pattern": "AWF",
@@ -2652,19 +2571,6 @@
    "rarity": "rare"
   },
   {
-   "id": "spirit_lantern",
-   "name": "Spirit Lantern",
-   "pattern": "WA?",
-   "effects": [
-    {
-     "op": "conjure",
-     "n": 2
-    }
-   ],
-   "flavor": "It lights the way for someone new.",
-   "rarity": "rare"
-  },
-  {
    "id": "soothing_mist",
    "name": "Soothing Mist",
    "pattern": "WAAF",
@@ -2708,7 +2614,7 @@
      "target": "target"
     },
     {
-     "op": "freeze",
+     "op": "stun",
      "turns": 1,
      "target": "target"
     }
@@ -2842,7 +2748,7 @@
    "pattern": "WWAW",
    "effects": [
     {
-     "op": "freeze",
+     "op": "stun",
      "turns": 2,
      "target": "target"
     },
@@ -2872,21 +2778,6 @@
    ],
    "flavor": "The sky bows to no one, but sends gifts.",
    "rarity": "legendary"
-  },
-  {
-   "id": "phoenix_dive",
-   "name": "Phoenix Dive",
-   "pattern": "FAFF",
-   "effects": [
-    {
-     "op": "strike",
-     "from": "right",
-     "n": 2,
-     "target": "all"
-    }
-   ],
-   "flavor": "Fall like fire, rise like it too.",
-   "rarity": "rare"
   },
   {
    "id": "tidal_surge",
@@ -2978,7 +2869,7 @@
      "n": 5
     },
     {
-     "op": "freeze",
+     "op": "stun",
      "turns": 1,
      "target": "all"
     }
@@ -3124,7 +3015,7 @@
    "pattern": "A?W?A",
    "effects": [
     {
-     "op": "freeze",
+     "op": "stun",
      "turns": 2,
      "target": "all"
     }

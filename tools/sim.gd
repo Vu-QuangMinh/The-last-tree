@@ -254,7 +254,7 @@ func _effect_value(e: Dictionary) -> float:
 			return e.n * 0.6
 		"aegis":
 			return 1.5
-		"weak", "freeze":
+		"weak", "stun":
 			return 1.2
 		"execute":
 			return 2.0

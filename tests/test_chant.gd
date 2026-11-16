@@ -48,13 +48,38 @@ func test_occurrences_are_non_overlapping() -> void:
 	assert_eq(Chant.occurrences("AF", "AFWAF"), [0, 3])
 
 
-func test_burn_takes_the_rightmost_then_is_gone() -> void:
+func test_burn_lights_random_essence_then_is_gone() -> void:
 	var e := _enemy("FWAWFAW")
-	e.burn = 2
-	assert_true(e.is_lit(6) and e.is_lit(5) and not e.is_lit(4), "the 2 rightmost are marked to burn")
-	assert_eq(e.burn_off(), ["A", "W"])
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3
+	assert_eq(e.ignite(2, rng), 2)
+	assert_eq(e.burn, 2, "2 Essence burning")
+	var lit_els: Array = []
+	var rest := ""
+	for i in e.size():
+		if e.is_lit(i):
+			lit_els.append(e.elements[i])
+		else:
+			rest += e.elements[i]
+	assert_eq(e.burn_off(), lit_els, "the burning ones are lost")
 	assert_eq(e.burn, 0, "used up")
-	assert_eq(e.hp_text(), "FWAWF")
+	assert_eq(e.hp_text(), rest, "the others stay, in order")
+	assert_eq(e.ignite(9, rng), 5, "no more fires than Essence")
+
+
+func test_sniping_a_burning_essence_takes_its_burn_with_it() -> void:
+	var e := _enemy("FWAWFAW")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	e.ignite(2, rng)
+	var first := -1
+	for i in e.size():
+		if e.is_lit(i):
+			first = i
+			break
+	e.pluck(first)  # (removed before it burns)
+	assert_eq(e.burn, 1, "that stack is gone with it")
+	assert_eq(e.burn_off().size(), 1, "only the other one burns")
 
 
 func test_wildcard_matches_any_element() -> void:

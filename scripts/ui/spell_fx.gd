@@ -54,7 +54,7 @@ static func play(fx: Control, op: String, eff: Dictionary, from: Vector2, dests:
 			return _stoke(v, from, dests)
 		"poison":
 			return _poison(v, from, dests)
-		"freeze":
+		"freeze", "stun":  # (the Stun cards were Freeze cards: they still hit with ice)
 			return _freeze(v, from, dests)
 		"weak":
 			return _weak(v, from, dests)

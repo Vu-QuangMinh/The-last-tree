@@ -136,7 +136,7 @@ static func _sentences(effects: Array) -> Array:
 
 
 ## Damage and plain riders that can share a "one enemy, then all" sentence (no conditions on them).
-const ONE_ALL := ["strike", "random_hit", "burn", "poison", "weak", "freeze", "daze"]
+const ONE_ALL := ["strike", "random_hit", "burn", "poison", "weak", "stun", "daze"]
 
 
 static func _simple(e: Dictionary) -> bool:
@@ -151,7 +151,7 @@ static func _amount(e: Dictionary) -> int:
 static func _verb(e: Dictionary) -> String:
 	if e.op in ["strike", "random_hit"]:
 		return "deal " + _dmg_full(e, _amount(e))
-	return "apply %d %s" % [_amount(e), {"burn": "Burn", "poison": "Poison", "weak": "Weaken", "freeze": "Freeze", "daze": "Dazed"}[e.op]]
+	return "apply %d %s" % [_amount(e), {"burn": "Burn", "poison": "Poison", "weak": "Weaken", "stun": "Stun", "daze": "Dazed"}[e.op]]
 
 
 ## The same for everyone, as a noun: "5 Right damage" / "3 Burn".
@@ -313,14 +313,14 @@ static func describe_op(e: Dictionary, same := false) -> String:
 					return "then apply %d Weaken to each one that's attacking" % e.turns
 				return "if it's attacking, apply %d Weaken to it" % e.turns
 			return "apply %d Weaken to %s" % [e.turns, t]
-		"freeze":
+		"stun":
 			if e.has("if_burn"):
 				if e.get("hit_many", false):
-					return "then apply %d Freeze to each one hit with %d+ Burn" % [e.turns, int(e.if_burn)]
+					return "then apply %d Stun to each one hit with %d+ Burn" % [e.turns, int(e.if_burn)]
 				if tg == "all":
-					return "then apply %d Freeze to each one with %d+ Burn" % [e.turns, int(e.if_burn)]
-				return "then if it has %d+ Burn, apply %d Freeze to it" % [int(e.if_burn), e.turns]
-			return "apply %d Freeze to %s" % [e.turns, t]
+					return "then apply %d Stun to each one with %d+ Burn" % [e.turns, int(e.if_burn)]
+				return "then if it has %d+ Burn, apply %d Stun to it" % [int(e.if_burn), e.turns]
+			return "apply %d Stun to %s" % [e.turns, t]
 		"expose":
 			return "Repaint %d %s" % [n, _paint(e.get("to", "?"))]
 		"wild_move":

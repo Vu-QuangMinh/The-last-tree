@@ -23,7 +23,7 @@ const E := {
 		"flavor": "Warm to the touch. Don't touch it."},
 	"bramble_back": {"name": "Bramble Back", "act": 1, "tier": 2.0, "hp": "FAFWFAF", "moves": [{"kind": "attack", "n": 5}], "passives": ["thorns"],
 		"flavor": "An enraged porcupine on two legs."},
-	"winged_tortoise": {"name": "Winged Tortoise", "act": 1, "tier": 2.0, "flying": true, "passives": ["flying"], "hp": "WAWWAWW", "moves": [{"kind": "armor", "pos": -1}, {"kind": "attack", "n": 5}],
+	"winged_tortoise": {"name": "Winged Turtle", "act": 1, "tier": 2.0, "flying": true, "passives": ["flying"], "hp": "WAWWAWW", "moves": [{"kind": "armor", "pos": -1}, {"kind": "attack", "n": 5}],
 		"flavor": "A shell that learned to fly."},
 	"leech_bat": {"name": "Leech Bat", "act": 0, "tier": 2.5, "flying": true, "passives": ["flying"], "hp": "AFAWAFA", "moves": [{"kind": "attack", "n": 5, "also": {"kind": "mend", "el": "random", "n": 1, "who": "self"}}],
 		"flavor": "Shiny fangs, and it feeds on every bite."},
@@ -593,7 +593,7 @@ const POOLS := {
 		],
 		"medium": [
 			{"name": "Bramble Back", "ids": ["bramble_back"], "w": 1.0},
-			{"name": "Winged Tortoise", "ids": ["winged_tortoise"], "w": 1.0},
+			{"name": "Winged Turtle", "ids": ["winged_tortoise"], "w": 1.0},
 			{"name": "Hush Moth", "ids": ["hush_moth"], "w": 1.0},
 			{"name": "The Elemental Trio", "ids": ["ashling", "iceling", "zephling"], "w": 1.0},
 			{"name": "Marsh", "ids": ["purple_slime", "iceling"], "w": 0.7},

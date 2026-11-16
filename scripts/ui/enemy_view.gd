@@ -289,11 +289,11 @@ func _has_point(p: Vector2) -> bool:
 	return Rect2(Vector2.ZERO, size).has_point(p)
 
 
-## "Burn 2" / "Poison 3" / "Frozen": in the New theme the painted icon goes in front of the word.
+## "Burn 2" / "Poison 3" / "Stunned": in the New theme the painted icon goes in front of the word.
 func _status_bbcode(text: String) -> String:
 	# the picture for the status named first in `text` (Puppet art first, the older intent pictures as a fallback)
 	var names: Array = {"Burn": ["status_burn", "intent_burn"], "Poison": ["status_poison", "intent_poison"],
-		"Frozen": ["status_freeze", "intent_freeze"], "Weakened": ["status_weak"],
+		"Stunned": ["status_stunned", "intent_stunned"], "Weakened": ["status_weak"],
 		"Ethereal": ["status_ethereal", "intent_ethereal"], "Power": ["intent_empower"]}.get(text.get_slice(" ", 0), [])
 	for art in names:
 		if UiSkin.tex(art) != null:
@@ -354,7 +354,7 @@ func refresh(preview: Dictionary) -> void:
 	if _ghost:
 		return
 	_fly_height()
-	var dizzy: bool = not enemy.is_dead() and (enemy.grounded > 0 or String(enemy.intent.get("kind", "")) in ["grounded", "recharge"])
+	var dizzy: bool = not enemy.is_dead() and (enemy.grounded > 0 or enemy.stun_turns > 0 or String(enemy.intent.get("kind", "")) in ["grounded", "recharge"])
 	if dizzy and not is_instance_valid(_stars) and creature != null:
 		_stars = StunStars.new()
 		_stars.cr = creature
@@ -843,8 +843,11 @@ func info_text() -> String:
 	if not armoured.is_empty():
 		lines.append("• Armour on Essence %s: it still counts for matching, but your chant can't remove it this turn." % ", ".join(armoured))
 	if e.burn > 0:
-		var gone := names.slice(e.size() - mini(e.burn, e.size()))
-		lines.append("• Burn %d: at the start of its turn it loses its %d rightmost Essence (%s), then the Burn is gone." % [e.burn, gone.size(), ", ".join(gone)])
+		var gone: Array = []
+		for i in e.size():
+			if e.is_lit(i):
+				gone.append(names[i])
+		lines.append("• Burn %d: at the start of its turn it loses its %d burning Essence (%s), then the Burn is gone." % [e.burn, gone.size(), ", ".join(gone)])
 	for s in e.describe_statuses():
 		if s.begins_with("Burn") or s.begins_with("Poison"):
 			continue

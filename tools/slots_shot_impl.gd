@@ -8,7 +8,7 @@ func run(t: SceneTree) -> void:
 	save.use_test_file("user://slots_shot_save.json")
 	save.data.settings["theme"] = "puppet"
 	var gd = root.get_node("GameData")
-	var pool := ["fire_ball", "water_wall", "tailwind", "frost_nova", "thieving_wind", "undercurrent", "spray", "glacial_spike"]
+	var pool := ["fire_ball", "water_wall", "tailwind", "frost_nova", "thieving_wind", "undercurrent", "ember_gust", "glacial_spike"]
 	for n in range(1, 9):
 		var rs := RunState.new()
 		rs.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)

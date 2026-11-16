@@ -102,18 +102,19 @@ func test_warded_ignores_short_chants() -> void:
 	assert_eq(f.enemies[0].size(), 6)
 
 
-func test_burn_takes_rightmost_once_then_is_gone() -> void:
+func test_burn_takes_its_burning_essence_once_then_is_gone() -> void:
 	var f := _fight(["ashling"], [], "")
 	var e: EnemyState = f.enemies[0]
 	_set_hp(e, "FWAWFAAW")
 	assert_eq(e.ignite(2, f.rng), 2)
 	assert_eq(e.burn, 2)
 	f.player.hp = 99
-	f.pass_turn()  # its turn: the fire takes the rightmost A W, then the Burn is gone
-	assert_eq(e.hp_text(), "FWAWFA")
+	f.pass_turn()  # its turn: the 2 burning Essence are lost, then the Burn is gone
+	assert_eq(e.size(), 6)
 	assert_eq(e.burn, 0)
+	var left := e.hp_text()
 	f.pass_turn()
-	assert_eq(e.hp_text(), "FWAWFA", "nothing more burns")
+	assert_eq(e.hp_text(), left, "nothing more burns")
 
 
 func test_burned_out_enemy_never_attacks() -> void:
@@ -513,7 +514,7 @@ func test_spells_resolve_before_the_damage_step() -> void:
 
 
 func test_expose_paints_anywhere_and_upgrades_add_one() -> void:
-	var f := _fight(["ashling", "ashling"], ["spray"], "WA")
+	var f := _fight(["ashling", "ashling"], ["ember_gust"], "AF")
 	var a: EnemyState = f.enemies[0]
 	var b: EnemyState = f.enemies[1]
 	_set_hp(a, "FFF")
@@ -521,11 +522,11 @@ func test_expose_paints_anywhere_and_upgrades_add_one() -> void:
 	var picks := [[0, 2], [1, 1]]
 	f.painter = func(_s): return picks.pop_front()
 	f.cast_chant(_all(2))
-	f.resolve_spell("spray")
+	f.resolve_spell("ember_gust")
 	assert_eq(a.hp_text(), "FF?", "one on the first enemy, at the end")
-	assert_eq(b.hp_text(), "FFF", "Spray paints only 1")
-	var up := SpellDB.upgrade(f.db.get_spell("spray"))
-	assert_eq(up.effects[0].n, 2, "Spray+ paints 2")
+	assert_eq(b.hp_text(), "FFF", "Spatter paints only 1")
+	var up := SpellDB.upgrade(f.db.get_spell("ember_gust"))
+	assert_eq(up.effects[0].n, 2, "Spatter+ paints 2")
 
 
 func test_remove_a_kind_lets_you_choose_which() -> void:
@@ -1698,12 +1699,12 @@ func test_steal_any_puts_the_chosen_element_in_your_bag() -> void:
 
 
 func test_a_stolen_repainted_essence_is_any_in_your_bag() -> void:
-	var f := _fight(["ashling"], ["spray", "thieving_wind"], "WAAAA")
+	var f := _fight(["ashling"], ["ember_gust", "thieving_wind"], "AFAAA")
 	var e: EnemyState = f.enemies[0]
 	_set_hp(e, "FWFWF")
 	f.painter = func(_s): return [0, 3]
 	f.cast_chant(_all(5))
-	f.resolve_spell("spray")
+	f.resolve_spell("ember_gust")
 	assert_eq(e.hp_text(), "FWF?F")
 	e.rotate_right()  # (the painted mark moves with its Essence)
 	assert_true(e.is_painted(4) and not e.is_painted(3))

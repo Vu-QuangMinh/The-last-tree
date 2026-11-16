@@ -194,7 +194,7 @@ var _pause_overlay: Control
 ## "chant_changed", summon_spells via "loadout_changed") are left out so they don't double up.
 const EFFECT_SFX := {
 	"strike": "sfx_damage_hit", "burn": "sfx_burn_apply",
-	"stoke": "sfx_burn_apply", "weak": "sfx_weaken_apply", "freeze": "sfx_freeze_apply",
+	"stoke": "sfx_burn_apply", "weak": "sfx_weaken_apply", "freeze": "sfx_freeze_apply", "stun": "sfx_stun_apply",
 	"expose": "sfx_expose_apply", "ethereal": "sfx_ethereal_apply", "shield": "sfx_shield_up",
 	"heal": "sfx_heal", "aegis": "sfx_aegis_up", "thorns": "sfx_shield_up", "draw": "sfx_draw_element",
 	"rotate": "sfx_convert", "swap": "sfx_convert", "convert": "sfx_convert", "purge": "sfx_purge",
