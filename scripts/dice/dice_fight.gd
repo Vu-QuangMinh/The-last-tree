@@ -65,6 +65,7 @@ class Foe:
 	var impervious := 0  # no status sticks to it until its next turn
 	var vulnerable := 0  # it takes 50% more (Jab, Arm Bar)
 	var redirect := false  # (Redirect: its next attack goes at someone else)
+	var smite := 0  # (Smite: your next hit on it also gives it that many times its damage in Burn)
 	var deflect := false  # the next card that hits it hurts you instead
 	var moves: Array = []
 	var moves2: Array = []  # (from half HP)
@@ -116,6 +117,10 @@ var spent := {}  # card index -> true: a card that isn't repeatable and fired th
 var tweaks := {}  # card index -> times a tweak move (Hype Up, Calm Down) was used this turn
 var cooldown := {}  # card index -> your turns it still can't be used (Burn Burn Burn)
 var flurry := 0  # this turn: each time an enemy takes damage, it takes this much more (Flurry)
+var fire_fist := 0  # this turn: each time you damage an enemy, it gains this much Burn (Fire Fist)
+var overwhelm := 0  # this turn: each time you damage an enemy, you gain this much Shield (Overwhelm)
+var no_shield := false  # this turn: you can't gain Shield (Taunt)
+var feint := false  # until your next turn: each enemy that attacks you gains 1 Vulnerable (Feint)
 var intuition := 1  # this turn's number for Intuition (a new one each turn)
 var gone := {}  # move index -> true: a Fragile move used up for this fight (Focus)
 var revenge := {}  # {foe, mult, taken}: Revenge, waiting for your next turn
@@ -292,6 +297,10 @@ func _start_turn() -> void:
 	spent.clear()
 	tweaks.clear()
 	flurry = 0
+	fire_fist = 0
+	overwhelm = 0
+	no_shield = false
+	feint = false
 	intuition = run.rng.randi_range(1, 6)
 	for ci in cooldown.keys():
 		cooldown[ci] = int(cooldown[ci]) - 1
@@ -419,6 +428,8 @@ func can_place(r: int, ci: int, k: int) -> bool:
 		return false
 	if String(run.cards[ci]) == "counter_attack" and alive().all(func(f): return String(f.intent.get("kind", "")) != "attack"):
 		return false  # (no enemy is attacking: nothing to counter)
+	if not has_target(ci):
+		return false  # (Fan the Flames: no enemy is burning)
 	return true
 
 
@@ -444,6 +455,9 @@ func place(r: int, ci: int, k: int) -> bool:
 				rolled[r].value = maxi(0, sides + 1 - int(rolled[r].value))
 			"intuition":
 				rolled[r].value = intuition
+			"reroll":  # (a new roll of the same die: its paint and carving come with the new face)
+				var di: int = int(rolled[r].die)
+				rolled[r] = _rolled(di, run.roll(di)) if int(rolled[r].face) >= 0 else _rolled(di, -1)
 			_:
 				rolled[r].value = maxi(0, int(rolled[r].value) + int(tw))
 		tweaks[ci] = int(tweaks.get(ci, 0)) + 1
@@ -464,6 +478,19 @@ func place(r: int, ci: int, k: int) -> bool:
 	rolled[r].used = true
 	if filled.any(func(v): return v == null):
 		return false
+	if c.get("merge", false):  # (Stack: the first die becomes the total and comes back; the second is spent)
+		var total := 0
+		for v in filled:
+			total += int(v)
+		rolled[int(dice_in[0])].value = total
+		rolled[int(dice_in[0])].used = false
+		placed.erase(ci)
+		placed_dice.erase(ci)
+		tweaks[ci] = int(tweaks.get(ci, 0)) + 1
+		if int(tweaks[ci]) >= int(c.uses):
+			spent[ci] = true
+		events.append({"type": "tweak", "r": int(dice_in[0]), "by": 0})
+		return false
 	ready[ci] = filled
 	return true
 
@@ -481,8 +508,23 @@ func targets_for(ci: int) -> Array:
 			continue
 		if id == "counter_attack" and String(f.intent.get("kind", "")) != "attack":
 			continue
+		if _needs_burn(ci) and f.burn <= 0:
+			continue
 		out.append(i)
 	return out
+
+
+## Fan the Flames (not boosted): only a burning enemy can be aimed at.
+func _needs_burn(ci: int) -> bool:
+	var c := run.card_at(ci)
+	return c.get("needs_burn", false) and String(c.get("up", "")) != "boost"
+
+
+## Has the move something it can be used on (Fan the Flames: a burning enemy; the card is dimmed when not)?
+func has_target(ci: int) -> bool:
+	if not _needs_burn(ci):
+		return true
+	return alive().any(func(f): return f.burn > 0 and not f.shielded())
 
 
 ## A ready move fires, at enemy `target` (-1: none / the first one). Upgraded with a second die ("per_die"): once for
@@ -656,7 +698,7 @@ func _fire(id: String, d: Array, target: int, boost := false, alt := false) -> v
 			burn += v
 			events.append({"type": "debuff", "foe": -1, "what": "Burn %d" % v})
 		"flurry":
-			flurry += maxi(0, (4 if boost else 3) - v)
+			flurry += maxi(0, (3 if boost else 2) - v)
 			events.append({"type": "flurry", "n": flurry})
 		"freeze_burn":
 			_burn(t, maxi(0, (8 if boost else 6) - v))
@@ -729,6 +771,46 @@ func _fire(id: String, d: Array, target: int, boost := false, alt := false) -> v
 			for k in (4 if boost else 3):
 				rolled.append(_rolled(-1, -1))
 			events.append({"type": "extra_dice", "n": 4 if boost else 3})
+		"fire_starter":
+			_burn(t, v + (1 if boost else 0))
+		"ignite":
+			if t != null and t.burn > 0:
+				var b := t.burn
+				t.burn = 0
+				events.append({"type": "foe_burn_out", "foe": foes.find(t), "n": b})
+				_hit(t, (3 if boost else 2) * b)
+		"fan_the_flames":
+			if t != null and (boost or t.burn > 0):
+				_burn(t, v)
+		"fire_fist":
+			fire_fist += v
+			events.append({"type": "buff", "what": "Fire Fist: +%d Burn per hit" % fire_fist})
+		"smoke_screen":
+			var lit := alive().filter(func(f): return f.burn > 0).size()
+			_shield((v + (2 if boost else 0)) * lit)
+		"smite":
+			if t != null:
+				t.smite = 2 if boost else 1
+				events.append({"type": "buff", "what": "Smite marked"})
+		"feint":
+			dodge += 2 if boost else 1
+			feint = true
+			events.append({"type": "dodge_up"})
+		"taunt":
+			block = 0
+			no_shield = true
+			events.append({"type": "buff", "what": "No Shield this turn"})
+			for f in alive():
+				if not f.shielded():
+					_vulnerable(f, 5 if boost else 3)
+		"grit":
+			events.append({"type": "self_hit", "n": v})
+			_hurt_player(v, true)
+			if not over:
+				_shield(11 if boost else 8)
+		"overwhelm":
+			overwhelm += v + (1 if boost else 0)
+			events.append({"type": "buff", "what": "Overwhelm: +%d Shield per hit" % overwhelm})
 		"revenge":
 			revenge = {"foe": t, "mult": 3 if boost else 2, "taken": 0}
 			events.append({"type": "revenge_set", "foe": foes.find(t)})
@@ -769,6 +851,8 @@ func _takes_status(f: Foe) -> bool:
 
 ## You gain Shield (doubled by a Blue die in the card, or the Shield carving this turn).
 func _shield(n: int) -> void:
+	if no_shield:  # (Taunt)
+		return
 	n *= _shield_mult
 	block += n
 	events.append({"type": "block", "n": n})
@@ -797,18 +881,34 @@ func _hit(f: Foe, n: int) -> void:
 	var soak := mini(f.block, n)
 	f.block -= soak
 	f.hp = maxi(0, f.hp - (n - soak))
-	if n - soak > 0:
-		_damaged[f] = true
+	if n > 0:
+		_damaged[f] = true  # (Thorns: a hit, even one its Shield took)
 	events.append({"type": "hit", "foe": foes.find(f), "n": n - soak, "blocked": soak})
+	_on_hit(f, n)
 	if f.dead():
 		_on_death(f)
-	elif flurry > 0 and n - soak > 0 and not _in_flurry:  # (Flurry: one more blow, after each damage; it doesn't feed itself)
+	elif flurry > 0 and n > 0 and not _in_flurry:  # (Flurry: one more blow, after each damage; it doesn't feed itself)
 		_in_flurry = true
 		var keep := _dmg_mult
 		_dmg_mult = 1
 		_hit(f, flurry)
 		_dmg_mult = keep
 		_in_flurry = false
+
+
+## A HIT: a move of yours (or an attack you Redirected) striking an enemy for n, whether its Shield takes it or not
+## (Burn doesn't hit). Smite, Fire Fist and Overwhelm go off.
+func _on_hit(f: Foe, n: int) -> void:
+	if n <= 0:
+		return
+	if f.smite > 0 and not f.dead():
+		var sm := f.smite
+		f.smite = 0
+		_burn(f, sm * n)
+	if fire_fist > 0 and not f.dead():
+		_burn(f, fire_fist)
+	if overwhelm > 0:
+		_shield(overwhelm)
 
 
 func _on_death(f: Foe) -> void:
@@ -833,6 +933,9 @@ func end_turn() -> void:
 		if int(silenced[ci]) <= 0:
 			silenced.erase(ci)
 	_enemy_phase = true
+	flurry = 0  # ("this turn": your turn is over)
+	fire_fist = 0
+	overwhelm = 0
 	for f: Foe in foes.duplicate():
 		var i := foes.find(f)
 		if f.dead() or over:
@@ -883,9 +986,12 @@ func _act(f: Foe, m: Dictionary) -> void:
 					to.block -= soak
 					to.hp = maxi(0, to.hp - (n - soak))
 					events.append({"type": "redirected", "foe": i, "to": foes.find(to), "n": n - soak})
+					_on_hit(to, n)  # (it counts as your hit: Smite)
 					if to.dead():
 						_on_death(to)
 					continue
+				if feint and h == 0:  # (Feint: it attacked you, hit or not: it is Vulnerable now)
+					_vulnerable(f, 1)
 				if ethereal:  # (Flee: you are Ethereal: it passes through)
 					events.append({"type": "dodged", "foe": i})
 					continue

@@ -378,6 +378,9 @@ func _build_cards() -> void:
 
 		elif fight.silenced.has(ci):
 			cv.state = "SILENCED"
+		elif not fight.has_target(ci):  # (Fan the Flames: no enemy is burning)
+			cv.state = "NO BURN"
+			cv.spent = true
 		elif fight.hammered.has(ci):
 			cv.state = "🔨 %d/%d" % [int(fight.hammered[ci]), DiceFight.HAMMER_BREAKS]
 		cv.glow = ci == _aiming
@@ -663,6 +666,14 @@ func _play_events() -> void:
 			"flurry":
 				_float(Vector2(960, 660), "Flurry: +%d to every hit this turn" % int(ev.n), Color(1.0, 0.8, 0.4))
 				await _wait(0.2)
+			"buff":  # (Fire Fist, Overwhelm, Smite, Taunt: what is on for the turn)
+				_float(Vector2(960, 660), String(ev.what), Color(1.0, 0.8, 0.4))
+				await _wait(0.2)
+			"foe_burn_out":  # (Ignite: its Burn goes up all at once)
+				_float(_foe_center(int(ev.foe)) + Vector2(0, -50), "Burn %d: ignited!" % int(ev.n), Color(1.0, 0.55, 0.15))
+				Audio.play("sfx_burn_apply", -2.0)
+				_refresh_bars()
+				await _wait(0.25)
 			"self_hit":
 				_float(Vector2(190, 760), "-%d" % int(ev.n), Color(1.0, 0.35, 0.3))
 				_refresh_bars()

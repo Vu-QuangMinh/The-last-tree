@@ -131,7 +131,7 @@ func _draw() -> void:
 			if not seg.is_empty():
 				draw_line(seg[0], seg[1], Color(1, 1, 1, 0.12), 3.0)
 		_dashed_rect(r, line)
-		var extra: bool = (c.get("plain_extra", false) and k == _slots() - 1) or (c.get("per_die", false) and k > 0)
+		var extra: bool = (c.get("plain_extra", false) and k == _slots() - 1) or (c.get("per_die", false) and k > 0 and not c.get("per_die_rule", false))
 		if rule != "" and not extra:
 			var rfs := clampi(int(18.0 * r.size.x / SLOT), 11, 18)  # (smaller in a small slot: three of them)
 			draw_string(font, r.position + Vector2(0, r.size.y / 2.0 + rfs * 0.45), rule, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, rfs, Color.WHITE)
