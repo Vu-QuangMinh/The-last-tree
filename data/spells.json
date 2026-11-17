@@ -125,26 +125,6 @@
    "rarity": "common"
   },
   {
-   "id": "coup_de_grace",
-   "name": "Coup de Grace",
-   "pattern": "AA",
-   "effects": [
-    {
-     "op": "random_hit",
-     "n": 1,
-     "target": "target"
-    },
-    {
-     "op": "execute",
-     "max": 2,
-     "target": "target",
-     "then": true
-    }
-   ],
-   "flavor": "A quick cut, and a quicker end.",
-   "rarity": "common"
-  },
-  {
    "id": "arcane_barrage",
    "name": "Arcane Barrage",
    "pattern": "WFA",
@@ -228,22 +208,6 @@
     }
    ],
    "flavor": "The wind brings more.",
-   "rarity": "common"
-  },
-  {
-   "id": "cyclone",
-   "name": "Cyclone",
-   "pattern": "AA",
-   "effects": [
-    {
-     "op": "strike",
-     "from": "right",
-     "n": 1,
-     "target": "all",
-     "min_hp": 3
-    }
-   ],
-   "flavor": "Shaves the big ones down to size.",
    "rarity": "common"
   },
   {
@@ -1014,26 +978,6 @@
    "badge_name": "Cauterizing"
   },
   {
-   "id": "snuff_out",
-   "name": "Snuff Out",
-   "pattern": "FF",
-   "effects": [
-    {
-     "op": "pluck",
-     "n": 1,
-     "target": "target"
-    },
-    {
-     "op": "execute",
-     "max": 3,
-     "target": "target",
-     "then": true
-    }
-   ],
-   "flavor": "Small flames are easy to pinch.",
-   "rarity": "rare"
-  },
-  {
    "id": "graft",
    "name": "Graft",
    "pattern": "WF",
@@ -1334,20 +1278,6 @@
    "flavor": "Pull out a piece of its soul, and wear it tomorrow.",
    "rarity": "rare",
    "durability": 3
-  },
-  {
-   "id": "last_rites",
-   "name": "Last Rites",
-   "pattern": "FFA",
-   "effects": [
-    {
-     "op": "execute",
-     "max": 4,
-     "target": "target"
-    }
-   ],
-   "flavor": "If it's already weak, end it.",
-   "rarity": "rare"
   },
   {
    "id": "broken_clock",
@@ -2624,20 +2554,6 @@
    "durability": 1
   },
   {
-   "id": "grave_wind",
-   "name": "Grave Wind",
-   "pattern": "AWW",
-   "effects": [
-    {
-     "op": "execute",
-     "max": 3,
-     "target": "target"
-    }
-   ],
-   "flavor": "It carries away the weak.",
-   "rarity": "rare"
-  },
-  {
    "id": "sunlit_grove",
    "name": "Sunlit Grove",
    "pattern": "WAF",
@@ -2816,7 +2732,7 @@
    ],
    "flavor": "Burn it all, and pay tomorrow.",
    "rarity": "rare",
-   "durability": 2
+   "durability": 1
   },
   {
    "id": "moon_tide",

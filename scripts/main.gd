@@ -87,6 +87,7 @@ func show_menu() -> void:
 	var m := MenuScreen.new()
 	m.play.connect(_new_run)
 	m.continue_run.connect(continue_run)
+	m.dice_mode.connect(start_dice_mode)
 	m.codex.connect(open_codex)
 	m.unlocks.connect(func():
 		Audio.play("ui_open_panel")
@@ -450,6 +451,14 @@ func continue_run() -> void:
 		_show_loadout(d.ids)
 	else:
 		show_map()
+
+
+## Die on Stage (2026-11-15): the dice mode, a run of its own (scripts/dice/).
+func start_dice_mode() -> void:
+	_room_bg = ""
+	var g := DiceGame.new()
+	g.quit.connect(show_menu)
+	_swap(g)
 
 
 func start_run() -> void:

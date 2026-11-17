@@ -48,7 +48,7 @@ const LOOK := {
 	"silence": ["🔇", PURPLE], "lock": ["🔒", PURPLE], "steal": ["✋", PURPLE], "confuse": ["🌀", PURPLE],
 	"blind": ["🙈", PURPLE], "poison": ["🧪", PURPLE], "bleed": ["🩸", PURPLE], "freeze": ["❄", PURPLE], 
 	"empower": ["💪", BLUE], "summon": ["👤+", BLUE], "toll": ["⛓", PURPLE], "invert": ["🔄", PURPLE],
-	"summon_clock": ["⏰", PURPLE], "guard": ["🛡", GREY], "resurrect": ["💀", PURPLE], "recharge": ["💫", BLUE], "dormant": ["💤", BLUE], "grounded": ["💫", BLUE], "glow": ["💡", PURPLE], "explode": ["💥", PURPLE], "mimic": ["🎭", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "fireball": ["☄", RED], "fireball_blast": ["💥", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "stun": ["💫", PURPLE], "grow_thorns": ["🌵", GREEN], "revive": ["🪽", Color(0.85, 0.75, 0.4)], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE], "steal_spell": ["🕸", PURPLE], "play": ["🎹", BLUE], "virus": ["🦠", PURPLE], "vulnerable": ["🎯", PURPLE], "deflect": ["🗡", BLUE], "bottle": ["🍶", GREEN],
+	"summon_clock": ["⏰", PURPLE], "guard": ["🛡", GREY], "resurrect": ["💀", PURPLE], "recharge": ["💫", BLUE], "dormant": ["💤", BLUE], "grounded": ["💫", BLUE], "take_off": ["🪽", BLUE], "glow": ["💡", PURPLE], "explode": ["💥", PURPLE], "mimic": ["🎭", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "fireball": ["☄", RED], "fireball_blast": ["💥", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "stun": ["💫", PURPLE], "grow_thorns": ["🌵", GREEN], "revive": ["🪽", Color(0.85, 0.75, 0.4)], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE], "steal_spell": ["🕸", PURPLE], "play": ["🎹", BLUE], "virus": ["🦠", PURPLE], "vulnerable": ["🎯", PURPLE], "deflect": ["🗡", BLUE], "bottle": ["🍶", GREEN],
 }
 
 
@@ -88,6 +88,7 @@ const INFO := {
 	
 	"stun": ["Stun", "Your next turn is skipped entirely (you still get your Essence)."],
 	"grounded": ["Stunned", "It fell out of the air: it skips its action."],
+	"take_off": ["Take off", "It flies back up into the air: your chant can't hit it while it flies, and any Essence it loses brings it down again."],
 	"summon_clock": ["Alarm", "When the clock runs out, it calls a Sentinel."],
 	"guard": ["Guard", "It shields the Necromancer behind it: he can't be touched while it stands."],
 	"resurrect": ["Raise the dead", "The skeleton gets up again, with 3 Essence."],

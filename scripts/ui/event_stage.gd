@@ -278,7 +278,8 @@ const HINT_W := HINT_TEXT_W + 36.0 + 34.0  # (the paper frame's margins, as in t
 ## the words twice the size they were, the choices as buttons in the box under them. Words that don't fit come in pages.
 const BOX_TEXT_W := 1000.0
 const BOX_PX := 24
-const BOX_LINES := 3  # (lines of words per page; more than that: "Go on..." pages)
+const BOX_BOTTOM := 1080.0 - 56.0  # (the box reaches down to here, less the buttons under it: a big box, many events tell a lot, 2026-11-12)
+const BOX_PAD := [48, 30, 48, 34]  # (the board's margins round its words)
 const BOX_TOP := 715.0  # (the box's top edge: 5 px under the top of the front wall, SCENE_DY + 562; the item cards stand just above it)
 const HINT_Y := 170.0
 const HINT_X := 1920.0 - HINT_W + 6.0  # (flush with the right edge, like the fight's hint panel)
@@ -289,7 +290,7 @@ const HINT_X := 1920.0 - HINT_W + 6.0  # (flush with the right edge, like the fi
 static func hint_panel(title: String, text: String, px := 0, min_h := 0.0, text_w := HINT_TEXT_W) -> Dictionary:
 	var p := PanelContainer.new()
 	var cream := UiTheme.has_dialogue_board()
-	var paper: StyleBox = UiTheme.dialogue_board([32, 22, 32, 24]) if cream else UiSkin.box("dialogue_panel", [14, 14, 14, 14], [30, 20, 30, 22])
+	var paper: StyleBox = UiTheme.dialogue_board(BOX_PAD) if cream else UiSkin.box("dialogue_panel", [14, 14, 14, 14], [30, 20, 30, 22])
 	if paper != null:
 		p.add_theme_stylebox_override("panel", paper)
 		p.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -302,7 +303,7 @@ static func hint_panel(title: String, text: String, px := 0, min_h := 0.0, text_
 		sb.set_content_margin_all(14)
 		p.add_theme_stylebox_override("panel", sb)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	p.custom_minimum_size = Vector2(text_w + 60.0, min_h)
+	p.custom_minimum_size = Vector2(text_w + 96.0, min_h)  # (the words keep their width; the board is wider by its bigger margins)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 4)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2220,7 +2221,7 @@ func _close_items() -> void:
 	_page_text(_choice_text() if String(ev.get("begin", "")) != "" else String(ev.get("text", "")), _opt_buttons)
 
 
-## The words in the box, a page at a time (at most BOX_LINES lines a page); the last page has `last` under it (the choices, or
+## The words in the box, a page at a time (as many lines as the big box holds); the last page has `last` under it (the choices, or
 ## the button after a result). The earlier pages have a "Go on..." button.
 func _page_text(text: String, last: Array) -> void:
 	_pages = _paginate(text)
@@ -2288,23 +2289,46 @@ static func _abs_z(c: CanvasItem) -> int:
 static func place_box(box: Control, row: Control) -> void:
 	if not is_instance_valid(box):
 		return
+	box.custom_minimum_size.y = maxf(0.0, BOX_BOTTOM - _rows_h(row) - 12.0 - BOX_TOP)  # (down to the bottom of the screen, the buttons under it)
 	box.reset_size()
-	box.size.x = BOX_TEXT_W + 60.0
+	box.size.x = BOX_TEXT_W + 96.0
 	box.position = Vector2(960.0 - box.size.x / 2.0, BOX_TOP)
 	if is_instance_valid(row):
 		row.z_as_relative = false  # (a top-level node does not follow its parent's z: it takes the box's own place in the drawing order, over every dim and shade)
 		row.z_index = _abs_z(box)
 		row.reset_size()
-		row.size.x = BOX_TEXT_W + 60.0
+		row.size.x = BOX_TEXT_W + 96.0
 		row.global_position = Vector2(960.0 - row.size.x / 2.0, BOX_TOP + box.size.y + 12.0)
 
 
-## Splits words into pages of at most BOX_LINES lines at the box's size: by paragraph, then by sentence.
+## How tall the buttons under the box stand (one row of 48 px buttons, more when they wrap).
+static func _rows_h(row: Control) -> float:
+	if not is_instance_valid(row):
+		return 0.0
+	var bs: Array = row.get_children().filter(func(c: Node) -> bool: return c is Control and (c as Control).visible)
+	if bs.is_empty():
+		return 0.0
+	var rows := 1
+	var x := 0.0
+	var h := 48.0
+	for b: Control in bs:
+		var w := b.get_combined_minimum_size().x
+		h = maxf(h, b.get_combined_minimum_size().y)
+		if x > 0.0 and x + 40.0 + w > BOX_TEXT_W + 96.0:
+			rows += 1
+			x = w
+		else:
+			x += (40.0 if x > 0.0 else 0.0) + w
+	return rows * h + (rows - 1) * 10.0
+
+
+## Splits words into pages that fill the box (BOX_TOP down to BOX_BOTTOM, a row of buttons under it): by paragraph, then by sentence.
 func _paginate(text: String) -> Array:
 	if text.strip_edges() == "":
 		return [""]
 	var font: Font = _hint_body.get_theme_font("normal_font")
-	var max_h := float(BOX_LINES) * (font.get_height(UiTheme.px(BOX_PX)) + 2.0) + 4.0
+	var title_h := font.get_height(UiTheme.px(maxi(18, BOX_PX - 4))) + 4.0
+	var max_h := BOX_BOTTOM - 48.0 - 12.0 - BOX_TOP - float(BOX_PAD[1]) - float(BOX_PAD[3]) - title_h - 6.0
 	var fits := func(t: String) -> bool:
 		return font.get_multiline_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, BOX_TEXT_W - 28.0, UiTheme.px(BOX_PX)).y <= max_h
 	var pieces: Array = []

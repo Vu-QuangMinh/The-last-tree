@@ -10,7 +10,8 @@ const W := 250.0
 const KIND_COLORS := {"damage": Color(0.74, 0.22, 0.18), "defense": Color(0.2, 0.42, 0.72), "utility": Color(0.78, 0.58, 0.12)}
 ## A fused spell's name banner: the plum of the purple wax seal (its frame keeps its category colour).
 const FUSED_COLOR := Color(0.365, 0.216, 0.325)
-const POWER_COLOR := Color(0.88, 0.47, 0.1)  # a Power's name banner
+const POWER_COLOR := Color(0.07, 0.065, 0.075)  # a Power's name banner: obsidian black, with gold letters and a gold edge (2026-11-12)
+const POWER_GOLD := Color(1.0, 0.8, 0.32)
 const PARCHMENT := Color(0.93, 0.87, 0.72)
 const RARITY_COLORS := {"common": Color(0.35, 0.3, 0.25), "rare": Color(0.1, 0.35, 0.75), "legendary": Color(0.75, 0.45, 0.0), "unique": Color(0.55, 0.1, 0.55)}
 const INK := Color(0.1, 0.08, 0.06)
@@ -89,7 +90,7 @@ func _ready() -> void:
 		mouse_entered.connect(_on_hover.bind(true))
 		mouse_exited.connect(_on_hover.bind(false))
 	var kc: Color = KIND_COLORS[spell.kind]
-	var name_col: Color = POWER_COLOR if spell.get("power", false) else (FUSED_COLOR if spell.get("fused", false) else kc)  # (a Power: an orange banner)
+	var name_col: Color = POWER_COLOR if spell.get("power", false) else (FUSED_COLOR if spell.get("fused", false) else kc)  # (a Power: the obsidian banner)
 	_box = StyleBoxFlat.new()
 	_box.bg_color = PARCHMENT
 	_box.set_corner_radius_all(_zi(10))
@@ -122,6 +123,9 @@ func _ready() -> void:
 	nbs.bg_color = name_col
 	nbs.border_color = Color(1, 0.85, 0.3) if spell.get("upgraded", false) else name_col.darkened(0.45)
 	nbs.set_border_width_all(_zi(2 if spell.get("upgraded", false) else 1))
+	if spell.get("power", false):
+		nbs.border_color = POWER_GOLD
+		nbs.set_border_width_all(_zi(2))
 	nbs.set_corner_radius_all(_zi(4))
 	nbs.content_margin_left = _z(8)
 	nbs.content_margin_right = _z(8)
@@ -137,11 +141,11 @@ func _ready() -> void:
 		nb.add_theme_stylebox_override("panel", nbs)
 	nb.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	nb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var name_l := UiTheme.label(spell.name, _zi(22), Color.WHITE)
+	var name_l := UiTheme.label(spell.name, _zi(22), POWER_GOLD if spell.get("power", false) else Color.WHITE)
 	_name_l = name_l
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_l.add_theme_constant_override("outline_size", _zi(4))
-	name_l.add_theme_color_override("font_outline_color", name_col.darkened(0.6))
+	name_l.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0) if spell.get("power", false) else name_col.darkened(0.6))
 	name_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	nb.add_child(name_l)
 	top.add_child(nb)
@@ -333,8 +337,8 @@ static var _frame_cache := {}  # zoom -> [texture, margin]
 ## The painted plaque behind the spell's name: red (damage), blue (defense) or yellow (utility), made of the user's pictures (Card/card_plaque_*.png, cropped, never scaled). A golden tint when the spell is upgraded.
 ## Null (the flat banner) for a fused spell or when the picture is missing.
 func _name_plaque() -> ScaledBox:
-	if spell.get("fused", false):
-		return null
+	if spell.get("fused", false) or spell.get("power", false):
+		return null  # (a fused spell: the plum banner; a Power: the obsidian one)
 	var kind := String(spell.kind)
 	var t := UiSkin.tex("card_plaque_" + kind) if kind in ["damage", "defense", "utility"] else null
 	if t == null:

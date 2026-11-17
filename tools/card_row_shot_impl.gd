@@ -11,12 +11,12 @@ func run(t: SceneTree) -> void:
 	var gd = root.get_node("GameData")
 	var ids := ["tailwind", "flame_lash", "hush_of_rain", "updraft", "ember", "droplet", "whisper", "fire_ball"]
 	for count in [5, 8]:
-		var run := RunState.new()
-		run.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
-		run.loadout = ids.slice(0, count).filter(func(id): return not gd.db.get_spell(id).is_empty())
-		var f := run.make_fight(["greenseer"])
+		var rs := RunState.new()
+		rs.setup(gd.db, save.unlocked_spells(), save.unlocked_artifacts(), 42)
+		rs.loadout = ids.slice(0, count).filter(func(id): return not gd.db.get_spell(id).is_empty())
+		var f := rs.make_fight(["greenseer"])
 		var fs := FightScreen.new()
-		fs.setup(run, f)
+		fs.setup(rs, f)
 		root.add_child(fs)
 		await t.create_timer(4.0).timeout
 		root.get_texture().get_image().save_png("%s/cards_%d.png" % [dir, count])

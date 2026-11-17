@@ -56,10 +56,6 @@
     "Swift",
     "Tailwind"
   ],
-  "cyclone": [
-    "Spinning",
-    "Cyclone"
-  ],
   "miasma": [
     "Noxious",
     "Miasma"
@@ -260,10 +256,6 @@
     "Cauterizing",
     "Brand"
   ],
-  "snuff_out": [
-    "Snuffing",
-    "Snuff"
-  ],
   "graft": [
     "Grafted",
     "Graft"
@@ -339,10 +331,6 @@
   "soul_siphon": [
     "Soulbound",
     "Soul"
-  ],
-  "last_rites": [
-    "Final",
-    "Rites"
   ],
   "broken_clock": [
     "Ticking",
@@ -691,10 +679,6 @@
   "ice_lance": [
     "Icy",
     "Icicle"
-  ],
-  "grave_wind": [
-    "Grave-chilled",
-    "Gravewind"
   ],
   "sunlit_grove": [
     "Sunlit",

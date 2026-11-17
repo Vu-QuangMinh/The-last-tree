@@ -3440,8 +3440,6 @@ Turn %d" % [run.act, run.floor_no(), fight.turn]))  # (two lines on the sign)
 			card.lock_pattern = p.locks[s.id]
 		card.fires = pv.get("spells", {}).get(s.id, 0) if phase == "build" else 0
 		card.charges = fight.charges.get(s.id, 0) if phase == "spells" else 0
-		if phase != "spells" and fight.stored.has(s.id) and fight.usable_spells().has(s):
-			card.charges = 1  # stored: it always looks awake (wobbling, shining), even between turns; cast it after a Chant
 		if s.get("anti", false):
 			# an anti-spell comes alive with the chant, unless the chant contains its pattern (that breaks it)
 			var broken: bool = card.fires > 0 if phase == "build" else fight.anti_broken.has(s.id)
@@ -4606,11 +4604,6 @@ func _queue_badges() -> void:
 func _on_card_clicked(card: SpellCard) -> void:
 	if busy and _queue_cast(card):
 		return
-	if phase != "spells" and card.charges > 0 and not busy:
-		# a stored spell: awake, but spells are cast after the chant
-		_float_text("Chant first", card.global_position + Vector2(card.size.x * card.scale.x / 2.0 - 60, -10), Color(1, 0.9, 0.55))
-		Audio.play("release_armour_block", -6.0)
-		return
 	if busy or aiming or phase != "spells" or card.charges <= 0 or not _allowed("cast", card.spell.id):
 		return
 	var spell: Dictionary = card.spell
@@ -4677,7 +4670,7 @@ func _on_end_turn() -> void:
 		return
 	if not _allowed("release" if phase == "spells" else "pass"):
 		return
-	if phase == "spells":  # (spells still alive aren't lost: they're stored for your next chant)
+	if phase == "spells":  # (spells still alive go back to sleep: they aren't kept for later)
 		await _damage_step()
 		return
 	# before chanting: pass the turn and keep your elements
@@ -5158,7 +5151,7 @@ func _on_bottle(chip: BottleChip) -> void:
 
 
 ## Grimoire Ink: choose a spell from your spellbook (not already active). Returns its index, or -1.
-func _spell_chooser(spells: Array) -> int:
+func _spell_chooser(spells: Array, why := "grimoire") -> int:
 	if spells.is_empty():
 		return -1
 	var overlay := Control.new()
@@ -5176,9 +5169,10 @@ func _spell_chooser(spells: Array) -> int:
 	v.add_theme_constant_override("separation", 18)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.add_child(v)
-	var t := UiTheme.heading("Grimoire Ink: choose a spell to join your active spells for this fight", 28, Color(1, 0.9, 0.55))
+	var title := "Your Power takes hold: choose a spell to take its place for this fight" if why == "power" else "Grimoire Ink: choose a spell to join your active spells for this fight"
+	var t := UiTheme.heading(title, 28, Color(1, 0.9, 0.55))
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var ribbon := UiSkin.box("banner_grimoire_ink", [184, 0, 174, 0], [110, 10, 110, 22])
+	var ribbon := UiSkin.box("banner_grimoire_ink", [184, 0, 174, 0], [110, 10, 110, 22]) if why != "power" else null
 	if ribbon != null:  # New theme: the title on a paper ribbon (dark ink, not gold)
 		t.add_theme_color_override("font_color", Color(0.28, 0.16, 0.1))
 		var rb := PanelContainer.new()
@@ -5206,7 +5200,7 @@ func _spell_chooser(spells: Array) -> int:
 		var k := i
 		card.clicked.connect(func(_c): _spell_chosen.emit(k))
 		flow.add_child(card)
-	var skip := UiTheme.button("Keep the ink (choose nothing)", func(): _spell_chosen.emit(-1), 20)
+	var skip := UiTheme.button("Keep the ink (choose nothing)" if why != "power" else "Leave it empty", func(): _spell_chosen.emit(-1), 20)
 	skip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(skip)
 	add_child(overlay)
@@ -6525,6 +6519,15 @@ func _anim_event(ev: Dictionary) -> void:
 			await _file_turn_box()
 		"attack":
 			await _enemy_attack(ev)
+		"take_off":
+			# a knocked-down flyer gets back up into the air: its flying picture again, lifted, its shadow left on the floor
+			Audio.play("sfx_ethereal_apply", -4.0, 1.3)
+			var tv: EnemyView = _views.get(ev.enemy)
+			_refresh_all()
+			if tv != null and is_instance_valid(tv.creature):
+				var fx := Vfx.make(_fx, 10)
+				fx.burst(tv.creature.global_position + Vector2(tv.creature.size.x / 2.0, tv.creature.size.y), 12, Color(0.85, 0.8, 0.7, 0.8), Vector2(60, 180), Vector2(0.3, 0.6), Vector2(5, 10))
+			await _wait(0.45)
 		"sfx":  # (a sound that goes with something the rules did and that has no picture of its own: the Sentinel waking, the lamp glowing...)
 			Audio.play(String(ev.name))
 			_refresh_all()
@@ -6541,11 +6544,23 @@ func _anim_event(ev: Dictionary) -> void:
 			await _wait(0.5)
 		"annihilate":
 			await _annihilate_enemies(ev.el, ev.targets)
+		"burn_fizzle":
+			# Burn, 2026-11-12: its burning Essence fizzle out one by one, left to right, and it jerks at each
+			var bv: EnemyView = _views.get(ev.enemy)
+			if bv != null:
+				for j in ev.idx:
+					bv.fizzle(int(j))
+					var at := bv.hp_point(int(j))
+					var fx := Vfx.make(_fx, 10)
+					fx.burst(at, 14, Color(1.0, 0.55, 0.15), Vector2(80, 260), Vector2(0.25, 0.5), Vector2(3, 7), Vfx.SPARK)
+					fx.burst(at + Vector2(0, -6), 6, Color(0.35, 0.3, 0.28, 0.7), Vector2(30, 90), Vector2(0.5, 0.9), Vector2(8, 14))
+					Audio.play("sfx_burn_tick", -3.0, randf_range(0.95, 1.15))
+					await _wait(0.5)  # (half a second per Essence, so each one is seen)
+				await _wait(0.12)
 		"burn_off":
-			# the Essence that caught fire last turn burns away
+			# the Essence that caught fire last turn burns away (each one fizzled out already: "burn_fizzle")
 			var v: EnemyView = _views.get(ev.enemy)
 			if v:
-				v.hit_flash()
 				_float_text("-%d  Burned" % ev.n, v.global_position + Vector2(90, 200), Color(1, 0.6, 0.25))
 			Audio.play("sfx_burn_tick")
 			_sync_views()

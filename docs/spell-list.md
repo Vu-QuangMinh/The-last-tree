@@ -1,6 +1,6 @@
 # Spell list
 
-204 spells, as the game shows them (made by tools/spell_sheet.py).
+199 spells, as the game shows them (made by tools/spell_sheet.py).
 
 | Name | Pattern | Rarity | Category | Type | Cooldown | Effect |
 |---|---|---|---|---|---|---|
@@ -17,8 +17,6 @@
 | Clear Sight | F | Common | Defensive | Spell |  | Cure Blind. Cure Confuse. |
 | Coal Toss | FF | Common | Offensive | Spell |  | Deal 2 Right damage to a random enemy. |
 | Conjure Flame | FA | Common | Utility | Spell |  | Conjure 1 offensive spell. |
-| Coup de Grace | AA | Common | Offensive | Spell |  | Deal 1 Random damage to an enemy. Then Execute at 2. |
-| Cyclone | AA | Common | Offensive | Spell |  | Deal 1 Right damage to all enemies (each one with 3+). |
 | Dab | F | Common | Offensive | Spell |  | Repaint 2 Random. Lose 2 HP. |
 | Drizzle | W | Common | Defensive | Spell |  | Heal 2 HP. |
 | Droplet | W | Common | Defensive | Spell |  | Gain 2 Shield. |
@@ -102,7 +100,7 @@
 | Blood Price | FF | Rare | Utility | Spell |  | Lose 3 HP. Gain 3 Random. |
 | Braum's Resolve | AAA | Rare | Defensive | Power |  | All your Shield is Lasting. |
 | Brimstone | FFF | Rare | Offensive | Spell |  | Apply 2 Burn to all enemies. |
-| Burn Burn Burn! | F?FA | Rare | Offensive | Durability 2 |  | Apply 2 Burn to all enemies. Double all enemies' Burn. Durability 2. |
+| Burn Burn Burn! | F?FA | Rare | Offensive | Durability 1 |  | Apply 2 Burn to all enemies. Double all enemies' Burn. Durability 1. |
 | Cataclysm | AF?FA | Rare | Offensive | Spell | 2 | Apply 3 Burn to all enemies. Cooldown 2. |
 | Cauterize | FW | Rare | Defensive | Power |  | Enemies can't Mend. |
 | Cinder Rain | AF | Rare | Offensive | Spell |  | Randomly deal 1 damage 3 times. |
@@ -122,14 +120,12 @@
 | Gale Call | A? | Rare | Utility | Spell |  | Conjure 2 spells. |
 | Glacial Spike | WFA | Rare | Offensive | Spell |  | Deal 2 Left damage to 2 different enemies. |
 | Glacier | WWW | Rare | Defensive | Durability 2 |  | Apply 1 Stun to an enemy. Durability 2. |
-| Grave Wind | AWW | Rare | Offensive | Spell |  | Execute an enemy at 3. |
 | Handyman | FW | Rare | Utility | Power |  | Your spells with Durability get +1 Durability. |
 | Hearth Song | FAW | Rare | Defensive | Spell |  | Heal 4 HP. |
 | Heat Haze | FA | Rare | Offensive | Anti-spell |  | Apply 1 Burn to all enemies. |
 | Inferno | F?F | Rare | Offensive | Spell |  | Deal 1 Right damage to all enemies. |
 | Kindled Heart | FW | Rare | Defensive | Spell | 2 | Gain 1 Evasion. Cooldown 2. |
 | Kindling Wind | FAF | Rare | Offensive | Spell |  | Amplify 1. |
-| Last Rites | FFA | Rare | Offensive | Spell |  | Execute an enemy at 4. |
 | Ludwig's Backup Plan | W?A | Rare | Offensive | Spell |  | Instant Steal 2. Lose 5 HP. |
 | Ludwig's Boots | FAFA | Rare | Defensive | Spell |  | Gain 1 Evasion. |
 | Maelstrom Ward | WWWA | Rare | Defensive | Spell |  | Gain 8 Shield. |
@@ -148,7 +144,6 @@
 | Silent Tide | WFW | Rare | Defensive | Anti-spell |  | Gain 3 Shield. |
 | Siphon | AWAWA | Rare | Offensive | Spell |  | Instant Steal 1. |
 | Siren's Call | WA?AW | Rare | Offensive | Spell |  | Steal 2 Essence from an enemy. |
-| Snuff Out | FF | Rare | Offensive | Spell |  | Snipe 1. Then Execute at 3. |
 | Splotch | AAW | Rare | Offensive | Spell |  | Repaint 3 Random. |
 | Spritz | WW | Rare | Utility | Spell |  | Self-Repaint 2 Random. |
 | Stain | AWW | Rare | Offensive | Power |  | Each turn: Repaint 1 Random. |

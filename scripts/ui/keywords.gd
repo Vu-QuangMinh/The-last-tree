@@ -60,7 +60,6 @@ const K := {
 	"poison": [Color(0.55, 0.9, 0.3), Color(0.25, 0.5, 0.05), "Poison: lose that much HP at the start of your turn, then Poison drops by 1."],
 	"vulnerable": [Color(1.0, 0.5, 0.4), Color(0.72, 0.15, 0.08), "Vulnerable N: you take 50% more damage. Drops by 1 each turn."],
 	"lasting": [Color(0.6, 0.85, 1.0), Color(0.1, 0.4, 0.7), "Lasting Shield: like Shield, but it stays until it's broken."],
-	"stored": [Color(0.75, 0.9, 1.0), Color(0.2, 0.4, 0.65), "Stored: a spell you didn't cast before the Release. It's still awake: cast it after your next Chant."],
 	"cooldown": [Color(0.7, 0.85, 1.0), Color(0.2, 0.35, 0.6), "Cooldown N: can't be cast for N turns after you cast it."],
 	"brittle": [Color(0.6, 0.8, 1.0), Color(0.15, 0.35, 0.6), "Brittle N: your Shield is 50% smaller for N turns."],
 	"blind": [Color(0.7, 0.7, 0.75), Color(0.3, 0.3, 0.35), "Blind: some enemy Essence show as ?. They still match."],

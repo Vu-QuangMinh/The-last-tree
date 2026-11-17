@@ -31,7 +31,7 @@ const E := {
 		"flavor": "Its wings steal your words."},
 	"cinder_hound": {"name": "Cinder Hound", "act": 0, "tier": 2.5, "hp": "FFAFFWFFAF", "moves": [{"kind": "attack", "n": 6}], "passives": ["burn_immune"],
 		"flavor": "Flame Essence burns under its skin like tattoos."},
-	"mirror_fairy": {"name": "Mirror Fairy", "act": 1, "tier": 2.5, "hp": "AWFWAAWFWA", "size": 3.0, "passives": ["mirror_deflect"], "moves": [{"kind": "confuse"}, {"kind": "attack", "n": 6}],
+	"mirror_fairy": {"name": "Mirror Fairy", "act": 1, "tier": 2.5, "hp": "AWFWAAWFWA", "size": 3.0, "passives": ["mirror_deflect"], "moves": [{"kind": "confuse", "fight": true}, {"kind": "attack", "n": 6}],
 		"flavor": "A fairy's face in a mirror, her hands gripping it from behind."},
 	"yeti": {"name": "Yeti", "act": 0, "tier": 2.5, "hp": "WWAWWAWWAWWA", "moves": [{"kind": "freeze", "n": 2}, {"kind": "attack", "n": 7}],
 		"flavor": "Big, white and very cold."},
@@ -177,18 +177,19 @@ const E := {
 		"flavor": "One cut, and it is over."},
 	"tide_colossus": {"name": "Tide Colossus", "act": 3, "elite": true, "retired": true, "hp": "WWWWFW", "moves": [{"kind": "mend", "el": "W", "n": 2, "who": "self"}, {"kind": "attack", "n": 8}],
 		"flavor": "A wave that stands up."},
-	# The Triplet (a mini boss of three separate enemies): one spirit of each element, each with its own cycle of moves.
+	# The Triplet (a mini boss of three separate enemies): one spirit of each element, each with its own cycle of two moves,
+	# and every turn each one also hits you for 2 ("also", 2026-11-12: the old "attack 3" move was taken out).
 	# They START at different points of it ("start"); a stun or a death can bring them in step later, and that's fine.
 	# Their support moves land on one of the three at random: the fire one gives Power +1, the air one Armour, and the
 	# water one heals 1 Essence (that sprite's own element, never past 5), always on a hurt one if any is hurt.
 	"triplet_fire": {"name": "Ember Sprite", "act": 1, "elite": true, "member": true, "start": 0, "hp": "FFFFF",
-		"moves": [{"kind": "ignite_spell", "turns": 1}, {"kind": "attack", "n": 3}, {"kind": "empower", "n": 1, "who": "random"}],
+		"moves": [{"kind": "ignite_spell", "turns": 1, "also": {"kind": "attack", "n": 2}}, {"kind": "empower", "n": 1, "who": "random", "also": {"kind": "attack", "n": 2}}],
 		"flavor": "Sets your words on fire."},
 	"triplet_water": {"name": "Ripple Sprite", "act": 1, "elite": true, "member": true, "start": 1, "hp": "WWWWW",
-		"moves": [{"kind": "freeze", "n": 1}, {"kind": "attack", "n": 3}, {"kind": "mend", "el": "own", "n": 1, "who": "random_hurt", "cap": 5}],
+		"moves": [{"kind": "freeze", "n": 1, "also": {"kind": "attack", "n": 2}}, {"kind": "mend", "el": "own", "n": 1, "who": "random_hurt", "cap": 5, "also": {"kind": "attack", "n": 2}}],
 		"flavor": "Freezes your Essence."},
-	"triplet_air": {"name": "Zephyr Sprite", "act": 1, "elite": true, "member": true, "start": 2, "hp": "AAAAA",
-		"moves": [{"kind": "silence", "turns": 1}, {"kind": "attack", "n": 3}, {"kind": "armor", "pos": -1, "who": "random"}],
+	"triplet_air": {"name": "Zephyr Sprite", "act": 1, "elite": true, "member": true, "start": 1, "hp": "AAAAA",
+		"moves": [{"kind": "silence", "turns": 1, "also": {"kind": "attack", "n": 2}}, {"kind": "armor", "pos": -1, "who": "random", "also": {"kind": "attack", "n": 2}}],
 		"flavor": "Steals your voice."},
 	# Enraged Rolling Bear (a mini boss): bigger, red fur. It attacks every turn, and every time you gain Shield it
 	# gains Power +1 (once per separate gain).
@@ -803,7 +804,7 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 		"steal":
 			s = "Steal %d of your Essence" % m.n
 		"confuse":
-			s = "Confuse you: a black veil over the slot machine (next turn you can't see what is coming next)"
+			s = "Confuse you: a black veil over the slot machine for the rest of the fight (you can't see what is coming next)" if m.get("fight", false) else "Confuse you: a black veil over the slot machine (next turn you can't see what is coming next)"
 		"blind":
 			s = "Blind you (%d turns)" % m.turns
 		"poison":
@@ -818,6 +819,8 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			s = "Calls a Sentinel in %d turn%s" % [m.n, "" if int(m.n) == 1 else "s"]
 		"grounded":
 			s = "Stunned: it skips its action"
+		"take_off":
+			s = "Take off: it flies back up into the air (your chant can't hit it there)"
 		"recharge":
 			s = "Recharging: it stuns itself for a turn"
 		"dormant":
