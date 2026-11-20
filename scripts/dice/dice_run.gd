@@ -3,12 +3,15 @@ extends RefCounted
 ## Die on Stage (2026-11-15): one run. Three dice (each a list of six faces; the "+1" / "-1" rewards change a face for
 ## good), up to DiceCards.MAX_CARDS cards, artifacts (DiceArtifacts), HP as in the chant game, coins, three acts on
 ## the zoned hex map (DiceMapGen.make_zoned: easy, mid, hard from left to right; forward moves only; after
-## DiceMapGen.BOSS_WAIT moves the boss comes for you, and when it reaches you its fight starts).
+## DiceMapGen.BOSS_SPEED_EVERY moves the boss comes for you, faster and faster (DiceMapGen.boss_speed), and when it reaches you its fight starts).
 
 const START_DICE := 3
 const START_COINS := 5
 const LAST_ACT := 3
 const LEFT_OUT := ["mirror_knight"]  # (not in Die on Stage for now, the user 2026-11-16)
+## The map: "sts" (2026-11-17: the Slay the Spire map, DiceMapGen.make_sts; no boss chase) or "zoned" (the hex map with
+## the boss chase, DiceMapGen.make_zoned).
+const MAP_STYLE := "zoned"  # (back to the hex map, the user 2026-11-17)
 
 var rng := RandomNumberGenerator.new()
 var act := 1
@@ -22,10 +25,12 @@ var map: Array = []
 var row := -1
 var col := 0
 var visited: Array = []  # "row:col" of every tile you stood on this act
-var turns := 0  # moves made this act (the boss starts moving after DiceMapGen.BOSS_WAIT)
+var turns := 0  # moves made this act (the boss's speed grows with it: DiceMapGen.boss_speed)
 var boss := Vector2i.ZERO  # where the boss stands: Vector2i(level, lane) (DiceMapGen.boss_home at the start of an act)
 var artifacts: Array = []  # DiceArtifacts ids
 var seen: Array = []  # enemies met (so the next fights prefer new ones)
+var whirl_uses := 0  # (whirlpool dives this run: each costs WHIRL_HP more than the one before)
+var events_seen: Array = []  # "?" stories met this run (DiceEvents: each comes once)
 var won := false
 
 
@@ -47,7 +52,7 @@ func setup(seed_value := 0) -> void:
 
 
 func new_map() -> void:
-	map = DiceMapGen.make_zoned(rng)
+	map = DiceMapGen.make_sts(rng) if MAP_STYLE == "sts" else DiceMapGen.make_zoned(rng)
 	row = -1
 	col = 0
 	visited.clear()
@@ -74,6 +79,8 @@ func face(i: int, k: int) -> Dictionary:
 
 ## The tiles you can go to next, as Vector2i(row, col): forward only, hollows left out.
 func options() -> Array:
+	if MAP_STYLE == "sts":
+		return DiceMapGen.reachable(map, row, col).map(func(c): return Vector2i(row + 1, int(c)))
 	return DiceMapGen.forward(map, row, col)
 
 
@@ -86,12 +93,19 @@ func my_cell() -> Vector2i:
 
 ## Has the boss reached you?
 func caught() -> bool:
+	if MAP_STYLE == "sts":
+		return false  # (no chase: the boss waits at the top)
 	return row >= 0 and boss == my_cell()
 
 
 ## Moves the boss would still wait before it starts coming (0: it is coming).
 func boss_wait() -> int:
-	return maxi(0, DiceMapGen.BOSS_WAIT - turns)
+	return maxi(0, DiceMapGen.BOSS_SPEED_EVERY - turns)
+
+
+## Tiles the boss walks after each of your moves right now.
+func boss_speed() -> int:
+	return DiceMapGen.boss_speed(turns)
 
 
 ## Step onto a tile (you can step onto the boss: that is its fight). Then the boss moves, once it has waited long enough.
@@ -100,8 +114,33 @@ func move_to(r: int, c: int) -> Dictionary:
 	row = r
 	col = c
 	visited.append("%d:%d" % [r, c])
-	_after_move()
+	if String(map[r][c].type) != "haste":  # (a haste tile: a free step: not counted, the boss stays)
+		_after_move()
 	return current_node()
+
+
+## A whirlpool dive costs this much HP now (5, then 10, 15...).
+const WHIRL_HP := 5
+
+
+func whirl_cost() -> int:
+	return WHIRL_HP * (whirl_uses + 1)
+
+
+func can_dive() -> bool:
+	return current_node().has("link") and hp > whirl_cost()
+
+
+## Dive into the whirlpool you stand on: lose its HP, come out at the other one (no move counted, the boss stays).
+func dive() -> void:
+	if not can_dive():
+		return
+	hp -= whirl_cost()
+	whirl_uses += 1
+	var l: Array = current_node().link
+	row = int(l[0])
+	col = int(l[1])
+	visited.append("%d:%d" % [row, col])
 
 
 ## Nothing ahead: you wait, and the boss comes.
@@ -111,9 +150,11 @@ func wait_turn() -> void:
 
 func _after_move() -> void:
 	turns += 1
-	if caught() or turns <= DiceMapGen.BOSS_WAIT:
+	if MAP_STYLE == "sts":
 		return
-	for k in DiceMapGen.BOSS_STEPS:
+	if caught():
+		return
+	for k in DiceMapGen.boss_speed(turns):
 		boss = DiceMapGen.boss_step(map, boss, my_cell())
 		if caught():
 			return
@@ -131,7 +172,7 @@ func next_act() -> void:
 
 # ------------------------------------------------------------------ fights
 
-## The enemies of a fight here: "fight" (a normal one, from the pool of the zone the tile is in: easy, medium, hard),
+## The enemies of a fight here: "fight" (a normal one, easy, medium or hard by how many moves you have made this act: DiceMapGen.fight_tier),
 ## "double" (two of the act's hardest normal fights at once, at most 4 enemies), "elite" (a mini boss) or "boss".
 ## Only enemies that are one puppet each (no Handyman arms, no dragon parts).
 func encounter(kind: String) -> Array:
@@ -155,13 +196,15 @@ func encounter(kind: String) -> Array:
 			var a := _group("hard")
 			var b := _group("hard")
 			return (a + b).slice(0, 4)
-	return _group(["easy", "medium", "hard"][DiceMapGen.zone_of(maxi(0, row))])
+	var tier := DiceMapGen.sts_tier(maxi(0, row)) if MAP_STYLE == "sts" else DiceMapGen.fight_tier(turns)
+	return _group(["easy", "medium", "hard"][tier])
 
 
 func _group(tier: String) -> Array:
 	var pools: Dictionary = EnemyDefs.POOLS.get(act, EnemyDefs.POOLS[1])
 	var groups: Array = pools.get(tier, pools.get("medium", pools.values()[0]))
 	groups = groups.filter(func(g): return g.ids.all(func(x): return _simple(x)))
+	groups = groups.filter(func(g): return not g.ids.all(func(x): return x in DiceFight.LINGS) or g.ids.size() == 2)  # (spirits on their own come two at a time, 2026-11-17)
 	if groups.is_empty():
 		return ["ashling"]
 	var fresh2 := groups.filter(func(g): return not g.ids.any(func(x): return x in seen.slice(maxi(0, seen.size() - 6))))
@@ -180,15 +223,32 @@ static func _simple(id: String) -> bool:
 
 # ------------------------------------------------------------------ cards and dice
 
-## Three different cards you don't have (for a shop, a treasure, a mini boss).
-func card_offer(n := 3) -> Array:
-	var pool := DiceCards.pool().filter(func(id): return not (id in cards))
-	if pool.is_empty():
-		pool = DiceCards.pool()
+## Three different cards (for a shop, a treasure, a mini boss; `from_boss`: a boss's, of higher rarity). Each is first
+## given a rarity (DiceCards.OFFER_ODDS; a boss's: BOSS_ODDS), then a card of it. A card you already have can be offered (taking
+## it upgrades yours), unless yours is already upgraded.
+func card_offer(n := 3, from_boss := false) -> Array:
+	var pool := DiceCards.pool().filter(func(id): return not upgrades.has(id))
 	var out := []
 	while out.size() < n and not pool.is_empty():
-		out.append(pool.pop_at(rng.randi() % pool.size()))
+		var want := _roll_rarity(DiceCards.BOSS_ODDS if from_boss else DiceCards.OFFER_ODDS)
+		var of := pool.filter(func(id): return DiceCards.rarity(id) == want)
+		if of.is_empty():
+			of = pool.filter(func(id): return DiceCards.rarity(id) != "common") if from_boss else pool
+		if of.is_empty():
+			of = pool
+		var pick: String = of[rng.randi() % of.size()]
+		out.append(pick)
+		pool.erase(pick)
 	return out
+
+
+func _roll_rarity(odds: Dictionary) -> String:
+	var x := rng.randf()
+	for k in odds:
+		x -= float(odds[k])
+		if x < 0.0:
+			return k
+	return "common"
 
 
 func has_room() -> bool:

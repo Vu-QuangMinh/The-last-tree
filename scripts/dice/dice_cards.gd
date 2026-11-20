@@ -182,6 +182,17 @@ static func card(id: String, up := "") -> Dictionary:
 	return c
 
 
+## A move's rarity, from its price for now: "common" (5-6 coins), "uncommon" (7), "rare" (8-10).
+static func rarity(id: String) -> String:
+	var p := price(id)
+	return "common" if p <= 6 else ("uncommon" if p <= 7 else "rare")
+
+
+## The odds of each rarity in an offer (a shop, a treasure, a mini boss), and in a boss's (higher).
+const OFFER_ODDS := {"common": 0.6, "uncommon": 0.33, "rare": 0.07}
+const BOSS_ODDS := {"uncommon": 0.6, "rare": 0.4}
+
+
 ## (the move as written in the data; the screens that don't know about upgrades)
 static func get_card(id: String) -> Dictionary:
 	return CARDS.get(id, {})

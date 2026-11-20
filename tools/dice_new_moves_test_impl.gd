@@ -11,6 +11,9 @@ func _fight(cards: Array) -> DiceFight:
 	r.max_hp = 100
 	var f := DiceFight.new()
 	f.setup(r, ["ashling", "yellow_slime"])
+	for x in f.foes:  # (big enough that no check kills it)
+		x.max_hp = 100
+		x.hp = 100
 	return f
 
 

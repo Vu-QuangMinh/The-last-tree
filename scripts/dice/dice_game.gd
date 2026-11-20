@@ -39,6 +39,14 @@ func show_map() -> void:
 	if run.caught():
 		_message("The boss has caught you", "Its fight begins.", [["Fight!", func(): _fight(run.encounter("boss"), "boss")]])
 		return
+	if DiceRun.MAP_STYLE == "sts":  # (the Slay the Spire map, 2026-11-17)
+		var sm := DiceStsMapView.new()
+		sm.setup(run)
+		sm.chosen.connect(_on_tile)
+		sm.quit.connect(func(): quit.emit())
+		_swap(sm)
+		Audio.play_music("map")
+		return
 	var m := DiceMapView.new()
 	m.setup(run)
 	m.chosen.connect(_on_tile)
@@ -59,10 +67,22 @@ func _on_tile(r: int, c: int) -> void:
 		"fight":
 			var kind: String = n.get("fight", "fight")
 			_fight(run.encounter(kind), kind, String(n.get("bonus", "")), n)
+		"elite":
+			_fight(run.encounter("elite"), "elite", "card", n)
+		"boss":
+			_fight(run.encounter("boss"), "boss")
+		"treasure":
+			_card_choice("Treasure", "A chest on the stage. Choose a move.", run.card_offer(3), show_map)
 		"shop":
 			_shop()
 		"rest":
 			_campfire()
+		"event":
+			_event()
+		"haste":
+			show_map()  # (a free step: choose again)
+		"whirlpool":
+			_whirlpool()
 		_:
 			show_map()
 
@@ -81,7 +101,7 @@ func _fight(ids: Array, kind: String, bonus := "", tile := {}) -> void:
 
 ## After a fight won: coins (more for a mini boss or a double encounter), what the artifacts give, then the tile's bonus.
 func _rewards(kind: String, bonus: String, tile: Dictionary) -> void:
-	var l := run.rng.randi_range(FIGHT_COINS[0], FIGHT_COINS[1]) if kind == "fight" else ELITE_COINS
+	var l: int = run.rng.randi_range(FIGHT_COINS[0], FIGHT_COINS[1]) if kind == "fight" else ELITE_COINS
 	var words := ["+%d coin%s." % [l, "" if l == 1 else "s"]]
 	run.leaves += l
 	if run.has_artifact("coin_purse"):
@@ -90,11 +110,12 @@ func _rewards(kind: String, bonus: String, tile: Dictionary) -> void:
 	if run.has_artifact("healing_herb"):
 		words.append("Healing Herb: +%d HP." % run.heal(3))
 	var text := " ".join(words)
-	if kind == "boss":
-		_card_choice("The boss is beaten", text + " Choose a move.", run.card_offer(3), func():
-			_new_die(func():
-				run.next_act()
-				show_map()))
+	if kind == "boss":  # (a rarer move, then an artifact, then a new die; then the next act)
+		_card_choice("The boss is beaten", text + " Choose a move.", run.card_offer(3, true), func():
+			_artifact_choice("The boss is beaten.", run.artifact_offer(3), func():
+				_new_die(func():
+					run.next_act()
+					show_map())))
 		return
 	match bonus:
 		"dice":
@@ -170,8 +191,9 @@ func _pick_upgrade() -> void:
 	o.box.add_child(UiTheme.button("Back", func(): o.root.queue_free(); _campfire(), 20))
 
 
-## Choose one of three artifacts (or none).
-func _artifact_choice(words: String, ids: Array) -> void:
+## Choose one of three artifacts (or none). Then `then` (the map by default).
+func _artifact_choice(words: String, ids: Array, then := Callable()) -> void:
+	var after: Callable = then if then.is_valid() else show_map
 	var o := _overlay("Victory", words + " Choose an artifact.")
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -195,9 +217,9 @@ func _artifact_choice(words: String, ids: Array) -> void:
 		b.pressed.connect(func():
 			run.gain_artifact(id)
 			o.root.queue_free()
-			show_map())
+			after.call())
 		row.add_child(b)
-	o.box.add_child(UiTheme.button("Skip", func(): o.root.queue_free(); show_map(), 20))
+	o.box.add_child(UiTheme.button("Skip", func(): o.root.queue_free(); after.call(), 20))
 
 
 ## A dice mod in words: "Adjustment +2", "Painting: Red", "Carving: Heart" (`mod`: a tile, or {dmod, die_mod / paint / carve}).
@@ -344,6 +366,9 @@ func _card_choice(title: String, words: String, ids: Array, then: Callable) -> v
 	row.add_theme_constant_override("separation", 30)
 	o.box.add_child(row)
 	for id in ids:
+		var col := VBoxContainer.new()
+		col.alignment = BoxContainer.ALIGNMENT_BEGIN
+		col.add_theme_constant_override("separation", 10)
 		var cv := DiceCardView.new()
 		cv.id = id
 		cv.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -351,12 +376,41 @@ func _card_choice(title: String, words: String, ids: Array, then: Callable) -> v
 			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 				o.root.queue_free()
 				_take_card(id, then))
-		row.add_child(cv)
+		col.add_child(cv)
+		var tag := UiTheme.label(DiceCards.rarity(id).capitalize(), 16, RARITY_COL[DiceCards.rarity(id)])
+		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(tag)
+		if id in run.cards:  # (you have it: it wiggles; taking it upgrades yours)
+			var have := UiTheme.label("You have it: take it to upgrade yours", 16, Color(1.0, 0.85, 0.4))
+			have.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			have.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			have.custom_minimum_size = Vector2(DiceCardView.W, 0)
+			col.add_child(have)
+			_wiggle(cv)
+		row.add_child(col)
 	o.box.add_child(UiTheme.button("Skip", func(): o.root.queue_free(); then.call(), 20))
 
 
-## A card joins; with no room left (MAX_CARDS), you choose which one it replaces, or leave it.
+const RARITY_COL := {"common": Color(0.85, 0.82, 0.75), "uncommon": Color(0.45, 0.85, 1.0), "rare": Color(1.0, 0.75, 0.25)}
+
+
+## "Wiggle wiggle": a card you already have shakes from side to side now and then, in an offer.
+func _wiggle(cv: Control) -> void:
+	cv.pivot_offset = Vector2(DiceCardView.W, DiceCardView.H) / 2.0
+	var tw := cv.create_tween().set_loops()
+	tw.tween_interval(0.5)
+	for k in 4:
+		tw.tween_property(cv, "rotation", 0.07 if k % 2 == 0 else -0.07, 0.07)
+	tw.tween_property(cv, "rotation", 0.0, 0.07)
+	tw.tween_interval(0.9)
+
+
+## A card joins; with no room left (MAX_CARDS), you choose which one it replaces, or leave it. A card you already
+## have upgrades yours instead (you pick how).
 func _take_card(id: String, then: Callable) -> void:
+	if id in run.cards:
+		_upgrade_card(id, then)
+		return
 	if run.has_room():
 		run.gain_card(id)
 		then.call()
@@ -379,6 +433,93 @@ func _take_card(id: String, then: Callable) -> void:
 				then.call())
 		row.add_child(cv)
 	o.box.add_child(UiTheme.button("Keep my moves", func(): o.root.queue_free(); then.call(), 20))
+
+
+## The same card again: upgrade yours (each upgrade it has on offer: boost, slot, or Arm Bar's other one).
+func _upgrade_card(id: String, then: Callable) -> void:
+	if run.upgrades.has(id):
+		then.call()
+		return
+	var o := _overlay("You found %s again" % DiceCards.get_card(id).name, "Your %s gets an upgrade. Choose which." % DiceCards.get_card(id).name)
+	var col := VBoxContainer.new()
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_theme_constant_override("separation", 10)
+	var cc := CenterContainer.new()
+	var cv := DiceCardView.new()
+	cv.id = id
+	cv.def = run.card_at(run.cards.find(id))
+	cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cc.add_child(cv)
+	col.add_child(cc)
+	var texts: Array = DiceCards.upgrade_texts(id)
+	for opt in [["boost", texts[0]], ["alt" if DiceCards.get_card(id).has("alt") else "slot", texts[1]]]:
+		if String(opt[1]) == "":
+			continue
+		var how: String = opt[0]
+		var b := UiTheme.button(String(opt[1]), func():
+			run.upgrade(id, how)
+			o.root.queue_free()
+			_message("Upgraded", "%s is now %s." % [DiceCards.get_card(id).name, DiceCards.card(id, how).name], [["Go on", then]]), 18)
+		b.custom_minimum_size = Vector2(420, 64)
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		col.add_child(b)
+	o.box.add_child(col)
+
+
+## A whirlpool: dive in (DiceRun.whirl_cost HP) to come out at the other one, or stay.
+func _whirlpool() -> void:
+	var cost := run.whirl_cost()
+	var o := _overlay("A whirlpool", "The water spins down into the dark. It comes out somewhere else on the map, at the other whirlpool. Diving in costs %d HP (and 5 more each time after).
+
+❤ %d/%d" % [cost, run.hp, run.max_hp])
+	var b := UiTheme.button("Dive in (lose %d HP)" % cost, func():
+		o.root.queue_free()
+		run.dive()
+		show_map(), 22)
+	b.disabled = not run.can_dive()
+	o.box.add_child(b)
+	o.box.add_child(UiTheme.button("Stay here", func(): o.root.queue_free(); show_map(), 22))
+
+
+## A "?" tile: a story from the chant game (DiceEvents). None left: a plain fight.
+func _event() -> void:
+	var evs := DiceEvents.pool(run.act, run.events_seen)
+	if evs.is_empty():
+		_fight(run.encounter("fight"), "fight")
+		return
+	var e: Dictionary = evs[run.rng.randi() % evs.size()]
+	run.events_seen.append(e.id)
+	_event_page(String(e.title), String(e.text), e)
+
+
+func _event_page(title: String, text: String, page: Dictionary) -> void:
+	var o := _overlay(title, DiceEvents.words(text) + "
+
+❤ %d/%d    🪙 %d coins" % [run.hp, run.max_hp, run.leaves])
+	for opt in DiceEvents.options_of(page):
+		var price := DiceEvents.cost(opt)
+		var b := UiTheme.button(DiceEvents.words(String(opt.label)), func():
+			o.root.queue_free()
+			run.leaves -= price
+			if opt.has("next"):
+				_event_page(title, String(opt.next.get("text", "")), opt.next)
+				return
+			var oc := DiceEvents.roll(opt, run.rng)
+			var res := DiceEvents.apply(run, oc)
+			var said := DiceEvents.words(String(oc.get("text", "")))
+			if not res.got.is_empty():
+				said += "  (%s)" % ", ".join(res.got)
+			var go := show_map
+			if res.has("fight"):
+				var fk: String = res.fight.kind
+				var fids: Array = res.fight.ids
+				go = func(): _fight(fids, fk)
+			if said.strip_edges() == "":
+				go.call()
+				return
+			_message(title, said, [[String(oc.get("ok", "Go on")), go]]), 22)
+		b.disabled = price > run.leaves
+		o.box.add_child(b)
 
 
 func _message(title: String, words: String, buttons: Array) -> void:

@@ -583,22 +583,33 @@ static func make_map(rng: RandomNumberGenerator) -> Array:
 
 
 # ------------------------------------------------------------------ Die on Stage: the zoned map with the boss chase (2026-11-16)
-## The same hex lanes, left to right, in three zones by level: easy, mid, hard (ZONES: where each starts). Every tile is a
-## fight unless it is a shop, a campfire, or hollow (no tile: it shapes the map; you can't stand on it, the boss goes round
-## it). On some fights a bonus (`bonus`): "dice" (a +1 / -1 die change, the common one), "card" or "artifact" (rarer: that
-## fight is a mini boss or a double encounter of the act's hardest tier, `fight`: "elite" / "double"). The further right,
-## the more bonuses. You move forward only. The boss waits at the far right; after BOSS_WAIT moves it comes for you,
-## BOSS_STEPS tiles after each of your moves; when it reaches you, the boss fight starts.
-const ZONES := [0, 8, 16]  # (levels: easy from 0, mid from 8, hard from 16; the map's last level is 22)
-const BONUS_ODDS := [  # per zone: [dice, card, artifact] chance on a fight tile (tuned 2026-11-16: about 5 dice, 2 cards, 2 artifacts an act, most of them in the mid and hard zones)
-	[0.16, 0.02, 0.02],
-	[0.42, 0.15, 0.12],
-	[0.55, 0.24, 0.20]]
-const HOLLOW_SHARE := 0.14
+## The same hex lanes, left to right, no holes (2026-11-17). Tiles are about rewards, not difficulty (the user,
+## 2026-11-17, after Ship of Fools): a tile shows what it gives; how hard its fight is depends on how far into the act
+## you are (fight_tier: by your move number, TIER_FROM_MOVE). A dice mod gets better the further right it lies. Every tile is a fight unless it is a
+## shop, a campfire or an event ("event": a story from the chant game, MapEvents, see DiceEvents). Exactly CARDS card
+## tiles and ARTIFACTS artifact tiles (a mini boss or a double encounter, `fight`: "elite" / "double"), spread evenly
+## along the map; on the other fights, now and then a dice mod (`bonus` "dice": its quality grows with the tile's zone).
+## You move forward only. The boss waits at the far right; it gets faster as you go (boss_speed: 0 tiles a move for
+## your first BOSS_SPEED_EVERY moves, then 1, 2, 3...: +1 every BOSS_SPEED_EVERY moves, 2026-11-17); when it reaches
+## you, the boss fight starts.
+const ZONES := [0, 8, 16]  # (by level: a dice mod's quality, DMOD_ZONE_ODDS / ADJUST_SIZES)
+const TIER_FROM_MOVE := [1, 4, 8]  # (normal fights: easy from your 1st move, medium from the 4th, hard from the 8th)
+const ZONE_SEEDS := 15  # (patches: each tile takes the zone of its nearest seed; 5 seeds of each zone)
+const EASY_START := 3  # (levels 0..2 are always easy)
+const CARDS := 5
+const ARTIFACTS := 4
+const EVENTS := 4
+const HASTES := 3  # ("haste": a free step, no fight; the boss doesn't move and the move isn't counted)
+const WHIRL_SPANS := [[3, 8], [13, 18]]  # (one pair of whirlpools: one in each span, each linked to the other)
+const DICE_ODDS := 0.33  # (a plain fight with a dice mod)
 const Z_SHOPS := [[4, 9], [13, 18]]  # (one shop in each of these level spans)
 const Z_RESTS := [[6, 11], [14, 20]]  # (one campfire in each)
-const BOSS_WAIT := 10
-const BOSS_STEPS := 1
+const BOSS_SPEED_EVERY := 5
+
+
+## How many tiles the boss walks after your move number `turn` (1 = your first move).
+static func boss_speed(turn: int) -> int:
+	return maxi(0, turn - 1) / BOSS_SPEED_EVERY
 
 
 static func zone_of(level: int) -> int:
@@ -607,6 +618,22 @@ static func zone_of(level: int) -> int:
 		if level >= ZONES[i]:
 			z = i
 	return z
+
+
+## A normal fight's tier (0 easy, 1 medium, 2 hard) on your move number `turn`.
+static func fight_tier(turn: int) -> int:
+	var t := 0
+	for i in TIER_FROM_MOVE.size():
+		if turn >= TIER_FROM_MOVE[i]:
+			t = i
+	return t
+
+
+## A tile's zone (0 easy, 1 mid, 2 hard) (the old scattered patches, unused since tiles are about rewards).
+static func tile_zone(rows: Array, level: int, col: int) -> int:
+	if level < 0 or level >= rows.size() or col < 0 or col >= rows[level].size():
+		return 0
+	return int(rows[level][col].get("zone", zone_of(level)))
 
 
 static func make_zoned(rng: RandomNumberGenerator) -> Array:
@@ -621,49 +648,162 @@ static func make_zoned(rng: RandomNumberGenerator) -> Array:
 		rows[level].sort_custom(func(a, b): return a.lane < b.lane)
 		for c in rows[level].size():
 			rows[level][c].col = c
-	# hollows (never the start, never the last two levels)
-	for level in range(1, top - 1):
-		for n in rows[level]:
-			if rng.randf() < HOLLOW_SHARE:
-				n.type = "hollow"
-	_keep_ways_forward(rows)
+	# shops and campfires: one in each span
 	for spans in [[Z_SHOPS, "shop"], [Z_RESTS, "rest"]]:
 		for span in spans[0]:
-			var spots := []
-			for level in range(span[0], mini(span[1], top) + 1):
-				for n in rows[level]:
-					if n.type == "fight":
-						spots.append(n)
-			if not spots.is_empty():
-				spots[rng.randi() % spots.size()].type = spans[1]
+			_put(rows, rng, span[0], mini(span[1], top), spans[1])
+	# cards, artifacts and events: each kind spread evenly along the map (one in each equal stretch of levels)
+	var order := []  # (cards and artifacts take turns: card, artifact, card, ...; CARDS must be ARTIFACTS or ARTIFACTS + 1)
+	for k in CARDS + ARTIFACTS:
+		order.append("card" if k % 2 == 0 else "artifact")
+	_spread_kind(rows, rng, order, 2, top)
+	var ev := []
+	for k in EVENTS:
+		ev.append("event")
+	_spread_kind(rows, rng, ev, 2, top)
+	var whirls := []
+	for span in WHIRL_SPANS:
+		var before := _find(rows, "whirlpool").size()
+		_put(rows, rng, span[0], mini(span[1], top), "whirlpool")
+		var now := _find(rows, "whirlpool")
+		if now.size() > before:
+			whirls.append(now[now.size() - 1])
+	if whirls.size() == 2:
+		rows[whirls[0].x][whirls[0].y]["link"] = [whirls[1].x, whirls[1].y]
+		rows[whirls[1].x][whirls[1].y]["link"] = [whirls[0].x, whirls[0].y]
+	else:
+		for w in whirls:
+			rows[w.x][w.y].type = "fight"
+	var hs := []
+	for k in HASTES:
+		hs.append("haste")
+	_spread_kind(rows, rng, hs, 2, top - 2)
 	for level in range(1, rows.size()):
-		var odds: Array = BONUS_ODDS[zone_of(level)]
 		for n in rows[level]:
-			if n.type != "fight":
-				continue
-			var r := rng.randf()
-			if r < odds[1]:
-				n["bonus"] = "card"
-			elif r < odds[1] + odds[2]:
-				n["bonus"] = "artifact"
-			elif r < odds[0] + odds[1] + odds[2]:
+			if n.type == "fight" and not n.has("bonus") and rng.randf() < DICE_ODDS:
 				n["bonus"] = "dice"
-				_dice_mod(n, rng)
-			if n.get("bonus", "") in ["card", "artifact"]:
-				n["fight"] = "elite" if rng.randf() < 0.5 else "double"
+				_dice_mod(n, rng, zone_of(level))
 	return rows
 
 
-## A dice mod tile: which kind (DMOD_ODDS: painting, adjustment, carving, the rarest) and what it is: the colour, the
-## amount (-3 to +3, never 0), or the symbol. Decided with the map, so its tile can say it.
-const DMOD_ODDS := {"paint": 0.42, "adjust": 0.42, "carve": 0.16}
+## Zones as scattered patches: ZONE_SEEDS seed tiles (as many of each zone), each tile the zone of its nearest seed
+## (hex steps); the first EASY_START levels are easy.
+static func _scatter_zones(rows: Array, rng: RandomNumberGenerator) -> void:
+	var cells := []
+	for level in range(EASY_START, rows.size()):
+		for n in rows[level]:
+			cells.append(Vector2i(level, int(n.lane)))
+	var seeds := []
+	var zones := []
+	for k in ZONE_SEEDS:
+		zones.append(k % 3)
+	for k in zones.size():
+		var j := rng.randi_range(k, zones.size() - 1)
+		var t: int = zones[k]
+		zones[k] = zones[j]
+		zones[j] = t
+	for k in ZONE_SEEDS:
+		var best := Vector2i.ZERO
+		var best_d := -1
+		for tries in 12:  # (seeds far from each other)
+			var c: Vector2i = cells[rng.randi() % cells.size()]
+			var d := 999
+			for s in seeds:
+				d = mini(d, hex_dist(c, s))
+			if d > best_d:
+				best_d = d
+				best = c
+		seeds.append(best)
+	for level in rows.size():
+		for n in rows[level]:
+			if level < EASY_START:
+				n["zone"] = 0
+				continue
+			var me := Vector2i(level, int(n.lane))
+			var near := 0
+			var nd := 999
+			for k in seeds.size():
+				var d := hex_dist(me, seeds[k]) * 10 + rng.randi() % 10  # (a little noise: ragged edges)
+				if d < nd:
+					nd = d
+					near = k
+			n["zone"] = zones[near]
 
 
-static func _dice_mod(n: Dictionary, rng: RandomNumberGenerator) -> void:
+## The tiles of a type, as Vector2i(level, col), in level order.
+static func _find(rows: Array, t: String) -> Array:
+	var out := []
+	for level in rows.size():
+		for n in rows[level]:
+			if n.type == t:
+				out.append(Vector2i(level, int(n.col)))
+	return out
+
+
+## Hex steps between two cells, Vector2i(level, lane) (a step: level +-1 and lane +-1, or level +-2).
+static func hex_dist(a: Vector2i, b: Vector2i) -> int:
+	var dx := absi(a.y - b.y)
+	var dy := absi(a.x - b.x)
+	return dx + maxi(0, (dy - dx) / 2)
+
+
+## One `kind` tile on a plain fight between levels lo..hi, not next to another special tile if it can help.
+static func _put(rows: Array, rng: RandomNumberGenerator, lo: int, hi: int, kind: String) -> void:
+	var spots := []
+	var lonely := []
+	for level in range(lo, hi + 1):
+		for n in rows[level]:
+			if n.type != "fight" or n.has("bonus"):
+				continue
+			spots.append(n)
+			if not _special_near(rows, level, int(n.lane)):
+				lonely.append(n)
+	var from := lonely if not lonely.is_empty() else spots
+	if from.is_empty():
+		return
+	var n: Dictionary = from[rng.randi() % from.size()]
+	if kind in ["card", "artifact"]:
+		n["bonus"] = kind
+		n["fight"] = "elite" if rng.randf() < 0.5 else "double"
+	else:
+		n.type = kind
+
+
+## The kinds in `order`, one in each equal stretch of the levels lo..hi.
+static func _spread_kind(rows: Array, rng: RandomNumberGenerator, order: Array, lo: int, hi: int) -> void:
+	var span := float(hi - lo + 1) / order.size()
+	for k in order.size():
+		var a := lo + int(floor(span * k))
+		var b := lo + int(floor(span * (k + 1))) - 1
+		_put(rows, rng, a, maxi(a, b), String(order[k]))
+
+
+static func _special_near(rows: Array, level: int, lane: int) -> bool:
+	for d in [[1, -1], [2, 0], [1, 1], [-1, -1], [-2, 0], [-1, 1], [0, 0]]:
+		var p := at_lane(rows, level + d[0], lane + d[1])
+		if p.x < 0:
+			continue
+		var n: Dictionary = rows[p.x][p.y]
+		if n.type != "fight" or String(n.get("bonus", "")) in ["card", "artifact"]:
+			return true
+	return false
+
+
+## A dice mod tile (2026-11-17): the map only shows a die; what it is, you see when you win it. The further the zone,
+## the better: more paintings and carvings (DMOD_ZONE_ODDS), bigger adjustments (ADJUST_SIZES, + or -).
+const DMOD_ZONE_ODDS := [
+	{"adjust": 0.7, "paint": 0.25, "carve": 0.05},
+	{"adjust": 0.55, "paint": 0.33, "carve": 0.12},
+	{"adjust": 0.4, "paint": 0.35, "carve": 0.25}]
+const ADJUST_SIZES := [[1, 1, 2], [1, 2, 2, 3], [2, 3, 3]]
+
+
+static func _dice_mod(n: Dictionary, rng: RandomNumberGenerator, zone := 0) -> void:
+	var odds: Dictionary = DMOD_ZONE_ODDS[clampi(zone, 0, DMOD_ZONE_ODDS.size() - 1)]
 	var r := rng.randf()
-	var kind := "carve"
-	for k in DMOD_ODDS:
-		r -= DMOD_ODDS[k]
+	var kind := "adjust"
+	for k in odds:
+		r -= float(odds[k])
 		if r < 0.0:
 			kind = k
 			break
@@ -673,8 +813,8 @@ static func _dice_mod(n: Dictionary, rng: RandomNumberGenerator) -> void:
 			var cols: Array = DiceFace.PAINTS.keys()
 			n["paint"] = cols[rng.randi() % cols.size()]
 		"adjust":
-			var amounts := [-3, -2, -1, 1, 2, 3]
-			n["die_mod"] = amounts[rng.randi() % amounts.size()]
+			var sizes: Array = ADJUST_SIZES[clampi(zone, 0, ADJUST_SIZES.size() - 1)]
+			n["die_mod"] = int(sizes[rng.randi() % sizes.size()]) * (1 if rng.randf() < 0.5 else -1)
 		"carve":
 			var syms: Array = DiceFace.CARVES.keys()
 			n["carve"] = syms[rng.randi() % syms.size()]
@@ -737,3 +877,106 @@ static func _open(rows: Array, cell: Vector2i) -> bool:
 		return true
 	var p := at_lane(rows, cell.x, cell.y)
 	return p.x >= 0 and rows[p.x][p.y].type != "hollow"
+
+# ------------------------------------------------------------------ the Slay the Spire map (Die on Stage, 2026-11-17)
+## The classic map, as the chant game has it (generate(): 6 paths up a 7-column grid, 12 floors, the boss on top), with
+## this mode's rooms: floor 1 fights, floor 6 treasure, floor 12 a campfire; the rest rolled from STS_WEIGHTS (no mini
+## boss before floor 5, no campfire before floor 6 nor on floor 11, no mini boss / shop / campfire twice in a row on a path, the rooms a
+## node branches into all different). Every fight carries a dice mod (STS_DMOD_ODDS), decided with the map so its room
+## can show it.
+const STS_WEIGHTS := {"fight": 55.0, "elite": 16.0, "rest": 12.0, "shop": 7.0}
+const STS_NO_REPEAT := ["elite", "shop", "rest"]
+const STS_DMOD_ODDS := {"adjust": 0.6, "paint": 0.3, "carve": 0.1}
+
+
+static func make_sts(rng: RandomNumberGenerator) -> Array:
+	var rows := []
+	for f in FLOORS:
+		var r := []
+		r.resize(COLS)
+		rows.append(r)
+	var first_start := -1
+	for p in PATHS:
+		var c := rng.randi() % COLS
+		if p == 1:
+			while c == first_start:
+				c = rng.randi() % COLS
+		if p == 0:
+			first_start = c
+		for f in FLOORS:
+			if rows[f][c] == null:
+				rows[f][c] = {"type": "", "next": [], "col": c}
+			if f == FLOORS - 1:
+				break
+			var nc := clampi(c + rng.randi_range(-1, 1), 0, COLS - 1)
+			if nc != c and rows[f][nc] != null and c in rows[f][nc].next:
+				nc = c
+			if not (nc in rows[f][c].next):
+				rows[f][c].next.append(nc)
+				rows[f][c].next.sort()
+			c = nc
+	var boss_row := []
+	boss_row.resize(COLS)
+	boss_row[COLS / 2] = {"type": "boss", "next": [], "col": COLS / 2}
+	for n in rows[FLOORS - 1]:
+		if n != null:
+			n.next = [COLS / 2]
+	for f in rows.size():
+		for n in rows[f]:
+			if n == null:
+				continue
+			var floor_no := f + 1
+			if floor_no == 1:
+				n.type = "fight"
+			elif floor_no == TREASURE_FLOOR:
+				n.type = "treasure"
+			elif floor_no == FLOORS:
+				n.type = "rest"
+			else:
+				var banned := {}
+				for par in _parents(rows, f, n.col):
+					if par.type in STS_NO_REPEAT:
+						banned[par.type] = true
+					for sc in par.next:
+						var sib = rows[f][sc]
+						if sib != null and sib != n and sib.type != "" and sib.type != "fight":
+							banned[sib.type] = true
+				if floor_no < 5:
+					banned["elite"] = true
+				if floor_no < 6:  # (no campfire in the first floors, as in Slay the Spire)
+					banned["rest"] = true
+				if floor_no == FLOORS - 1:
+					banned["rest"] = true
+				n.type = _roll_from(rng, STS_WEIGHTS, banned)
+			if n.type == "fight":
+				_sts_dice_mod(n, rng)
+	rows.append(boss_row)
+	return rows
+
+
+static func _sts_dice_mod(n: Dictionary, rng: RandomNumberGenerator) -> void:
+	var r := rng.randf()
+	var kind := "adjust"
+	for k in STS_DMOD_ODDS:
+		r -= STS_DMOD_ODDS[k]
+		if r < 0.0:
+			kind = k
+			break
+	n["bonus"] = "dice"
+	n["dmod"] = kind
+	match kind:
+		"paint":
+			var cols: Array = DiceFace.PAINTS.keys()
+			n["paint"] = cols[rng.randi() % cols.size()]
+		"adjust":
+			var amounts := [-3, -2, -1, 1, 2, 3]
+			n["die_mod"] = amounts[rng.randi() % amounts.size()]
+		"carve":
+			var syms: Array = DiceFace.CARVES.keys()
+			n["carve"] = syms[rng.randi() % syms.size()]
+
+
+## The fight pool of a floor of the Slay the Spire map: easy, medium, hard as you climb.
+static func sts_tier(floor_i: int) -> int:
+	return 0 if floor_i < 4 else (1 if floor_i < 8 else 2)
+

@@ -19,7 +19,8 @@ var _aiming := -1  # a ready card waiting for its target (its index in run.cards
 var _busy := false
 var _throwing := false  # the dice are in the air: the tray's dice are hidden until they land in it
 var _prompt: Label
-var _tray: HBoxContainer
+var _tray: Control  # (the drag handles over the 3D dice on the stage)
+var _dice3d: Dice3D
 var _cards: HBoxContainer
 var _hp_label: Label
 var _hp_bar: Control
@@ -43,31 +44,34 @@ func _ready() -> void:
 	_stage.fit(1920.0)
 	_floor_y = _stage.floor_center_y()
 	_build_foes()
+	_dice3d = Dice3D.new()  # (the dice, in 3D: thrown from the screen onto the stage, and left lying there)
+	_dice3d.z_index = PuppetStage.CEILING_Z + 5
+	add_child(_dice3d)
 	var panel := Panel.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.09, 0.05, 0.035, 0.92)
 	sb.border_color = Color(0.45, 0.3, 0.15)
 	sb.border_width_top = 4
 	panel.add_theme_stylebox_override("panel", sb)
-	panel.position = Vector2(0, 735)
-	panel.size = Vector2(1920, 345)
+	panel.position = Vector2(0, 800)  # (the dice lie on the front of the stage, above it)
+	panel.size = Vector2(1920, 280)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(panel)
 	# you
 	_hp_label = UiTheme.label("", 26, Color.WHITE)
-	_hp_label.position = Vector2(40, 760)
+	_hp_label.position = Vector2(40, 812)
 	add_child(_hp_label)
 	_hp_bar = Control.new()
-	_hp_bar.position = Vector2(40, 800)
+	_hp_bar.position = Vector2(40, 852)
 	_hp_bar.size = Vector2(300, 26)
 	_hp_bar.draw.connect(func():
 		_draw_bar(_hp_bar, run.hp, run.max_hp, fight.block, Color(0.8, 0.15, 0.12)))
 	add_child(_hp_bar)
 	_block_label = UiTheme.label("", 24, Color(0.6, 0.8, 1.0))
-	_block_label.position = Vector2(40, 836)
+	_block_label.position = Vector2(40, 884)
 	add_child(_block_label)
 	_status_label = UiTheme.label("", 20, Color(0.95, 0.75, 1.0))
-	_status_label.position = Vector2(40, 872)
+	_status_label.position = Vector2(40, 890)
 	_status_label.size = Vector2(320, 120)
 	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_status_label)
@@ -75,23 +79,21 @@ func _ready() -> void:
 	leaves.position = Vector2(40, 1030)
 	add_child(leaves)
 	# the dice tray, then the cards
-	_tray = HBoxContainer.new()
-	_tray.add_theme_constant_override("separation", 18)
-	_tray.alignment = BoxContainer.ALIGNMENT_CENTER
-	_tray.position = Vector2(560, 748)
-	_tray.size = Vector2(800, DiceDieView.SIZE)
+	_tray = Control.new()
+	_tray.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tray.z_index = PuppetStage.CEILING_Z + 6
 	add_child(_tray)
 	_cards = HBoxContainer.new()
 	_cards.add_theme_constant_override("separation", 22)
 	_cards.alignment = BoxContainer.ALIGNMENT_CENTER
-	_cards.position = Vector2(400, 845)
+	_cards.position = Vector2(400, 850)
 	_cards.size = Vector2(1120, DiceCardView.H)
 	_cards.scale = Vector2(0.78, 0.78)
 	_cards.pivot_offset = Vector2(560, 0)
 	add_child(_cards)
 	_end_btn = UiTheme.button("End turn", _on_end_turn, 24)
 	_end_btn.custom_minimum_size = Vector2(200, 64)
-	_end_btn.position = Vector2(1680, 780)
+	_end_btn.position = Vector2(1680, 830)
 	add_child(_end_btn)
 	var hint := UiTheme.label("Drag dice onto moves. A full move then asks for its target.", 17, Color(0.85, 0.78, 0.65))
 	hint.position = Vector2(1500, 960)
@@ -156,17 +158,21 @@ func _add_foe_node(i: int) -> void:
 	bar.size = Vector2(200, 22)
 	bar.position = Vector2(_slot_x(i) + 50.0, _floor_y + 52.0)
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.z_index = PuppetStage.CEILING_Z + 7  # (over the dice lying on the stage)
 	bar.draw.connect(func():
 		_draw_bar(bar, f.hp, f.max_hp, f.block, Color(0.75, 0.12, 0.12))
 		var font := ThemeDB.fallback_font
 		bar.draw_string(font, Vector2(0, 17), "%d / %d" % [f.hp, f.max_hp], HORIZONTAL_ALIGNMENT_CENTER, bar.size.x, 16, Color.WHITE))
 	add_child(bar)
-	var intent := UiTheme.label("", 24, Color(1.0, 0.92, 0.75))
-	intent.add_theme_constant_override("outline_size", 6)
-	intent.add_theme_color_override("font_outline_color", Color(0.12, 0.05, 0.02))
+	var intent := Label.new()  # (big and bold, a thick dark outline, 2026-11-17; a plain Label: UiTheme's text styles reset the outline when the words change)
+	intent.add_theme_font_size_override("font_size", INTENT_PX)
+	if UiTheme.cut("bold") != null:
+		intent.add_theme_font_override("font", UiTheme.cut("bold"))
+	intent.add_theme_constant_override("outline_size", 16)
+	intent.add_theme_color_override("font_outline_color", Color(0.04, 0.02, 0.02))
 	intent.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	intent.size = Vector2(FOE_W, 34)
-	intent.position = Vector2(_slot_x(i), cr.position.y - 10.0)
+	intent.size = Vector2(FOE_W + 80.0, 62)
+	intent.position = Vector2(_slot_x(i) - 40.0, cr.position.y - 34.0)
 	intent.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(intent)
 	var status := UiTheme.label("", 17, Color(1.0, 0.75, 0.55))
@@ -176,6 +182,7 @@ func _add_foe_node(i: int) -> void:
 	status.size = Vector2(FOE_W, 26)
 	status.position = Vector2(_slot_x(i), _floor_y + 78.0)
 	status.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	status.z_index = PuppetStage.CEILING_Z + 7
 	add_child(status)
 	var mark := Label.new()
 	mark.text = "▼"
@@ -206,19 +213,29 @@ func _build_spells(i: int) -> void:
 	var row: HBoxContainer = _foe_nodes[i].spells
 	for c in row.get_children():
 		c.queue_free()
-	if f.dead():
+	if f.dead() or f.spells.is_empty():
 		return
 	for k in f.spells.size():
 		var sp: Dictionary = f.spells[k]
 		var holder := Control.new()
 		holder.custom_minimum_size = Vector2(DiceCardView.W, DiceCardView.H) * SPELL_SCALE
 		var cv := DiceCardView.new()
-		cv.def = {"name": sp.name, "kind": "special", "slots": 1, "rule": "exact", "n": int(sp.cut),
-			"text": "%s Die (%d): Interrupt this spell." % [sp.text, int(sp.cut)]}
+		var first := 0  # (the slot a die goes in: a Charge fills its slots one after the other)
+		if sp.get("charge", false):  # (a boss's Charge: each 1 takes 10 off; written like your own moves)
+			var t := int(sp.turns)
+			cv.def = {"name": "Charge", "kind": "attack", "slots": int(sp.slots), "rule": "max", "n": DiceFight.CHARGE_MAX,
+				"text": "Deal %d − %d×d damage to you. Now %d, in %d turn%s." % [int(sp.n), DiceFight.CHARGE_CUT,
+					DiceFight.charge_left(sp), t, "" if t == 1 else "s"]}
+			first = int(sp.placed)
+			for kk in first:
+				cv.filled.append(DiceFight.CHARGE_MAX)
+		else:
+			cv.def = {"name": sp.name, "kind": "special", "slots": 1, "rule": "exact", "n": int(sp.cut),
+				"text": "%s A %d cancels it." % [sp.text, int(sp.cut)]}
 		cv.ci = k
 		cv.scale = Vector2(SPELL_SCALE, SPELL_SCALE)
 		var me := i
-		cv.accept = func(r: int, kk: int) -> bool: return kk == 0 and not _busy and _aiming < 0 and fight.can_interrupt(r, me, cv.ci)
+		cv.accept = func(r: int, kk: int) -> bool: return kk == first and not _busy and _aiming < 0 and fight.can_interrupt(r, me, cv.ci)
 		cv.slot_dropped.connect(func(kk: int, _slot: int, r: int): _interrupt(me, kk, r, cv))
 		holder.add_child(cv)
 		row.add_child(holder)
@@ -254,6 +271,19 @@ func _draw_bar(c: Control, hp: int, max_hp: int, shield: int, col: Color) -> voi
 	c.draw_rect(r, Color(0.9, 0.75, 0.45) if shield <= 0 else SHIELD_BLUE.lightened(0.4), false, 2.0)
 
 
+const INTENT_PX := 44
+## An intent's colour: attacks red, its own defence / healing / buffs blue, what it does to you violet, the rest gold.
+func _intent_col(m: Dictionary) -> Color:
+	match String(m.get("kind", "")):
+		"attack", "charging", "burn":
+			return Color(1.0, 0.38, 0.32)
+		"block", "heal", "power", "foe_dodge", "thorns", "thorns_team", "regen", "ethereal", "take_off":
+			return Color(0.45, 0.85, 1.0)
+		"weak", "vulnerable", "silence", "freeze", "steal", "ignite":
+			return Color(0.88, 0.62, 1.0)
+	return Color(1.0, 0.85, 0.35)
+
+
 func _refresh() -> void:
 	var aim: Array = fight.targets_for(_aiming) if _aiming >= 0 else []
 	_prompt.text = "%s: choose a target   ·   right-click to put it back" % run.card_at(_aiming).name if _aiming >= 0 else ""
@@ -262,6 +292,7 @@ func _refresh() -> void:
 		var nd: Dictionary = _foe_nodes[i]
 		(nd.bar as Control).queue_redraw()
 		nd.intent.text = "" if f.dead() else DiceFight.intent_text(f.intent, f)
+		nd.intent.add_theme_color_override("font_color", _intent_col(f.intent))
 		var st := []
 		if f.thorns > 0:
 			st.append("🌵 Thorns %d" % f.thorns)
@@ -279,6 +310,10 @@ func _refresh() -> void:
 			st.append("Vulnerable %d" % f.vulnerable)
 		if f.redirect:
 			st.append("↩ Redirected")
+		if f.id in DiceFight.DICE_FLYERS and f.es.flying:
+			st.append("🪽 Flying: hits do 1 (%d/%d to knock it down)" % [f.fly_hits, DiceFight.FLY_HITS])
+		if f.dodge > 0:
+			st.append("🪽 Dodge" + (" %d" % f.dodge if f.dodge > 1 else ""))
 		nd.status.text = "  ".join(st)
 		nd.mark.visible = i in aim
 		(nd.creature as Creature).mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if i in aim else Control.CURSOR_ARROW
@@ -287,10 +322,11 @@ func _refresh() -> void:
 			nd.status.text = ("  ".join(st) + "  " if not st.is_empty() else "") + "🌿 Behind her hedges"
 		if f.impervious > 0:
 			nd.status.text += "  ✨ Impervious"
-		if f.deflect:
+		if f.deflect and f.id != "mirror_fairy":  # (her mirror is a secret: "?")
 			nd.status.text += "  🗡 Deflect"
-		if f.es.def.get("invokes", false):
-			_build_spells(i)
+		if f.regen_turns > 0:
+			nd.status.text += "  ❤ +%d x%d" % [f.regen, f.regen_turns]
+		_build_spells(i)  # (Good Ol' Wizard's spells, the Bramble Matron's summoning; nothing for the others)
 	_hp_label.text = "❤ %d / %d" % [run.hp, run.max_hp]
 	_hp_bar.queue_redraw()
 	_block_label.text = ""  # (Shield is only the blue part of the HP bar, 2026-11-16)
@@ -320,16 +356,30 @@ func _refresh() -> void:
 func _build_tray() -> void:
 	for c in _tray.get_children():
 		c.queue_free()
+	if _throwing:
+		return
+	var new_dice := []
 	for r in fight.rolled.size():
+		var src: Dictionary = fight.rolled[r]
+		if not _dice3d.has_die(r):
+			new_dice.append(_die_entry(r))  # (Focus: more dice this turn: they are thrown too)
+			continue
+		if not _dice3d.sync(r, src, bool(src.used)):
+			var e := _die_entry(r)
+			_dice3d.hop(r, e.faces, int(e.k), src)  # (rolled again: it hops and lands on its new face)
+			_dice3d.sync(r, src, bool(src.used))
+		if bool(src.used):
+			continue
 		var d := DiceDieView.new()
+		d.ghost = true
 		d.r = r
-		d.value = int(fight.rolled[r].value)
-		d.paint = String(fight.rolled[r].paint)
-		d.carve = String(fight.rolled[r].carve)
-		d.used = bool(fight.rolled[r].used)
-		d.frozen = bool(fight.rolled[r].frozen)
-		d.face_down = bool(fight.rolled[r].hidden)
+		d.value = int(src.value)
+		d.paint = String(src.paint)
+		d.carve = String(src.carve)
+		d.frozen = bool(src.frozen)
+		d.face_down = bool(src.hidden)
 		d.can_reroll = not _busy and _aiming < 0 and fight.can_reroll(r)
+		d.mouse_filter = Control.MOUSE_FILTER_IGNORE if _aiming >= 0 else Control.MOUSE_FILTER_STOP
 		d.reroll_pressed.connect(func(rr: int):
 			if _busy or _aiming >= 0:
 				return
@@ -337,9 +387,29 @@ func _build_tray() -> void:
 			Audio.play("elem_pickup", -4.0)
 			await _play_events()
 			_refresh())
-		if _throwing:
-			d.modulate.a = 0.0
 		_tray.add_child(d)
+		d.position = _dice3d.screen_pos(r) - Vector2(DiceDieView.SIZE, DiceDieView.SIZE) / 2.0
+	if not new_dice.is_empty() and _dice3d.count() > 0:
+		_dice3d.throw(new_dice, Dice3D.BACK_Y if _dice3d.count() > 0 else Dice3D.LAND_Y)
+		get_tree().create_timer(1.5).timeout.connect(func():
+			if is_inside_tree():
+				_refresh())
+
+
+## What the 3D die for `rolled[r]` is: its faces (a die of yours: its own; an extra one: a plain d6) and the face it
+## shows.
+func _die_entry(r: int) -> Dictionary:
+	var src: Dictionary = fight.rolled[r]
+	var i := int(src.die)
+	var faces: Array = []
+	var k := int(src.face)
+	if i >= 0 and k >= 0 and i < run.dice.size():
+		faces = run.dice[i]
+	else:
+		for v in 6:
+			faces.append({"v": v + 1})
+		k = clampi(int(src.value) - 1, 0, 5)
+	return {"r": r, "faces": faces, "k": k, "src": src}
 
 
 func _build_cards() -> void:
@@ -349,7 +419,7 @@ func _build_cards() -> void:
 		var cv := DiceCardView.new()
 		cv.id = run.cards[ci]
 		cv.def = run.card_at(ci)  # (as it is now: upgraded or not)
-		if String(cv.def.get("tweak", "")) == "intuition":
+		if str(cv.def.get("tweak", "")) == "intuition":
 			cv.def.text = String(cv.def.text).replace("[x]", str(fight.intuition))
 		cv.ci = ci
 		cv.filled = fight.placed.get(ci, [])
@@ -444,69 +514,17 @@ func _unhandled_input(ev: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
-## The dice are thrown onto the stage from the left: they fly, bounce on the floor and tumble (their faces flicker while
-## they roll fast), settle on what they rolled, then are gathered back into the tray, each to its place.
+## The dice are thrown from the screen out onto the stage (Dice3D): they fly, bounce, tumble and settle on what
+## they rolled, and lie there; you drag them from the stage onto your moves.
 func _throw_dice() -> void:
 	_busy = true
 	_throwing = true
 	_refresh()
-	await get_tree().process_frame
-	var tray := _tray.get_children()
-	var flying: Array = []
-	for k in tray.size():
-		var fd := DiceDieView.new()
-		fd.value = randi_range(1, 6)
-		fd.z_index = 60
-		fd.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(fd)
-		fd.position = Vector2(-140.0 - k * 70.0, 520.0 - k * 50.0)
-		flying.append({"n": fd, "v": Vector2(randf_range(1000.0, 1400.0), randf_range(-750.0, -450.0)),
-			"w": randf_range(10.0, 18.0) * (1.0 if randf() < 0.5 else -1.0), "floor": 610.0 + k * 22.0,
-			"final": int(fight.rolled[k].value) if k < fight.rolled.size() else 1,
-			"paint": String(fight.rolled[k].paint) if k < fight.rolled.size() else "", "carve": String(fight.rolled[k].carve) if k < fight.rolled.size() else ""})
-	Audio.play("wooden_ball_colide", -6.0, 1.4)
-	var t := 0.0
-	while t < 1.7:
-		var dt := get_process_delta_time()
-		t += dt
-		for f in flying:
-			var n: DiceDieView = f.n
-			f.v.y += 2600.0 * dt
-			n.position += f.v * dt
-			n.rotation += f.w * dt
-			if n.position.y >= f.floor and f.v.y > 0.0:
-				n.position.y = f.floor
-				if f.v.y > 260.0:
-					Audio.play("wooden_ball_colide", -14.0, randf_range(1.5, 1.9))
-				f.v.y = -f.v.y * 0.42 if f.v.y > 160.0 else 0.0
-				f.v.x *= 0.72
-				f.w *= 0.65
-			if n.position.y >= f.floor - 1.0:
-				f.v.x *= maxf(0.0, 1.0 - 2.2 * dt)  # (rolling to a stop)
-				f.w *= maxf(0.0, 1.0 - 2.5 * dt)
-			if n.position.x > 1700.0:
-				n.position.x = 1700.0
-				f.v.x = -absf(f.v.x) * 0.5
-			if f.v.length() > 220.0 and randf() < 0.35:
-				n.value = randi_range(1, 6)
-				n.queue_redraw()
-		await get_tree().process_frame
-	for f in flying:
-		var n: DiceDieView = f.n
-		n.value = int(f.final)
-		n.paint = String(f.paint)
-		n.carve = String(f.carve)
-		n.queue_redraw()
-		n.create_tween().tween_property(n, "rotation", 0.0, 0.15)
-	await get_tree().create_timer(0.45).timeout
-	for k in flying.size():
-		var n: DiceDieView = flying[k].n
-		if k < tray.size():
-			var tw := n.create_tween()
-			tw.tween_property(n, "global_position", (tray[k] as Control).global_position, 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT).set_delay(k * 0.06)
-	await get_tree().create_timer(0.32 + flying.size() * 0.06 + 0.05).timeout
-	for f in flying:
-		(f.n as Node).queue_free()
+	_dice3d.clear()
+	var entries := []
+	for r in fight.rolled.size():
+		entries.append(_die_entry(r))
+	await _dice3d.throw(entries)
 	_throwing = false
 	_busy = false
 	_refresh()
@@ -578,6 +596,10 @@ func _play_events() -> void:
 				await _wait(0.3)
 			"foe_power":
 				_float(_foe_center(int(ev.foe)), "+%d Power" % int(ev.n), Color(1.0, 0.6, 0.3))
+				_power_hop(int(ev.foe))
+				await _wait(0.45)
+			"foe_regen":
+				_float(_foe_center(int(ev.foe)), "Heals %d for %d turns" % [int(ev.n), int(ev.turns)], Color(0.5, 1.0, 0.5))
 				await _wait(0.3)
 			"debuff":
 				_float(Vector2(190, 760), String(ev.what), Color(0.9, 0.6, 1.0))
@@ -599,6 +621,10 @@ func _play_events() -> void:
 			"phase2":
 				_float(_foe_center(int(ev.foe)) + Vector2(0, -80), "Second phase!", Color(1.0, 0.5, 0.4))
 				await _wait(0.4)
+			"charge_cut":
+				_float(_foe_center(int(ev.foe)) + Vector2(0, -160), "Charge down to %d!" % int(ev.n), Color(0.7, 1.0, 0.7))
+			"charging":
+				_float(_foe_center(int(ev.foe)) + Vector2(0, -160), "It gathers its strength...", Color(1.0, 0.75, 0.5))
 			"interrupted":
 				_float(_foe_center(int(ev.foe)) + Vector2(0, -160), "%s interrupted!" % String(ev.name), Color(0.7, 1.0, 0.7))
 				await _wait(0.25)
@@ -622,7 +648,8 @@ func _play_events() -> void:
 				_float(_foe_center(int(ev.foe)), "Ready to deflect", Color(0.9, 0.9, 1.0))
 				await _wait(0.3)
 			"deflected":
-				_float(_foe_center(int(ev.foe)), "Deflected!", Color(1.0, 0.9, 0.6))
+				_mirror_shine(int(ev.foe))
+				_float(_foe_center(int(ev.foe)), "The mirror shines!" if fight.foes[int(ev.foe)].id == "mirror_fairy" else "Deflected!", Color(1.0, 0.9, 0.6))
 				_float(Vector2(190, 760), "-%d" % int(ev.n), Color(1.0, 0.35, 0.3))
 				Audio.play("sword_clang", -2.0)
 				_shake()
@@ -699,6 +726,16 @@ func _play_events() -> void:
 			"foe_thorns":
 				_float(_foe_center(int(ev.foe)), "+%d Thorns" % int(ev.n), Color(0.75, 0.85, 0.4))
 				await _wait(0.3)
+			"foe_falls":
+				_float(_foe_center(int(ev.foe)), "Knocked down!", Color(1.0, 0.9, 0.3))
+				_shake()
+				await _wait(0.4)
+			"foe_takes_off":
+				_float(_foe_center(int(ev.foe)), "Takes off!", Color(0.75, 0.9, 1.0))
+				await _wait(0.4)
+			"foe_dodge_up":
+				_float(_foe_center(int(ev.foe)), "+1 Dodge", Color(0.75, 0.9, 1.0))
+				await _wait(0.3)
 			"foe_ethereal":
 				_float(_foe_center(int(ev.foe)), "Ethereal", Color(0.8, 0.8, 1.0))
 				await _wait(0.3)
@@ -752,6 +789,29 @@ func _lunge(i: int) -> void:
 	tw.tween_property(cr, "position", home + Vector2(0, 40), 0.12).set_ease(Tween.EASE_OUT)
 	tw.tween_property(cr, "position", home, 0.18)
 	await tw.finished
+
+
+## A power-up: the enemy hops up twice, quick, and lands (any enemy gaining Power).
+func _power_hop(i: int) -> void:
+	if i < 0 or i >= _foe_nodes.size():
+		return
+	var cr: Control = _foe_nodes[i].creature
+	var home := cr.position.y
+	var tw := cr.create_tween()
+	for k in 2:
+		tw.tween_property(cr, "position:y", home - (46.0 if k == 0 else 26.0), 0.11).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(cr, "position:y", home, 0.11).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	Audio.play("spell_glow", -6.0, 1.4)
+
+
+## A mirror catching the light: the enemy flashes bright white and fades back.
+func _mirror_shine(i: int) -> void:
+	if i < 0 or i >= _foe_nodes.size():
+		return
+	var cr: Control = _foe_nodes[i].creature
+	var tw := cr.create_tween()
+	tw.tween_property(cr, "modulate", Color(2.4, 2.4, 2.6), 0.08)
+	tw.tween_property(cr, "modulate", Color.WHITE, 0.45)
 
 
 func _shake() -> void:

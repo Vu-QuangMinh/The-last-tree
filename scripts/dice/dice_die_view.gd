@@ -17,6 +17,7 @@ var used := false
 var can_reroll := false
 var frozen := false  # (Freeze: it was rolled, but can't be used this turn)
 var face_down := false  # (Confuse: face down; you see it once you place it)
+var ghost := false  # (a handle over a 3D die on the stage, Dice3D: only its ↻ and ❄ are drawn; the die is the 3D one)
 
 
 static func draw_die(ci: CanvasItem, rect: Rect2, v: int, dim := false, p_paint := "", p_carve := "") -> void:
@@ -69,6 +70,11 @@ func _ready() -> void:
 
 
 func _draw() -> void:
+	if ghost:
+		if frozen:
+			draw_string(ThemeDB.fallback_font, Vector2(0, 26), "❄", HORIZONTAL_ALIGNMENT_RIGHT, size.x - 4, 24, Color.WHITE)
+		_draw_reroll()
+		return
 	if used:
 		draw_rect(Rect2(Vector2(6, 6), size - Vector2(12, 12)), Color(0, 0, 0, 0.25), false, 2.0)
 		return
@@ -85,6 +91,10 @@ func _draw() -> void:
 	if frozen:  # (an icy sheet over it)
 		draw_rect(Rect2(Vector2(4, 4), size - Vector2(8, 8)), Color(0.6, 0.85, 1.0, 0.55))
 		draw_string(ThemeDB.fallback_font, Vector2(0, 26), "❄", HORIZONTAL_ALIGNMENT_RIGHT, size.x - 8, 22, Color.WHITE)
+	_draw_reroll()
+
+
+func _draw_reroll() -> void:
 	if can_reroll:
 		var at := Vector2(size.x - REROLL_R + 2.0, REROLL_R - 2.0)
 		draw_circle(at, REROLL_R, Color(0.55, 0.3, 0.75))

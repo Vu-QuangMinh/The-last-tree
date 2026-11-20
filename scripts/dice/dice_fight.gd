@@ -29,11 +29,11 @@ extends RefCounted
 ## Burn burns, it acts (unless Stunned). Then your turn: your Block is gone, your Burn burns, a new roll.
 ## Every change is told to the screen as an event ({type: ...}) in `events`, which it plays and empties.
 
-const HP_MULT := 2  # enemy HP x2 (the user, 2026-11-15)
+const HP_MULT := 1  # enemy HP x1 (doubled 2026-11-15; halved back, the user 2026-11-17: too spongy)
 const HAMMER_BREAKS := 3  # (Hammer: the card you have used most is hit; this many hits break it for the fight)
 const IGNITE_DMG := 5
 const MAX_FOES := 5
-const PAGE_HP := 30  # (the Pianist: each page of his score; 10 orbs x 3, not doubled: the music is the clock)
+const PAGE_HP := 15  # (halved with the rest, 2026-11-17) (the Pianist: each page of his score; 10 orbs x 3, not doubled: the music is the clock)
 const MATRON_CALLS := ["ashling", "iceling", "zephling", "purple_slime", "green_slime", "yellow_slime"]
 ## Good Ol' Wizard's ten spells (his first set, git 4c956db), as Die on Stage moves; `cut`: the die number that
 ## interrupts it.
@@ -66,6 +66,10 @@ class Foe:
 	var vulnerable := 0  # it takes 50% more (Jab, Arm Bar)
 	var redirect := false  # (Redirect: its next attack goes at someone else)
 	var smite := 0  # (Smite: your next hit on it also gives it that many times its damage in Burn)
+	var dodge := 0  # (Dodge: your next hit on it misses, one per point; the Zephling)
+	var random_moves := false  # (its move each turn is picked at random, not in turn: DICE_MOVES)
+	var fly_hits := 0  # (a flyer, DICE_FLYERS: hits taken in the air; FLY_HITS of them knock it down)
+	var landed := false  # (knocked down: stunned a turn, then it takes off again)
 	var deflect := false  # the next card that hits it hurts you instead
 	var moves: Array = []
 	var moves2: Array = []  # (from half HP)
@@ -75,7 +79,9 @@ class Foe:
 	var hedges: Array = []  # (the Bramble Matron: her Briar Hedges; she can't be targeted while one stands)
 	var cocoon_card := -1  # (a Silk Cocoon: the card of yours inside it)
 	var pages := 0  # (the Pianist: pages of his score still to play after this one)
-	var spells: Array = []  # (Good Ol' Wizard: the spells hanging over him now)
+	var spells: Array = []  # (Good Ol' Wizard: the spells hanging over him now; the Bramble Matron: her summoning)
+	var regen := 0  # (the Giant Slime: it heals this much at the start of its turns...)
+	var regen_turns := 0  # (... for this many more turns)
 
 	func dead() -> bool:
 		return hp <= 0
@@ -143,9 +149,69 @@ func setup(p_run: DiceRun, ids: Array) -> void:
 			her.hedges = [left, right]
 		else:
 			_spawn_def(d)
+	var lings := 0  # (the elemental spirits come in twos: their attacks take turns, one attacks while the other doesn't)
+	for f in foes:
+		if f.id in LINGS:
+			f.move_i = lings % 2
+			if lings > 0 or foes.filter(func(x): return x.id in LINGS).size() > 1:
+				f.random_moves = false  # (the Zephling too: in a pair it takes turns like the others)
+			lings += 1
 	for f in foes:
 		_plan(f)
 	_start_turn()
+
+
+## Die on Stage's own moves for some enemies (the user, 2026-11-17), instead of the chant game's: {id: [moves, "cycle" /
+## "random"]}. A cycle goes in order and starts over; random picks one each turn.
+const DICE_MOVES := {
+	"ashling": [[{"kind": "attack", "n": 5, "hits": 1}, {"kind": "power", "n": 1, "who": ""}], "cycle"],
+	"iceling": [[{"kind": "attack", "n": 5, "hits": 1}, {"kind": "block", "n": 4}], "cycle"],
+	"zephling": [[{"kind": "attack", "n": 5, "hits": 1}, {"kind": "foe_dodge", "n": 1}], "random"],
+	"bramble_back": [[{"kind": "attack", "n": 2, "hits": 1}, {"kind": "thorns", "n": 2}], "random"],
+	"hush_moth": [[{"kind": "attack", "n": 7, "hits": 1}, {"kind": "silence", "turns": 1, "n": 1}], "random"],
+	"winged_tortoise": [[{"kind": "attack", "n": 2, "hits": 1}, {"kind": "attack", "n": 4, "hits": 1}], "cycle"],
+	"mirror_fairy": [[{"kind": "attack", "n": 6, "hits": 1}, {"kind": "mirror"}], "random"],
+	"greenseer": [[{"kind": "summon", "ids": ["purple_slime", "green_slime", "yellow_slime"], "n": 1}, {"kind": "attack", "n": 6, "hits": 1}], "cycle"],
+	"rolling_bear": [[{"kind": "attack", "n": 7, "hits": 1}, {"kind": "foe_dodge", "n": 1}, {"kind": "power", "n": 1, "who": ""}], "random"],
+	"giant_slime": [[{"kind": "attack", "n": 7, "hits": 1}, {"kind": "slime_pick"}], "cycle"],
+	"enraged_bear": [[{"kind": "attack", "n": 7, "hits": 1}], "cycle"],
+	"triplet_fire": [[{"kind": "attack", "n": 5, "hits": 1}, {"kind": "power", "n": 2, "who": "random_team"}], "random"],
+	"triplet_water": [[{"kind": "attack", "n": 5, "hits": 1}, {"kind": "heal", "n": 5, "who": ""}], "random"],
+	"triplet_air": [[{"kind": "attack", "n": 5, "hits": 1}, {"kind": "foe_dodge", "n": 1, "who": "random_team"}], "random"],
+	"purple_slime": [[{"kind": "attack", "n": 6, "hits": 1}, {"kind": "weak", "n": 1}], "cycle"],
+	"green_slime": [[{"kind": "attack", "n": 6, "hits": 1}, {"kind": "heal", "n": 6, "who": ""}], "cycle"],
+	"yellow_slime": [[{"kind": "attack", "n": 6, "hits": 1}, {"kind": "vulnerable", "n": 1}], "cycle"],
+	# the Yin Yang Beast (the user, 2026-11-17): 3 x 3, Silence 2, or a Charge (a card: 30 damage in 2 turns, each 1 on
+	# it takes 10 off); at 0 it splits into two Cubs (YY_CUBS), each 2 x 2, Silence 1, or a Charge of 20
+	"yin_yang_beast": [[{"kind": "attack", "n": 3, "hits": 3}, {"kind": "silence", "turns": 1, "n": 2}, {"kind": "charge", "n": 30, "slots": 3}], "random"],
+	"yin_yang_clone": [[{"kind": "attack", "n": 2, "hits": 2}, {"kind": "silence", "turns": 1, "n": 1}, {"kind": "charge", "n": 20, "slots": 2}], "random"],
+}
+## A Charge (a boss's big blow, a card over it like the Wizard's spells): it hits for its "n" after CHARGE_TURNS of your
+## turns; each die of CHARGE_MAX or less you put on it takes CHARGE_CUT off (all its slots full: it's gone).
+const CHARGE_TURNS := 2
+const CHARGE_CUT := 10
+const CHARGE_MAX := 1
+## The Yin Yang Beast at 0 HP: two Cubs, one white and one black.
+const YY_CUBS := ["white", "black"]
+
+
+const LINGS := ["ashling", "iceling", "zephling"]
+## The Giant Slime's other move (one at random each time): what the small slimes do, for 3 turns.
+const GIANT_SLIME_PICKS := [{"kind": "weak", "n": 3}, {"kind": "vulnerable", "n": 3}, {"kind": "regen", "n": 4, "turns": 3}]
+## The Greenseer heals first whenever one of his side is hurt (the user, 2026-11-17).
+const GREENSEER_HEAL := {"kind": "heal", "n": 6, "who": ""}
+## The Bramble Matron's summoning: a card over her, cut by a die of 6; cut, she tries again next turn.
+const MATRON_SPELL := {"id": "matron_call", "name": "Summon", "cut": 6, "text": "She calls a creature onto the stage.", "cast": {"kind": "summon", "ids": MATRON_CALLS, "n": 1}}
+## The Enraged Rolling Bear gains this much Power each time you gain Shield.
+const BEAR_RAGE := 1
+
+
+## Die on Stage HP set by hand (the user), instead of from the Essence row.
+const DICE_HP := {"bramble_back": 30, "yin_yang_beast": 35, "yin_yang_clone": 15}
+## Flyers (the user, 2026-11-17): in the air every hit on it does only 1 damage; FLY_HITS hits knock it down: it is
+## stunned for a turn, then takes off again.
+const DICE_FLYERS := ["winged_tortoise"]
+const FLY_HITS := 3
 
 
 func _hedge_def(matron: Dictionary) -> Dictionary:
@@ -167,6 +233,13 @@ func _spawn_def(d: Dictionary, at := -1) -> Foe:
 	f.moves = _moves_of(d, "moves")
 	f.moves2 = _moves_of(d, "moves2")
 	f.move_i = int(d.get("start", 0))
+	if DICE_HP.has(f.id):
+		f.max_hp = int(DICE_HP[f.id])
+		f.hp = f.max_hp
+	f.es.flying = f.id in DICE_FLYERS
+	if DICE_MOVES.has(f.id):
+		f.moves = (DICE_MOVES[f.id][0] as Array).duplicate(true)
+		f.random_moves = String(DICE_MOVES[f.id][1]) == "random"
 	if f.id == "pianist":
 		f.pages = d.get("pages", []).size() - 1
 		f.max_hp = PAGE_HP
@@ -264,13 +337,49 @@ func _plan(f: Foe) -> void:
 		f.moves = f.moves2
 		f.move_i = 0
 		events.append({"type": "phase2", "foe": foes.find(f)})
+	if f.landed and f.stun <= 0:  # (knocked down and its stun is over: it flies back up)
+		f.intent = {"kind": "take_off"}
+		f.es.intent = {"kind": "take_off"}
+		return
+	if f.es.def.has("walls"):  # (the Bramble Matron: nobody else on the stage: she summons (a 6 cuts it); else she grows their Thorns)
+		if alive().any(func(x): return x != f):
+			f.spells.clear()
+			f.intent = {"kind": "thorns_team", "n": 2}
+		else:
+			f.spells = [MATRON_SPELL.duplicate(true)]
+			f.intent = {"kind": "invoke"}
+		f.es.intent = {"kind": String(f.intent.kind)}
+		return
+	if f.id == "greenseer" and alive().any(func(x): return x.hp < x.max_hp):
+		f.intent = GREENSEER_HEAL
+		f.es.intent = {"kind": "heal"}
+		return
+	if not f.spells.is_empty() and f.spells[0].get("charge", false):  # (a Charge on its way: it keeps charging)
+		f.intent = {"kind": "charging"}
+		f.es.intent = {"kind": "attack"}
+		return
 	if f.es.def.get("invokes", false):
 		f.phase = 2 if f.hp * 2 <= f.max_hp else 1
 		f.intent = {"kind": "invoke"}
 		_new_spells(f)
+	elif f.random_moves:
+		var from: Array = f.moves
+		if f.id == "yin_yang_clone":  # (the Cubs are never in sync: not the same move as the other one this turn)
+			var taken := alive().filter(func(x): return x != f and x.id == f.id).map(func(x): return "charge" if String(x.intent.get("kind", "")) == "charging" else String(x.intent.get("kind", "")))
+			var other := from.filter(func(m): return not (String(m.kind) in taken))
+			if not other.is_empty():
+				from = other
+		f.intent = from[run.rng.randi() % from.size()]
 	else:
 		f.intent = f.moves[f.move_i % f.moves.size()]
 		f.move_i += 1
+	if String(f.intent.get("kind", "")) == "charge":  # (it starts a Charge: its card hangs over it)
+		f.spells = [{"id": "charge", "name": "Charge", "charge": true, "n": int(f.intent.n), "slots": int(f.intent.slots),
+			"placed": 0, "turns": CHARGE_TURNS}]
+		f.intent = {"kind": "charging"}
+	if String(f.intent.get("kind", "")) == "slime_pick":  # (the Giant Slime: which one, decided now so it shows)
+		f.intent = GIANT_SLIME_PICKS[run.rng.randi() % GIANT_SLIME_PICKS.size()]
+	f.deflect = String(f.intent.get("kind", "")) == "mirror"  # (the Mirror Fairy's "?": her mirror is up now, for your turn)
 	f.es.intent = {"kind": String(f.intent.kind)}  # (the puppet's poses read it)
 
 
@@ -280,6 +389,11 @@ func _new_spells(f: Foe) -> void:
 	f.spells.clear()
 	for k in (3 if f.phase == 2 else 2):
 		f.spells.append(pool.pop_at(run.rng.randi() % pool.size()))
+
+
+## The damage a Charge card will still do (its n, less CHARGE_CUT for each die on it).
+static func charge_left(sp: Dictionary) -> int:
+	return maxi(0, int(sp.get("n", 0)) - CHARGE_CUT * int(sp.get("placed", 0)))
 
 
 func alive() -> Array:
@@ -344,6 +458,7 @@ func _start_turn() -> void:
 		confuse_next = false
 	events.append({"type": "roll"})
 	_carvings()
+	_sort_rolled()
 	if not revenge.is_empty() and not over:  # (Revenge: what you took comes back at it)
 		var t: Foe = revenge.foe
 		if t == null or t.dead():
@@ -365,6 +480,18 @@ func _rolled(i: int, k: int) -> Dictionary:
 	var f: Dictionary = run.face(i, k) if k >= 0 else DiceFace.make(run.rng.randi_range(1, 6))
 	return {"die": i, "face": k, "value": int(f.v), "paint": String(f.get("paint", "")), "carve": String(f.get("carve", "")),
 		"used": false, "rerolled": false, "frozen": false, "hidden": false}
+
+
+## The dice as rolled, from small to big (the user, 2026-11-17); a face-down die goes last, so where it lies tells nothing.
+func _sort_rolled() -> void:
+	for k in rolled.size():
+		rolled[k]["_at"] = k
+	rolled.sort_custom(func(a, b):
+		var ka: int = (10000 if a.hidden else 0) + int(a.value) * 100 + int(a._at)
+		var kb: int = (10000 if b.hidden else 0) + int(b.value) * 100 + int(b._at)
+		return ka < kb)
+	for d in rolled:
+		d.erase("_at")
 
 
 ## The carvings on the faces that were rolled: each does its thing now. (The Dice carving's extra d6 is plain.)
@@ -611,6 +738,8 @@ func can_interrupt(r: int, fi: int, k: int) -> bool:
 	var f: Foe = foes[fi]
 	if f.dead() or k < 0 or k >= f.spells.size():
 		return false
+	if f.spells[k].get("charge", false):
+		return int(f.spells[k].placed) < int(f.spells[k].slots) and (rolled[r].hidden or int(rolled[r].value) <= CHARGE_MAX)
 	return rolled[r].hidden or int(rolled[r].value) == int(f.spells[k].cut)
 
 
@@ -618,12 +747,19 @@ func interrupt(r: int, fi: int, k: int) -> bool:
 	if not can_interrupt(r, fi, k):
 		return false
 	var f: Foe = foes[fi]
+	var charge: bool = f.spells[k].get("charge", false)
 	if rolled[r].hidden:
 		rolled[r].hidden = false
-		if int(rolled[r].value) != int(f.spells[k].cut):
+		if (int(rolled[r].value) > CHARGE_MAX) if charge else (int(rolled[r].value) != int(f.spells[k].cut)):
 			events.append({"type": "bounce_spell", "foe": fi, "k": k, "r": r})
 			return false
 	rolled[r].used = true
+	if charge:  # (a 1 on a Charge: 10 less; every slot filled: it's gone)
+		var cs: Dictionary = f.spells[k]
+		cs.placed = int(cs.placed) + 1
+		if int(cs.placed) < int(cs.slots) and charge_left(cs) > 0:
+			events.append({"type": "charge_cut", "foe": fi, "n": charge_left(cs)})
+			return true
 	var sp: Dictionary = f.spells.pop_at(k)
 	events.append({"type": "interrupted", "foe": fi, "name": String(sp.name)})
 	return true
@@ -856,6 +992,11 @@ func _shield(n: int) -> void:
 	n *= _shield_mult
 	block += n
 	events.append({"type": "block", "n": n})
+	if n > 0:
+		for x: Foe in alive():
+			if x.id == "enraged_bear":  # (every Shield you gain makes it angrier)
+				x.power += BEAR_RAGE
+				events.append({"type": "foe_power", "foe": foes.find(x), "n": BEAR_RAGE})
 
 
 ## You hit an enemy for n (a Red die in the card or the Skull carving: double; Weakened: half, rounded down). Its Block
@@ -866,6 +1007,10 @@ func _hit(f: Foe, n: int) -> void:
 	if f.ethereal > 0 or f.shielded():
 		events.append({"type": "immune", "foe": foes.find(f), "why": "Ethereal" if f.ethereal > 0 else "Behind her hedges"})
 		return
+	if f.dodge > 0:  # (it dodges this one)
+		f.dodge -= 1
+		events.append({"type": "immune", "foe": foes.find(f), "why": "Dodged"})
+		return
 	if run.has_artifact("whetstone"):
 		n += 1
 	n *= _dmg_mult
@@ -873,6 +1018,17 @@ func _hit(f: Foe, n: int) -> void:
 		n = n / 2
 	if f.vulnerable > 0:
 		n = n + n / 2
+	if f.id in DICE_FLYERS and f.es.flying and n > 0:  # (in the air: whatever the blow, 1 damage; the third hit brings it down)
+		n = 1
+		f.fly_hits += 1
+		if f.fly_hits >= FLY_HITS:
+			f.es.flying = false
+			f.landed = true
+			f.fly_hits = 0
+			f.stun += 1
+			f.power += 1  # (each fall makes it angrier, the user 2026-11-17)
+			events.append({"type": "foe_falls", "foe": foes.find(f)})
+			events.append({"type": "foe_power", "foe": foes.find(f), "n": 1})
 	if f.deflect:  # (Deflect: this one comes back at you)
 		f.deflect = false
 		events.append({"type": "deflected", "foe": foes.find(f), "n": n})
@@ -919,6 +1075,16 @@ func _on_death(f: Foe) -> void:
 		events.append({"type": "page_turn", "foe": foes.find(f), "left": f.pages})
 		return
 	events.append({"type": "dies", "foe": foes.find(f)})
+	f.spells.clear()
+	if f.id == "yin_yang_beast":  # (it falls apart into two Cubs, a white and a black one)
+		for yin in YY_CUBS:
+			var d: Dictionary = EnemyDefs.get_def("yin_yang_clone").duplicate(true)
+			d["yin"] = yin
+			var c := _spawn_def(d)
+			c.es.yin = yin
+			c.move_i = YY_CUBS.find(yin)
+			_plan(c)
+			events.append({"type": "spawn", "foe": foes.size() - 1, "from": foes.find(f)})
 	if f.cocoon_card >= 0:  # (the Silk Cocoon breaks: your card comes back)
 		cocooned.erase(f.cocoon_card)
 		events.append({"type": "card_back", "ci": f.cocoon_card})
@@ -945,6 +1111,11 @@ func end_turn() -> void:
 		f.deflect = false
 		f.impervious = maxi(0, f.impervious - 1)
 		f.vulnerable = maxi(0, f.vulnerable - 1)
+		if f.regen_turns > 0:
+			f.regen_turns -= 1
+			var hh := mini(f.regen, f.max_hp - f.hp)
+			f.hp += hh
+			events.append({"type": "foe_heal", "foe": i, "n": hh})
 		if f.burn > 0:
 			f.hp = maxi(0, f.hp - f.burn)
 			events.append({"type": "burn", "foe": i, "n": f.burn})
@@ -1014,9 +1185,29 @@ func _act(f: Foe, m: Dictionary) -> void:
 			var h := mini(int(m.n), who.max_hp - who.hp)
 			who.hp += h
 			events.append({"type": "foe_heal", "foe": foes.find(who), "n": h})
-		"weak":
-			weak = maxi(weak, int(m.n))
+		"weak":  # (+1: it ticks down at the end of this enemy turn; n is your turns)
+			weak = maxi(weak, int(m.n) + 1)
 			events.append({"type": "debuff", "foe": i, "what": "Weakened"})
+		"take_off":
+			f.es.flying = true
+			f.landed = false
+			f.fly_hits = 0
+			events.append({"type": "foe_takes_off", "foe": i})
+		"foe_dodge":
+			var dodger: Foe = alive()[run.rng.randi() % alive().size()] if String(m.get("who", "")) == "random_team" else f
+			dodger.dodge += int(m.n)
+			events.append({"type": "foe_dodge_up", "foe": foes.find(dodger)})
+		"mirror":
+			pass  # (her mirror was up during your turn: nothing more)
+		"regen":
+			f.regen = int(m.n)
+			f.regen_turns = int(m.turns)
+			events.append({"type": "foe_regen", "foe": i, "n": int(m.n), "turns": int(m.turns)})
+		"thorns_team":
+			for x: Foe in alive():
+				if x != f:
+					x.thorns += int(m.n)
+					events.append({"type": "foe_thorns", "foe": foes.find(x), "n": int(m.n)})
 		"burn":
 			burn += int(m.n)
 			events.append({"type": "debuff", "foe": i, "what": "Burn %d" % int(m.n)})
@@ -1043,8 +1234,8 @@ func _act(f: Foe, m: Dictionary) -> void:
 			if most >= 0:
 				hammered[most] = int(hammered.get(most, 0)) + 1
 				events.append({"type": "debuff", "foe": i, "what": "Hammered: %s %d/%d" % [run.card_at(most).name, hammered[most], HAMMER_BREAKS]})
-		"vulnerable":
-			vulnerable = maxi(vulnerable, int(m.n))
+		"vulnerable":  # (+1: it ticks down at the end of this enemy turn; n is the enemy turns it covers)
+			vulnerable = maxi(vulnerable, int(m.n) + 1)
 			events.append({"type": "debuff", "foe": i, "what": "Vulnerable"})
 		"stun":
 			stunned = 1
@@ -1057,6 +1248,8 @@ func _act(f: Foe, m: Dictionary) -> void:
 						events.append({"type": "foe_power", "foe": foes.find(x), "n": int(m.n)})
 			else:
 				var to: Foe = _lord(f) if String(m.get("who", "")) == "lord" else f
+				if String(m.get("who", "")) == "random_team":
+					to = alive()[run.rng.randi() % alive().size()]
 				if to == null:
 					to = f
 				to.power += int(m.n)
@@ -1105,6 +1298,18 @@ func _act(f: Foe, m: Dictionary) -> void:
 			events.append({"type": "foe_clock", "foe": i, "n": int(m.n)})
 		"play":
 			pass  # (he plays on: the piece itself is the threat, see piece_ended)
+		"charging":
+			if not f.spells.is_empty():
+				var sp: Dictionary = f.spells[0]
+				sp.turns = int(sp.turns) - 1
+				if int(sp.turns) > 0:
+					events.append({"type": "charging", "foe": i})
+				else:
+					f.spells.clear()
+					var hit := charge_left(sp)
+					if hit > 0:
+						events.append({"type": "casts", "foe": i, "name": "Charge"})
+						_act(f, {"kind": "attack", "n": hit, "hits": 1})
 		"invoke":
 			for sp in f.spells:
 				if over or f.dead():
@@ -1199,7 +1404,17 @@ static func intent_text(m: Dictionary, f: Foe = null) -> String:
 		"heal":
 			s = "❤ +%d" % int(m.n) + (" (his lord)" if String(m.get("who", "")) == "lord" else "")
 		"weak":
-			s = "Weaken"
+			s = "Weaken" + (" %d" % int(m.n) if int(m.get("n", 1)) > 1 else "")
+		"foe_dodge":
+			s = "🪽 Dodge"
+		"take_off":
+			s = "🪽 Take off"
+		"mirror":
+			s = "?"
+		"regen":
+			s = "❤ +%d x%d turns" % [int(m.n), int(m.turns)]
+		"thorns_team":
+			s = "🌵 Thorns +%d to all" % int(m.n)
 		"burn":
 			s = "🔥 Burn %d" % int(m.n)
 		"silence":
@@ -1211,7 +1426,7 @@ static func intent_text(m: Dictionary, f: Foe = null) -> String:
 		"hammer":
 			s = "🔨 Hammer"
 		"vulnerable":
-			s = "Vulnerable"
+			s = "Vulnerable" + (" %d" % int(m.n) if int(m.get("n", 1)) > 1 else "")
 		"stun":
 			s = "💫 Stun"
 		"power":
@@ -1240,8 +1455,11 @@ static func intent_text(m: Dictionary, f: Foe = null) -> String:
 			s = "⏰ %d" % int(m.n)
 		"play":
 			s = "🎹 Plays on" + (" (%d pages left)" % f.pages if f != null and f.pages > 0 else "")
+		"charging":
+			var cs: Dictionary = f.spells[0] if f != null and not f.spells.is_empty() else {}
+			s = "💥 Charging %d" % charge_left(cs) + (" (%d turn%s)" % [int(cs.turns), "" if int(cs.turns) == 1 else "s"] if not cs.is_empty() else "")
 		"invoke":
-			s = "✨ Casts his spells"
+			s = "📯 Summon (a 6 stops it)" if f != null and f.es.def.has("walls") else "✨ Casts his spells"
 	if m.has("also"):
 		s += "  " + intent_text(m.also, f)
 	return s

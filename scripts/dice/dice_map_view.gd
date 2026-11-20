@@ -1,9 +1,10 @@
 class_name DiceMapView
 extends Control
-## Die on Stage (2026-11-16): the zoned hex map (DiceMapGen.make_zoned). Left to right: the easy, mid and hard zones,
-## each with its name over it. Wooden hexagons; hollow tiles are holes. A fight with a bonus has it written on its tile:
+## Die on Stage (2026-11-16): the hex map (DiceMapGen.make_zoned). Tiles show rewards, not difficulty (enemies get
+## harder the more moves you make: the top line says how hard they are now). (Old: tinted by zone, green easy,
+## amber mid, red hard: patches all over the map, a key at the top right). Wooden hexagons. A fight with a bonus has it written on its tile:
 ## a die change (+1 / -1), a card, an artifact (those two are a mini boss or a double encounter). The tiles you can go to
-## (forward only) have a gold rim. The boss stands at the far right; after DiceMapGen.BOSS_WAIT moves it walks toward
+## (forward only) have a gold rim. The boss stands at the far right; after DiceMapGen.BOSS_SPEED_EVERY moves it walks toward
 ## you, and when it reaches you its fight starts. Nothing ahead: "Wait for the boss".
 
 signal chosen(r: int, c: int)
@@ -15,11 +16,14 @@ const LEVEL_W := HEX_R * 0.8660254
 const LANE_H := HEX_R * 1.5
 const HEX_WOOD := Color(0.6, 0.43, 0.27)
 const ZONE_TINT := [Color(0.45, 0.62, 0.32), Color(0.85, 0.62, 0.2), Color(0.75, 0.2, 0.15)]
-const ZONE_NAMES := ["Easy", "Mid", "Hard"]
+const ZONE_NAMES := ["Easy", "Medium", "Hard"]
 const LOOK := {
-	"fight": ["⚔", Color(0.45, 0.36, 0.28), "A fight."],
+	"fight": ["⚔", Color(0.45, 0.36, 0.28), "A fight: win a few coins."],
 	"shop": ["🛒", Color(0.2, 0.55, 0.3), "The Merchant: moves, dice alterations, an artifact, a meal."],
 	"rest": ["🔥", Color(0.9, 0.5, 0.1), "A campfire: rest (heal 30% of your max HP), or upgrade a move."],
+	"event": ["❓", Color(0.45, 0.3, 0.6), "Something is happening here: a story, with choices."],
+	"haste": ["»»", Color(0.55, 0.8, 0.85), "Haste: a free step. No fight, the move isn't counted, and the boss doesn't move."],
+	"whirlpool": ["🌀", Color(0.2, 0.45, 0.8), "A whirlpool: dive in to come out at the other one (linked by the dotted line)."],
 }
 const BONUS_WORDS := {
 	"card": "Win it: choose a move (1 of 3).",
@@ -55,15 +59,14 @@ func _ready() -> void:
 	_board.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_board.draw.connect(_draw_board)
 	add_child(_board)
-	# the zones' names over the map
-	for z in DiceMapGen.ZONES.size():
-		var lo: int = DiceMapGen.ZONES[z]
-		var hi: int = (DiceMapGen.ZONES[z + 1] - 1) if z + 1 < DiceMapGen.ZONES.size() else run.map.size() - 1
-		var x := (_cell_pos(Vector2i(lo, 3)).x + _cell_pos(Vector2i(hi, 3)).x) / 2.0
-		var zl := _text(ZONE_NAMES[z], 30, ZONE_TINT[z].lightened(0.3))
-		zl.size = Vector2(300, 40)
-		zl.position = Vector2(x - 150.0, _cy - 3.6 * LANE_H - 40.0)
-		zl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# how hard the fights are now (top right): it grows with your moves
+	var tier := DiceMapGen.fight_tier(run.turns + 1)
+	var nxt := ""
+	if tier + 1 < DiceMapGen.TIER_FROM_MOVE.size():
+		var left: int = DiceMapGen.TIER_FROM_MOVE[tier + 1] - (run.turns + 1)
+		nxt = "  (%s after %d more move%s)" % [ZONE_NAMES[tier + 1], left, "" if left == 1 else "s"] if left > 0 else "  (%s next move)" % ZONE_NAMES[tier + 1]
+	var zl := _text("Enemies: %s%s" % [ZONE_NAMES[tier], nxt], 24, ZONE_TINT[tier].lightened(0.35))
+	zl.position = Vector2(1300, 200)
 	# the tiles' marks
 	for f in run.map.size():
 		for n in run.map[f]:
@@ -80,21 +83,17 @@ func _ready() -> void:
 			icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			icon.size = Vector2(80, 50)
-			icon.position = at - Vector2(40, 34 if b != "" else 25)
+			icon.position = at - Vector2(40, 34 if b != "" or n.type == "fight" else 25)
 			var sub := ""
 			var sub_col := Color.WHITE
 			match b:
-				"dice":
-					match String(n.get("dmod", "adjust")):
-						"paint":
-							sub = "🎨"
-							sub_col = DiceFace.PAINTS[n.paint].col.lightened(0.25)
-						"carve":
-							sub = "🔪" + String(DiceFace.CARVES[n.carve].sym)
-							sub_col = Color(1.0, 0.9, 0.6)
-						_:
-							sub = "🎲%+d" % int(n.die_mod)
-							sub_col = Color(0.55, 1.0, 0.5) if int(n.die_mod) > 0 else Color(1.0, 0.55, 0.45)
+				"":  # (a plain fight: just coins)
+					if n.type == "fight":
+						sub = "🪙"
+						sub_col = Color(1.0, 0.9, 0.5)
+				"dice":  # (just a die: which mod it is, you see when you win it, 2026-11-17)
+					sub = "🎲"
+					sub_col = Color(1.0, 0.95, 0.8)
 				"card", "artifact":
 					sub = "👹" if n.get("fight", "") == "elite" else "⚔⚔"
 					sub_col = Color(1.0, 0.7, 0.6)
@@ -142,7 +141,7 @@ func _head_lines() -> Array:
 		cards.append(run.card_at(ci).name)
 	var arts := run.artifacts.map(func(id): return DiceArtifacts.get_item(id).name)
 	var w := run.boss_wait()
-	var boss := "The boss starts moving in %d move%s" % [w, "" if w == 1 else "s"] if w > 0 else "The boss is coming for you!"
+	var boss := "The boss starts moving in %d move%s" % [w, "" if w == 1 else "s"] if w > 0 else "The boss is coming for you! (%d tile%s a move, faster every %d moves)" % [maxi(1, run.boss_speed()), "" if run.boss_speed() <= 1 else "s", DiceMapGen.BOSS_SPEED_EVERY]
 	return ["Die on Stage · Act %d    ❤ %d/%d    🪙 %d coins    %s" % [run.act, run.hp, run.max_hp, run.leaves, boss],
 		"Dice: %s" % "  ".join(faces), "Moves: %s" % ", ".join(cards),
 		"Artifacts: %s" % (", ".join(arts) if not arts.is_empty() else "none")]
@@ -179,7 +178,7 @@ func _draw_board() -> void:
 			var can: bool = Vector2i(f, n.col) in opts
 			var stood: bool = here or ("%d:%d" % [f, n.col]) in run.visited
 			var behind: bool = not stood and f <= run.row
-			var fill: Color = HEX_WOOD.lerp(ZONE_TINT[DiceMapGen.zone_of(f)], 0.18)
+			var fill: Color = HEX_WOOD
 			fill = fill.lerp(LOOK.get(n.type, LOOK.fight)[1], 0.25)
 			match String(n.get("bonus", "")):
 				"card":
@@ -207,6 +206,11 @@ func _draw_board() -> void:
 				rim_w = 6.0
 			outer.append(outer[0])
 			cv.draw_polyline(outer, rim, rim_w, true)
+	# the whirlpools: a dotted line between the pair
+	for f in run.map.size():
+		for n in run.map[f]:
+			if n.type == "whirlpool" and n.has("link") and f < int(n.link[0]):
+				cv.draw_dashed_line(_pos(f, n.col), _pos(int(n.link[0]), int(n.link[1])), Color(0.5, 0.8, 1.0, 0.75), 4.0, 14.0)
 	# the boss: a crimson hexagon with its crown, where it stands now
 	var bp := _cell_pos(run.boss)
 	var bh := _hex_points(bp, HEX_R * 1.05)
@@ -238,12 +242,14 @@ func _gui_input(ev: InputEvent) -> void:
 			_board.queue_redraw()
 			if t.x >= 0:
 				var n: Dictionary = run.map[t.x][t.y]
-				var words: String = "%s zone. " % ZONE_NAMES[DiceMapGen.zone_of(t.x)] + String(LOOK.get(n.type, LOOK.fight)[2])
+				var words: String = String(LOOK.get(n.type, LOOK.fight)[2])
+				if n.type == "whirlpool":
+					words += " It costs %d HP now, and 5 more each time." % run.whirl_cost()
 				var b: String = n.get("bonus", "")
 				if b != "":
 					if b in ["card", "artifact"]:
 						words += " A mini boss." if n.get("fight", "") == "elite" else " Two hard encounters at once."
-					words += "  " + ("Win it: your dice are rolled, and the face that shows gets it for good. " + DiceGame.mod_words(n) if b == "dice" else BONUS_WORDS[b])
+					words += "  " + ("Win it: a dice mod (an adjustment, a painting or a carving; you see which when you win; the further right, the better)." if b == "dice" else BONUS_WORDS[b])
 				if Vector2i(t.x, int(n.lane)) == run.boss:
 					words = "The boss is here: stepping on it starts its fight."
 				_info.text = words

@@ -30,7 +30,9 @@ func _one(rng: RandomNumberGenerator, policy: String) -> Dictionary:
 	var out := {"tiles": 0, "fights": 0, "plain": 0, "dice": 0, "card": 0, "artifact": 0, "elite": 0, "double": 0, "shop": 0, "rest": 0,
 		"caught_turn": 0, "zone_easy": 0, "zone_mid": 0, "zone_hard": 0, "stuck": 0}
 	var used := {}
-	for turn in range(1, 200):
+	var free := 0  # (haste steps: not counted)
+	for step in range(1, 200):
+		var turn := step - free
 		var opts := DiceMapGen.forward(rows, me.x, me.y)
 		if not opts.is_empty():
 			var best: Vector2i = opts[rng.randi() % opts.size()]
@@ -49,9 +51,12 @@ func _one(rng: RandomNumberGenerator, policy: String) -> Dictionary:
 			me = best
 			var n2: Dictionary = rows[me.x][me.y]
 			out.tiles += 1
-			out[["zone_easy", "zone_mid", "zone_hard"][DiceMapGen.zone_of(me.x)]] += 1
-			if n2.type in ["shop", "rest"]:
-				if not used.has(n2.type):
+			out[["zone_easy", "zone_mid", "zone_hard"][DiceMapGen.fight_tier(turn)]] += 1
+			if n2.type == "haste":
+				free += 1
+				continue
+			if n2.type in ["shop", "rest", "event", "whirlpool"]:
+				if not used.has(n2.type) and n2.type in ["shop", "rest"]:
 					used[n2.type] = true
 					out[n2.type] += 1
 			else:
@@ -61,7 +66,7 @@ func _one(rng: RandomNumberGenerator, policy: String) -> Dictionary:
 					out.plain += 1
 				else:
 					out[b] += 1
-					var zk := "%s_%s" % [b, ["easy", "mid", "hard"][DiceMapGen.zone_of(me.x)]]
+					var zk := "%s_%s" % [b, ["easy", "mid", "hard"][DiceMapGen.fight_tier(turn)]]
 					out[zk] = out.get(zk, 0) + 1
 				if n2.has("fight"):
 					out[n2.fight] += 1
@@ -71,8 +76,8 @@ func _one(rng: RandomNumberGenerator, policy: String) -> Dictionary:
 		if boss == me_cell:
 			out.caught_turn = turn
 			return out
-		if turn > DiceMapGen.BOSS_WAIT:
-			for k in DiceMapGen.BOSS_STEPS:
+		if true:
+			for k in DiceMapGen.boss_speed(turn):
 				boss = DiceMapGen.boss_step(rows, boss, me_cell)
 				if boss == me_cell:
 					out.caught_turn = turn
