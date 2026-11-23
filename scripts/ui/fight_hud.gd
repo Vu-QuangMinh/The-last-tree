@@ -1383,7 +1383,7 @@ func _space_enemy_row() -> void:
 func _chant_string() -> String:
 	var s := ""
 	for i in scr.chant_idx:
-		s += scr.fight.player.stock[i].el
+		s += FightScreen._known_el(scr.fight.player.stock[i])
 	return s
 
 
@@ -1399,7 +1399,7 @@ func _refresh_all() -> void:
 Turn %d" % [scr.run.act, scr.run.floor_no(), scr.fight.turn]))  # (two lines on the sign)
 	scr._hp_bar.set_values(p.hp, p.max_hp, p.shield + p.lasting)
 	if scr._machine != null:
-		scr._machine.set_veil(p.confuse_turns > 0)  # Confuse: a black veil over the slot machine's reels
+		scr._machine.set_blind(p.blind_turns > 0)  # Blind: what comes out of the slot machine shows only "?"
 	if scr._danger:
 		scr._danger.target = DangerVignette.strength(p.hp, p.max_hp)
 	scr._hp_label.text = ("%d/%d" if scr._puppet_hud else "HP %d / %d") % [maxf(0, p.hp), p.max_hp]
@@ -1463,7 +1463,6 @@ Turn %d" % [scr.run.act, scr.run.floor_no(), scr.fight.turn]))  # (two lines on 
 		card.state = ""
 		card.state_text = ""
 		card.ignited = p.ignited.has(s.id)
-		card.virus = int(p.virus.get(s.id, 0))
 		card.ignite_dmg = scr.fight.ignite_damage(s.id)
 		card.cracks = 3 if scr.fight.broken.has(s.id) else scr.fight.hammer_hits.get(s.id, 0)
 		if UiSkin.is_puppet() and card.cracks > 0 and card.get_meta("split_level", 0) != card.cracks:
@@ -1502,13 +1501,17 @@ Turn %d" % [scr.run.act, scr.run.floor_no(), scr.fight.turn]))  # (two lines on 
 	scr._h_anim._light_patterns()
 	# one main button: Chant while you build, then Release once the chant is spoken
 	scr._clear_btn.visible = scr.phase == "build"
-	scr._end_btn.visible = scr.phase == "build"
+	scr._end_btn.visible = scr.phase == "build" or scr.fight.no_release  # (the new rules: Pass ends the turn after the chant too)
 	scr._end_btn.disabled = scr.busy
 	scr._clear_btn.text = "Clear" if _puppet_strips() else UiTheme.hk("Clear", "⌫")  # (the Puppet buttons are small: no "(key)")
 	scr._end_btn.text = "Pass" if _puppet_strips() else UiTheme.hk("Pass", "E")
 	if scr.phase == "build":
 		scr._cast_btn.text = "Chant" if _puppet_strips() else UiTheme.hk("Chant", "Enter")
 		scr._cast_btn.disabled = scr.busy or scr.chant_idx.is_empty() or scr.fight.player.stun_turns > 0
+	elif scr.fight.no_release:
+		scr._cast_btn.text = "Chant" if _puppet_strips() else UiTheme.hk("Chant", "Enter")  # (no Release: it stays Chant, spoken already)
+		scr._cast_btn.disabled = true
+		scr._end_btn.disabled = scr.busy or scr.aiming or scr.move_view != null or scr.pick_view != null or scr.chant_mode != ""
 	else:
 		scr._cast_btn.text = "Release" if _puppet_strips() else UiTheme.hk("Release", "E")
 		scr._cast_btn.disabled = scr.busy or scr.aiming or scr.move_view != null or scr.pick_view != null or scr.chant_mode != ""
@@ -1516,7 +1519,7 @@ Turn %d" % [scr.run.act, scr.run.floor_no(), scr.fight.turn]))  # (two lines on 
 		scr._clear_btn.text = ""
 		scr._end_btn.text = ""
 		scr._cast_btn.text = ""
-		var kind2 := "chant" if scr.phase == "build" else "release"  # (two painted buttons of the same form: Chant, then Release)
+		var kind2 := "chant" if scr.phase == "build" or scr.fight.no_release else "release"  # (two painted buttons of the same form: Chant, then Release)
 		if scr._cast_kind != kind2:
 			scr._cast_kind = kind2
 			UiTheme.style_puppet_button(scr._cast_btn, kind2, 18)
@@ -1524,8 +1527,8 @@ Turn %d" % [scr.run.act, scr.run.floor_no(), scr.fight.turn]))  # (two lines on 
 		scr._clear_btn.text = ""
 		scr._end_btn.text = ""
 		scr._cast_btn.text = ""
-		scr._cast_btn.tooltip_text = "Chant (Enter)" if scr.phase == "build" else "Release (E)"
-		var cast_kind := "chant" if scr.phase == "build" else "release"  # (two painted buttons: Chant, then Release)
+		scr._cast_btn.tooltip_text = "Chant (Enter)" if scr.phase == "build" or scr.fight.no_release else "Release (E)"
+		var cast_kind := "chant" if scr.phase == "build" or scr.fight.no_release else "release"  # (two painted buttons: Chant, then Release)
 		if scr._cast_kind != cast_kind:
 			scr._cast_kind = cast_kind
 			UiTheme.style_puppet_button(scr._cast_btn, cast_kind, 18)
@@ -1538,6 +1541,8 @@ Turn %d" % [scr.run.act, scr.run.floor_no(), scr.fight.turn]))  # (two lines on 
 	if not scr.aiming and not scr.busy and scr.move_view == null and scr.pick_view == null and scr.chant_mode == "":
 		if scr.phase == "build" and scr.fight.player.stun_turns > 0:
 			scr._prompt.text = "You are Stunned: your turn is skipped."
+		elif scr.phase == "build" and scr.fight.no_release:
+			scr._prompt.text = "" if chant != "" else "Build a chant: the cards whose pattern it makes come alive."
 		elif scr.phase == "build":
 			scr._prompt.text = "" if chant != "" else "Build a chant: when it is Released, enemies lose the longest start of their Essence found in it. Matching spells come alive."
 		elif live_spells:
@@ -1545,7 +1550,7 @@ Turn %d" % [scr.run.act, scr.run.floor_no(), scr.fight.turn]))  # (two lines on 
 		else:
 			scr._prompt.text = "Nothing left to cast." if scr.auto_release else "Nothing left to cast: press Release!"
 	# every spell is cast: the Release button pulses so you know what to press next
-	scr._release_glow = scr.phase == "spells" and not live_spells and not scr._cast_btn.disabled and not scr._released and not scr.fight.over
+	scr._release_glow = scr.phase == "spells" and not live_spells and not scr._cast_btn.disabled and not scr._released and not scr.fight.over and not scr.fight.no_release
 
 
 func _refresh_chant() -> void:
@@ -1558,11 +1563,14 @@ func _refresh_chant() -> void:
 	for c in scr._chant_row.get_children():
 		c.queue_free()
 	var shown: Array = []  # element letters to draw
+	var syms: Array = []  # their carvings ("" = none), in step
 	if scr.phase == "build":
 		for i in scr.chant_idx:
-			shown.append(p.stock[i].el)
+			shown.append(FightScreen._shown_el(p.stock[i]))
+			syms.append(String(p.stock[i].get("sym", "")))
 	else:
 		shown = scr.fight.chant.duplicate()
+		syms = scr.fight.chant_syms.duplicate()
 	var n := maxi(_chant_rings(), shown.size())
 	var lay := _chant_layout(shown.size())
 	scr._chant_row.add_theme_constant_override("separation", int(lay.y))
@@ -1591,6 +1599,7 @@ func _refresh_chant() -> void:
 			slot.add_child(stone)
 		if i < shown.size():
 			var ic := ElementIcon.make(shown[i], px)
+			ic.carve = String(syms[i]) if i < syms.size() else ""
 			if scr.phase == "build":
 				ic.temp = p.stock[scr.chant_idx[i]].temp
 				if scr._flying.has(p.stock[scr.chant_idx[i]].uid):
@@ -1619,8 +1628,8 @@ func _refresh_chant() -> void:
 		note = ""  # (Puppet Stage: no plain count; only what needs saying: a Toll, the chant is spoken, Hypnotized)
 	if p.toll > 0:
 		note = "%d / %d Essence (Burden)" % [scr.chant_idx.size(), slots]
-	if p.confuse_turns > 0 and scr.phase == "build":
-		note += ("" if note == "" else "   ·   ") + "CONFUSED: you can't see what is coming next"
+	if p.blind_turns > 0 and scr.phase == "build":
+		note += ("" if note == "" else "   ·   ") + "BLIND: you can't see what comes out of the slot machine"
 	scr._chant_note.text = note
 	scr._chant_note.tooltip_text = note
 
@@ -1630,7 +1639,7 @@ func _refresh_chant() -> void:
 func _refresh_stock() -> void:
 	var p := scr.fight.player
 	var order := range(p.stock.size())
-	order.sort_custom(func(a, b): return "FWA".find(p.stock[a].el) < "FWA".find(p.stock[b].el) or ("FWA".find(p.stock[a].el) == "FWA".find(p.stock[b].el) and a < b))
+	order.sort_custom(func(a, b): return "FWA".find(FightScreen._shown_el(p.stock[a])) < "FWA".find(FightScreen._shown_el(p.stock[b])) or ("FWA".find(FightScreen._shown_el(p.stock[a])) == "FWA".find(FightScreen._shown_el(p.stock[b])) and a < b))
 	var held_uid := -1  # an element being dragged out of the bag is in your hand, not in the bag
 	if is_instance_valid(scr._bdrag) and scr._bdrag_src.get("kind", "") == "stock":
 		held_uid = p.stock[scr._bdrag_src.i].uid
@@ -1672,7 +1681,7 @@ func _refresh_stock() -> void:
 		var ic: ElementIcon = scr._bag_icons.get(uid)
 		var fresh := ic == null
 		if fresh:
-			ic = ElementIcon.make(s.el, FightScreen.BAG_PX)
+			ic = ElementIcon.make(FightScreen._shown_el(s), FightScreen.BAG_PX)
 			ic.size = Vector2(FightScreen.BAG_PX, FightScreen.BAG_PX)
 			ic.pivot_offset = Vector2(FightScreen.BAG_PX, FightScreen.BAG_PX) / 2.0
 			ic.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -1685,14 +1694,15 @@ func _refresh_stock() -> void:
 			ic.position = target
 			scr._stock_row.add_child(ic)
 			scr._bag_icons[uid] = ic
-		ic.el = s.el
+		ic.el = FightScreen._shown_el(s)
+		ic.carve = String(s.get("sym", ""))  # (a carved marble: its symbol stays on the ball)
 		ic.temp = s.temp
 		ic.frozen = s.frozen
 		ic.freeze_n = int(s.get("freeze_n", 0))
 		ic.dim = scr.phase != "build"
 		if not ic.has_meta("rolling"):
 			ic.modulate.a = 0.0 if scr._flying.has(uid) else 1.0
-		var tip: String = Elements.NAMES[s.el]
+		var tip: String = "Disguised: the Mirror Fairy's illusion hides its colour (it is still your own marble)." if bool(s.get("veiled", false)) else String(Elements.NAMES[s.el])
 		if s.temp:
 			tip += " (conjured: fades at the end of this turn)"
 		if s.frozen:
@@ -1859,26 +1869,20 @@ func _status_badges() -> Array:
 		out.append(["👻 Ethereal", Color(0.75, 0.7, 1.0), "ethereal"])
 	if p.stun_turns > 0:
 		out.append(["💫 Stunned", Color(1.0, 0.85, 0.3), "stun"])
-	if p.echo_next:
-		out.append(["🔔 Echo ready", Color(0.85, 0.6, 1.0), "echo"])
-	if p.poison > 0:
-		out.append(["🧪 Poison %d" % p.poison, Color(0.55, 0.9, 0.3), "poison"])
-	if p.bleed > 0:
-		out.append(["🩸 Bleed %d" % p.bleed, Color(0.95, 0.3, 0.3), "bleed"])
-	if p.confuse_turns > 0:
-		out.append(["🌀 Confused", Color(0.8, 0.4, 1.0), "confuse"])
+	if p.burn > 0:
+		out.append(["🔥 Burn %d" % p.burn, Color(1.0, 0.55, 0.2), "burn"])
 	if p.blind_turns > 0:
 		out.append(["🙈 Blind %d" % p.blind_turns, Color(0.7, 0.72, 0.78), "blind"])
 	if p.vulnerable > 0:
 		out.append(["🎯 Vulnerable %d" % p.vulnerable, Color(1.0, 0.45, 0.35), "vulnerable"])
+	if p.weak > 0:
+		out.append(["🥀 Weakened %d" % p.weak, Color(0.8, 0.6, 1.0), "weak"])
 	if p.brittle_turns > 0:
 		out.append(["🧊 Brittle %d" % p.brittle_turns, Color(0.55, 0.75, 0.95), "brittle"])
 	if p.toll > 0:
 		out.append(["🪨 Burden %d" % p.toll, Color(0.75, 0.72, 0.68), "lock"])
 	if p.overload > 0:
 		out.append(["⚡ Overload %d" % p.overload, Color(1.0, 0.45, 0.3), "overload"])
-	if p.disarmed_turns > 0:
-		out.append(["🚫 Disarmed", Color(1.0, 0.55, 0.45), "disarmed"])
 	if not p.silenced.is_empty():
 		out.append(["🤐 Silenced", Color(0.8, 0.45, 1.0), "silence"])
 	# every Power you've cast this fight: a badge for the rest of it (hover: what it does)

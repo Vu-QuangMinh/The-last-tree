@@ -17,7 +17,7 @@ const DEFAULT_SPELLS := ["thorn_dart", "hawks_eye", "ember", "droplet", "whisper
 	"tide_ward", "mist_step", "ember_gust", "rain_song", "whirl", "wild_flame", "wellspring_rite", "gale_call",
 	"twin_comets", "undercurrent", "crosswind", "searing_brand", "cold_snap", "hailstone",
 	"cinder_rain", "quiet_wind", "tidecaller", "ash_and_ember", "thieving_wind",
-	"kindled_heart", "mirror_pool", "updraft_lance", "fog_of_war", "heat_haze",
+	"kindled_heart", "mirror_pool", "updraft_lance", "heat_haze",
 	"hush_of_rain", "smoke_signal", "ripplewind", "coal_toss", "flamecaller", "tsunami_ward", "thunderhead",
 	"lava_flow", "frostbite", "tempest_veil", "ember_storm", "healing_rain", "sky_lance", "witch_fire",
 	"molten_core", "silent_tide", "windless_night", "cinder_shield", "gale_slash", "wind_shear",

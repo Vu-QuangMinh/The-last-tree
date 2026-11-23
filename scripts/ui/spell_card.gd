@@ -31,7 +31,6 @@ var _base_tip := ""  # (its tooltip without the Ignited line)
 var cracks := 0  # Hammer Hand hits taken (1: a few cracks, 2: cracked all over)
 var ignite_dmg := 5  # what casting it burns you for (Ignite stacks): the number in its flame badge
 var ignited := false  # a flame badge at the top right: casting it burns you (the Ember Sprite)
-var virus := 0  # Virus: casting it gives you this much Poison (a green badge at the top left; 0 = none)
 var selected := false
 var compact := false
 ## Drawn this many times bigger: fonts, orbs and margins are all laid out at the larger size (not stretched),
@@ -62,7 +61,6 @@ var _art: StyleBoxTexture  # Puppet theme: the brown wooden card frame (UI art "
 var _shade: ColorRect
 var _orbit: OrbitSpark  # pending: the chant you're building will wake this spell
 var _flame: CardBadge  # Ignite
-var _virus: CardBadge
 var _curse_marks: _CurseMarks
 var _cracks: CrackOverlay
 
@@ -267,12 +265,6 @@ func _ready() -> void:
 	_flame.margins = _orbit.margins
 	_flame.visible = false
 	add_child(_flame)
-	_virus = CardBadge.new()
-	_virus.kind = "virus"
-	_virus.zoom = zoom
-	_virus.margins = _orbit.margins
-	_virus.visible = false
-	add_child(_virus)
 	_curse_marks = _CurseMarks.new()  # the red burning sigils of its curses, top right (RunState.curse)
 	_curse_marks.zoom = zoom
 	_curse_marks.margins = _orbit.margins
@@ -555,7 +547,6 @@ func _sync_zoom() -> void:
 	z.lock_pattern = lock_pattern
 	z.ignited = ignited
 	z.ignite_dmg = ignite_dmg
-	z.virus = virus
 	z.cracks = cracks
 	z.selected = selected
 	z.refresh()
@@ -758,10 +749,83 @@ func _gui_input(ev: InputEvent) -> void:
 		clicked.emit(self)
 
 
+## The card's rules text as it should read now.
+func _rules_bbcode() -> String:
+	var sp := spell.duplicate()
+	sp.durability_left = durability_left
+	if durability_max > 0:
+		sp.durability_max = durability_max
+	return "[center]" + Keywords.colorize(SpellText.card_text(sp), true, false, _zi(23)) + "[/center]"
+
+
+var _pulsing := false
+var _pulse_tw: Tween
+var _pulse_to := ""  # (the text a number pop ends on: the next pop starts from it, not from a half-swollen frame)
+static var _re_num: RegEx
+
+
+## Something raised a number on this card (a boost line landed, MarbleBridge; the user 2026-11-22): only that number
+## reacts: it swells to twice its size and lights up in the line's colour, turns into its new value at the peak, and
+## settles back. The rest of the card stays as it is.
+func pulse_numbers(col: Color) -> void:
+	if _rules == null:
+		refresh()
+		return
+	var old_bb := _pulse_to if _pulsing and _pulse_to != "" else _rules.text
+	if _pulse_tw != null and _pulse_tw.is_valid():
+		_pulse_tw.kill()
+		_pulsing = false
+	var new_bb := _rules_bbcode()
+	if old_bb == new_bb:
+		return
+	if _re_num == null:
+		_re_num = RegEx.create_from_string("\\[b\\](\\d+)\\[/b\\]")
+	var om := _re_num.search_all(old_bb)
+	var nm := _re_num.search_all(new_bb)
+	var changed := []
+	if om.size() == nm.size():
+		for k in om.size():
+			if om[k].get_string(1) != nm[k].get_string(1):
+				changed.append(k)
+	if changed.is_empty():
+		_rules.text = new_bb
+		_fit_text()
+		return
+	var fs := _rules.get_theme_font_size("bold_font_size")
+	if fs <= 0:
+		fs = _zi(23)
+	var lit := col.lightened(0.35)
+	_pulsing = true
+	_pulse_to = new_bb
+	var step := func(v: float) -> void:
+		# 0 -> 0.4: the old number swells to 2x and lights up; 0.4 -> 1: the new number shrinks back to normal
+		var grow := v / 0.4 if v < 0.4 else 1.0 - (v - 0.4) / 0.6
+		var bb := old_bb if v < 0.4 else new_bb
+		var ms := om if v < 0.4 else nm
+		var px := int(round(fs * (1.0 + clampf(grow, 0.0, 1.0))))
+		var shade := Color(lit, 1.0).lerp(Color(1, 1, 1), 0.25 * clampf(grow, 0.0, 1.0))
+		var out := bb
+		for idx in range(changed.size() - 1, -1, -1):
+			var mt: RegExMatch = ms[changed[idx]]
+			var piece := "[font_size=%d][outline_size=%d][outline_color=#1a0d05][color=#%s][b]%s[/b][/color][/outline_color][/outline_size][/font_size]" % [
+				px, maxi(2, int(px * 0.18)), shade.to_html(false), mt.get_string(1)]
+			out = out.substr(0, mt.get_start()) + piece + out.substr(mt.get_end())
+		_rules.text = out
+	var tw := create_tween()
+	_pulse_tw = tw
+	tw.tween_method(step, 0.0, 0.4, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(0.08)
+	tw.tween_method(step, 0.4, 1.0, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_callback(func() -> void:
+		_pulsing = false
+		_rules.text = new_bb
+		_fit_text())
+
+
 func refresh() -> void:
 	if _count == null:
 		return
-	if _rules != null and durability_left >= 0:
+	if _rules != null and not _pulsing and (durability_left >= 0 or spell.get("live_text", false)):  # (live_text: its words carry a number that changes in the fight, MarbleBridge)
 		# Durability left changes during a fight: redraw the rules when it does
 		var sp := spell.duplicate()
 		sp.durability_left = durability_left
@@ -825,14 +889,10 @@ func refresh() -> void:
 			o.z_index = 0 if _shade.visible else 1  # (an anti-spell's orbs sit above its negative, but not above a silence)
 	_flame.visible = ignited and state != "used"
 	_flame.number = ignite_dmg if ignited else 0
-	_virus.visible = virus > 0 and state != "used"
-	_virus.number = virus
 	if not has_meta("tip_pinned"):
 		var adds := []
 		if ignited:
 			adds.append("[color=#ff9a4a][b]Ignited[/b]: casting it burns you for %d HP.[/color]" % ignite_dmg)
-		if virus > 0:
-			adds.append("[color=#8fe05a][b]Virus[/b]: casting it gives you Poison %d.[/color]" % virus)
 		tooltip_text = "\n".join(([_base_tip] if _base_tip != "" else []) + adds)
 	_cracks.set_level(0 if UiSkin.is_puppet() else cracks, String(spell.get("id", "")))  # (Puppet: the card is cut into planks instead: CardSplit)
 	if spell.get("anti", false):

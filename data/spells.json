@@ -481,11 +481,6 @@
    "pattern": "WFW",
    "effects": [
     {
-     "op": "daze",
-     "n": 1,
-     "target": "all"
-    },
-    {
      "op": "shield",
      "n": 4
     }
@@ -787,11 +782,6 @@
      "op": "weak",
      "turns": 3,
      "target": "target"
-    },
-    {
-     "op": "daze",
-     "n": 2,
-     "target": "target"
     }
    ],
    "flavor": "The flood answers.",
@@ -806,10 +796,6 @@
     {
      "op": "cleanse",
      "what": "blind"
-    },
-    {
-     "op": "cleanse",
-     "what": "confuse"
     }
    ],
    "flavor": "A flash of light burns the fog away.",
@@ -822,7 +808,7 @@
    "effects": [
     {
      "op": "cleanse",
-     "what": "poison"
+     "what": "burn"
     },
     {
      "op": "heal",
@@ -921,7 +907,7 @@
    "effects": [
     {
      "op": "cleanse",
-     "what": "confuse"
+     "what": "blind"
     },
     {
      "op": "draw",
@@ -960,22 +946,6 @@
    "flavor": "Anything that strikes you gets burned.",
    "power": true,
    "rarity": "rare"
-  },
-  {
-   "id": "cauterize",
-   "name": "Cauterize",
-   "pattern": "FW",
-   "effects": [
-    {
-     "op": "passive",
-     "key": "cauterize",
-     "n": 1
-    }
-   ],
-   "flavor": "Seal the wound so it never grows back.",
-   "power": true,
-   "rarity": "rare",
-   "badge_name": "Cauterizing"
   },
   {
    "id": "graft",
@@ -1067,19 +1037,6 @@
    "rarity": "rare"
   },
   {
-   "id": "mimic",
-   "name": "Mimic",
-   "pattern": "FW",
-   "effects": [
-    {
-     "op": "echo_next"
-    }
-   ],
-   "flavor": "Do that again.",
-   "rarity": "rare",
-   "cooldown": 2
-  },
-  {
    "id": "riptide",
    "name": "Riptide",
    "pattern": "WA",
@@ -1162,21 +1119,6 @@
    "flavor": "A crown that sets something alight each turn.",
    "power": true,
    "rarity": "rare"
-  },
-  {
-   "id": "echo_chamber",
-   "name": "Echoed Voice",
-   "pattern": "AWAF",
-   "effects": [
-    {
-     "op": "passive",
-     "key": "echo_first",
-     "n": 1
-    }
-   ],
-   "flavor": "Say it once; the forest says it again.",
-   "power": true,
-   "rarity": "legendary"
   },
   {
    "id": "attunement",
@@ -2075,21 +2017,6 @@
    ],
    "flavor": "Thrown up, coming down somewhere.",
    "rarity": "common"
-  },
-  {
-   "id": "fog_of_war",
-   "name": "Fog of War",
-   "pattern": "FW",
-   "effects": [
-    {
-     "op": "daze",
-     "n": 1,
-     "target": "all"
-    }
-   ],
-   "flavor": "While it hangs, nobody swings straight.",
-   "rarity": "rare",
-   "anti": true
   },
   {
    "id": "heat_haze",

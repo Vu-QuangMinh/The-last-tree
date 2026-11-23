@@ -24,8 +24,6 @@ var fireball := 0  # the Winter Wyvern's Fireball hovering over it: the hit it w
 var knocked := false
 var fallen := false  # a Handyman hand knocked out in his first phase: it dropped off and lies on the floor (it is lifted back up for his last stand)
 var thorns := 0  # Thorns it has grown (the Anxious Armadillo): your Release hitting it hurts you this much
-var dazed := 0  # Dazed: 50% to miss each attack; it goes down by 1 after a miss
-var disarmed := 0  # Disarmed (your Deafening Blast): its attacks do nothing on its next turn
 var invoke_all := false
 var invoke_next := -1  # the Invoker: the spell he casts this turn, whatever you chant (one he hasn't cast yet, if he can)
 var cast_ids: Array = []  # the Invoker's spells cast so far this fight  # the Invoker casts every one of his spells on his next turn (gold dust)  # a Handyman hand at 0 Essence: skips its action, back whole next turn
@@ -53,7 +51,6 @@ var burn: int:
 			_light(v - have, null)
 var weak_turns := 0
 var stun_turns := 0  # Stunned by your spell: the turns it skips
-var no_mend := false  # your Cauterizing Power is up: it can't Mend
 var awake := false  # the Sentinel has woken
 var dormant_turns := 0  # the turns it has stood still
 var flying := false  # your chant can't hit it; any Essence it loses brings it down, and it is stunned for a turn
@@ -98,8 +95,10 @@ func size() -> int:
 	return elements.size()
 
 
-## Dead: no Essence left.
+## Dead: no Essence left (the new fight, MarbleBridge: its HP number is 0).
 func is_dead() -> bool:
+	if has_meta("hp"):
+		return int(get_meta("hp")) <= 0
 	if elements.is_empty():
 		return true
 	return has_passive("briar_walls") and not ("" in parts)
@@ -431,10 +430,8 @@ func insert_front(el: String) -> void:
 	parts.push_front("")
 
 
-## Mend / steal: add an element at the end (no mending while your Cauterizing Power is up).
-func append(el: String, is_mend := true) -> bool:
-	if is_mend and no_mend:
-		return false
+## Mend / steal: add an element at the end.
+func append(el: String, _is_mend := true) -> bool:
 	_fix_lit()
 	elements.append(el)
 	armor.append(false)
@@ -484,20 +481,17 @@ func reset_hp(hp: String) -> void:
 
 
 func end_turn() -> void:
-	disarmed = maxi(0, disarmed - 1)
 	weak_turns = maxi(0, weak_turns - 1)
 	stun_turns = maxi(0, stun_turns - 1)
 	struck_this_turn = false
 
 
 func describe_statuses() -> Array:
+	if has_meta("statuses"):  # (the new fight, MarbleBridge: its statuses, as words)
+		return get_meta("statuses")
 	var out := []
-	if disarmed > 0:  # (a fallen hand needs no status text: it is plainly lying on the floor)
-		out.append("Disarmed (its next attack does nothing)")
 	if thorns > 0:
 		out.append("Thorns %d (your Release hitting it hurts you %d)" % [thorns, thorns])
-	if dazed > 0:
-		out.append("Dazed %d (50%% chance to miss each attack; -1 after a miss)" % dazed)
 	if impervious > 0:
 		out.append("Impervious (no status can be put on it this turn)")
 	if power > 0:

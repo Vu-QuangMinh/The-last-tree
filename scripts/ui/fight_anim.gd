@@ -90,7 +90,8 @@ func _quake_body(t: float) -> void:
 ## of its new home. Its real icon waits (invisible) at the other end and pops in when this one lands.
 func _fly(s: Dictionary, from: Vector2, to: Vector2, from_px: float, to_px: float) -> void:
 	var uid: int = s.uid
-	var ic := ElementIcon.make(s.el, from_px)
+	var ic := ElementIcon.make(FightScreen._shown_el(s), from_px)
+	ic.carve = String(s.get("sym", ""))
 	ic.size = Vector2(from_px, from_px)
 	ic.pivot_offset = ic.size / 2.0
 	ic.temp = s.temp
@@ -130,7 +131,7 @@ func _light_patterns() -> void:
 			var st: Dictionary = scr.fight.player.stock[i]
 			if scr._flying.has(st.uid):
 				break
-			c += st.el
+			c += FightScreen._known_el(st)
 	for card in scr._cards:
 		if not is_instance_valid(card):
 			continue
@@ -768,6 +769,21 @@ func _anim_event(ev: Dictionary) -> void:
 			await _wait(0.3)
 		"refund":
 			await scr._h_machine._refund_flight(ev)
+		"boost_line":  # (the new fight: something raised something else: streaks of light from it to each thing it raised)
+			var bfrom := _boost_point(ev.src)
+			var shot := false
+			for dst in ev.get("dsts", [ev.get("dst", {})]):
+				var bto := _boost_point(dst)
+				if bfrom == Vector2.INF or bto == Vector2.INF:
+					continue
+				var line := BoostLine.shoot(scr._fx, bfrom - scr._fx.global_position, bto - scr._fx.global_position, String(ev.col))
+				var d2: Dictionary = dst
+				var kind := String(ev.col)
+				line.on_land = func() -> void: _boost_landed(d2, kind)
+				shot = true
+			if shot:
+				Audio.play("spell_glow", -12.0, 1.7)
+				await _wait(BoostLine.FLY + 0.08)  # (it has landed: the count goes on)
 		"next_rolled":
 			pass  # (what the artifacts gave flies to the tray once the balls of this turn are in: see _process)
 		"artifact_used":
@@ -913,18 +929,6 @@ func _anim_event(ev: Dictionary) -> void:
 				fx.ring(at, 8, 60, Color(1.0, 0.9, 0.55), 0.3, 4.0)
 			Audio.play("spell_glow")
 			await _wait(0.3)
-		"echo_voice":
-			# Echoed Voice: its badge flashes, and a beat later the effect fires again from it
-			var badge := _power_badge("echo_chamber")
-			if badge:
-				var tw := badge.create_tween()
-				tw.tween_property(badge, "modulate", Color(1.8, 1.6, 2.0), 0.08)
-				tw.tween_property(badge, "modulate", Color.WHITE, 0.3)
-			await _wait(0.25)
-		"echo_chamber":
-			# the Echo Chamber shines, and a beat later the same effect fires again from it
-			scr._arts.flash("echo_chamber")
-			await _wait(0.25)
 		"effect":
 			var snd: String = FightScreen.EFFECT_SFX.get(ev.op, "")
 			if snd == "sfx_magic_hit" and not UiSkin.is_puppet():
@@ -1106,10 +1110,6 @@ func _anim_event(ev: Dictionary) -> void:
 			scr._h_hud._sync_views()
 			scr._h_hud._refresh_all()
 			await _wait(0.1)
-		"confuse":
-			Audio.play("sfx_confuse_apply")
-			scr._h_hud._refresh_all()
-			await _wait(0.15)
 		"blind":
 			Audio.play("sfx_blind_apply")
 			scr._h_hud._refresh_all()
@@ -1213,14 +1213,6 @@ func _anim_event(ev: Dictionary) -> void:
 				_callout("[b]Fizzled![/b]", fc.global_position + Vector2(fc.size.x * fc.scale.x / 2.0, -10.0), Color(0.85, 0.8, 0.75), 1.2)
 			scr._h_hud._refresh_all()
 			await _wait(0.5)
-		"virus_hit":
-			Audio.play("sfx_poison_apply")
-			var vc := _card_for(ev.id)
-			if vc:
-				var vfx := Vfx.make(scr._fx, 70)
-				vfx.burst(vc.global_position + vc.size * vc.scale / 2.0, 16, Color(0.55, 0.95, 0.3), Vector2(80, 240), Vector2(0.25, 0.5), Vector2(4, 8), Vfx.SPARK)
-			scr._h_hud._refresh_all()
-			await _wait(0.3)
 		"ignite_spell":
 			Audio.play("sfx_burn_apply")
 			scr._h_hud._refresh_all()
@@ -1235,12 +1227,8 @@ func _anim_event(ev: Dictionary) -> void:
 			_shake(5.0)
 			scr._h_hud._refresh_all()
 			await _wait(0.25)
-		"poison_tick":
-			Audio.play("sfx_poison_tick")
-			scr._h_hud._refresh_all()
-			await _wait(0.15)
-		"bleed_tick":
-			Audio.play("sfx_bleed_tick")
+		"burn_tick":
+			Audio.play("sfx_burn_tick")
 			scr._h_hud._refresh_all()
 			await _wait(0.15)
 		_:
@@ -1254,6 +1242,54 @@ func _anim_event(ev: Dictionary) -> void:
 ## sends a comet to each. For an Extension, the slams follow: "Extension!", "Double Extension!", ...
 ## The chant is read out: left to right, each element hops, shines and sings its note, and the orb it fills
 ## on every spell it helps wake shines at the same moment.
+
+## Where a boost line starts or ends (global): {kind: "chant", k} a marble of the chant, {kind: "card", id}, {kind: "you"}.
+func _boost_point(d: Dictionary) -> Vector2:
+	match String(d.get("kind", "")):
+		"chant":  # (the ring itself: the chant row's k-th slot)
+			var slots := scr._chant_row.get_children().filter(func(n): return n is Panel and not n.is_queued_for_deletion())
+			var k := int(d.get("k", 0))
+			if k >= 0 and k < slots.size():
+				return (slots[k] as Control).get_global_rect().get_center()
+			return scr._h_hud._chant_slot_center(k)
+		"card":
+			var c := _card_for(String(d.get("id", "")))
+			return c.get_global_rect().get_center() if c != null and c.is_inside_tree() else Vector2.INF
+		"you":
+			return _player_point()
+	return Vector2.INF
+
+
+## A boost line arrived: what it raised shakes a little and flashes in the line's colour (you: your HP tray).
+func _boost_landed(d: Dictionary, kind := "other") -> void:
+	var node: Control = _card_for(String(d.get("id", ""))) if String(d.get("kind", "")) == "card" else scr._player_panel
+	if node == null or not is_instance_valid(node):
+		return
+	var col: Color = BoostLine.COLS.get(kind, BoostLine.COLS.other)
+	if node is SpellCard:
+		(node as SpellCard).pulse_numbers(col)  # (a card: only the number it raised reacts, the user 2026-11-22)
+		return
+	var flash := Color(1.0 + col.r * 0.9, 1.0 + col.g * 0.9, 1.0 + col.b * 0.9).lerp(Color(col.r * 2.2, col.g * 2.2, col.b * 2.2), 0.45)
+	if node.has_meta("boost_tw"):
+		var old: Tween = node.get_meta("boost_tw")
+		if old != null and old.is_valid():
+			old.kill()  # (another line landed on it: start over from its rest)
+	var base_scale: Vector2 = node.get_meta("rest_scale", node.scale)
+	node.set_meta("rest_scale", base_scale)
+	node.scale = base_scale
+	node.rotation = 0.0
+	node.pivot_offset = node.size / 2.0
+	var tw := node.create_tween()
+	node.set_meta("boost_tw", tw)
+	tw.tween_property(node, "modulate", flash, 0.05)
+	tw.parallel().tween_property(node, "scale", base_scale * 1.07, 0.05)
+	for k in 4:  # (a quick shake)
+		tw.tween_property(node, "rotation", (0.05 if k % 2 == 0 else -0.05) * (1.0 - k * 0.22), 0.04)
+	tw.tween_property(node, "rotation", 0.0, 0.04)
+	tw.parallel().tween_property(node, "scale", base_scale, 0.16)
+	tw.tween_property(node, "modulate", Color.WHITE, 0.25)
+
+
 func _sing(indices: Array, hits: Array) -> void:
 	for i in indices:
 		if not scr.is_inside_tree():
@@ -1265,6 +1301,8 @@ func _sing(indices: Array, hits: Array) -> void:
 				if ic is ElementIcon:
 					_hop(ic, 18.0)
 					Audio.play_note(ic.el)
+		if scr.fight.no_release and scr.fight.has_method("on_note"):  # (the new fight: a carved marble works as it is read; the reading waits)
+			await scr.fight.call("on_note", i)
 		for h in hits:
 			var card := _card_for(h.id)
 			if card == null or not is_instance_valid(card._pat):

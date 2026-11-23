@@ -46,8 +46,6 @@ const ALL := [
 	{"id": "blast_flask", "color": Color(1.0, 0.35, 0.2), "name": "Blast Flask", "icon": "💣", "price": 52, "desc": "Remove 1 random Essence of all enemies.",
 		"effects": [{"op": "random_hit", "n": 1, "target": "all"}]},
 	# ---- spells
-	{"id": "echo_draught", "color": Color(0.8, 0.55, 1.0), "name": "Echo Draught", "icon": "🔔", "price": 55, "desc": "The next spell you cast this fight is cast twice.",
-		"effects": [{"op": "echo_next"}]},
 	{"id": "hourglass_sand", "color": Color(0.95, 0.8, 0.45), "name": "Hourglass Sand", "icon": "⏳", "price": 48, "desc": "+1 Essence every turn for the rest of this fight.",
 		"effects": [{"op": "passive", "key": "draw_bonus", "n": 1}]},
 	{"id": "tinkers_glue", "color": Color(0.85, 0.7, 0.45), "name": "Tinker's Glue", "icon": "🩹", "price": 36, "desc": "Give 1 Durability to a spell. A broken spell is mended.",

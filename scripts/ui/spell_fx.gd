@@ -96,8 +96,6 @@ static func play(fx: Control, op: String, eff: Dictionary, from: Vector2, dests:
 			return _barrage(v, from, dests)
 		"random_hit":
 			return _strike(v, from, dests, Color(0.6, 1.0, 0.4) if dests.size() == 1 else FIRE, n)
-		"echo_next":
-			return _power(v, from, SHADOW, player)
 		"grimoire_pick":
 			v.glow(from, 160, Color(GOLD, 0.7), 0.5)
 			v.ring(from, 10, 160, GOLD, 0.45, 8.0)

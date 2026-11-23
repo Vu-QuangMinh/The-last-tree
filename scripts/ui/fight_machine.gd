@@ -648,7 +648,7 @@ func _roll_next_on_reels(wait: float) -> void:
 	var els: Array = []
 	for r in ranked:
 		if els.size() < 3:
-			els.append(r[2].el)
+			els.append(String(r[2].el) + ("|" + String(r[2].sym) if String(r[2].get("sym", "")) != "" else ""))  # (a carving rides on the reel's ball)
 	await _roll_reels(els)
 
 

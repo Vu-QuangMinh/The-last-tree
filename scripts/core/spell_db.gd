@@ -5,13 +5,13 @@ extends RefCounted
 
 const RARITY_NAMES := {"common": "Common", "rare": "Rare", "legendary": "Legendary", "unique": "Unique"}  # (Unique: never offered)
 const TARGETED_OPS := ["steal", "pluck", "move", "strike", "burn", "weak", "stun", "expose", "ethereal", "rotate", "swap",
-	"convert", "purge", "shatter", "stoke", "siphon", "execute", "insert", "curse"]
+	"convert", "purge", "shatter", "stoke", "siphon", "execute", "insert"]
 
 ## Every spell is in one of three categories: Offensive, Defensive, Utility (reward offers, card colour and tag).
-const DAMAGE_OPS := ["steal", "pluck", "strike", "burn", "purge", "purge_all", "execute", "siphon", "amplify", "echo", "stoke", "expose", "annihilate", "barrage", "random_hit", "meteor_rain"]
-const DEFENSE_OPS := ["shield", "heal", "aegis", "thorns", "weak", "stun", "cleanse", "disarm", "daze", "unbind"]
+const DAMAGE_OPS := ["steal", "pluck", "strike", "burn", "purge", "purge_all", "execute", "siphon", "amplify", "stoke", "expose", "annihilate", "barrage", "random_hit", "meteor_rain"]
+const DEFENSE_OPS := ["shield", "heal", "aegis", "thorns", "weak", "stun", "cleanse", "unbind"]
 const DAMAGE_KEYS := ["burn_bonus", "strike_burn", "strike_bonus", "disturbance", "steal_each_chant"]
-const DEFENSE_KEYS := ["thorns", "cauterize", "thorns_on_hit", "all_lasting", "shield_per_burn"]
+const DEFENSE_KEYS := ["thorns", "thorns_on_hit", "all_lasting", "shield_per_burn"]
 const KIND_NAMES := {"damage": "Offensive", "defense": "Defensive", "utility": "Utility"}
 
 var all_spells: Array = []
@@ -43,10 +43,10 @@ static func kind_of(effects: Array) -> String:
 			flat.append_array(e.effects)
 		else:
 			flat.append(e)
-	var dmg := flat.any(func(e): return e.op in DAMAGE_OPS or (e.op in ["passive", "curse"] and e.key in DAMAGE_KEYS))
+	var dmg := flat.any(func(e): return e.op in DAMAGE_OPS or (e.op == "passive" and e.key in DAMAGE_KEYS))
 	if dmg:
 		return "damage"
-	var dfn := flat.any(func(e): return e.op in DEFENSE_OPS or (e.op in ["passive", "curse"] and e.key in DEFENSE_KEYS) or (e.op == "ethereal" and e.target == "self"))
+	var dfn := flat.any(func(e): return e.op in DEFENSE_OPS or (e.op == "passive" and e.key in DEFENSE_KEYS) or (e.op == "ethereal" and e.target == "self"))
 	return "defense" if dfn else "utility"
 
 
@@ -58,6 +58,17 @@ static func _needs_target(effects: Array) -> bool:
 		if e.op == "each_turn" and _needs_target(e.effects):
 			return true
 	return false
+
+
+## The new cards (MarbleCards, 2026-11-21): the main game's spells now.
+static func from_marbles() -> SpellDB:
+	var db := SpellDB.new()
+	for id in MarbleCards.C:
+		var s := MarbleCards.as_spell(id)
+		s.rarity_name = RARITY_NAMES.get(s.rarity, "Common")
+		db.all_spells.append(s)
+		db._by_id[id] = s
+	return db
 
 
 func get_spell(id: String) -> Dictionary:

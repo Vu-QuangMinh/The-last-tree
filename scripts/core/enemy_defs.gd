@@ -3,7 +3,7 @@ extends RefCounted
 ## Every enemy: Essence pattern (elements, left to right), moves (cycled in order), passives.
 ## Moves are used in the listed order, looping. Normal enemies mix offence, defence and utility.
 ## Move kinds: attack {n, hits}, armor {pos}, mend {el, n, who: self/ally/all}, shuffle, silence {turns}, frail {turns},
-## lock {len}, steal {n}, confuse (Hypnotize: you can't see the enemies' intents next turn), blind {turns}, poison {n}, freeze {n}, ethereal, empower {n}, brittle {turns},
+## lock {len}, steal {n}, blind {turns} / {fight: true}, burn {n}, freeze {n}, ethereal, empower {n}, brittle {turns},
 ## summon {id, n}, toll, invert, hex, mimic. A move may carry `also` (a second move done the same turn).
 
 const E := {
@@ -31,7 +31,7 @@ const E := {
 		"flavor": "Its wings steal your words."},
 	"cinder_hound": {"name": "Cinder Hound", "act": 0, "tier": 2.5, "hp": "FFAFFWFFAF", "moves": [{"kind": "attack", "n": 6}], "passives": ["burn_immune"],
 		"flavor": "Flame Essence burns under its skin like tattoos."},
-	"mirror_fairy": {"name": "Mirror Fairy", "act": 1, "tier": 2.5, "hp": "AWFWAAWFWA", "size": 3.0, "passives": ["mirror_deflect"], "moves": [{"kind": "confuse", "fight": true}, {"kind": "attack", "n": 6}],
+	"mirror_fairy": {"name": "Mirror Fairy", "act": 1, "tier": 2.5, "hp": "AWFWAAWFWA", "size": 3.0, "passives": ["mirror_deflect"], "moves": [{"kind": "blind", "fight": true}, {"kind": "attack", "n": 6}],
 		"flavor": "A fairy's face in a mirror, her hands gripping it from behind."},
 	"yeti": {"name": "Yeti", "act": 0, "tier": 2.5, "hp": "WWAWWAWWAWWA", "moves": [{"kind": "freeze", "n": 2}, {"kind": "attack", "n": 7}],
 		"flavor": "Big, white and very cold."},
@@ -68,7 +68,7 @@ const E := {
 		"flavor": "Curled up, spiky, and very, very nervous."},
 	# Act 2 (see POOLS; exact numbers: no act bonus). The Starving Mobs: three peasants, 7 Essence each.
 	"mob_pitchfork": {"name": "Pitchfork Peasant", "act": 2, "size": 1.5, "member": true, "no_extra": true, "no_bonus": true, "hp": "FFWAF",
-		"moves": [{"kind": "attack", "n": 2, "also": {"kind": "bleed", "n": 2}}],
+		"moves": [{"kind": "attack", "n": 2, "also": {"kind": "burn", "n": 2}}],
 		"flavor": "It used to turn hay."},
 	"mob_slingshot": {"name": "Slingshot Peasant", "act": 2, "size": 1.5, "member": true, "no_extra": true, "no_bonus": true, "hp": "WAAFW",
 		"moves": [{"kind": "attack", "n": 2, "also": {"kind": "drain_essence", "n": 1}}],
@@ -81,7 +81,7 @@ const E := {
 		"moves": [{"kind": "guard"}],
 		"flavor": "Nobody told him the war was over."},
 	"necromancer": {"name": "Necromancer", "act": 2, "size": 1.3, "member": true, "no_extra": true, "no_bonus": true, "hp": "FAW", "passives": ["behind_shield"],
-		"moves": [{"kind": "poison", "n": 3}, {"kind": "mend", "el": "random", "n": 3, "who": "ally", "cap": 11}],  # (the heal: back up to the Bearer's 11; with him down, it does nothing)
+		"moves": [{"kind": "burn", "n": 3}, {"kind": "mend", "el": "random", "n": 3, "who": "ally", "cap": 11}],  # (the heal: back up to the Bearer's 11; with him down, it does nothing)
 		"flavor": "Brave, as long as somebody else is holding the shield."},
 	# The Sentinels: large golems. Each does nothing until it is down to 12 Essence, or for 3 turns. Alone they are normal fights;
 	# together they are the Twin Sentinels, a mini boss. Red (a red core): hits for 3 once, twice, four times, stuns itself for a turn, starts over.
@@ -92,9 +92,9 @@ const E := {
 	"blue_sentinel": {"name": "Blue Sentinel", "act": 2, "size": 2.0, "tint": Color(0.2, 0.4, 0.8), "member": true, "no_extra": true, "no_bonus": true, "hp": "AWFAWFWWFAFWAWAF", "passives": ["dormant"],
 		"moves": [{"kind": "freeze", "n": 1, "also": {"kind": "attack", "n": 2}}, {"kind": "freeze", "n": 2, "also": {"kind": "attack", "n": 4}}, {"kind": "freeze", "n": 4, "also": {"kind": "attack", "n": 4}}],
 		"flavor": "Its blue core turns slowly toward you."},
-	# The Rot Snake: a big, half-rotten snake. Poison 5, then a bite for 5 and Poison 1, in turn.
+	# The Rot Snake: a big, half-rotten snake. Burn 5, then a bite for 5 and Burn 1, in turn.
 	"rot_snake": {"name": "Rot Snake", "act": 2, "member": true, "no_extra": true, "no_bonus": true, "hp": "WFAWWFAFWA",
-		"moves": [{"kind": "poison", "n": 5, "sfx": "sfx_snake_hiss"}, {"kind": "attack", "n": 5, "also": {"kind": "poison", "n": 1}}],
+		"moves": [{"kind": "burn", "n": 5, "sfx": "sfx_snake_hiss"}, {"kind": "attack", "n": 5, "also": {"kind": "burn", "n": 1}}],
 		"flavor": "Half of it is already dead. The other half hasn't noticed."},
 	# The Headless Horseman: two moves in turn. At 10 Essence or less his next move is to throw his head, which silences every spell;
 	# from then on he only has the first move.
@@ -121,14 +121,14 @@ const E := {
 		"moves": [{"kind": "attack", "n": 2}],
 		"flavor": "He drags it because he can't put it down. He is smiling."},
 	# The Tree Dweller (2026-11-11, ONE enemy): a single tree with two people growing out of it as branches (a man on the left, a woman on
-	# the right), each with a bow: 2 Poison from each, so 4 a turn, and 12 Essence between them.
+	# the right), each with a bow: 2 Burn from each, so 4 a turn, and 12 Essence between them.
 	"tree_dweller": {"name": "Tree Dweller", "act": 2, "size": 1.6, "member": true, "no_extra": true, "no_bonus": true, "hp": "WFAWFAAWFAAW",
-		"moves": [{"kind": "poison", "n": 4}],
+		"moves": [{"kind": "burn", "n": 4}],
 		"flavor": "He stood his post, and she stood hers. The bark has almost reached her eyes."},
 	# The Bog Lantern (2026-11-11, ONE enemy): an enormous angler fish on two legs with its lamp hanging from the stalk in front of it. Any of
 	# its moves, at random, but its lamp runs a clock of 3 turns (see Fight._plan): on the third its move is the flash, which Stuns you.
 	"bog_fish": {"name": "Bog Lantern", "act": 2, "member": true, "size": 2.0, "no_extra": true, "no_bonus": true, "hp": "WAFWWAFAWAFW", "passives": ["lure"], "random_moves": true,
-		"moves": [{"kind": "attack", "n": 5}, {"kind": "poison", "n": 3}, {"kind": "grow_thorns", "n": 2}],
+		"moves": [{"kind": "attack", "n": 5}, {"kind": "burn", "n": 3}, {"kind": "grow_thorns", "n": 2}],
 		"lamp_move": {"kind": "stun", "turns": 1, "name": "Lamp flash"},
 		"flavor": "Don't look at the light."},
 	# The Bug Hunter: a little brass bell on legs, its head the bell, a striker in its hands. It hunts bugs: it strikes its
@@ -139,15 +139,15 @@ const E := {
 			{"kind": "attack", "n": 5, "also": {"kind": "summon_clock", "n": 1}}, {"kind": "attack", "n": 5, "also": {"kind": "summon", "ids": ["sentinel", "blue_sentinel"], "n": 1}}],
 		"flavor": "It hunts for bugs. When it finds one, it rings."},
 	# ---------------- act 3
-	"inverter": {"name": "Inverter", "act": 3, "hp": "FWFW", "moves": [{"kind": "invert"}, {"kind": "attack", "n": 5}, {"kind": "armor", "pos": 0}],
+	"inverter": {"name": "Inverter", "act": 3, "hp": "FWFW", "moves": [{"kind": "freeze", "n": 1}, {"kind": "attack", "n": 5}, {"kind": "armor", "pos": 0}],
 		"flavor": "Fire becomes water, water becomes fire."},
 	"warded_golem": {"name": "Warded Golem", "act": 3, "hp": "FFWWAA", "moves": [{"kind": "attack", "n": 5}, {"kind": "armor", "pos": 2}, {"kind": "vulnerable", "n": 1}], "passives": ["warded"],
 		"flavor": "Short chants bounce off."},
-	"echo_wraith": {"name": "Echo Wraith", "act": 3, "hp": "AWAF", "moves": [{"kind": "confuse"}, {"kind": "attack", "n": 2}, {"kind": "mend", "el": "random", "n": 1, "who": "self"}], "passives": ["echo"],
+	"echo_wraith": {"name": "Echo Wraith", "act": 3, "hp": "AWAF", "moves": [{"kind": "blind", "turns": 1}, {"kind": "attack", "n": 2}, {"kind": "mend", "el": "random", "n": 1, "who": "self"}], "passives": ["echo"],
 		"flavor": "Everything it does, it does twice."},
-	"mimic_chest": {"name": "Mimic Chest", "act": 3, "hp": "FWAF", "moves": [{"kind": "mimic"}, {"kind": "attack", "n": 6}, {"kind": "armor", "pos": 0}],
+	"mimic_chest": {"name": "Mimic Chest", "act": 3, "hp": "FWAF", "moves": [{"kind": "steal", "n": 1}, {"kind": "attack", "n": 6}, {"kind": "armor", "pos": 0}],
 		"flavor": "It becomes your last words, backwards."},
-	"last_gasp_spore": {"name": "Last Gasp Spore", "act": 3, "hp": "AWW", "moves": [{"kind": "attack", "n": 3}, {"kind": "mend", "el": "W", "n": 1, "who": "self"}, {"kind": "poison", "n": 1}], "passives": ["last_gasp"],
+	"last_gasp_spore": {"name": "Last Gasp Spore", "act": 3, "hp": "AWW", "moves": [{"kind": "attack", "n": 3}, {"kind": "mend", "el": "W", "n": 1, "who": "self"}, {"kind": "burn", "n": 1}], "passives": ["last_gasp"],
 		"flavor": "Bursts when it dies."},
 	"storm_imp": {"name": "Storm Imp", "act": 3, "hp": "AAF", "moves": [{"kind": "attack", "n": 1, "hits": 3}, {"kind": "deflect"}, {"kind": "empower", "n": 1}],
 		"flavor": "Flickers out of reach."},
@@ -269,13 +269,13 @@ const E := {
 	# dots. Its intent is shown like anyone's; its eyes also light up, a turn ahead ("eyes" on each move).
 	# Phase 1 cycles laser (both eyes) / venom (right eye) / slashes (left eye); phase 2 counts its dots 0 -> 4 and
 	# starts at 1 (the theft): 1 steal a spell into a cocoon, 2 venom, 3 two spiderlings, 4 eight slashes, 0 the human
-	# eyes' laser (the only time they look straight at you). Envenomed: every hit that takes HP gives you 1 Poison.
+	# eyes' laser (the only time they look straight at you). Envenomed: every hit that takes HP gives you 1 Burn.
 	# Its numbers are exactly these: no act bonus Essence (no_extra) and no act attack bonus (no_bonus).
 	"veiled_eyes": {"name": "Violet Eyes", "act": 2, "boss": true, "no_extra": true, "no_bonus": true,
 		"hp": "FWAAWFFAWWFAAFW", "hp2": "AWFFWAAFWWAFFAWWFAAW", "passives": ["envenomed", "veil_falls"], "tint": Color(0.16, 0.12, 0.2),
-		"moves": [{"kind": "attack", "n": 5, "eyes": "both", "laser": true}, {"kind": "poison", "n": 4, "eyes": "right"},
+		"moves": [{"kind": "attack", "n": 5, "eyes": "both", "laser": true}, {"kind": "burn", "n": 4, "eyes": "right"},
 			{"kind": "attack", "n": 1, "hits": 4, "eyes": "left"}],
-		"moves2": [{"kind": "steal_spell", "eyes": 1}, {"kind": "poison", "n": 5, "eyes": 2},
+		"moves2": [{"kind": "steal_spell", "eyes": 1}, {"kind": "burn", "n": 5, "eyes": 2},
 			{"kind": "summon", "list": ["spiderling_a", "spiderling_b"], "n": 2, "eyes": 3},
 			{"kind": "attack", "n": 1, "hits": 8, "eyes": 4}, {"kind": "attack", "n": 5, "eyes": 0, "laser": true}],
 		"flavor": "It looks at you in desperation."},
@@ -308,10 +308,10 @@ const E := {
 	"corrector": {"name": "The Corrector", "act": 2, "boss": true, "no_extra": true, "no_bonus": true,
 		"hp": "WAFFWAWFAWFAFWAW", "hp2": "FAWWFAFWAFWFAWFA", "passives": ["corrector_reboot"],
 		"moves": [{"kind": "mend", "el": "random", "n": 3, "only_if_missing": 3, "name": "Patch"},
-			{"kind": "virus", "n": 3, "name": "Syntax Error", "also": {"kind": "lock", "len": 3, "other": true}},
+			{"kind": "burn", "n": 3, "name": "Syntax Error", "also": {"kind": "lock", "len": 3}},
 			{"kind": "attack", "n": 6, "name": "Step Over"}],
 		"moves_small": [{"kind": "attack", "n": 3, "name": "Step Over"}, {"kind": "lock", "len": 2, "name": "Breakpoint"},
-			{"kind": "virus", "n": 2, "name": "Syntax Error"}, {"kind": "mend", "el": "random", "n": 2, "only_if_missing": 2, "name": "Patch"}],
+			{"kind": "burn", "n": 2, "name": "Syntax Error"}, {"kind": "mend", "el": "random", "n": 2, "only_if_missing": 2, "name": "Patch"}],
 		"flavor": "Stay tuned."},
 	# The Fire Dragon (an Act 3 mini boss, the user's design, 2026-10-26). It lies across the stage: tail on the left,
 	# head on the right, one wing on its back. Head and tail are separate enemies (20 Essence each, both must fall), each
@@ -351,7 +351,7 @@ const E := {
 		"hp": "FFFFF", "tint": Color(1.0, 0.45, 0.1), "moves": [{"kind": "ignite_spell", "all": true, "turns": 1, "burst": true}],
 		"flavor": "Pop it before it pops."},
 	"last_winter": {"name": "The Last Winter", "act": 3, "boss": true, "hp": "WWAWFAWWAFAWWAFWAW",
-		"moves": [{"kind": "freeze", "n": 2}, {"kind": "attack", "n": 8}, {"kind": "confuse"}, {"kind": "attack", "n": 7}],
+		"moves": [{"kind": "freeze", "n": 2}, {"kind": "attack", "n": 8}, {"kind": "blind", "turns": 1}, {"kind": "attack", "n": 7}],
 		"moves2": [{"kind": "lock", "len": 3}, {"kind": "summon", "id": "storm_imp", "n": 2}, {"kind": "attack", "n": 6, "hits": 2}],
 		"flavor": "The end of every season."},
 }
@@ -362,7 +362,7 @@ const PASSIVE_TEXT := {
 	"split": "Split: struck but not killed, it splits its remaining Essence into two enemies (once).",
 	"overgrowth": "Overgrowth: if not struck during your turn, it grows a random Essence.",
 	"warded": "Warded: only chants of 4 or more Essence can strike it.",
-	"last_gasp": "Last Gasp: gives you Poison 2 when it dies.",
+	"last_gasp": "Last Gasp: gives you Burn 2 when it dies.",
 	"pianist": "The Pianist: he never attacks. He plays one piece, in real time, from the first turn on. If he gets to the end of it, you die. 50 Essence, as five pages of 10: every time a page is cleared he stops, turns the page (his turn) and plays on.",
 	"corrector_reboot": "Reboot: at 0 Essence he restarts with 16 more, and a second, smaller screen lights up: from then on he does two things every turn (the small screen's moves are weaker).",
 	"retainer": "Loyal: if the Samurai falls first, his Retainer yields and the fight is over.",
@@ -373,7 +373,6 @@ const PASSIVE_TEXT := {
 	"shell": "Shell: its first Essence is always armoured, until it is its last one.",
 	"maddened": "Maddened: every spell you cast this turn is one more hit on his attack. It starts over each turn.",
 	"lure": "Lure: its lamp hangs on its hook and shines brighter every turn. On every third turn it flashes instead of its usual move, and you are Stunned.",
-	"last_fuse": "Last Fuse: at 0 Essence it reboots with 4 Essence. Destroy those, or on its turn it explodes for 10 and dies.",
 	"big_shield": "Big Shield: guards the Necromancer, who can't be touched while it stands. On its last Essence it swings instead. Fallen, it can be raised again.",
 	"behind_shield": "Hiding: while the Shield Bearer stands, nothing you do can touch it.",
 	"gem_crown": "Gem Crown: at the end of its turn, armours its first Essence if nothing is armoured (not when it has 1 left).",
@@ -388,7 +387,7 @@ const PASSIVE_TEXT := {
 	"invoker_rebirth": "Second wind: at 0 Essence he rises again with 15 more, and Ghost Walk and Chaos Meteor join his spells.",
 	"yinyang_split": "Split: when it dies for good, it splits into two Yin Yang Cubs (10 Essence each), one white and one black.",
 	"shield_rage": "Enraged: every time you gain Shield, it gains Power +1 (its attacks deal 1 more damage).",
-	"envenomed": "Envenomed: every hit that takes HP from you also gives you 1 Poison (hits your Shield stops don't).",
+	"envenomed": "Envenomed: every hit that takes HP from you also gives you 1 Burn (hits your Shield stops don't).",
 	"veil_falls": "The veil falls: at 0 Essence the veil drops and what is underneath fights on, with 20 more Essence and new moves.",
 	"cocoon": "Cocoon: a spell of yours is wrapped inside. Break it and the spell comes back (and it comes back anyway if you win).",
 	"rage_at_half": "Shield Wall: above half its Essence it guards and strikes in turn. At half or below it drops its shield and attacks twice every turn.",
@@ -424,8 +423,8 @@ const BIOS := {
 	"mob_slingshot": "Small stones, good aim. Every hit knocks an Essence out of your bag.",
 	"mob_torch": "Sets one of your spells alight. It stays alight until you cast it, and then it burns you.",
 	"shield_bearer": "A skeleton behind a very big shield. Doesn't fight back until he is nearly gone, and he doesn't stay down for long.",
-	"necromancer": "Three Essence, Poison 3, a heal of 3 for his skeleton, and he raises it when it falls. You can't touch him, or even see his Essence, while it stands.",
-	"rot_snake": "Spits a mouthful of rot, then bites. Its Poison piles up fast.",
+	"necromancer": "Three Essence, Burn 3, a heal of 3 for his skeleton, and he raises it when it falls. You can't touch him, or even see his Essence, while it stands.",
+	"rot_snake": "Spits a mouthful of rot, then bites. Its Burn piles up fast.",
 	"sentinel": "Wakes when you hurt it, or when it has seen enough. Each round of blows is bigger, then it has to stop and recharge.",
 	"blue_sentinel": "Wakes when you hurt it, or when it has seen enough. Every blow freezes your Essence, more and more of it.",
 	"headless_horseman": "Swings twice, or screams through the head he holds to his neck. Hurt him enough and he throws it.",
@@ -434,8 +433,8 @@ const BIOS := {
 	"scav_vulture": "Your chant can't reach it. Knock it down with a spell, and it lies stunned for a turn.",
 	"scav_beetle": "Its shell never comes off, and it hits harder than it looks.",
 	"mad_soldier": "Weak on his own, but every spell you cast this turn adds a swing. Cast less, or kill him fast.",
-	"tree_dweller": "Rooted to the spot, and never stops shooting: a man and a woman, a bow each. Four Poison a turn, every turn.",
-	"bog_fish": "An enormous angler fish on two legs. Bites, spits Poison, or grows more Thorns, whichever it feels like, and every third turn its lamp flashes and Stuns you.",
+	"tree_dweller": "Rooted to the spot, and never stops shooting: a man and a woman, a bow each. Four Burn a turn, every turn.",
+	"bog_fish": "An enormous angler fish on two legs. Bites, spits Burn, or grows more Thorns, whichever it feels like, and every third turn its lamp flashes and Stuns you.",
 	"bug_hunter": "A brass bell on legs that hunts for bugs. It strikes its own head to hurt you, and on its 4th turn it rings the alarm for a Sentinel. Silence it before then.",
 	"inverter": "Fire becomes water, water becomes fire, and your plans become confetti.",
 	"warded_golem": "Short chants bounce right off. Say something meaningful: at least four Essence long.",
@@ -767,8 +766,6 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			s = "Deflect: this turn your Release can't touch %s (your spells still work)" % ("him or his Retainer" if m.get("pair", false) else "it")
 		"drain_essence":
 			s = "You lose %d random Essence from your bag" % m.n
-		"disarm":
-			s = "Disarm you (your next Release does nothing)"
 		"hammer_spell":
 			s = "Hammer the spell closest to breaking (3 hits break a spell for the fight; a spell with Durability loses 1 per hit)"
 		"stunned":
@@ -803,14 +800,10 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			s = "Lock %s of your spells (%d symbols)" % ["another" if m.get("other", false) else "one", m.len]
 		"steal":
 			s = "Steal %d of your Essence" % m.n
-		"confuse":
-			s = "Confuse you: a black veil over the slot machine for the rest of the fight (you can't see what is coming next)" if m.get("fight", false) else "Confuse you: a black veil over the slot machine (next turn you can't see what is coming next)"
 		"blind":
-			s = "Blind you (%d turns)" % m.turns
-		"poison":
-			s = "Poison you (%d)" % m.n
-		"bleed":
-			s = "Bleed %d" % m.n
+			s = "Blind you for the rest of the fight: what comes out of the slot machine shows only \"?\"" if m.get("fight", false) else "Blind you (%d turn%s): what comes out of the slot machine shows only \"?\"" % [int(m.get("turns", 1)), "" if int(m.get("turns", 1)) == 1 else "s"]
+		"burn":
+			s = "Burn you (%d)" % m.n
 		"guard":
 			s = "Guard: the Necromancer behind it can't be touched"
 		"resurrect":
@@ -827,8 +820,6 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			s = "Dormant: it does nothing until it is down to 12 Essence, or for 3 turns"
 		"glow":
 			s = "Shines brighter: at 0 it stuns you (clock: %d)" % m.n
-		"explode":
-			s = "Explode: %d damage, and it is destroyed" % m.n
 		"freeze":
 			s = "Freeze %d of your Essence" % m.n
 		"empower":
@@ -848,14 +839,8 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 			s = "He plays on. When the piece ends, you die"
 		"toll":
 			s = "Burden: your next chant holds at most %d Essence (the slots after it are stone)" % PlayerState.TOLL_CAP
-		"invert":
-			s = "Invert: swap your Fire and Water"
-		"virus":
-			s = "Virus: one of your spells will give you Poison %d when you cast it" % int(m.get("n", 3))
 		"vulnerable":
 			s = "Make you Vulnerable %d (you take 50%% more damage)" % int(m.n)
-		"mimic":
-			s = "Mimic: its Essence becomes your last chant, backwards"
 		"wall_attack":
 			s = "Each wall attacks for %d%s" % [m.n + bonus, (" × %d hits" % m.hits) if m.get("hits", 1) > 1 else ""]
 		"regrow":

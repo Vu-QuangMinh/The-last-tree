@@ -168,13 +168,6 @@ func run(t: SceneTree) -> void:
 		fs.add_child(panel)
 		shown.append(panel)
 	await _shot(fs, "05d_tooltips")
-	var w := WikiScreen.new()
-	await _shot(w, "09_wiki", true, true)
-	w._tabs.current_tab = 2
-	await _shot(w, "09b_wiki_spells", false, true)
-	w._search.text = "burn"
-	w._on_search("burn")
-	await _shot(w, "09c_wiki_search")
 	var c := CodexScreen.new()
 	await _shot(c, "06_codex")
 	var ch := ChoiceScreen.new()

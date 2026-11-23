@@ -20,16 +20,14 @@ func run(t: SceneTree) -> void:
 	p.aegis = 2
 	p.thorns_turn = 3
 	p.ethereal = true
-	p.echo_next = true
-	p.poison = 3
-	p.confuse_turns = 2
+	p.burn = 3
+	p.blind_turns = 2
 	p.blind_turns = 1
 	p.frail_turns = 2
 	p.vulnerable = 2
 	p.brittle_turns = 2
 	p.toll = 4
 	p.overload = 1
-	p.disarmed_turns = 1
 	p.silenced = {"fire_ball": 1}
 	# 8 Powers (the most a loadout of 8 can hold)
 	for id in ["kindle", "thorn_mantle", "cauterize", "trade_winds", "rising_tide", "ember_crown", "attunement"]:

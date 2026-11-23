@@ -45,10 +45,14 @@ func _draw() -> void:
 ## kind -> [glyph, colour]
 const LOOK := {
 	"attack": ["⚔", RED], "armor": ["🛡", GREY], "mend": ["❤", GREEN], "shuffle": ["🔀", BLUE],
-	"silence": ["🔇", PURPLE], "lock": ["🔒", PURPLE], "steal": ["✋", PURPLE], "confuse": ["🌀", PURPLE],
-	"blind": ["🙈", PURPLE], "poison": ["🧪", PURPLE], "bleed": ["🩸", PURPLE], "freeze": ["❄", PURPLE], 
-	"empower": ["💪", BLUE], "summon": ["👤+", BLUE], "toll": ["⛓", PURPLE], "invert": ["🔄", PURPLE],
-	"summon_clock": ["⏰", PURPLE], "guard": ["🛡", GREY], "resurrect": ["💀", PURPLE], "recharge": ["💫", BLUE], "dormant": ["💤", BLUE], "grounded": ["💫", BLUE], "take_off": ["🪽", BLUE], "glow": ["💡", PURPLE], "explode": ["💥", PURPLE], "mimic": ["🎭", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "fireball": ["☄", RED], "fireball_blast": ["💥", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "stun": ["💫", PURPLE], "grow_thorns": ["🌵", GREEN], "revive": ["🪽", Color(0.85, 0.75, 0.4)], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "disarm": ["🚫", PURPLE], "steal_spell": ["🕸", PURPLE], "play": ["🎹", BLUE], "virus": ["🦠", PURPLE], "vulnerable": ["🎯", PURPLE], "deflect": ["🗡", BLUE], "bottle": ["🍶", GREEN],
+	"silence": ["🔇", PURPLE], "lock": ["🔒", PURPLE], "steal": ["✋", PURPLE],
+	"blind": ["🙈", PURPLE], "burn": ["🔥", PURPLE], "freeze": ["❄", PURPLE], 
+	"empower": ["💪", BLUE], "summon": ["👤+", BLUE], "toll": ["⛓", PURPLE],
+	"summon_clock": ["⏰", PURPLE], "guard": ["🛡", GREY], "resurrect": ["💀", PURPLE], "recharge": ["💫", BLUE], "dormant": ["💤", BLUE], "grounded": ["💫", BLUE], "take_off": ["🪽", BLUE], "glow": ["💡", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "fireball": ["☄", RED], "fireball_blast": ["💥", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "stun": ["💫", PURPLE], "grow_thorns": ["🌵", GREEN], "revive": ["🪽", Color(0.85, 0.75, 0.4)], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "steal_spell": ["🕸", PURPLE], "play": ["🎹", BLUE], "vulnerable": ["🎯", PURPLE], "deflect": ["🗡", BLUE], "bottle": ["🍶", GREEN],
+	# the new fight's moves (MarbleBridge, 2026-11-22)
+	"block": ["🛡", BLUE], "heal": ["❤", GREEN], "power": ["💪", BLUE], "foe_dodge": ["💨", BLUE], "thorns": ["🌵", GREEN],
+	"thorns_team": ["🌵", GREEN], "weak": ["🥀", PURPLE], "regen": ["🌿", GREEN], "mirror": ["🪞", BLUE], "ethereal": ["👻", BLUE],
+	"charging": ["⏳", RED], "hammer": ["🔨", PURPLE], "cleanse": ["✨", GREEN], "slime_pick": ["🟢", BLUE],
 }
 
 
@@ -66,10 +70,16 @@ const INFO := {
 	"invoke": ["Invoke", "He casts the spell that glows, and every one your chant contained. Then the first Essence of each of his spells becomes Any: they get easier to set off."],
 	"cleanse_self": ["Cleanse", "Removes every debuff on it."],
 	"drain_essence": ["Drain", "Takes Essence out of your bag."],
-	"disarm": ["Disarm", "Your next Release does nothing."],
 	"deflect": ["Deflect", "His sword held sideways: this turn your Release can't touch him or his Retainer. Each Essence bounces off his blade. Your spells still work."],
 	"bottle": ["Bottle", "Cleanses the Samurai, and he is Impervious for a turn: no status can be put on him."],
-	"virus": ["Virus", "One of your spells catches a virus: casting it gives you Poison (the number on its badge)."],
+	"block": ["Shield", "It gains Shield: your damage goes into the Shield first. It is gone at the start of its next turn."],
+	"heal": ["Heal", "It heals."],
+	"power": ["Power", "It gains Power: +1 damage per hit for each."],
+	"foe_dodge": ["Dodge", "It gains Dodge: your next hit on it misses."],
+	"thorns": ["Thorns", "It gains Thorns: each card that damages it hurts you this much."],
+	"thorns_team": ["Thorns", "Every enemy gains Thorns."],
+	"weak": ["Weaken", "You are Weakened: you deal 50% less."],
+	"regen": ["Regenerate", "It heals at the start of its next turns."],
 	"vulnerable": ["Vulnerable", "You take 50% more damage."],
 	"play": ["Playing", "He never attacks. He plays his piece, in real time; if he gets to the end of it, you die."],
 	"steal_spell": ["Steal a spell", "Takes one of your spells at random and wraps it in a cocoon. Break the cocoon to get it back."],
@@ -80,10 +90,8 @@ const INFO := {
 	"ignite_spell": ["Ignite", "Sets one of your spells on fire for your next turn: casting it burns you for 5 HP."],
 	"lock": ["Lock", "Locks one of your spells. Chant the lock's symbols, unbroken, to break it."],
 	"steal": ["Steal", "Takes Essence from your bag and adds it to its own."],
-	"confuse": ["Confuse", "A black veil falls over the slot machine: next turn you can't see what is coming next."],
-	"blind": ["Blind", "Some enemy Essence show as ?. They still match normally."],
-	"poison": ["Poison", "At the start of your turn you lose that much HP, then Poison goes down by 1."],
-	"bleed": ["Bleed", "At the start of your turn you lose that much HP, then Bleed goes down by 1 (like Poison)."],
+	"burn": ["Burn", "At the start of your turn you lose that much HP, then your Burn goes down by 1."],
+	"blind": ["Blind", "What comes out of the slot machine shows only \"?\": you can't see which Essence you are getting."],
 	"freeze": ["Freeze", "Freezes some of your Essence: they can't be used next turn."],
 	
 	"stun": ["Stun", "Your next turn is skipped entirely (you still get your Essence)."],
@@ -95,13 +103,10 @@ const INFO := {
 	"recharge": ["Recharging", "It stuns itself for a turn, then starts over."],
 	"dormant": ["Dormant", "It does nothing until it is down to 12 Essence, or for 3 turns."],
 	"glow": ["Shining brighter", "Its clock runs down. At 0 it stuns you, then starts over."],
-	"explode": ["Explode", "It deals this much damage and destroys itself. Destroy it first and it never goes off."],
 	"empower": ["Empower", "Its attacks deal more damage from now on."],
 	"summon": ["Summon", "Calls more enemies into the fight."],
 	"toll": ["Burden", "Your next chant holds at most 5 Essence: the slots after them are stone."],
-	"invert": ["Invert", "Swaps all your Fire and Water Essence."],
 	
-	"mimic": ["Mimic", "Its Essence becomes your last chant, backwards."],
 	
 	"brittle": ["Brittle", "The Shield you gain is 50% smaller for a few turns."],
 	"regrow": ["Regrow", ""],
@@ -118,12 +123,14 @@ static func make(e: EnemyState, move := {}) -> IntentChip:
 ## New theme: the painted icon of each intent kind (assets/New/Icon/Intent/intent_<kind>.png). Burn / Unknown are painted too,
 ## but no enemy intent uses them (burn is a status).
 const ART := {"attack": "intent_attack", "armor": "intent_armor", "freeze": "intent_freeze", "steal": "intent_steal", "summon": "intent_summon",
-	"poison": "intent_poison", "virus": "intent_virus", "vulnerable": "status_vulnerable", "bleed": "intent_bleed", "blind": "intent_blind", "confuse": "intent_confuse", "mend": "intent_mend", "shuffle": "intent_shuffle",
+	"burn": "intent_burn", "vulnerable": "status_vulnerable", "blind": "intent_blind", "mend": "intent_mend", "shuffle": "intent_shuffle",
 	"silence": "intent_silence", "lock": "intent_lock", "empower": "intent_empower", "toll": "intent_burden",
-	"invert": "intent_invert", "mimic": "intent_mimic", "hammer_spell": "intent_hammer_spell",
+	"hammer_spell": "intent_hammer_spell",
 	"invert_spells": "intent_invert_spells", "invoke": "intent_invoke", "stunned": "intent_stunned", "stun": "intent_stunned", "sing": "intent_sing", "ignite_spell": "intent_ignite_spell", "charge": "intent_charge", "revive": "intent_revive",
-	"summon_clock": "intent_summon", "guard": "intent_armor", "resurrect": "intent_summon", "recharge": "intent_recharge", "dormant": "intent_dormant", "grounded": "intent_stunned", "glow": "intent_glow", "explode": "intent_explode", "grow_thorns": "intent_grow_thorns", "hold": "intent_hold", "cleanse_self": "intent_cleanse_self", "drain_essence": "intent_drain_essence", "disarm": "intent_disarm", "brittle": "intent_brittle", "regrow": "intent_regrow",
-	"play": "intent_play", "deflect": "intent_deflect", "bottle": "intent_bottle", "steal_spell": "intent_steal_spell", "fireball": "intent_fireball", "fireball_blast": "intent_fireball_blast"}
+	"summon_clock": "intent_summon", "guard": "intent_armor", "resurrect": "intent_summon", "recharge": "intent_recharge", "dormant": "intent_dormant", "grounded": "intent_stunned", "glow": "intent_glow", "grow_thorns": "intent_grow_thorns", "hold": "intent_hold", "cleanse_self": "intent_cleanse_self", "drain_essence": "intent_drain_essence", "brittle": "intent_brittle", "regrow": "intent_regrow",
+	"play": "intent_play", "deflect": "intent_deflect", "bottle": "intent_bottle", "steal_spell": "intent_steal_spell", "fireball": "intent_fireball", "fireball_blast": "intent_fireball_blast",
+	# the new fight's moves (2026-11-22): the painted art there is for them
+	"weak": "status_weak", "block": "intent_armor", "power": "intent_empower", "heal": "intent_mend"}
 
 
 ## New theme: the bubble is five fixed-ratio pieces: two end caps, the arrow in the middle, and a stretchy piece on each
@@ -218,6 +225,8 @@ func build(e: EnemyState, move := {}) -> void:
 		var look: Array = LOOK.get(m.kind, ["?", GREY])
 		var info: Array = INFO.get(m.kind, [m.kind.capitalize(), ""])
 		var what := EnemyDefs.describe_move(_single(m), e.dmg_bonus) if m.kind != "attack" else _attack_words(m, e)
+		if e.has_meta("hp") and m.kind != "attack":
+			what = StageFight.intent_text(_single(m))  # (the new fight's moves: their own words)
 		if m.kind == "charge":
 			what = "Deal %d damage when the hourglass hits 0" % charge_damage(e)
 		var line := "%s [color=#%s][b]%s[/b][/color]: %s" % [UiSkin.inline(ART.get(m.kind, ""), look[0], 24), (look[1] as Color).lightened(0.35).to_html(false), info[0], Keywords.colorize(what)]
@@ -272,7 +281,7 @@ func _add_move(row: HBoxContainer, m: Dictionary, e: EnemyState) -> void:
 				row.add_child((digits as Control) if digits != null else _word(str(m.n), Color.WHITE))
 			row.add_child(ElementIcon.make("?" if m.el == "random" else m.el, 26))
 			return
-		"poison", "bleed", "glow", "summon_clock", "explode", "freeze", "steal", "summon", "invert_spells":
+		"burn", "glow", "summon_clock", "freeze", "steal", "summon", "invert_spells":
 			num = str(m.n)
 		"grow_thorns":
 			num = "+%d" % int(m.n)
@@ -305,10 +314,14 @@ func _add_move(row: HBoxContainer, m: Dictionary, e: EnemyState) -> void:
 			num = "+%d" % m.n
 		"lock":
 			num = str(m.len)
-		"blind", "silence", "brittle":
+		"blind":
+			num = "" if m.get("fight", false) else str(int(m.get("turns", 1)))
+		"silence", "brittle":
 			num = str(m.turns)
-		"vulnerable", "virus":
+		"vulnerable":
 			num = str(m.n)
+		"block", "heal", "power", "foe_dodge", "thorns", "thorns_team", "weak", "regen":  # (the new fight's moves, 2026-11-22)
+			num = str(int(m.get("n", 1)))
 		"toll":
 			num = str(PlayerState.TOLL_CAP)
 	row.add_child(_part(look[0], num, look[1], m.kind))

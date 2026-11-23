@@ -1,0 +1,260 @@
+{
+ "_comment": "Marble mode (built on the main game, enemies with number HP): the user's pick per enemy, judged in batches of 5 (2026-11-21). A = the main game's version, B = Die on Stage's. 'appearance' = how they come (groups).",
+ "enemies": {
+  "ashling": {
+   "pick": "B",
+   "hp": 6,
+   "moves": [
+    {
+     "kind": "attack",
+     "n": 3
+    },
+    {
+     "kind": "power",
+     "n": 1
+    }
+   ],
+   "order": "cycle",
+   "appearance": "B: spirits come two at a time, their attacks alternate"
+  },
+  "iceling": {
+   "pick": "B",
+   "hp": 6,
+   "moves": [
+    {
+     "kind": "attack",
+     "n": 3
+    },
+    {
+     "kind": "block",
+     "n": 2
+    }
+   ],
+   "order": "cycle",
+   "appearance": "B: spirits come two at a time, their attacks alternate"
+  },
+  "zephling": {
+   "pick": "B",
+   "hp": 6,
+   "moves": [
+    {
+     "kind": "attack",
+     "n": 3
+    },
+    {
+     "kind": "weak",
+     "n": 1
+    }
+   ],
+   "order": "cycle",
+   "appearance": "B: spirits come two at a time, their attacks alternate"
+  },
+  "purple_slime": {
+   "pick": "B",
+   "hp": 16,
+   "moves": [
+    {
+     "kind": "attack",
+     "n": 6
+    },
+    {
+     "kind": "weak",
+     "n": 1
+    }
+   ],
+   "order": "cycle",
+   "appearance": "B"
+  },
+  "green_slime": {
+   "pick": "B",
+   "hp": 16,
+   "moves": [
+    {
+     "kind": "attack",
+     "n": 6
+    },
+    {
+     "kind": "heal",
+     "n": 6
+    }
+   ],
+   "order": "cycle",
+   "appearance": "B"
+  },
+  "yellow_slime": {
+   "pick": "B",
+   "hp": 16,
+   "moves": [
+    {
+     "kind": "attack",
+     "n": 6
+    },
+    {
+     "kind": "vulnerable",
+     "n": 1
+    }
+   ],
+   "order": "cycle",
+   "appearance": "B"
+  },
+  "bramble_back": {
+   "pick": "B",
+   "hp": 30,
+   "moves": [
+    {
+     "kind": "attack",
+     "n": 2
+    },
+    {
+     "kind": "thorns",
+     "n": 2
+    }
+   ],
+   "order": "cycle",
+   "appearance": "B",
+   "note": "Thorns pile up; each of your cards that damages it hurts you that much"
+  },
+  "winged_tortoise": {
+   "pick": "B",
+   "hp": 22,
+   "moves": [
+    {
+     "kind": "attack",
+     "n": 2
+    },
+    {
+     "kind": "attack",
+     "n": 4
+    }
+   ],
+   "order": "cycle",
+   "flying": "B flying: while in the air every hit on it deals 1; the 3rd hit knocks it down (stunned 1 turn, +1 Power), then it takes off",
+   "appearance": "B"
+  },
+  "leech_bat": {
+   "pick": "user",
+   "hp": 20,
+   "moves": [
+    {
+     "kind": "attack",
+     "n": 3,
+     "hits": 1
+    },
+    {
+     "kind": "attack",
+     "n": 3,
+     "hits": 2
+    },
+    {
+     "kind": "attack",
+     "n": 3,
+     "hits": 3
+    },
+    {
+     "kind": "power",
+     "n": 1
+    }
+   ],
+   "order": "cycle (4 moves)",
+   "flying": "B flying: while in the air every hit on it deals 1; the 3rd hit knocks it down (stunned 1 turn, +1 Power), then it takes off",
+   "lifesteal": "its attacks heal it 100% of the damage they deal",
+   "appearance": "B"
+  },
+  "hush_moth": {
+   "pick": "user",
+   "hp": 20,
+   "moves": [
+    {
+     "kind": "attack",
+     "n": 5
+    },
+    {
+     "kind": "silence",
+     "turns": 1,
+     "n": 1
+    }
+   ],
+   "order": "cycle",
+   "flying": "B flying: while in the air every hit on it deals 1; the 3rd hit knocks it down (stunned 1 turn, +1 Power), then it takes off",
+   "appearance": "B"
+  },
+  "cinder_hound": {
+   "pick": "reserve",
+   "note": "for a later act"
+  },
+  "yeti": {
+   "pick": "reserve",
+   "note": "for a later act"
+  },
+  "mirror_fairy": {
+   "pick": "user",
+   "hp": 30,
+   "moves": [
+    {
+     "kind": "attack",
+     "n": 6
+    },
+    {
+     "kind": "block",
+     "n": 5
+    }
+   ],
+   "order": "cycle",
+   "innate": "Blinded by the Mirror Fairy: while she is in the fight, your marbles come out showing \"?\" (you don't know their colour)",
+   "appearance": "B"
+  },
+  "greenseer": {
+   "pick": "B",
+   "hp": 40,
+   "moves": [
+    {
+     "kind": "summon",
+     "ids": [
+      "purple_slime",
+      "green_slime",
+      "yellow_slime"
+     ],
+     "n": 1
+    },
+    {
+     "kind": "attack",
+     "n": 6
+    }
+   ],
+   "order": "cycle",
+   "innate": "heals 6 first whenever anyone on his side is hurt",
+   "appearance": "B"
+  },
+  "rolling_bear": {
+   "pick": "B",
+   "hp": 46,
+   "moves": [
+    {
+     "kind": "attack",
+     "n": 7
+    },
+    {
+     "kind": "foe_dodge",
+     "n": 1
+    },
+    {
+     "kind": "power",
+     "n": 1
+    }
+   ],
+   "order": "cycle",
+   "note": "power-up hop when it gains Power",
+   "appearance": "B"
+  },
+  "bramble_matron": {
+   "pick": "B (pending details)",
+   "note": "her summoning intent has orb HP Water, Air, Water, Air (WAWA): chant it to cancel the summon; she tries again next turn (as in B)"
+  }
+ },
+ "new_move_kinds": "From Die on Stage, new to the main game: Shield on an enemy (block), Dodge on an enemy (foe_dodge: your next hit on it misses), Weaken on you (you deal 50% less). Power = the main game's Empower; heal = Mend in HP.",
+ "rules": {
+  "order": "Every enemy's moves go in order (a cycle), never at random (the user, 2026-11-21).",
+  "reserve": "Cinder Hound and Yeti are kept in reserve for a later act.",
+  "intent_orbs": "Some intents carry orb HP: a pattern of marbles shown ABOVE the intent. If your chant contains that pattern, the intent is cancelled (2026-11-21)."
+ }
+}

@@ -111,7 +111,7 @@ static func _sentences(effects: Array) -> Array:
 		elif e.op == "barrage" and j < effects.size() and effects[j].op == "meteor_rain":
 			# random hits and random Burn: "Randomly deal 1 damage 3 times and apply 1 Burn 6 times"
 			var r: Dictionary = effects[j]
-			out.append("Randomly deal 1 damage %d times and apply 1 %s %d times." % [int(e.n), "Poison" if r.get("what", "burn") == "poison" else "Burn", int(r.n)])
+			out.append("Randomly deal 1 damage %d times and apply 1 %s %d times." % [int(e.n), "Burn", int(r.n)])
 			j += 1
 		elif e.op == "shield" and j < effects.size() and effects[j].op == "shield":
 			# "Gain 10 Lasting Shield and 5 Shield"
@@ -136,7 +136,7 @@ static func _sentences(effects: Array) -> Array:
 
 
 ## Damage and plain riders that can share a "one enemy, then all" sentence (no conditions on them).
-const ONE_ALL := ["strike", "random_hit", "burn", "poison", "weak", "stun", "daze"]
+const ONE_ALL := ["strike", "random_hit", "burn", "weak", "stun"]
 
 
 static func _simple(e: Dictionary) -> bool:
@@ -151,7 +151,7 @@ static func _amount(e: Dictionary) -> int:
 static func _verb(e: Dictionary) -> String:
 	if e.op in ["strike", "random_hit"]:
 		return "deal " + _dmg_full(e, _amount(e))
-	return "apply %d %s" % [_amount(e), {"burn": "Burn", "poison": "Poison", "weak": "Weaken", "stun": "Stun", "daze": "Dazed"}[e.op]]
+	return "apply %d %s" % [_amount(e), {"burn": "Burn", "weak": "Weaken", "stun": "Stun"}[e.op]]
 
 
 ## The same for everyone, as a noun: "5 Right damage" / "3 Burn".
@@ -234,8 +234,8 @@ static func _same_target(a: Dictionary, b: Dictionary) -> bool:
 	return t == b.get("target", "target") and t in ["target", "all", "two"]
 
 
-const ADDS_UP := ["shield", "heal", "burn", "poison", "thorns", "aegis", "draw", "pluck", "steal", "amplify", "retain",
-	"overload", "daze", "meteor_rain", "barrage", "expose", "siphon", "random_hit"]
+const ADDS_UP := ["shield", "heal", "burn", "thorns", "aegis", "draw", "pluck", "steal", "amplify", "retain",
+	"overload", "meteor_rain", "barrage", "expose", "siphon", "random_hit"]
 
 
 ## Two copies of the same effect in a row whose numbers just add up (everything else about them the same).
@@ -384,13 +384,9 @@ static func describe_op(e: Dictionary, same := false) -> String:
 		"vulnerable":
 			return "gain %d Vulnerable" % n
 		"meteor_rain":
-			return "randomly apply 1 %s %d times" % ["Poison" if e.get("what", "burn") == "poison" else "Burn", n]
-		"disarm":
-			return ("Disarm %s for %d turns" % [t, int(e.turns)]) if int(e.get("turns", 1)) > 1 else "Disarm %s" % t
+			return "randomly apply 1 Burn %d times" % n
 		"amplify":
 			return "Amplify %d" % n
-		"echo":
-			return "Echo"
 		"retain":
 			return "Refund %d" % n
 		"overload":
@@ -399,8 +395,6 @@ static func describe_op(e: Dictionary, same := false) -> String:
 			return "deal 1 damage to every %s of %s" % [_el(e.el), t]
 		"mend_spell":
 			return "give 1 Durability to a spell (a broken one is mended)"
-		"daze":
-			return "apply %d Dazed to %s" % [n, t]
 		"heal_per_extension":
 			return "heal %d HP for each Extension it causes" % n
 		"infuse_upcoming":
@@ -418,7 +412,7 @@ static func describe_op(e: Dictionary, same := false) -> String:
 		"cleanse":
 			if int(e.get("lasting_per", 0)) > 0:
 				return "Cleanse all your debuffs. Gain %d Lasting Shield for each one" % int(e.lasting_per)
-			return {"all": "Cleanse all your debuffs", "blind": "Cure Blind", "poison": "Cure Poison", "confuse": "Cure Confuse",
+			return {"all": "Cleanse all your debuffs", "blind": "Cure Blind", "burn": "Cure your Burn",
 				"silence": "Cure Silence", "frozen": "thaw your Frozen Essence", "lock": "break 1 Lock"}[e.get("what", "all")]
 		"copy_last":
 			return "repeat your last spell this turn"
@@ -434,8 +428,6 @@ static func describe_op(e: Dictionary, same := false) -> String:
 			return "randomly deal 1 damage %d times" % n
 		"random_hit":
 			return "deal %s to %s%s" % [_dmg(e, n), t, _tail(e, n)]
-		"echo_next":
-			return "your next spell this fight is cast twice"
 		"conjure":
 			if e.get("kind", "") != "":
 				return "conjure %d %s spell%s" % [n, SpellDB.KIND_NAMES[e.kind].to_lower(), "" if n == 1 else "s"]
@@ -453,7 +445,6 @@ static func describe_op(e: Dictionary, same := false) -> String:
 				"thorns": "gain %d Thorns for the whole fight" % n,
 				"strike_burn": "your Release applies %d Burn to every enemy it hits" % n,
 				"refund_air": "Refund %d Air each chant" % n,
-				"echo_first": "your first spell each turn is cast twice",
 				"attune": "pick 1 Essence. Gain 1 of that Essence each turn",
 				"chant_slots": "+%d chant slot%s" % [n, "" if n == 1 else "s"],
 				"draw_bonus": "+%d Essence every turn" % n,
@@ -465,11 +456,7 @@ static func describe_op(e: Dictionary, same := false) -> String:
 				"shield_per_burn": "each time you apply Burn to an enemy, gain %d Shield" % n,
 				"all_lasting": "all your Shield is Lasting",
 				"disturbance": "whenever an Essence is added to or removed from your chant after you Chant, deal 1 damage to that Essence of a random enemy",
-				"strike_bonus": "your spells deal %d more damage" % n,
-				"cauterize": "enemies can't Mend"}.get(e.key, e.key)
-		"curse":
-			var many := tg == "all"
-			return {"exposed": "%s %s Exposed all fight" % [t, "are" if many else "is"]}.get(e.key, e.key)
+				"strike_bonus": "your spells deal %d more damage" % n}.get(e.key, e.key)
 		"each_turn":
 			return "each turn: " + "; ".join(e.effects.map(func(x): return describe_op(x)))
 	return e.op

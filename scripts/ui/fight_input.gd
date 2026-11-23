@@ -143,7 +143,7 @@ func _press_element(kind: String, i: int) -> void:
 func _begin_build_drag(pointer: Vector2) -> void:
 	var src := scr._press.duplicate()
 	var p := scr.fight.player
-	var els: Array = scr.chant_idx.map(func(k): return p.stock[k].el)
+	var els: Array = scr.chant_idx.map(func(k): return FightScreen._shown_el(p.stock[k]))
 	var held := -1
 	if src.kind == "stock" and src.i in scr.chant_idx:
 		src = {"kind": "chant", "i": scr.chant_idx.find(src.i)}  # it's already in the chant: move it
@@ -151,7 +151,7 @@ func _begin_build_drag(pointer: Vector2) -> void:
 		if p.stock[src.i].frozen or scr.chant_idx.size() >= p.chant_slots():
 			scr._press = {}
 			return
-		els.append(p.stock[src.i].el)
+		els.append(FightScreen._shown_el(p.stock[src.i]))
 		held = els.size() - 1
 	else:
 		held = src.i
@@ -256,7 +256,7 @@ func _add_element(el: String) -> void:
 	for i in scr.fight.player.stock.size():
 		var s: Dictionary = scr.fight.player.stock[i]
 		var rolling: Control = scr._bag_icons.get(s.uid)
-		if s.el != el or s.frozen or i in scr.chant_idx or (rolling != null and is_instance_valid(rolling) and rolling.has_meta("rolling")):
+		if FightScreen._shown_el(s) != el or s.frozen or i in scr.chant_idx or (rolling != null and is_instance_valid(rolling) and rolling.has_meta("rolling")):
 			continue
 		if pick == -1 or (s.temp and not scr.fight.player.stock[pick].temp) or false:
 			pick = i

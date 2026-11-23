@@ -26,8 +26,6 @@ const ALL := [
 	# ---- spells
 	{"id": "spell_pouch", "name": "Spell Pouch", "aspect": "Spell slots", "desc": "+1 spell slot.", "cost": 0, "starter": false, "pool": "none", "tier": "rare", "icon": "👝"},  # (retired: kept so old saves load)
 	{"id": "spell_satchel", "name": "Hungry Satchel", "aspect": "Cursed", "desc": "+1 spell slot. Cursed: picking it up puts a curse on one of your spells.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "🎒"},
-	{"id": "chant_bell", "name": "Chant Bell", "aspect": "Spells", "desc": "Your first spell each turn is cast twice.", "cost": 50, "starter": false, "pool": "normal", "tier": "rare", "icon": "🔔"},
-	{"id": "echo_shell", "name": "Echo Shell", "aspect": "Spells", "desc": "Every 10th spell charges it: the next spell is cast twice.", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "🐚"},
 	{"id": "bandolier", "name": "Bandolier", "aspect": "Bottles", "desc": "+2 bottle slots, and 2 random bottles.", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "🎽"},
 	{"id": "kindling_stone", "name": "Kindling Stone", "aspect": "Burn", "desc": "Every 3rd spell: apply 1 Burn to a random enemy.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "💥"},
 	{"id": "turkish_march", "name": "Turkish March", "aspect": "Burn", "desc": "Every time an Extension happens: apply 1 Burn to a random enemy.", "cost": 0, "starter": false, "pool": "normal", "tier": "rare", "icon": "🎼", "unlock_by": "pianist", "flavor": "The score he played, every note of it."},
@@ -42,14 +40,12 @@ const ALL := [
 	{"id": "mystery_book", "name": "Mystery Book", "aspect": "Spell slots", "desc": "+1 spell slot. You can carry more than one: they stack.", "cost": 0, "starter": false, "pool": "normal", "tier": "rare", "stack": true, "unlock_by": "mystery_shack", "icon": "📕", "flavor": "A six-fingered hand on the cover. Inside, strange symbols, and a triangle that seems to be watching you."},
 	{"id": "lock_pick", "name": "Lock Pick", "aspect": "Debuffs", "desc": "Locks on your spells are 1 shorter.", "cost": 30, "starter": false, "pool": "normal", "tier": "common", "icon": "🗝"},
 	{"id": "keen_eye", "name": "Keen Eye", "aspect": "Debuffs", "desc": "You can't be Blinded.", "cost": 25, "starter": false, "pool": "normal", "tier": "common", "icon": "👁"},
-	{"id": "calm_stone", "name": "Calm Stone", "aspect": "Debuffs", "desc": "You can't be Confused.", "cost": 25, "starter": false, "pool": "normal", "tier": "common", "icon": "💠"},
 	# ---- the merchant's quests (see MerchantQuests): never offered, only dropped (or stolen)
 	{"id": "blanket", "name": "Blanket", "aspect": "Debuffs", "desc": "You can't be Frozen.", "cost": 0, "starter": false, "pool": "none", "tier": "rare", "icon": "🧣", "flavor": "Thick enough to warm a broken heart, but not to mend it."},
 	{"id": "sake_bottle", "name": "Sake Bottle", "aspect": "Bottles", "desc": "Heal 5 HP every time you use a bottle.", "cost": 0, "starter": false, "pool": "none", "tier": "rare", "icon": "🍶", "flavor": "Can't fix your bond, but will numb your heart."},
 	{"id": "family_picture", "name": "Family Picture", "aspect": "Story", "desc": "A father, a mother, and a son blacked out. On the back: \"Dad, don't look for me. But if you do: 093. Love, Adam.\"", "cost": 0, "starter": false, "pool": "none", "tier": "rare", "icon": "🖼"},
 	# ---- defence and health
 	{"id": "rain_chalice", "name": "Rain Chalice", "aspect": "Defence", "desc": "Start each fight with 4 Lasting Shield.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🏆"},
-	{"id": "echo_chamber", "name": "Echo Chamber", "aspect": "Spells", "desc": "Chant 3 or fewer Essence: your first spell this turn is cast twice.", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "🔊"},
 	{"id": "shield_of_silence", "name": "Shield of Silence", "aspect": "Defence", "desc": "Passing your turn without chanting grants 5 Lasting Shield.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🤫"},
 	{"id": "ward_stone", "name": "Ward Stone", "aspect": "Defence", "desc": "Start each fight with 1 Evasion.", "cost": 35, "starter": false, "pool": "normal", "tier": "rare", "icon": "🛡"},
 	{"id": "thornbark", "name": "Thornbark", "aspect": "Defence", "desc": "Thorns 1 every fight.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🌵"},
@@ -96,11 +92,9 @@ const PLUS := {
 	"tide_lens": [0.25, 0.4, "40% Refund for Water."],
 	"gale_lens": [0.25, 0.4, "40% Refund for Air."],
 	"kindling_stone": [3, 2, "Every 2nd spell: apply 1 Burn to a random enemy."],
-	"echo_shell": [10, 7, "Every 7th spell charges it: the next spell is cast twice."],
 	"lock_pick": [1, 2, "Locks on your spells are 2 shorter."],
 	"rain_chalice": [4, 6, "Start each fight with 6 Lasting Shield."],
 	"ward_stone": [1, 2, "Start each fight with 2 Evasion."],
-	"echo_chamber": [3, 4, "Chant 4 or fewer Essence: your first spell this turn is cast twice."],
 	"shield_of_silence": [5, 8, "Passing your turn without chanting grants 8 Lasting Shield."],
 	"thornbark": [1, 2, "Thorns 2 every fight."],
 	"iron_bark": [1, 2, "Gain 2 Lasting Shield each turn."],
@@ -140,17 +134,12 @@ static func charge_state(id: String, p: PlayerState, plus := false) -> Array:
 			var every := int(num(id, plus))
 			var ready := p.kindling_chants >= every - 1
 			return [ready, "READY: your next spell applies 1 Burn to a random enemy." if ready else "%d / %d spells" % [p.kindling_chants, every]]
-		"echo_chamber":
-			# it shines while it's on (a short chant this turn)
-			return [p.echo_chamber_on, "ON: the next spell you cast is cast twice." if p.echo_chamber_on else "Chant %d Essence or fewer to turn it on." % int(num(id, plus))]
 		"magic_box":
 			var nth := p.box_casts % 6
 			return [nth == 5, "READY: your next spell's pattern is Refunded after the Release." if nth == 5 else "%d / 6 spells" % nth]
 		"nice_lute":
 			var lute := p.lute_casts % 10
 			return [lute == 9, "READY: your next spell plays a tune: 1 Weaken on all enemies." if lute == 9 else "%d / 10 spells" % lute]
-		"echo_shell":
-			return [p.echo_charged, "CHARGED: your next spell is cast twice." if p.echo_charged else "%d / %d spells" % [p.echo_casts, int(num(id, plus))]]
 	return []
 
 

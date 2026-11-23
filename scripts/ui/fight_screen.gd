@@ -251,6 +251,8 @@ const IMPACT_SFX := {"F": "fire", "W": "water", "A": "air"}
 func setup(p_run: RunState, p_fight: Fight) -> void:
 	run = p_run
 	fight = p_fight
+	if fight.no_release:
+		auto_release = true  # (the new rules: no Release button; the turn ends once every awake card is cast)
 	fight.chooser = _h_input._choose_target
 	fight.mover = _h_input._mover
 	fight.picker = _h_input._picker
@@ -936,6 +938,10 @@ func situation_help() -> String:
 			return "Build a chant: click your Essence at the bottom (or press F, W, A). Every enemy will lose the longest START of its Essence found in your chant, and spells whose pattern appears in it come alive. Then press Chant."
 		return "Your chant so far: %s. The crossed-out orbs on the enemies show what they'll lose. Add more Essence, click one in the chant to take it back, or press Chant (Enter) when you're happy." % " ".join(Array(_h_hud._chant_string().split("")))
 	var alive := _cards.filter(func(c): return c.charges > 0)
+	if fight.no_release:
+		if alive.is_empty():
+			return "Your cards are done: the enemies act."
+		return "Your chant is spoken. These cards are awake (glowing): %s. Click one to use it; if it needs a target it pulls out an arrow, then click an enemy. Your turn ends when they are all used, or when you press Pass (E)." % ", ".join(alive.map(func(c): return c.spell.name))
 	if not alive.is_empty():
 		var names := alive.map(func(c): return c.spell.name)
 		return "Your chant is spoken. These spells are alive (glowing): %s. Click one to cast it; if it needs a target it pulls out an arrow, then click an enemy. When you're done, press Release (E) to fire the chant." % ", ".join(names)
@@ -1066,10 +1072,10 @@ func _unhandled_input(ev: InputEvent) -> void:
 ## [text, colour, keyword] for each status you have: shown as bright badges above your HP bar.
 ## The picture names to try for each of your statuses (the first that exists is used; Puppet art first, the older intent pictures as a fallback).
 const STATUS_ART_NAMES := {"shield": ["icon_armor_shield"], "thorns": ["status_thorns"], "silence": ["status_silenced"], "aegis": ["status_aegis"],
-	"echo": ["status_echo_ready"], "overload": ["status_overload"], "ethereal": ["status_ethereal", "intent_ethereal"],
-	"poison": ["status_poison", "intent_poison"], "bleed": ["status_bleed", "intent_bleed"], "confuse": ["status_confuse", "intent_confuse"], "blind": ["status_blind", "intent_blind"],
+	"overload": ["status_overload"], "ethereal": ["status_ethereal", "intent_ethereal"],
+	"burn": ["status_burn", "intent_burn"], "blind": ["status_blind", "intent_blind"],
 	"lock": ["status_burden", "status_toll", "intent_toll"], "vulnerable": ["status_vulnerable"], "stun": ["status_stunned", "intent_stunned"],
-	"brittle": ["status_brittle"], "disarmed": ["status_disarmed"]}
+	"brittle": ["status_brittle"]}
 ## A Power's badge picture, by the theme of its dissolve (fire / water / wind use the Essence balls).
 const POWER_ART_NAMES := {"fire": ["essence_fire"], "water": ["essence_water"], "wind": ["essence_wind"], "thorn": ["status_thorns"],
 	"venom": ["status_poison", "intent_poison"], "leaf": ["icon_seedling"], "shadow": ["status_silenced"], "page": ["icon_spellbook"]}
@@ -1088,9 +1094,9 @@ const POWER_THEMES := {
 	"page": {"key": "page", "from": Vector2(1, 0), "col": Color(1.0, 0.95, 0.8), "shape": Vfx.SHARD, "icon": "📜", "rise": 200.0},
 }
 const POWER_THEME_OF := {"kindle": "fire", "ember_crown": "fire", "pyromancy": "fire", "avatar_of_flame": "fire",
-	"rising_tide": "water", "trade_winds": "wind", "storm_crown": "wind", "echo_chamber": "wind", "attunement": "wind",
+	"rising_tide": "water", "trade_winds": "wind", "storm_crown": "wind", "attunement": "wind",
 	"thorn_mantle": "thorn", "world_tree_blessing": "leaf",
-	"cauterize": "fire", "stillness": "shadow", "frailty": "shadow", "grimoire": "page"}
+	"stillness": "shadow", "frailty": "shadow", "grimoire": "page"}
 
 
 static func power_theme(sp: Dictionary) -> Dictionary:
@@ -1327,6 +1333,18 @@ func _sync_views() -> void:
 
 func _chant_string() -> String:
 	return _h_hud._chant_string()
+
+
+## A disguised marble (the Mirror Fairy's illusion, the new fight 2026-11-22: "veiled"): it keeps its real colour, which
+## the chant uses, but it is drawn as an Any marble until the chant is spoken.
+static func _shown_el(st: Dictionary) -> String:
+	return "?" if bool(st.get("veiled", false)) else String(st.el)
+
+
+## What the chant being built is known to hold, for its previews (the cards' lit orbs): a disguised marble is unknown
+## ("x" matches no pattern), so the preview neither gives its colour away nor promises a match.
+static func _known_el(st: Dictionary) -> String:
+	return "x" if bool(st.get("veiled", false)) else String(st.el)
 
 
 func _refresh_all() -> void:
