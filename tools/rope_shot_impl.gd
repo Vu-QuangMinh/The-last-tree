@@ -62,7 +62,7 @@ func run(t: SceneTree) -> void:
 	print("button at ", bc, " hovered: ", root.gui_get_hovered_control(), " rect ", btn.get_global_rect())
 	await _click(root, t, bc)
 	await t.create_timer(5.0).timeout
-	print("set index ", main._rope_i, " targets ", main.current.rope_targets().map(func(x): return x[0]))
+	print("set index ", main._test_flow._rope_i, " targets ", main.current.rope_targets().map(func(x): return x[0]))
 	_shot(root, out + "/rope_4_next.png")
 	_key(root, KEY_F5)
 	await t.create_timer(1.5).timeout

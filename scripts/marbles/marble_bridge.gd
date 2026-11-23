@@ -69,7 +69,7 @@ func _build_loadout() -> void:
 		seen[id] = true
 		d.id = id
 		var fx := MarblesFight.fx_of(c)
-		var tgt := "target" if m.needs_target(ci) else ("self" if String(fx.get("to", "you")) == "you" else "all")  # (a Power has no fx: {})
+		var tgt := "target" if m.needs_target(ci) else ("self" if String(fx.get("to", "you")) == "you" else "all")  # (a Power has no fx: it is cast on you)
 		d.effects = [{"op": String(fx.get("op", "passive")), "n": int(fx.get("n", 1)), "target": tgt}]
 		d["ci"] = ci
 		d["live_text"] = true  # (its words can change in the fight: Water Gun's X, Durability left...)
@@ -80,6 +80,18 @@ func _build_loadout() -> void:
 
 func _ci(id: String) -> int:
 	return _sid.find(id)
+
+
+## The card's words as they come out if it is cast on enemy `idx` now (the screen shows them while you aim: the enemy's
+## Expose, Armor, Vulnerable and flight count). "": no change.
+func words_vs(id: String, idx: int) -> String:
+	var ci := _ci(id)
+	if ci < 0:
+		return ""
+	var t := m.card_text_vs(ci, idx)
+	if t == "":
+		return ""
+	return MarbleCards.with_durability(t, m.durability_left(ci) if m.card(ci).p.has("dur") else -1)
 
 
 # ------------------------------------------------------------------ mirrors
@@ -127,6 +139,24 @@ static func _status_words(d: Dictionary) -> Array:
 	if int(d.get("ethereal", 0)) > 0:
 		out.append("Ethereal")
 	return out
+
+
+## Combat log: what the screen's mirrors show right now, and a [CHECK] wherever it differs from the fight's real numbers.
+func _cl_ui(label: String) -> void:
+	if not CombatLog.on:
+		return
+	var parts := []
+	if int(player.hp) != m.run.hp or int(player.shield) != m.block:
+		parts.append("[CHECK: screen shows you HP %d Shield %d, real is HP %d Shield %d]" % [player.hp, player.shield, m.run.hp, m.block])
+	for f: StageFight.Foe in m.foes:
+		var es: EnemyState = f.es
+		var shown_hp := int(es.get_meta("hp", -1))
+		var shown_sh := int(es.get_meta("shield", -1))
+		if shown_hp != f.hp or shown_sh != f.block:
+			parts.append("[CHECK: screen shows %s HP %d Block %d, real is HP %d Block %d]" % [es.name, shown_hp, shown_sh, f.hp, f.block])
+		parts.append("%s: HP bar %d/%d, statuses {%s}, sign \"%s\"" % [es.name, shown_hp, int(es.get_meta("max_hp", 0)), ", ".join(es.get_meta("statuses", [])),
+			StageFight.intent_text(es.intent, f) if not es.intent.is_empty() else "-"])
+	CombatLog.line("  [SCREEN %s] you: HP %d/%d, Shield %d, statuses {%s} | %s" % [label, player.hp, player.max_hp, player.shield, ", ".join(player.describe_statuses()), " | ".join(parts)])
 
 
 ## Cards, the chant and your storage row as they are now.
@@ -257,6 +287,7 @@ func cast_chant(stock_indices: Array) -> void:
 	await anim.call({"type": "charged", "hits": hits})
 	await _b_play(evs, false)
 	_hold_text = false
+	_cl_ui("after chant")
 	_b_after()
 
 
@@ -264,11 +295,13 @@ func resolve_spell(id: String, target_idx := -1) -> void:
 	var ci := _ci(id)
 	if ci < 0 or not m.can_cast(ci):
 		return
+	CombatLog.line("  [SCREEN before cast] card \"%s\" shows: \"%s\"" % [String(loadout[ci].get("name", id)), String(loadout[ci].get("desc", ""))])
 	m.cast(ci, target_idx)
 	if m.pending_replace >= 0:
 		m.replace_with(-1)  # (Alchemy, Random Things Go!: it stays as it is for now)
 	await _b_play(_b_take(), false)
 	_b_sync()
+	_cl_ui("after cast")
 	_b_after()
 
 
@@ -280,6 +313,7 @@ func use_bottle(i: int, target_idx := -1) -> void:
 	await anim.call({"type": "bottle", "bottle": {"name": String(it.get("name", "Bottle"))}})
 	await _b_play(_b_take(), false)
 	_b_sync()
+	_cl_ui("after bottle")
 	_b_after()
 
 
@@ -298,6 +332,7 @@ func finish_turn() -> void:
 	await _b_play(_b_take(), true, before)
 	_b_show(m.snap())
 	_b_sync()
+	_cl_ui("after enemy phase")
 	spoken = false
 	if not over:
 		await anim.call({"type": "intents_shown"})
@@ -395,6 +430,7 @@ func _b_play(evs: Array, enemy_phase: bool, intents := {}, finish := true) -> vo
 				_b_show(s)
 				var e2 := _es(int(ev.get("to", ev.get("foe", -1))))
 				if e2 != null:
+					CombatLog.line("  [SCREEN] hit number %d floats on %s (its HP bar in that moment: %d/%d, Block %d)" % [int(ev.get("n", 0)), e2.name, int(e2.get_meta("hp", -1)), int(e2.get_meta("max_hp", 0)), int(e2.get_meta("shield", 0))])
 					await anim.call({"type": "effect", "op": "strike", "eff": {"op": "strike", "n": int(ev.get("n", 0))}, "targets": [e2]})
 			"foe_burn", "stun", "foe_weak", "foe_expose", "foe_vulnerable":
 				_b_show(s)
@@ -418,6 +454,9 @@ func _b_play(evs: Array, enemy_phase: bool, intents := {}, finish := true) -> vo
 				_b_show(_after_snap(evs, k))
 				var lost := int(maxf(0.0, hp0 - player.hp))
 				var e3: EnemyState = foe if foe != null else cur
+				CombatLog.line("  [SCREEN] attack on you from %s shows -%d HP (your HP bar %d -> %d, Shield %d -> %d); the fight said the blow was %d before Shield%s" % [
+					e3.name if e3 != null else "?", lost, hp0, player.hp, sh0, player.shield, int(ev.get("n", 0)),
+					"  [CHECK: shows 0 but the blow was %d]" % int(ev.get("n", 0)) if lost == 0 and int(ev.get("n", 0)) > 0 and sh0 <= player.shield else ""])
 				if e3 != null:
 					await anim.call({"type": "attack", "enemy": e3, "n": lost, "blocked": sh0 > player.shield or lost == 0,
 						"part": "", "throw": "", "hit": hit_no, "hits": int(e3.intent.get("hits", 1))})
@@ -479,6 +518,7 @@ func _b_play(evs: Array, enemy_phase: bool, intents := {}, finish := true) -> vo
 func _b_after() -> void:
 	_b_sync()
 	if m.over and not over:
+		CombatLog.line("##### FIGHT OVER: %s. HP %d/%d, turn %d #####" % ["WON" if m.won else "LOST", m.run.hp, m.run.max_hp, m.turn])
 		over = true
 		won = m.won
 		for f: StageFight.Foe in m.foes:

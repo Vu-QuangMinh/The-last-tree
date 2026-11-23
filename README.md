@@ -40,6 +40,8 @@ Cards are Common, Rare or Legendary. Campfires heal or fuse two spells. Elites g
 "C:\Program Files\Godot\Godot.exe" --headless --path . --script res://tools/check_scripts.gd
 # unit tests (-- filter narrows to tests whose "file:name" contains it)
 "C:\Program Files\Godot\Godot.exe" --headless --path . --script res://tests/run_tests.gd
+# smoke: a keepsake -> map -> fight -> win -> rewards -> map run on every theme (windowed off screen, no sound; ~2 min)
+"C:\Program Files\Godot\Godot.exe" --path . --position 6000,0 --no-focus --audio-driver Dummy --script res://tools/smoke_flow.gd
 # balance sim, headless
 "C:\Program Files\Godot\Godot.exe" --headless --path . --script res://tools/sim.gd -- 60 new
 # screenshots of every screen (windowed, off screen, no sound): SHOT_THEME=new|puppet

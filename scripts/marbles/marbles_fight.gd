@@ -66,6 +66,7 @@ var _hail := false
 var _casting := ""
 var _depth := 0
 var _no_heed := false
+var _vs: Foe = null  # (card_text_vs: the enemy the card's damage numbers are worked out against)
 
 
 func setup(p_run: MarblesRun, ids: Array) -> void:
@@ -79,6 +80,22 @@ func setup(p_run: MarblesRun, ids: Array) -> void:
 	block += int(mrun.start.get("shield", 0))  # (an event's Shield: the Mausoleum's blue light)
 	if run.has_artifact("iron_ward"):
 		block += 6
+	CombatLog.line("  [start, after event Shield / Iron Ward] YOU: %s" % _me_text())
+
+
+func _me_extra() -> String:
+	var pw := []
+	for k in powers:
+		pw.append("%s L%d" % [k, int(powers[k])])
+	return ", Power %d (own %d), Thorns %d, Powers [%s], dmg carvings %s, shield carvings %s" % [power_now(), my_power, my_thorns, ", ".join(pw), str(dmg_ops), str(shield_ops)]
+
+
+func _log_fight_start() -> void:
+	super()
+	for ci in run.cards.size():
+		var c := card(ci)
+		CombatLog.line("  card %d: %s [pattern %s]: %s" % [ci, String(c.get("name", "?")), String(c.get("pattern", "")), String(c.get("text", ""))])
+	CombatLog.line("  bag: %d marbles" % mrun.bag.size())
 
 
 # ------------------------------------------------------------------ the enemies: Die on Stage's (B, the user 2026-11-21)
@@ -238,15 +255,21 @@ func _live_numbers(words: String, ci: int) -> String:
 	var was_casting := _casting
 	_cur_ci = ci
 	_casting = id
+	var was_hail := _hail
+	_hail = id == "hail"  # (its words count your Power, carvings, Expose and Vulnerable double)
+	var vs := _vs
 	var grown := -1  # (a card whose number grows in the fight: its number now)
 	match id:
 		"stream":
 			grown = int(grow.get(ci, int(p.get("x", 1))))
 		"warm_up":
 			grown = int(grow.get(ci, 0))
-	var out := _swap_numbers(words, _re_dmg, func(n: int) -> int: return shown_damage(grown if grown >= 0 else n))
+	var out := _swap_numbers(words, _re_dmg, func(n: int) -> int:
+		var base := card_damage(grown if grown >= 0 else n)
+		return shown_damage(base) if vs == null else damage_vs(vs, base))
 	out = _swap_numbers(out, _re_sh, func(n: int) -> int: return card_shield_value(grown if grown >= 0 else n))
 	out = _swap_numbers(out, _re_burn, func(n: int) -> int: return burn_value(n))
+	_hail = was_hail
 	_cur_ci = was
 	_casting = was_casting
 	return out
@@ -261,6 +284,16 @@ static func _swap_numbers(words: String, re: RegEx, now: Callable) -> String:
 		out += mt.get_string(1) + str(int(now.call(int(mt.get_string(2))))) + mt.get_string(3)
 		last = mt.get_end()
 	return out + words.substr(last)
+
+
+## The card's words worked out against enemy `foe_idx` (aiming at it): "" when the card can't show it.
+func card_text_vs(ci: int, foe_idx: int) -> String:
+	if foe_idx < 0 or foe_idx >= foes.size() or bites.has(ci) or card(ci).is_empty() or card(ci).has("parts"):
+		return ""
+	_vs = foes[foe_idx]
+	var t := String(card(ci).get("text", ""))
+	_vs = null
+	return t
 
 
 ## The Burn a card applies of n now (Air, Adam's Awakening; doubled by Burn Burn Burn): as _apply_burn / _burn.
@@ -510,6 +543,13 @@ func do_chant() -> void:
 	_recount()
 	_first_wake = false
 	_cancel_intents()
+	if CombatLog.on:
+		var woke := []
+		for ci in charges:
+			woke.append("%s x%d" % [String(card(int(ci)).get("name", "?")), int(charges[ci])])
+		CombatLog.line("  chant spoken: %s | woke: %s | damage carvings %s, shield carvings %s" % [
+			" ".join(chant.map(func(x): return String(x.c) + (":" + String(x.sym) if String(x.get("sym", "")) != "" else ""))),
+			", ".join(woke) if not woke.is_empty() else "nothing", str(dmg_ops), str(shield_ops)])
 
 
 ## Infuse: a Star marble at the end of the chant (an Extension can follow).
@@ -540,6 +580,11 @@ func cast(ci: int, target := -1) -> void:
 	uses[ci] = int(uses.get(ci, 0)) + 1
 	cast_prev[ci] = true
 	_damaged.clear()
+	if CombatLog.on:
+		var cp: Dictionary = c.get("p", {})
+		CombatLog.line("> CAST %s [card %d] on %s | card text now: \"%s\" | its numbers: %s | Power %d, damage carvings %s, shield carvings %s%s" % [
+			String(c.name), ci, _fname(foes[target]) if target >= 0 and target < foes.size() else "(auto/none)", String(c.get("text", "")), str(cp),
+			power_now(), str(dmg_ops), str(shield_ops), ", YOU ARE WEAKENED (%d): every hit is halved" % weak if weak > 0 else ""])
 	_ev({"type": "cast", "ci": ci, "name": String(c.name), "target": target, "fx": fx_of(c)})
 	if ignited.has(ci):  # (an enemy set it alight: casting it burns you)
 		ignited.erase(ci)
@@ -597,6 +642,7 @@ func cast(ci: int, target := -1) -> void:
 func _enemy_thorns() -> void:
 	for f: Foe in _damaged.keys():
 		if f.thorns > 0 and not over:
+			CombatLog.line("    %s's Thorns %d hurt you for damaging it" % [_fname(f), f.thorns])
 			_hurt_player(f.thorns)
 			_ev({"type": "thorns", "foe": foes.find(f), "n": f.thorns})
 	_damaged.clear()
@@ -1015,29 +1061,69 @@ func card_damage(base: int) -> int:
 	return int(floor(x))
 
 
-## What a card's hit deals before the enemy's own side (its Expose, Armor, Vulnerable): card_damage, Heed My Call, then
-## your Weakened (half), as _hit does. The card shows this number (a play tester saw 3 on the card and 1 dealt, Weakened).
-func shown_damage(base: int) -> int:
-	var n := card_damage(base)
-	if powers.has("heed_my_call"):
-		n += int(MarbleCards.card("heed_my_call", int(powers.heed_my_call)).p.x)
-	if weak > 0:
-		n = n / 2
-	return n
-
-
 ## A card's hits on an enemy.
 func _deal(t: Foe, base: int, hits := 1) -> void:
 	for k in hits:
 		if t == null or t.dead() or over:
 			return
+		if CombatLog.on:
+			var steps := "card number %d + Power %d%s%s" % [base, power_now() * (2 if _hail else 1), " + Whetstone 1" if run.has_artifact("whetstone") else "", " (Hail: Power and carvings doubled)" if _hail else ""]
+			for op in dmg_ops:
+				steps += " then %s %s" % ["+" if op[0] == "add" else "x", str(op[1])]
+			if powers.has("all_out"):
+				steps += " then All-Out x%s" % str(1.0 + float(MarbleCards.card("all_out", int(powers.all_out)).p.x) / 100.0)
+			CombatLog.line("    damage %d/%d on %s: %s = %d (this is the number a card text shows, before enemy/weak modifiers)" % [k + 1, hits, _fname(t), steps, card_damage(base)])
 		_hit(t, card_damage(base))
 
 
 ## Damage of yours that isn't a card's (Water Gun, Thunderstorm, Thorns): no Power, no carvings.
 func _hit_plain(t: Foe, n: int) -> void:
 	if t != null and not t.dead():
+		CombatLog.line("    damage on %s: fixed %d (not a card hit: no Power, no carvings)" % [_fname(t), n])
 		_hit(t, n)
+
+
+## What a hit of n (a card's number, Power and carvings in) comes to: Heed My Call and your Weakened, then (against foe f)
+## its Expose and Armor, its Vulnerable and the Flying cap. {n: final, own: after your side only, how: the steps, fly:
+## the Flying cap applied}. Block is not here. The one place this is worked out: a hit, and the numbers on the cards.
+func _hit_value(f: Foe, n: int) -> Dictionary:
+	var how := "in %d" % n
+	if powers.has("heed_my_call") and not _no_heed:
+		var heed := int(MarbleCards.card("heed_my_call", int(powers.heed_my_call)).p.x)
+		n += heed
+		how += " + Heed My Call %d = %d" % [heed, n]
+	if weak > 0:
+		n = n / 2
+		how += " -> YOU are Weakened (%d): halved = %d" % [weak, n]
+	var own := n
+	var fly := false
+	if f != null:
+		var plus := f.expose * (2 if _hail else 1) - f.armor
+		n += plus
+		if plus != 0:
+			how += " -> foe Expose %d%s - Armor %d = %+d: %d" % [f.expose, " x2 (Hail)" if _hail else "", f.armor, plus, n]
+		n = maxi(0, n)
+		if f.vulnerable > 0:
+			var before_v := n
+			n = n + (n if _hail else n / 2)
+			how += " -> foe Vulnerable (%d): %d %s = %d" % [f.vulnerable, before_v, "x2 (Hail)" if _hail else "+50%", n]
+		if f.id in MARBLE_FLYERS and f.es.flying and n > 0:
+			how += " -> foe is FLYING: any hit counts as 1 (was %d)" % n
+			n = 1
+			fly = true
+	return {"n": n, "own": own, "how": how, "fly": fly}
+
+
+## A card's damage number as it shows on the card: your side only (Power, carvings, Heed My Call, your Weakened).
+func shown_damage(base: int) -> int:
+	return int(_hit_value(null, base).n)
+
+
+## The same against one enemy (the card while you aim at it): 0 when it can't be hit now.
+func damage_vs(f: Foe, base: int) -> int:
+	if f.ethereal > 0 or f.dodge > 0:
+		return 0
+	return int(_hit_value(f, base).n)
 
 
 ## A hit of yours on an enemy (everything goes through here).
@@ -1045,22 +1131,19 @@ func _hit(f: Foe, n: int) -> void:
 	if f == null or f.dead():
 		return
 	if f.ethereal > 0 or f.shielded():
+		CombatLog.line("    -> NO DAMAGE: %s is %s" % [_fname(f), "Ethereal" if f.ethereal > 0 else "behind her hedges"])
 		_ev({"type": "immune", "foe": foes.find(f), "why": "Ethereal" if f.ethereal > 0 else "Behind her hedges"})
 		return
 	if f.dodge > 0:
+		CombatLog.line("    -> NO DAMAGE: %s Dodges (Dodge %d -> %d)" % [_fname(f), f.dodge, f.dodge - 1])
 		f.dodge -= 1
 		_ev({"type": "immune", "foe": foes.find(f), "why": "Dodged"})
 		return
-	if powers.has("heed_my_call") and not _no_heed:
-		n += int(MarbleCards.card("heed_my_call", int(powers.heed_my_call)).p.x)
-	if weak > 0:
-		n = n / 2
-	n += f.expose * (2 if _hail else 1) - f.armor
-	n = maxi(0, n)
-	if f.vulnerable > 0:
-		n = n + (n if _hail else n / 2)
-	if f.id in MARBLE_FLYERS and f.es.flying and n > 0:
-		n = 1
+	var r := _hit_value(f, n)
+	var shown: int = r.own
+	var how: String = r.how
+	n = r.n
+	if r.fly:
 		f.fly_hits += 1
 		if f.fly_hits >= FLY_HITS:
 			f.es.flying = false
@@ -1070,11 +1153,15 @@ func _hit(f: Foe, n: int) -> void:
 			f.power += 1
 			_ev({"type": "foe_falls", "foe": foes.find(f)})
 	if f.deflect:
+		CombatLog.line("    -> %s | foe DEFLECTS: %d goes back at YOU" % [how, n])
 		f.deflect = false
 		_ev({"type": "deflected", "foe": foes.find(f), "n": n})
 		_hurt_player(n)
 		return
 	var soak := mini(f.block, n)
+	CombatLog.line("    -> HIT %s: %s | final %d%s | its Block %d soaks %d | HP %d -> %d (lost %d)%s" % [
+		_fname(f), how, n, "  [CHECK: card said %d, final is %d]" % [shown, n] if n != shown else "", f.block, soak, f.hp, maxi(0, f.hp - (n - soak)), n - soak,
+		"  [CHECK: Block soaked part of the damage]" if soak > 0 else ""])
 	f.block -= soak
 	f.hp = maxi(0, f.hp - (n - soak))
 	dealt_turn += n
@@ -1089,10 +1176,12 @@ func _hit(f: Foe, n: int) -> void:
 func _apply_burn(t: Foe, n: int, from_card := true) -> void:
 	if t == null or t.dead() or n <= 0:
 		return
+	var given := n
 	if from_card and _casting in MarbleCards.BURN_CARDS:
 		n += air_bonus
 	if powers.has("adams_awakening"):
 		n += power_now()
+	CombatLog.line("    burn on %s: card number %d + Air %d + Adam's Awakening %d = %d (then x burn multiplier %d)" % [_fname(t), given, air_bonus if from_card and _casting in MarbleCards.BURN_CARDS else 0, power_now() if powers.has("adams_awakening") else 0, n, _burn_mult])
 	_burn(t, n)
 	if triggers.has("adams_fist") and not t.dead():
 		_hit_plain(t, int(MarbleCards.card("adams_fist", int(triggers.adams_fist)).p.x))
@@ -1110,6 +1199,7 @@ func _debuff(t: Foe, kind: String, n: int) -> void:
 		"expose":
 			if not _takes_status(t):
 				return
+			CombatLog.line("      status: %s Expose %d -> %d (each hit on it deals +Expose)" % [_fname(t), t.expose, t.expose + n])
 			t.expose += n
 			_ev({"type": "foe_expose", "foe": foes.find(t), "n": n})
 		"stun":
@@ -1133,6 +1223,7 @@ func card_shield_value(n: int) -> int:
 
 func _card_shield(n: int, t: Foe) -> void:
 	var s := card_shield_value(n)
+	CombatLog.line("    card Shield: number %d with carvings %s = %d%s" % [n, str(shield_ops), s, " -> All-Out turns it into damage" if powers.has("all_out") and s > 0 else ""])
 	if s <= 0:
 		return
 	if powers.has("all_out"):
@@ -1142,13 +1233,16 @@ func _card_shield(n: int, t: Foe) -> void:
 
 
 func _heal(n: int) -> void:
+	var hp_was := run.hp
 	var h := run.heal(n)
+	CombatLog.line("    you heal: asked %d, healed %d (HP %d -> %d of %d)" % [n, h, hp_was, run.hp, run.max_hp])
 	_ev({"type": "heal", "n": h})
 	if triggers.has("pyrophiliac"):
 		_apply_burn(_random_foe(), int(MarbleCards.card("pyrophiliac", int(triggers.pyrophiliac)).p.x), false)
 
 
 func _gain_dodge(n: int) -> void:
+	CombatLog.line("    you gain Dodge %d (Dodge %d -> %d)" % [n, dodge, dodge + n])
 	dodge += n
 	dodges_gained += n
 	_ev({"type": "dodge_up", "n": n})
@@ -1156,6 +1250,7 @@ func _gain_dodge(n: int) -> void:
 
 ## You hurt yourself (Adam's Resolve: Power, and a heal).
 func _self_damage(n: int) -> void:
+	CombatLog.line("    you hurt yourself for %d (ignores Shield)" % n)
 	_hurt_player(n, true)
 	_ev({"type": "self_damage", "n": n})
 	if powers.has("adams_resolve") and not over:
@@ -1214,6 +1309,7 @@ func _on_attacked(f: Foe, _n: int) -> void:
 		th += power_now()
 	if th <= 0 or f.dead():
 		return
+	CombatLog.line("    your Thorns answer %s: Thorns %d%s" % [_fname(f), my_thorns, " + Power %d (Flagellum)" % power_now() if powers.has("flagellum_of_the_first_apostle") else ""])
 	if powers.has("fervor_of_the_first_apostle"):
 		_burn(f, th)
 	else:
@@ -1233,6 +1329,8 @@ func _forced_target(attacker: Foe) -> Foe:
 
 func _start_turn() -> void:
 	turn += 1
+	CombatLog.line("")
+	CombatLog.line("=== TURN %d ===" % turn)
 	if not powers.has("endless_well"):
 		block = 0
 	for k in [charges, casts]:
@@ -1267,6 +1365,7 @@ func _start_turn() -> void:
 	if not spent_idx.is_empty():
 		_drop_marbles(spent_idx)
 	if burn > 0 and turn > 1:  # (from your second turn: an event's Burn doesn't bite before you have played)
+		CombatLog.line("  your Burn %d bites (ignores Shield), then drops to %d" % [burn, burn - 1])
 		_hurt_player(burn, true)
 		_ev({"type": "you_burn", "n": burn})
 		burn -= 1
@@ -1319,7 +1418,11 @@ func _start_turn() -> void:
 			m.hidden = true  # (Blind: you can't see their colours until they are in the chant)
 		confuse_next = false
 	_ev({"type": "draw"})
+	if CombatLog.on:
+		CombatLog.line("  marbles in your row: %s" % " ".join(hand.map(func(x): return String(x.c) + (":" + String(x.sym) if String(x.get("sym", "")) != "" else "") + ("(frozen)" if bool(x.frozen) else ""))))
+		_log_state("your turn begins")
 	if stunned > 0:
+		CombatLog.line("  YOU ARE STUNNED: this turn is skipped")
 		stunned -= 1
 		_ev({"type": "you_stunned"})
 		end_turn()
@@ -1392,6 +1495,7 @@ func use_bottle(b: int, target := -1) -> void:
 	var id := String(mrun.bottles[b])
 	var t: Foe = _tgt(target)
 	mrun.bottles.remove_at(b)
+	CombatLog.line("> BOTTLE %s used on %s" % [id, _fname(t)])
 	_ev({"type": "bottle", "name": String(MarbleItems.bottle(id).get("name", id))})
 	match id:
 		"healing_draught":

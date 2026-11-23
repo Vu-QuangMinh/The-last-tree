@@ -45,6 +45,7 @@ func _ready() -> void:
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 	_player = AudioStreamPlayer.new()
+	_player.bus = Audio.BUS_SFX
 	add_child(_player)
 	_chosen = _read_chosen()
 	_notes = _read_notes()

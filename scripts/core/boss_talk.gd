@@ -113,18 +113,20 @@ static func tree_for(boss_id: String) -> Dictionary:
 	return TREES.get(boss_id, {})
 
 
+## Where "talk_seen" / "bosses_met" are kept (the SaveManager; main.gd sets it at start, a test may set its own). Null: nothing is remembered.
+static var store: Object = null
+
+
 static func seen() -> Array:
-	var tree := Engine.get_main_loop() as SceneTree
-	if tree == null or not tree.root.has_node("SaveManager"):
+	if store == null:
 		return []
-	return tree.root.get_node("SaveManager").setting("talk_seen", [])
+	return store.setting("talk_seen", [])
 
 
 static func mark_seen(id: String) -> void:
-	var tree := Engine.get_main_loop() as SceneTree
-	if tree == null or not tree.root.has_node("SaveManager"):
+	if store == null:
 		return
-	var sm = tree.root.get_node("SaveManager")
+	var sm = store
 	var s: Array = sm.setting("talk_seen", []).duplicate()
 	if not (id in s):
 		s.append(id)
@@ -133,17 +135,15 @@ static func mark_seen(id: String) -> void:
 
 ## Have you ever met this boss before (in any run)? Asked when the talk starts; meet() then records it.
 static func met_before(boss_id: String) -> bool:
-	var tree := Engine.get_main_loop() as SceneTree
-	if tree == null or not tree.root.has_node("SaveManager"):
+	if store == null:
 		return true
-	return boss_id in tree.root.get_node("SaveManager").setting("bosses_met", [])
+	return boss_id in store.setting("bosses_met", [])
 
 
 static func meet(boss_id: String) -> void:
-	var tree := Engine.get_main_loop() as SceneTree
-	if tree == null or not tree.root.has_node("SaveManager"):
+	if store == null:
 		return
-	var sm = tree.root.get_node("SaveManager")
+	var sm = store
 	var met: Array = sm.setting("bosses_met", []).duplicate()
 	if not (boss_id in met):
 		met.append(boss_id)

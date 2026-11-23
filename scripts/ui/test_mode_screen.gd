@@ -244,15 +244,18 @@ func _ready() -> void:
 	_list.add_theme_constant_override("h_separation", 8)
 	_list.add_theme_constant_override("v_separation", 8)
 	scroll.add_child(_list)
-	# --- buttons
-	var bh := HBoxContainer.new()
-	bh.add_theme_constant_override("separation", 16)
-	bh.alignment = BoxContainer.ALIGNMENT_END
-	root.add_child(bh)
-	bh.add_child(_shape(UiTheme.button("Main menu", func(): back.emit(), 20)))
+	# --- Main menu and Fight!: top right, level with the tabs (Fight! only on the Fight tab; the other tabs keep just Main menu)
+	var rbar := HBoxContainer.new()
+	rbar.add_theme_constant_override("separation", 16)
+	rbar.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	rbar.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	rbar.offset_right = -30.0
+	rbar.offset_top = 14.0
+	add_child(rbar)
+	rbar.add_child(_shape(UiTheme.button("Main menu", func(): back.emit(), 20), Vector2(200, 48)))
 	_fight_btn = UiTheme.button("Fight!", func(): fight_requested.emit(state.enemies.duplicate(), state.spells.duplicate(), state.artifacts.duplicate(), state.bottles.duplicate()), 24)
-	_shape(_fight_btn, Vector2(240, 54))
-	bh.add_child(_fight_btn)
+	_shape(_fight_btn, Vector2(200, 48))
+	rbar.add_child(_fight_btn)
 	_refresh()
 	_build_list()
 	_apply_kind()
@@ -279,6 +282,7 @@ func _show_tab(k: int) -> void:
 		_pages[i].visible = i == k
 		_tab_buttons[i].set_pressed_no_signal(i == k)
 		_tab_buttons[i].modulate = Color.WHITE if i == k else Color(0.6, 0.6, 0.6)  # (the open tab stands out)
+	_fight_btn.visible = k == 0
 
 
 ## Events: every "?" event, one button each. You go straight into it (a throwaway run: 999 Leaves, full HP), and come back here.
@@ -305,7 +309,6 @@ func _events_page() -> Control:
 	_shape(mb, Vector2(420, 56))
 	mb.tooltip_text = "The merchant's shop and his quests."
 	flow.add_child(mb)
-	v.add_child(_back_row())
 	return v
 
 
@@ -336,21 +339,7 @@ func _custom_page() -> Control:
 		_shape(b, Vector2(420, 56))
 		b.tooltip_text = c[2]
 		flow.add_child(b)
-	v.add_child(_back_row())
 	return v
-
-
-func _back_row() -> Control:
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var box := VBoxContainer.new()
-	box.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	box.add_child(spacer)
-	var bh := HBoxContainer.new()
-	bh.alignment = BoxContainer.ALIGNMENT_END
-	bh.add_child(_shape(UiTheme.button("Main menu", func(): back.emit(), 20)))
-	box.add_child(bh)
-	return box
 
 
 func _zone(edge: Color) -> PanelContainer:

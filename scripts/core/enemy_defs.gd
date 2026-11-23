@@ -134,7 +134,7 @@ const E := {
 	# The Bug Hunter: a little brass bell on legs, its head the bell, a striker in its hands. It hunts bugs: it strikes its
 	# own head (5 every turn: the bell rings and shakes) and keeps a clock of 3 turns; on its 4th turn it rings the alarm
 	# and a Sentinel (red or blue) comes to destroy the bug. Only once: after that, only the strikes. (Was a robot.)
-	"bug_hunter": {"name": "The Bug Hunter", "act": 2, "call_once": true, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAFFWAWW",
+	"bug_hunter": {"name": "The Bug Hunter", "act": 2, "size": 1.5, "call_once": true, "member": true, "no_extra": true, "no_bonus": true, "hp": "FWAFFWAWW",
 		"moves": [{"kind": "attack", "n": 5, "also": {"kind": "summon_clock", "n": 3}}, {"kind": "attack", "n": 5, "also": {"kind": "summon_clock", "n": 2}},
 			{"kind": "attack", "n": 5, "also": {"kind": "summon_clock", "n": 1}}, {"kind": "attack", "n": 5, "also": {"kind": "summon", "ids": ["sentinel", "blue_sentinel"], "n": 1}}],
 		"flavor": "It hunts for bugs. When it finds one, it rings."},

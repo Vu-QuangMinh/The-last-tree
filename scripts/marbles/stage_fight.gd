@@ -126,6 +126,43 @@ func snap() -> Dictionary:
 		"stunned": stunned, "leaves": run.leaves, "foes": fs}
 
 
+## ---- combat log (CombatLog) ----
+
+func _fname(f: Foe) -> String:
+	return "#%d %s" % [foes.find(f), f.es.name] if f != null else "-"
+
+
+## Extra things about you that a subclass wants in the journal.
+func _me_extra() -> String:
+	return ""
+
+
+func _me_text() -> String:
+	return "HP %d/%d, Shield %d, Burn %d, Weak %d, Vulnerable %d, Dodge %d, Stunned %d%s" % [run.hp, run.max_hp, block, burn, weak, vulnerable, dodge, stunned, _me_extra()]
+
+
+func _foe_text(f: Foe) -> String:
+	return "%s HP %d/%d, Block %d, Burn %d, Stun %d, Power %d, Weak %d, Thorns %d, Vuln %d, Expose %d, Armor %d, Dodge %d, Ethereal %d, Impervious %d%s%s | sign: %s" % [
+		_fname(f), f.hp, f.max_hp, f.block, f.burn, f.stun, f.power, f.weak, f.thorns, f.vulnerable, f.expose, f.armor, f.dodge,
+		f.ethereal, f.impervious, ", FLYING (%d hits left)" % (FLY_HITS - f.fly_hits) if f.es.flying else "", ", DEFLECT" if f.deflect else "",
+		intent_text(f.intent, f) if not f.intent.is_empty() else "-"]
+
+
+func _log_state(label: String) -> void:
+	if not CombatLog.on:
+		return
+	CombatLog.line("  [%s] YOU: %s" % [label, _me_text()])
+	for f: Foe in foes:
+		if not f.dead():
+			CombatLog.line("  [%s] %s" % [label, _foe_text(f)])
+
+
+func _log_fight_start() -> void:
+	CombatLog.line("Act %d. Foes: %s" % [run.act, ", ".join(foes.map(func(f): return "%s (%s)" % [f.es.name, f.id]))])
+	CombatLog.line("Artifacts: %s" % [", ".join(run.artifacts) if not run.artifacts.is_empty() else "none"])
+	_log_state("start")
+
+
 func setup(p_run: MarblesRun, ids: Array) -> void:
 	run = p_run
 	for id in ids:
@@ -146,6 +183,10 @@ func setup(p_run: MarblesRun, ids: Array) -> void:
 			lings += 1
 	for f in foes:
 		_plan(f)
+	if CombatLog.on:
+		CombatLog.line("")
+		CombatLog.line("##### FIGHT %d (%s) #####" % [CombatLog.fight_number(), Time.get_datetime_string_from_system()])
+		_log_fight_start()
 	_start_turn()
 
 
@@ -413,18 +454,21 @@ func _target(target: int) -> Foe:
 
 func _vulnerable(t: Foe, n: int) -> void:
 	if t != null and not t.dead() and n > 0 and _takes_status(t):
+		CombatLog.line("      status: %s Vulnerable %d -> %d (it takes +50%%)" % [_fname(t), t.vulnerable, maxi(t.vulnerable, n)])
 		t.vulnerable = maxi(t.vulnerable, n)
 		_ev({"type": "foe_vulnerable", "foe": foes.find(t)})
 
 
 func _stun(t: Foe, n: int) -> void:
 	if t != null and not t.dead() and _takes_status(t):
+		CombatLog.line("      status: %s Stun %d -> %d" % [_fname(t), t.stun, t.stun + n])
 		t.stun += n
 		_ev({"type": "stun", "foe": foes.find(t)})
 
 
 func _weaken(t: Foe, n: int) -> void:
 	if t != null and not t.dead() and n > 0 and _takes_status(t):
+		CombatLog.line("      status: %s Weak %d -> %d (it deals 50%% less)" % [_fname(t), t.weak, maxi(t.weak, n)])
 		t.weak = maxi(t.weak, n)
 		_ev({"type": "foe_weak", "foe": foes.find(t)})
 
@@ -432,6 +476,7 @@ func _weaken(t: Foe, n: int) -> void:
 ## Burn on an enemy (doubled by an Orange die in the move).
 func _burn(t: Foe, n: int) -> void:
 	if t != null and not t.dead() and n > 0 and _takes_status(t):
+		CombatLog.line("      status: %s Burn %d -> %d (given %d x burn multiplier %d)" % [_fname(t), t.burn, t.burn + n * _burn_mult, n, _burn_mult])
 		t.burn += n * _burn_mult
 		_ev({"type": "foe_burn", "foe": foes.find(t), "n": n * _burn_mult})
 
@@ -439,6 +484,7 @@ func _burn(t: Foe, n: int) -> void:
 ## Impervious: no status sticks to it.
 func _takes_status(f: Foe) -> bool:
 	if f.impervious > 0:
+		CombatLog.line("      status refused: %s is Impervious (%d)" % [_fname(f), f.impervious])
 		_ev({"type": "immune", "foe": foes.find(f), "why": "Impervious"})
 		return false
 	return true
@@ -447,7 +493,9 @@ func _takes_status(f: Foe) -> bool:
 ## You gain Shield (doubled by a Blue die in the card, or the Shield carving this turn).
 func _shield(n: int) -> void:
 	if no_shield:  # (Taunt)
+		CombatLog.line("      you gain Shield %d: refused (Taunt: no Shield this turn)" % n)
 		return
+	CombatLog.line("      you gain Shield %d x shield multiplier %d = %d  (Shield %d -> %d)" % [n, _shield_mult, n * _shield_mult, block, block + n * _shield_mult])
 	n *= _shield_mult
 	block += n
 	_ev({"type": "block", "n": n})
@@ -474,6 +522,7 @@ func _on_hit(f: Foe, n: int) -> void:
 
 
 func _on_death(f: Foe) -> void:
+	CombatLog.line("    >> %s reaches 0 HP%s" % [_fname(f), " (next page: back to full HP)" if f.pages > 0 else " and dies"])
 	if f.pages > 0:  # (the Pianist: that page is played out; he turns to the next, at full)
 		f.pages -= 1
 		f.hp = f.max_hp
@@ -504,6 +553,8 @@ func end_turn() -> void:
 		silenced[ci] = int(silenced[ci]) - 1
 		if int(silenced[ci]) <= 0:
 			silenced.erase(ci)
+	_log_state("you end the turn: what the signs show")
+	CombatLog.line("--- ENEMY PHASE (turn %d) ---" % turn)
 	_enemy_phase = true
 	flurry = 0  # ("this turn": your turn is over)
 	fire_fist = 0
@@ -512,6 +563,7 @@ func end_turn() -> void:
 		var i := foes.find(f)
 		if f.dead() or over:
 			continue
+		CombatLog.line("! %s starts its turn (Block %d is dropped; Vulnerable %d -> %d; Impervious %d -> %d)" % [_fname(f), f.block, f.vulnerable, maxi(0, f.vulnerable - 1), f.impervious, maxi(0, f.impervious - 1)])
 		f.block = 0
 		f.ethereal = 0  # (Ethereal lasts until its own next turn)
 		f.deflect = false
@@ -520,9 +572,11 @@ func end_turn() -> void:
 		if f.regen_turns > 0:
 			f.regen_turns -= 1
 			var hh := mini(f.regen, f.max_hp - f.hp)
+			CombatLog.line("    regen: %s heals %d (HP %d -> %d)" % [_fname(f), hh, f.hp, f.hp + hh])
 			f.hp += hh
 			_ev({"type": "foe_heal", "foe": i, "n": hh})
 		if f.burn > 0:
+			CombatLog.line("    burn: %s loses %d HP (HP %d -> %d), Burn then drops %d -> %d" % [_fname(f), f.burn, f.hp, maxi(0, f.hp - f.burn), f.burn, f.burn - 1])
 			f.hp = maxi(0, f.hp - f.burn)
 			_ev({"type": "burn", "foe": i, "n": f.burn})
 			f.burn -= 1
@@ -530,6 +584,7 @@ func end_turn() -> void:
 				_on_death(f)
 				continue
 		if f.stun > 0:
+			CombatLog.line("    %s is Stunned: skips its action (Stun %d -> %d)" % [_fname(f), f.stun, f.stun - 1])
 			f.stun -= 1
 			_ev({"type": "foe_stunned", "foe": i})
 		else:
@@ -541,6 +596,8 @@ func end_turn() -> void:
 	_enemy_phase = false
 	weak = maxi(0, weak - 1)
 	vulnerable = maxi(0, vulnerable - 1)
+	CombatLog.line("--- enemy phase over: your Weak/Vulnerable tick down by 1 ---")
+	_log_state("after enemy phase")
 	_check_end()
 	if not over:
 		_ev({"type": "your_turn"})  # (the enemies are done: what follows is your new turn's)
@@ -549,19 +606,25 @@ func end_turn() -> void:
 
 func _act(f: Foe, m: Dictionary) -> void:
 	var i := foes.find(f)
+	CombatLog.line("  ! %s does: %s  (sign now says: %s)" % [_fname(f), String(m.kind), intent_text(m, f)])
 	match String(m.kind):
 		"attack":
 			for h in int(m.get("hits", 1)):
 				var n: int = int(m.n) + f.power
+				var how := "hit %d/%d: base %d + its Power %d = %d" % [h + 1, int(m.get("hits", 1)), int(m.n), f.power, n]
 				if f.weak > 0:
 					n = n / 2
+					how += " -> it is Weakened (%d): halved = %d" % [f.weak, n]
 				if run.has_artifact("leather_armor"):
 					n = maxi(0, n - 1)
+					how += " -> your Leather Armor -1 = %d" % n
+				CombatLog.line("    attack %s" % how)
 				var forced := _forced_target(f)  # (a subclass may send every attack at one enemy: the Marbles mode's Moth to Flame)
 				if f.redirect or forced != null:  # (Redirect: the blow goes at someone else: any of them, itself too)
 					var others := alive()
 					var to: Foe = forced if forced != null else others[run.rng.randi() % others.size()]
 					var soak := mini(to.block, n)
+					CombatLog.line("    redirected onto %s: Block %d soaks %d, HP %d -> %d" % [_fname(to), to.block, soak, to.hp, maxi(0, to.hp - (n - soak))])
 					to.block -= soak
 					to.hp = maxi(0, to.hp - (n - soak))
 					_ev({"type": "redirected", "foe": i, "to": foes.find(to), "n": n - soak})
@@ -572,9 +635,11 @@ func _act(f: Foe, m: Dictionary) -> void:
 				if feint and h == 0:  # (Feint: it attacked you, hit or not: it is Vulnerable now)
 					_vulnerable(f, 1)
 				if ethereal:  # (Flee: you are Ethereal: it passes through)
+					CombatLog.line("    -> misses: you are Ethereal")
 					_ev({"type": "dodged", "foe": i})
 					continue
 				if dodge > 0:  # (the Wing carving: this one misses)
+					CombatLog.line("    -> misses: you Dodge (Dodge %d -> %d)" % [dodge, dodge - 1])
 					dodge -= 1
 					_ev({"type": "dodged", "foe": i})
 					continue
@@ -728,6 +793,8 @@ func _act(f: Foe, m: Dictionary) -> void:
 				_ev({"type": "casts", "foe": i, "name": String(sp.name)})
 				_act(f, sp.cast)
 			f.spells.clear()
+	if String(m.kind) != "attack" and CombatLog.on:
+		CombatLog.line("    result: YOU: %s | %s" % [_me_text(), _foe_text(f)])
 	if m.has("also") and not over:
 		_act(f, m.also)
 
@@ -793,9 +860,13 @@ func piece_ended() -> void:
 
 
 func _hurt_player(n: int, through_block := false) -> void:
+	var incoming := n
 	if vulnerable > 0 and not through_block:
 		n = n + n / 2
 	var soak := 0 if through_block else mini(block, n)
+	CombatLog.line("    YOU are hurt: incoming %d%s%s | Shield %d soaks %d (Shield %d -> %d) | HP %d -> %d (lost %d)" % [
+		incoming, " -> Vulnerable +50%% = %d" % n if n != incoming else "", " (ignores Shield)" if through_block else "",
+		block, soak, block, block - soak, run.hp, maxi(0, run.hp - (n - soak)), n - soak])
 	block -= soak
 	run.hp = maxi(0, run.hp - (n - soak))
 	if run.hp <= 0:

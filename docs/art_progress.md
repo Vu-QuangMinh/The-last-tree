@@ -10,6 +10,8 @@ Art pipeline: ImageSet (prompts/styles live next to the art in `assets/**`), Tac
 - Other rooms are still plain screens over their backgrounds (campfire is the only one rebuilt from separate objects).
 
 ## Code
+- Fairy (Lost Sprite event): art and voice read female, text says "he / Help him" (`map_events.gd`, key in `event_stage.gd` + tests): pick one.
+- Old unused 512 px `Enemies/Act2/briar_wall_{left,right}.png` and `Act1/briar_wall_right.png`: can be deleted.
 - Step 2 of the emoji plan: headings / labels with emoji (fuse_screen, shop_screen "🛒", seal_screen, tutorial_screen, enemy_view skull, fight_screen close / undo / clear, settings play / stop, wiki map text). Needs a TextureRect beside the Label.
 - Merchant text in ShopScreen still says "a badger", the art is a bearded man.
 - Damage splat `float_damage` was dropped by Vu-QuangMinh ("no blood"): not restored.
