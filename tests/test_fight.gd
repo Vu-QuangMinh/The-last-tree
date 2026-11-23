@@ -1175,9 +1175,15 @@ func test_act2_tier2_scavengers_and_flying() -> void:
 	assert_eq(rat.power, 1, "the Hyena's howl")
 	assert_eq(f.player.hp, 33.0, "rat 1x3, then the howl, then the beetle 3 + 1 Power; the vulture lies stunned")
 	assert_eq(vulture.grounded, 0)
-	assert_eq(vulture.intent.kind, "attack", "and it fights on, on the ground")
+	assert_eq(vulture.intent.kind, "take_off", "next it means to fly back up")
 	await f._strike("AFW")
 	assert_true(vulture.size() < 5, "on the ground the chant reaches it")
+	if not vulture.is_dead():
+		f.player.hp = 99
+		await f.end_player_turn()
+		assert_true(vulture.flying, "it took off: flying again")
+		assert_eq(vulture.fly_size, vulture.size(), "any Essence it loses from here brings it down again")
+		assert_true(vulture.intent.kind != "take_off", "and back to its own moves")
 
 
 func test_act2_tier2_sentinel() -> void:
@@ -1377,13 +1383,6 @@ func test_nice_lute_weakens_every_10th_spell() -> void:
 
 
 func test_new_commons() -> void:
-	# Coup de Grace: 1 random Essence off, then Execute at 2 or fewer
-	var f := _fight(["ashling"], ["coup_de_grace"], "AA")
-	var e: EnemyState = f.enemies[0]
-	_set_hp(e, "WWA")
-	f.cast_chant(_all(2))
-	f.resolve_spell("coup_de_grace", 0)
-	assert_true(e.is_dead() or not (e in f.enemies), "3 -> 2, executed")
 	# Flare: Burn 1 per 2 Fire in the chant (FFFF: Burn 2)
 	var g := _fight(["ashling"], ["flare"], "FFFF")
 	g.cast_chant(_all(4))
@@ -1405,7 +1404,6 @@ func test_new_commons() -> void:
 	u.resolve_spell("unbind", 0)
 	assert_eq(u.player.hp, 34.0)
 	assert_true(u.player.silenced.is_empty() and u.player.ignited.is_empty())
-	assert_eq(SpellText.card_text(db.get_spell("coup_de_grace")), "Deal 1 Random damage to an enemy." + String.chr(10) + "Then Execute at 2.")
 	assert_eq(SpellText.card_text(db.get_spell("updraft_lance")), "Deal 1 Right damage to 2 random enemies.")
 
 
@@ -1634,8 +1632,8 @@ func test_grimoire_adds_two_spells() -> void:
 	f.spellbook = [db.get_spell("fire_ball"), db.get_spell("water_wall"), db.get_spell("tailwind"), db.get_spell("grimoire")]
 	f.cast_chant(_all(4))
 	f.resolve_spell("grimoire")
-	assert_eq(f.loadout.size(), 3, "Grimoire + 2 spells")
-	assert_eq(f.active_spells().size(), 2, "the Power left the row: net +1")
+	assert_eq(f.loadout.size(), 4, "Grimoire + 2 spells, and a third takes the Power's place")
+	assert_eq(f.active_spells().size(), 3, "the Power left the row, and its place was filled")
 
 
 func test_rewards_follow_rarity() -> void:
@@ -2177,12 +2175,13 @@ func test_the_triplet() -> void:
 		assert_eq(e.size(), 5)
 	# out of step: on the first turn each one shows a different kind of move
 	var kinds := f.enemies.map(func(e): return e.intent.kind)
-	assert_eq(kinds, ["ignite_spell", "attack", "armor"])
+	assert_eq(kinds, ["ignite_spell", "mend", "armor"])
+	assert_true(f.enemies.all(func(e): return e.def.moves.size() == 2 and e.def.moves.all(func(m): return m.also == {"kind": "attack", "n": 2})), "two moves each, and 2 damage every turn")
 	var fire: EnemyState = f.enemies[0]
 	var water: EnemyState = f.enemies[1]
 	var air: EnemyState = f.enemies[2]
 	# the water one heals 1 on a hurt one (its own element), never past 5
-	var heal: Dictionary = water.def.moves[2]
+	var heal: Dictionary = water.def.moves[1]
 	f._do_move(water, heal)
 	assert_eq([fire.size(), water.size(), air.size()], [5, 5, 5], "nobody hurt: nothing")
 	air.pluck(0)
@@ -2193,8 +2192,8 @@ func test_the_triplet() -> void:
 	var total_power := 0
 	var armoured := 0
 	for i in 5:
-		f._do_move(fire, fire.def.moves[2])
-		f._do_move(air, air.def.moves[2])
+		f._do_move(fire, fire.def.moves[1])
+		f._do_move(air, air.def.moves[1])
 	for e in f.enemies:
 		total_power += e.power
 		armoured += e.armor.count(true)
@@ -2426,7 +2425,7 @@ func test_cooldown_spells() -> void:
 	assert_true(not f.player.cooldowns.has("gust_front"), "ready again the turn after")
 
 
-func test_unused_spells_are_stored_for_the_next_chant() -> void:
+func test_an_uncast_spell_goes_back_to_sleep() -> void:
 	var f := _fight(["ashling"], ["water_wall", "fire_ball"], "WWFF")
 	_set_hp(f.enemies[0], "AAWAAWAA")  # (it survives the turn)
 	f.enemies[0].def.moves = [{"kind": "mend", "el": "F", "n": 1, "who": "self"}]  # (it never attacks here)
@@ -2436,35 +2435,20 @@ func test_unused_spells_are_stored_for_the_next_chant() -> void:
 	f.cast_chant(_all(4))
 	f.resolve_spell("fire_ball", 0)
 	f.finish_turn()  # Released with Water Wall still alive
-	assert_true(f.stored.has("water_wall"), "stored")
-	assert_true(not f.stored.has("fire_ball"), "(it was cast)")
-	# next turn: any chant wakes it (even one without W W), with one charge
 	f.player.stock.clear()
 	for ch in "AA":
 		f.player.add_element(ch)
 	f.cast_chant(_all(2))
-	assert_eq(f.charges.get("water_wall", 0), 1)
-	f.resolve_spell("water_wall")
-	assert_eq(f.player.shield, 4.0)
-	assert_true(not f.stored.has("water_wall"), "used up once cast")
+	assert_eq(f.charges.get("water_wall", 0), 0, "not kept: A A doesn't wake it")
 
 
-func test_stored_spell_still_feels_statuses_and_waits_out_a_pass() -> void:
-	var f := _fight(["ashling"], ["water_wall"], "WW")
-	f.stored["water_wall"] = true
-	f.player.silenced["water_wall"] = 1
-	f.player.stock.clear()
-	f.player.add_element("A")
-	f.cast_chant(_all(1))
-	assert_eq(f.charges.get("water_wall", 0), 0, "silenced: it can't wake")
-	assert_true(f.stored.has("water_wall"), "but it stays stored")
-
-
-func test_tutorial_saving_a_spell_plays_out() -> void:
-	# the "Saving a spell" lesson, step by step: store Water Wall while the Yeti flexes, use it when it attacks
+func test_tutorial_timing_a_shield_plays_out() -> void:
+	# the "Timing a Shield" lesson, step by step: Fire Ball while the Yeti flexes, Water Wall when it attacks
 	# (the same data as TutorialScreen.LESSONS[1]: keep them in step)
 	var lesson := {"enemies": [{"id": "yeti", "hp": "AFWAFW", "moves": [{"kind": "empower", "n": 2}, {"kind": "attack", "n": 6}]}],
-		"spells": ["fire_ball", "water_wall"], "stock": "WWFF", "draws": ["AFW", "AFA"]}
+		"spells": ["fire_ball", "water_wall"], "stock": "FF", "draws": ["AFWW", "AF"]}
+	assert_eq(TutorialScreen.LESSONS[1].stock, lesson.stock)
+	assert_eq(TutorialScreen.LESSONS[1].draws, lesson.draws)
 	var f := _fight(["yeti"], lesson.spells, lesson.stock)
 	var e: EnemyState = f.enemies[0]
 	_set_hp(e, lesson.enemies[0].hp)
@@ -2479,14 +2463,13 @@ func test_tutorial_saving_a_spell_plays_out() -> void:
 		f.player.next_draw.append({"el": ch, "temp": false})
 	f.script_draws = lesson.draws.slice(1)
 	assert_eq(e.intent.kind, "empower", "turn 1: it only flexes")
-	f.cast_chant(_all(4))  # W W F F
+	f.cast_chant(_all(2))  # F F
 	f.resolve_spell("fire_ball", 0)
 	f.finish_turn()
-	assert_true(f.stored.has("water_wall"))
 	assert_eq(f.player.hp, 60.0, "no hit on turn 1")
 	assert_eq(e.intent.kind, "attack", "turn 2: the attack")
-	assert_eq("".join(f.player.stock.map(func(x): return x.el)), "AFW")
-	f.cast_chant(_all(3))  # A F W
+	assert_eq("".join(f.player.stock.map(func(x): return x.el)), "AFWW")
+	f.cast_chant(_all(4))  # A F W W
 	f.resolve_spell("water_wall")
 	assert_eq(f.player.shield, 4.0)
 	f.finish_turn()
@@ -2494,7 +2477,6 @@ func test_tutorial_saving_a_spell_plays_out() -> void:
 	f.cast_chant([0, 1])  # A F: finishes it
 	f.finish_turn()
 	assert_true(f.won, "the lesson ends in a win")
-
 
 func test_lasting_shield_stays_until_broken() -> void:
 	var f := _fight(["ashling"], ["water_wall"], "WW")

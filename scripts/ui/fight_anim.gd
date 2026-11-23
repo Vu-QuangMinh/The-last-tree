@@ -972,11 +972,32 @@ func _anim_event(ev: Dictionary) -> void:
 			await _wait(0.5)
 		"annihilate":
 			await _annihilate_enemies(ev.el, ev.targets)
+		"take_off":
+			# a knocked-down flyer gets back up into the air: its flying picture again, lifted, its shadow left on the floor
+			Audio.play("sfx_ethereal_apply", -4.0, 1.3)
+			var tv: EnemyView = scr._views.get(ev.enemy)
+			scr._h_hud._refresh_all()
+			if tv != null and is_instance_valid(tv.creature):
+				var fx := Vfx.make(scr._fx, 10)
+				fx.burst(tv.creature.global_position + Vector2(tv.creature.size.x / 2.0, tv.creature.size.y), 12, Color(0.85, 0.8, 0.7, 0.8), Vector2(60, 180), Vector2(0.3, 0.6), Vector2(5, 10))
+			await _wait(0.45)
+		"burn_fizzle":
+			# Burn, 2026-11-12: its burning Essence fizzle out one by one, left to right, and it jerks at each
+			var bv: EnemyView = scr._views.get(ev.enemy)
+			if bv != null:
+				for j in ev.idx:
+					bv.fizzle(int(j))
+					var at := bv.hp_point(int(j))
+					var fx := Vfx.make(scr._fx, 10)
+					fx.burst(at, 14, Color(1.0, 0.55, 0.15), Vector2(80, 260), Vector2(0.25, 0.5), Vector2(3, 7), Vfx.SPARK)
+					fx.burst(at + Vector2(0, -6), 6, Color(0.35, 0.3, 0.28, 0.7), Vector2(30, 90), Vector2(0.5, 0.9), Vector2(8, 14))
+					Audio.play("sfx_burn_tick", -3.0, randf_range(0.95, 1.15))
+					await _wait(0.5)  # (half a second per Essence, so each one is seen)
+				await _wait(0.12)
 		"burn_off":
-			# the Essence that caught fire last turn burns away
+			# the Essence that caught fire last turn burns away (each one fizzled out already: "burn_fizzle")
 			var v: EnemyView = scr._views.get(ev.enemy)
 			if v:
-				v.hit_flash()
 				_float_text("-%d  Burned" % ev.n, v.global_position + Vector2(90, 200), Color(1, 0.6, 0.25))
 			Audio.play("sfx_burn_tick")
 			scr._h_hud._sync_views()

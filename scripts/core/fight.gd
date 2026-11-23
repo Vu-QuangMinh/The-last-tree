@@ -11,7 +11,7 @@ extends RefCounted
 ##   element_chooser:(spell, counts {el: n}) -> String           Annihilate: which element to wipe out
 ##   attune_chooser:(spell) -> String                             Attunement: which Essence to gain every turn
 ##   arranger:    (spell) -> [from, to]                          Rearrange: move one chant element ([] = keep)
-##   spell_chooser:(spells: Array) -> int                         Grimoire Ink: which spellbook spell joins (-1: none)
+##   spell_chooser:(spells: Array, why: String) -> int            Grimoire Ink ("grimoire") / a cast Power's place ("power"): which spellbook spell joins (-1: none)
 ##   wild_arranger:(spell) -> [from, to] (the chant) / [from, to, enemy] / []   Wild Rearrange: one move, anywhere
 ##   wild_painter: (spell) -> ["chant", i] / ["enemy", enemy, i] / []          Wild Repaint: one Essence, anywhere
 ##   anim:        (event: Dictionary) -> void                    animation hook
@@ -83,7 +83,6 @@ const STATUS_OPS := ["burn", "stoke", "weak", "stun", "disarm", "daze", "curse"]
 const TRINITY_PARTS := ["trinity_first", "trinity_second", "trinity_third"]
 var trinity_cast := {}  # Trinity Fragments cast this turn (base id -> true)
 var trinity_formed := false  # the three became Trinity this fight (the run keeps it: see RunState.finish_fight)
-var stored := {}  # spell id -> true: alive but not cast when you Released; it wakes again on your next Chant
 var turn_ctx := {}  # {entries, amplify, echo, retain, last, cast_any}
 var paint_to := "?"  # Repaint: what the brush paints right now (the painter skips Essence already that)
 var pick_el := ""  # the picker may only take Essence of this kind ("": any): "remove up to 3 Fire" lets you choose which Fire
@@ -129,7 +128,7 @@ func _init(p_db: SpellDB, p_player: PlayerState) -> void:
 				best = el
 		return best
 	arranger = func(_s): return []
-	spell_chooser = func(spells): return 0 if not spells.is_empty() else -1
+	spell_chooser = func(spells, _why := ""): return 0 if not spells.is_empty() else -1
 	wild_arranger = func(_s): return []
 	wild_painter = func(s):  # by default: an enemy Essence, as the painter would choose
 		var got: Array = await painter.call(s)
@@ -574,24 +573,7 @@ func _recount() -> Array:
 			charges[sp.id] = 1
 			if not before.has(sp.id):
 				woke.append({"id": sp.id, "starts": [], "len": 0})
-	# spells stored from an earlier turn wake on any chant (one charge: a match on top doesn't add a second)
-	for sp in usable_spells():
-		if stored.has(sp.id) and charges.get(sp.id, 0) == 0 and used.get(sp.id, 0) == 0:
-			charges[sp.id] = 1
-			if not before.has(sp.id):
-				woke.append({"id": sp.id, "starts": [], "len": 0})
 	return woke
-
-
-## Released with spells still alive: they're stored, awake, until a later Chant (see `stored`).
-func _store_unused() -> void:
-	var kept := []
-	for id in charges:
-		if charges[id] > 0 and not stored.has(id):
-			stored[id] = true
-			kept.append(_find_spell(id).get("name", id))
-	if not kept.is_empty():
-		_log("Stored for your next chant: %s." % ", ".join(kept))
 
 
 ## Anything left to do this turn? (When not, the chant is Released by itself.)
@@ -634,7 +616,6 @@ func resolve_spell(id: String, target_idx := -1) -> void:
 	var spell := _find_spell(id)
 	used[id] = used.get(id, 0) + 1
 	cast_counts[id] = cast_counts.get(id, 0) + 1
-	stored.erase(id)  # (a stored spell is used up when it's cast)
 	_start_cooldown(spell)
 	charges[id] -= 1  # (the recount after the cast keeps the charges that are left)
 	if charges[id] <= 0:
@@ -791,7 +772,6 @@ func _wear(spell: Dictionary) -> bool:
 ## A spell broken for the fight (worn out, or smashed by the Hammer): it stays in the row, cracked and grey.
 func _break(id: String) -> void:
 	broken[id] = true
-	stored.erase(id)
 	charges.erase(id)
 
 
@@ -854,8 +834,7 @@ func finish_turn() -> void:
 	if spoken and not chant.is_empty():
 		var c := chant_string()
 		last_chant = c
-		_store_unused()
-		charges.clear()
+		charges.clear()  # (a spell you didn't cast just goes back to sleep: nothing is stored for later, 2026-11-12)
 		var hit := []
 		if player.disarmed_turns > 0:
 			_log("You are Disarmed: your Release does nothing.")
@@ -1053,6 +1032,7 @@ func _fire(spell: Dictionary, ctx: Dictionary, tctx: Dictionary) -> void:
 	elif spell.power:
 		player.used_powers[spell.id] = true
 		_log("%s takes hold for the rest of the fight." % spell.name)
+		await _replace_power(spell)
 	if spell.get("exhaust", false) and not spell.get("ephemeral", false):
 		# Exhaust: gone from this fight, and from your spellbook for the rest of the run
 		exhausted.append(String(spell.get("base_id", spell.id)))
@@ -1066,6 +1046,31 @@ func _fire(spell: Dictionary, ctx: Dictionary, tctx: Dictionary) -> void:
 			await _form_trinity()
 	ctx.last = spell
 	_cleanup()
+
+
+## A Power was cast and left the row: a spell from your spellbook may take its place for the rest of the fight (2026-11-12).
+func _replace_power(power: Dictionary) -> void:
+	if over:
+		return
+	var ids := loadout.map(func(s): return s.id)
+	var pool := spellbook.filter(func(s): return not (s.id in ids) and not player.used_powers.has(s.id))
+	if pool.is_empty():
+		return
+	var k: int = await spell_chooser.call(pool, "power")
+	if k < 0 or k >= pool.size():
+		return
+	var at := loadout.find(power)
+	if at >= 0:
+		loadout.insert(at + 1, pool[k])  # (in the Power's place in the row)
+	else:
+		loadout.append(pool[k])
+	_log("%s takes the place of %s for this fight." % [pool[k].name, power.name])
+	await anim.call({"type": "loadout_changed"})
+	if spoken:
+		var woke: Array = await _recount()
+		if not woke.is_empty():
+			await anim.call({"type": "extension", "hits": woke})
+			await _score_extension()
 
 
 ## The three Trinity Fragments were all cast this turn (any order): they combine into Trinity, in the row where the
@@ -1358,7 +1363,7 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 		"grimoire_pick":
 			var ids := loadout.map(func(s): return s.id)
 			var pool := spellbook.filter(func(s): return not (s.id in ids))
-			var k: int = await spell_chooser.call(pool)
+			var k: int = await spell_chooser.call(pool, "grimoire")
 			if k >= 0 and k < pool.size():
 				loadout.append(pool[k])
 				_log("%s joins your active spells for this fight." % pool[k].name)
@@ -1390,7 +1395,7 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 				await anim.call({"type": "chant_changed"})
 		"mend_spell":
 			var pool := shown_spells().filter(func(s): return broken.has(s.id) or base_durability(s) > 0)
-			var k: int = await spell_chooser.call(pool)
+			var k: int = await spell_chooser.call(pool, "grimoire")
 			if k >= 0 and k < pool.size():
 				mend_spell(pool[k].id)
 				await anim.call({"type": "loadout_changed"})
@@ -1435,7 +1440,7 @@ func _apply(eff: Dictionary, spell: Dictionary, tctx: Dictionary, ctx := {}) -> 
 		"temp_seal":
 			# Reforge: a purple seal on another spell for this fight (a random Essence of its pattern isn't needed)
 			var pool := active_spells().filter(func(s): return s.id != spell.id and String(s.pattern).length() >= 2)
-			var k: int = await spell_chooser.call(pool)
+			var k: int = await spell_chooser.call(pool, "grimoire")
 			if k >= 0 and k < pool.size():
 				var sp: Dictionary = pool[k].duplicate(true)
 				var full := String(sp.get("full_pattern", sp.pattern))
@@ -2013,6 +2018,12 @@ func _enemy_phase() -> void:
 			e.keep_intent = true
 			continue
 		# Burn: at the start of its turn, its burning Essence burns away (burned to nothing, it never acts)
+		var lit_idx: Array = []
+		for i in e.size():
+			if e.is_lit(i):
+				lit_idx.append(i)
+		if not lit_idx.is_empty():
+			await anim.call({"type": "burn_fizzle", "enemy": e, "idx": lit_idx})  # (each one fizzles out, left to right)
 		var gone: Array = e.burn_off()
 		if not gone.is_empty():
 			_log("%s's burning Essence (%s) burns away." % [e.name, " ".join(gone)])
@@ -2078,6 +2089,9 @@ func _plan(e: EnemyState) -> void:
 	if e.has_passive("briar_walls") and e.walls_standing() < 2:
 		# a wall is down: she shows it, and regrows it on her next turn (the left one first)
 		e.intent = {"kind": "regrow", "side": "L" if not ("L" in e.parts) else "R"}
+		return
+	if e.def.get("flying", false) and not e.flying and e.grounded <= 0 and not e.is_dead():
+		e.intent = {"kind": "take_off"}  # (knocked down, stunned a turn: next it flies back up, 2026-11-12; stopped, it tries again)
 		return
 	if e.has_meta("pending_theft"):
 		e.intent = e.def.moves2[0]  # the Veiled Eyes' veil just fell: the theft comes first, whatever else happened
@@ -2632,6 +2646,11 @@ func _cleanse_enemy(t: EnemyState) -> void:
 func _do_move(e: EnemyState, m: Dictionary) -> void:
 	var taken_items: Array = []  # a steal: [{uid, el}] of the Essence it took from your bag (for the animation)
 	match m.kind:
+		"take_off":
+			e.flying = true
+			e.fly_size = e.size()
+			_log("%s flies back up into the air." % e.name)
+			await anim.call({"type": "take_off", "enemy": e})
 		"attack":
 			if e.disarmed > 0:
 				_log("%s is Disarmed: its attack does nothing." % e.name)
@@ -2846,8 +2865,8 @@ func _do_move(e: EnemyState, m: Dictionary) -> void:
 		"confuse":
 			# Confuse: a black veil falls over the slot machine: next turn you can't see what is coming next
 			if not has_artifact("calm_stone"):
-				player.confuse_turns = 1
-				_log("%s confuses you: a veil falls over the slot machine." % e.name)
+				player.confuse_turns = 9999 if m.get("fight", false) else 1  # ("fight": the Mirror Fairy's, for the rest of the fight)
+				_log("%s confuses you: a veil falls over the slot machine%s." % [e.name, " for the rest of the fight" if m.get("fight", false) else ""])
 				await anim.call({"type": "confuse"})
 		"blind":
 			if not has_artifact("keen_eye"):

@@ -1,0 +1,3478 @@
+{
+ "elements": {
+  "F": "Fire",
+  "W": "Water",
+  "A": "Wind"
+ },
+ "spells": [
+  {
+   "id": "ember",
+   "name": "Ember",
+   "pattern": "F",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 3,
+     "target": "target"
+    },
+    {
+     "op": "sacrifice",
+     "hp": 2
+    }
+   ],
+   "flavor": "A single spark that won't go out.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "Burn 1 -> Burn 3 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "cinder",
+   "name": "Dab",
+   "pattern": "F",
+   "effects": [
+    {
+     "op": "expose",
+     "n": 2
+    },
+    {
+     "op": "sacrifice",
+     "hp": 2
+    }
+   ],
+   "flavor": "A fingertip of paint, right on the weak spot.",
+   "rarity": "common",
+   "hp_status": "needs_redesign",
+   "hp_note": "expose (Repaint enemy Essence): no HP equivalent"
+  },
+  {
+   "id": "droplet",
+   "name": "Droplet",
+   "pattern": "W",
+   "effects": [
+    {
+     "op": "shield",
+     "n": 2
+    }
+   ],
+   "flavor": "Every drop helps.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "ripple",
+   "name": "Ripple",
+   "pattern": "W",
+   "effects": [
+    {
+     "op": "self_repaint",
+     "n": 2,
+     "to": "W"
+    }
+   ],
+   "flavor": "The end of it turns to water.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "chill",
+   "name": "Chill",
+   "pattern": "WW",
+   "effects": [
+    {
+     "op": "shatter",
+     "target": "target",
+     "shield_per": 3
+    }
+   ],
+   "flavor": "Cold makes armour brittle.",
+   "rarity": "common",
+   "hp_status": "needs_redesign",
+   "hp_note": "shatter (break enemy Armour (armour on orbs)): no HP equivalent"
+  },
+  {
+   "id": "whisper",
+   "name": "Whisper",
+   "pattern": "A",
+   "effects": [
+    {
+     "op": "weak",
+     "turns": 1,
+     "target": "target"
+    }
+   ],
+   "flavor": "A word in the ear, and its arm goes slack.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "updraft",
+   "name": "Updraft",
+   "pattern": "A",
+   "effects": [
+    {
+     "op": "move",
+     "n": 2
+    }
+   ],
+   "flavor": "Lift one Essence and set it down where you like.",
+   "rarity": "common",
+   "hp_status": "needs_redesign",
+   "hp_note": "move (Rearrange enemy Essence): no HP equivalent"
+  },
+  {
+   "id": "fire_ball",
+   "name": "Fire Ball",
+   "pattern": "FF",
+   "starter": true,
+   "effects": [
+    {
+     "op": "damage",
+     "n": 3,
+     "target": "target"
+    }
+   ],
+   "flavor": "The classic.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "1 Right damage -> 3 damage"
+  },
+  {
+   "id": "arcane_barrage",
+   "name": "Arcane Barrage",
+   "pattern": "WFA",
+   "effects": [
+    {
+     "op": "barrage",
+     "n": 3,
+     "dmg": 3
+    }
+   ],
+   "flavor": "Three bolts, three guesses. Something will get hit.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "3 hits of 1 -> 3 hits of 3 damage"
+  },
+  {
+   "id": "flare",
+   "name": "Flare",
+   "pattern": "FF",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 3,
+     "per_chant": "F",
+     "per": 2,
+     "target": "target"
+    }
+   ],
+   "flavor": "Burn away the front line.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "Burn 1 -> Burn 3 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "water_wall",
+   "name": "Water Wall",
+   "pattern": "WW",
+   "starter": true,
+   "effects": [
+    {
+     "op": "shield",
+     "n": 4
+    }
+   ],
+   "flavor": "Stand behind the water.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "tide_pool",
+   "name": "Tide Pool",
+   "pattern": "WW",
+   "effects": [
+    {
+     "op": "heal",
+     "n": 3
+    }
+   ],
+   "flavor": "Rest in the shallows.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "frost_nova",
+   "name": "Frost Nova",
+   "pattern": "WW",
+   "effects": [
+    {
+     "op": "weak",
+     "turns": 1,
+     "target": "all"
+    }
+   ],
+   "flavor": "Every blade goes numb.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "tailwind",
+   "name": "Tailwind",
+   "pattern": "AA",
+   "starter": true,
+   "effects": [
+    {
+     "op": "draw",
+     "n": 1,
+     "when": "next",
+     "el": "random"
+    }
+   ],
+   "flavor": "The wind brings more.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "gust",
+   "name": "Gust",
+   "pattern": "AF",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 6,
+     "target": "target"
+    },
+    {
+     "op": "vulnerable",
+     "n": 2
+    }
+   ],
+   "flavor": "A precise gust plucks one piece away.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "Snipe 2 -> 6 damage"
+  },
+  {
+   "id": "fan_the_flames",
+   "name": "Fan the Flames",
+   "pattern": "FWF",
+   "effects": [
+    {
+     "op": "stoke",
+     "target": "target"
+    }
+   ],
+   "flavor": "Double the fire already there.",
+   "rarity": "common",
+   "durability": 2,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "wildfire",
+   "name": "Wildfire",
+   "pattern": "FA",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 3,
+     "target": "all"
+    }
+   ],
+   "flavor": "The wind spreads it everywhere.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "Burn 1 -> Burn 3 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "blowtorch",
+   "name": "Blowtorch",
+   "pattern": "FA",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 3,
+     "target": "target",
+     "bonus_if": "burn",
+     "bonus": 3
+    }
+   ],
+   "flavor": "Hotter where it's already burning.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "1 Right damage -> 3 damage"
+  },
+  {
+   "id": "phase_shift",
+   "name": "All In",
+   "pattern": "F",
+   "effects": [
+    {
+     "op": "infuse_upcoming"
+    }
+   ],
+   "flavor": "Untouchable by chants, fragile to magic.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "steam",
+   "name": "Steam",
+   "pattern": "WF",
+   "effects": [
+    {
+     "op": "shield",
+     "n": 2
+    },
+    {
+     "op": "weak",
+     "turns": 1,
+     "target": "target"
+    }
+   ],
+   "flavor": "Hide in the hiss.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "hot_spring",
+   "name": "Hot Spring",
+   "pattern": "WF",
+   "effects": [
+    {
+     "op": "heal",
+     "n": 2
+    },
+    {
+     "op": "shield",
+     "n": 1
+    }
+   ],
+   "flavor": "Warm water, warm heart.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "scald",
+   "name": "Scald",
+   "pattern": "FW",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 3,
+     "target": "target"
+    },
+    {
+     "op": "weak",
+     "turns": 1,
+     "target": "target"
+    }
+   ],
+   "flavor": "Boiling water, badly thrown.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "1 Right damage -> 3 damage"
+  },
+  {
+   "id": "boil",
+   "name": "Boil",
+   "pattern": "FW",
+   "effects": [
+    {
+     "op": "self_repaint",
+     "n": 3,
+     "to": "F"
+    }
+   ],
+   "flavor": "Water at the end turns to fire.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "Wild Repaint -> Self-Repaint (your chant only: enemies have no Essence to paint)"
+  },
+  {
+   "id": "mist_veil",
+   "name": "Mist Veil",
+   "pattern": "WA",
+   "effects": [
+    {
+     "op": "ethereal",
+     "target": "self"
+    },
+    {
+     "op": "vulnerable",
+     "n": 3
+    }
+   ],
+   "flavor": "Blades pass through you. Curses don't.",
+   "rarity": "common",
+   "durability": 1,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "undertow",
+   "name": "Undertow",
+   "pattern": "WA",
+   "effects": [
+    {
+     "op": "move",
+     "n": 2
+    }
+   ],
+   "flavor": "The current rearranges everything.",
+   "rarity": "common",
+   "hp_status": "needs_redesign",
+   "hp_note": "move (Rearrange enemy Essence): no HP equivalent"
+  },
+  {
+   "id": "rain",
+   "name": "Rain",
+   "pattern": "AW",
+   "effects": [
+    {
+     "op": "heal",
+     "n": 2
+    }
+   ],
+   "flavor": "Soft and steady.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "inferno",
+   "name": "Inferno",
+   "pattern": "F?F",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 3,
+     "target": "all"
+    }
+   ],
+   "flavor": "Everything burns a little.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "1 Right damage -> 3 damage"
+  },
+  {
+   "id": "glacier",
+   "name": "Glacier",
+   "pattern": "WWW",
+   "effects": [
+    {
+     "op": "stun",
+     "turns": 1,
+     "target": "target"
+    }
+   ],
+   "flavor": "Frozen mid-swing.",
+   "rarity": "rare",
+   "durability": 2,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "tempest",
+   "name": "Tempest",
+   "pattern": "AAA",
+   "effects": [
+    {
+     "op": "draw",
+     "n": 2,
+     "when": "next",
+     "el": "random"
+    },
+    {
+     "op": "rearrange",
+     "n": 1
+    }
+   ],
+   "flavor": "The storm brings more, and moves what it touches.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "annihilate",
+   "name": "Annihilate",
+   "pattern": "FWA?WF",
+   "effects": [
+    {
+     "op": "annihilate",
+     "target": "all"
+    }
+   ],
+   "flavor": "Pick one. It stops existing.",
+   "rarity": "legendary",
+   "durability": 1,
+   "hp_status": "needs_redesign",
+   "hp_note": "annihilate (wipe out one element from every enemy): no HP equivalent"
+  },
+  {
+   "id": "thermal_burst",
+   "name": "Thermal Burst",
+   "pattern": "FFWF",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 6,
+     "target": "two"
+    }
+   ],
+   "flavor": "Steam bursts two ways at once.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "2 Left damage -> 6 damage"
+  },
+  {
+   "id": "steam_cloud",
+   "name": "Steam Cloud",
+   "pattern": "WFW",
+   "effects": [
+    {
+     "op": "daze",
+     "n": 1,
+     "target": "all"
+    },
+    {
+     "op": "shield",
+     "n": 4
+    }
+   ],
+   "flavor": "Nobody can see to aim.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "firestorm",
+   "name": "Cataclysm",
+   "pattern": "AF?FA",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 9,
+     "target": "all"
+    }
+   ],
+   "flavor": "Burning rain on all of them.",
+   "rarity": "rare",
+   "cooldown": 2,
+   "hp_status": "converted",
+   "hp_note": "Burn 3 -> Burn 9 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "kindling_wind",
+   "name": "Kindling Wind",
+   "pattern": "FAF",
+   "effects": [
+    {
+     "op": "amplify",
+     "n": 3
+    }
+   ],
+   "flavor": "Whatever your chant hit burns one Essence deeper.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "Amplify 1 -> Amplify 3 (HP)"
+  },
+  {
+   "id": "mistwalk",
+   "name": "Mistwalk",
+   "pattern": "WAW",
+   "effects": [
+    {
+     "op": "ethereal",
+     "target": "self"
+    },
+    {
+     "op": "heal",
+     "n": 4
+    }
+   ],
+   "flavor": "Step between the drops.",
+   "rarity": "rare",
+   "durability": 2,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "whirlpool",
+   "name": "Whirlpool",
+   "pattern": "AWA",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 3,
+     "target": "all"
+    },
+    {
+     "op": "weak",
+     "turns": 1,
+     "target": "all"
+    }
+   ],
+   "flavor": "Spins them off balance.",
+   "rarity": "rare",
+   "durability": 3,
+   "hp_status": "converted",
+   "hp_note": "1 Right damage -> 3 damage"
+  },
+  {
+   "id": "searing_mist",
+   "name": "Searing Mist",
+   "pattern": "FFW",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 9,
+     "target": "target"
+    }
+   ],
+   "flavor": "Two of its fires go out.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "remove up to 3 F -> 9 damage (no element on an HP bar)"
+  },
+  {
+   "id": "boiling_tide",
+   "name": "Against the Tide",
+   "pattern": "WWF",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 6,
+     "target": "target"
+    },
+    {
+     "op": "weak",
+     "turns": 1,
+     "target": "target",
+     "if_attacking": true
+    }
+   ],
+   "flavor": "Two of its waters boil away.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "2 Random damage -> 6 damage"
+  },
+  {
+   "id": "gale_force",
+   "name": "Vacuum",
+   "pattern": "AAF",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 9,
+     "target": "target"
+    }
+   ],
+   "flavor": "Two breaths torn out of it.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "remove up to 3 A -> 9 damage (no element on an HP bar)"
+  },
+  {
+   "id": "alchemy",
+   "name": "Alchemy",
+   "pattern": "FWA",
+   "effects": [
+    {
+     "op": "convert",
+     "pos": "all",
+     "from": "W",
+     "to": "F",
+     "target": "target"
+    }
+   ],
+   "flavor": "All its water becomes fire.",
+   "rarity": "rare",
+   "hp_status": "needs_redesign",
+   "hp_note": "convert (turn an enemy's Essence of one element into another): no HP equivalent"
+  },
+  {
+   "id": "storm_front",
+   "name": "Storm Front",
+   "pattern": "AWF",
+   "effects": [
+    {
+     "op": "shield",
+     "n": 5
+    },
+    {
+     "op": "thorns",
+     "n": 6
+    }
+   ],
+   "flavor": "Touch it and get burned.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "Thorns 2 -> Thorns 6 (HP)"
+  },
+  {
+   "id": "recall",
+   "name": "Recall",
+   "pattern": "FAW",
+   "effects": [
+    {
+     "op": "retain",
+     "n": 2
+    }
+   ],
+   "flavor": "Two of the chant's Essence come back.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "backdraft",
+   "name": "Backdraft",
+   "pattern": "AFF",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 9,
+     "target": "target"
+    }
+   ],
+   "flavor": "Big blast, slow recovery.",
+   "rarity": "rare",
+   "durability": 2,
+   "hp_status": "converted",
+   "hp_note": "3 Right damage -> 9 damage"
+  },
+  {
+   "id": "meteor",
+   "name": "Meteor",
+   "pattern": "FFFF",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 15,
+     "target": "target"
+    }
+   ],
+   "flavor": "Very big, very hot.",
+   "rarity": "legendary",
+   "hp_status": "converted",
+   "hp_note": "5 Right damage -> 15 damage"
+  },
+  {
+   "id": "tidal_wave",
+   "name": "Paintress",
+   "pattern": "WWWW",
+   "effects": [
+    {
+     "op": "self_repaint",
+     "n": 5,
+     "to": "?"
+    }
+   ],
+   "flavor": "Knock the leftmost off everything.",
+   "rarity": "legendary",
+   "hp_status": "converted",
+   "hp_note": "Wild Repaint -> Self-Repaint (your chant only: enemies have no Essence to paint)"
+  },
+  {
+   "id": "hurricane",
+   "name": "Hurricane",
+   "pattern": "AAAA",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 9,
+     "target": "all"
+    }
+   ],
+   "flavor": "The whole row is torn apart.",
+   "rarity": "legendary",
+   "hp_status": "converted",
+   "hp_note": "3 Right damage -> 9 damage"
+  },
+  {
+   "id": "steam_engine",
+   "name": "Steam Engine",
+   "pattern": "FWFW",
+   "effects": [
+    {
+     "op": "passive",
+     "key": "shield_per_burn",
+     "n": 2
+    }
+   ],
+   "flavor": "The chant strikes again after your spells.",
+   "rarity": "legendary",
+   "power": true,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "aurora",
+   "name": "Aurora",
+   "pattern": "WAWA",
+   "effects": [
+    {
+     "op": "heal",
+     "n": 7
+    },
+    {
+     "op": "cleanse"
+    },
+    {
+     "op": "shield",
+     "n": 5
+    }
+   ],
+   "flavor": "Light over still water.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "phoenix_rite",
+   "name": "Ludwig's Boots",
+   "pattern": "FAFA",
+   "effects": [
+    {
+     "op": "aegis",
+     "n": 1
+    }
+   ],
+   "flavor": "Rise from the next blow untouched.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "supernova",
+   "name": "The Flood",
+   "pattern": "WWWWW",
+   "effects": [
+    {
+     "op": "purge_all",
+     "el": "F",
+     "target": "target"
+    }
+   ],
+   "flavor": "A star dies on the battlefield.",
+   "rarity": "legendary",
+   "hp_status": "needs_redesign",
+   "hp_note": "purge_all (remove every Essence of one element from an enemy): no HP equivalent"
+  },
+  {
+   "id": "deluge",
+   "name": "Damnation",
+   "pattern": "?W?F",
+   "effects": [
+    {
+     "op": "weak",
+     "turns": 3,
+     "target": "target"
+    },
+    {
+     "op": "daze",
+     "n": 2,
+     "target": "target"
+    }
+   ],
+   "flavor": "The flood answers.",
+   "rarity": "legendary",
+   "durability": 1,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "clear_sight",
+   "name": "Clear Sight",
+   "pattern": "F",
+   "effects": [
+    {
+     "op": "cleanse",
+     "what": "blind"
+    },
+    {
+     "op": "cleanse",
+     "what": "confuse"
+    }
+   ],
+   "flavor": "A flash of light burns the fog away.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "bandage",
+   "name": "Bandage",
+   "pattern": "W",
+   "effects": [
+    {
+     "op": "cleanse",
+     "what": "poison"
+    },
+    {
+     "op": "heal",
+     "n": 1
+    },
+    {
+     "op": "thorn_guard"
+    }
+   ],
+   "flavor": "Wash it, wrap it, keep going.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "borrowed_breath",
+   "name": "Borrowed Breath",
+   "pattern": "A",
+   "effects": [
+    {
+     "op": "draw",
+     "n": 1,
+     "when": "next",
+     "el": "random"
+    }
+   ],
+   "flavor": "A breath that isn't yours to keep.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "kindle",
+   "name": "Pyromaniac",
+   "pattern": "FFF",
+   "effects": [
+    {
+     "op": "passive",
+     "key": "burn_bonus",
+     "n": 3
+    },
+    {
+     "op": "burn",
+     "n": 3,
+     "target": "all"
+    }
+   ],
+   "flavor": "Every fire you light burns a little longer.",
+   "power": true,
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "passive burn_bonus 1 -> 3; Burn 1 -> Burn 3 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "siphon",
+   "name": "Siphon",
+   "pattern": "AWAWA",
+   "effects": [
+    {
+     "op": "steal",
+     "n": 1,
+     "el": "any",
+     "into": "chant",
+     "target": "target",
+     "dmg": 3
+    }
+   ],
+   "flavor": "Pull its leftmost Essence into your hand.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "Steal 1 -> deal 3 damage and gain 1 Essence (random element: there is no orb to take)"
+  },
+  {
+   "id": "conjure_flame",
+   "name": "Conjure Flame",
+   "pattern": "FA",
+   "effects": [
+    {
+     "op": "conjure",
+     "n": 1,
+     "kind": "damage"
+    }
+   ],
+   "flavor": "Two flames, borrowed for a turn.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "summon_rain",
+   "name": "Summon Rain",
+   "pattern": "WW",
+   "effects": [
+    {
+     "op": "infuse",
+     "el": "W",
+     "n": 2
+    }
+   ],
+   "flavor": "Two drops, gone by nightfall.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "steady_mind",
+   "name": "Steady Mind",
+   "pattern": "AA",
+   "effects": [
+    {
+     "op": "cleanse",
+     "what": "confuse"
+    },
+    {
+     "op": "draw",
+     "n": 1,
+     "when": "next",
+     "el": "A"
+    }
+   ],
+   "flavor": "Breathe in, breathe out.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "unbind",
+   "name": "Unbind",
+   "pattern": "AW",
+   "effects": [
+    {
+     "op": "unbind",
+     "heal_per": 2
+    }
+   ],
+   "flavor": "Your voice returns.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "thorn_mantle",
+   "name": "EleMantle",
+   "pattern": "WFA",
+   "effects": [
+    {
+     "op": "passive",
+     "key": "thorns_on_hit",
+     "n": 3
+    }
+   ],
+   "flavor": "Anything that strikes you gets burned.",
+   "power": true,
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "passive thorns_on_hit 1 -> 3"
+  },
+  {
+   "id": "cauterize",
+   "name": "Cauterize",
+   "pattern": "FW",
+   "effects": [
+    {
+     "op": "passive",
+     "key": "cauterize",
+     "n": 1
+    }
+   ],
+   "flavor": "Seal the wound so it never grows back.",
+   "power": true,
+   "rarity": "rare",
+   "badge_name": "Cauterizing",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "graft",
+   "name": "Graft",
+   "pattern": "WF",
+   "effects": [
+    {
+     "op": "self_repaint",
+     "n": 2,
+     "to": "W"
+    }
+   ],
+   "flavor": "Plant water at its leftmost end, then chant it away.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "Wild Repaint -> Self-Repaint (your chant only: enemies have no Essence to paint)"
+  },
+  {
+   "id": "alchemists_breath",
+   "name": "Alchemist's Breath",
+   "pattern": "AF",
+   "effects": [
+    {
+     "op": "transmute",
+     "n": 2,
+     "to": "F"
+    }
+   ],
+   "flavor": "Two of your stored Essence become Fire.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "blood_price",
+   "name": "Blood Price",
+   "pattern": "FF",
+   "effects": [
+    {
+     "op": "sacrifice",
+     "hp": 3
+    },
+    {
+     "op": "draw",
+     "n": 3,
+     "when": "now",
+     "el": "random"
+    }
+   ],
+   "flavor": "Pay in blood, gain in power.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "ward",
+   "name": "Ward",
+   "pattern": "WA",
+   "effects": [
+    {
+     "op": "aegis",
+     "n": 1
+    }
+   ],
+   "flavor": "The next blow simply stops.",
+   "rarity": "common",
+   "cooldown": 2,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "scatter",
+   "name": "Gale Barrier",
+   "pattern": "AA",
+   "effects": [
+    {
+     "op": "shield",
+     "n": 3,
+     "lasting": true
+    }
+   ],
+   "flavor": "A wall of wind that bites back.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "soak",
+   "name": "Spritz",
+   "pattern": "WW",
+   "effects": [
+    {
+     "op": "self_repaint",
+     "n": 2,
+     "to": "?"
+    }
+   ],
+   "flavor": "A quick mist of colour, and they're anyone's.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "mimic",
+   "name": "Mimic",
+   "pattern": "FW",
+   "effects": [
+    {
+     "op": "echo_next"
+    }
+   ],
+   "flavor": "Do that again.",
+   "rarity": "rare",
+   "cooldown": 2,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "riptide",
+   "name": "Riptide",
+   "pattern": "WA",
+   "effects": [
+    {
+     "op": "move",
+     "n": 1
+    },
+    {
+     "op": "weak",
+     "turns": 2,
+     "target": "target"
+    }
+   ],
+   "flavor": "Drags one piece out of place and knocks it off balance.",
+   "rarity": "common",
+   "hp_status": "needs_redesign",
+   "hp_note": "move (Rearrange enemy Essence): no HP equivalent"
+  },
+  {
+   "id": "trade_winds",
+   "name": "Aole's Blessing",
+   "pattern": "AAA",
+   "effects": [
+    {
+     "op": "each_turn",
+     "effects": [
+      {
+       "op": "draw",
+       "n": 1,
+       "when": "now",
+       "el": "random"
+      }
+     ]
+    }
+   ],
+   "flavor": "The wind brings a little more, every turn.",
+   "power": true,
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "rising_tide",
+   "name": "Water Prison",
+   "pattern": "WWW",
+   "effects": [
+    {
+     "op": "each_turn",
+     "effects": [
+      {
+       "op": "shield",
+       "n": 5,
+       "lasting": true
+      }
+     ]
+    },
+    {
+     "op": "passive",
+     "key": "chant_max",
+     "n": 6
+    }
+   ],
+   "flavor": "The water rises around you every turn.",
+   "power": true,
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "ember_crown",
+   "name": "Ember Crown",
+   "pattern": "FFW",
+   "effects": [
+    {
+     "op": "each_turn",
+     "effects": [
+      {
+       "op": "burn",
+       "n": 3,
+       "target": "random"
+      }
+     ]
+    }
+   ],
+   "flavor": "A crown that sets something alight each turn.",
+   "power": true,
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "Burn 1 -> Burn 3 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "echo_chamber",
+   "name": "Echoed Voice",
+   "pattern": "AWAF",
+   "effects": [
+    {
+     "op": "passive",
+     "key": "echo_first",
+     "n": 1
+    }
+   ],
+   "flavor": "Say it once; the forest says it again.",
+   "power": true,
+   "rarity": "legendary",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "attunement",
+   "name": "Aole's Love",
+   "pattern": "FWA",
+   "effects": [
+    {
+     "op": "passive",
+     "key": "attune",
+     "n": 1
+    }
+   ],
+   "flavor": "Choose an Essence; it comes to you every turn.",
+   "power": true,
+   "rarity": "legendary",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "frailty",
+   "name": "Stain",
+   "pattern": "AWW",
+   "effects": [
+    {
+     "op": "each_turn",
+     "effects": [
+      {
+       "op": "expose",
+       "n": 1
+      }
+     ]
+    }
+   ],
+   "flavor": "It never washes out.",
+   "power": true,
+   "rarity": "rare",
+   "hp_status": "needs_redesign",
+   "hp_note": "expose (Repaint enemy Essence): no HP equivalent"
+  },
+  {
+   "id": "purify",
+   "name": "Purify",
+   "pattern": "WWA",
+   "effects": [
+    {
+     "op": "cleanse",
+     "what": "all",
+     "lasting_per": 4
+    }
+   ],
+   "flavor": "Every curse washed away.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "leech",
+   "name": "Absorb",
+   "pattern": "FAW",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 6,
+     "target": "target"
+    },
+    {
+     "op": "heal",
+     "n": 5,
+     "if_kill": true
+    }
+   ],
+   "flavor": "Take the last of it, and feel much better.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "2 Right damage -> 6 damage"
+  },
+  {
+   "id": "reforge",
+   "name": "Reforge",
+   "pattern": "WFF",
+   "effects": [
+    {
+     "op": "temp_seal"
+    }
+   ],
+   "flavor": "Its two leftmost Essence become Fire.",
+   "rarity": "rare",
+   "durability": 1,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "soul_siphon",
+   "name": "Devil's Hand",
+   "pattern": "AFA?",
+   "effects": [
+    {
+     "op": "steal",
+     "n": 2,
+     "el": "any",
+     "target": "target",
+     "dmg": 6
+    },
+    {
+     "op": "sacrifice",
+     "hp": 5
+    }
+   ],
+   "flavor": "Pull out a piece of its soul, and wear it tomorrow.",
+   "rarity": "rare",
+   "durability": 3,
+   "hp_status": "converted",
+   "hp_note": "Steal 2 -> deal 6 damage and gain 2 Essence (random element: there is no orb to take)"
+  },
+  {
+   "id": "broken_clock",
+   "name": "A Broken Clock",
+   "pattern": "?????",
+   "effects": [
+    {
+     "op": "draw",
+     "n": 1,
+     "when": "next",
+     "el": "random"
+    },
+    {
+     "op": "damage",
+     "n": 3,
+     "target": "random"
+    }
+   ],
+   "flavor": "It ticks, it tocks, it strikes at random.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "1 Right damage -> 3 damage"
+  },
+  {
+   "id": "stillness",
+   "name": "Stillness",
+   "pattern": "?",
+   "effects": [
+    {
+     "op": "weak",
+     "turns": 99,
+     "target": "all"
+    }
+   ],
+   "flavor": "Every enemy deals 25% less damage, for good.",
+   "rarity": "rare",
+   "anti": true,
+   "durability": 1,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "pyromancy",
+   "name": "Pyromancy",
+   "pattern": "FFFA",
+   "effects": [
+    {
+     "op": "each_turn",
+     "effects": [
+      {
+       "op": "burn",
+       "n": 3,
+       "target": "random"
+      }
+     ]
+    }
+   ],
+   "flavor": "Every turn, something catches fire.",
+   "power": true,
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "Burn 1 -> Burn 3 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "decoy",
+   "name": "Misdirection",
+   "pattern": "AWAW",
+   "effects": [
+    {
+     "op": "aegis",
+     "n": 1
+    }
+   ],
+   "flavor": "Point its anger somewhere else. Anywhere else.",
+   "rarity": "legendary",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "storm_crown",
+   "name": "Ludwig's Knife",
+   "pattern": "AAAFF",
+   "effects": [
+    {
+     "op": "passive",
+     "key": "steal_each_chant",
+     "n": 1,
+     "dmg": 3
+    }
+   ],
+   "flavor": "A conjured Wind every turn.",
+   "power": true,
+   "rarity": "legendary",
+   "hp_status": "converted",
+   "hp_note": "each Chant: Instant Steal 1 -> deal 3 damage and gain 1 Essence into your chant"
+  },
+  {
+   "id": "avatar_of_flame",
+   "name": "Dranor's Avatar",
+   "pattern": "FFFFA",
+   "effects": [
+    {
+     "op": "passive",
+     "key": "strike_burn",
+     "n": 3
+    },
+    {
+     "op": "sacrifice",
+     "hp": 15
+    }
+   ],
+   "flavor": "Every enemy your chant touches catches fire.",
+   "power": true,
+   "rarity": "legendary",
+   "hp_status": "converted",
+   "hp_note": "passive strike_burn 1 -> 3"
+  },
+  {
+   "id": "world_tree_blessing",
+   "name": "Aole's Avatar",
+   "pattern": "WAWAW",
+   "effects": [
+    {
+     "op": "each_turn",
+     "effects": [
+      {
+       "op": "draw",
+       "n": 1,
+       "when": "now",
+       "el": "F"
+      },
+      {
+       "op": "draw",
+       "n": 1,
+       "when": "now",
+       "el": "W"
+      },
+      {
+       "op": "draw",
+       "n": 1,
+       "when": "now",
+       "el": "A"
+      },
+      {
+       "op": "sacrifice",
+       "hp": 3
+      }
+     ]
+    }
+   ],
+   "flavor": "The Last Tree gives back, every turn.",
+   "power": true,
+   "rarity": "legendary",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "spark_word",
+   "name": "Spark Word",
+   "pattern": "WA",
+   "effects": [
+    {
+     "op": "infuse",
+     "el": "F"
+    }
+   ],
+   "flavor": "Say fire, and there is fire.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "spring_word",
+   "name": "Spring Word",
+   "pattern": "AF",
+   "effects": [
+    {
+     "op": "infuse",
+     "el": "W"
+    }
+   ],
+   "flavor": "A word that wells up.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "breath_word",
+   "name": "Breath Word",
+   "pattern": "FW",
+   "effects": [
+    {
+     "op": "infuse",
+     "el": "A"
+    }
+   ],
+   "flavor": "Exhale, and the wind answers.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "resonance",
+   "name": "Resonance",
+   "pattern": "AFW",
+   "effects": [
+    {
+     "op": "duplicate",
+     "times": 2
+    },
+    {
+     "op": "heal_per_extension",
+     "n": 3
+    }
+   ],
+   "flavor": "One note, sung twice.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "grimoire",
+   "name": "Open Grimoire",
+   "pattern": "WFWA",
+   "power": true,
+   "effects": [
+    {
+     "op": "summon_spells",
+     "n": 2
+    }
+   ],
+   "flavor": "Two more pages fall open.",
+   "rarity": "legendary",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "tide_thief",
+   "name": "Ludwig's Hand",
+   "pattern": "WAW?",
+   "rarity": "legendary",
+   "effects": [
+    {
+     "op": "steal",
+     "n": 1,
+     "el": "any",
+     "into": "chant",
+     "target": "target",
+     "dmg": 3
+    }
+   ],
+   "flavor": "The current takes what it likes and brings it to you.",
+   "hp_status": "converted",
+   "hp_note": "Steal 1 -> deal 3 damage and gain 1 Essence (random element: there is no orb to take)"
+  },
+  {
+   "id": "sirens_call",
+   "name": "Siren's Call",
+   "pattern": "WA?AW",
+   "rarity": "rare",
+   "effects": [
+    {
+     "op": "steal",
+     "n": 2,
+     "el": "any",
+     "target": "target",
+     "dmg": 6
+    }
+   ],
+   "flavor": "A song so sweet the fire walks into the water.",
+   "hp_status": "converted",
+   "hp_note": "Steal 2 -> deal 6 damage and gain 2 Essence (random element: there is no orb to take)"
+  },
+  {
+   "id": "maelstrom_grasp",
+   "name": "Ludwig's Final Touch",
+   "pattern": "WWA?WW",
+   "rarity": "legendary",
+   "effects": [
+    {
+     "op": "steal",
+     "n": 3,
+     "el": "any",
+     "target": "target",
+     "dmg": 9
+    }
+   ],
+   "flavor": "The whirlpool swallows their strength and spits it out at your feet.",
+   "hp_status": "converted",
+   "hp_note": "Steal 3 -> deal 9 damage and gain 3 Essence (random element: there is no orb to take)"
+  },
+  {
+   "id": "drizzle",
+   "name": "Drizzle",
+   "pattern": "W",
+   "effects": [
+    {
+     "op": "heal",
+     "n": 2
+    }
+   ],
+   "flavor": "Soft rain, softer landing.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "breeze",
+   "name": "Breeze",
+   "pattern": "A",
+   "effects": [
+    {
+     "op": "thorns",
+     "n": 6
+    }
+   ],
+   "flavor": "It brings something, and stings a little.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "Thorns 2 -> Thorns 6 (HP)"
+  },
+  {
+   "id": "tinder",
+   "name": "Tinder",
+   "pattern": "F",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 3,
+     "target": "random"
+    }
+   ],
+   "flavor": "Small fires make big friends.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "Burn 1 -> Burn 3 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "spark_shower",
+   "name": "Spark Shower",
+   "pattern": "F",
+   "effects": [
+    {
+     "op": "draw",
+     "n": 1,
+     "when": "next",
+     "el": "F"
+    }
+   ],
+   "flavor": "Somewhere, something got singed.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "zephyr",
+   "name": "Fleck",
+   "pattern": "A",
+   "effects": [
+    {
+     "op": "expose",
+     "n": 1
+    }
+   ],
+   "flavor": "The wind carries a single speck of colour.",
+   "rarity": "common",
+   "hp_status": "needs_redesign",
+   "hp_note": "expose (Repaint enemy Essence): no HP equivalent"
+  },
+  {
+   "id": "ashfall",
+   "name": "Ashfall",
+   "pattern": "F",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 3,
+     "target": "all"
+    }
+   ],
+   "flavor": "Grey snow that burns.",
+   "rarity": "rare",
+   "cooldown": 1,
+   "hp_status": "converted",
+   "hp_note": "Burn 1 -> Burn 3 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "summoning_word",
+   "name": "Summoning Word",
+   "pattern": "A",
+   "effects": [
+    {
+     "op": "conjure",
+     "n": 1
+    }
+   ],
+   "flavor": "Say it, and something answers.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "smolder",
+   "name": "Smolder",
+   "pattern": "FFFFF",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 9,
+     "target": "all"
+    },
+    {
+     "op": "burn",
+     "n": 12,
+     "target": "all"
+    }
+   ],
+   "flavor": "Never let it touch fire again, and it burns everything for you.",
+   "rarity": "legendary",
+   "anti": true,
+   "cooldown": 3,
+   "hp_status": "converted",
+   "hp_note": "3 Right damage -> 9 damage; Burn 4 -> Burn 12 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "calm_waters",
+   "name": "Calm Waters",
+   "pattern": "W",
+   "effects": [
+    {
+     "op": "shield",
+     "n": 5,
+     "lasting": true
+    }
+   ],
+   "flavor": "Not a drop. Not one.",
+   "rarity": "legendary",
+   "anti": true,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "still_air",
+   "name": "Still Air",
+   "pattern": "A",
+   "effects": [
+    {
+     "op": "aegis",
+     "n": 1
+    },
+    {
+     "op": "heal",
+     "n": 6
+    }
+   ],
+   "flavor": "Hold your breath, and the world holds its blows.",
+   "rarity": "legendary",
+   "anti": true,
+   "durability": 1,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "wisp",
+   "name": "Wisp",
+   "pattern": "A",
+   "effects": [
+    {
+     "op": "infuse",
+     "el": "random"
+    }
+   ],
+   "flavor": "A little light that brings a little help.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "splash",
+   "name": "Splash",
+   "pattern": "W",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 3,
+     "el": "F",
+     "target": "target"
+    }
+   ],
+   "flavor": "Mostly harmless. Mostly.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "Snipe 1 -> 3 damage"
+  },
+  {
+   "id": "flame_lash",
+   "name": "Flame Lash",
+   "pattern": "FF",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 3,
+     "target": "two"
+    }
+   ],
+   "flavor": "A whip of fire, with a lingering sting.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "Burn 1 -> Burn 3 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "steam_burst",
+   "name": "Steam Burst",
+   "pattern": "FW",
+   "effects": [
+    {
+     "op": "shield",
+     "n": 3
+    }
+   ],
+   "flavor": "Hiss, pop, and a cloud to hide in.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "tide_ward",
+   "name": "Tide Ward",
+   "pattern": "WW",
+   "effects": [
+    {
+     "op": "thorns",
+     "n": 9
+    }
+   ],
+   "flavor": "The sea guards its own, with barnacles.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "Thorns 3 -> Thorns 9 (HP)"
+  },
+  {
+   "id": "mist_step",
+   "name": "Mist Step",
+   "pattern": "WA",
+   "effects": [
+    {
+     "op": "infuse",
+     "el": "random"
+    }
+   ],
+   "flavor": "Step aside, into the fog.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "ember_gust",
+   "name": "Spatter",
+   "pattern": "AF",
+   "effects": [
+    {
+     "op": "expose",
+     "n": 1
+    }
+   ],
+   "flavor": "Hot paint, flicked off the brush.",
+   "rarity": "common",
+   "hp_status": "needs_redesign",
+   "hp_note": "expose (Repaint enemy Essence): no HP equivalent"
+  },
+  {
+   "id": "rain_song",
+   "name": "Rain Song",
+   "pattern": "AWA",
+   "effects": [
+    {
+     "op": "heal",
+     "n": 2
+    },
+    {
+     "op": "draw",
+     "n": 1,
+     "when": "next",
+     "el": "W"
+    }
+   ],
+   "flavor": "Sing for the rain and it sings back.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "whirl",
+   "name": "Whirl",
+   "pattern": "AA",
+   "effects": [
+    {
+     "op": "rearrange",
+     "n": 1
+    }
+   ],
+   "flavor": "Spin them round; front goes to the back.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "Wild Rearrange -> Rearrange (your chant only)"
+  },
+  {
+   "id": "wild_flame",
+   "name": "Wild Flame",
+   "pattern": "F??",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 9,
+     "target": "target"
+    }
+   ],
+   "flavor": "Any fuel will do.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "Burn 3 -> Burn 9 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "wellspring_rite",
+   "name": "Wellspring Rite",
+   "pattern": "?W",
+   "effects": [
+    {
+     "op": "heal",
+     "n": 3
+    }
+   ],
+   "flavor": "Every spring starts somewhere.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "gale_call",
+   "name": "Gale Call",
+   "pattern": "A?",
+   "effects": [
+    {
+     "op": "conjure",
+     "n": 2
+    }
+   ],
+   "flavor": "Whistle, and the wind brings a guest.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "twin_comets",
+   "name": "Twin Comets",
+   "pattern": "FF",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 6,
+     "target": "two"
+    }
+   ],
+   "flavor": "One for you, one for your friend.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "Burn 2 -> Burn 6 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "undercurrent",
+   "name": "Undercurrent",
+   "pattern": "WW",
+   "effects": [
+    {
+     "op": "steal",
+     "n": 2,
+     "el": "W",
+     "target": "target",
+     "dmg": 6
+    }
+   ],
+   "flavor": "What it pulls under, it gives to you.",
+   "rarity": "rare",
+   "durability": 1,
+   "hp_status": "converted",
+   "hp_note": "Steal 2 -> deal 6 damage and gain 2 Essence (random element: there is no orb to take)"
+  },
+  {
+   "id": "crosswind",
+   "name": "Crosswind",
+   "pattern": "AA",
+   "effects": [
+    {
+     "op": "weak",
+     "turns": 1,
+     "target": "all"
+    }
+   ],
+   "flavor": "Hard to swing straight in this wind.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "searing_brand",
+   "name": "Daub",
+   "pattern": "FF",
+   "effects": [
+    {
+     "op": "expose",
+     "n": 2
+    }
+   ],
+   "flavor": "Slapped on thick, still smoking.",
+   "rarity": "rare",
+   "hp_status": "needs_redesign",
+   "hp_note": "expose (Repaint enemy Essence): no HP equivalent"
+  },
+  {
+   "id": "cold_snap",
+   "name": "Arctic Wind",
+   "pattern": "WA",
+   "effects": [
+    {
+     "op": "stun",
+     "turns": 1,
+     "target": "target"
+    }
+   ],
+   "flavor": "Frozen mid-swing.",
+   "rarity": "rare",
+   "durability": 1,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "hailstone",
+   "name": "Hailstone",
+   "pattern": "AW",
+   "effects": [
+    {
+     "op": "weak",
+     "turns": 2,
+     "target": "target"
+    }
+   ],
+   "flavor": "Bruises and bad moods.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "cinder_rain",
+   "name": "Cinder Rain",
+   "pattern": "AF",
+   "effects": [
+    {
+     "op": "barrage",
+     "n": 3,
+     "dmg": 3
+    }
+   ],
+   "flavor": "Look up. Then don't.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "3 hits of 1 -> 3 hits of 3 damage"
+  },
+  {
+   "id": "quiet_wind",
+   "name": "Quiet Wind",
+   "pattern": "AAWA",
+   "effects": [
+    {
+     "op": "shield",
+     "n": 2
+    }
+   ],
+   "flavor": "Say nothing, and the wind keeps you.",
+   "rarity": "common",
+   "anti": true,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "phoenix_feather",
+   "name": "Phoenix Feather",
+   "pattern": "F?",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 6,
+     "target": "target"
+    }
+   ],
+   "flavor": "Warm enough to heal, hot enough to hurt.",
+   "rarity": "legendary",
+   "hp_status": "converted",
+   "hp_note": "Burn 2 -> Burn 6 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "tidecaller",
+   "name": "Tidecaller",
+   "pattern": "A?A",
+   "effects": [
+    {
+     "op": "infuse",
+     "el": "W",
+     "n": 1
+    },
+    {
+     "op": "infuse",
+     "el": "?",
+     "n": 1
+    }
+   ],
+   "flavor": "The water comes when called, for a turn.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "ash_and_ember",
+   "name": "Adam's Fervor",
+   "pattern": "FA",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 3,
+     "target": "all"
+    },
+    {
+     "op": "stoke",
+     "target": "all"
+    }
+   ],
+   "flavor": "Feed every fire at once.",
+   "rarity": "rare",
+   "durability": 2,
+   "hp_status": "converted",
+   "hp_note": "Burn 1 -> Burn 3 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "thieving_wind",
+   "name": "Thieving Wind",
+   "pattern": "AA?",
+   "effects": [
+    {
+     "op": "steal",
+     "n": 1,
+     "el": "any",
+     "target": "target",
+     "dmg": 3
+    }
+   ],
+   "flavor": "The breeze has sticky fingers.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "Steal 1 -> deal 3 damage and gain 1 Essence (random element: there is no orb to take)"
+  },
+  {
+   "id": "kindled_heart",
+   "name": "Kindled Heart",
+   "pattern": "FW",
+   "effects": [
+    {
+     "op": "aegis",
+     "n": 1
+    }
+   ],
+   "flavor": "A warm heart burns two ways.",
+   "rarity": "rare",
+   "cooldown": 2,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "mirror_pool",
+   "name": "Moonlight on a Still Lake",
+   "pattern": "WW",
+   "effects": [
+    {
+     "op": "duplicate",
+     "times": 3
+    }
+   ],
+   "flavor": "Look closely: there are two of you.",
+   "rarity": "legendary",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "updraft_lance",
+   "name": "Updraft Lance",
+   "pattern": "AF",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 3,
+     "target": "random2"
+    }
+   ],
+   "flavor": "Thrown up, coming down somewhere.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "1 Right damage -> 3 damage"
+  },
+  {
+   "id": "fog_of_war",
+   "name": "Fog of War",
+   "pattern": "FW",
+   "effects": [
+    {
+     "op": "daze",
+     "n": 1,
+     "target": "all"
+    }
+   ],
+   "flavor": "While it hangs, nobody swings straight.",
+   "rarity": "rare",
+   "anti": true,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "heat_haze",
+   "name": "Heat Haze",
+   "pattern": "FA",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 3,
+     "target": "all"
+    }
+   ],
+   "flavor": "Shimmering air shows every weak spot, and singes it.",
+   "rarity": "rare",
+   "anti": true,
+   "hp_status": "converted",
+   "hp_note": "Burn 1 -> Burn 3 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "hush_of_rain",
+   "name": "Hush of Rain",
+   "pattern": "AWW",
+   "effects": [
+    {
+     "op": "heal",
+     "n": 2
+    }
+   ],
+   "flavor": "Listen to the rain instead of speaking.",
+   "rarity": "common",
+   "anti": true,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "smoke_signal",
+   "name": "Smoke Signal",
+   "pattern": "AF",
+   "effects": [
+    {
+     "op": "conjure",
+     "n": 1
+    }
+   ],
+   "flavor": "Somebody saw it. Somebody's coming.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "ripplewind",
+   "name": "Ripplewind",
+   "pattern": "WA",
+   "effects": [
+    {
+     "op": "self_repaint",
+     "n": 3,
+     "to": "W"
+    }
+   ],
+   "flavor": "A ripple that rewrites the shore.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "coal_toss",
+   "name": "Coal Toss",
+   "pattern": "FF",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 6,
+     "target": "random"
+    }
+   ],
+   "flavor": "Underhand, still hot.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "2 Right damage -> 6 damage"
+  },
+  {
+   "id": "flamecaller",
+   "name": "Shadows in the Flame",
+   "pattern": "FFA",
+   "effects": [
+    {
+     "op": "conjure",
+     "n": 2
+    }
+   ],
+   "flavor": "Call the fire, and its friends.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "tsunami_ward",
+   "name": "Tsunami Ward",
+   "pattern": "WWW",
+   "effects": [
+    {
+     "op": "shield",
+     "n": 6
+    }
+   ],
+   "flavor": "A wall of sea with teeth.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "thunderhead",
+   "name": "Daedalus's Trigger",
+   "pattern": "FAF",
+   "effects": [
+    {
+     "op": "passive",
+     "key": "snipe_bonus",
+     "n": 3
+    },
+    {
+     "op": "damage",
+     "n": 3,
+     "target": "target"
+    }
+   ],
+   "flavor": "The sky picks three, and does not miss.",
+   "rarity": "legendary",
+   "power": true,
+   "hp_status": "converted",
+   "hp_note": "passive snipe_bonus 1 -> 3; Snipe 1 -> 3 damage"
+  },
+  {
+   "id": "lava_flow",
+   "name": "Frost Burn",
+   "pattern": "FFW",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 6,
+     "target": "target"
+    },
+    {
+     "op": "stun",
+     "turns": 1,
+     "target": "target",
+     "if_burn": 12
+    }
+   ],
+   "flavor": "Slow, glowing, unstoppable.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "Burn 2 -> Burn 6 (loses that much HP at the start of its turn); its condition: 4+ Burn -> 12+ Burn"
+  },
+  {
+   "id": "frostbite",
+   "name": "Frostbite",
+   "pattern": "WAW",
+   "effects": [
+    {
+     "op": "stun",
+     "turns": 1,
+     "target": "target"
+    }
+   ],
+   "flavor": "It stops them, then it hurts.",
+   "rarity": "rare",
+   "cooldown": 2,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "tempest_veil",
+   "name": "Tempest Veil",
+   "pattern": "AWA",
+   "effects": [
+    {
+     "op": "shield",
+     "n": 4,
+     "lasting": true
+    }
+   ],
+   "flavor": "Wrap yourself in the storm.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "ember_storm",
+   "name": "Ember Storm",
+   "pattern": "FAF",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 3,
+     "target": "all"
+    }
+   ],
+   "flavor": "Embers everywhere, all at once.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "Burn 1 -> Burn 3 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "healing_rain",
+   "name": "Healing Rain",
+   "pattern": "WWA",
+   "effects": [
+    {
+     "op": "heal",
+     "n": 5
+    }
+   ],
+   "flavor": "Let it wash everything off.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "sky_lance",
+   "name": "Sky Lance",
+   "pattern": "AAA",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 6,
+     "target": "target"
+    }
+   ],
+   "flavor": "Down from the clouds, straight through.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "Snipe 2 -> 6 damage"
+  },
+  {
+   "id": "witch_fire",
+   "name": "Unholy Fire",
+   "pattern": "F?F",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 12,
+     "target": "target"
+    },
+    {
+     "op": "sacrifice",
+     "hp": 2
+    }
+   ],
+   "flavor": "Green flames, foul smoke.",
+   "rarity": "legendary",
+   "hp_status": "converted",
+   "hp_note": "Burn 4 -> Burn 12 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "deep_freeze",
+   "name": "Deep Freeze",
+   "pattern": "W?W",
+   "effects": [
+    {
+     "op": "stun",
+     "turns": 2,
+     "target": "all"
+    },
+    {
+     "op": "shield",
+     "n": 10,
+     "lasting": true
+    }
+   ],
+   "flavor": "Everything stops. Even the clock.",
+   "rarity": "legendary",
+   "durability": 1,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "molten_core",
+   "name": "Molten Core",
+   "pattern": "FWF",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 3,
+     "target": "random"
+    }
+   ],
+   "flavor": "Leave it be and it erupts by itself.",
+   "rarity": "rare",
+   "anti": true,
+   "hp_status": "converted",
+   "hp_note": "Burn 1 -> Burn 3 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "silent_tide",
+   "name": "Silent Tide",
+   "pattern": "WFW",
+   "effects": [
+    {
+     "op": "shield",
+     "n": 3
+    }
+   ],
+   "flavor": "The sea rises when no one speaks.",
+   "rarity": "rare",
+   "anti": true,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "windless_night",
+   "name": "Windless Night",
+   "pattern": "AFA",
+   "effects": [
+    {
+     "op": "shield",
+     "n": 3
+    }
+   ],
+   "flavor": "Not a breath, not a blow.",
+   "rarity": "common",
+   "anti": true,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "cinder_shield",
+   "name": "Cinder Shield",
+   "pattern": "FWW",
+   "effects": [
+    {
+     "op": "shield",
+     "n": 5
+    }
+   ],
+   "flavor": "Hold it up and it smokes at them.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "gale_slash",
+   "name": "Gale Slash",
+   "pattern": "AFFA",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 3,
+     "target": "target"
+    }
+   ],
+   "flavor": "One sweep, everyone.",
+   "rarity": "common",
+   "anti": true,
+   "hp_status": "converted",
+   "hp_note": "1 Left damage -> 3 damage"
+  },
+  {
+   "id": "rainbow_bridge",
+   "name": "Rainbow Bridge",
+   "pattern": "FWA",
+   "effects": [
+    {
+     "op": "conjure",
+     "n": 2
+    },
+    {
+     "op": "draw",
+     "n": 3,
+     "when": "next",
+     "el": "random"
+    }
+   ],
+   "flavor": "Every colour brings a gift.",
+   "rarity": "legendary",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "wind_shear",
+   "name": "Wind Shear",
+   "pattern": "AWF",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 6,
+     "target": "target"
+    }
+   ],
+   "flavor": "Twist them round and cut the new tail.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "2 Right damage -> 6 damage"
+  },
+  {
+   "id": "hearth_song",
+   "name": "Hearth Song",
+   "pattern": "FAW",
+   "effects": [
+    {
+     "op": "heal",
+     "n": 4
+    }
+   ],
+   "flavor": "Home is wherever this is sung.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "brimstone",
+   "name": "Brimstone",
+   "pattern": "FFF",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 6,
+     "target": "all"
+    }
+   ],
+   "flavor": "It burns the caster too. Worth it.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "Burn 2 -> Burn 6 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "undertow_grip",
+   "name": "Seasickness",
+   "pattern": "WAW",
+   "effects": [
+    {
+     "op": "weak",
+     "turns": 2,
+     "target": "all"
+    },
+    {
+     "op": "shatter",
+     "target": "all"
+    }
+   ],
+   "flavor": "Pulled under and worn down.",
+   "rarity": "common",
+   "hp_status": "needs_redesign",
+   "hp_note": "shatter (break enemy Armour (armour on orbs)): no HP equivalent"
+  },
+  {
+   "id": "mistral",
+   "name": "Splotch",
+   "pattern": "AAW",
+   "effects": [
+    {
+     "op": "expose",
+     "n": 3
+    }
+   ],
+   "flavor": "A cold wind throws the whole pot.",
+   "rarity": "rare",
+   "hp_status": "needs_redesign",
+   "hp_note": "expose (Repaint enemy Essence): no HP equivalent"
+  },
+  {
+   "id": "soothing_mist",
+   "name": "Soothing Mist",
+   "pattern": "WAAF",
+   "effects": [
+    {
+     "op": "heal",
+     "n": 1
+    }
+   ],
+   "flavor": "Breathe it in. Don't say a word.",
+   "rarity": "common",
+   "anti": true,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "ashen_veil",
+   "name": "Ashen Veil",
+   "pattern": "FAA",
+   "effects": [
+    {
+     "op": "ethereal",
+     "target": "self"
+    },
+    {
+     "op": "vulnerable",
+     "n": 2,
+     "target": "self"
+    }
+   ],
+   "flavor": "Become smoke. Smoke can't be hit.",
+   "rarity": "rare",
+   "durability": 2,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "ice_lance",
+   "name": "Ice Lance",
+   "pattern": "WWA",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 9,
+     "target": "target"
+    },
+    {
+     "op": "stun",
+     "turns": 1,
+     "target": "target"
+    }
+   ],
+   "flavor": "Clean, cold, and to the point.",
+   "rarity": "common",
+   "durability": 1,
+   "hp_status": "converted",
+   "hp_note": "3 Random damage -> 9 damage"
+  },
+  {
+   "id": "sunlit_grove",
+   "name": "Sunlit Grove",
+   "pattern": "WAF",
+   "effects": [
+    {
+     "op": "heal",
+     "n": 4
+    }
+   ],
+   "flavor": "Light through leaves, and something to pick.",
+   "rarity": "common",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "dustdevil",
+   "name": "Dustdevil",
+   "pattern": "AAF",
+   "effects": [
+    {
+     "op": "move",
+     "n": 2
+    }
+   ],
+   "flavor": "Spins things around, throws things about.",
+   "rarity": "common",
+   "hp_status": "needs_redesign",
+   "hp_note": "move (Rearrange enemy Essence): no HP equivalent"
+  },
+  {
+   "id": "glacial_spike",
+   "name": "Glacial Spike",
+   "pattern": "WFA",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 6,
+     "target": "two"
+    }
+   ],
+   "flavor": "Ice through one, frost on another.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "2 Left damage -> 6 damage"
+  },
+  {
+   "id": "inferno_lance",
+   "name": "Daedalus's Barrel",
+   "pattern": "FFFA",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 9,
+     "target": "target"
+    }
+   ],
+   "flavor": "Through them, then all over them.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "Snipe 3 -> 9 damage"
+  },
+  {
+   "id": "maelstrom_ward",
+   "name": "Maelstrom Ward",
+   "pattern": "WWWA",
+   "effects": [
+    {
+     "op": "shield",
+     "n": 8
+    }
+   ],
+   "flavor": "A whirlpool to stand in. Come closer.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "storm_legion",
+   "name": "Storm Legion",
+   "pattern": "AAAF",
+   "effects": [
+    {
+     "op": "barrage",
+     "n": 4,
+     "dmg": 3
+    }
+   ],
+   "flavor": "A hundred tiny lightnings, all late for something.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "4 hits of 1 -> 4 hits of 3 damage"
+  },
+  {
+   "id": "steam_titan",
+   "name": "Steam Titan",
+   "pattern": "FWFW",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 9,
+     "target": "target"
+    },
+    {
+     "op": "shield",
+     "n": 5
+    },
+    {
+     "op": "burn",
+     "n": 6,
+     "target": "target"
+    }
+   ],
+   "flavor": "Iron lungs, boiling fists.",
+   "rarity": "legendary",
+   "hp_status": "converted",
+   "hp_note": "3 Right damage -> 9 damage; Burn 2 -> Burn 6 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "frozen_tomb",
+   "name": "Frozen Tomb",
+   "pattern": "WWAW",
+   "effects": [
+    {
+     "op": "stun",
+     "turns": 2,
+     "target": "target"
+    },
+    {
+     "op": "expose",
+     "n": 2
+    }
+   ],
+   "flavor": "Sealed in, picked apart.",
+   "rarity": "legendary",
+   "cooldown": 2,
+   "hp_status": "needs_redesign",
+   "hp_note": "expose (Repaint enemy Essence): no HP equivalent"
+  },
+  {
+   "id": "sky_sovereign",
+   "name": "Sky Sovereign",
+   "pattern": "AAWA",
+   "effects": [
+    {
+     "op": "conjure",
+     "n": 2
+    },
+    {
+     "op": "infuse",
+     "el": "random",
+     "n": 2
+    }
+   ],
+   "flavor": "The sky bows to no one, but sends gifts.",
+   "rarity": "legendary",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "tidal_surge",
+   "name": "Ludwig's Backup Plan",
+   "pattern": "W?A",
+   "effects": [
+    {
+     "op": "steal",
+     "n": 2,
+     "el": "any",
+     "into": "chant",
+     "target": "target",
+     "dmg": 6
+    },
+    {
+     "op": "sacrifice",
+     "hp": 5
+    }
+   ],
+   "flavor": "The tide takes, the tide gives.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "Steal 2 -> deal 6 damage and gain 2 Essence (random element: there is no orb to take)"
+  },
+  {
+   "id": "wildfire_pact",
+   "name": "Burn Burn Burn!",
+   "pattern": "F?FA",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 6,
+     "target": "all"
+    },
+    {
+     "op": "stoke",
+     "target": "all"
+    }
+   ],
+   "flavor": "Burn it all, and pay tomorrow.",
+   "rarity": "rare",
+   "durability": 1,
+   "hp_status": "converted",
+   "hp_note": "Burn 2 -> Burn 6 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "moon_tide",
+   "name": "Moon Tide",
+   "pattern": "W?WA",
+   "effects": [
+    {
+     "op": "heal",
+     "n": 7
+    }
+   ],
+   "flavor": "Silver water, washing clean.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "cyclone_edge",
+   "name": "Cyclone Edge",
+   "pattern": "A?AF",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 6,
+     "target": "all"
+    }
+   ],
+   "flavor": "Two spinning cuts, two open wounds.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "2 Left damage -> 6 damage"
+  },
+  {
+   "id": "ember_chorus",
+   "name": "Ember Chorus",
+   "pattern": "FWAF",
+   "effects": [
+    {
+     "op": "conjure",
+     "n": 3
+    }
+   ],
+   "flavor": "Fire sings in harmony.",
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "winter_gale",
+   "name": "Panic Button",
+   "pattern": "WAAW",
+   "effects": [
+    {
+     "op": "heal",
+     "n": 5
+    },
+    {
+     "op": "stun",
+     "turns": 1,
+     "target": "all"
+    }
+   ],
+   "flavor": "Too cold to hit hard.",
+   "rarity": "common",
+   "durability": 1,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "forge_fire",
+   "name": "Forge Fire",
+   "pattern": "FFWW",
+   "effects": [
+    {
+     "op": "shield",
+     "n": 6
+    },
+    {
+     "op": "passive",
+     "key": "thorns",
+     "n": 3
+    }
+   ],
+   "flavor": "Hammer, quench, repeat.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "passive thorns 1 -> 3"
+  },
+  {
+   "id": "gust_front",
+   "name": "Sulfuric Pit",
+   "pattern": "AFAF",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 6,
+     "target": "all"
+    }
+   ],
+   "flavor": "The wall of wind before the storm.",
+   "rarity": "common",
+   "cooldown": 1,
+   "hp_status": "converted",
+   "hp_note": "Burn 2 -> Burn 6 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "blood_moon",
+   "name": "Blood Moon",
+   "pattern": "FWWF",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 6,
+     "target": "all"
+    }
+   ],
+   "flavor": "A red night asks for a red price.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "2 Right damage -> 6 damage"
+  },
+  {
+   "id": "solar_flare",
+   "name": "Solar Flare",
+   "pattern": "FFAFF",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 9,
+     "target": "all"
+    },
+    {
+     "op": "burn",
+     "n": 9,
+     "target": "all"
+    }
+   ],
+   "flavor": "The sun leans in for a closer look.",
+   "rarity": "legendary",
+   "durability": 2,
+   "hp_status": "converted",
+   "hp_note": "3 Right damage -> 9 damage; Burn 3 -> Burn 9 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "heavens_gale",
+   "name": "Heaven's Gale",
+   "pattern": "AAWA",
+   "effects": [
+    {
+     "op": "conjure",
+     "n": 3
+    },
+    {
+     "op": "aegis",
+     "n": 1
+    }
+   ],
+   "flavor": "The sky opens and spells fall out.",
+   "rarity": "legendary",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "elemental_fury",
+   "name": "Elemental Fury",
+   "pattern": "F?A?W",
+   "effects": [
+    {
+     "op": "barrage",
+     "n": 6,
+     "dmg": 3
+    }
+   ],
+   "flavor": "Everything, everywhere, all angry.",
+   "rarity": "legendary",
+   "hp_status": "converted",
+   "hp_note": "6 hits of 1 -> 6 hits of 3 damage"
+  },
+  {
+   "id": "tide_of_ages",
+   "name": "You Shall Not Pass",
+   "pattern": "WAWA",
+   "effects": [
+    {
+     "op": "heal",
+     "n": 5
+    },
+    {
+     "op": "shield",
+     "n": 5
+    }
+   ],
+   "flavor": "The oldest water remembers how to mend.",
+   "rarity": "legendary",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "firestorm_herald",
+   "name": "Surgical Burn",
+   "pattern": "F?A?F",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 18,
+     "target": "target"
+    }
+   ],
+   "flavor": "It announces the fire. Loudly.",
+   "rarity": "rare",
+   "durability": 1,
+   "hp_status": "converted",
+   "hp_note": "Burn 6 -> Burn 18 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "storm_sermon",
+   "name": "Storm Sermon",
+   "pattern": "A?W?A",
+   "effects": [
+    {
+     "op": "stun",
+     "turns": 2,
+     "target": "all"
+    }
+   ],
+   "flavor": "A long sermon, and everyone's tired.",
+   "rarity": "rare",
+   "exhaust": true,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "sunfall",
+   "name": "Eclipse",
+   "pattern": "FFWFF",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 15,
+     "target": "target"
+    }
+   ],
+   "flavor": "A piece of the sun, dropped on purpose.",
+   "rarity": "rare",
+   "durability": 2,
+   "hp_status": "converted",
+   "hp_note": "5 Right damage -> 15 damage"
+  },
+  {
+   "id": "worlds_end",
+   "name": "World's End",
+   "pattern": "FWA?AW",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 15,
+     "target": "all"
+    },
+    {
+     "op": "burn",
+     "n": 9,
+     "target": "all"
+    }
+   ],
+   "flavor": "There is nothing after this. Use it well.",
+   "rarity": "legendary",
+   "durability": 1,
+   "hp_status": "converted",
+   "hp_note": "5 Right damage -> 15 damage; Burn 3 -> Burn 9 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "thorn_dart",
+   "name": "Thorn Dart",
+   "pattern": "AW",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 3,
+     "target": "target"
+    }
+   ],
+   "flavor": "Small, quiet, and exactly where you meant it.",
+   "rarity": "common",
+   "hp_status": "converted",
+   "hp_note": "Snipe 1 -> 3 damage"
+  },
+  {
+   "id": "hawks_eye",
+   "name": "Daedalus's Scope",
+   "pattern": "AFA",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 6,
+     "target": "target"
+    }
+   ],
+   "flavor": "Nothing hides from the hawk.",
+   "rarity": "rare",
+   "hp_status": "converted",
+   "hp_note": "Snipe 2 -> 6 damage"
+  },
+  {
+   "id": "handyman_power",
+   "name": "Handyman",
+   "pattern": "FW",
+   "effects": [
+    {
+     "op": "passive",
+     "key": "durability_bonus",
+     "n": 1
+    }
+   ],
+   "flavor": "A little glue, a few nails: everything lasts a bit longer.",
+   "power": true,
+   "rarity": "rare",
+   "unlock_by": "handyman",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "disturbance",
+   "name": "Disturbance",
+   "pattern": "FWA",
+   "effects": [
+    {
+     "op": "passive",
+     "key": "disturbance",
+     "n": 1
+    }
+   ],
+   "flavor": "Touch the chant, and something out there flinches.",
+   "power": true,
+   "rarity": "legendary",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "perpetual_motion",
+   "name": "Daedalus's Perpetual Motion",
+   "pattern": "FAAF",
+   "effects": [
+    {
+     "op": "each_turn",
+     "effects": [
+      {
+       "op": "damage",
+       "n": 3,
+       "target": "target"
+      }
+     ]
+    }
+   ],
+   "flavor": "It never stops, and neither does its aim.",
+   "power": true,
+   "rarity": "legendary",
+   "hp_status": "converted",
+   "hp_note": "Snipe 1 -> 3 damage"
+  },
+  {
+   "id": "desperate_measure",
+   "name": "Desperate Measure",
+   "pattern": "AFA",
+   "effects": [
+    {
+     "op": "burn",
+     "n": 18,
+     "target": "target"
+    },
+    {
+     "op": "heal",
+     "n": 6
+    },
+    {
+     "op": "max_hp",
+     "n": 6
+    },
+    {
+     "op": "all_fragile"
+    }
+   ],
+   "flavor": "Everything you have, right now. Nothing left for later.",
+   "rarity": "legendary",
+   "no_fuse": true,
+   "hp_status": "converted",
+   "hp_note": "Burn 6 -> Burn 18 (loses that much HP at the start of its turn)"
+  },
+  {
+   "id": "braums_resolve",
+   "name": "Braum's Resolve",
+   "pattern": "AAA",
+   "effects": [
+    {
+     "op": "passive",
+     "key": "all_lasting",
+     "n": 1
+    }
+   ],
+   "flavor": "Stand your ground, and the ground stands with you.",
+   "power": true,
+   "rarity": "rare",
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "trinity_first",
+   "name": "Trinity - First Fragment",
+   "pattern": "FF",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 3,
+     "target": "target"
+    }
+   ],
+   "trinity": true,
+   "flavor": "Cast all three Fragments in one turn and they become one.",
+   "rarity": "common",
+   "no_fuse": true,
+   "hp_status": "converted",
+   "hp_note": "Snipe 1 -> 3 damage"
+  },
+  {
+   "id": "trinity_second",
+   "name": "Trinity - Second Fragment",
+   "pattern": "WW",
+   "effects": [
+    {
+     "op": "shield",
+     "n": 1
+    }
+   ],
+   "trinity": true,
+   "flavor": "Cast all three Fragments in one turn and they become one.",
+   "rarity": "common",
+   "no_fuse": true,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "trinity_third",
+   "name": "Trinity - Third Fragment",
+   "pattern": "AA",
+   "effects": [
+    {
+     "op": "heal",
+     "n": 1
+    }
+   ],
+   "trinity": true,
+   "flavor": "Cast all three Fragments in one turn and they become one.",
+   "rarity": "common",
+   "no_fuse": true,
+   "hp_status": "unchanged"
+  },
+  {
+   "id": "trinity",
+   "name": "Trinity",
+   "pattern": "FWA",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 9,
+     "target": "target"
+    },
+    {
+     "op": "shield",
+     "n": 3
+    },
+    {
+     "op": "heal",
+     "n": 3
+    }
+   ],
+   "hidden": true,
+   "flavor": "Three pieces of one thing, whole again.",
+   "rarity": "legendary",
+   "no_fuse": true,
+   "hp_status": "converted",
+   "hp_note": "Snipe 3 -> 9 damage"
+  },
+  {
+   "id": "summoning_bill",
+   "name": "Summoning Bill",
+   "pattern": "",
+   "free": true,
+   "hidden": true,
+   "no_fuse": true,
+   "rarity": "unique",
+   "desc": "Costs nothing. Summon Bill to this world.",
+   "effects": [
+    {
+     "op": "summon_bill"
+    }
+   ],
+   "flavor": "Three books, one name, no way back.",
+   "hp_status": "unchanged"
+  }
+ ]
+}

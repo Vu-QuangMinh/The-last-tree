@@ -5,6 +5,8 @@ extends RefCounted
 
 
 static func moves_tooltip(id: String, bonus: int) -> String:
+	if not EnemyDefs.E.has(id):
+		return ""  # (an enemy only Die on Stage makes, e.g. the Matron's Briar Hedge: no chant game moves to show)
 	var d := EnemyDefs.get_def(id)
 	var title: String = d.name + (" · Boss" if d.get("boss", false) else (" · Elite" if d.get("elite", false) else ""))
 	if not SaveManager.in_codex(id):

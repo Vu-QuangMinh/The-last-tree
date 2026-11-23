@@ -916,6 +916,22 @@ func pop(j: int) -> void:
 	creature.hit(0.6)
 
 
+## Burn: HP Essence j flares up hot and fizzles away to nothing, and the enemy jerks.
+func fizzle(j: int) -> void:
+	if creature != null:
+		creature.hit(0.55)
+	if j < 0 or j >= _hp_icons.size():
+		return
+	var icon: ElementIcon = _hp_icons[j]
+	icon.pivot_offset = icon.size / 2.0
+	var tw := icon.create_tween()
+	tw.tween_property(icon, "scale", Vector2(1.35, 1.35), 0.12)
+	tw.parallel().tween_property(icon, "modulate", Color(2.4, 1.3, 0.5), 0.12)
+	tw.tween_interval(0.06)
+	tw.tween_property(icon, "scale", Vector2(0.2, 0.2), 0.3).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(icon, "modulate", Color(0.3, 0.2, 0.15, 0.0), 0.3)
+
+
 ## Hurt: it jolts, blinks white and pulls a pained face (no blood).
 func hit_flash() -> void:
 	creature.hit(1.0)

@@ -5,8 +5,8 @@ const VERSION := 3
 const SPELL_COST := {"common": 15, "rare": 30, "legendary": 60}
 const POWER_EXTRA := 10
 ## Unlocked from the first run (plus the four starters): commons, some rares, and enough legendaries for the bosses.
-const DEFAULT_SPELLS := ["coup_de_grace", "thorn_dart", "hawks_eye", "ember", "droplet", "whisper", "updraft", "flare",
-	"tide_pool", "cyclone", "fan_the_flames", "steam", "scald", "mist_veil", "rain", "inferno", "glacier",
+const DEFAULT_SPELLS := ["thorn_dart", "hawks_eye", "ember", "droplet", "whisper", "updraft", "flare",
+	"tide_pool", "fan_the_flames", "steam", "scald", "mist_veil", "rain", "inferno", "glacier",
 	"tempest", "thermal_burst", "whirlpool", "alchemy", "clear_sight", "bandage", "kindle",
 	"spark_word", "spring_word", "breath_word", "firestorm", "storm_front", "leech", "searing_mist",
 	"resonance", "steam_cloud", "tide_thief", "sirens_call", "maelstrom_grasp", "annihilate",
@@ -22,7 +22,7 @@ const DEFAULT_SPELLS := ["coup_de_grace", "thorn_dart", "hawks_eye", "ember", "d
 	"lava_flow", "frostbite", "tempest_veil", "ember_storm", "healing_rain", "sky_lance", "witch_fire",
 	"molten_core", "silent_tide", "windless_night", "cinder_shield", "gale_slash", "wind_shear",
 	"hearth_song", "brimstone", "undertow_grip", "mistral", "soothing_mist", "ashen_veil",
-	"ice_lance", "grave_wind", "sunlit_grove", "dustdevil", "glacial_spike", "inferno_lance", "maelstrom_ward",
+	"ice_lance", "sunlit_grove", "dustdevil", "glacial_spike", "inferno_lance", "maelstrom_ward",
 	"storm_legion", "tidal_surge", "wildfire_pact", "moon_tide", "cyclone_edge", "ember_chorus",
 	"winter_gale", "forge_fire", "gust_front", "blood_moon", "firestorm_herald", "storm_sermon", "sunfall",
 	"arcane_barrage", "trinity_first", "trinity_second", "trinity_third"]

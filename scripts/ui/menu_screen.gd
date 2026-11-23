@@ -3,6 +3,7 @@ extends Control
 ## Title screen.
 
 signal play
+signal dice_mode  # Die on Stage (2026-11-15): the dice mode, a run of its own (DiceGame)
 signal continue_run  # pick up the saved run
 signal codex
 signal unlocks
@@ -95,7 +96,7 @@ var _buttons: Array[Button] = []
 ## The other themes: one column with every button.
 func _classic_buttons(v: VBoxContainer) -> void:
 	var tut_label := "Tutorial" if SaveManager.setting("tutorial_done", false) else "Tutorial  (recommended)"
-	var items := [["Play", play], [tut_label, tutorial], ["How to play · Wiki", how_to], ["Codex", codex], ["Unlocks  (✿ %d)" % SaveManager.data.seedlings, unlocks], ["Settings", settings], ["Quit", null]]
+	var items := [["Play", play], ["Die on Stage", dice_mode], [tut_label, tutorial], ["How to play · Wiki", how_to], ["Codex", codex], ["Unlocks  (✿ %d)" % SaveManager.data.seedlings, unlocks], ["Settings", settings], ["Quit", null]]
 	if SaveManager.has_run():
 		items.insert(0, ["Continue", continue_run])  # the saved run, where you left it
 		items[1][0] = "New run"
@@ -126,9 +127,9 @@ var _dev_col: VBoxContainer
 
 
 func _puppet_buttons() -> void:
-	var items: Array = [["Play", play], ["More...", _toggle_more], ["Quit", null]]
+	var items: Array = [["Play", play], ["Die on Stage", dice_mode], ["More...", _toggle_more], ["Quit", null]]
 	if SaveManager.has_run():
-		items = [["Continue", continue_run], ["New run", play], ["More...", _toggle_more], ["Quit", null]]
+		items = [["Continue", continue_run], ["New run", play], ["Die on Stage", dice_mode], ["More...", _toggle_more], ["Quit", null]]
 	for pair in items:
 		var b := _make_button(pair)
 		_column.add_child(b)

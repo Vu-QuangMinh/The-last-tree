@@ -1,0 +1,68 @@
+{
+ "elements": {
+  "F": "Fire",
+  "W": "Water",
+  "A": "Wind"
+ },
+ "spells": [
+  {
+   "id": "fire_ball",
+   "name": "Fire Ball",
+   "pattern": "FF",
+   "text": "Deal 3 damage.",
+   "passive_text": "Deals double damage to a burning enemy.",
+   "effects": [
+    {
+     "op": "damage",
+     "n": 3,
+     "target": "target"
+    }
+   ],
+   "passive": {
+    "key": "double_vs_burning"
+   }
+  },
+  {
+   "id": "water_wall",
+   "name": "Water Wall",
+   "pattern": "WW",
+   "text": "Gain 4 Shield.",
+   "passive_text": "+2 Shield for each other Water spell cast this turn. The number on the card always shows what you would get, and changes as you cast (green when it goes up, red when it goes down).",
+   "effects": [
+    {
+     "op": "shield",
+     "n": 4
+    }
+   ],
+   "passive": {
+    "key": "shield_per_water_cast",
+    "n": 2,
+    "live": true
+   }
+  },
+  {
+   "id": "updraft",
+   "name": "Updraft",
+   "pattern": "AA",
+   "text": "Gain 1 extra Essence next turn.",
+   "passive_text": "+1 Essence for each Air spell cast this turn. The number on the card always shows what you would get, and changes as you cast.",
+   "effects": [
+    {
+     "op": "draw",
+     "n": 1,
+     "when": "next",
+     "el": "random"
+    }
+   ],
+   "passive": {
+    "key": "draw_per_air_cast",
+    "n": 1,
+    "live": true
+   }
+  }
+ ],
+ "rules": {
+  "burn": "Burn is a stack, with no cap. At the start of the enemy's turn it loses HP equal to its Burn, then Burn goes down by 1. Any Burn above 0: it is burning.",
+  "live_numbers": "A number a passive changes always shows on the card, updated as you cast: green when it goes up, red when it goes down. You get what it shows when you cast it."
+ }
+}

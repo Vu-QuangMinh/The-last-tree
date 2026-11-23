@@ -1441,8 +1441,8 @@ func _on_bottle(chip: BottleChip) -> void:
 	await _h_input._on_bottle(chip)
 
 
-func _spell_chooser(spells: Array) -> int:
-	return await _h_input._spell_chooser(spells)
+func _spell_chooser(spells: Array, why := "grimoire") -> int:
+	return await _h_input._spell_chooser(spells, why)
 
 
 func _open_pause_menu() -> void:

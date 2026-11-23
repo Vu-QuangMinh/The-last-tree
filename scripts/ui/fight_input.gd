@@ -430,11 +430,6 @@ func _on_cast() -> void:
 
 
 func _on_card_clicked(card: SpellCard) -> void:
-	if scr.phase != "spells" and card.charges > 0 and not scr.busy:
-		# a stored spell: awake, but spells are cast after the chant
-		scr._h_anim._float_text("Chant first", card.global_position + Vector2(card.size.x * card.scale.x / 2.0 - 60, -10), Color(1, 0.9, 0.55))
-		Audio.play("release_armour_block", -6.0)
-		return
 	if scr.busy or scr.aiming or scr.phase != "spells" or card.charges <= 0 or not scr._allowed("cast", card.spell.id):
 		return
 	var spell: Dictionary = card.spell
@@ -495,7 +490,7 @@ func _on_end_turn() -> void:
 		return
 	if not scr._allowed("release" if scr.phase == "spells" else "pass"):
 		return
-	if scr.phase == "spells":  # (spells still alive aren't lost: they're stored for your next chant)
+	if scr.phase == "spells":  # (spells still alive go back to sleep: they aren't kept for later)
 		await scr._h_anim._damage_step()
 		return
 	# before chanting: pass the turn and keep your elements
@@ -551,7 +546,7 @@ func _on_bottle(chip: BottleChip) -> void:
 
 
 ## Grimoire Ink: choose a spell from your spellbook (not already active). Returns its index, or -1.
-func _spell_chooser(spells: Array) -> int:
+func _spell_chooser(spells: Array, why := "grimoire") -> int:
 	if spells.is_empty():
 		return -1
 	var overlay := Control.new()
@@ -569,9 +564,10 @@ func _spell_chooser(spells: Array) -> int:
 	v.add_theme_constant_override("separation", 18)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.add_child(v)
-	var t := UiTheme.heading("Grimoire Ink: choose a spell to join your active spells for this fight", 28, Color(1, 0.9, 0.55))
+	var title := "Your Power takes hold: choose a spell to take its place for this fight" if why == "power" else "Grimoire Ink: choose a spell to join your active spells for this fight"
+	var t := UiTheme.heading(title, 28, Color(1, 0.9, 0.55))
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var ribbon := UiSkin.box("banner_grimoire_ink", [184, 0, 174, 0], [110, 10, 110, 22])
+	var ribbon := UiSkin.box("banner_grimoire_ink", [184, 0, 174, 0], [110, 10, 110, 22]) if why != "power" else null
 	if ribbon != null:  # New theme: the title on a paper ribbon (dark ink, not gold)
 		t.add_theme_color_override("font_color", Color(0.28, 0.16, 0.1))
 		var rb := PanelContainer.new()
@@ -599,7 +595,7 @@ func _spell_chooser(spells: Array) -> int:
 		var k := i
 		card.clicked.connect(func(_c): scr._spell_chosen.emit(k))
 		flow.add_child(card)
-	var skip := UiTheme.button("Keep the ink (choose nothing)", func(): scr._spell_chosen.emit(-1), 20)
+	var skip := UiTheme.button("Keep the ink (choose nothing)" if why != "power" else "Leave it empty", func(): scr._spell_chosen.emit(-1), 20)
 	skip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(skip)
 	scr.add_child(overlay)

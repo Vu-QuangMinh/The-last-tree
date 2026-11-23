@@ -1489,8 +1489,6 @@ Turn %d" % [scr.run.act, scr.run.floor_no(), scr.fight.turn]))  # (two lines on 
 			card.lock_pattern = p.locks[s.id]
 		card.fires = pv.get("spells", {}).get(s.id, 0) if scr.phase == "build" else 0
 		card.charges = scr.fight.charges.get(s.id, 0) if scr.phase == "spells" else 0
-		if scr.phase != "spells" and scr.fight.stored.has(s.id) and scr.fight.usable_spells().has(s):
-			card.charges = 1  # stored: it always looks awake (wobbling, shining), even between turns; cast it after a Chant
 		if s.get("anti", false):
 			# an anti-spell comes alive with the chant, unless the chant contains its pattern (that breaks it)
 			var broken: bool = card.fires > 0 if scr.phase == "build" else scr.fight.anti_broken.has(s.id)
