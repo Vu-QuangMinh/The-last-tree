@@ -45,9 +45,9 @@ func run() -> void:
 	# upgrade by finding it again
 	r.learn_spell("spark")
 	_ok("found again: upgraded", int(r.card_levels.get("spark", 0)) == 1 and r.spell("spark").name == "Spark+")
-	# fusion: Spark (FF) + Splash (WW) -> FFWW, deals 5 and gives 2 Shield
+	# fusion: Spark (F) + Splash (W) -> FW, deals 5 and gives 2 Shield
 	var fz := r.fuse_preview("spark", "splash")
-	_ok("fused pattern: first then second", String(fz.pattern) == "FFWW")
+	_ok("fused pattern: first then second", String(fz.pattern) == "FW")
 	_ok("fused name: one of the user's", String(fz.name) != "" and String(fz.desc).contains("damage"))
 	r.fuse_commit(fz, "spark", "splash")
 	var fid := String(fz.id)
@@ -98,7 +98,7 @@ func run() -> void:
 	_ok("a fight with the new cards runs on the main game's fight (MarbleBridge)", bridge is MarbleBridge)
 	f = (bridge as MarbleBridge).m
 	print("  (burn %d block %d hand %d)" % [f.burn, f.block, f.hand.size()])
-	_ok("an event's Burn, Shield and gift marbles reach the new fight", f.burn == 2 and f.block == 5 and f.hand.size() == 8)
+	_ok("an event's Burn, Shield and gift marbles reach the new fight", f.burn == 2 and f.block == 5 and f.hand.size() == 5)  # (2 gift marbles + 3 drawn)
 	r.learn_spell("trade_winds")
 	_ok("Aole's Blessing is Aole's Last Wish now", "aoles_last_wish" in r.spellbook)
 	r.learn_spell("summoning_bill")

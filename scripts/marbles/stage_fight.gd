@@ -120,7 +120,8 @@ func snap() -> Dictionary:
 	for f: Foe in foes:
 		fs.append({"hp": f.hp, "max_hp": f.max_hp, "block": f.block, "burn": f.burn, "stun": f.stun, "power": f.power,
 			"weak": f.weak, "thorns": f.thorns, "expose": f.expose, "armor": f.armor, "vulnerable": f.vulnerable,
-			"ethereal": f.ethereal, "dodge": f.dodge, "intent": f.intent.duplicate(true)})
+			"ethereal": f.ethereal, "dodge": f.dodge, "intent": f.intent.duplicate(true),
+			"fly": FLY_HITS - f.fly_hits if f.es.flying else 0})  # (a flyer in the air: hits left before it falls)
 	return {"hp": run.hp, "max_hp": run.max_hp, "block": block, "burn": burn, "weak": weak, "vulnerable": vulnerable,
 		"stunned": stunned, "leaves": run.leaves, "foes": fs}
 

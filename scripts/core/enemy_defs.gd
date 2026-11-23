@@ -23,7 +23,7 @@ const E := {
 		"flavor": "Warm to the touch. Don't touch it."},
 	"bramble_back": {"name": "Bramble Back", "act": 1, "tier": 2.0, "hp": "FAFWFAF", "moves": [{"kind": "attack", "n": 5}], "passives": ["thorns"],
 		"flavor": "An enraged porcupine on two legs."},
-	"winged_tortoise": {"name": "Winged Turtle", "act": 1, "tier": 2.0, "flying": true, "passives": ["flying"], "hp": "WAWWAWW", "moves": [{"kind": "armor", "pos": -1}, {"kind": "attack", "n": 5}],
+	"winged_tortoise": {"name": "Winged Turtle", "act": 1, "tier": 2.0, "elite": true, "flying": true, "passives": ["flying"], "hp": "WAWWAWW", "moves": [{"kind": "armor", "pos": -1}, {"kind": "attack", "n": 5}],
 		"flavor": "A shell that learned to fly."},
 	"leech_bat": {"name": "Leech Bat", "act": 0, "tier": 2.5, "flying": true, "passives": ["flying"], "hp": "AFAWAFA", "moves": [{"kind": "attack", "n": 5, "also": {"kind": "mend", "el": "random", "n": 1, "who": "self"}}],
 		"flavor": "Shiny fangs, and it feeds on every bite."},
@@ -593,7 +593,6 @@ const POOLS := {
 		],
 		"medium": [
 			{"name": "Bramble Back", "ids": ["bramble_back"], "w": 1.0},
-			{"name": "Winged Turtle", "ids": ["winged_tortoise"], "w": 1.0},
 			{"name": "Hush Moth", "ids": ["hush_moth"], "w": 1.0},
 			{"name": "The Elemental Trio", "ids": ["ashling", "iceling", "zephling"], "w": 1.0},
 			{"name": "Marsh", "ids": ["purple_slime", "iceling"], "w": 0.7},
@@ -604,7 +603,6 @@ const POOLS := {
 		# (by the numbers: medium tops out near 10 Essence and 9 damage a turn; the 13+ Essence groups are hard)
 		"hard": [
 			{"name": "The Slime Trio", "ids": ["purple_slime", "green_slime", "yellow_slime"], "w": 1.0},
-			{"name": "The Forest Floor", "ids": ["bramble_back", "winged_tortoise"], "w": 0.8},
 			{"name": "The Greenseer's Garden", "ids": ["greenseer", "green_slime"], "w": 1.0},
 			{"name": "Rolling Bear", "ids": ["rolling_bear"], "w": 1.0},
 			{"name": "Giant Slime", "ids": ["giant_slime"], "w": 1.0},
@@ -641,8 +639,14 @@ const MEDIUM_FIGHTS := 2  # the next two medium, the rest hard
 
 ## An act's fights, in the order they will be met: weighted, never one of the last two, and where the pool changes, nothing
 ## that shares an enemy with the fight just before it (no Slimes right after Slimes).
-static func roll_fight_plan(act: int, rng: RandomNumberGenerator) -> Array:
+## `ok` (enemy id -> bool), when given: only encounters whose enemies all pass it (the new fight: MarblesRun.simple).
+static func roll_fight_plan(act: int, rng: RandomNumberGenerator, ok := Callable()) -> Array:
 	var pools: Dictionary = POOLS[act]
+	if ok.is_valid():
+		var kept := {}
+		for k in pools:
+			kept[k] = (pools[k] as Array).filter(func(enc): return enc.ids.all(func(id): return ok.call(String(id))))
+		pools = kept
 	var plan: Array = []
 	for i in PLAN_LENGTH:
 		var kind := "easy" if i < EASY_FIGHTS else ("medium" if i < EASY_FIGHTS + MEDIUM_FIGHTS else "hard")

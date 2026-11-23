@@ -120,6 +120,8 @@ static func _status_words(d: Dictionary) -> Array:
 			["armor", "Armor %d"], ["thorns", "Thorns %d"], ["power", "Power %d"], ["dodge", "Dodge %d"]]:
 		if int(d.get(pair[0], 0)) > 0:
 			out.append(String(pair[1]) % int(d[pair[0]]))
+	if int(d.get("fly", 0)) > 0:
+		out.append("Flying %d (in the air every hit on it deals only 1; %d more hit%s and it falls)" % [int(d.fly), int(d.fly), "" if int(d.fly) == 1 else "s"])
 	if int(d.get("stun", 0)) > 0:
 		out.append("Stunned")
 	if int(d.get("ethereal", 0)) > 0:

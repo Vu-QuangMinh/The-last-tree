@@ -72,12 +72,12 @@ func run() -> void:
 	f = _f(["flicker"])
 	_chant(f, ["F", "W", "F", "F"])
 	_ok("Repeatable 2: three F, two casts", int(f.charges.get(0, 0)) == 2)
-	f = _f(["spark"])
+	f = _f(["steam_gun"])
 	_chant(f, ["F", "*"])
 	_ok("a Star counts as any colour", int(f.charges.get(0, 0)) == 1)
-	f = _f(["spark"])
-	_chant(f, ["F", "W", "F"])
-	_ok("order counts: F W F has no FF", int(f.charges.get(0, 0)) == 0)
+	f = _f(["tail_wind"])
+	_chant(f, ["A", "W", "A"])
+	_ok("order counts: A W A has no AA", int(f.charges.get(0, 0)) == 0)
 	# carvings work as the chant is read, left to right (2026-11-22): for all your damage / Shield cards this turn
 	f = _f(["spark"])
 	_chant(f, ["F:skull", "F:sword", "W:sword"])
@@ -120,12 +120,13 @@ func run() -> void:
 	f.foes[0].vulnerable = 1
 	_cast(f)
 	_ok("Vulnerable: +50%", _hp(f) == 196)
-	# the draw: first turn 1 of each + 3; marbles come back only when the bag is empty
+	# the draw: 3 a turn (no free marble of each colour on the first turn since 2026-11-23); marbles come back only
+	# when the bag is empty
 	f = _f(["spark"])
-	_ok("first turn: 6 marbles", f.hand.size() == 6)
-	_ok("first turn: one of each colour", f.hand.filter(func(m): return int(m.src) < 0).size() == 3)
+	_ok("first turn: 3 marbles", f.hand.size() == 3)
+	_ok("first turn: no free marbles", f.hand.filter(func(m): return int(m.src) < 0).is_empty())
 	f.end_turn()
-	_ok("then 3 more: the marbles you didn't chant stay in your row", f.hand.size() == 9)
+	_ok("then 3 more: the marbles you didn't chant stay in your row", f.hand.size() == 6)
 	for k in 2:  # (two marbles from the bag into the chant)
 		var at := -1
 		for h in f.hand.size():
@@ -135,18 +136,19 @@ func run() -> void:
 		f.put(at)
 	f.do_chant()
 	f.end_turn()
-	_ok("chanted marbles are used, the rest stay: 9 - 2 + 3", f.hand.size() == 10 and f.used_pile.size() == 2)
-	f.end_turn()  # (the bag had 9: 3 + 3 + 3 drawn; it refills from the recycle bin: the 2 used ones; the row holds 10)
-	_ok("the row is full (10): nothing drawn", f.hand.size() == 10 and f.used_pile.size() == 2)
-	f.hand.clear()
+	_ok("chanted marbles are used, the rest stay: 6 - 2 + 3", f.hand.size() == 7 and f.used_pile.size() == 2)
+	f.end_turn()  # (the test bag holds 9, all drawn: it refills from the recycle bin, the 2 used ones)
+	_ok("an empty bag refills from the recycle bin (2 used marbles)", f.hand.size() == 9 and f.used_pile.is_empty())
+	f.chant.clear()
 	f.end_turn()
-	_ok("an empty bag refills from the recycle bin (2 used marbles)", f.hand.size() == 2 and f.used_pile.is_empty())
+	_ok("the row is full (10 at most)", f.hand.size() <= MarblesFight.MAX_ROW)
 	f.hand.clear()
 	f.end_turn()
 	_ok("bag and recycle bin both empty: nothing is drawn", f.hand.is_empty())
 	# ---------- list 1
 	f = _f(["flicker"]); _cast(f); _ok("Flicker: Burn 1", f.foes[0].burn == 1); done.flicker = 1
 	f = _f(["drop"]); _cast(f); _ok("Drop: heal 1", f.run.hp == 61); done.drop = 1
+	f = _f(["paper_cut"]); _cast(f); _ok("Paper Cut: 1 damage, then Expose 1", _hp(f) == 199 and f.foes[0].expose == 1); done.paper_cut = 1
 	f = _f(["sharp_wind"]); _cast(f); _ok("Sharp Wind: Expose 1", f.foes[0].expose == 1); done.sharp_wind = 1
 	f = _f(["spark"], {"spark": 2}); _cast(f); _ok("Spark+2: 7", _hp(f) == 193); done.spark = 1
 	f = _f(["steam_gun"]); _cast(f); _ok("Steam Gun: 1 per Wind owned (3)", _hp(f) == 197); done.steam_gun = 1
@@ -246,7 +248,7 @@ func run() -> void:
 	f = _f(["nilas_quickstep"]); _cast(f); _ok("Nila's Quickstep: Dodge and Power", f.dodge == 1 and f.my_power == 1); done.nilas_quickstep = 1
 	f = _f(["geyser", "energize"]); _cast(f, 1); _ok("Energize: Geyser charged", int(f.charge.get(0, 0)) == 1); done.energize = 1
 	f = _f(["freeze"]); _cast(f); _ok("Freeze!: all stunned, you too", f.foes[1].stun == 1 and f.stunned == 1); done.freeze = 1
-	f = _f(["aoles_magic", "spark"]); _chant(f, ["A", "A", "F"]); f.cast(0); _ok("Aole's Magic: a Star: Spark wakes", int(f.charges.get(1, 0)) == 1); done.aoles_magic = 1
+	f = _f(["aoles_magic", "steam_gun"]); _chant(f, ["A", "A", "F"]); f.cast(0); _ok("Aole's Magic: a Star: Steam Gun wakes", int(f.charges.get(1, 0)) == 1); done.aoles_magic = 1
 	f = _f(["rain_of_pain"]); _cast(f); _ok("Rain of Pain: 1 x (2 + 3 Fire)", _hp(f) == 195); done.rain_of_pain = 1
 	f = _f(["pyrophiliac"]); _cast(f); _ok("Pyrophiliac: heal, Burn 1", f.foes[0].burn + f.foes[1].burn == 1); done.pyrophiliac = 1
 	f = _f(["sun_burn"]); _cast(f); _ok("Sun Burn: Expose 2", f.foes[0].expose == 2); done.sun_burn = 1
@@ -259,7 +261,7 @@ func run() -> void:
 	f = _f(["spark", "over_exertion", "spark"]); _cast(f, 1); _ok("Over Exertion: both neighbours fire, then Silenced", _hp(f) == 194 and f.silenced.has(0) and f.silenced.has(2)); done.over_exertion = 1
 	f = _f(["a_daughters_secret"]); _cast(f); _ok("A Daughter's Secret: max HP -20, Stun", f.run.max_hp == 80 and f.foes[0].stun == 1)
 	f.finish(); _ok("given back after the fight", f.run.max_hp == 100); done.a_daughters_secret = 1
-	f = _f(["random_things_go", "aoles_magic", "spark"]); _chant(f, ["W", "F", "A", "A", "A", "F"]); f.cast(0); f.cast(1); _ok("Random Things Go!: an Extension: +1 Power", f.my_power == 1); done.random_things_go = 1
+	f = _f(["random_things_go", "aoles_magic", "steam_gun"]); _chant(f, ["W", "F", "A", "A", "A", "F"]); f.cast(0); f.cast(1); _ok("Random Things Go!: an Extension: +1 Power", f.my_power == 1); done.random_things_go = 1
 	f = _f(["borrowed_warmth"]); f.foes[0].burn = 6; _cast(f); _ok("Borrowed Warmth: heal half of 6", f.run.hp == 63); done.borrowed_warmth = 1
 	f = _f(["endless_well", "splash"]); _chant(f, ["W", "W", "W", "W", "W"]); f.cast(0); f.cast(1); f.end_turn(); _ok("Endless Well: Shield stays", f.block > 0); done.endless_well = 1
 	f = _f(["iron_maiden"]); _cast(f); _ok("Iron Maiden: Thorns 1, 3 damage", f.my_thorns == 1 and _hp(f) == 197); done.iron_maiden = 1

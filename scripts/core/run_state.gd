@@ -302,7 +302,7 @@ func encounter_ids() -> Array:
 	elif EnemyDefs.POOLS.has(act) and kind == "fight":
 		# the next fight on this act's list, whatever row this is (the same room asks again: the same fight)
 		if fight_plan_act != act:
-			fight_plan = EnemyDefs.roll_fight_plan(act, rng)
+			fight_plan = EnemyDefs.roll_fight_plan(act, rng, MarblesRun.simple)  # (no reserved enemies: the Winged Turtle...)
 			fight_plan_act = act
 		var enc: Dictionary = fight_plan[mini(act_fights, fight_plan.size()) - 1]
 		ids = enc.ids.duplicate()

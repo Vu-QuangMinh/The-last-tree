@@ -53,7 +53,7 @@
   {
    "id": "spark",
    "name": "Spark",
-   "pattern": "FF",
+   "pattern": "F",
    "text": "Deal 3 damage. Repeatable 2.",
    "upgrades": [
     "Deal 5 damage. Repeatable 2.",
@@ -114,7 +114,7 @@
   {
    "id": "splash",
    "name": "Splash",
-   "pattern": "WW",
+   "pattern": "W",
    "text": "Gain 2 Shield. Repeatable 2.",
    "upgrades": [
     "Gain 3 Shield. Repeatable 2.",
@@ -171,6 +171,18 @@
     "Apply 2 weakened to all enemies",
     "Apply 3 weakened to all enemies"
    ]
+  },
+  {
+   "id": "paper_cut",
+   "name": "Paper Cut",
+   "pattern": "A",
+   "text": "Deal 1 damage and apply 1 Expose. Repeatable 2.",
+   "upgrades": [
+    "Deal 2 damage and apply 1 Expose. Repeatable 2.",
+    "Deal 2 damage and apply 2 Expose. Repeatable 2."
+   ],
+   "notes": "Starting card (the user 2026-11-23, for Tail Wind)",
+   "text_user": "Deal 1 damage and apply 1 expose"
   },
   {
    "id": "tail_wind",
@@ -1226,7 +1238,7 @@
   "burn": "Burn is a stack, with no cap. At the start of the enemy's turn it loses HP equal to its Burn, then Burn goes down by 1. Any Burn above 0: it is burning.",
   "live_numbers": "A number a passive changes always shows on the card, updated as you cast: green when it goes up, red when it goes down. You get what it shows when you cast it.",
   "cards_2026_11_20": "Rebuilt from zero on 2026-11-20 (the user). The backpack holds at most 5 cards (active row and backpack as in the chant game, only the backpack is capped). Every card has an upgraded form: you get it by finding the same card again in a run (twice: Upgrade 1, then Upgrade 2). A card you could upgrade wiggles and shines white wherever it is offered. Strike, Block, Eye Poke and Ki Strike were removed (2026-11-21): the starting cards are still to be chosen.",
-  "marbles": "Essence is now called marbles. The bag starts with 4 of each colour (Fire, Water, Wind), 12 in all (2026-11-22; was 3 of each). The first turn of a fight you get 1 of each colour plus 3 at random from the bag (2026-11-21); every later turn, 3 at random from the bag. Drawn marbles come back only when the bag is empty. After each normal fight: a card reward or a marble reward (3 marbles at a time), 70 / 30 pseudo-random, the first reward of a run always a card (2026-11-22; was 50/50); marbles won go into the bag for good (they change the odds of drawing that colour). Found marbles are upgraded about 70% of the time. Carvings work when a card's pattern counts their marble (2026-11-22; not when the chant is spoken), for that card: sword (that card deals 3 more damage per hit this turn, stacks), shield (it gives 3 more Shield, stacks), skull (rare: that card's damage x1.5, one a card), wing (rare: its Shield x1.5, one a card); and when counted: coin (gain 1 money), heart (heal 2), fist (gain 1 Power), ghost (gain 1 Dodge); star counts as any colour. (Spent was removed 2026-11-22.)",
+  "marbles": "Essence is now called marbles. The bag starts with 4 of each colour (Fire, Water, Wind), 12 in all (2026-11-22; was 3 of each). Every turn, 3 marbles at random from the bag (2026-11-23: no free marble of each colour on the first turn any more). Drawn marbles come back only when the bag is empty. After each normal fight: a card reward or a marble reward (3 marbles at a time), 70 / 30 pseudo-random, the first reward of a run always a card (2026-11-22; was 50/50); marbles won go into the bag for good (they change the odds of drawing that colour). Found marbles are upgraded about 70% of the time. Carvings work when a card's pattern counts their marble (2026-11-22; not when the chant is spoken), for that card: sword (that card deals 3 more damage per hit this turn, stacks), shield (it gives 3 more Shield, stacks), skull (rare: that card's damage x1.5, one a card), wing (rare: its Shield x1.5, one a card); and when counted: coin (gain 1 money), heart (heal 2), fist (gain 1 Power), ghost (gain 1 Dodge); star counts as any colour. (Spent was removed 2026-11-22.)",
   "unique_patterns": "Patterns of 1 to 4 marbles (order counts) in the first list, one card each; a pattern may repeat in this version (the second list, more_cards, reuses them; two cards you own can share a pattern) (2026-11-21).",
   "upgrades": "A card upgrades twice: the 2nd copy found gives Upgrade 1, the 3rd gives Upgrade 2 (2026-11-20).",
   "fusion_names": "A fused spell gets a name the player types; a premade name from fusion_default_names (vague, never tied to one element) is suggested as the default and can be changed (2026-11-21).",

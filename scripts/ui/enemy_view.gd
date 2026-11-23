@@ -292,6 +292,8 @@ func _has_point(p: Vector2) -> bool:
 
 ## "Burn 2" / "Poison 3" / "Stunned": in the New theme the painted icon goes in front of the word.
 func _status_bbcode(text: String) -> String:
+	if text.begins_with("Flying "):  # (a flyer in the air: a wing with the hits it has left before it falls, the user 2026-11-23)
+		return "[font_size=24]🪽[/font_size][font_size=22][b][color=#bfe3ff]%s[/color][/b][/font_size]" % text.get_slice(" ", 1)
 	# the picture for the status named first in `text` (Puppet art first, the older intent pictures as a fallback)
 	var names: Array = {"Burn": ["status_burn", "intent_burn"], "Poison": ["status_poison", "intent_poison"],
 		"Stunned": ["status_stunned", "intent_stunned"], "Weakened": ["status_weak"],

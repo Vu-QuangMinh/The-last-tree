@@ -75,7 +75,7 @@
     },
     {
      "kind": "heal",
-     "n": 6
+     "n": 2
     }
    ],
    "order": "cycle",
@@ -112,7 +112,8 @@
    ],
    "order": "cycle",
    "appearance": "B",
-   "note": "Thorns pile up; each of your cards that damages it hurts you that much"
+   "note": "Thorns pile up; each of your cards that damages it hurts you that much",
+   "act1_hp": 17
   },
   "winged_tortoise": {
    "pick": "B",
@@ -129,7 +130,8 @@
    ],
    "order": "cycle",
    "flying": "B flying: while in the air every hit on it deals 1; the 3rd hit knocks it down (stunned 1 turn, +1 Power), then it takes off",
-   "appearance": "B"
+   "appearance": "B",
+   "elite": "Act 1 mini boss (the user 2026-11-23)"
   },
   "leech_bat": {
    "pick": "user",
@@ -175,7 +177,6 @@
     }
    ],
    "order": "cycle",
-   "flying": "B flying: while in the air every hit on it deals 1; the 3rd hit knocks it down (stunned 1 turn, +1 Power), then it takes off",
    "appearance": "B"
   },
   "cinder_hound": {
@@ -196,7 +197,7 @@
     },
     {
      "kind": "block",
-     "n": 5
+     "n": 3
     }
    ],
    "order": "cycle",
@@ -223,7 +224,8 @@
    ],
    "order": "cycle",
    "innate": "heals 6 first whenever anyone on his side is hurt",
-   "appearance": "B"
+   "appearance": "B",
+   "act1_hp": 15
   },
   "rolling_bear": {
    "pick": "B",
@@ -244,7 +246,8 @@
    ],
    "order": "cycle",
    "note": "power-up hop when it gains Power",
-   "appearance": "B"
+   "appearance": "B",
+   "act1_hp": 20
   },
   "bramble_matron": {
    "pick": "B (pending details)",
