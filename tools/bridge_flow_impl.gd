@@ -73,7 +73,7 @@ func run(t: SceneTree) -> void:
 					t.create_timer(0.6).timeout.connect(func(): if fs.aiming: fs._finish_aim(f.target_candidates()[0]))
 				await fs._on_card_clicked(card)
 				if String(s.id) == "tail_wind":
-					print("BF tail: next draw after ", f.m.next_draw_known().map(func(x): return x.c), " tray ", fs._pending.map(func(x): return x.el))
+					print("BF tail: next draw after ", f.m.next_draw_known().map(func(x): return x.c), " tray ", fs._h_machine._pending.map(func(x): return x.el))
 				for s2 in f.loadout:
 					if String(s2.id) == "water_gun" and is_instance_valid(fs._card_for("water_gun")):
 						print("BF   water gun card says: ", String(fs._card_for("water_gun")._rules.text).left(60))

@@ -2325,6 +2325,8 @@ func _effect_words(e: Dictionary) -> String:
 			return "Weakened"
 		"freeze":
 			return "Frozen"
+		"stun":
+			return "Stunned"
 		"expose":
 			return ""  # the paint splashes say it
 		"shield":
@@ -2362,7 +2364,7 @@ func _enemy_turn_start(ev: Dictionary) -> void:
 		tw.tween_property(actor.creature, "scale", Vector2(1.12, 1.12), 0.15)
 		tw.tween_property(actor.creature, "scale", Vector2.ONE, 0.2)
 	var m: Dictionary = ev.move
-	var words := "❄ Frozen: it skips its turn." if ev.frozen else _move_words(m, ev.enemy)
+	var words := "💫 Stunned: it skips its turn." if ev.get("stunned", false) else _move_words(m, ev.enemy)
 	await _file_turn_box()  # (in case the last one is still up)
 	# what it's about to do, in a box at the top of the screen; it stays up while the enemy acts
 	var box := _callout_panel("[b]%s[/b]\n%s" % [ev.enemy.name, Keywords.colorize(words)], Color(1, 0.55, 0.4))
