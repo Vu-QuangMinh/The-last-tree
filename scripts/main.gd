@@ -20,6 +20,7 @@ func _ready() -> void:
 	var args := OS.get_cmdline_args()
 	if not ("-s" in args or "--script" in args or "--headless" in args or DisplayServer.get_name() == "headless"):
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+		CombatLog.enable()
 	overlay_layer.layer = 5
 	UiSkin.apply_clear_color()
 	add_child(screen_layer)

@@ -646,11 +646,34 @@ func _aim(card: SpellCard, from: Vector2, cands: Array, prompt: String, cancella
 	scr.aim_cancellable = cancellable
 	scr._prompt.text = prompt
 	scr._h_hud._refresh_all()
+	_aim_preview()
 	var idx: int = await scr._aim_done
 	return idx
 
 
+var _aim_saved: Variant = null  # (the aimed card's own words, put back when the aim ends)
+
+
+## While you aim a card at an enemy, the card shows the damage it will really do to THAT enemy (its Expose, Armor,
+## Vulnerable, flight): MarbleBridge.words_vs. Called whenever the target under the arrow changes.
+func _aim_preview() -> void:
+	var card: SpellCard = scr.aim_card
+	if card == null or not (scr.fight is MarbleBridge) or scr.aim_cands.is_empty():
+		return
+	var t: String = (scr.fight as MarbleBridge).words_vs(String(card.spell.id), int(scr.aim_cands[scr.aim_i]))
+	if t == "":
+		return
+	if _aim_saved == null:
+		_aim_saved = String(card.spell.get("desc", ""))
+	card.spell["desc"] = t
+	card.refresh()
+
+
 func _finish_aim(idx: int) -> void:
+	if scr.aim_card != null and _aim_saved != null:
+		scr.aim_card.spell["desc"] = _aim_saved
+		scr.aim_card.refresh()
+	_aim_saved = null
 	scr.aiming = false
 	scr.aim_card = null
 	scr._arrow.queue_redraw()

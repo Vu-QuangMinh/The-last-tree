@@ -981,6 +981,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 				aim_i = (aim_i + (-1 if ev.shift_pressed else 1) + aim_cands.size()) % aim_cands.size()
 				Audio.play("ui_tab_target")
 				_h_hud._refresh_all()
+				_h_input._aim_preview()
 			KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
 				if _allowed("target", aim_cands[aim_i]):
 					_h_input._finish_aim(aim_cands[aim_i])
@@ -1149,6 +1150,7 @@ func _process(_d: float) -> void:
 				if pos != aim_i:
 					aim_i = pos
 					_h_hud._refresh_all()
+					_h_input._aim_preview()
 		_arrow.queue_redraw()
 
 
