@@ -3,7 +3,7 @@ extends StageFight
 ## The Marbles mode (2026-11-21): one fight. The enemy side is Die on Stage's (StageFight: number HP, intents, the Act 1
 ## enemies as the user set them); your side is marbles and the user's new cards (MarbleCards).
 ##
-## Your turn: you get marbles (the first turn of a fight: 1 of each colour plus 3 from your bag; later: 3 from the bag,
+## Your turn: you get marbles (3 from the bag; no free marble of each colour on the first turn since 2026-11-23;
 ## more with Tail Wind / Updraft / Aole's Last Wish). Chanted marbles go to the recycle bin (used_pile); an empty bag
 ## refills from it; with both empty there is nothing more to draw that turn (the user, 2026-11-22). Your storage row keeps
 ## the marbles you didn't chant, MAX_ROW at most. Put marbles in the chant (order counts, at most MAX_CHANT), press Chant: every
@@ -19,7 +19,7 @@ extends StageFight
 
 const MAX_CHANT := 10  # (the main game's chant row: ten rings, the user 2026-11-22)
 const MAX_ROW := 10  # (your storage row holds at most this many marbles; the rest wait in the bag, the user 2026-11-22)
-const FIRST_TURN_EXTRA := ["F", "W", "A"]
+const FIRST_TURN_EXTRA := []  # (no free marble of each colour on the first turn any more, the user 2026-11-23)
 const SKULL := 1.5
 const WING := 1.5
 const SWORD := 3
@@ -87,14 +87,15 @@ func setup(p_run: MarblesRun, ids: Array) -> void:
 const MARBLE_MOVES := {
 	"leech_bat": [{"kind": "attack", "n": 3, "hits": 1}, {"kind": "attack", "n": 3, "hits": 2}, {"kind": "attack", "n": 3, "hits": 3}, {"kind": "power", "n": 1, "who": ""}],
 	"hush_moth": [{"kind": "attack", "n": 5, "hits": 1}, {"kind": "silence", "turns": 1, "n": 1}],
-	"mirror_fairy": [{"kind": "attack", "n": 6, "hits": 1}, {"kind": "block", "n": 5}],  # (no Dodge: 5 Shield, the user 2026-11-22)
+	"mirror_fairy": [{"kind": "attack", "n": 6, "hits": 1}, {"kind": "block", "n": 3}],  # (no Dodge: 3 Shield, the user 2026-11-23)
+	"green_slime": [{"kind": "attack", "n": 6, "hits": 1}, {"kind": "heal", "n": 2, "who": ""}],  # (it heals 2 only, the user 2026-11-23)
 	"zephling": [{"kind": "attack", "n": 3, "hits": 1}, {"kind": "weak", "n": 1}],  # (no Dodge: it Weakens you for 1 turn, the user 2026-11-22)
 	# the lings hit for 3 (the user 2026-11-22), their other move as before
 	"ashling": [{"kind": "attack", "n": 3, "hits": 1}, {"kind": "power", "n": 1, "who": ""}],
 	"iceling": [{"kind": "attack", "n": 3, "hits": 1}, {"kind": "block", "n": 2}],
 }
 const MARBLE_HP := {"leech_bat": 20, "hush_moth": 20, "ashling": 6, "iceling": 6, "zephling": 6}  # (the lings: 6, the user 2026-11-22)
-const MARBLE_FLYERS := ["winged_tortoise", "leech_bat", "hush_moth"]
+const MARBLE_FLYERS := ["winged_tortoise", "leech_bat"]  # (the Hush Moth does not fly, the user 2026-11-23)
 const LIFESTEAL := ["leech_bat"]  # (its attacks heal it by the HP you lose)
 const BLINDERS := ["mirror_fairy"]  # (while it is in the fight your marbles come out as "?")
 ## Orb HP on intents: a pattern shown over the intent; chant it and the intent is cancelled. The Matron's summoning is
@@ -106,6 +107,8 @@ const CHARGE_ORBS := {30: "WAAW", 20: "AWA"}  # (the Yin Yang Beast's Charge, it
 
 
 static func hp_of(id: String, act := 0) -> int:
+	if act == 1 and ACT1_HP.has(id):
+		return int(ACT1_HP[id])
 	var hp := int(MARBLE_HP.get(id, StageFight.base_hp(id)))
 	return maxi(1, roundi(hp * ACT1_NERF)) if act == 1 and not (id in NO_NERF) else hp
 
@@ -113,6 +116,8 @@ static func hp_of(id: String, act := 0) -> int:
 ## Act 1 is gentler (the user, 2026-11-22): every enemy there has 30% less HP and deals 30% less damage per hit
 ## (rounded, at least 1).
 const ACT1_NERF := 0.7
+## Act 1 HP set exactly (the user 2026-11-23: no 30% cut on top).
+const ACT1_HP := {"bramble_back": 17, "greenseer": 15, "rolling_bear": 20}
 const NO_NERF := ["ashling", "iceling", "zephling"]  # (the lings are set as they are: 6 HP, hits of 3, the user 2026-11-22)
 
 
@@ -139,6 +144,9 @@ func _spawn_def(d: Dictionary, at := -1) -> Foe:
 		f.moves2 = f.moves2.duplicate(true)
 		for mv in f.moves + f.moves2:
 			_nerf_move(mv)
+	if mrun.act == 1 and ACT1_HP.has(f.id):
+		f.max_hp = int(ACT1_HP[f.id])
+		f.hp = f.max_hp
 	f.es.flying = f.id in MARBLE_FLYERS
 	return f
 

@@ -15,6 +15,9 @@ const CARVED_ODDS := 0.7  # (a marble found after a fight: carved this often)
 
 const LAST_ACT := 3
 const LEFT_OUT := ["mirror_knight"]  # (not in Marble mode for now)
+## In reserve for later (the user: Cinder Hound and Yeti 2026-11-21): no fight has them. (The Winged Turtle is an Act 1
+## mini boss since 2026-11-23.)
+const RESERVE := ["cinder_hound", "yeti"]
 
 var rng := RandomNumberGenerator.new()
 var act := 1
@@ -254,7 +257,7 @@ static func simple(id: String) -> bool:
 	var d: Dictionary = EnemyDefs.get_def(id)
 	if d.is_empty():
 		return false
-	return not d.has("rig_part") and not d.has("dragon") and id != "handyman" and not HandymanRig.ARMS.has(id) and not (id in LEFT_OUT) 		and not (id in ["cinder_hound", "yeti"])  # (in reserve for a later act, the user 2026-11-21)
+	return not d.has("rig_part") and not d.has("dragon") and id != "handyman" and not HandymanRig.ARMS.has(id) and not (id in LEFT_OUT) 		and not (id in RESERVE)
 
 
 func _roll_rarity(odds: Dictionary) -> String:

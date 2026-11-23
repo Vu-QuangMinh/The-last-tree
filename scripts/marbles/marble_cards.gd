@@ -10,7 +10,7 @@ extends RefCounted
 ## Card flags: t (needs a target), power (a Power: once cast, it works for the rest of the fight).
 
 const PATH := "res://data/HP_spell_new.json"
-const START := ["spark", "splash", "tail_wind"]  # (2026-11-21: the user's starting cards, one 2-marble card of each colour)
+const START := ["spark", "splash", "paper_cut"]  # (the user's starting cards, one 1-marble card of each colour: 2026-11-23, Paper Cut for Tail Wind)
 const MAX_BACKPACK := 5
 const INF := 99
 
@@ -20,14 +20,15 @@ const C := {
 	"flicker": {"p": "F", "n": "Flicker", "t": true, "L": [{"burn": 1, "rep": 2}, {"burn": 1, "rep": 4}, {"burn": 1, "rep": INF}]},
 	"drop": {"p": "W", "n": "Drop", "L": [{"heal": 1, "rep": 2}, {"heal": 1, "rep": 3}, {"heal": 1, "rep": 5}]},
 	"sharp_wind": {"p": "A", "n": "Sharp Wind", "t": true, "L": [{"expose": 1, "rep": 2}, {"expose": 1, "rep": 3}, {"expose": 1, "rep": 5}]},
-	"spark": {"p": "FF", "n": "Spark", "t": true, "L": [{"d": 3, "rep": 2}, {"d": 5, "rep": 2}, {"d": 7, "rep": 2}]},
+	"spark": {"p": "F", "n": "Spark", "t": true, "L": [{"d": 3, "rep": 2}, {"d": 5, "rep": 2}, {"d": 7, "rep": 2}]},
 	"steam_gun": {"p": "FW", "n": "Steam Gun", "t": true, "L": [{"x": 1}, {"x": 3}, {"x": 3}]},
 	"firelance": {"p": "FA", "n": "Firelance", "t": true, "L": [{"burn": 3}, {"burn": 5}, {"burn": 7}]},
 	"smoke_screen": {"p": "WF", "n": "Smoke Screen", "t": true, "L": [{"shield": 1, "weak": 1}, {"shield": 3, "weak": 1}, {"shield": 3, "weak": 3}]},
-	"splash": {"p": "WW", "n": "Splash", "L": [{"shield": 2, "rep": 2}, {"shield": 3, "rep": 2}, {"shield": 4, "rep": 2}]},
+	"splash": {"p": "W", "n": "Splash", "L": [{"shield": 2, "rep": 2}, {"shield": 3, "rep": 2}, {"shield": 4, "rep": 2}]},
 	"wave": {"p": "WA", "n": "Wave", "L": [{"x": 1}, {"x": 2}, {"x": 3}]},
 	"heat_wave": {"p": "AF", "n": "Heat Wave", "L": [{"burn": 2, "all": true}, {"burn": 4, "all": true}, {"burn": 6, "all": true}]},
 	"sea_sickness": {"p": "AW", "n": "Sea Sickness", "L": [{"weak": 1, "all": true}, {"weak": 2, "all": true}, {"weak": 3, "all": true}]},
+	"paper_cut": {"p": "A", "n": "Paper Cut", "t": true, "L": [{"d": 1, "expose": 1, "rep": 2}, {"d": 2, "expose": 1, "rep": 2}, {"d": 2, "expose": 2, "rep": 2}]},
 	"tail_wind": {"p": "AA", "n": "Tail Wind", "L": [{"next": 1, "rep": 2}, {"next": 2, "rep": 2}, {"next": 3, "rep": 2}]},
 	"laser_beam": {"p": "FFF", "n": "Laser Beam", "t": true, "L": [{"d": 10, "self": 3}, {"d": 15, "self": 3}, {"d": 20, "self": 3}]},
 	"steam_engine": {"p": "FFW", "n": "Steam Engine", "L": [{"x": 1, "cd": 1}, {"x": 1}, {"x": 2}]},
@@ -121,7 +122,7 @@ const C := {
 const BURN_CARDS := ["flicker", "firelance", "heat_wave", "fire_storm", "forest_fire", "burn_them_all", "desperate_drop",
 	"adams_finger", "adams_fist", "might_of_the_first_apostle", "moth_to_flame"]
 ## Cards that deal damage (Chosen One: "the only damaging spell you have").
-const DAMAGE_CARDS := ["spark", "steam_gun", "wave", "laser_beam", "geyser", "elemental_core", "pressure_cooker", "chosen_one", "cyclone",
+const DAMAGE_CARDS := ["spark", "paper_cut", "steam_gun", "wave", "laser_beam", "geyser", "elemental_core", "pressure_cooker", "chosen_one", "cyclone",
 	"water_gun", "hail", "circle_of_life", "backdraft", "stream", "snuffing_the_candle", "thousand_cuts", "stick_and_carrot",
 	"implosion", "thunderstorm", "glass_half_full", "adams_fist", "warm_up", "full_glass", "rain_of_pain", "glass_cannon",
 	"iron_maiden", "nilas_blades", "focus_fire", "bite", "whim_of_the_pianist"]
