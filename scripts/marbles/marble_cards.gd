@@ -54,7 +54,7 @@ const C := {
 	"heed_my_call": {"p": "AWF", "n": "Heed My Call", "power": true, "L": [{"x": 1}, {"x": 2}, {"x": 4}]},
 	"stream": {"p": "AWW", "n": "Stream", "t": true, "L": [{"x": 1, "dur": 3}, {"x": 2, "dur": 3}, {"x": 3, "dur": 3}]},  # (Durability 3, the user 2026-11-22)
 	"cold_feet": {"p": "AWA", "n": "Cold Feet", "t": true, "L": [{"stun": 1, "dur": 1, "svuln": 2}, {"stun": 1, "dur": 1, "svuln": 1}, {"stun": 1, "dur": 2}]},
-	"snuffing_the_candle": {"p": "AAF", "n": "Snuffing the Candle", "t": true, "L": [{"d": 2, "x": 8}, {"d": 2, "x": 12}, {"d": 2, "x": 16}]},
+	"snuffing_the_candle": {"p": "AAF", "n": "Snuffing the Candle", "t": true, "L": [{"d": 3, "x": 8}, {"d": 3, "x": 12}, {"d": 3, "x": 16}]},
 	"refreshing_wind": {"p": "AAW", "n": "Refreshing Wind", "L": [{"x": 1, "dur": 1}, {"x": 2, "dur": 1}, {"x": 2, "dur": 2}]},
 	"thousand_cuts": {"p": "AAA", "n": "Thousand Cuts", "t": true, "L": [{"d": 1, "hits": 4}, {"d": 1, "hits": 6}, {"d": 1, "hits": 8}]},
 	"burn_them_all": {"p": "FFFF", "n": "Burn Them All", "L": [{"burn": 5, "dur": 1, "all": true}, {"burn": 7, "dur": 1, "all": true}, {"burn": 10, "dur": 1, "all": true}]},

@@ -69,8 +69,8 @@ func _build_loadout() -> void:
 		seen[id] = true
 		d.id = id
 		var fx := MarblesFight.fx_of(c)
-		var tgt := "target" if m.needs_target(ci) else ("self" if String(fx.to) == "you" else "all")
-		d.effects = [{"op": String(fx.op), "n": int(fx.n), "target": tgt}]
+		var tgt := "target" if m.needs_target(ci) else ("self" if String(fx.get("to", "you")) == "you" else "all")  # (a Power has no fx: {})
+		d.effects = [{"op": String(fx.get("op", "passive")), "n": int(fx.get("n", 1)), "target": tgt}]
 		d["ci"] = ci
 		d["live_text"] = true  # (its words can change in the fight: Water Gun's X, Durability left...)
 		_sid.append(id)

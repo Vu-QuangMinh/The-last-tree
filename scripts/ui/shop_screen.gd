@@ -657,8 +657,9 @@ func _refresh() -> void:
 				holder.custom_minimum_size = Vector2(78.0, 78.0)
 				holder.mouse_filter = Control.MOUSE_FILTER_PASS
 				holder.add_child(mv)
-				var words: String = String({"F": "Fire", "W": "Water", "A": "Wind"}[m.c]) + " marble"
-				box.set_meta("tip", Keywords.tooltip(words + (", carved" if String(m.sym) != "" else ""),
+				var star := String(m.sym) == "star"  # (a Star marble is the any-colour marble, the user 2026-11-23)
+				var words: String = ("Any-colour" if star else String({"F": "Fire", "W": "Water", "A": "Wind"}[m.c])) + " marble"
+				box.set_meta("tip", Keywords.tooltip(words + (", carved" if String(m.sym) != "" and not star else ""),
 					String(MarbleView.SYM_WORDS.get(m.sym, "It goes into your bag for good.")) + ("  It goes into your bag for good." if String(m.sym) != "" else "")))
 				box.set_meta("pic_w", 78.0)
 				box.set_meta("pic_h", 78.0)

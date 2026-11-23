@@ -89,6 +89,11 @@ func run() -> void:
 	f.mrun.bag.append({"c": "F", "sym": "sword"})
 	r.take_back(f.mrun)
 	_ok("hp and bag come home", int(r.player.hp) == 33 and r.marble_bag.size() == 13)
+	# a Power card in the row (it has no spell effect: fx_of gives {}): the fight still builds
+	r = _run()
+	r.learn_spell("heed_my_call")
+	var pb := r.make_fight(["iceling"])
+	_ok("a Power in the row: the fight builds", pb is MarbleBridge and (pb as MarbleBridge).loadout.size() == r.loadout.size() and "heed_my_call" in r.loadout)
 	# what events leave for the next fight
 	r = _run()
 	r.burn_next = 2

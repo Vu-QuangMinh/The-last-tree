@@ -244,7 +244,7 @@ func _live_numbers(words: String, ci: int) -> String:
 			grown = int(grow.get(ci, int(p.get("x", 1))))
 		"warm_up":
 			grown = int(grow.get(ci, 0))
-	var out := _swap_numbers(words, _re_dmg, func(n: int) -> int: return card_damage(grown if grown >= 0 else n))
+	var out := _swap_numbers(words, _re_dmg, func(n: int) -> int: return shown_damage(grown if grown >= 0 else n))
 	out = _swap_numbers(out, _re_sh, func(n: int) -> int: return card_shield_value(grown if grown >= 0 else n))
 	out = _swap_numbers(out, _re_burn, func(n: int) -> int: return burn_value(n))
 	_cur_ci = was
@@ -1013,6 +1013,17 @@ func card_damage(base: int) -> int:
 	if powers.has("all_out"):
 		x *= 1.0 + float(MarbleCards.card("all_out", int(powers.all_out)).p.x) / 100.0
 	return int(floor(x))
+
+
+## What a card's hit deals before the enemy's own side (its Expose, Armor, Vulnerable): card_damage, Heed My Call, then
+## your Weakened (half), as _hit does. The card shows this number (a play tester saw 3 on the card and 1 dealt, Weakened).
+func shown_damage(base: int) -> int:
+	var n := card_damage(base)
+	if powers.has("heed_my_call"):
+		n += int(MarbleCards.card("heed_my_call", int(powers.heed_my_call)).p.x)
+	if weak > 0:
+		n = n / 2
+	return n
 
 
 ## A card's hits on an enemy.

@@ -1,7 +1,8 @@
 class_name MarbleView
 extends Control
 ## One marble: a plain coloured ball (Fire red-orange, Water blue, Wind pale green); a carved one has its symbol drawn
-## on it. "?" while you are Blind; a frosty rim when Frozen. Click: `pressed`.
+## on it. "?" while you are Blind; a frosty rim when Frozen. A Star marble is just the any-colour marble (no colour, no
+## stamp: the user 2026-11-23). Click: `pressed`.
 
 signal pressed
 
@@ -39,6 +40,8 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	if veiled:
 		tooltip_text = "Blind: you can't see this marble's colour."
+	elif sym == "star":
+		tooltip_text = "Any-colour marble: it counts as any colour."
 	elif sym != "":
 		tooltip_text = "%s marble, carved. %s" % [{"F": "Fire", "W": "Water", "A": "Wind"}[colour], SYM_WORDS.get(sym, sym)]
 	else:
@@ -50,9 +53,10 @@ func _draw() -> void:
 	var r := px / 2.0 - 3.0
 	var col: Color = Color(0.45, 0.45, 0.5) if veiled else (Color(0.95, 0.85, 0.4) if sym == "star" else COLS.get(colour, Color.GRAY))
 	# the main mode's Essence art (2026-11-21: Marble mode looks like the main mode); the plain ball when the art is missing
-	var art: Texture2D = UiSkin.tex(String(ElementIcon.ART.get(colour, ""))) if not veiled else null
+	var star := sym == "star" and not veiled
+	var art: Texture2D = null if veiled else UiSkin.tex("essence_any" if star else String(ElementIcon.ART.get(colour, "")))
 	if art != null:
-		draw_texture_rect(art, Rect2(Vector2.ZERO, size), false, Color(1.0, 0.92, 0.55) if sym == "star" else Color.WHITE)
+		draw_texture_rect(art, Rect2(Vector2.ZERO, size), false)
 	else:
 		draw_circle(c + Vector2(2, 3), r, Color(0, 0, 0, 0.35))
 		draw_circle(c, r, col.darkened(0.25))
@@ -61,6 +65,9 @@ func _draw() -> void:
 	var font: Font = ThemeDB.fallback_font
 	if veiled:
 		draw_string(font, c + Vector2(-r, r * 0.38), "?", HORIZONTAL_ALIGNMENT_CENTER, r * 2.0, int(r * 1.1), Color.WHITE)
+	elif star:
+		if art == null:  # (no art: a "?" on the ball, like the fight's any-colour marble)
+			draw_string(font, c + Vector2(-r, r * 0.38), "?", HORIZONTAL_ALIGNMENT_CENTER, r * 2.0, int(r * 1.1), Color.WHITE)
 	elif sym != "":
 		var at := c + Vector2(-r, r * 0.36)
 		var fs := int(r * 0.95)

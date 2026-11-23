@@ -209,7 +209,10 @@ func run() -> void:
 	f = _f(["stream"]); _cast(f); _ok("Stream: 1 and 1", _hp(f) == 199 and f.block == 1); f.end_turn(); f.block = 0; _cast(f)
 	_ok("Stream: then 2 and 2", _hp(f) == 197 and f.block == 2); done.stream = 1
 	f = _f(["cold_feet"]); _cast(f); _ok("Cold Feet: Stun, you Vulnerable", f.foes[0].stun == 1 and f.vulnerable > 0); done.cold_feet = 1
-	f = _f(["snuffing_the_candle"]); f.foes[0].hp = 10; _cast(f); _ok("Snuffing: 10 - 2 = 8: executed", f.foes[0].dead()); done.snuffing_the_candle = 1
+	f = _f(["snuffing_the_candle"]); f.my_power = 1; f.weak = 1
+	_ok("Weakened: the card shows half ((3 + 1) / 2 = 2)", String(f.card(0).text).begins_with("Deal 2 damage"))
+	_cast(f); _ok("Weakened: and deals that 2", _hp(f) == 198)
+	f = _f(["snuffing_the_candle"]); f.foes[0].hp = 10; _cast(f); _ok("Snuffing: 10 - 3 = 7: executed (at 8 or less)", f.foes[0].dead()); done.snuffing_the_candle = 1
 	f = _f(["gaze_of_the_princess", "refreshing_wind"]); f.durab[0] = 0; _cast(f, 1); _ok("Refreshing Wind: +1 Durability on the left", f.durability_left(0) == 1); done.refreshing_wind = 1
 	f = _f(["thousand_cuts"]); _cast(f); _ok("Thousand Cuts: 1 x4", _hp(f) == 196); done.thousand_cuts = 1
 	f = _f(["burn_them_all"]); _cast(f); _ok("Burn Them All: 5 then doubled", f.foes[0].burn == 10 and f.foes[1].burn == 10); done.burn_them_all = 1

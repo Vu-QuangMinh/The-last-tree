@@ -33,7 +33,7 @@ const K := {
 	"rearrange": [Color(0.95, 0.85, 0.5), Color(0.55, 0.4, 0.0), "Rearrange N: grab any enemy's Essence and drag it to another spot, in its own row or onto another enemy (N times). Taking an enemy's last Essence defeats it."],
 	"self-rearrange": [Color(0.95, 0.85, 0.5), Color(0.55, 0.4, 0.0), "Self-Rearrange N: grab an Essence of this turn's chant and drag it to another spot (N times). It can cause an Extension."],
 	"duplicate": [Color(0.95, 0.85, 0.5), Color(0.55, 0.4, 0.0), "Duplicate N: copy an Essence of this turn's chant N times, beside it."],
-	"execute": [Color(1.0, 0.35, 0.35), Color(0.65, 0.05, 0.05), "Execute: kill an enemy with that many Essence or fewer (not bosses)."],
+	"execute": [Color(1.0, 0.35, 0.35), Color(0.65, 0.05, 0.05), "Execute at N HP or less: after the damage, an enemy left with N HP or less dies."],
 	"burn": [Color(1.0, 0.55, 0.2), Color(0.78, 0.3, 0.0), "Burn N: N of the enemy's Essence, picked at random, catch fire. At the start of its turn the burning ones are lost, then Burn ends. You, Burn N: you lose N HP at the start of your turn, then it drops by 1."],
 	"shield": [Color(0.55, 0.8, 1.0), Color(0.1, 0.35, 0.7), "Shield: blocks attack damage until your next turn."],
 	"evasion": [Color(1.0, 0.9, 0.5), Color(0.6, 0.45, 0.0), "Evasion: dodge one whole hit (each point dodges one)."],

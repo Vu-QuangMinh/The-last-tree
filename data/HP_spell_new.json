@@ -566,10 +566,10 @@
    "id": "snuffing_the_candle",
    "name": "Snuffing the Candle",
    "pattern": "AAF",
-   "text": "Deal 2 damage. Then, if the enemy has 8 HP or less, it dies.",
+   "text": "Deal 3 damage. Execute at 8 HP or less.",
    "upgrades": [
-    "Deal 2 damage. Then, if the enemy has 12 HP or less, it dies.",
-    "Deal 2 damage. Then, if the enemy has 16 HP or less, it dies."
+    "Deal 3 damage. Execute at 12 HP or less.",
+    "Deal 3 damage. Execute at 16 HP or less."
    ],
    "text_user": "Deal 2 damage. Execute enemy that has 8HP or less",
    "upgrades_user": [

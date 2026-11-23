@@ -1751,8 +1751,8 @@ func _marble_choice(title: String, words: String, ms: Array, go: Callable) -> vo
 		var cc := CenterContainer.new()
 		cc.add_child(mv)
 		col.add_child(cc)
-		var words2: String = String({"F": "Fire", "W": "Water", "A": "Wind"}[m.c])
-		if String(m.sym) != "":
+		var words2: String = "Any colour" if String(m.sym) == "star" else String({"F": "Fire", "W": "Water", "A": "Wind"}[m.c])
+		if String(m.sym) != "" and String(m.sym) != "star":
 			words2 += "\n" + String(MarbleView.SYM_WORDS.get(m.sym, ""))
 		var l := UiTheme.label(words2, 19, Color(0.95, 0.9, 0.8))
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
