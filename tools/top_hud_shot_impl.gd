@@ -19,9 +19,8 @@ func run(t: SceneTree) -> void:
 	var nd := int(OS.get_environment("HUD_DEBUFFS")) if OS.get_environment("HUD_DEBUFFS") != "" else 0
 	if nd > 0:
 		var pl = f.player
-		pl.poison = 3
-		if nd > 1: pl.confuse_turns = 2
-		if nd > 2: pl.disarmed_turns = 1
+		pl.burn = 3
+		if nd > 1: pl.blind_turns = 2
 		if nd > 3: pl.toll = 5
 		if nd > 4: pl.lasting = 4.0
 		if nd > 5: pl.aegis = 2

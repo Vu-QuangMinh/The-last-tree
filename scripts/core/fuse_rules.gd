@@ -177,7 +177,7 @@ static func _damage_aim(effects: Array) -> String:
 	return ""
 
 
-const SCATTERS := {"burn": "burn", "poison": "poison"}  # (stackable riders that a Barrage scatters one at a time)
+const SCATTERS := {"burn": "burn"}  # (stackable riders that a Barrage scatters one at a time)
 
 
 static func _follow_damage(effects: Array) -> Array:
@@ -204,7 +204,7 @@ static func _amount_key(e: Dictionary) -> String:
 	return "turns" if e.has("turns") and not e.has("n") else "n"
 
 
-const RIDERS := ["burn", "poison", "weak", "stun", "daze", "steal", "shield", "heal", "thorns", "aegis", "draw", "meteor_rain", "expose", "max_hp", "vulnerable"]
+const RIDERS := ["burn", "weak", "stun", "steal", "shield", "heal", "thorns", "aegis", "draw", "meteor_rain", "expose", "max_hp", "vulnerable"]
 
 
 ## Things that only happen once however often they're said (Ethereal twice is Ethereal), and a Cleanse of everything
@@ -213,7 +213,7 @@ static func _dedupe(effects: Array) -> Array:
 	var out := []
 	var cleanse_all := effects.any(func(e): return e.op == "cleanse" and e.get("what", "all") == "all")
 	for e in effects:
-		if e.op in ["ethereal", "thorn_guard", "echo_next", "all_fragile"] and out.any(func(o): return o == e):
+		if e.op in ["ethereal", "thorn_guard", "all_fragile"] and out.any(func(o): return o == e):
 			continue
 		if cleanse_all and e.op == "cleanse" and e.get("what", "all") != "all":
 			continue
@@ -272,8 +272,8 @@ static func _net_hp(effects: Array) -> Array:
 
 ## What a spell does for you (it goes after what it does to the enemies).
 const SELF_OPS := ["shield", "heal", "aegis", "thorns", "draw", "sacrifice", "vulnerable", "max_hp", "all_fragile", "transmute",
-	"cleanse", "unbind", "retain", "overload", "echo_next", "conjure", "passive", "rearrange", "infuse", "thorn_guard",
-	"mend_spell", "temp_seal", "grimoire_pick", "summon_spells", "duplicate", "amplify", "echo", "heal_per_extension",
+	"cleanse", "unbind", "retain", "overload", "conjure", "passive", "rearrange", "infuse", "thorn_guard",
+	"mend_spell", "temp_seal", "grimoire_pick", "summon_spells", "duplicate", "amplify", "heal_per_extension",
 	"infuse_upcoming", "self_repaint"]
 
 

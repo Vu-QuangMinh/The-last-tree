@@ -4,6 +4,8 @@ extends Control
 
 signal leave
 signal upgrade_requested
+signal bag_opened(kind: String)
+signal need_room(id: String)  # a new card, with your row and backpack full: main.gd asks which card to throw away first  # "card_bag" / "marble_bag": the screen that lets you choose 1 of 3 (main.gd)
 signal quest_changed  # (his favours moved on: save them)
 
 ## Puppet Stage: laid over the stage (no backdrop). The curtains are already open: the cart rolls in, the merchant walks after it, the spell cards lie down on the
@@ -39,7 +41,9 @@ const TC_LOW_FOOT := 1232.0  # the cart's floor: where the artifacts stand
 const TC_UP_X := [867.0, 1017.0, 1235.0, 1441.0, 1647.0]  # the 3 bottles, the wax (candle), the meal (soup)
 const TC_LOW_X := [1173.0, 1403.0, 1616.0]  # the 3 artifacts
 const TC_CARDS := [Vector2(622.0, 738.0), Vector2(622.0, 946.0), Vector2(622.0, 1150.0), Vector2(910.0, 1150.0)]  # the 4 spell cards (their middles)
-const TC_MEND := Vector2(760.0, 480.0)  # (the Seed-mending offer, seldom there: on the canopy)
+const TC_MEND := Vector2(760.0, 480.0)
+const TC_MARBLES := [Vector2(670.0, 560.0), Vector2(770.0, 560.0), Vector2(870.0, 560.0)]  # the 3 marbles, on the canopy (picture px; 2026-11-21, to be placed by eye)
+const TC_BAGS := [Vector2(450.0, 560.0), Vector2(560.0, 560.0)]  # the bag of cards and the bag of marbles, hanging on the canopy (bottom middle)  # (the Seed-mending offer, seldom there: on the canopy)
 const TC_INFO := Vector2(1380.0, 500.0)  # the info board's middle: on the canopy, over no item and no card
 const TC_GLOW := Color(1.45, 1.34, 1.2)  # the cart and everything on it light up together under the mouse
 const TC_CAM_TIME := 0.9
@@ -529,7 +533,7 @@ func _refresh() -> void:
 	for i in stock.size():
 		var it: Dictionary = stock[i]
 		# (the stage shop: an artifact or a bottle and its price are one hover zone, an invisible box round both)
-		var tipped: bool = on_stage and (it.kind in ["artifact", "bottle"] or (_true_cart and it.kind in ["upgrade", "heal"]))
+		var tipped: bool = on_stage and (it.kind in ["artifact", "bottle", "marble", "card_bag", "marble_bag"] or (_true_cart and it.kind in ["upgrade", "heal"]))
 		var box: VBoxContainer = _TipBox.new() if tipped else VBoxContainer.new()
 		if tipped:
 			box.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -645,6 +649,30 @@ func _refresh() -> void:
 				p.size_flags_vertical = Control.SIZE_EXPAND_FILL  # the frames stretch to the tallest one
 				_panels.append(p)
 				box.add_child(p)
+			"marble":
+				var m: Dictionary = it.marble
+				var mv := MarbleView.make(m, 78.0)
+				mv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				var holder := Control.new()
+				holder.custom_minimum_size = Vector2(78.0, 78.0)
+				holder.mouse_filter = Control.MOUSE_FILTER_PASS
+				holder.add_child(mv)
+				var words: String = String({"F": "Fire", "W": "Water", "A": "Wind"}[m.c]) + " marble"
+				box.set_meta("tip", Keywords.tooltip(words + (", carved" if String(m.sym) != "" else ""),
+					String(MarbleView.SYM_WORDS.get(m.sym, "It goes into your bag for good.")) + ("  It goes into your bag for good." if String(m.sym) != "" else "")))
+				box.set_meta("pic_w", 78.0)
+				box.set_meta("pic_h", 78.0)
+				box.add_child(holder)
+			"card_bag", "marble_bag":
+				var cb: bool = it.kind == "card_bag"
+				var bag := UiTheme.label("🎴" if cb else "🔮", 84, Color.WHITE)
+				bag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				bag.mouse_filter = Control.MOUSE_FILTER_PASS
+				box.set_meta("tip", Keywords.tooltip("A bag of cards" if cb else "A bag of marbles",
+					"Open it and choose 1 of 3 %s. %d%% of the price of one." % ["cards" if cb else "marbles", int(RunState.BAG_DISCOUNT * 100)]))
+				box.set_meta("pic_w", 110.0)
+				box.set_meta("pic_h", 110.0)
+				box.add_child(bag)
 			"mend_seed":
 				var p := PanelContainer.new()
 				p.add_theme_stylebox_override("panel", _frame())
@@ -879,6 +907,9 @@ func _buy(i: int) -> void:
 		return
 	if it.kind == "bottle" and run.player.bottles.size() >= run.bottle_slots():
 		return
+	if it.kind == "spell" and not run.has_room(String(it.spell.id)):
+		need_room.emit(String(it.spell.id))  # (nothing is paid: make room, then buy it)
+		return
 	if not run.pay(run.shop_price(it)):
 		return
 	Audio.play("shop_buy", -2.0, randf_range(0.97, 1.03))  # (coins; the same for everything bought)
@@ -907,6 +938,14 @@ func _buy(i: int) -> void:
 		"upgrade":
 			it.sold = true
 			upgrade_requested.emit()
+			return
+		"marble":
+			run.marble_bag.append(it.marble)
+			Events.toast.emit("A marble for your bag", UiTheme.ACCENT)
+			it.sold = true
+		"card_bag", "marble_bag":
+			it.sold = true
+			bag_opened.emit(String(it.kind))
 			return
 	_refresh.call_deferred()
 
@@ -2344,6 +2383,7 @@ func _cart_layout(old: Array) -> void:
 			return
 	var n_spell := 0
 	var n_art := 0
+	var n_marble := 0
 	# the upper plank: bottles, candle, soup spread EVENLY (equal gaps between the pictures, and at the two ends); the artifacts stand under the last three
 	var ups: Array = []
 	for b in _boxes:
@@ -2417,6 +2457,11 @@ func _cart_layout(old: Array) -> void:
 				n_art += 1
 			"bottle", "upgrade", "heal":
 				at = Vector2(float(b.get_meta("cx", TC_UP_X[0])), TC_UP_FOOT)
+			"marble":
+				at = TC_MARBLES[mini(n_marble, TC_MARBLES.size() - 1)]
+				n_marble += 1
+			"card_bag", "marble_bag":
+				at = TC_BAGS[0 if kind == "card_bag" else 1]
 			_:
 				b.position = TC_MEND - b.size / 2.0
 				continue

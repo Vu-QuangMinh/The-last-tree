@@ -19,6 +19,7 @@ var cracked := 0.0  # 0..1: fractures spreading across it, white light blazing o
 var _cracks: Array = []  # fracture lines, in orb units (centre 0,0, radius 1): each a PackedVector2Array
 var _sparks: Array = []  # light spewing out of the cracks: [pos, vel, life] in pixels from the centre
 var highlight := false
+var carve := ""  # a carved marble's symbol (the new fight: "sword", "heart"...): drawn on the ball wherever it is
 var dim := false
 var hover_lift := 0.0  # px the icon floats up while the mouse is on it
 var _lift_tween: Tween
@@ -32,6 +33,9 @@ const GLOW := {"F": Color(1.0, 0.55, 0.15), "W": Color(0.35, 0.7, 1.0), "A": Col
 static func make(p_el: String, px := 40.0) -> ElementIcon:
 	var i := ElementIcon.new()
 	i.el = p_el
+	if p_el.contains("|"):  # ("F|sword": a carved marble, for the places that only pass a letter: the reels, the tray)
+		i.el = p_el.get_slice("|", 0)
+		i.carve = p_el.get_slice("|", 1)
 	i.custom_minimum_size = Vector2(px, px)
 	i.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return i
@@ -326,6 +330,8 @@ func _draw() -> void:
 				draw_colored_polygon(PackedVector2Array([end - side * 0.4, end + dir * reach * 0.8, end + side * 0.4]), Color(1, 1, 0.95, 0.9))
 		for s in _sparks:
 			draw_circle(c + s[0], (2.0 + 3.0 * s[2]) * maxf(1.0, r / 40.0), Color(1.0, 0.97, 0.8, s[2]))
+	if carve != "" and carve != "star":
+		_draw_carve(c, r)
 	if wall:
 		# a ring of bramble: dark green, with thorns sticking out
 		draw_arc(c, r + 1.5, 0, TAU, 32, Color(0.2, 0.32, 0.12), maxf(2.5, r * 0.22), true)
@@ -335,6 +341,22 @@ func _draw() -> void:
 			var tt := c + Vector2.from_angle(ta) * (r + r * 0.42)
 			var ts := Vector2.from_angle(ta + PI / 2.0) * r * 0.12
 			draw_colored_polygon(PackedVector2Array([tb - ts, tt, tb + ts]), Color(0.36, 0.25, 0.12))
+
+
+## A carving on the ball: its symbol, dark-outlined, in the middle (MarbleView.SYM).
+func _draw_carve(c: Vector2, r: float) -> void:
+	var glyph := String(MarbleView.SYM.get(carve, ""))
+	if glyph == "" or el == "hidden":
+		return
+	# a stamped disc: dark wood with a gold rim, the symbol on it, so it reads on any colour of ball
+	var dr := r * 0.62
+	draw_circle(c + Vector2(0, 1.5), dr, Color(0, 0, 0, 0.35), true, -1.0, true)
+	draw_circle(c, dr, Color(0.16, 0.09, 0.05, 0.95), true, -1.0, true)
+	draw_arc(c, dr, 0.0, TAU, 32, Color(0.95, 0.78, 0.35), maxf(1.5, r * 0.1), true)
+	var font: Font = ThemeDB.fallback_font
+	var fs := maxi(8, int(dr * 1.25))
+	var at := c + Vector2(-dr, dr * 0.45)
+	draw_string(font, at, glyph, HORIZONTAL_ALIGNMENT_CENTER, dr * 2.0, fs, Color(1.0, 0.95, 0.82))
 
 
 ## Burden: a dull grey stone sitting in a chant slot: lumpy, speckled, with a crack and a soft highlight.

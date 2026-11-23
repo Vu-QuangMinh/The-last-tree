@@ -24,6 +24,8 @@ var _busy := false  # the fusion is playing
 var embedded := false  # (the event stage plays only the fusion effect with this: no screen of its own)
 var no_wax := false  # (An Abandoned Camp: the spells are only half-cooked, so no wax comes of the fusion)
 var _others: Control  # the "your other spells" overlay, while it's open
+var _name_edit: LineEdit  # the fused card's name: one of the user's names to start with, the player may write their own (2026-11-21)
+var _named_for := ""  # the pair the name box was last filled for (a name the player typed stays while the pair stays)
 
 
 func setup(p_run: RunState) -> void:
@@ -102,6 +104,20 @@ func _ready() -> void:
 	_status.add_theme_font_size_override("bold_font_size", 19)
 	_status.add_theme_color_override("default_color", Color(1, 0.9, 0.75))
 	side.add_child(_status)
+	_name_edit = LineEdit.new()
+	_name_edit.placeholder_text = "Name it"
+	_name_edit.max_length = 32
+	_name_edit.custom_minimum_size = Vector2(300, 48)
+	_name_edit.add_theme_font_size_override("font_size", 22)
+	_name_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_name_edit.tooltip_text = "The new card's name: keep this one or write your own."
+	_name_edit.text_changed.connect(func(t: String):
+		if not _preview.is_empty() and t.strip_edges() != "":
+			_preview.name = t.strip_edges()
+			if _out != null:
+				_out.spell.name = _preview.name
+				_out.refresh())
+	side.add_child(_name_edit)
 	_fuse_btn = UiTheme.button("Fuse them!", _commit, 24)
 	_fuse_btn.custom_minimum_size = Vector2(300, 56)
 	side.add_child(_fuse_btn)
@@ -184,6 +200,14 @@ func _refresh() -> void:
 	_fuse_btn.disabled = _slots[0] == "" or _slots[1] == ""
 	if _slots[0] != "" and _slots[1] != "":
 		_preview = run.fuse_preview(_slots[0], _slots[1])
+		var pair := "%s|%s" % [_slots[0], _slots[1]]
+		if _name_edit == null:
+			pass
+		elif _named_for != pair or _name_edit.text.strip_edges() == "":
+			_named_for = pair
+			_name_edit.text = String(_preview.name)  # (one of the user's names: the player may change it)
+		else:
+			_preview.name = _name_edit.text.strip_edges()
 		_out = SpellCard.make(_preview)
 		_result_box.add_child(_out)
 		_status.text = _pattern_notes(_preview)

@@ -4,7 +4,7 @@ extends Control
 ## number is what casting the spell burns you for). Virus: a green poison drop at the top left (the Poison casting it
 ## gives you). It sits in the card's content box and reaches out onto the frame, like the OrbitSpark.
 
-var kind := "ignite"  # "ignite" (top right) or "virus" (top left)
+var kind := "ignite"  # "ignite" (top right; the only kind since Virus is gone, 2026-11-21)
 var number := 0
 var margins := [6.0, 7.0, 6.0, 5.0]  # the card's content margins (left, top, right, bottom): where the frame is
 var zoom := 1.0

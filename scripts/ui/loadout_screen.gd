@@ -63,7 +63,7 @@ func _ready() -> void:
 	root.add_theme_constant_override("separation", 10)
 	add_child(root)
 	var kind := run.current_kind()
-	root.add_child(UiTheme.label("Your spellbook" if book_only else {"fight": "An encounter", "elite": "An elite blocks the path", "boss": "The boss of this act"}.get(kind, "Encounter"), 28, Color.WHITE))
+	root.add_child(UiTheme.label("Your cards" if book_only else {"fight": "An encounter", "elite": "An elite blocks the path", "boss": "The boss of this act"}.get(kind, "Encounter"), 28, Color.WHITE))
 	# enemies
 	var er := HBoxContainer.new()
 	er.add_theme_constant_override("separation", 16)
@@ -82,7 +82,7 @@ func _ready() -> void:
 	var ah := HBoxContainer.new()
 	av.add_child(ah)
 	var on_cream := _painted()  # (the active board is cream: dark words)
-	ah.add_child(UiTheme.heading("Active spells", 24, Color(0.5, 0.15, 0.1) if on_cream else UiTheme.ACCENT))
+	ah.add_child(UiTheme.heading("Active cards", 24, Color(0.5, 0.15, 0.1) if on_cream else UiTheme.ACCENT))
 	_count = UiTheme.label("", 20, Color(0.3, 0.2, 0.15) if on_cream else UiTheme.MUTED)
 	ah.add_child(_count)
 	ah.add_child(UiTheme.label("     these come with you into the fight", 17, Color(0.3, 0.2, 0.15) if on_cream else UiTheme.MUTED))
@@ -93,7 +93,7 @@ func _ready() -> void:
 	_active_row.custom_minimum_size = Vector2(1800, SpellCard.H)
 	av.add_child(_active_row)
 	# between the two: how to move spells
-	var hint := UiTheme.label("▲ drag a spell up to bring it   ·   drag it down to leave it ▼   ·   drop it on another spell to switch them   ·   or just click it", 17, Color(0.95, 0.88, 0.7))
+	var hint := UiTheme.label("▲ drag a card up to bring it   ·   drag it down to leave it ▼   ·   drop it on another card to switch them   ·   or just click it", 17, Color(0.95, 0.88, 0.7))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(hint)
 	# the spellbook, in its own darker zone
@@ -105,8 +105,8 @@ func _ready() -> void:
 	_book_zone.add_child(bv)
 	var bh2 := HBoxContainer.new()
 	bv.add_child(bh2)
-	bh2.add_child(UiTheme.heading("Spellbook", 22, Color(1.0, 0.92, 0.8) if _painted() else Color(0.85, 0.92, 0.8)))
-	bh2.add_child(UiTheme.label("     the rest of your spells. Powers fire once, then leave the row for the rest of the fight.", 16, Color(0.95, 0.82, 0.72) if _painted() else UiTheme.MUTED))
+	bh2.add_child(UiTheme.heading("Backpack (%d/%d)" % [run.backpack().size(), RunState.MAX_BACKPACK], 22, Color(1.0, 0.92, 0.8) if _painted() else Color(0.85, 0.92, 0.8)))
+	bh2.add_child(UiTheme.label("     the cards you carry but don't fight with. Powers work once cast, for the rest of the fight.", 16, Color(0.95, 0.82, 0.72) if _painted() else UiTheme.MUTED))
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(1800, SpellCard.H + 6)
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -170,10 +170,8 @@ func _enemy_panel(id: String, index: int, width := 440.0) -> Control:
 	h.add_child(v)
 	v.add_child(UiTheme.label(d.name, 22, Color.WHITE))
 	# HP stays hidden (?) until you have defeated this enemy once
-	var hp := HFlowContainer.new()
 	var known := SaveManager.in_codex(id)
-	for c in hp_now:
-		hp.add_child(ElementIcon.make(c if known else "hidden", 26))
+	var hp := UiTheme.label("❤ %s HP" % (str(MarblesFight.hp_of(id, run.act)) if known else "?"), 20, Color(1.0, 0.6, 0.55))  # (the new fight: HP as a number, 2026-11-21)
 	v.add_child(hp)
 	# a light-hearted description; the moves are in the portrait's hover tooltip
 	var bio := UiTheme.label(EnemyDefs.BIOS.get(id, d.get("flavor", "")), 17, Color(0.88, 0.9, 0.82))

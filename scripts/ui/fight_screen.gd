@@ -223,6 +223,8 @@ const IMPACT_SFX := {"F": "fire", "W": "water", "A": "air"}
 func setup(p_run: RunState, p_fight: Fight) -> void:
 	run = p_run
 	fight = p_fight
+	if fight.no_release:
+		auto_release = true  # (the new rules: no Release button; the turn ends once every awake card is cast)
 	fight.chooser = _choose_target
 	fight.mover = _mover
 	fight.picker = _picker
@@ -2504,7 +2506,7 @@ func _roll_next_on_reels(wait: float) -> void:
 	var els: Array = []
 	for r in ranked:
 		if els.size() < 3:
-			els.append(r[2].el)
+			els.append(String(r[2].el) + ("|" + String(r[2].sym) if String(r[2].get("sym", "")) != "" else ""))  # (a carving rides on the reel's ball)
 	await _roll_reels(els)
 
 
@@ -3318,8 +3320,20 @@ func _space_enemy_row() -> void:
 func _chant_string() -> String:
 	var s := ""
 	for i in chant_idx:
-		s += fight.player.stock[i].el
+		s += _known_el(fight.player.stock[i])
 	return s
+
+
+## A disguised marble (the Mirror Fairy's illusion, the new fight 2026-11-22: "veiled"): it keeps its real colour, which
+## the chant uses, but it is drawn as an Any marble until the chant is spoken.
+static func _shown_el(st: Dictionary) -> String:
+	return "?" if bool(st.get("veiled", false)) else String(st.el)
+
+
+## What the chant being built is known to hold, for its previews (the cards' lit orbs): a disguised marble is unknown
+## ("x" matches no pattern), so the preview neither gives its colour away nor promises a match.
+static func _known_el(st: Dictionary) -> String:
+	return "x" if bool(st.get("veiled", false)) else String(st.el)
 
 
 ## Puppet Stage: the heart + "HP 28 / 28" and the shield + its amount stand to the LEFT of the HP tray, their right edges against it.
@@ -3350,7 +3364,7 @@ func _refresh_all() -> void:
 Turn %d" % [run.act, run.floor_no(), fight.turn]))  # (two lines on the sign)
 	_hp_bar.set_values(p.hp, p.max_hp, p.shield + p.lasting)
 	if _machine != null:
-		_machine.set_veil(p.confuse_turns > 0)  # Confuse: a black veil over the slot machine's reels
+		_machine.set_blind(p.blind_turns > 0)  # Blind: what comes out of the slot machine shows only "?"
 	if _danger:
 		_danger.target = DangerVignette.strength(p.hp, p.max_hp)
 	_hp_label.text = ("%d/%d" if _puppet_hud else "HP %d / %d") % [maxf(0, p.hp), p.max_hp]
@@ -3414,7 +3428,6 @@ Turn %d" % [run.act, run.floor_no(), fight.turn]))  # (two lines on the sign)
 		card.state = ""
 		card.state_text = ""
 		card.ignited = p.ignited.has(s.id)
-		card.virus = int(p.virus.get(s.id, 0))
 		card.ignite_dmg = fight.ignite_damage(s.id)
 		card.cracks = 3 if fight.broken.has(s.id) else fight.hammer_hits.get(s.id, 0)
 		if UiSkin.is_puppet() and card.cracks > 0 and card.get_meta("split_level", 0) != card.cracks:
@@ -3453,13 +3466,17 @@ Turn %d" % [run.act, run.floor_no(), fight.turn]))  # (two lines on the sign)
 	_light_patterns()
 	# one main button: Chant while you build, then Release once the chant is spoken
 	_clear_btn.visible = phase == "build"
-	_end_btn.visible = phase == "build"
+	_end_btn.visible = phase == "build" or fight.no_release  # (the new rules: Pass ends the turn after the chant too)
 	_end_btn.disabled = busy
 	_clear_btn.text = "Clear" if _puppet_strips() else UiTheme.hk("Clear", "⌫")  # (the Puppet buttons are small: no "(key)")
 	_end_btn.text = "Pass" if _puppet_strips() else UiTheme.hk("Pass", "E")
 	if phase == "build":
 		_cast_btn.text = "Chant" if _puppet_strips() else UiTheme.hk("Chant", "Enter")
 		_cast_btn.disabled = busy or chant_idx.is_empty() or fight.player.stun_turns > 0
+	elif fight.no_release:
+		_cast_btn.text = "Chant" if _puppet_strips() else UiTheme.hk("Chant", "Enter")  # (no Release: it stays Chant, spoken already)
+		_cast_btn.disabled = true
+		_end_btn.disabled = busy or aiming or move_view != null or pick_view != null or chant_mode != ""
 	else:
 		_cast_btn.text = "Release" if _puppet_strips() else UiTheme.hk("Release", "E")
 		_cast_btn.disabled = busy or aiming or move_view != null or pick_view != null or chant_mode != ""
@@ -3467,7 +3484,7 @@ Turn %d" % [run.act, run.floor_no(), fight.turn]))  # (two lines on the sign)
 		_clear_btn.text = ""
 		_end_btn.text = ""
 		_cast_btn.text = ""
-		var kind2 := "chant" if phase == "build" else "release"  # (two painted buttons of the same form: Chant, then Release)
+		var kind2 := "chant" if phase == "build" or fight.no_release else "release"  # (two painted buttons of the same form: Chant, then Release)
 		if _cast_kind != kind2:
 			_cast_kind = kind2
 			UiTheme.style_puppet_button(_cast_btn, kind2, 18)
@@ -3475,8 +3492,8 @@ Turn %d" % [run.act, run.floor_no(), fight.turn]))  # (two lines on the sign)
 		_clear_btn.text = ""
 		_end_btn.text = ""
 		_cast_btn.text = ""
-		_cast_btn.tooltip_text = "Chant (Enter)" if phase == "build" else "Release (E)"
-		var cast_kind := "chant" if phase == "build" else "release"  # (two painted buttons: Chant, then Release)
+		_cast_btn.tooltip_text = "Chant (Enter)" if phase == "build" or fight.no_release else "Release (E)"
+		var cast_kind := "chant" if phase == "build" or fight.no_release else "release"  # (two painted buttons: Chant, then Release)
 		if _cast_kind != cast_kind:
 			_cast_kind = cast_kind
 			UiTheme.style_puppet_button(_cast_btn, cast_kind, 18)
@@ -3489,6 +3506,8 @@ Turn %d" % [run.act, run.floor_no(), fight.turn]))  # (two lines on the sign)
 	if not aiming and not busy and move_view == null and pick_view == null and chant_mode == "":
 		if phase == "build" and fight.player.stun_turns > 0:
 			_prompt.text = "You are Stunned: your turn is skipped."
+		elif phase == "build" and fight.no_release:
+			_prompt.text = "" if chant != "" else "Build a chant: the cards whose pattern it makes come alive."
 		elif phase == "build":
 			_prompt.text = "" if chant != "" else "Build a chant: when it is Released, enemies lose the longest start of their Essence found in it. Matching spells come alive."
 		elif live_spells:
@@ -3496,7 +3515,7 @@ Turn %d" % [run.act, run.floor_no(), fight.turn]))  # (two lines on the sign)
 		else:
 			_prompt.text = "Nothing left to cast." if auto_release else "Nothing left to cast: press Release!"
 	# every spell is cast: the Release button pulses so you know what to press next
-	_release_glow = phase == "spells" and not live_spells and not _cast_btn.disabled and not _released and not fight.over
+	_release_glow = phase == "spells" and not live_spells and not _cast_btn.disabled and not _released and not fight.over and not fight.no_release
 
 
 func _refresh_chant() -> void:
@@ -3509,11 +3528,14 @@ func _refresh_chant() -> void:
 	for c in _chant_row.get_children():
 		c.queue_free()
 	var shown: Array = []  # element letters to draw
+	var syms: Array = []  # their carvings ("" = none), in step
 	if phase == "build":
 		for i in chant_idx:
-			shown.append(p.stock[i].el)
+			shown.append(_shown_el(p.stock[i]))
+			syms.append(String(p.stock[i].get("sym", "")))
 	else:
 		shown = fight.chant.duplicate()
+		syms = fight.chant_syms.duplicate()
 	var n := maxi(_chant_rings(), shown.size())
 	var lay := _chant_layout(shown.size())
 	_chant_row.add_theme_constant_override("separation", int(lay.y))
@@ -3542,6 +3564,7 @@ func _refresh_chant() -> void:
 			slot.add_child(stone)
 		if i < shown.size():
 			var ic := ElementIcon.make(shown[i], px)
+			ic.carve = String(syms[i]) if i < syms.size() else ""
 			if phase == "build":
 				ic.temp = p.stock[chant_idx[i]].temp
 				if _flying.has(p.stock[chant_idx[i]].uid):
@@ -3568,8 +3591,8 @@ func _refresh_chant() -> void:
 		note = ""  # (Puppet Stage: no plain count; only what needs saying: a Toll, the chant is spoken, Hypnotized)
 	if p.toll > 0:
 		note = "%d / %d Essence (Burden)" % [chant_idx.size(), slots]
-	if p.confuse_turns > 0 and phase == "build":
-		note += ("" if note == "" else "   ·   ") + "CONFUSED: you can't see what is coming next"
+	if p.blind_turns > 0 and phase == "build":
+		note += ("" if note == "" else "   ·   ") + "BLIND: you can't see what comes out of the slot machine"
 	_chant_note.text = note
 	_chant_note.tooltip_text = note
 
@@ -3579,7 +3602,7 @@ func _refresh_chant() -> void:
 func _refresh_stock() -> void:
 	var p := fight.player
 	var order := range(p.stock.size())
-	order.sort_custom(func(a, b): return "FWA".find(p.stock[a].el) < "FWA".find(p.stock[b].el) or ("FWA".find(p.stock[a].el) == "FWA".find(p.stock[b].el) and a < b))
+	order.sort_custom(func(a, b): return "FWA".find(_shown_el(p.stock[a])) < "FWA".find(_shown_el(p.stock[b])) or ("FWA".find(_shown_el(p.stock[a])) == "FWA".find(_shown_el(p.stock[b])) and a < b))
 	var held_uid := -1  # an element being dragged out of the bag is in your hand, not in the bag
 	if is_instance_valid(_bdrag) and _bdrag_src.get("kind", "") == "stock":
 		held_uid = p.stock[_bdrag_src.i].uid
@@ -3621,7 +3644,7 @@ func _refresh_stock() -> void:
 		var ic: ElementIcon = _bag_icons.get(uid)
 		var fresh := ic == null
 		if fresh:
-			ic = ElementIcon.make(s.el, BAG_PX)
+			ic = ElementIcon.make(_shown_el(s), BAG_PX)
 			ic.size = Vector2(BAG_PX, BAG_PX)
 			ic.pivot_offset = Vector2(BAG_PX, BAG_PX) / 2.0
 			ic.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -3634,14 +3657,15 @@ func _refresh_stock() -> void:
 			ic.position = target
 			_stock_row.add_child(ic)
 			_bag_icons[uid] = ic
-		ic.el = s.el
+		ic.el = _shown_el(s)
+		ic.carve = String(s.get("sym", ""))  # (a carved marble: its symbol stays on the ball)
 		ic.temp = s.temp
 		ic.frozen = s.frozen
 		ic.freeze_n = int(s.get("freeze_n", 0))
 		ic.dim = phase != "build"
 		if not ic.has_meta("rolling"):
 			ic.modulate.a = 0.0 if _flying.has(uid) else 1.0
-		var tip: String = Elements.NAMES[s.el]
+		var tip: String = "Disguised: the Mirror Fairy's illusion hides its colour (it is still your own marble)." if bool(s.get("veiled", false)) else String(Elements.NAMES[s.el])
 		if s.temp:
 			tip += " (conjured: fades at the end of this turn)"
 		if s.frozen:
@@ -3743,6 +3767,53 @@ func _chant_px() -> float:
 	return _chant_layout().x
 
 
+## Where a boost line starts or ends (global): {kind: "chant", k} a marble of the chant, {kind: "card", id}, {kind: "you"}.
+func _boost_point(d: Dictionary) -> Vector2:
+	match String(d.get("kind", "")):
+		"chant":  # (the ring itself: the chant row's k-th slot)
+			var slots := _chant_row.get_children().filter(func(n): return n is Panel and not n.is_queued_for_deletion())
+			var k := int(d.get("k", 0))
+			if k >= 0 and k < slots.size():
+				return (slots[k] as Control).get_global_rect().get_center()
+			return _chant_slot_center(k)
+		"card":
+			var c := _card_for(String(d.get("id", "")))
+			return c.get_global_rect().get_center() if c != null and c.is_inside_tree() else Vector2.INF
+		"you":
+			return _player_point()
+	return Vector2.INF
+
+
+## A boost line arrived: what it raised shakes a little and flashes in the line's colour (you: your HP tray).
+func _boost_landed(d: Dictionary, kind := "other") -> void:
+	var node: Control = _card_for(String(d.get("id", ""))) if String(d.get("kind", "")) == "card" else _player_panel
+	if node == null or not is_instance_valid(node):
+		return
+	var col: Color = BoostLine.COLS.get(kind, BoostLine.COLS.other)
+	if node is SpellCard:
+		(node as SpellCard).pulse_numbers(col)  # (a card: only the number it raised reacts, the user 2026-11-22)
+		return
+	var flash := Color(1.0 + col.r * 0.9, 1.0 + col.g * 0.9, 1.0 + col.b * 0.9).lerp(Color(col.r * 2.2, col.g * 2.2, col.b * 2.2), 0.45)
+	if node.has_meta("boost_tw"):
+		var old: Tween = node.get_meta("boost_tw")
+		if old != null and old.is_valid():
+			old.kill()  # (another line landed on it: start over from its rest)
+	var base_scale: Vector2 = node.get_meta("rest_scale", node.scale)
+	node.set_meta("rest_scale", base_scale)
+	node.scale = base_scale
+	node.rotation = 0.0
+	node.pivot_offset = node.size / 2.0
+	var tw := node.create_tween()
+	node.set_meta("boost_tw", tw)
+	tw.tween_property(node, "modulate", flash, 0.05)
+	tw.parallel().tween_property(node, "scale", base_scale * 1.07, 0.05)
+	for k in 4:  # (a quick shake)
+		tw.tween_property(node, "rotation", (0.05 if k % 2 == 0 else -0.05) * (1.0 - k * 0.22), 0.04)
+	tw.tween_property(node, "rotation", 0.0, 0.04)
+	tw.parallel().tween_property(node, "scale", base_scale, 0.16)
+	tw.tween_property(node, "modulate", Color.WHITE, 0.25)
+
+
 func _chant_slot_center(k: int) -> Vector2:
 	var l := _chant_layout()
 	return _chant_row.global_position + Vector2(k * (l.x + l.y) + l.x / 2.0, l.x / 2.0)
@@ -3752,7 +3823,8 @@ func _chant_slot_center(k: int) -> Vector2:
 ## of its new home. Its real icon waits (invisible) at the other end and pops in when this one lands.
 func _fly(s: Dictionary, from: Vector2, to: Vector2, from_px: float, to_px: float) -> void:
 	var uid: int = s.uid
-	var ic := ElementIcon.make(s.el, from_px)
+	var ic := ElementIcon.make(_shown_el(s), from_px)
+	ic.carve = String(s.get("sym", ""))
 	ic.size = Vector2(from_px, from_px)
 	ic.pivot_offset = ic.size / 2.0
 	ic.temp = s.temp
@@ -3792,7 +3864,7 @@ func _light_patterns() -> void:
 			var st: Dictionary = fight.player.stock[i]
 			if _flying.has(st.uid):
 				break
-			c += st.el
+			c += _known_el(st)
 	for card in _cards:
 		if not is_instance_valid(card):
 			continue
@@ -3959,6 +4031,10 @@ func situation_help() -> String:
 			return "Build a chant: click your Essence at the bottom (or press F, W, A). Every enemy will lose the longest START of its Essence found in your chant, and spells whose pattern appears in it come alive. Then press Chant."
 		return "Your chant so far: %s. The crossed-out orbs on the enemies show what they'll lose. Add more Essence, click one in the chant to take it back, or press Chant (Enter) when you're happy." % " ".join(Array(_chant_string().split("")))
 	var alive := _cards.filter(func(c): return c.charges > 0)
+	if fight.no_release:
+		if alive.is_empty():
+			return "Your cards are done: the enemies act."
+		return "Your chant is spoken. These cards are awake (glowing): %s. Click one to use it; if it needs a target it pulls out an arrow, then click an enemy. Your turn ends when they are all used, or when you press Pass (E)." % ", ".join(alive.map(func(c): return c.spell.name))
 	if not alive.is_empty():
 		var names := alive.map(func(c): return c.spell.name)
 		return "Your chant is spoken. These spells are alive (glowing): %s. Click one to cast it; if it needs a target it pulls out an arrow, then click an enemy. When you're done, press Release (E) to fire the chant." % ", ".join(names)
@@ -4101,7 +4177,7 @@ func _press_element(kind: String, i: int) -> void:
 func _begin_build_drag(pointer: Vector2) -> void:
 	var src := _press.duplicate()
 	var p := fight.player
-	var els: Array = chant_idx.map(func(k): return p.stock[k].el)
+	var els: Array = chant_idx.map(func(k): return _shown_el(p.stock[k]))
 	var held := -1
 	if src.kind == "stock" and src.i in chant_idx:
 		src = {"kind": "chant", "i": chant_idx.find(src.i)}  # it's already in the chant: move it
@@ -4109,7 +4185,7 @@ func _begin_build_drag(pointer: Vector2) -> void:
 		if p.stock[src.i].frozen or chant_idx.size() >= p.chant_slots():
 			_press = {}
 			return
-		els.append(p.stock[src.i].el)
+		els.append(_shown_el(p.stock[src.i]))
 		held = els.size() - 1
 	else:
 		held = src.i
@@ -4214,7 +4290,7 @@ func _add_element(el: String) -> void:
 	for i in fight.player.stock.size():
 		var s: Dictionary = fight.player.stock[i]
 		var rolling: Control = _bag_icons.get(s.uid)
-		if s.el != el or s.frozen or i in chant_idx or (rolling != null and is_instance_valid(rolling) and rolling.has_meta("rolling")):
+		if _shown_el(s) != el or s.frozen or i in chant_idx or (rolling != null and is_instance_valid(rolling) and rolling.has_meta("rolling")):
 			continue
 		if pick == -1 or (s.temp and not fight.player.stock[pick].temp) or false:
 			pick = i
@@ -4838,10 +4914,10 @@ func _seed_revival() -> void:
 ## [text, colour, keyword] for each status you have: shown as bright badges above your HP bar.
 ## The picture names to try for each of your statuses (the first that exists is used; Puppet art first, the older intent pictures as a fallback).
 const STATUS_ART_NAMES := {"shield": ["icon_armor_shield"], "thorns": ["status_thorns"], "silence": ["status_silenced"], "aegis": ["status_aegis"],
-	"echo": ["status_echo_ready"], "overload": ["status_overload"], "ethereal": ["status_ethereal", "intent_ethereal"],
-	"poison": ["status_poison", "intent_poison"], "bleed": ["status_bleed", "intent_bleed"], "confuse": ["status_confuse", "intent_confuse"], "blind": ["status_blind", "intent_blind"],
+	"overload": ["status_overload"], "ethereal": ["status_ethereal", "intent_ethereal"],
+	"burn": ["status_burn", "intent_burn"], "blind": ["status_blind", "intent_blind"],
 	"lock": ["status_burden", "status_toll", "intent_toll"], "vulnerable": ["status_vulnerable"], "stun": ["status_stunned", "intent_stunned"],
-	"brittle": ["status_brittle"], "disarmed": ["status_disarmed"]}
+	"brittle": ["status_brittle"]}
 ## A Power's badge picture, by the theme of its dissolve (fire / water / wind use the Essence balls).
 const POWER_ART_NAMES := {"fire": ["essence_fire"], "water": ["essence_water"], "wind": ["essence_wind"], "thorn": ["status_thorns"],
 	"venom": ["status_poison", "intent_poison"], "leaf": ["icon_seedling"], "shadow": ["status_silenced"], "page": ["icon_spellbook"]}
@@ -4875,26 +4951,20 @@ func _status_badges() -> Array:
 		out.append(["👻 Ethereal", Color(0.75, 0.7, 1.0), "ethereal"])
 	if p.stun_turns > 0:
 		out.append(["💫 Stunned", Color(1.0, 0.85, 0.3), "stun"])
-	if p.echo_next:
-		out.append(["🔔 Echo ready", Color(0.85, 0.6, 1.0), "echo"])
-	if p.poison > 0:
-		out.append(["🧪 Poison %d" % p.poison, Color(0.55, 0.9, 0.3), "poison"])
-	if p.bleed > 0:
-		out.append(["🩸 Bleed %d" % p.bleed, Color(0.95, 0.3, 0.3), "bleed"])
-	if p.confuse_turns > 0:
-		out.append(["🌀 Confused", Color(0.8, 0.4, 1.0), "confuse"])
+	if p.burn > 0:
+		out.append(["🔥 Burn %d" % p.burn, Color(1.0, 0.55, 0.2), "burn"])
 	if p.blind_turns > 0:
 		out.append(["🙈 Blind %d" % p.blind_turns, Color(0.7, 0.72, 0.78), "blind"])
 	if p.vulnerable > 0:
 		out.append(["🎯 Vulnerable %d" % p.vulnerable, Color(1.0, 0.45, 0.35), "vulnerable"])
+	if p.weak > 0:
+		out.append(["🥀 Weakened %d" % p.weak, Color(0.8, 0.6, 1.0), "weak"])
 	if p.brittle_turns > 0:
 		out.append(["🧊 Brittle %d" % p.brittle_turns, Color(0.55, 0.75, 0.95), "brittle"])
 	if p.toll > 0:
 		out.append(["🪨 Burden %d" % p.toll, Color(0.75, 0.72, 0.68), "lock"])
 	if p.overload > 0:
 		out.append(["⚡ Overload %d" % p.overload, Color(1.0, 0.45, 0.3), "overload"])
-	if p.disarmed_turns > 0:
-		out.append(["🚫 Disarmed", Color(1.0, 0.55, 0.45), "disarmed"])
 	if not p.silenced.is_empty():
 		out.append(["🤐 Silenced", Color(0.8, 0.45, 1.0), "silence"])
 	# every Power you've cast this fight: a badge for the rest of it (hover: what it does)
@@ -4925,9 +4995,9 @@ const POWER_THEMES := {
 	"page": {"key": "page", "from": Vector2(1, 0), "col": Color(1.0, 0.95, 0.8), "shape": Vfx.SHARD, "icon": "📜", "rise": 200.0},
 }
 const POWER_THEME_OF := {"kindle": "fire", "ember_crown": "fire", "pyromancy": "fire", "avatar_of_flame": "fire",
-	"rising_tide": "water", "trade_winds": "wind", "storm_crown": "wind", "echo_chamber": "wind", "attunement": "wind",
+	"rising_tide": "water", "trade_winds": "wind", "storm_crown": "wind", "attunement": "wind",
 	"thorn_mantle": "thorn", "world_tree_blessing": "leaf",
-	"cauterize": "fire", "stillness": "shadow", "frailty": "shadow", "grimoire": "page"}
+	"stillness": "shadow", "frailty": "shadow", "grimoire": "page"}
 
 
 static func power_theme(sp: Dictionary) -> Dictionary:
@@ -6331,6 +6401,21 @@ func _anim_event(ev: Dictionary) -> void:
 			await _wait(0.3)
 		"refund":
 			await _refund_flight(ev)
+		"boost_line":  # (the new fight: something raised something else: streaks of light from it to each thing it raised)
+			var bfrom := _boost_point(ev.src)
+			var shot := false
+			for dst in ev.get("dsts", [ev.get("dst", {})]):
+				var bto := _boost_point(dst)
+				if bfrom == Vector2.INF or bto == Vector2.INF:
+					continue
+				var line := BoostLine.shoot(_fx, bfrom - _fx.global_position, bto - _fx.global_position, String(ev.col))
+				var d2: Dictionary = dst
+				var kind := String(ev.col)
+				line.on_land = func() -> void: _boost_landed(d2, kind)
+				shot = true
+			if shot:
+				Audio.play("spell_glow", -12.0, 1.7)
+				await _wait(BoostLine.FLY + 0.08)  # (it has landed: the count goes on)
 		"next_rolled":
 			pass  # (what the artifacts gave flies to the tray once the balls of this turn are in: see _process)
 		"artifact_used":
@@ -6476,18 +6561,6 @@ func _anim_event(ev: Dictionary) -> void:
 				fx.ring(at, 8, 60, Color(1.0, 0.9, 0.55), 0.3, 4.0)
 			Audio.play("spell_glow")
 			await _wait(0.3)
-		"echo_voice":
-			# Echoed Voice: its badge flashes, and a beat later the effect fires again from it
-			var badge := _power_badge("echo_chamber")
-			if badge:
-				var tw := badge.create_tween()
-				tw.tween_property(badge, "modulate", Color(1.8, 1.6, 2.0), 0.08)
-				tw.tween_property(badge, "modulate", Color.WHITE, 0.3)
-			await _wait(0.25)
-		"echo_chamber":
-			# the Echo Chamber shines, and a beat later the same effect fires again from it
-			_arts.flash("echo_chamber")
-			await _wait(0.25)
 		"effect":
 			var snd: String = EFFECT_SFX.get(ev.op, "")
 			if snd == "sfx_magic_hit" and not UiSkin.is_puppet():
@@ -6669,10 +6742,6 @@ func _anim_event(ev: Dictionary) -> void:
 			_sync_views()
 			_refresh_all()
 			await _wait(0.1)
-		"confuse":
-			Audio.play("sfx_confuse_apply")
-			_refresh_all()
-			await _wait(0.15)
 		"blind":
 			Audio.play("sfx_blind_apply")
 			_refresh_all()
@@ -6776,14 +6845,6 @@ func _anim_event(ev: Dictionary) -> void:
 				_callout("[b]Fizzled![/b]", fc.global_position + Vector2(fc.size.x * fc.scale.x / 2.0, -10.0), Color(0.85, 0.8, 0.75), 1.2)
 			_refresh_all()
 			await _wait(0.5)
-		"virus_hit":
-			Audio.play("sfx_poison_apply")
-			var vc := _card_for(ev.id)
-			if vc:
-				var vfx := Vfx.make(_fx, 70)
-				vfx.burst(vc.global_position + vc.size * vc.scale / 2.0, 16, Color(0.55, 0.95, 0.3), Vector2(80, 240), Vector2(0.25, 0.5), Vector2(4, 8), Vfx.SPARK)
-			_refresh_all()
-			await _wait(0.3)
 		"ignite_spell":
 			Audio.play("sfx_burn_apply")
 			_refresh_all()
@@ -6798,12 +6859,8 @@ func _anim_event(ev: Dictionary) -> void:
 			_shake(5.0)
 			_refresh_all()
 			await _wait(0.25)
-		"poison_tick":
-			Audio.play("sfx_poison_tick")
-			_refresh_all()
-			await _wait(0.15)
-		"bleed_tick":
-			Audio.play("sfx_bleed_tick")
+		"burn_tick":
+			Audio.play("sfx_burn_tick")
 			_refresh_all()
 			await _wait(0.15)
 		_:
@@ -6828,6 +6885,8 @@ func _sing(indices: Array, hits: Array) -> void:
 				if ic is ElementIcon:
 					_hop(ic, 18.0)
 					Audio.play_note(ic.el)
+		if fight.no_release and fight.has_method("on_note"):  # (the new fight: a carved marble works as it is read; the reading waits)
+			await fight.call("on_note", i)
 		for h in hits:
 			var card := _card_for(h.id)
 			if card == null or not is_instance_valid(card._pat):

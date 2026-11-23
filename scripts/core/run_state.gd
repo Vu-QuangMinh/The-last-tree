@@ -10,18 +10,23 @@ const WIN_BONUS := 30
 const REST_HEAL := 0.3
 ## Spell reward odds, Slay the Spire's (their common / uncommon / rare = our Common / Rare / Legendary), per card:
 ## [Common, Rare, Legendary]. A boss always gives Legendary.
-const ODDS := {"fight": [0.60, 0.37, 0.03], "elite": [0.50, 0.40, 0.10], "shop": [0.54, 0.37, 0.09]}
-## Their hidden pity counter: the Legendary chance starts 5% lower, rises 1% with every Common you're shown, and drops
-## back when a Legendary shows up.
-const LEGENDARY_OFFSET_START := -0.05
-## Normal fights' Rare chance has its own hidden pity counter (in place of ODDS.fight's Rare): it starts at 12%, rises 6% with
-## every card that isn't Rare and drops back to 12% when a Rare shows up. About 1 card in 4 is Rare over a run (fewer early).
-const RARE_CHANCE_START := 0.12
-const RARE_CHANCE_STEP := 0.06
+## Rare: 7.2% a card, so about 1 offer of 3 in 5 (20%) has a Rare (the user, 2026-11-22: "much rarer"; it was 37-40%).
+const RARE_CARD := 0.072
+## Legendary: 1.7% a card (about 1 offer in 20 has one), elites 2.7% (about 1 in 12) (the user, 2026-11-22).
+const ODDS := {"fight": [1.0 - RARE_CARD - 0.017, RARE_CARD, 0.017], "elite": [1.0 - RARE_CARD - 0.027, RARE_CARD, 0.027], "shop": [1.0 - RARE_CARD - 0.017, RARE_CARD, 0.017]}
+## The Legendary pity counter (it rose 1% with every Common shown) is off since 2026-11-22: flat odds.
+const LEGENDARY_OFFSET_START := 0.0
+const LEGENDARY_STEP := 0.0
+## Normal fights' Rare chance (in place of ODDS.fight's Rare): flat since 2026-11-22 (the pity counter that made a Rare
+## likelier after each miss, 12% +6% a card, is off: STEP 0).
+const RARE_CHANCE_START := RARE_CARD
+const RARE_CHANCE_STEP := 0.0
 ## Amber: the run's money, spent at merchants and in some events.
 const START_AMBER := 30
 const AMBER := {"fight": [14, 22], "elite": [28, 38], "boss": [60, 60]}
-const PRICES := {"common": 45, "rare": 75, "legendary": 140, "artifact": 110, "artifact_rare": 170, "upgrade": 160, "heal": 40}
+const PRICES := {"common": 45, "rare": 75, "legendary": 140, "artifact": 110, "artifact_rare": 170, "upgrade": 160, "heal": 40,
+	"marble": 20, "marble_carved": 40}
+const BAG_DISCOUNT := 0.6  # (a bag of cards / of marbles: choose 1 of 3, at 60% of the price of one, the user 2026-11-21)
 ## What a "?" room turns out to be.
 const UNKNOWN_ODDS := {"fight": 0.15, "treasure": 0.08, "shop": 0.07}
 
@@ -61,7 +66,7 @@ var refusal := ""  # why the last loadout move was refused (a curse), for the sc
 var seals := {}  # spell id -> [indices of its pattern sealed by upgrades]: those Essence are no longer needed
 var amber := START_AMBER
 var seen_events: Array = []
-var poison_next := 0  # the Whispering Well: Poison you start your next fight with
+var burn_next := 0  # an event's Burn you start your next fight with
 var fight_gift: Array = []  # Essence you start your next fight with (the Lost Sprite's 2 Air)
 var due_events := {}  # event id -> how many events from now it comes, whatever the act (the Flying Turtle falling on you, the Rolling Bear's revenge)
 var stun_next := 0  # turns you start your next fight Stunned (the Rolling Bear's revenge)
@@ -86,6 +91,14 @@ var reward_bottle := ""  # a bottle found after the last fight ("" if none)
 var free_pick: Array = []  # the merchant's thanks: "spell" / "artifact": the next one of that kind you take from him is free
 var merchant_talked := ""  # the room ("act:row:col") where you last talked with the merchant (one favour a visit)
 var fight_snapshot := {}  # you as you went into the current fight (the Seed of Life puts it back)
+## The new cards and marbles (2026-11-21, the user's rebuild: see data/HP_spell_new.json and scripts/marbles/).
+var marble_bag: Array = []  # every marble you own: {c: "F"/"W"/"A", sym: "" or a carving}
+var card_levels := {}  # card id -> 1 or 2: upgraded by finding it again
+var card_perm := {}  # card id -> numbers that grow for the whole run (Circle of Life, Knivel's Innocence...)
+var marble_start := {}  # what events left for the next fight: {burn, stun, shield, gift: [marble colours / "random"]}
+var card_lean := CARD_LEAN_START  # after a normal fight: the chance of a card (else a marble); what you get makes the other likelier
+var rewards_given := 0  # normal-fight rewards so far this run (the first one is always a card)
+const MAX_BACKPACK := 5  # cards you carry outside your active row
 const SEED_MEND_PRICE := 100
 ## Chance to find a bottle after winning a fight (if you have a free slot).
 const BOTTLE_DROP := {"fight": 0.25, "elite": 0.5, "boss": 1.0}
@@ -102,6 +115,9 @@ func setup(p_db: SpellDB, p_unlocked_spells: Array, p_unlocked_artifacts: Array,
 	for s in db.starters():
 		spellbook.append(s.id)
 		loadout.append(s.id)
+	for c in ["F", "W", "A"]:
+		for k in 4:  # (4 of each colour, 12 in all: the user 2026-11-22)
+			marble_bag.append({"c": c, "sym": ""})
 	artifacts.append("seed_of_life")  # every run starts with its second chance
 	map = MapGen.generate(rng)
 
@@ -134,6 +150,10 @@ static func from_save(d: Dictionary, p_db: SpellDB) -> RunState:
 	r.spellbook = r.spellbook.filter(known)
 	r.loadout = r.loadout.filter(known)
 	r.unlocked_spells = r.unlocked_spells.filter(known)
+	# artifacts and bottles removed since (the Echo ones, the Calm Stone: 2026-11-21) are dropped too
+	r.artifacts = r.artifacts.filter(func(id): return not Artifacts.get_def(String(id)).is_empty())
+	r.unlocked_artifacts = r.unlocked_artifacts.filter(func(id): return not Artifacts.get_def(String(id)).is_empty())
+	r.player.bottles = r.player.bottles.filter(func(id): return not Bottles.get_def(String(id)).is_empty())
 	return r
 
 
@@ -160,6 +180,9 @@ func active_slots() -> int:
 ## shows them, under a wax seal (full_pattern + seals).
 func spell(id: String) -> Dictionary:
 	var s: Dictionary = fused[id] if fused.has(id) else db.get_spell(id)
+	if MarbleCards.has(id):
+		s = MarbleCards.as_spell(id, int(card_levels.get(id, 0)), card_perm)
+		s.rarity_name = db.get_spell(id).get("rarity_name", "Common")
 	if id in inverted and not s.is_empty():
 		s = s.duplicate(true)
 		s.anti = not s.get("anti", false)
@@ -176,6 +199,9 @@ func spell(id: String) -> Dictionary:
 		var frag := cs.count("fragility")
 		if frag > 0:
 			s.durability = maxi(1, int(s.get("durability", 4)) - frag)  # (no Durability: it gets 3)
+			if MarbleCards.has(id):  # (the new cards: their words say their Durability)
+				var base_dur := int(MarbleCards.card(id, int(card_levels.get(id, 0))).p.get("dur", 4))
+				s.desc = MarbleCards.with_durability(String(s.get("desc", "")), maxi(1, base_dur - frag))
 		var hes := cs.count("hesitation")
 		if hes > 0:
 			s.cooldown = int(s.get("cooldown", 0)) + hes
@@ -285,6 +311,7 @@ func encounter_ids() -> Array:
 		ids = [boss_for(act)]  # (chosen ahead: the Crowned Matador's trial must not be this one)
 	else:
 		ids = EnemyDefs.encounter(kind, act, depth(), rng, met)
+	ids = marble_ids(ids)  # (the new fight's enemies: what the board, the stage and the fight all show)
 	met.append_array(ids)
 	encounter = ids.duplicate()
 	encounter_extra = ids.map(func(id): return EnemyDefs.extra_for(id, act, depth(), rng, ids.size()))
@@ -294,7 +321,7 @@ func encounter_ids() -> Array:
 ## The boss at the end of this act's map (picked the first time it is asked for, then kept).
 func boss_for(a: int) -> String:
 	if not act_bosses.has(a):
-		var pool: Array = EnemyDefs.BOSSES.get(a, [])
+		var pool: Array = EnemyDefs.BOSSES.get(a, []).filter(func(id): return MarblesRun.simple(id))
 		act_bosses[a] = pool[rng.randi() % pool.size()] if not pool.is_empty() else ""
 	return String(act_bosses[a])
 
@@ -324,7 +351,6 @@ func encounter_hp(i: int) -> Array:
 
 func make_fight(enemy_ids: Array) -> Fight:
 	fight_snapshot = {"hp": player.hp, "max_hp": player.max_hp, "bottles": player.bottles.duplicate(),
-		"echo_casts": player.echo_casts, "echo_charged": player.echo_charged,
 		"kindling_chants": player.kindling_chants, "kindling_charged": player.kindling_charged}
 	var f := Fight.new(db, player)
 	f.rng.seed = rng.randi()
@@ -336,10 +362,15 @@ func make_fight(enemy_ids: Array) -> Fight:
 		f.preset_extra = encounter_extra  # the Essence the player was shown before the fight
 	f.start(enemy_ids, act, depth())
 	if not enemy_ids.is_empty():
-		# what an event left for this fight: Poison (the Whispering Well), Essence to start with (the Lost Sprite)
-		if poison_next > 0:
-			player.poison += poison_next
-			poison_next = 0
+		# what an event left for this fight: Burn, Essence to start with (the Lost Sprite)
+		# (the new fight takes these from marble_start: see marble_run)
+		marble_start.burn = int(marble_start.get("burn", 0)) + burn_next
+		marble_start.stun = maxi(int(marble_start.get("stun", 0)), stun_next)
+		marble_start.shield = int(marble_start.get("shield", 0)) + lasting_next
+		marble_start.gift = (marble_start.get("gift", []) as Array) + fight_gift
+		if burn_next > 0:
+			player.burn += burn_next
+			burn_next = 0
 		if no_talk_next:
 			f.talk_id = ""  # (no conversation: it is already charging at you)
 			no_talk_next = false
@@ -352,6 +383,11 @@ func make_fight(enemy_ids: Array) -> Fight:
 		for el in fight_gift:
 			player.add_element(Elements.random(rng) if el == "random" else String(el))
 		fight_gift.clear()
+		if not loadout.is_empty() and loadout.all(func(id): return MarbleCards.has(String(id))):
+			# the new cards (2026-11-22): the same fight screen, the new rules underneath (MarbleBridge)
+			var b := MarbleBridge.new(db, player)
+			b.begin(self, enemy_ids, f)
+			return b
 	return f
 
 
@@ -460,7 +496,7 @@ func _roll_rarity(kind: String) -> String:
 			rare_chance = RARE_CHANCE_START
 		return "rare"
 	if kind != "shop":
-		legendary_offset += 0.01
+		legendary_offset += LEGENDARY_STEP
 	if kind == "fight":
 		rare_chance += RARE_CHANCE_STEP
 	return "common"
@@ -470,9 +506,12 @@ func spell_offer(n := 3, kind := "fight") -> Array:
 	if "scholar_quill" in artifacts:
 		n += int(Artifacts.num("scholar_quill", "scholar_quill" in artifacts_plus)) - 3
 	var by_rarity := {"common": [], "rare": [], "legendary": []}
-	for id in unlocked_spells:
-		if id in spellbook:
-			continue
+	for sp in db.all_spells:
+		var id := String(sp.id)
+		if id in spellbook and int(card_levels.get(id, 0)) >= 2:
+			continue  # (yours, already upgraded twice)
+		if id == "whim_of_the_pianist" and marble_bag.filter(func(m): return String(m.sym) != "").size() < 2:
+			continue  # (only once you have 2 carved marbles)
 		var s := db.get_spell(id)
 		if not s.is_empty() and not s.get("starter", false) and by_rarity.has(s.rarity):  # (never the starters, nor Unique ones)
 			by_rarity[s.rarity].append(s)
@@ -502,12 +541,137 @@ func spell_offer(n := 3, kind := "fight") -> Array:
 	return out
 
 
-func learn_spell(id: String) -> void:
-	if id in spellbook:
+## Is there room for this card (a card you have only upgrades; a new one needs a place in your row or backpack)?
+func has_room(id: String) -> bool:
+	if not MarbleCards.has(id):
+		return true  # (the old spells, in the tests: no backpack cap)
+	return id in spellbook or loadout.size() < active_slots() or backpack().size() < MAX_BACKPACK
+
+
+## Throw a backpack card away (to make room for a new one).
+func throw_away(id: String) -> void:
+	if id in loadout:
 		return
+	spellbook.erase(id)
+
+
+const OLD_SPELL_TO_CARD := {"trade_winds": "aoles_last_wish"}  # (events that give an old spell: the new card they give now)
+
+
+func learn_spell(id: String) -> void:
+	if OLD_SPELL_TO_CARD.has(id) and not db.get_spell(String(OLD_SPELL_TO_CARD[id])).is_empty():
+		id = String(OLD_SPELL_TO_CARD[id])
+	if db.get_spell(id).is_empty() and not fused.has(id):
+		return  # (an old spell with no new card: Summoning Bill)
+	if id in spellbook:
+		if MarbleCards.has(id):
+			card_levels[id] = mini(2, int(card_levels.get(id, 0)) + 1)  # (found again: yours is upgraded)
+		return
+	if not has_room(id):
+		return  # (full: the screen asks which card to throw away first, see main.gd _learn)
 	spellbook.append(id)
 	if loadout.size() < active_slots():
 		loadout.append(id)
+
+
+## The marble fight's view of this run (MarblesFight / MarblesFightView play on it); take_back() brings what changed
+## home after the fight.
+func marble_run() -> MarblesRun:
+	var mr := MarblesRun.new()
+	mr.rng.seed = rng.randi()
+	mr.act = act
+	mr.hp = int(ceil(player.hp))
+	mr.max_hp = int(player.max_hp)
+	mr.leaves = amber
+	mr.cards = loadout.duplicate()
+	mr.backpack = backpack()
+	mr.levels = card_levels.duplicate()
+	mr.perm = card_perm
+	mr.bag = marble_bag
+	mr.start = marble_start
+	marble_start = {}
+	for id in loadout:
+		var sp := spell(id)
+		if fused.has(id):
+			var parts := []
+			for pid in sp.get("fused_ids", []):
+				parts.append([String(pid), int(card_levels.get(pid, 0))])
+			mr.fused[id] = {"name": String(sp.name), "parts": parts, "text": String(sp.get("desc", ""))}
+		if String(sp.get("pattern", "")) != String(MarbleCards.card(id).get("pattern", "")):
+			mr.patterns[id] = String(sp.pattern)  # (wax seals, curses, a fusion change it)
+		var mods := {}
+		var cs: Array = curses.get(id, [])
+		if cs.count("fragility") > 0:
+			mods.frag = cs.count("fragility")
+		if cs.count("hesitation") > 0:
+			mods.cd = cs.count("hesitation")
+		if cs.count("pain") > 0:
+			mods.pain = 3 * cs.count("pain")
+		if not mods.is_empty():
+			mr.mods[id] = mods
+	return mr
+
+
+func take_back(mr: MarblesRun) -> void:
+	player.hp = float(mr.hp)
+	player.max_hp = float(mr.max_hp)
+	amber = mr.leaves
+	card_levels = mr.levels
+	card_perm = mr.perm
+	marble_bag = mr.bag
+	loadout = mr.cards.duplicate()
+	spellbook = loadout + mr.backpack
+
+
+## The enemies of a fight as the new fight can play them (one puppet each: no Handyman, no dragon parts). The run's
+## first fight is always one spirit alone; from the second on, a spirit never comes alone (the user, 2026-11-21).
+func marble_ids(ids: Array) -> Array:
+	var seed_k := absi(hash("%d:%d:%d" % [act, row, col]))  # (the same room: the same answer, however often it is asked)
+	if act == 1 and kills == 0 and current_kind() == "fight":
+		return [StageFight.LINGS[seed_k % StageFight.LINGS.size()]]
+	var out := ids.filter(func(id): return MarblesRun.simple(String(id)))
+	if out.size() == 1 and String(out[0]) in StageFight.LINGS:  # (spirits come two at a time, their attacks in turn)
+		var others := StageFight.LINGS.filter(func(x): return x != out[0])
+		out.append(others[seed_k % others.size()])
+	return out if not out.is_empty() else ["ashling", "iceling"]
+
+
+## After a normal fight: "card" or "marble", 70 / 30 over a run, pseudo-random (the user, 2026-11-22): the chance of a
+## card starts at 70%, drops CARD_LEAN_DOWN after a card and rises CARD_LEAN_UP after a marble, so marbles never come
+## more than twice in a row and the cards average 70%. The first reward of a run is always a card.
+const CARD_LEAN_START := 0.7
+const CARD_LEAN_DOWN := 0.15
+const CARD_LEAN_UP := 0.4
+
+
+func reward_kind() -> String:
+	rewards_given += 1
+	if rewards_given == 1:
+		return "card"
+	var card := rng.randf() < card_lean
+	card_lean = clampf(card_lean + (-CARD_LEAN_DOWN if card else CARD_LEAN_UP), 0.3, 1.0)
+	return "card" if card else "marble"
+
+
+## Marbles to choose from: carved 70% of the time (a rare carving a quarter as often).
+func marble_offer(n := 3) -> Array:
+	var out := []
+	var syms := ["sword", "shield", "coin", "heart", "star", "fist", "ghost", "skull", "wing"]  # (Spent is gone, 2026-11-22)
+	for k in n:
+		var m := {"c": ["F", "W", "A"][rng.randi() % 3], "sym": ""}
+		if rng.randf() < 0.7:
+			var pool := []
+			for s in syms:
+				for j in (1 if s in ["skull", "wing"] else 4):
+					pool.append(s)
+			m.sym = pool[rng.randi() % pool.size()]
+		out.append(m)
+	return out
+
+
+## The backpack: the cards you have outside your active row.
+func backpack() -> Array:
+	return spellbook.filter(func(id): return not (id in loadout))
 
 
 func artifact_offer(n := 3) -> Array:
@@ -612,7 +776,7 @@ func fuse_preview(id_a: String, id_b: String, drop := -1) -> Dictionary:
 		key.sort()
 		effects = FuseRules.merge(effects, "|".join(key))  # (an override for this pair, if one was hand-made)
 	var s := {
-		"id": "fused_%d" % (_fuse_count + 1), "name": fusion_name(id_a, id_b, a.name, b.name),
+		"id": "fused_%d" % (_fuse_count + 1), "name": default_fusion_name(id_a, id_b) if a.get("marble", false) else fusion_name(id_a, id_b, a.name, b.name),
 		"pattern": "", "effects": effects, "rarity": rarity,
 		"flavor": "Forged at a campfire from %s and %s." % [a.name, b.name],
 		"fused": true, "fused_from": [a.name, b.name], "fused_ids": [id_a, id_b],
@@ -666,7 +830,24 @@ func fuse_preview(id_a: String, id_b: String, drop := -1) -> Dictionary:
 	s.upgraded = false
 	s.kind = SpellDB.kind_of(effects)
 	s.targeted = SpellDB._needs_target(effects)
+	if a.get("marble", false) or b.get("marble", false):  # (the new cards: it does what both say, in that order)
+		s.marble = true
+		s.desc = "%s %s" % [String(a.get("desc", "")), String(b.get("desc", ""))]
+		s.kind = String(a.get("kind", "utility")) if a.get("kind", "") != "utility" else String(b.get("kind", "utility"))
+		s.targeted = bool(a.get("targeted", false)) or bool(b.get("targeted", false))
 	return s
+
+
+## The name a fused card is given until the player writes their own: one of the user's vague names
+## (fusion_default_names in data/HP_spell_new.json), the same for the same pair.
+static func default_fusion_name(id_a: String, id_b: String) -> String:
+	var data = JSON.parse_string(FileAccess.get_file_as_string("res://data/HP_spell_new.json"))
+	var names: Array = data.get("fusion_default_names", []) if data is Dictionary else []
+	if names.is_empty():
+		return "Elemental Fury"
+	var ids := [id_a, id_b]
+	ids.sort()
+	return String(names[absi(hash("|".join(ids))) % names.size()])
 
 
 ## The three Trinity Fragments became Trinity in a fight: it takes their place for the rest of the run (in the active
@@ -1000,8 +1181,8 @@ func event_outcome(opt: Dictionary, bottle_at := -1, spell_id := "") -> Dictiona
 				for b in ids:
 					if not gain_bottle(b):
 						res.overflow.append(b)
-			"poison_next":
-				poison_next += int(d.n)
+			"burn_next":
+				burn_next += int(d.n)
 			"grudge":
 				due_events[String(d.event)] = int(d.n)
 			"soak":
@@ -1293,6 +1474,10 @@ func shop_stock(discount := 0.0) -> Array:
 		items.append({"kind": "artifact", "artifact": a, "price": PRICES.artifact_rare if a.tier == "rare" else PRICES.artifact})
 	for b in Bottles.random(rng, 3):
 		items.append({"kind": "bottle", "bottle": b, "price": Bottles.get_def(b).price})
+	for m in marble_offer(3):
+		items.append({"kind": "marble", "marble": m, "price": PRICES.marble_carved if String(m.sym) != "" else PRICES.marble})
+	items.append({"kind": "card_bag", "price": int(round(PRICES.rare * BAG_DISCOUNT))})
+	items.append({"kind": "marble_bag", "price": int(round(PRICES.marble_carved * BAG_DISCOUNT))})
 	items.append({"kind": "upgrade", "price": PRICES.upgrade})
 	if "broken_seed_of_life" in artifacts:
 		items.append({"kind": "mend_seed", "price": SEED_MEND_PRICE})
@@ -1377,6 +1562,9 @@ func drop_spell(id: String, to_active: bool, onto := "") -> bool:
 			return false
 	if leaving != "" and "binding" in curses.get(leaving, []):
 		refusal = "Curse of Binding: %s can't leave your active row." % spell(leaving).name
+		return false
+	if not to_active and from_active and not (onto != "" and onto in spellbook and not onto_active) and backpack().size() >= MAX_BACKPACK:
+		refusal = "Your backpack is full (%d cards)." % MAX_BACKPACK
 		return false
 	if to_active:
 		if onto_active:
@@ -1522,6 +1710,9 @@ func toggle_active(id: String) -> bool:
 	if id in loadout:
 		if "binding" in curses.get(id, []):
 			refusal = "Curse of Binding: %s can't leave your active row." % spell(id).name
+			return false
+		if backpack().size() >= MAX_BACKPACK:
+			refusal = "Your backpack is full (%d cards)." % MAX_BACKPACK
 			return false
 		loadout.erase(id)
 		return true

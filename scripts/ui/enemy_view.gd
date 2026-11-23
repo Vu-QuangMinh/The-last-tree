@@ -38,6 +38,7 @@ var _spell_cards: Array = []
 var _holder: Control
 var _px := 30.0  # the size of one Essence orb now
 var _px_layout := 40.0  # the Essence size the number of rows is worked out for (see _layout_free)
+var _bar_hp := -1  # (the new fight's HP bar: the HP it showed last, for the "-N" when it drops)
 var _max_n := 0  # the most Essence this enemy has had in this view: its orb size and its rows follow that, never its Essence now (the bar must not reflow as it is hurt)
 var _ghost := false  # a hand of the Handyman that is not in the fight yet: only its folded arm shows (HandymanStage)
 var _rig_view := false  # a Handyman hand or his body (see _raise_text)
@@ -310,9 +311,8 @@ func _gui_input(ev: InputEvent) -> void:
 ## stay hidden. The caller frees the copy and calls end_row_drag().
 func begin_row_drag(screen: Control) -> ChantDrag:
 	var d := ChantDrag.new()
-	var mask := fight.hidden_mask(enemy)
 	for i in enemy.size():
-		d.els.append("hidden" if i < mask.size() and mask[i] else enemy.elements[i])
+		d.els.append(enemy.elements[i])
 		d.live.append(true)
 	d.slots = 0
 	d.px = _hp_icons[0].size.x if not _hp_icons.is_empty() else 48.0
@@ -404,16 +404,24 @@ func refresh(preview: Dictionary) -> void:
 	for ch in _hp_row.get_children():
 		ch.queue_free()
 	_hp_icons.clear()
+	var orbs := e.size()
+	if e.has_meta("hp"):  # (the new fight: an HP bar where the Essence were, 2026-11-22)
+		orbs = 0
+		var now_hp := int(e.get_meta("hp"))
+		var bar := EnemyHpBar.make(now_hp, int(e.get_meta("max_hp", now_hp)), int(e.get_meta("shield", 0)))
+		_hp_row.add_child(bar)
+		if _bar_hp >= 0 and now_hp < _bar_hp:
+			EnemyHpBar.pop(self, Vector2(size.x / 2.0, _hp_row.position.y), _bar_hp - now_hp)
+		_bar_hp = now_hp
 	var k: int = preview.get("removed", {}).get(e, 0)
 	var ghosts := {}
 	var seen := 0
-	for i in e.size():
+	for i in orbs:
 		if seen >= k:
 			break
 		if not e.armor[i]:
 			ghosts[i] = true
 		seen += 1
-	var mask := fight.hidden_mask(e)
 	_max_n = maxi(_max_n, maxi(e.size(), str(e.def.get("hp2", "")).length()))  # (an enemy with a second phase starts out sized for the bigger row: its rows never change at the phase change)
 	var px := ORB_PX  # (every enemy's Essence the same size, in every mode: it never shrinks or grows)
 	var walled := e.has_passive("briar_walls")
@@ -427,9 +435,8 @@ func refresh(preview: Dictionary) -> void:
 	# an enemy behind walls (Bramble Matron): each wall is a hedge with its own Essence under it, hers stack in a
 	# framed block in the middle. Still one row, in order: left wall, her, right wall.
 	var place: Array = _wall_layout(e, px) if walled else []  # (walled: where each Essence goes, by index)
-	for i in e.size():
-		var is_hidden: bool = mask.size() > i and mask[i]
-		var icon := ElementIcon.make("hidden" if is_hidden else e.elements[i], px)
+	for i in orbs:
+		var icon := ElementIcon.make(e.elements[i], px)
 		icon.armored = e.armor[i]
 		icon.wall = e.parts[i] != ""
 		icon.burning = e.is_lit(i)
@@ -892,6 +899,8 @@ func _make_custom_tooltip(for_text: String) -> Object:
 
 ## Where HP element j sits on screen (comets fly here).
 func hp_point(j: int) -> Vector2:
+	if enemy != null and enemy.has_meta("hp") and is_instance_valid(_hp_row):
+		return _hp_row.get_global_rect().get_center()
 	if j >= 0 and j < _hp_icons.size():
 		var ic: Control = _hp_icons[j]
 		return ic.global_position + ic.size / 2.0

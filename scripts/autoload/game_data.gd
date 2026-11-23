@@ -5,7 +5,7 @@ var db: SpellDB
 
 
 func _init() -> void:
-	db = SpellDB.load_from("res://data/spells.json")
+	db = SpellDB.from_marbles()  # (the new cards, 2026-11-21; data/spells.json: the old 200 spells, tests only)
 
 
 func spell_color(pattern: String) -> Color:

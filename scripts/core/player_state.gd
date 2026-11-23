@@ -18,13 +18,12 @@ var aegis := 0
 var thorns_turn := 0  # thorns that last until your next turn
 var thorn_guard := false  # Bandage: enemy thorns (and burning hides) don't hurt you until your next turn
 var ethereal := false  # this enemy turn: no attack damage
-var poison := 0  # Poison N: at the start of your turn you lose N HP, then it drops by 1
-var bleed := 0  # Bleed N: works like Poison, counted on its own (the Pitchfork Peasant)
+var burn := 0  # Burn N: at the start of your turn you lose N HP, then it drops by 1 (the same rule as an enemy's Burn; Poison and Bleed became Burn, 2026-11-21)
 var ignite_hit := {}  # spell id -> true: Ignited until it is cast, and that burn is an attack (Shield stops it): the Torch Peasant
 var ignite_dmg := {}  # spell id -> what casting it burns you for: Ignite stacks (see Fight.IGNITE_DAMAGE)
-var confuse_turns := 0
 var blind_turns := 0
 var toll := 0  # Burden (internally "toll"): your next chant holds at most this many Essence, the slots past it are stone (0 = none)
+var weak := 0  # Weakened N (the new fight, MarbleBridge: the Zephling): your cards deal 50% less for N of your turns
 var vulnerable := 0  # Vulnerable N: you take 50% more damage; N drops by 1 after each enemy turn
 var brittle_turns := 0  # Brittle: the Shield you gain is 50% smaller
 var dmg_taken_mult := 1.0  # from artifacts (Glass Heart)
@@ -36,9 +35,7 @@ var passive_src := {}  # key -> the id of the Power that gave it (its badge shin
 var each_turn: Array = []  # [{spell, effects}]
 var silenced := {}  # spell id -> turns
 var cooldowns := {}  # spell id -> turns before it can be cast again (Cooldown N)
-var disarmed_turns := 0  # Disarmed (the Invoker's Deafening Blast): your Release does nothing
 var stun_turns := 0  # Stunned: your whole turn is skipped (you still get your Essence)
-var virus := {}  # spell id -> Poison: casting that spell poisons you this much (Virus; then it is gone)
 var ignited := {}  # spell id -> turns: casting it burns you (the Ember Sprite)
 var locks := {}  # spell id -> pattern
 var used_powers := {}  # spell id -> true
@@ -49,11 +46,7 @@ var kindling_charged := false
 var box_casts := 0  # Magic Box: spells cast so far (every 6th one's pattern is Refunded)
 var death_note := ""  # how this run ended, when it was something special (Summoning Bill)
 var lute_casts := 0  # A Nice Lute: spells cast so far (every 10th one Weakens all enemies)
-var echo_casts := 0  # Echo Shell: spells cast since it last charged
-var echo_charged := false
-var echo_chamber_on := false  # Echo Chamber: this turn's chant was short, so the next spell is cast twice (then it's off)
 var bottles: Array = []  # bottle ids you carry (see Bottles)
-var echo_next := false  # Echo Draught: your next spell is cast twice (this fight)
 
 
 
@@ -77,14 +70,12 @@ func reset_fight() -> void:
 	aegis = 0
 	thorns_turn = 0
 	ethereal = false
-	poison = 0
-	bleed = 0
-	confuse_turns = 0
+	burn = 0
 	blind_turns = 0
 	toll = 0
 	vulnerable = 0
+	weak = 0
 	brittle_turns = 0
-	echo_chamber_on = false
 	overload = 0
 	stock.clear()
 	next_draw.clear()
@@ -96,13 +87,10 @@ func reset_fight() -> void:
 	ignited.clear()
 	ignite_hit.clear()
 	ignite_dmg.clear()
-	disarmed_turns = 0
 	stun_turns = 0
-	virus.clear()
 	locks.clear()
 	used_powers.clear()
 	durability.clear()
-	echo_next = false
 
 
 func passive(key: String) -> int:
@@ -181,22 +169,16 @@ func describe_statuses() -> Array:
 		out.append("Thorns %d" % (thorns_turn + passive("thorns")))
 	if ethereal:
 		out.append("Ethereal (no attack damage this turn)")
-	if poison > 0:
-		out.append("Poison %d" % poison)
-	if bleed > 0:
-		out.append("Bleed %d" % bleed)
-	if confuse_turns > 0:
-		out.append("Confused: a black veil over the slot machine (you can't see what is coming next)")
+	if burn > 0:
+		out.append("Burn %d" % burn)
 	if blind_turns > 0:
-		out.append("Blind: some enemy Essence are hidden")
+		out.append("Blind: the Essence coming out of the slot machine show only \"?\"")
 	if toll > 0:
 		out.append("Burden: your next chant holds at most %d Essence" % toll)
 	if vulnerable > 0:
 		out.append("Vulnerable %d (you take 50%% more damage)" % vulnerable)
 	if brittle_turns > 0:
 		out.append("Brittle %d (you gain 50%% less Shield)" % brittle_turns)
-	if disarmed_turns > 0:
-		out.append("Disarmed (your Release does nothing this turn)")
 	if stun_turns > 0:
 		out.append("Stunned (you can't chant or cast this turn: only Pass and bottles)")
 	if overload > 0:

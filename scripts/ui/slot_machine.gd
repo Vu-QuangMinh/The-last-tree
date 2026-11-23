@@ -61,7 +61,8 @@ var _lever_tw: Tween
 var _lever_k := 0.0
 var _chase_tw: Tween
 var _flash_tw: Tween
-var _veils: Array = []  # Confuse: a black veil over each reel (you can't see what is coming next)
+var blind := false  # Blind: every Essence in or out of the reels shows only "?" (the "hidden" Essence)
+var _face_els: Array = ["", "", ""]  # what each reel really shows (so Blind can be lifted)
 
 
 func _funnel() -> Rect2:
@@ -192,15 +193,6 @@ func build() -> void:
 		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		front.add_child(box)
 		_boxes.append(box)
-		var veil := ColorRect.new()
-		veil.color = Color(0.02, 0.01, 0.03, 0.96)
-		veil.position = box.position - Vector2(3.0, 3.0)
-		veil.size = box.size + Vector2(6.0, 6.0)
-		veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		veil.tooltip_text = "Confused: you can't see what is coming next."
-		veil.visible = false
-		front.add_child(veil)
-		_veils.append(veil)
 	_lamp_on = UiSkin.tex("slot_lamp_on")
 	_lamp_off = UiSkin.tex("slot_lamp_off")
 	for x in PuppetSlotMachine.LAMP_X:
@@ -339,13 +331,21 @@ func lever_return() -> void:
 
 # ------------------------------------------------------------------ the lamps
 
-## Confuse: a black veil drops over the reels (or lifts).
-func set_veil(on: bool) -> void:
-	for v in _veils:
-		if is_instance_valid(v) and v.visible != on:
-			v.visible = on
-			if on:
-				front.move_child(v, front.get_child_count() - 1)  # (over the reels and whatever spins in them)
+## Blind (2026-11-21, Confuse merged into it): the Essence on the reels, and those that drop out, show only "?".
+func set_blind(on: bool) -> void:
+	if blind == on:
+		return
+	blind = on
+	if headless:
+		return
+	for i in 3:
+		if _faces[i] != null and is_instance_valid(_faces[i]) and String(_face_els[i]) != "":
+			var keep: ElementIcon = _faces[i]
+			var ic := _face(String(_face_els[i]), keep.temp)
+			ic.position = keep.position
+			keep.get_parent().add_child(ic)
+			keep.queue_free()
+			_faces[i] = ic
 
 
 func set_lamps(on: bool) -> void:
@@ -387,7 +387,7 @@ func _flash() -> void:
 # ------------------------------------------------------------------ the reels
 
 func _face(el: String, temp := false) -> ElementIcon:
-	var ic := ElementIcon.make(el, FACE_PX)
+	var ic := ElementIcon.make("hidden" if blind else el, FACE_PX)
 	ic.size = Vector2(FACE_PX, FACE_PX)
 	ic.pivot_offset = ic.size / 2.0
 	ic.temp = temp
@@ -414,6 +414,7 @@ func set_faces(els: Array, bounce := false) -> void:
 			ic.position = (_boxes[i].size - ic.size) / 2.0
 			_boxes[i].add_child(ic)
 			_faces[i] = ic
+			_face_els[i] = String(els[i])
 			if bounce:
 				ic.scale = Vector2(1.3, 1.3)
 				ic.create_tween().tween_property(ic, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -474,6 +475,7 @@ func set_faces_one(i: int, el: String) -> void:
 	ic.position = (_boxes[i].size - ic.size) / 2.0
 	_boxes[i].add_child(ic)
 	_faces[i] = ic
+	_face_els[i] = el
 	ic.scale = Vector2(1.3, 1.3)
 	ic.create_tween().tween_property(ic, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 

@@ -1,7 +1,7 @@
 extends Node
 ## Screen flow: menu → starting relic → map → (loadout → fight → rewards | rest | treasure) → … → end.
 
-## The rules live in the wiki (scripts/ui/wiki_screen.gd).
+## (The tutorial and the wiki were removed on 2026-11-21: they taught the old chant; they will be redone.)
 
 var screen_layer := CanvasLayer.new()
 var overlay_layer := CanvasLayer.new()
@@ -87,15 +87,12 @@ func show_menu() -> void:
 	var m := MenuScreen.new()
 	m.play.connect(_new_run)
 	m.continue_run.connect(continue_run)
-	m.dice_mode.connect(start_dice_mode)
 	m.codex.connect(open_codex)
 	m.unlocks.connect(func():
 		Audio.play("ui_open_panel")
 		var u := UnlockScreen.new()
 		u.closed.connect(func(): u.queue_free(); show_menu())
 		overlay_layer.add_child(u))
-	m.how_to.connect(open_wiki)
-	m.tutorial.connect(start_tutorial)
 	m.test_mode.connect(open_test_mode)
 	m.settings.connect(open_settings)
 	m.room_test.connect(start_room_test)
@@ -113,23 +110,6 @@ func open_settings() -> void:
 			show_menu())  # (the Dev buttons appear or go)
 	overlay_layer.add_child(s)
 
-
-## Tutorial mode: one scripted fight with a coach.
-func start_tutorial() -> void:
-	run = null
-	var t := TutorialScreen.new()
-	t.done.connect(func(): show_menu.call_deferred())
-	_swap(t)
-
-
-func open_wiki() -> void:
-	Audio.play("ui_open_panel")
-	var w := WikiScreen.new()
-	w.closed.connect(w.queue_free)
-	overlay_layer.add_child(w)
-
-
-# ------------------------------------------------------------------ pinned tooltips
 
 var _pinned: CanvasLayer
 var _pinned_owner: Control  # its hover tooltip is off while pinned
@@ -184,8 +164,6 @@ func _right_click_busy() -> bool:
 	var fs: FightScreen = null
 	if current is FightScreen:
 		fs = current
-	elif current is TutorialScreen:
-		fs = current.fs
 	return fs != null and is_instance_valid(fs) and (fs.aiming or fs.move_view != null or fs.pick_view != null or fs.chant_mode != "")
 
 
@@ -219,9 +197,6 @@ func _unhandled_input(ev: InputEvent) -> void:
 	if ev.is_action_pressed("ui_fullscreen"):
 		var full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)
-		get_viewport().set_input_as_handled()
-	if ev.is_action_pressed("ui_wiki"):
-		open_wiki()
 		get_viewport().set_input_as_handled()
 	if ev.is_action_pressed("dev_text_inspector") and UiSkin.dev_keys():
 		TextInspector.toggle(self)  # (the game stops; click any text to see and change its font, size, gap and colour)
@@ -451,14 +426,6 @@ func continue_run() -> void:
 		_show_loadout(d.ids)
 	else:
 		show_map()
-
-
-## Die on Stage (2026-11-15): the dice mode, a run of its own (scripts/dice/).
-func start_dice_mode() -> void:
-	_room_bg = ""
-	var g := DiceGame.new()
-	g.quit.connect(show_menu)
-	_swap(g)
 
 
 func start_run() -> void:
@@ -1390,6 +1357,19 @@ func _show_shop(stock: Array, first := true) -> void:
 			seal.setup(run, ids[k])
 			seal.done.connect(func(): _show_shop(stock, false))
 			_swap(seal)))
+	sh.need_room.connect(func(id: String):
+		_make_room(id, func(): _show_shop(stock, false), false))
+	sh.bag_opened.connect(func(kind: String):  # (a bag: choose 1 of 3, then back to his cart)
+		if kind == "marble_bag":
+			_marble_choice("A bag of marbles", "Choose one for your bag.", run.marble_offer(3), func(): _show_shop(stock, false))
+			return
+		var offer := run.spell_offer(3, "shop")
+		var ch := _choice("A bag of cards", "Choose one card. One you already have is upgraded instead.", offer, [], true)
+		ch.chosen.connect(func(k):
+			if k < 0:
+				_show_shop(stock, false)
+			else:
+				_learn(String(offer[k].id), func(): _show_shop(stock, false))))
 	_put(sh)
 
 
@@ -1474,6 +1454,10 @@ func _begin_stage_fight(fs: FightScreen, _f: Fight, ids: Array, l: LoadoutScreen
 	var from := l.active_rects()
 	var spells: Array = run.loadout.map(func(id): return run.spell(id))
 	var book: Array = run.spellbook.map(func(id): return run.spell(id))
+	if _f is MarbleBridge:  # (the new rules under the same screen: its cards are the bridge's)
+		(_f as MarbleBridge).reload_cards()
+		spells = _f.loadout
+		book = _f.spellbook
 	Audio.play_music(_fight_music(ids))
 	l.queue_free()
 	_overlay = null
@@ -1664,15 +1648,20 @@ func _after_fight(f: Fight) -> void:
 		var bd := Bottles.get_def(run.reward_bottle)
 		Events.toast.emit("Found a bottle: %s %s" % [UiSkin.icon_token(run.reward_bottle, bd.icon), bd.name], Color(0.7, 0.95, 1))
 	var steps: Array = []  # callables, each shows one screen and then calls the next
-	var offer := run.spell_offer(3, kind)
-	var title: String = {"fight": "Victory", "elite": "The elite falls: rare spells", "boss": "The boss falls: legendary spells"}.get(kind, "Victory")
+	var marbles := kind == "fight" and run.reward_kind() == "marble"  # (a normal fight: a card or a marble, 70 / 30 pseudo-random, the first one a card)
+	var offer := [] if marbles else run.spell_offer(3, kind)
+	var title: String = {"fight": "Victory", "elite": "The elite falls: rare cards", "boss": "The boss falls: legendary cards"}.get(kind, "Victory")
+	if marbles:
+		var ms := run.marble_offer(3)
+		steps.append(func(go): _marble_choice("Victory", "Choose a marble for your bag.", ms, go))
 	if not offer.is_empty():
 		steps.append(func(go):
-			var ch := _choice(title, "Learn one spell. It goes into your spellbook, and into your active row if there's room.", offer, [], true)
+			var ch := _choice(title, "Take one card. One you already have is upgraded instead.", offer, [], true)
 			ch.chosen.connect(func(i):
-				if i >= 0:
-					run.learn_spell(offer[i].id)
-				go.call()))
+				if i < 0:
+					go.call()
+				else:
+					_learn(String(offer[i].id), go)))
 	var dropped := f.drops.filter(func(aid): return not (aid in run.artifacts))
 	for aid in dropped:
 		steps.append(func(go):
@@ -1702,6 +1691,81 @@ func _after_fight(f: Fight) -> void:
 			var s := _message("Act %d cleared" % act_before, "You heal half your HP and press deeper into the wood.", ["Onward"], Color(0.9, 0.7, 1))
 			s.pressed.connect(func(_i): go.call()))
 	_run_steps(steps, 0)
+
+
+## Take a card: yours is upgraded if you have it; a new one goes into your row or backpack. With both full (the backpack
+## holds RunState.MAX_BACKPACK), first choose a backpack card to throw away, or leave the new one. Then `then`.
+func _learn(id: String, then: Callable) -> void:
+	if run.has_room(id):
+		run.learn_spell(id)
+		then.call()
+		return
+	_make_room(id, then, true)
+
+
+## Your row and backpack are full: throw a backpack card away for `id` (and take it, when `take`), or leave it.
+func _make_room(id: String, then: Callable, take: bool) -> void:
+	var back := run.backpack()
+	var ch := _choice("Your backpack is full", "Throw a card away to make room for %s, or skip to leave it." % run.db.get_spell(id).get("name", id),
+		back.map(func(b): return run.spell(b)), [], true)
+	ch.chosen.connect(func(k):
+		if k >= 0:
+			run.throw_away(String(back[k]))
+			if take:
+				run.learn_spell(id)
+		then.call())
+
+
+## Choose 1 of these marbles for your bag (or skip), then `go`.
+func _marble_choice(title: String, words: String, ms: Array, go: Callable) -> void:
+	var ov := Control.new()
+	ov.size = Vector2(1920, 1080)
+	ov.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.75)
+	dim.size = Vector2(1920, 1080)
+	ov.add_child(dim)
+	var box := VBoxContainer.new()
+	box.size = Vector2(1920, 1080)
+	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_theme_constant_override("separation", 24)
+	ov.add_child(box)
+	var t := UiTheme.heading(title, 44, Color(1, 0.9, 0.55))
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(t)
+	var w := UiTheme.label(words, 24, Color(0.95, 0.9, 0.8))
+	w.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(w)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 70)
+	box.add_child(row)
+	for m in ms:
+		var col := VBoxContainer.new()
+		col.alignment = BoxContainer.ALIGNMENT_CENTER
+		var mv := MarbleView.make(m, 110.0)
+		mv.pressed.connect(func():
+			run.marble_bag.append(m)
+			ov.queue_free()
+			go.call())
+		var cc := CenterContainer.new()
+		cc.add_child(mv)
+		col.add_child(cc)
+		var words2: String = String({"F": "Fire", "W": "Water", "A": "Wind"}[m.c])
+		if String(m.sym) != "":
+			words2 += "\n" + String(MarbleView.SYM_WORDS.get(m.sym, ""))
+		var l := UiTheme.label(words2, 19, Color(0.95, 0.9, 0.8))
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.custom_minimum_size = Vector2(240, 0)
+		col.add_child(l)
+		row.add_child(col)
+	var skip := UiTheme.button("Skip", func():
+		ov.queue_free()
+		go.call(), 22)
+	skip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	box.add_child(skip)
+	overlay_layer.add_child(ov)
 
 
 func _run_steps(steps: Array, i: int) -> void:

@@ -19,9 +19,8 @@ func run(t: SceneTree) -> void:
 	var ids: Array = f.loadout.map(func(s): return s.id)
 	f.player.ignited[ids[0]] = 1
 	f.player.ignite_dmg[ids[0]] = 5
-	f.player.virus[ids[1]] = 3
 	f.player.toll = 5
-	f.player.confuse_turns = 1
+	f.player.blind_turns = 1
 	fs._refresh_all()
 	await t.create_timer(0.8).timeout
 	root.get_texture().get_image().save_png(out + "/debuffs.png")

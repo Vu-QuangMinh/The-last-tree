@@ -26,8 +26,8 @@ func run(t: SceneTree) -> void:
 	f.player.max_hp = 50
 	f.player.shield = 8.0
 	f.player.lasting = 4.0
-	f.player.confuse_turns = 2
-	f.player.poison = 3
+	f.player.blind_turns = 2
+	f.player.burn = 3
 	var fs := FightScreen.new()
 	fs.setup(r, f)
 	root.add_child(fs)

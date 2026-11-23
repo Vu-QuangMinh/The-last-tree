@@ -6,63 +6,1897 @@
  },
  "spells": [
   {
-   "id": "fire_ball",
-   "name": "Fire Ball",
-   "pattern": "FF",
-   "text": "Deal 3 damage.",
-   "passive_text": "Deals double damage to a burning enemy.",
-   "effects": [
-    {
-     "op": "damage",
-     "n": 3,
-     "target": "target"
-    }
+   "id": "flicker",
+   "name": "Flicker",
+   "pattern": "F",
+   "text": "Apply 1 Burn. Repeatable 2.",
+   "upgrades": [
+    "Apply 1 Burn. Repeatable 4.",
+    "Apply 1 Burn. Repeatable."
    ],
-   "passive": {
-    "key": "double_vs_burning"
-   }
+   "text_user": "Apply 1 burn. Repeatable: 2",
+   "upgrades_user": [
+    "Repeatable 4",
+    "Repeatable: (infinite)"
+   ]
   },
   {
-   "id": "water_wall",
-   "name": "Water Wall",
-   "pattern": "WW",
-   "text": "Gain 4 Shield.",
-   "passive_text": "+2 Shield for each other Water spell cast this turn. The number on the card always shows what you would get, and changes as you cast (green when it goes up, red when it goes down).",
-   "effects": [
-    {
-     "op": "shield",
-     "n": 4
-    }
+   "id": "drop",
+   "name": "Drop",
+   "pattern": "W",
+   "text": "Heal 1. Repeatable 2.",
+   "upgrades": [
+    "Heal 1. Repeatable 3.",
+    "Heal 1. Repeatable 5."
    ],
-   "passive": {
-    "key": "shield_per_water_cast",
-    "n": 2,
-    "live": true
-   }
+   "text_user": "Heal 1. Repeatable: 2",
+   "upgrades_user": [
+    "Repeatable 3",
+    "Repeatable: 5"
+   ]
+  },
+  {
+   "id": "sharp_wind",
+   "name": "Sharp Wind",
+   "pattern": "A",
+   "text": "Apply 1 Expose. Repeatable 2.",
+   "upgrades": [
+    "Apply 1 Expose. Repeatable 3.",
+    "Apply 1 Expose. Repeatable 5."
+   ],
+   "text_user": "Apply 1 expose",
+   "upgrades_user": [
+    "Repeatable 3",
+    "Repeatable: 5"
+   ]
+  },
+  {
+   "id": "spark",
+   "name": "Spark",
+   "pattern": "FF",
+   "text": "Deal 3 damage. Repeatable 2.",
+   "upgrades": [
+    "Deal 5 damage. Repeatable 2.",
+    "Deal 7 damage. Repeatable 2."
+   ],
+   "text_user": "Deal 3 damage.",
+   "upgrades_user": [
+    "5 damage",
+    "7 damage"
+   ]
+  },
+  {
+   "id": "steam_gun",
+   "name": "Steam Gun",
+   "pattern": "FW",
+   "text": "Deal 1 damage for each Wind marble you own.",
+   "upgrades": [
+    "Deal 3 damage for each Wind marble you own.",
+    "Deal 3 damage for each Wind marble you own."
+   ],
+   "notes": "Rare",
+   "text_user": "Deal 1 for each wind in your bag",
+   "upgrades_user": [
+    "Deal 3 for each wind in your bag",
+    "Deal 3 for each wind in your bag"
+   ]
+  },
+  {
+   "id": "firelance",
+   "name": "Firelance",
+   "pattern": "FA",
+   "text": "Apply 3 Burn.",
+   "upgrades": [
+    "Apply 5 Burn.",
+    "Apply 7 Burn."
+   ],
+   "text_user": "Apply 3 burn",
+   "upgrades_user": [
+    "5 burn",
+    "7 burn"
+   ]
+  },
+  {
+   "id": "smoke_screen",
+   "name": "Smoke Screen",
+   "pattern": "WF",
+   "text": "Gain 1 Shield. Apply 1 Weakened.",
+   "upgrades": [
+    "Gain 3 Shield. Apply 1 Weakened.",
+    "Gain 3 Shield. Apply 3 Weakened."
+   ],
+   "text_user": "1 shield. Apply 1 Weakened.",
+   "upgrades_user": [
+    "3 shield. 1 weakened",
+    "3 shield 3 weakened"
+   ]
+  },
+  {
+   "id": "splash",
+   "name": "Splash",
+   "pattern": "WW",
+   "text": "Gain 2 Shield. Repeatable 2.",
+   "upgrades": [
+    "Gain 3 Shield. Repeatable 2.",
+    "Gain 4 Shield. Repeatable 2."
+   ],
+   "text_user": "Gain 2 Shield.",
+   "upgrades_user": [
+    "Gain 3 Shield.",
+    "Gain 4 Shield."
+   ]
+  },
+  {
+   "id": "wave",
+   "name": "Wave",
+   "pattern": "WA",
+   "text": "This card's Shield grows by 1 for the rest of the fight. Then gain its Shield (it starts at 1).",
+   "upgrades": [
+    "This card's Shield grows by 2 for the rest of the fight. Then gain its Shield (it starts at 1).",
+    "This card's Shield grows by 3 for the rest of the fight. Then gain its Shield (it starts at 1)."
+   ],
+   "notes": "The gain 1 shield is actually mutable as is all other stats on cards. Any mutable number will change and reflect their current value.",
+   "text_user": "This card gain 1 shield for this fight. Gain 1 shield",
+   "upgrades_user": [
+    "This card gain 2 shield for this fight. Gain 1 shield",
+    "This card gain 3 shield for this fight. Gain 1 shield"
+   ]
+  },
+  {
+   "id": "heat_wave",
+   "name": "Heat Wave",
+   "pattern": "AF",
+   "text": "Apply 2 Burn to all enemies.",
+   "upgrades": [
+    "Apply 4 Burn to all enemies.",
+    "Apply 6 Burn to all enemies."
+   ],
+   "text_user": "Apply 2 burn to all enemy",
+   "upgrades_user": [
+    "Apply 4 burn to all enemy",
+    "Apply 6 burn to all enemy"
+   ]
+  },
+  {
+   "id": "sea_sickness",
+   "name": "Sea Sickness",
+   "pattern": "AW",
+   "text": "Apply 1 Weakened to all enemies.",
+   "upgrades": [
+    "Apply 2 Weakened to all enemies.",
+    "Apply 3 Weakened to all enemies."
+   ],
+   "text_user": "Apply 1 weakened to all enemies",
+   "upgrades_user": [
+    "Apply 2 weakened to all enemies",
+    "Apply 3 weakened to all enemies"
+   ]
+  },
+  {
+   "id": "tail_wind",
+   "name": "Tail Wind",
+   "pattern": "AA",
+   "text": "Get 1 more marble next turn. Repeatable 2.",
+   "upgrades": [
+    "Get 2 more marbles next turn. Repeatable 2.",
+    "Get 3 more marbles next turn. Repeatable 2."
+   ],
+   "text_user": "Gain 1 more essence next turn",
+   "upgrades_user": [
+    "2",
+    "3"
+   ]
+  },
+  {
+   "id": "lazer_beam",
+   "name": "Laser Beam",
+   "pattern": "FFF",
+   "text": "Deal 10 damage. Take 3 damage.",
+   "upgrades": [
+    "Deal 15 damage. Take 3 damage.",
+    "Deal 20 damage. Take 3 damage."
+   ],
+   "text_user": "10 damage. Self damage 3",
+   "upgrades_user": [
+    "15 damage. Self damage 3",
+    "20 damage. Self damage 3"
+   ]
+  },
+  {
+   "id": "steam_engine",
+   "name": "Steam Engine",
+   "pattern": "FFW",
+   "text": "Activate the card to the right. Cooldown 1.",
+   "upgrades": [
+    "Activate the card to the right.",
+    "Activate the card to the right twice."
+   ],
+   "notes": "Lengendary",
+   "text_user": "Activate the card to the right. CD1",
+   "upgrades_user": [
+    "Activate the card to the right (remove the cd)",
+    "Activate the card to the right twice"
+   ]
+  },
+  {
+   "id": "fire_storm",
+   "name": "Fire Storm",
+   "pattern": "FFA",
+   "text": "This card's Burn grows by 2 for the rest of the fight. Then apply its Burn (it starts at 0).",
+   "upgrades": [
+    "This card's Burn grows by 3 for the rest of the fight. Then apply its Burn (it starts at 0).",
+    "This card's Burn grows by 5 for the rest of the fight. Then apply its Burn (it starts at 0)."
+   ],
+   "text_user": "This card gain 2 burn. Apply 0 burn",
+   "upgrades_user": [
+    "Gain 3 burns",
+    "Gain 5 burns"
+   ]
+  },
+  {
+   "id": "geyser",
+   "name": "Geyser",
+   "pattern": "FWF",
+   "text": "Charge 1. At 3 Charges: deal 20 damage to all enemies.",
+   "upgrades": [
+    "Charge 1. At 3 Charges: deal 30 damage to all enemies.",
+    "Charge 1. At 2 Charges: deal 30 damage to all enemies."
+   ],
+   "text_user": "Charge this card by 1. At 3 charge, deal 20 damage to all enemies (Current charge: 0)",
+   "upgrades_user": [
+    "At 3 charnges, deal 30 damage to all enemies",
+    "At 2 charges, deal 30 damage to all enemies"
+   ]
+  },
+  {
+   "id": "hot_spring",
+   "name": "Hot Spring",
+   "pattern": "FWW",
+   "text": "Heal 3.",
+   "upgrades": [
+    "Heal 5.",
+    "Heal 7."
+   ],
+   "text_user": "Heal 3",
+   "upgrades_user": [
+    "Heal 5",
+    "Heal 7"
+   ]
+  },
+  {
+   "id": "elemental_core",
+   "name": "Elemental Core",
+   "pattern": "FWA",
+   "text": "Deal 2 damage. Gain 2 Shield. Heal 1.",
+   "upgrades": [
+    "Deal 4 damage. Gain 4 Shield. Heal 2.",
+    "Deal 8 damage. Gain 8 Shield. Heal 4."
+   ],
+   "text_user": "Deal 2 damage, gain 2 shield, heal 1",
+   "upgrades_user": [
+    "Deal 4 damage, gain 4 shield, heal 2",
+    "Deal 8 damage, gain 8 shield, heal 4"
+   ]
+  },
+  {
+   "id": "pressure_cooker",
+   "name": "Pressure Cooker",
+   "pattern": "FAF",
+   "text": "Deal 3 damage. Double against a burning enemy.",
+   "upgrades": [
+    "Deal 6 damage. Double against a burning enemy.",
+    "Deal 9 damage. Double against a burning enemy."
+   ],
+   "text_user": "Deal 3 damage. Double against burning enemy",
+   "upgrades_user": [
+    "6",
+    "9 damage"
+   ]
+  },
+  {
+   "id": "chosen_one",
+   "name": "Chosen One",
+   "pattern": "FAW",
+   "text": "Deal 3 damage. If it is your only damage card, deal 3 times as much.",
+   "upgrades": [
+    "Deal 3 damage. If it is your only damage card, deal 5 times as much.",
+    "Deal 3 damage. If it is your only damage card, deal 10 times as much."
+   ],
+   "text_user": "Deal 3 damage. If this is the only damaging spell you have, deal 3x damage.",
+   "upgrades_user": [
+    "5x damage",
+    "10x damage"
+   ]
   },
   {
    "id": "updraft",
    "name": "Updraft",
-   "pattern": "AA",
-   "text": "Gain 1 extra Essence next turn.",
-   "passive_text": "+1 Essence for each Air spell cast this turn. The number on the card always shows what you would get, and changes as you cast.",
-   "effects": [
-    {
-     "op": "draw",
-     "n": 1,
-     "when": "next",
-     "el": "random"
-    }
+   "pattern": "FAA",
+   "text": "Gain 2 Shield. Get 1 more marble next turn.",
+   "upgrades": [
+    "Gain 4 Shield. Get 1 more marble next turn.",
+    "Gain 2 Shield. Get 2 more marbles next turn."
    ],
-   "passive": {
-    "key": "draw_per_air_cast",
-    "n": 1,
-    "live": true
-   }
+   "text_user": "Gain 2 shield and 1 more marble next turn",
+   "upgrades_user": [
+    "Gain 4 shield and 1 more marble next turn",
+    "Gain 2 shield and 2 more marble next turn"
+   ]
+  },
+  {
+   "id": "alcohol",
+   "name": "Alcohol",
+   "pattern": "WFF",
+   "text": "Gain 1 Power. Gain 3 Burn.",
+   "upgrades": [
+    "Gain 1 Power. Gain 2 Burn.",
+    "Gain 1 Power."
+   ],
+   "text_user": "Gain 1 power. Self burn 3",
+   "upgrades_user": [
+    "Gain 1 power. Self burn 2",
+    "Gain 1 power"
+   ]
+  },
+  {
+   "id": "cyclone",
+   "name": "Cyclone",
+   "pattern": "WFW",
+   "text": "For each card with Water you cast this turn: deal 2 damage and gain 2 Shield.",
+   "upgrades": [
+    "For each card with Water you cast this turn: deal 3 damage and gain 3 Shield.",
+    "For each card with Water you cast this turn: deal 4 damage and gain 4 Shield."
+   ],
+   "text_user": "Gain 2 shield and deal 2 damage for each (water) contained card you casted this turn",
+   "upgrades_user": [
+    "3 of each",
+    "4 of each"
+   ]
+  },
+  {
+   "id": "heat_armor",
+   "name": "Heat Armor",
+   "pattern": "WFA",
+   "text": "Gain 2 Thorns.",
+   "upgrades": [
+    "Gain 3 Thorns.",
+    "Gain 4 Thorns."
+   ],
+   "text_user": "Gain 2 thorn (thorn last for the rest of the fight)",
+   "upgrades_user": [
+    "3 thorn",
+    "4 thorns"
+   ]
+  },
+  {
+   "id": "water_gun",
+   "name": "Water Gun",
+   "pattern": "WWF",
+   "text": "Deal 2 damage, increases by 2 for each spell with Water casted this turn.",
+   "upgrades": [
+    "Deal 3 damage, increases by 3 for each spell with Water casted this turn.",
+    "Deal 4 damage, increases by 4 for each spell with Water casted this turn."
+   ],
+   "text_user": "Each time you cast a water contained card, deal 2 damage",
+   "upgrades_user": [
+    "3",
+    "4"
+   ]
+  },
+  {
+   "id": "ocean",
+   "name": "Ocean",
+   "pattern": "WWW",
+   "text": "Gain 5 Shield.",
+   "upgrades": [
+    "Gain 7 Shield.",
+    "Gain 9 Shield."
+   ],
+   "text_user": "Gain 5 shield",
+   "upgrades_user": [
+    "7",
+    "9"
+   ]
+  },
+  {
+   "id": "rain",
+   "name": "Rain",
+   "pattern": "WWA",
+   "text": "Cleanse. Gain 2 Shield.",
+   "upgrades": [
+    "Cleanse. Gain 4 Shield.",
+    "Cleanse. Gain 6 Shield."
+   ],
+   "text_user": "Cleanse. Gain 2 shield",
+   "upgrades_user": [
+    "4 shield",
+    "6 shield"
+   ]
+  },
+  {
+   "id": "set_fire_to_the_rain",
+   "name": "Set Fire to the Rain",
+   "pattern": "WAF",
+   "text": "This turn, each time you cast a card with Water: apply 1 Burn to a random enemy.",
+   "upgrades": [
+    "This turn, each time you cast a card with Water: apply 2 Burn to a random enemy.",
+    "This turn, each time you cast a card with Water: apply 3 Burn to a random enemy."
+   ],
+   "text_user": "Each time you cast a water contained card, apply 1 burn",
+   "upgrades_user": [
+    "2 burn",
+    "3 burn"
+   ]
+  },
+  {
+   "id": "mist",
+   "name": "Mist",
+   "pattern": "WAW",
+   "text": "Apply 1 Weakened to all enemies. Gain 2 Shield.",
+   "upgrades": [
+    "Apply 1 Weakened and 1 Vulnerable to all enemies. Gain 2 Shield.",
+    "Apply 2 Weakened and 2 Vulnerable to all enemies. Gain 2 Shield."
+   ],
+   "text_user": "Apply 1 weakness to all enemies. Gain 2 shield",
+   "upgrades_user": [
+    "Apply 1 weakness and 1 vulnerable to all enemies. Gain 2 shield",
+    "Apply 2 weakness and 2 vulnerable to all enemies. Gain 2 shield"
+   ]
+  },
+  {
+   "id": "hail",
+   "name": "Hail",
+   "pattern": "WAA",
+   "text": "Deal 3 damage. Your Power, the enemy's Expose and Vulnerable, and your carved marbles count double for it.",
+   "upgrades": [
+    "Deal 5 damage. Your Power, the enemy's Expose and Vulnerable, and your carved marbles count double for it.",
+    "Deal 7 damage. Your Power, the enemy's Expose and Vulnerable, and your carved marbles count double for it."
+   ],
+   "text_user": "Deal 3 damage. This gain double effect from power, exposed,  vulnerable and carving",
+   "upgrades_user": [
+    "Deal 5 damage. This gain double effect from power, exposed,  vulnerable and carving",
+    "Deal 7 damage. This gain double effect from power, exposed,  vulnerable and carving"
+   ]
+  },
+  {
+   "id": "forest_fire",
+   "name": "Forest Fire",
+   "pattern": "AFF",
+   "text": "Apply 1 Burn. Then every other enemy gains as much Burn as this one has.",
+   "upgrades": [
+    "Apply 2 Burn. Then every other enemy gains as much Burn as this one has.",
+    "Apply 3 Burn. Then every other enemy gains as much Burn as this one has."
+   ],
+   "text_user": "Apply 1 burn. Spread the burn from the target to all enemies",
+   "upgrades_user": [
+    "Apply 2 burn. Spread the burn from the target to all enemies",
+    "Apply 3 burn. Spread the burn from the target to all enemies"
+   ]
+  },
+  {
+   "id": "circle_of_life",
+   "name": "Circle of Life",
+   "pattern": "AFW",
+   "text": "Deal 10 damage. Each time it kills an enemy, it deals 10 more for the rest of the run. Durability 1.",
+   "upgrades": [
+    "Deal 10 damage. Each time it kills an enemy, it deals 10 more for the rest of the run. Durability 3.",
+    "Deal 10 damage. Each time it kills an enemy, it deals 10 more for the rest of the run."
+   ],
+   "notes": "Rare",
+   "text_user": "Deal 10 damage. Each time this card kill and enemy, gain 10 more damage permanently. Durability 1",
+   "upgrades_user": [
+    "Deal 10 damage. Each time this card kill and enemy, gain 10 more damage permanently. Durability 3",
+    "Deal 10 damage. Each time this card kill and enemy, gain 10 more damage permanently. (remove durability_)"
+   ]
+  },
+  {
+   "id": "backdraft",
+   "name": "Backdraft",
+   "pattern": "AFA",
+   "text": "Remove all Burn from an enemy. Deal 2 damage for each Burn removed. Cooldown 2.",
+   "upgrades": [
+    "Remove all Burn from an enemy. Deal 2 damage for each Burn removed. Cooldown 1.",
+    "Remove all Burn from an enemy. Deal 2 damage for each Burn removed."
+   ],
+   "text_user": "Remove burning from an enemy, dealing 2 damage per stack of burn removed. CD2",
+   "upgrades_user": [
+    "Remove burning from an enemy, dealing 2 damage per stack of burn removed. CD1",
+    "Remove burning from an enemy, dealing 2 damage per stack of burn removed (remove cd)"
+   ]
+  },
+  {
+   "id": "heed_my_call",
+   "name": "Heed My Call",
+   "pattern": "AWF",
+   "text": "Power: whenever you deal damage, deal 1 more.",
+   "upgrades": [
+    "Power: whenever you deal damage, deal 2 more.",
+    "Power: whenever you deal damage, deal 4 more."
+   ],
+   "text_user": "Power: Each time you deal damage, deal 1 extra damage",
+   "upgrades_user": [
+    "2 extra",
+    "4 extra"
+   ]
+  },
+  {
+   "id": "stream",
+   "name": "Stream",
+   "pattern": "AWW",
+   "text": "Deal 1 damage and gain 1 Shield. Then double it for this fight. Durability 3.",
+   "upgrades": [
+    "Deal 2 damage and gain 2 Shield. Then double it for this fight. Durability 3.",
+    "Deal 3 damage and gain 3 Shield. Then double it for this fight. Durability 3."
+   ],
+   "notes": "Rare",
+   "text_user": "Gain 1 shield and deal 1 damage. Then double this card shield and damage",
+   "upgrades_user": [
+    "Gain 2 shield and deal 2 damage. Then double this card shield and damage",
+    "Gain 3 shield and deal 3 damage. Then double this card shield and damage"
+   ]
+  },
+  {
+   "id": "cold_feet",
+   "name": "Cold Feet",
+   "pattern": "AWA",
+   "text": "Apply 1 Stun. Gain 2 Vulnerable. Durability 1.",
+   "upgrades": [
+    "Apply 1 Stun. Gain 1 Vulnerable. Durability 1.",
+    "Apply 1 Stun. Durability 2."
+   ],
+   "text_user": "Apply 1 stun. Durability 1. Self vulnerable 2",
+   "upgrades_user": [
+    "Self vulnerable 1",
+    "remove self vulnerable. Durability 2"
+   ]
+  },
+  {
+   "id": "snuffing_the_candle",
+   "name": "Snuffing the Candle",
+   "pattern": "AAF",
+   "text": "Deal 2 damage. Then, if the enemy has 8 HP or less, it dies.",
+   "upgrades": [
+    "Deal 2 damage. Then, if the enemy has 12 HP or less, it dies.",
+    "Deal 2 damage. Then, if the enemy has 16 HP or less, it dies."
+   ],
+   "text_user": "Deal 2 damage. Execute enemy that has 8HP or less",
+   "upgrades_user": [
+    "Deal 2 damage. Execute enemy that has 12HP or less",
+    "Deal 2 damage. Execute enemy that has 16HP or less"
+   ]
+  },
+  {
+   "id": "refreshing_wind",
+   "name": "Refreshing Wind",
+   "pattern": "AAW",
+   "text": "Give 1 Durability back to the card to the left. Durability 1.",
+   "upgrades": [
+    "Give 1 Durability back to the cards on both sides. Durability 1.",
+    "Give 1 Durability back to the cards on both sides. Durability 2."
+   ],
+   "text_user": "Recover 1 durability to the card to the left. Durability 1",
+   "upgrades_user": [
+    "Recover 1 durability to adjacent cards. Durability 1",
+    "Recover 1 durability to adjacent cards. Durability 2"
+   ]
+  },
+  {
+   "id": "thousand_cuts",
+   "name": "Thousand Cuts",
+   "pattern": "AAA",
+   "text": "Deal 1 damage 4 times.",
+   "upgrades": [
+    "Deal 1 damage 6 times.",
+    "Deal 1 damage 8 times."
+   ],
+   "text_user": "Deal 1 damage 4 times",
+   "upgrades_user": [
+    "6 times",
+    "8 times"
+   ]
+  },
+  {
+   "id": "burn_them_all",
+   "name": "Burn Them All",
+   "pattern": "FFFF",
+   "text": "Apply 5 Burn to all enemies, then double their Burn. Durability 1.",
+   "upgrades": [
+    "Apply 7 Burn to all enemies, then double their Burn. Durability 1.",
+    "Apply 10 Burn to all enemies, then double their Burn. Durability 1."
+   ],
+   "text_user": "Apply 5 burn to all enemies. Then double their burn. Durability 1",
+   "upgrades_user": [
+    "7 burn.",
+    "10 burn"
+   ]
+  },
+  {
+   "id": "primitive_engine",
+   "name": "Primitive Engine",
+   "pattern": "FFFW",
+   "text": "Activate the card to the left. Cooldown 2.",
+   "upgrades": [
+    "Activate the card to the left. Cooldown 1.",
+    "Activate the card to the left."
+   ],
+   "notes": "(Note, activation does not trigger durability)",
+   "text_user": "Activate the card to the left. CD2",
+   "upgrades_user": [
+    "Activate the card to the left. CD1",
+    "Activate the card to the left (remove cd)"
+   ]
+  },
+  {
+   "id": "all_out",
+   "name": "All-Out",
+   "pattern": "FFFA",
+   "text": "Power: you deal 30% more damage. You can't gain Shield: your Shield cards deal that much damage instead.",
+   "upgrades": [
+    "Power: you deal 40% more damage. You can't gain Shield: your Shield cards deal that much damage instead.",
+    "Power: you deal 60% more damage. You can't gain Shield: your Shield cards deal that much damage instead."
+   ],
+   "text_user": "Power: You cannot gain shield. Increase your damage by 30%. Your shield card deal damage instead",
+   "upgrades_user": [
+    "Power: You cannot gain shield. Increase your damage by 40%. Your shield card deal damage instead",
+    "Power: You cannot gain shield. Increase your damage by 60%. Your shield card deal damage instead"
+   ]
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "FFWF",
+   "text": ""
+  },
+  {
+   "id": "stick_and_carrot",
+   "name": "Stick and Carrot",
+   "pattern": "FFWW",
+   "text": "Deal damage equal to your Shield.",
+   "upgrades": [
+    "Deal 3 damage, plus your Shield.",
+    "Deal 5 damage, plus your Shield."
+   ],
+   "text_user": "Deal 0 damage. This card gain damage equal to your current shield",
+   "upgrades_user": [
+    "Deal 3 damage",
+    "Deal 5 damage"
+   ]
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "FFWA",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "FFAF",
+   "text": ""
+  },
+  {
+   "id": "adam_s_awakening",
+   "name": "Adam's Awakening",
+   "pattern": "FFAW",
+   "text": "Power: your Power adds to the Burn you apply.",
+   "upgrades": [
+    "Power: your Power adds to the Burn you apply. Each turn, apply 1 Burn to a random enemy.",
+    "Power: your Power adds to the Burn you apply. Each turn, apply 1 Burn to a random enemy and gain 1 Power."
+   ],
+   "text_user": "Power: Your burn benefit from your power",
+   "upgrades_user": [
+    "AND apply 1 burn each turn",
+    "AND gain 1 power each turn"
+   ]
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "FFAA",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "FWFF",
+   "text": ""
+  },
+  {
+   "id": "flame_of_vengance",
+   "name": "Flame of Vengeance",
+   "pattern": "FWFW",
+   "text": "Power: for every 5 Shield you lose, gain 1 Thorns.",
+   "upgrades": [
+    "Power: for every 4 Shield you lose, gain 1 Thorns.",
+    "Power: for every 3 Shield you lose, gain 1 Thorns."
+   ],
+   "text_user": "Every 5 shield you lose give you 1 thorn (power)",
+   "upgrades_user": [
+    "4 shield lost",
+    "3 shield lost"
+   ]
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "FWFA",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "FWWF",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "FWWW",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "FWWA",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "FWAF",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "FWAW",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "FWAA",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "FAFF",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "FAFW",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "FAFA",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "FAWF",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "FAWW",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "FAWA",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "FAAF",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "FAAW",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "FAAA",
+   "text": ""
+  },
+  {
+   "id": "desperate_drop",
+   "name": "Desperate Drop",
+   "pattern": "WFFF",
+   "text": "Cleanse. Apply 3 Burn to all enemies for each debuff removed.",
+   "upgrades": [
+    "Cleanse. Apply 5 Burn to all enemies for each debuff removed.",
+    "Cleanse. Apply 7 Burn to all enemies for each debuff removed."
+   ],
+   "text_user": "Cleanse. Apply 3 burn to all enemy for each negative effec cleansed",
+   "upgrades_user": [
+    "Cleanse. Apply 5 burn to all enemy for each negative effec cleansed",
+    "Cleanse. Apply 7 burn to all enemy for each negative effec cleansed"
+   ]
+  },
+  {
+   "id": "fevor_of_the_first_apostle",
+   "name": "Fervor of the First Apostle",
+   "pattern": "WFFW",
+   "text": "Power: your Thorns apply Burn instead of dealing damage.",
+   "upgrades": [
+    "Power: your Thorns apply Burn instead of dealing damage. Gain 1 Thorns each turn.",
+    "Power: your Thorns apply Burn instead of dealing damage. Gain 2 Thorns each turn."
+   ],
+   "text_user": "Power: Your thorn apply burn instead of damage",
+   "upgrades_user": [
+    "And gain 1 thorn each turn",
+    "Gain 2 thorn each turn"
+   ]
+  },
+  {
+   "id": "implosion",
+   "name": "Implosion",
+   "pattern": "WFFA",
+   "text": "Deal 1 damage for each marble you own.",
+   "upgrades": [
+    "Deal 2 damage for each marble you own.",
+    "Deal 3 damage for each marble you own."
+   ],
+   "text_user": "Deal 1 damage for each marble you have",
+   "upgrades_user": [
+    "2 damage",
+    "3 damage"
+   ]
+  },
+  {
+   "id": "gaze_of_the_princess",
+   "name": "Gaze of the Princess",
+   "pattern": "WFWF",
+   "text": "Apply 1 Stun. Durability 2.",
+   "upgrades": [
+    "Apply 1 Stun. Durability 3.",
+    "Apply 1 Stun. Durability 4."
+   ],
+   "notes": "Legendary",
+   "text_user": "Stun 1. Durability 2",
+   "upgrades_user": [
+    "Duraibility 3",
+    "Durability 4"
+   ]
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WFWW",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WFWA",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WFAF",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WFAW",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WFAA",
+   "text": ""
+  },
+  {
+   "id": "carrot_and_stick",
+   "name": "Carrot and Stick",
+   "pattern": "WWFF",
+   "text": "Gain Shield equal to half the damage you dealt this turn.",
+   "upgrades": [
+    "Gain 3 Shield, plus half the damage you dealt this turn.",
+    "Gain 7 Shield, plus half the damage you dealt this turn."
+   ],
+   "text_user": "Gain 0 shield. This card gain shield equal to half the damage you dealt this turn",
+   "upgrades_user": [
+    "Gain 3 shield",
+    "Gain 7 shield"
+   ]
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WWFW",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WWFA",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WWWF",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WWWW",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WWWA",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WWAF",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WWAW",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WWAA",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WAFF",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WAFW",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WAFA",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WAWF",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WAWW",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WAWA",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WAAF",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WAAW",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "WAAA",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AFFF",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AFFW",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AFFA",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AFWF",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AFWW",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AFWA",
+   "text": ""
+  },
+  {
+   "id": "ludwig_s_passion",
+   "name": "Ludwig's Passion",
+   "pattern": "AFAF",
+   "text": "Power: your spells have a 30% chance to be cast twice.",
+   "upgrades": [
+    "Power: your spells have a 50% chance to be cast twice.",
+    "Power: your spells have a 75% chance to be cast twice."
+   ],
+   "text_user": "Power: your spells has a 30% chance to double cast",
+   "upgrades_user": [
+    "0.5",
+    "0.75"
+   ]
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AFAW",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AFAA",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AWFF",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AWFW",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AWFA",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AWWF",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AWWW",
+   "text": ""
+  },
+  {
+   "id": "thunderstorm",
+   "name": "Thunderstorm",
+   "pattern": "AWWA",
+   "text": "Power: each turn, deal 1 damage to a random enemy. It hits 1 time, then 1 more time each turn.",
+   "upgrades": [
+    "Power: each turn, deal 1 damage to a random enemy. It hits 1 time, then 2 more times each turn.",
+    "Power: each turn, deal 1 damage to a random enemy. It hits 1 time, then 3 more times each turn."
+   ],
+   "text_user": "Power: Each turn, deal 1x1 damage to an enemy. Increase this by 1 time each turn.",
+   "upgrades_user": [
+    "Increase by 2",
+    "Increase by 3"
+   ]
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AWAF",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AWAW",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AWAA",
+   "text": ""
+  },
+  {
+   "id": "stoke_the_fire",
+   "name": "Stoke the Fire",
+   "pattern": "AAFF",
+   "text": "Double an enemy's Burn. Durability 1.",
+   "upgrades": [
+    "Triple an enemy's Burn. Durability 1.",
+    "Triple an enemy's Burn. Durability 2."
+   ],
+   "text_user": "Double the burns on an enemy. Durability 1",
+   "upgrades_user": [
+    "Triple the burns on an enemy. Durability 1",
+    "Triple the burns on an enemy. Durability 2"
+   ]
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AAFW",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AAFA",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AAWF",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AAWW",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AAWA",
+   "text": ""
+  },
+  {
+   "id": "",
+   "name": "",
+   "pattern": "AAAF",
+   "text": ""
+  },
+  {
+   "id": "curse_of_the_night",
+   "name": "Curse of the Night",
+   "pattern": "AAAW",
+   "text": "Power: the cards on both sides become Bites for this fight (deal 4 damage, heal 2).",
+   "text_user": "Power: turn adjacent spells into bite. (Bite is a spell that does 4 damage and heal 2. Upgrade this will upgrade the bites which does 2 more and heal 2 more)",
+   "upgrades_user": [],
+   "upgrades": [
+    "Power: the cards on both sides become Bites for this fight (deal 6 damage, heal 4).",
+    "Power: the cards on both sides become Bites for this fight (deal 8 damage, heal 6)."
+   ]
+  },
+  {
+   "id": "aole_s_last_wish",
+   "name": "Aole's Last Wish",
+   "pattern": "AAAA",
+   "text": "Power: get 2 more marbles each turn.",
+   "text_user": "Power: Gain 2 more essence each turn.",
+   "upgrades_user": [],
+   "upgrades": [
+    "Power: get 2 more marbles each turn.",
+    "Power: get 2 more marbles each turn."
+   ]
   }
  ],
  "rules": {
   "burn": "Burn is a stack, with no cap. At the start of the enemy's turn it loses HP equal to its Burn, then Burn goes down by 1. Any Burn above 0: it is burning.",
-  "live_numbers": "A number a passive changes always shows on the card, updated as you cast: green when it goes up, red when it goes down. You get what it shows when you cast it."
- }
+  "live_numbers": "A number a passive changes always shows on the card, updated as you cast: green when it goes up, red when it goes down. You get what it shows when you cast it.",
+  "cards_2026_11_20": "Rebuilt from zero on 2026-11-20 (the user). The backpack holds at most 5 cards (active row and backpack as in the chant game, only the backpack is capped). Every card has an upgraded form: you get it by finding the same card again in a run (twice: Upgrade 1, then Upgrade 2). A card you could upgrade wiggles and shines white wherever it is offered. Strike, Block, Eye Poke and Ki Strike were removed (2026-11-21): the starting cards are still to be chosen.",
+  "marbles": "Essence is now called marbles. The bag starts with 4 of each colour (Fire, Water, Wind), 12 in all (2026-11-22; was 3 of each). The first turn of a fight you get 1 of each colour plus 3 at random from the bag (2026-11-21); every later turn, 3 at random from the bag. Drawn marbles come back only when the bag is empty. After each normal fight: a card reward or a marble reward (3 marbles at a time), 70 / 30 pseudo-random, the first reward of a run always a card (2026-11-22; was 50/50); marbles won go into the bag for good (they change the odds of drawing that colour). Found marbles are upgraded about 70% of the time. Carvings work when a card's pattern counts their marble (2026-11-22; not when the chant is spoken), for that card: sword (that card deals 3 more damage per hit this turn, stacks), shield (it gives 3 more Shield, stacks), skull (rare: that card's damage x1.5, one a card), wing (rare: its Shield x1.5, one a card); and when counted: coin (gain 1 money), heart (heal 2), fist (gain 1 Power), ghost (gain 1 Dodge); star counts as any colour. (Spent was removed 2026-11-22.)",
+  "unique_patterns": "Patterns of 1 to 4 marbles (order counts) in the first list, one card each; a pattern may repeat in this version (the second list, more_cards, reuses them; two cards you own can share a pattern) (2026-11-21).",
+  "upgrades": "A card upgrades twice: the 2nd copy found gives Upgrade 1, the 3rd gives Upgrade 2 (2026-11-20).",
+  "fusion_names": "A fused spell gets a name the player types; a premade name from fusion_default_names (vague, never tied to one element) is suggested as the default and can be changed (2026-11-21).",
+  "statuses": "Condensed 2026-11-21 (removed from the whole chant game): Dazed, Disarm, Cauterize, Curse (the op), Echo (cast twice: Echo Draught, Echo Chamber, Echo Shell, Chant Bell, Echoed Voice, Mimic), Poison and Bleed (now Burn on you, same rule as an enemy's: lose N HP at the start of your turn, then -1), Explode, Virus, Invert (Fire/Water swap), Mimic, Confuse (merged into Blind: what comes out of the slot machine shows only ?). Stoke stays as a card effect, not a status.",
+  "expose_armor": "Expose N (enemy status, 2026-11-21): each damage instance it takes deals +N. It does not go down each turn. Armor N is its opposite (each instance -N); enemies can have it.",
+  "upgrade_and": "An upgrade written as \"AND ...\" adds to the card's previous form (it keeps what it had) (2026-11-21).",
+  "repeatable": "Repeatable N: cast it up to N times in a turn, once per separate, non-overlapping instance of its pattern in the chant.",
+  "carved": "Carved / carving marble = an upgraded marble (one with a symbol). Enchanted means the same; the cards say Carved.",
+  "defaults_2026_11_21": "Durability N: casts per fight, then broken for the fight. CD N: sleeps N turns after a cast. Power: works for the rest of the fight. Weakened: deals 50% less. Vulnerable: takes 50% more. Both go down by 1 each turn. Stun: skips its next turn, then immune to stun for 1 turn. Dodge: each stack dodges one attack, stays until used. Thorns: hurt each attacker per hit, all fight. Power: +1 damage per hit. Charge: each cast adds 1; at the number it fires and goes back to 0. Activate: casts that card's effect without its marbles, not using its Durability. Water-contained card: a W in its pattern. Infuse: a star marble into the chant. Repaint into any: chant marbles become star marbles. 'Every marble / wind in your bag / you have' counts every marble you own. Circle of Life's growth lasts the run. Bottles exist.",
+  "wording": "Card wording (2026-11-21): statuses capitalised (Burn, Weakened, Vulnerable, Expose, Stun, Shield, Thorns, Power, Dodge, Silence); verbs Deal / Apply / Gain / Heal / Take N damage (yourself); keywords last: Repeatable N (Repeatable alone: no limit), Durability N, Cooldown N; Power: first. Each upgrade is written out whole. Words: Charge (a card's counter), Activate (do what a card does, without its marbles or Durability), Infuse (a marble into your chant), Repaint, Carve (upgrade a marble, for good), Cleanse (all your debuffs gone), Water card (a card with Water in its pattern), Extension."
+ },
+ "fusion_default_names": [
+  "Elemental Fury",
+  "God's Wrath",
+  "Wild Weave",
+  "Twin Spirits",
+  "Nature's Verdict",
+  "Primal Chorus",
+  "The Last Word",
+  "Spirit's Echo",
+  "Hymn of Ruin",
+  "Breath of the Ancients",
+  "Thousand Voices",
+  "The Grand Finale",
+  "Wrath of the Wilds",
+  "Encore",
+  "Overwhelming",
+  "Whisper of the Void",
+  "Judgement",
+  "Reckoning",
+  "Inevitable",
+  "Echo of Ages",
+  "Unspoken",
+  "The Final Verse",
+  "Absolution",
+  "Undoing",
+  "Silent Thunder",
+  "Oblivion",
+  "Requiem",
+  "Forgotten Oath",
+  "Eclipse",
+  "Unbound",
+  "Grand Design",
+  "Last Rites",
+  "Resonance",
+  "Nameless"
+ ],
+ "more_cards": [
+  {
+   "marbles": "Fire",
+   "name": "Adam's Finger",
+   "text": "Power: choose an enemy. Each turn, apply 1 Burn to it.",
+   "upgrades": [
+    "Power: choose an enemy. Each turn, apply 2 Burn to it.",
+    "Power: choose an enemy. Each turn, apply 3 Burn to it."
+   ],
+   "notes": "",
+   "text_user": "Power: Choose an enemy, each turn apply 1 burn to it",
+   "upgrades_user": [
+    "2 burn",
+    "3 burn"
+   ]
+  },
+  {
+   "marbles": "Water",
+   "name": "Glass Half Full",
+   "text": "Deal 5 damage. 50% chance to take 5 damage.",
+   "upgrades": [
+    "Deal 15 damage. 50% chance to take 7 damage.",
+    "Deal 20 damage. 50% chance to take 10 damage."
+   ],
+   "notes": "",
+   "text_user": "Deal 5 damage. 50% chance of dealing 5 damage to yourself",
+   "upgrades_user": [
+    "Deal 15 damage. 50% chance of dealing 7 damage to yourself",
+    "Deal 20 damage. 50% chance of dealing 10 damage to yourself"
+   ]
+  },
+  {
+   "marbles": "Wind",
+   "name": "Air",
+   "text": "Your Burn cards apply 1 more Burn for the rest of the fight. Durability 2.",
+   "upgrades": [
+    "Your Burn cards apply 1 more Burn for the rest of the fight. Durability 3.",
+    "Your Burn cards apply 1 more Burn for the rest of the fight. Durability 5."
+   ],
+   "notes": "",
+   "text_user": "Your burn cards gain 1 burn. Durability 2",
+   "upgrades_user": [
+    "Your burn cards gain 1 burn. Durability 3",
+    "Your burn cards gain 1 burn. Durability 5"
+   ]
+  },
+  {
+   "marbles": "Fire, Fire",
+   "name": "Adam's Fist",
+   "text": "Apply 1 Burn. This turn, each time you apply Burn, deal 2 damage to that enemy.",
+   "upgrades": [
+    "Apply 1 Burn. This turn, each time you apply Burn, deal 3 damage to that enemy.",
+    "Apply 1 Burn. This turn, each time you apply Burn, deal 4 damage to that enemy."
+   ],
+   "notes": "",
+   "text_user": "Apply 1 burn. Every time you apply burn, deal 2 damage",
+   "upgrades_user": [
+    "3 damage",
+    "4 damage"
+   ]
+  },
+  {
+   "marbles": "Fire, Water",
+   "name": "Sadistic Nature",
+   "text": "Apply 1 Vulnerable. This turn, gain 1 Power for each debuff you apply (not Burn).",
+   "upgrades": [
+    "Apply 2 Vulnerable. This turn, gain 1 Power for each debuff you apply (not Burn).",
+    "Apply 2 Vulnerable to all enemies. This turn, gain 1 Power for each debuff you apply (not Burn)."
+   ],
+   "notes": "",
+   "text_user": "Apply 1 vulnerable to an enemy. Each stack of negative effect you apply, except for burn gives 1 power",
+   "upgrades_user": [
+    "Apply 2 vulnerable to an enemy. Each stack of negative effect you apply, except for burn gives 1 power",
+    "Apply 2 vulnerable to all enemy. Each stack of negative effect you apply, except for burn gives 1 power"
+   ]
+  },
+  {
+   "marbles": "Fire, Wind",
+   "name": "Warm Up",
+   "text": "Deal 0 damage. It grows by 5 each turn you don't cast it (back to 0 once cast).",
+   "upgrades": [
+    "Deal 0 damage. It grows by 10 each turn you don't cast it (back to 0 once cast).",
+    "Deal 0 damage. It grows by 15 each turn you don't cast it (back to 0 once cast)."
+   ],
+   "notes": "",
+   "text_user": "Deal: 0 damage. Every turn you do not activate this spell. It gains 5 damage",
+   "upgrades_user": [
+    "Gain 10 damage",
+    "15 damage"
+   ]
+  },
+  {
+   "marbles": "Water, Fire",
+   "name": "Elize's Hesitation",
+   "text": "Charge 1. At 3 Charges: apply 1 Stun. Durability 3.",
+   "upgrades": [
+    "Charge 1. At 3 Charges: apply 1 Stun. Durability 6.",
+    "Charge 1. At 2 Charges: apply 1 Stun. Durability 6."
+   ],
+   "notes": "",
+   "text_user": "Charge 1. At 3 charge, stun 1. Durability 3",
+   "upgrades_user": [
+    "Durability 6",
+    "At 2 charges."
+   ]
+  },
+  {
+   "marbles": "Water, Water",
+   "name": "Full Glass",
+   "text": "Deal 5 damage. Take 1 damage.",
+   "upgrades": [
+    "Deal 7 damage. Take 2 damage.",
+    "Deal 10 damage. Take 3 damage."
+   ],
+   "notes": "",
+   "text_user": "Deal 5 damage and deal 1 damage to yourself",
+   "upgrades_user": [
+    "Deal 7 damage and deal 2 damage to yourself",
+    "Deal 10 damage and deal 3 damage to yourself"
+   ]
+  },
+  {
+   "marbles": "Water, Wind",
+   "name": "Nila's Quickstep",
+   "text": "Gain 1 Dodge and 1 Power. Durability 1.",
+   "upgrades": [
+    "Gain 1 Dodge and 2 Power. Durability 1.",
+    "Gain 2 Dodge and 2 Power. Durability 2."
+   ],
+   "notes": "Rare",
+   "text_user": "Gain 1 dodge and 1 power. Durability 1",
+   "upgrades_user": [
+    "Gain 1 dodge and 2 power. Durability 1",
+    "Gain 2 dodge and 2 power. Durability 2"
+   ]
+  },
+  {
+   "marbles": "Wind, Fire",
+   "name": "Energize",
+   "text": "Give 1 Charge to the cards on both sides that have Charges.",
+   "upgrades": [
+    "Give 2 Charges to the cards on both sides that have Charges.",
+    "Give 2 Charges to every card that has Charges."
+   ],
+   "notes": "",
+   "text_user": "Give 1 charge to adjacent cards with charge",
+   "upgrades_user": [
+    "2 charges",
+    "2 charges and all cards with charge"
+   ]
+  },
+  {
+   "marbles": "Wind, Water",
+   "name": "Freeze!",
+   "text": "Apply 1 Stun to every enemy, and to yourself. Durability 1.",
+   "upgrades": [
+    "Apply 1 Stun to every enemy, and to yourself. Durability 2.",
+    "Apply 1 Stun to every enemy. Durability 2."
+   ],
+   "notes": "Rare",
+   "text_user": "Stun EVERYONE (including yourself). Durability 1",
+   "upgrades_user": [
+    "Stun EVERYONE. Durability 2",
+    "Stun all enemies. Durability 2"
+   ]
+  },
+  {
+   "marbles": "Wind, Wind",
+   "name": "Aole's Magic",
+   "text": "Infuse 1 Star marble.",
+   "upgrades": [
+    "Infuse 1 Star marble.",
+    "Infuse 1 Star marble."
+   ],
+   "notes": "",
+   "text_user": "Infuse 1 (any color)",
+   "upgrades_user": []
+  },
+  {
+   "marbles": "Fire, Fire, Fire",
+   "name": "Rain of Pain",
+   "text": "Deal 1 damage 2 times, plus 1 more time for each Fire in your chant.",
+   "upgrades": [
+    "Deal 1 damage 2 times, plus 2 more times for each Fire in your chant.",
+    "Deal 1 damage 2 times, plus 3 more times for each Fire in your chant."
+   ],
+   "notes": "",
+   "text_user": "Deal 1x2 damage. Increase 1 times by each fire in your chant",
+   "upgrades_user": [
+    "Increase by 2",
+    "Increase by 3"
+   ]
+  },
+  {
+   "marbles": "Fire, Fire, Water",
+   "name": "Pyrophiliac",
+   "text": "Heal 1. This turn, each time you heal, apply 1 Burn to a random enemy.",
+   "upgrades": [
+    "Heal 1. This turn, each time you heal, apply 2 Burn to a random enemy.",
+    "Heal 1. This turn, each time you heal, apply 3 Burn to a random enemy."
+   ],
+   "notes": "",
+   "text_user": "Heal 1. Each time you heal, apply 1 burn to a random enemy",
+   "upgrades_user": [
+    "Heal 1, apply 2 burn",
+    "Heal 1, apply 3 burn"
+   ]
+  },
+  {
+   "marbles": "Fire, Fire, Wind",
+   "name": "Sun Burn",
+   "text": "Apply 2 Expose.",
+   "upgrades": [
+    "Apply 3 Expose.",
+    "Apply 3 Expose to all enemies."
+   ],
+   "notes": "",
+   "text_user": "Apply 2 expose to an enemy",
+   "upgrades_user": [
+    "3 expose",
+    "3 expose to all enemies"
+   ]
+  },
+  {
+   "marbles": "Fire, Water, Fire",
+   "name": "Might of the First Apostle",
+   "text": "Apply 3 Burn. If it is your first spell this turn, gain 1 Power.",
+   "upgrades": [
+    "Apply 4 Burn. If it is your first spell this turn, gain 1 Power.",
+    "Apply 5 Burn. If it is your first spell this turn, gain 1 Power."
+   ],
+   "notes": "Rare",
+   "text_user": "Apply 3 burn. If this is the first spell you cast this turn, also gain 1 power",
+   "upgrades_user": [
+    "4 burn",
+    "5 burn"
+   ]
+  },
+  {
+   "marbles": "Fire, Water, Water",
+   "name": "Hot Blood",
+   "text": "Power: gain 1 Power for every 20% of your HP that is missing.",
+   "upgrades": [
+    "Power: gain 1 Power for every 15% of your HP that is missing.",
+    "Power: gain 1 Power for every 10% of your HP that is missing."
+   ],
+   "notes": "",
+   "text_user": "Power: every 20% HP missing give you 1 power",
+   "upgrades_user": [
+    "15% missing",
+    "10% missing"
+   ]
+  },
+  {
+   "marbles": "Fire, Water, Wind",
+   "name": "Glass Cannon",
+   "text": "Deal 3 damage for each marble in your chant (twice that for a carved one). Durability 1.",
+   "upgrades": [
+    "Deal 5 damage for each marble in your chant (twice that for a carved one). Durability 1.",
+    "Deal 5 damage for each marble in your chant (twice that for a carved one). Durability 2."
+   ],
+   "notes": "",
+   "text_user": "Deal 3 damage per marble in your chant. Double for carved marble. Durability 1",
+   "upgrades_user": [
+    "5 damage.",
+    "5 damage. Durability 2"
+   ]
+  },
+  {
+   "marbles": "Fire, Wind, Fire",
+   "name": "Ludwig's Inspiration",
+   "text": "Carve 2 random marbles in your chant, for good. Durability 1.",
+   "upgrades": [
+    "Carve 4 random marbles in your chant, for good. Durability 1.",
+    "Carve 4 random marbles in your chant, for good. Durability 2."
+   ],
+   "notes": "",
+   "text_user": "Carve 2 random marble in your current chant. Durability 1",
+   "upgrades_user": [
+    "Carve 4 random marble in your current chant. Durability 1",
+    "Carve 4 random marble in your current chant. Durability 2"
+   ]
+  },
+  {
+   "marbles": "Fire, Wind, Water",
+   "name": "Alchemy",
+   "text": "Get 1 random bottle. Then swap this card with one in your backpack.",
+   "upgrades": [
+    "Get 2 random bottles. Then swap this card with one in your backpack.",
+    "Get 3 random bottles. Then swap this card with one in your backpack."
+   ],
+   "notes": "",
+   "text_user": "Give you a random bottle. Self replace (with another spell in your backpack, you choose)",
+   "upgrades_user": [
+    "2 random bottle",
+    "3 random bottles"
+   ]
+  },
+  {
+   "marbles": "Fire, Wind, Wind",
+   "name": "Toxic Wind",
+   "text": "Apply 1 Vulnerable, 1 Weakened and 1 Expose to all enemies. Cooldown 1.",
+   "upgrades": [
+    "Apply 1 Vulnerable, 1 Weakened and 1 Expose to all enemies.",
+    "Apply 1 Vulnerable, 1 Weakened and 1 Expose to all enemies."
+   ],
+   "notes": "",
+   "text_user": "Apply 1 vulnerable, 1 weakness and 1 expose to all enemies. CD1",
+   "upgrades_user": [
+    "Apply 1 vulnerable, 1 weakness and 1 expose to all enemies. (remove cd)",
+    "Apply 1 vulnerable, 1 weakness and 1 expose to all enemies"
+   ]
+  },
+  {
+   "marbles": "Water, Fire, Fire",
+   "name": "Over Exertion",
+   "text": "Activate the cards on both sides, then Silence them for 3 turns.",
+   "upgrades": [
+    "Activate the cards on both sides, then Silence them for 2 turns.",
+    "Activate the cards on both sides, then Silence them for 1 turn."
+   ],
+   "notes": "",
+   "text_user": "Activate adjacent cards but apply 3 silence on them.",
+   "upgrades_user": [
+    "2 silence",
+    "1 silence"
+   ]
+  },
+  {
+   "marbles": "Water, Fire, Water",
+   "name": "A Daughter's Secret",
+   "text": "Lose 20 max HP for this fight (it can kill you). Apply 1 Stun.",
+   "upgrades": [
+    "Lose 15 max HP for this fight (it can kill you). Apply 1 Stun.",
+    "Lose 10 max HP for this fight (it can kill you). Apply 1 Stun."
+   ],
+   "notes": "Legendary",
+   "text_user": "Reduce your max HP by 20 for this fight. Stun 1 (can be lethal)",
+   "upgrades_user": [
+    "Reduce your max HP by 15 for this fight. Stun 1 (can be lethal)",
+    "Reduce your max HP by 10 for this fight. Stun 1 (can be lethal)"
+   ]
+  },
+  {
+   "marbles": "Water, Fire, Wind",
+   "name": "Random Things Go!",
+   "text": "Power: gain 1 Power for each Extension. Then swap this card with one in your backpack.",
+   "upgrades": [
+    "Power: gain 2 Power for each Extension. Then swap this card with one in your backpack.",
+    "Power: gain 3 Power for each Extension. Then swap this card with one in your backpack."
+   ],
+   "notes": "",
+   "text_user": "Power: Gain 1 power per extention. Self replace",
+   "upgrades_user": [
+    "Power: Gain 2 power per extention. Self replace",
+    "Power: Gain 3 power per extention. Self replace"
+   ]
+  },
+  {
+   "marbles": "Water, Water, Fire",
+   "name": "Borrowed Warmth",
+   "text": "Remove all Burn from an enemy. Heal half as much as was removed. Durability 1.",
+   "upgrades": [
+    "Remove all Burn from an enemy. Heal as much as was removed. Durability 1.",
+    "Remove all Burn from an enemy. Heal as much as was removed. Durability 2."
+   ],
+   "notes": "",
+   "text_user": "Remove burn from an enemy, heal equal to 50% the burns removed. Durability 1",
+   "upgrades_user": [
+    "100% the burns",
+    "100% and durability 2"
+   ]
+  },
+  {
+   "marbles": "Water, Water, Water",
+   "name": "Endless Well",
+   "text": "Power: your Shield stays from turn to turn.",
+   "upgrades": [
+    "Power: your Shield stays from turn to turn.",
+    "Power: your Shield stays from turn to turn."
+   ],
+   "notes": "",
+   "text_user": "Power: All your shield become lasting",
+   "upgrades_user": []
+  },
+  {
+   "marbles": "Water, Water, Wind",
+   "name": "Iron Maiden",
+   "text": "Gain 1 Thorns. Deal 3 damage for each Thorns you have.",
+   "upgrades": [
+    "Gain 1 Thorns. Deal 4 damage for each Thorns you have.",
+    "Gain 2 Thorns. Deal 4 damage for each Thorns you have."
+   ],
+   "notes": "",
+   "text_user": "Gain 1 thorn. Deal damage equal to 3 times your thorn",
+   "upgrades_user": [
+    "Gain 1 thorn. Deal damage equal to 4 times your thorn",
+    "Gain 2 thorn. Deal damage equal to 4 times your thorn"
+   ]
+  },
+  {
+   "marbles": "Water, Wind, Fire",
+   "name": "Embracing the Pain",
+   "text": "Take 2 damage. Gain 6 Shield.",
+   "upgrades": [
+    "Take 2 damage. Gain 9 Shield.",
+    "Take 2 damage. Gain 12 Shield."
+   ],
+   "notes": "",
+   "text_user": "Deal 2 shelf damage, gain 6 shield",
+   "upgrades_user": [
+    "Deal 2 shelf damage, gain 9 shield",
+    "Deal 2 shelf damage, gain 12 shield"
+   ]
+  },
+  {
+   "marbles": "Water, Wind, Water",
+   "name": "Nila's Blades",
+   "text": "Deal 5 damage, plus 1 more time for each Dodge you gained this fight.",
+   "upgrades": [
+    "Deal 5 damage, plus 2 more times for each Dodge you gained this fight.",
+    "Deal 5 damage, plus 3 more times for each Dodge you gained this fight."
+   ],
+   "notes": "",
+   "text_user": "Deal 5x1 damage. Increase 1 more time for each dodge you gained this fight",
+   "upgrades_user": [
+    "Deal 5x1 damage. Increase 2 more time for each dodge you gained this fight",
+    "Deal 5x1 damage. Increase 3 more time for each dodge you gained this fight"
+   ]
+  },
+  {
+   "marbles": "Water, Wind, Wind",
+   "name": "Knivel's Innocence",
+   "text": "Gain {x} Shield. Increase Shield by 1 permanently. Durability 3.",
+   "upgrades": [
+    "Gain {x} Shield. Increase Shield by 1 permanently. Durability 3. Cast twice.",
+    "Gain {x} Shield. Increase Shield by 1 permanently. Durability 3. Cast three times."
+   ],
+   "notes": "Legendary",
+   "text_user": "Permanently increase the shield and heal of this card by 1. Gain 0 shield and heal 0.",
+   "upgrades_user": [
+    "Permanently increase the shield and heal of this card by 1. Gain 0 shield and heal 0. Double cast",
+    "Permanently increase the shield and heal of this card by 1. Gain 0 shield and heal 0. Trple cast"
+   ]
+  },
+  {
+   "marbles": "Wind, Fire, Fire",
+   "name": "Flagellum of the First Apostle",
+   "text": "Power: your Power adds to your Thorns.",
+   "upgrades": [
+    "Power: your Power adds to your Thorns. Gain 1 Thorns each turn.",
+    "Power: your Power adds to your Thorns. Gain 1 Thorns and 1 Power each turn."
+   ],
+   "notes": "Rare",
+   "text_user": "Power: Your thorn benefits from power",
+   "upgrades_user": [
+    "And gain 1 thorn each turn",
+    "AND gain 1 power each turn"
+   ]
+  },
+  {
+   "marbles": "Wind, Fire, Water",
+   "name": "A Brother's Cluelessness",
+   "text": "Gain 1 Shield. Durability 2. After 10 casts, it becomes A Brother's Cleverness.",
+   "upgrades": [
+    "Gain 1 Shield. Durability 2. After 10 casts, it becomes A Brother's Cleverness (upgraded).",
+    "Gain 1 Shield. Durability 2. After 10 casts, it becomes A Brother's Cleverness (upgraded twice)."
+   ],
+   "notes": "",
+   "text_user": "Gain 1 shield. Durability 2. After casting this spell 10 times, it transform into A brother's cleverness",
+   "upgrades_user": [
+    "(upgrading this upgrade will result in an upgraded versiotn of a brohter's clverness instead and once that appear, this card won't appear anymore)"
+   ]
+  },
+  {
+   "marbles": "Wind, Fire, Wind",
+   "name": "Heat Center",
+   "text": "Choose an enemy: all Burn (yours too) moves onto it. Durability 1.",
+   "upgrades": [
+    "Choose an enemy: all Burn (yours too) moves onto it. Durability 2.",
+    "Choose an enemy: all Burn (yours too) moves onto it. Durability 3."
+   ],
+   "notes": "",
+   "text_user": "Choose an enemy, all burn stacks (including your own) move to this enemy. Durability 1",
+   "upgrades_user": [
+    "Durability 2",
+    "Durability 3"
+   ]
+  },
+  {
+   "marbles": "Wind, Water, Fire",
+   "name": "Moth to Flame",
+   "text": "Choose a burning enemy: this turn, every attack (the enemies' too) hits it. Durability 1.",
+   "upgrades": [
+    "Apply 1 Burn. Then choose a burning enemy: this turn, every attack (the enemies' too) hits it. Durability 1.",
+    "Apply 1 Burn. Then choose a burning enemy: this turn, every attack (the enemies' too) hits it. Durability 2."
+   ],
+   "notes": "",
+   "text_user": "Choose a burning enemy, all attack (including enemies) will target him this turn. Durability 1",
+   "upgrades_user": [
+    "Apply 1 burn, then choose a burning enemy",
+    "Durability 2"
+   ]
+  },
+  {
+   "marbles": "Wind, Water, Water",
+   "name": "Still Lake",
+   "text": "Silence the cards on both sides. Gain 2 Shield and heal 2 for each card Silenced.",
+   "upgrades": [
+    "Silence the cards on both sides. Gain 4 Shield and heal 4 for each card Silenced.",
+    "Silence the cards on both sides. Gain 6 Shield and heal 6 for each card Silenced."
+   ],
+   "notes": "",
+   "text_user": "Silence adjacent spells. Gain 2 shield and heal 2 for each silenced spell",
+   "upgrades_user": [
+    "Gain 4 shield and heal 4 for each silenced spell",
+    "Gain 6 shield and heal 6 for each silenced spell"
+   ]
+  },
+  {
+   "marbles": "Wind, Water, Wind",
+   "name": "Aole's Grace",
+   "text": "Repaint 2 marbles in your chant into Star marbles.",
+   "upgrades": [
+    "Repaint 3 marbles in your chant into Star marbles.",
+    "Repaint 4 marbles in your chant into Star marbles."
+   ],
+   "notes": "",
+   "text_user": "Repaint 2 into (any)",
+   "upgrades_user": [
+    "3",
+    "4"
+   ]
+  },
+  {
+   "marbles": "Wind, Wind, Fire",
+   "name": "Focus Fire",
+   "text": "Apply 1 Expose and deal 1 damage, plus 1 more time for each Wind in your chant. Cooldown 1.",
+   "upgrades": [
+    "Apply 1 Expose and deal 1 damage, plus 1 more time for each Wind in your chant.",
+    "Apply 1 Expose and deal 2 damage, plus 1 more time for each Wind in your chant."
+   ],
+   "notes": "",
+   "text_user": "Apply 1 expose and deal 1 damage. Increase by 1 time per wind in your chant (CD:1)",
+   "upgrades_user": [
+    "Apply 1 expose and deal 1 damage. Increase by 1 time per wind in your chant (no cd",
+    "Apply 1 expose and deal 2 damage (still no cd)"
+   ]
+  },
+  {
+   "marbles": "Wind, Wind, Water",
+   "name": "Bite",
+   "text": "Deal 4 damage. Heal 2.",
+   "upgrades": [
+    "Deal 6 damage. Heal 4.",
+    "Deal 8 damage. Heal 6."
+   ],
+   "notes": "",
+   "text_user": "Deal 4 damage and heal 2",
+   "upgrades_user": [
+    "6 and 4",
+    "8 and 6"
+   ]
+  },
+  {
+   "marbles": "Wind, Wind, Wind",
+   "name": "Gone like the Wind",
+   "text": "Gain 1 Dodge. Durability 1.",
+   "upgrades": [
+    "Gain 2 Dodge. Durability 1.",
+    "Gain 2 Dodge. Durability 2."
+   ],
+   "notes": "Unlike shield, dodge doesn’t go away at turn ends",
+   "text_user": "Gain 1 dodge. Durability 1",
+   "upgrades_user": [
+    "Gain 2 dodge. Durability 1",
+    "Gain 2 dodge. Durability 2"
+   ]
+  },
+  {
+   "marbles": "Fire",
+   "name": "Adam's Resolve",
+   "text": "Power: each time you damage yourself, gain 1 Power.",
+   "upgrades": [
+    "Power: each time you damage yourself, gain 1 Power and heal 1.",
+    "Power: each time you damage yourself, gain 2 Power and heal 2."
+   ],
+   "notes": "",
+   "text_user": "Power: Each time you deal damage to yourself, gain 1 power",
+   "upgrades_user": [
+    "Gain 1 power and heal 1",
+    "Gain 2 power and heal 2"
+   ]
+  },
+  {
+   "marbles": "Fire Wind",
+   "name": "Whim of the Pianist",
+   "text": "Deal 4 damage for each carved marble you own.",
+   "upgrades": [
+    "Deal 5 damage for each carved marble you own.",
+    "Deal 6 damage for each carved marble you own."
+   ],
+   "notes": "Rare and only start dropping if you have at least 2 enchanted marble",
+   "text_user": "Deal 4 damage for each carved marble you have",
+   "upgrades_user": [
+    "Deal5 damage for each carved marble you have",
+    "Deal 6 damage for each carved marble you have"
+   ]
+  },
+  {
+   "marbles": "Wind, Fire, Water",
+   "name": "A Brother's Cleverness",
+   "text": "Gain 2 Dodge. Durability 2.",
+   "upgrades": [
+    "Gain 2 Dodge. Durability 3.",
+    "Gain 2 Dodge. Durability 4."
+   ],
+   "notes": "",
+   "text_user": "Gain 2 dodge. Durability 2",
+   "upgrades_user": [
+    "Durability 3",
+    "Durability 4"
+   ]
+  }
+ ]
 }

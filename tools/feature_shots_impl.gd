@@ -30,7 +30,7 @@ func run(t: SceneTree) -> void:
 	f.enemies[0].burn = 1
 	f.player.shield = 5
 	f.player.aegis = 1
-	f.player.poison = 2
+	f.player.burn = 2
 	f.player.thorns_turn = 2
 	f.player.kindling_charged = true
 	f.player.echo_casts = 7

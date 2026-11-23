@@ -58,16 +58,6 @@ func test_power_leaves_row_for_the_fight() -> void:
 	assert_true(f.player.used_powers.has("kindle"), "power is used")
 	assert_true(f.usable_spells().is_empty(), "slot stays empty")
 
-
-func test_confuse_leaves_the_chant_alone() -> void:
-	# Confuse only veils the slot machine: the chant is read as it is
-	var f := _fight(["ashling"], [], "WF")
-	_set_hp(f.enemies[0], "WFAAAA")
-	f.player.confuse_turns = 1
-	f.cast(_all(2))
-	assert_eq(f.enemies[0].hp_text(), "AAAA", "WF read as WF")
-
-
 func test_trinity_spells_cant_be_fused() -> void:
 	var run := RunState.new()
 	run.setup(db, [], [], 4)
@@ -189,26 +179,6 @@ func test_annihilate_wipes_one_element_and_is_fleeting() -> void:
 	assert_eq(f.enemies[0].hp_text() + "|" + f.enemies[1].hp_text(), "WAW|AAW", "every Fire is gone")
 	assert_true(not f.active_spells().any(func(s): return s.id == "annihilate"), "Fleeting: gone for the fight")
 	assert_true(SpellText.card_text(db.get_spell("annihilate")).begins_with("Annihilate 1 kind of Essence on all enemies"))
-
-
-func test_echo_shell_charges_every_10th_spell() -> void:
-	var f := _fight(["ashling"], ["droplet"], "")
-	f.artifacts = ["echo_shell"]
-	var shields := []
-	for i in 11:
-		f.player.stock.clear()
-		f.player.add_element("W")
-		f.player.shield = 0.0
-		f.cast_chant([0])
-		f.resolve_all()  # Droplet: +2 Shield
-		shields.append(f.player.shield)
-		f.charges.clear()
-		f.chant.clear()
-	assert_eq(shields[9], 2.0, "the 10th cast charges it")
-	assert_eq(shields[10], 4.0, "the 11th is cast twice")
-	assert_true(not f.player.echo_charged)
-	assert_eq(Artifacts.charge_state("echo_shell", f.player)[0], false)
-
 
 func test_bottles_work_like_tiny_spells() -> void:
 	var f := _fight(["ashling"], [], "")
@@ -829,12 +799,12 @@ func test_mystery_shack_and_summoning_bill() -> void:
 	var toy: Dictionary = ev.options[2]
 	run.artifacts = ["seed_of_life", "kindling_stone"]
 	assert_true(not run.can_choose(toy), "two toys needed")
-	run.artifacts = ["seed_of_life", "kindling_stone", "lucky_acorn", "heartwood_seed", "echo_shell", "ward_stone", "iron_bark"]
+	run.artifacts = ["seed_of_life", "kindling_stone", "lucky_acorn", "heartwood_seed", "rain_chalice", "ward_stone", "iron_bark"]
 	var slots := run.active_slots()
 	run.event_outcome(toy, -1, "kindling_stone,lucky_acorn")
 	assert_true(not ("kindling_stone" in run.artifacts) and not ("lucky_acorn" in run.artifacts) and run.artifacts.count("mystery_book") == 1)
 	assert_eq(run.active_slots(), slots + 1)
-	run.event_outcome(toy, -1, "heartwood_seed,echo_shell")
+	run.event_outcome(toy, -1, "heartwood_seed,rain_chalice")
 	assert_true(not ("summoning_bill" in run.spellbook))
 	var res := run.event_outcome(toy, -1, "ward_stone,iron_bark")
 	assert_eq(run.artifacts.count("mystery_book"), 3)
@@ -1044,9 +1014,9 @@ func test_act2_tier1_les_miserables() -> void:
 	f.player.stock.clear()
 	f.player.hp = 40
 	await f._do_move(f.enemies[0], f.enemies[0].def.moves[0])
-	assert_eq([f.player.hp, f.player.bleed], [38.0, 2], "2 damage and Bleed 2")
+	assert_eq([f.player.hp, f.player.burn], [38.0, 2], "2 damage and Burn 2")
 	await f.begin_player_turn()
-	assert_eq([f.player.hp, f.player.bleed], [36.0, 1], "Bleed bites like Poison")
+	assert_eq([f.player.hp, f.player.burn], [36.0, 1], "Burn bites at the start of your turn")
 	await f._do_move(f.enemies[2], f.enemies[2].def.moves[0])
 	assert_true(f.player.ignite_hit.has("fire_ball"), "the torch lights a spell until it is cast")
 	f.player.shield = 3.0
@@ -1129,7 +1099,7 @@ func test_act2_tier15_tree_dwellers() -> void:
 	var f := _fight(["tree_dweller"], ["fire_ball"], "")
 	assert_eq(f.enemies.map(func(x): return x.size()), [12])
 	await f.end_player_turn()
-	assert_eq(f.player.poison, 3, "4 Poison (2 from each of the two), and the new turn has already ticked it down by 1")
+	assert_eq(f.player.burn, 3, "4 Poison (2 from each of the two), and the new turn has already ticked it down by 1")
 	f.enemies[0].remove_right(12)
 	f._cleanup()
 	assert_true(f.alive().is_empty(), "one tree, one set of Essence")
@@ -1229,9 +1199,9 @@ func test_rot_snake() -> void:
 	assert_eq(f.enemies[0].size(), 10)
 	f.player.hp = 40
 	await f.end_player_turn()
-	assert_eq([f.player.hp, f.player.poison], [35.0, 4], "Poison 5 bites and drops by 1 as your turn starts")
+	assert_eq([f.player.hp, f.player.burn], [35.0, 4], "Poison 5 bites and drops by 1 as your turn starts")
 	await f.end_player_turn()
-	assert_eq(f.player.poison, 4, "the bite adds 1, the new turn takes 1")
+	assert_eq(f.player.burn, 4, "the bite adds 1, the new turn takes 1")
 	assert_eq(f.player.hp, 25.0, "the bite for 5, then Poison 5 ticks")
 	assert_true(EnemyDefs.POOLS[2].hard.any(func(x): return x.ids == ["headless_horseman"]), "the Horseman is hard now")
 
@@ -1339,7 +1309,7 @@ func test_cactus_maze() -> void:
 	run.loadout = ["fire_ball", "water_wall"]
 	var ev := MapEvents.get_event("cactus_maze")
 	# cast a spell (you keep it): offensive -> 10 damage, defensive -> nothing, utility -> 2 random Essence next fight
-	assert_eq(ev.options[1].label, "Cast a spell")
+	assert_eq(ev.options[1].label, "Use a card")
 	run.player.hp = 40
 	var res := run.event_outcome(ev.options[1], -1, "fire_ball")
 	assert_eq(run.player.hp, 30)
@@ -1459,19 +1429,6 @@ func test_refund_disturbance_and_the_pool() -> void:
 
 
 func test_rare_batch() -> void:
-	# Dazed: a miss takes 1 off
-	var f := _fight(["ashling"], ["fire_ball"], "FF")
-	var e: EnemyState = f.enemies[0]
-	e.dazed = 30
-	f.player.hp = 50
-	var hits := 0
-	for k in 10:
-		var hp_before: float = f.player.hp
-		f._do_move(e, {"kind": "attack", "n": 1})
-		if f.player.hp < hp_before:
-			hits += 1
-	assert_true(e.dazed < 30, "it missed at least once")
-	assert_true(hits < 10)
 	# Exhaust: gone from the fight and the spellbook
 	var run := RunState.new()
 	run.setup(db, ["storm_sermon", "fire_ball", "water_wall"], [], 5)
@@ -1500,7 +1457,6 @@ func test_rare_batch() -> void:
 	# Water Prison: the chant holds at most 6
 	h.player.passives["chant_max"] = 6
 	assert_eq(h.player.chant_slots(), 6)
-	assert_eq(SpellText.describe_op({"op": "daze", "n": 1, "target": "all"}), "apply 1 Dazed to all enemies")
 
 
 func test_perpetual_motion() -> void:
@@ -1642,17 +1598,17 @@ func test_rewards_follow_rarity() -> void:
 	run.setup(db, all, [], 9)
 	for s in run.spell_offer(3, "boss"):
 		assert_eq(s.rarity, "legendary")
-	var rares := 0
+	var with_rare := 0
 	var elite_better := 0
-	for i in 200:
-		for s in run.spell_offer(3, "fight"):
-			if s.rarity == "rare":
-				rares += 1
+	for i in 600:
+		if run.spell_offer(3, "fight").any(func(s): return s.rarity == "rare"):
+			with_rare += 1
 		for s in run.spell_offer(3, "elite"):
 			if s.rarity != "common":
 				elite_better += 1
-	assert_true(rares > 110 and rares < 200, "about 25%% Rare, got %d of 600" % rares)
-	assert_true(elite_better > 220, "elites: about half Rare or better, got %d of 600" % elite_better)
+	# (2026-11-22, the user: about 1 offer in 5 has a Rare; an elite's cards are a little better: more Legendaries)
+	assert_true(with_rare > 80 and with_rare < 170, "about 20%% of offers have a Rare, got %d of 600" % with_rare)
+	assert_true(elite_better > 110 and elite_better < 260, "elites: about 1 card in 10 Rare or better, got %d of 1800" % elite_better)
 
 
 func test_reward_offers_mix_kinds() -> void:
@@ -1911,7 +1867,7 @@ func test_saved_run_comes_back_the_same() -> void:
 	run.setup(db, [], [], 9)
 	run.learn_spell("inferno")
 	run.seal_spell("water_wall", 1)
-	run.gain_artifact("echo_shell")
+	run.gain_artifact("rain_chalice")
 	run.player.hp = 33.0
 	run.player.bottles = ["fire_flask"]
 	run.amber = 77
@@ -1932,16 +1888,16 @@ func test_saved_run_comes_back_the_same() -> void:
 
 func test_fused_anti_spell_breaks_on_either_pattern() -> void:
 	var run := RunState.new()
-	run.setup(db, ["fog_of_war", "heat_haze"], [], 4)
-	run.learn_spell("fog_of_war")  # FW
+	run.setup(db, ["silent_tide", "heat_haze"], [], 4)
+	run.learn_spell("silent_tide")  # WFW
 	run.learn_spell("heat_haze")  # FA
-	assert_true(not run.can_fuse_pair("fog_of_war", "fire_ball"), "an anti-spell can't fuse with a spell")
-	assert_true(not run.can_fuse("fog_of_war") and not run.can_fuse_pair("fog_of_war", "heat_haze"), "anti-spells can't be fused at all")
-	assert_true(not ("fog_of_war" in run.fusable()))
+	assert_true(not run.can_fuse_pair("silent_tide", "fire_ball"), "an anti-spell can't fuse with a spell")
+	assert_true(not run.can_fuse("silent_tide") and not run.can_fuse_pair("silent_tide", "heat_haze"), "anti-spells can't be fused at all")
+	assert_true(not ("silent_tide" in run.fusable()))
 	# (an old fused anti-spell, made before that rule, still works)
-	var fz := run.fuse_preview("fog_of_war", "heat_haze", 0)
+	var fz := run.fuse_preview("silent_tide", "heat_haze", 0)
 	assert_true(fz.get("anti", false))
-	assert_eq(fz.patterns, ["FW", "FA"], "both patterns kept whole (nothing shot out)")
+	assert_eq(fz.patterns, ["WFW", "FA"], "both patterns kept whole (nothing shot out)")
 	assert_eq(fz.effects.size(), 2, "both spells' effects")
 	var f := _fight(["ashling"], [], "")
 	f.loadout = [fz]
@@ -2128,33 +2084,6 @@ func test_shield_of_silence_shields_a_silent_turn() -> void:
 	f.pass_turn()
 	assert_eq(f.player.hp, 50.0, "passed without chanting: +5 Shield, and it takes the 4")
 	assert_eq(f.player.shield, 0.0, "(gone again once your next turn starts)")
-
-
-func test_echo_chamber_casts_the_first_spell_twice_after_a_short_chant() -> void:
-	var f := _fight(["ashling"], ["water_wall"], "WWF")
-	f.artifacts = ["echo_chamber"]
-	f.cast_chant(_all(2))  # WW: 2 Essence, short enough
-	assert_true(f.player.echo_chamber_on)
-	f.resolve_spell("water_wall")
-	assert_eq(f.player.shield, 8.0, "Water Wall cast twice: 4 + 4")
-	assert_true(not f.player.echo_chamber_on, "only the first spell: then it's off")
-	var g := _fight(["ashling"], ["water_wall"], "WWFAW")
-	g.artifacts = ["echo_chamber"]
-	g.cast_chant(_all(4))  # 4 Essence: too long
-	assert_true(not g.player.echo_chamber_on)
-	g.resolve_spell("water_wall")
-	assert_eq(g.player.shield, 4.0, "once")
-
-
-func test_echoed_voice_echoes_the_first_spell_each_turn() -> void:
-	var f := _fight(["ashling"], ["water_wall", "tailwind"], "WWAA")
-	f.player.passives["echo_first"] = 1
-	f.cast_chant(_all(4))
-	f.resolve_spell("water_wall")
-	assert_eq(f.player.shield, 8.0, "the turn's first spell echoes: 4 + 4")
-	assert_eq(db.get_spell("echo_chamber").name, "Echoed Voice")
-	assert_eq(db.get_spell("echo_chamber").rarity, "legendary")
-
 
 func test_storm_crown_refunds_an_air_each_chant() -> void:
 	var f := _fight(["ashling"], [], "F")
@@ -2398,15 +2327,15 @@ func test_no_spell_poisons_enemies() -> void:
 			assert_true(not (String(x.op) in ["poison", "poison_retort"]), sp.id + " still poisons")
 
 
-func test_enemy_poison_hurts_you_then_drops() -> void:
+func test_enemy_burn_hurts_you_then_drops() -> void:
 	var f := _fight(["ashling"], [], "FFF")
 	f.player.hp = 30.0
-	f._do_move(f.enemies[0], {"kind": "poison", "n": 3})
-	assert_eq(f.player.poison, 3)
+	f._do_move(f.enemies[0], {"kind": "burn", "n": 3})
+	assert_eq(f.player.burn, 3)
 	f.begin_player_turn()  # (the start of your next turn)
-	assert_eq([f.player.hp, f.player.poison], [27.0, 2], "lose 3 HP, then Poison 2")
+	assert_eq([f.player.hp, f.player.burn], [27.0, 2], "lose 3 HP, then Poison 2")
 	f.begin_player_turn()
-	assert_eq([f.player.hp, f.player.poison], [25.0, 1])
+	assert_eq([f.player.hp, f.player.burn], [25.0, 1])
 
 
 func test_cooldown_spells() -> void:
@@ -2441,42 +2370,6 @@ func test_an_uncast_spell_goes_back_to_sleep() -> void:
 	f.cast_chant(_all(2))
 	assert_eq(f.charges.get("water_wall", 0), 0, "not kept: A A doesn't wake it")
 
-
-func test_tutorial_timing_a_shield_plays_out() -> void:
-	# the "Timing a Shield" lesson, step by step: Fire Ball while the Yeti flexes, Water Wall when it attacks
-	# (the same data as TutorialScreen.LESSONS[1]: keep them in step)
-	var lesson := {"enemies": [{"id": "yeti", "hp": "AFWAFW", "moves": [{"kind": "empower", "n": 2}, {"kind": "attack", "n": 6}]}],
-		"spells": ["fire_ball", "water_wall"], "stock": "FF", "draws": ["AFWW", "AF"]}
-	assert_eq(TutorialScreen.LESSONS[1].stock, lesson.stock)
-	assert_eq(TutorialScreen.LESSONS[1].draws, lesson.draws)
-	var f := _fight(["yeti"], lesson.spells, lesson.stock)
-	var e: EnemyState = f.enemies[0]
-	_set_hp(e, lesson.enemies[0].hp)
-	e.def.moves = lesson.enemies[0].moves
-	e.def.erase("passives")
-	e.move_index = 0
-	e.dmg_bonus = 0
-	f._plan(e)
-	f.player.hp = 60
-	f.player.next_draw.clear()
-	for ch in lesson.draws[0]:
-		f.player.next_draw.append({"el": ch, "temp": false})
-	f.script_draws = lesson.draws.slice(1)
-	assert_eq(e.intent.kind, "empower", "turn 1: it only flexes")
-	f.cast_chant(_all(2))  # F F
-	f.resolve_spell("fire_ball", 0)
-	f.finish_turn()
-	assert_eq(f.player.hp, 60.0, "no hit on turn 1")
-	assert_eq(e.intent.kind, "attack", "turn 2: the attack")
-	assert_eq("".join(f.player.stock.map(func(x): return x.el)), "AFWW")
-	f.cast_chant(_all(4))  # A F W W
-	f.resolve_spell("water_wall")
-	assert_eq(f.player.shield, 4.0)
-	f.finish_turn()
-	assert_eq(f.player.hp, 56.0, "8 damage, 4 of it blocked")
-	f.cast_chant([0, 1])  # A F: finishes it
-	f.finish_turn()
-	assert_true(f.won, "the lesson ends in a win")
 
 func test_lasting_shield_stays_until_broken() -> void:
 	var f := _fight(["ashling"], ["water_wall"], "WW")
@@ -2611,27 +2504,27 @@ func test_reward_odds_follow_slay_the_spire() -> void:
 	var counts := {"common": 0, "rare": 0, "legendary": 0}
 	for i in 4000:
 		counts[run._roll_rarity("fight")] += 1
-	# about 1 Rare in 4 (its pity counter), a few Legendaries, the rest Common
-	assert_true(counts.rare > 800 and counts.rare < 1200, str(counts))
-	assert_true(counts.legendary > 60 and counts.legendary < 400, str(counts))
-	assert_true(counts.common > 2400, str(counts))
+	# flat odds (2026-11-22): 7.2% Rare, 1.7% Legendary a card, the rest Common
+	assert_true(counts.rare > 200 and counts.rare < 380, str(counts))
+	assert_true(counts.legendary > 30 and counts.legendary < 120, str(counts))
+	assert_true(counts.common > 3500, str(counts))
 	assert_eq(run._roll_rarity("boss"), "legendary")
-	# the pity counter: every Common shown raises it 1%, a Legendary resets it
+	# no pity any more: a Common shown doesn't raise the Legendary chance
 	run.legendary_offset = 0.0
 	run.rng.seed = 3
 	var before := run.legendary_offset
 	var r := run._roll_rarity("fight")
 	if r == "common":
-		assert_eq(snappedf(run.legendary_offset - before, 0.001), 0.01)
+		assert_eq(snappedf(run.legendary_offset - before, 0.001), 0.0)
 	run.legendary_offset = 0.9
 	assert_eq(run._roll_rarity("elite"), "legendary", "a big offset all but guarantees it")
 	assert_eq(run.legendary_offset, RunState.LEGENDARY_OFFSET_START, "and it resets")
-	# the Rare pity counter: it starts low, rises with every card that isn't Rare, resets on a Rare
-	assert_eq(RunState.new().rare_chance, RunState.RARE_CHANCE_START, "Rares are rarer at the start")
+	# the Rare chance stays flat: it doesn't rise after a card that isn't Rare
+	assert_eq(RunState.new().rare_chance, RunState.RARE_CHANCE_START)
 	run.legendary_offset = -1.0
 	run.rare_chance = 0.0
 	assert_eq(run._roll_rarity("fight"), "common")
-	assert_eq(snappedf(run.rare_chance, 0.001), RunState.RARE_CHANCE_STEP)
+	assert_eq(snappedf(run.rare_chance, 0.001), 0.0)
 	run.rare_chance = 1.0
 	assert_eq(run._roll_rarity("fight"), "rare", "a long dry spell all but guarantees one")
 	assert_eq(run.rare_chance, RunState.RARE_CHANCE_START, "and it resets")
@@ -2796,15 +2689,15 @@ func test_veiled_eyes_venom_veil_theft_and_brood() -> void:
 	assert_true(not e.def.get("hidden_intent", false), "its intent is shown")
 	assert_eq(e.name, "Violet Eyes")
 	assert_eq(String(e.intent.get("eyes", "")), "both", "it opens with the laser: both eyes light up")
-	# Envenomed: a hit that takes HP poisons you; one your Shield stops entirely doesn't
-	f.player.poison = 0
+	# Envenomed: a hit that takes HP gives you Burn; one your Shield stops entirely doesn't
+	f.player.burn = 0
 	f.player.shield = 0
 	f._do_move(e, {"kind": "attack", "n": 1, "hits": 3})
-	assert_eq(f.player.poison, 3, "three hits that took HP: Poison 3")
-	f.player.poison = 0
+	assert_eq(f.player.burn, 3, "three hits that took HP: Poison 3")
+	f.player.burn = 0
 	f.player.shield = 10
 	f._do_move(e, {"kind": "attack", "n": 1, "hits": 3})
-	assert_eq(f.player.poison, 0, "all stopped by Shield: no Poison")
+	assert_eq(f.player.burn, 0, "all stopped by Shield: no Poison")
 	# the veil falls at 0 Essence: 20 more, and the theft comes first
 	e.elements.clear()
 	e.armor.clear()
@@ -2826,7 +2719,7 @@ func test_veiled_eyes_venom_veil_theft_and_brood() -> void:
 	assert_eq(cocoon.size(), 3, "3 Essence")
 	var held: Dictionary = cocoon.get_meta("held").spell
 	f._plan(e)
-	assert_eq(e.intent.kind, "poison", "then it counts on: 2 dots, Poison 5")
+	assert_eq(e.intent.kind, "burn", "then it counts on: 2 dots, Burn 5")
 	assert_eq(int(e.intent.eyes), 2)
 	cocoon.elements.clear()
 	cocoon.armor.clear()
@@ -3063,9 +2956,8 @@ func test_corrector() -> void:
 	f._plan(e)
 	assert_eq(String(e.intent.name), "Syntax Error", "full: Patch (Mend 3) would be wasted, so it is skipped")
 	f._do_move(e, e.intent)
-	assert_eq(f.player.virus.size(), 1, "Virus 3 on one spell")
+	assert_eq(f.player.burn, 3, "Burn 3")
 	assert_eq(f.player.locks.size(), 1, "and a Lock")
-	assert_true(not f.player.virus.has(f.player.locks.keys()[0]), "on ANOTHER spell")
 	e.remove_right(3)
 	e.move_index = 0
 	f._plan(e)
@@ -3096,16 +2988,6 @@ func test_vulnerable_from_an_enemy() -> void:
 	f._do_move(f.enemies[0], {"kind": "vulnerable", "n": 1})
 	assert_eq(f.player.vulnerable, 1)
 
-
-func test_virus_poisons_you_when_the_spell_is_cast() -> void:
-	var f := _fight(["ashling"], ["water_wall"], "WW")
-	f._do_move(f.enemies[0], {"kind": "virus", "n": 3})
-	assert_eq(f.player.virus.get("water_wall", 0), 3, "the only spell caught it")
-	f.cast_chant(_all(2))
-	f.resolve_spell("water_wall")
-	assert_eq([f.player.poison, f.player.virus.size()], [3, 0], "cast: Poison 3, and the virus is gone")
-
-
 func test_burden_caps_the_chant_at_five() -> void:
 	var f := _fight(["ashling"], [], "")
 	f._do_move(f.enemies[0], {"kind": "toll"})
@@ -3119,20 +3001,6 @@ func test_storm_imp_deflects_on_the_turn_it_shows_it() -> void:
 	var hp := e.hp_text()
 	var hit: Array = await f._strike(hp)
 	assert_true(hit.is_empty() and e.hp_text() == hp, "the Release bounces off")
-
-
-func test_cauterizing_power_stops_every_mend() -> void:
-	var f := _fight(["puddle_slime"], ["cauterize"], "FW")
-	var e: EnemyState = f.enemies[0]
-	e.remove_right(1)
-	var before := e.size()
-	f.cast_chant(_all(2))
-	f.resolve_spell("cauterize")
-	assert_eq(f.player.passive("cauterize"), 1, "a Power of yours")
-	f._do_move(e, {"kind": "mend", "el": "W", "n": 1})
-	assert_eq(e.size(), before, "no Mend while you are Cauterizing")
-	assert_true(not e.describe_statuses().any(func(s): return s.begins_with("Cauterized")), "no status on the enemy")
-
 
 func test_the_pianist() -> void:
 	var f := _fight(["pianist"], [], "")
@@ -3246,3 +3114,18 @@ func test_a_run_saved_on_the_old_curtain_map_gets_a_classic_map() -> void:
 	var back := RunState.from_save(str_to_var(var_to_str(d)), db)
 	assert_eq(back.map.size(), MapGen.FLOORS + 1, "a classic map again")
 	assert_eq(back.row, -1, "from the start of the act")
+
+func test_blind_hides_the_slot_machine_and_wears_off() -> void:
+	# Blind (Confuse merged into it, 2026-11-21): the Mirror Fairy's lasts the fight, a plain one its turns
+	var f := _fight(["mirror_fairy"], ["fire_ball"], "FF")
+	f._do_move(f.enemies[0], {"kind": "blind", "fight": true})
+	assert_true(f.player.blind_turns > 100, "the Mirror Fairy's Blind: the whole fight")
+	var g := _fight(["ashling"], ["fire_ball"], "FF")
+	g._do_move(g.enemies[0], {"kind": "blind", "turns": 1})
+	assert_eq(g.player.blind_turns, 1)
+	g._cleanse("blind")
+	assert_eq(g.player.blind_turns, 0, "Clear Sight cures it")
+	g._do_move(g.enemies[0], {"kind": "burn", "n": 2})
+	assert_eq(g.player.burn, 2, "an enemy's Burn on you")
+	g._cleanse("burn")
+	assert_eq(g.player.burn, 0, "Bandage cures it")

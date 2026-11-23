@@ -13,7 +13,7 @@
 ## Settled game rules (don't "restore" older versions of these)
 
 - **No spell casts itself.** After Chant, every awake spell waits for the player's click, even one with nothing to aim at (shield, heal, a lone enemy). No `_auto_cast`.
-- **The Release is manual.** When every spell is cast the Release button pulses; the player presses it (E). There is no Undo (removed by the user, 2026-10-17): a cast spell can't be taken back; right-click or Esc puts back a *selected* spell (arrow / crosshair) before it's cast.
+- **No Release (2026-11-22, the user).** After the Chant you cast the awake cards; the turn ends by itself when they are all cast (or the chant woke none), or when you press Pass (E). The Release button is gone (`Fight.no_release`, set by `MarbleBridge`; the old rules keep it only for the old tests). There is no Undo: a cast card can't be taken back; right-click or Esc puts back a *selected* card (arrow / crosshair) before it's cast.
 - **Spell cards have no picture.** Classic layout: name banner on top, pattern orbs under it, coloured rules text, and no rarity or category words: Rare and Legendary cards get ONE green / gold metal corner plate at the top-left only, inside the wood, off the iron rim (`SpellCard.RarityCorners`, 2026-11-11), Commons none (2026-11-08). The card tooltip only explains its keywords (none: no tooltip); artifact tooltips are the name in its rarity colour (white / green / orange, red cursed) plus what it does. Wax seals on sealed orbs; anti-spells use the dark holo look; a fused anti-spell shows its two patterns as two rows.
 - **Artifact slots**: no painted box, just a faint outline (72 px in fights, 56 px in the top bar).
 - **Mend intent**: a red heart with a green up-arrow (`MendIcon`), never a "+" sign.
