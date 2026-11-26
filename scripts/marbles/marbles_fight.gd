@@ -229,9 +229,24 @@ func card(ci: int) -> Dictionary:
 	var c := mrun.card_at(ci)
 	if String(c.get("id", "")) == "water_gun" and not c.has("parts"):  # (its X now: what it deals if cast now)
 		c.text = String(c.text).replace("Deal %d damage" % int(c.p.x), "Deal %d damage" % _water_gun_x(int(c.p.x)))
+	if String(c.get("id", "")) == "focus_fire" and not c.has("parts"):  # (its hits now: 1, plus the Winds read so far)
+		var fh := focus_hits()
+		c.text = String(c.text).replace(", 1 time.", ", %d %s." % [fh, "time" if fh == 1 else "times"])
 	if not c.has("parts") and c.has("text"):
 		c.text = _live_numbers(String(c.text), ci)
 	return c
+
+
+## Focus Fire's hits: 1, plus 1 for each Wind marble of the chant (once spoken; while it is read, the ones read so far).
+func focus_hits() -> int:
+	if not chanted:
+		return 1
+	var n := 1
+	var upto := chant.size() if _note < 0 else mini(chant.size(), _note + 1)
+	for k in upto:
+		if String(chant[k].get("sym", "")) != "star" and String(chant[k].c) == "A":
+			n += 1
+	return n
 
 
 static var _re_dmg: RegEx
@@ -264,11 +279,15 @@ func _live_numbers(words: String, ci: int) -> String:
 			grown = int(grow.get(ci, int(p.get("x", 1))))
 		"warm_up":
 			grown = int(grow.get(ci, 0))
+		"wave":
+			grown = int(grow.get(ci, 1))
+		"fire_storm":
+			grown = int(grow.get(ci, int(p.get("x", 2))))
 	var out := _swap_numbers(words, _re_dmg, func(n: int) -> int:
 		var base := card_damage(grown if grown >= 0 else n)
 		return shown_damage(base) if vs == null else damage_vs(vs, base))
 	out = _swap_numbers(out, _re_sh, func(n: int) -> int: return card_shield_value(grown if grown >= 0 else n))
-	out = _swap_numbers(out, _re_burn, func(n: int) -> int: return burn_value(n))
+	out = _swap_numbers(out, _re_burn, func(n: int) -> int: return burn_value(grown if grown >= 0 else n))
 	_hail = was_hail
 	_cur_ci = was
 	_casting = was_casting
@@ -464,9 +483,11 @@ func _carve(m: Dictionary, pos: int, skull_on: Array, wing_on: Array) -> void:
 		"fist":
 			my_power += 1
 			_ev({"type": "boost", "from": "chant", "k": pos, "to": "you", "col": "dmg"})
-		"ghost":
-			_ev({"type": "boost", "from": "chant", "k": pos, "to": "you", "col": "other"})
-			_gain_dodge(1)
+		"ghost":  # (gain 1 Dodge, then the marble is gone from your bag for good: the user 2026-11-23)
+			m.gone = true
+			dodge += 1  # (as _gain_dodge, without its own show: the ghost flying to your Dodge is the show)
+			dodges_gained += 1
+			_ev({"type": "boost", "from": "chant", "k": pos, "to": "you", "col": "ghost"})
 		"coin":
 			run.leaves += 1
 			_ev({"type": "boost", "from": "chant", "k": pos, "to": "you", "col": "other"})
@@ -533,11 +554,16 @@ func do_chant() -> void:
 	_ev({"type": "chant"})
 	var skull_on := []
 	var wing_on := []
+	var focus := []  # (Focus Fire cards: each Wind read adds a hit, a yellow line to them)
+	for ci in run.cards.size():
+		if String(card(ci).get("id", "")) == "focus_fire" and usable(ci):
+			focus.append(ci)
 	for pos in chant.size():  # (read left to right: each carving works as its marble is read)
-		if String(chant[pos].get("sym", "")) in ["", "star"]:
-			continue
 		_note = pos
-		_carve(chant[pos], pos, skull_on, wing_on)
+		if not (String(chant[pos].get("sym", "")) in ["", "star"]):
+			_carve(chant[pos], pos, skull_on, wing_on)
+		if not focus.is_empty() and String(chant[pos].sym) != "star" and String(chant[pos].c) == "A":
+			_ev({"type": "boost", "from": "chant", "k": pos, "to": "card", "cis": focus, "col": "other", "texts": _texts_of(focus)})
 	_note = -1
 	_first_wake = true
 	_recount()
@@ -741,16 +767,18 @@ func _effect_body(c: Dictionary, ci: int, target: int) -> void:
 	match id:
 		"steam_gun":
 			_deal(t, int(p.x) * mrun.count_marbles("A"))
-		"wave":
-			grow[ci] = int(grow.get(ci, 1)) + int(p.x)
-			_card_shield(int(grow[ci]), t)
+		"wave":  # (gain its Shield, starting at 1; then it increases by x: the user 2026-11-23)
+			var wv := int(grow.get(ci, 1))
+			_card_shield(wv, t)
+			grow[ci] = wv + int(p.x)
 		"steam_engine", "primitive_engine":
 			var to := ci + 1 if id == "steam_engine" else ci - 1
 			for k in int(p.x):
 				_activate(to, target)
-		"fire_storm":
-			grow[ci] = int(grow.get(ci, 0)) + int(p.x)
-			_apply_burn(t, int(grow[ci]))
+		"fire_storm":  # (apply its Burn, starting at x; then it increases by x)
+			var fs := int(grow.get(ci, int(p.x)))
+			_apply_burn(t, fs)
+			grow[ci] = fs + int(p.x)
 		"geyser", "elizes_hesitation":
 			_add_charge(ci, 1, target)
 		"pressure_cooker":
@@ -893,8 +921,12 @@ func _effect_body(c: Dictionary, ci: int, target: int) -> void:
 					mrun.bag[int(m.src)].sym = sym  # (carved for good)
 			_recount()
 		"alchemy", "random_things_go":
-			if id == "alchemy":
-				_ev({"type": "bottles", "n": int(p.x)})  # (bottles: not in this mode yet)
+			if id == "alchemy":  # (random bottles into your free bottle slots)
+				var got := 0
+				for b in mrun.bottle_offer(int(p.x)):
+					if mrun.gain_bottle(String(b)):
+						got += 1
+				_ev({"type": "bottles", "n": got})
 			if mrun.backpack.size() > 0:
 				pending_replace = ci
 		"over_exertion":
@@ -961,7 +993,11 @@ func _effect_body(c: Dictionary, ci: int, target: int) -> void:
 				chant[pool[k]].sym = "star"  # (for this chant only: the marble in your bag keeps its colour)
 			_recount()
 		"focus_fire":
-			for k in 1 + chant_letters().count("A"):
+			for k in focus_hits():
+				if k > 0:
+					if t == null or t.dead() or over:
+						break
+					_ev({"type": "fx_again", "ci": ci})  # (its spell effect plays again for every repeat)
 				_debuff(t, "expose", int(p.expose))
 				_deal(t, int(p.d))
 		"whim_of_the_pianist":
@@ -1263,11 +1299,12 @@ func _self_damage(n: int) -> void:
 ## Cleanse: your debuffs gone. Returns how many kinds there were.
 func _cleanse() -> int:
 	var n := 0
-	for on in [weak > 0, vulnerable > 0, burn > 0, stunned > 0, not silenced.is_empty(), not ignited.is_empty(), not _ignite_next.is_empty(), freeze_next > 0, confuse_next or confuse_fight]:
+	for on in [weak > 0, vulnerable > 0, expose > 0, burn > 0, stunned > 0, not silenced.is_empty(), not ignited.is_empty(), not _ignite_next.is_empty(), freeze_next > 0, confuse_next or confuse_fight]:
 		if on:
 			n += 1
 	weak = 0
 	vulnerable = 0
+	expose = 0
 	burn = 0
 	stunned = 0
 	silenced.clear()
@@ -1463,6 +1500,9 @@ func _drop_marbles(idx: Array) -> void:
 			for k in pile.size():
 				if int(pile[k]) > i:
 					pile[k] = int(pile[k]) - 1
+		for hm in hand + chant:  # (the marbles out of the bag point at it by index too)
+			if int(hm.get("src", -1)) > i:
+				hm.src = int(hm.src) - 1
 
 
 ## Powers that work at the start of each of your turns.
@@ -1531,6 +1571,13 @@ func use_bottle(b: int, target := -1) -> void:
 
 ## The fight is over: what it lent is given back (A Daughter's Secret's max HP).
 func finish() -> void:
+	var gone := []  # (a Ghost marble used on the last turn: gone from your bag too)
+	for m in chant:
+		if bool(m.get("gone", false)) and int(m.get("src", -1)) >= 0:
+			gone.append(int(m.src))
+			m.src = -1
+	if not gone.is_empty():
+		_drop_marbles(gone)
 	if hp_loan > 0:
 		run.max_hp += hp_loan
 		hp_loan = 0

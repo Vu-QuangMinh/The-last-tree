@@ -75,6 +75,7 @@ var foes: Array = []
 var block := 0
 var weak := 0  # you deal 50% less
 var vulnerable := 0  # you take 50% more
+var expose := 0  # (the Marbles mode) each attack hit on you deals this much more; only a Cleanse takes it off
 var burn := 0  # yours: at the start of your turn you lose that much HP, then it drops by 1
 var silenced := {}  # card index -> turns it can't take dice
 var hammered := {}  # card index -> Hammer hits (HAMMER_BREAKS: broken for the fight)
@@ -122,7 +123,7 @@ func snap() -> Dictionary:
 			"weak": f.weak, "thorns": f.thorns, "expose": f.expose, "armor": f.armor, "vulnerable": f.vulnerable,
 			"ethereal": f.ethereal, "dodge": f.dodge, "intent": f.intent.duplicate(true),
 			"fly": FLY_HITS - f.fly_hits if f.es.flying else 0})  # (a flyer in the air: hits left before it falls)
-	return {"hp": run.hp, "max_hp": run.max_hp, "block": block, "burn": burn, "weak": weak, "vulnerable": vulnerable,
+	return {"hp": run.hp, "max_hp": run.max_hp, "block": block, "burn": burn, "weak": weak, "vulnerable": vulnerable, "expose": expose, "dodge": dodge,
 		"stunned": stunned, "leaves": run.leaves, "foes": fs}
 
 
@@ -138,7 +139,7 @@ func _me_extra() -> String:
 
 
 func _me_text() -> String:
-	return "HP %d/%d, Shield %d, Burn %d, Weak %d, Vulnerable %d, Dodge %d, Stunned %d%s" % [run.hp, run.max_hp, block, burn, weak, vulnerable, dodge, stunned, _me_extra()]
+	return "HP %d/%d, Shield %d, Burn %d, Weak %d, Vulnerable %d, Expose %d, Dodge %d, Stunned %d%s" % [run.hp, run.max_hp, block, burn, weak, vulnerable, expose, dodge, stunned, _me_extra()]
 
 
 func _foe_text(f: Foe) -> String:
@@ -206,7 +207,7 @@ const ENEMY_MOVES := {
 	"enraged_bear": [[{"kind": "attack", "n": 7, "hits": 1}], "cycle"],
 	"triplet_fire": [[{"kind": "attack", "n": 5, "hits": 1}, {"kind": "power", "n": 2, "who": "random_team"}], "random"],
 	"triplet_water": [[{"kind": "attack", "n": 5, "hits": 1}, {"kind": "heal", "n": 5, "who": ""}], "random"],
-	"triplet_air": [[{"kind": "attack", "n": 5, "hits": 1}, {"kind": "foe_dodge", "n": 1, "who": "random_team"}], "random"],
+	"triplet_air": [[{"kind": "attack", "n": 5, "hits": 1}, {"kind": "expose", "n": 1}], "random"],  # (no Dodge: it Exposes you, the user 2026-11-24)
 	"purple_slime": [[{"kind": "attack", "n": 6, "hits": 1}, {"kind": "weak", "n": 1}], "cycle"],
 	"green_slime": [[{"kind": "attack", "n": 6, "hits": 1}, {"kind": "heal", "n": 6, "who": ""}], "cycle"],
 	"yellow_slime": [[{"kind": "attack", "n": 6, "hits": 1}, {"kind": "vulnerable", "n": 1}], "cycle"],
@@ -410,8 +411,14 @@ func _plan(f: Foe) -> void:
 			var other := from.filter(func(m): return not (String(m.kind) in taken))
 			if not other.is_empty():
 				from = other
+		if f.dodge > 0:  # (it still has its Dodge: another move)
+			var rest := from.filter(func(m): return String(m.kind) != "foe_dodge")
+			if not rest.is_empty():
+				from = rest
 		f.intent = from[run.rng.randi() % from.size()]
 	else:
+		if f.dodge > 0 and String(f.moves[f.move_i % f.moves.size()].kind) == "foe_dodge":
+			f.move_i += 1  # (it still has its Dodge: on to its next move, the user 2026-11-24)
 		f.intent = f.moves[f.move_i % f.moves.size()]
 		f.move_i += 1
 	if String(f.intent.get("kind", "")) == "charge":  # (it starts a Charge: its card hangs over it)
@@ -643,6 +650,9 @@ func _act(f: Foe, m: Dictionary) -> void:
 					dodge -= 1
 					_ev({"type": "dodged", "foe": i})
 					continue
+				if expose > 0:
+					CombatLog.line("    your Expose %d: %d -> %d" % [expose, n, n + expose])
+					n += expose
 				_ev({"type": "attack", "foe": i, "n": n})
 				_hurt_player(n)
 				if over:
@@ -671,8 +681,9 @@ func _act(f: Foe, m: Dictionary) -> void:
 			_ev({"type": "foe_takes_off", "foe": i})
 		"foe_dodge":
 			var dodger: Foe = alive()[run.rng.randi() % alive().size()] if String(m.get("who", "")) == "random_team" else f
-			dodger.dodge += int(m.n)
-			_ev({"type": "foe_dodge_up", "foe": foes.find(dodger)})
+			if dodger.dodge <= 0:  # (one Dodge at most: no more while it has one, the user 2026-11-24)
+				dodger.dodge = 1
+				_ev({"type": "foe_dodge_up", "foe": foes.find(dodger)})
 		"mirror":
 			pass  # (her mirror was up during your turn: nothing more)
 		"regen":
@@ -710,6 +721,9 @@ func _act(f: Foe, m: Dictionary) -> void:
 			if most >= 0:
 				hammered[most] = int(hammered.get(most, 0)) + 1
 				_ev({"type": "debuff", "foe": i, "what": "Hammered: %s %d/%d" % [run.card_at(most).name, hammered[most], HAMMER_BREAKS]})
+		"expose":
+			expose += int(m.n)
+			_ev({"type": "debuff", "foe": i, "what": "Exposed"})
 		"vulnerable":  # (+1: it ticks down at the end of this enemy turn; n is the enemy turns it covers)
 			vulnerable = maxi(vulnerable, int(m.n) + 1)
 			_ev({"type": "debuff", "foe": i, "what": "Vulnerable"})
@@ -925,6 +939,8 @@ static func intent_text(m: Dictionary, f: Foe = null) -> String:
 			s = "👻 Ethereal"
 		"hammer":
 			s = "🔨 Hammer"
+		"expose":
+			s = "Expose %d" % int(m.n)
 		"vulnerable":
 			s = "Vulnerable" + (" %d" % int(m.n) if int(m.get("n", 1)) > 1 else "")
 		"stun":

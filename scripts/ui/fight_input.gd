@@ -565,9 +565,11 @@ func _spell_chooser(spells: Array, why := "grimoire") -> int:
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.add_child(v)
 	var title := "Your Power takes hold: choose a spell to take its place for this fight" if why == "power" else "Grimoire Ink: choose a spell to join your active spells for this fight"
+	if why == "swap":
+		title = "Self-replace: choose a card from your backpack to take its place"
 	var t := UiTheme.heading(title, 28, Color(1, 0.9, 0.55))
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var ribbon := UiSkin.box("banner_grimoire_ink", [184, 0, 174, 0], [110, 10, 110, 22]) if why != "power" else null
+	var ribbon := UiSkin.box("banner_grimoire_ink", [184, 0, 174, 0], [110, 10, 110, 22]) if why == "grimoire" else null
 	if ribbon != null:  # New theme: the title on a paper ribbon (dark ink, not gold)
 		t.add_theme_color_override("font_color", Color(0.28, 0.16, 0.1))
 		var rb := PanelContainer.new()
@@ -595,7 +597,7 @@ func _spell_chooser(spells: Array, why := "grimoire") -> int:
 		var k := i
 		card.clicked.connect(func(_c): scr._spell_chosen.emit(k))
 		flow.add_child(card)
-	var skip := UiTheme.button("Keep the ink (choose nothing)" if why != "power" else "Leave it empty", func(): scr._spell_chosen.emit(-1), 20)
+	var skip := UiTheme.button({"power": "Leave it empty", "swap": "Keep it"}.get(why, "Keep the ink (choose nothing)"), func(): scr._spell_chosen.emit(-1), 20)
 	skip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(skip)
 	scr.add_child(overlay)

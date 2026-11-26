@@ -14,7 +14,7 @@ const SYM_WORDS := {"sword": "Sword: the card that counts it deals +3 damage per
 	"shield": "Shield: the card that counts it gives +3 Shield this turn", "coin": "Coin: +1 coin when it is counted",
 	"heart": "Heart: heal 2 when it is counted", "skull": "Skull: the card that counts it deals x1.5 damage this turn (one Skull a card)",
 	"wing": "Wing: the card that counts it gives x1.5 Shield this turn (one Wing a card)", "star": "Star: counts as any colour",
-	"fist": "Fist: +1 Power for the fight when it is counted", "ghost": "Ghost: +1 Dodge when it is counted"}
+	"fist": "Fist: +1 Power for the fight when it is counted", "ghost": "Ghost: gain 1 Dodge when it is counted, then the marble is gone from your bag"}
 
 var colour := "F"
 var sym := ""

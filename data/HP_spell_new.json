@@ -130,10 +130,10 @@
    "id": "wave",
    "name": "Wave",
    "pattern": "WA",
-   "text": "This card's Shield grows by 1 for the rest of the fight. Then gain its Shield (it starts at 1).",
+   "text": "Gain 1 Shield. Increases by 1 each time this is cast.",
    "upgrades": [
-    "This card's Shield grows by 2 for the rest of the fight. Then gain its Shield (it starts at 1).",
-    "This card's Shield grows by 3 for the rest of the fight. Then gain its Shield (it starts at 1)."
+    "Gain 1 Shield. Increases by 2 each time this is cast.",
+    "Gain 1 Shield. Increases by 3 each time this is cast."
    ],
    "notes": "The gain 1 shield is actually mutable as is all other stats on cards. Any mutable number will change and reflect their current value.",
    "text_user": "This card gain 1 shield for this fight. Gain 1 shield",
@@ -234,10 +234,10 @@
    "id": "fire_storm",
    "name": "Fire Storm",
    "pattern": "FFA",
-   "text": "This card's Burn grows by 2 for the rest of the fight. Then apply its Burn (it starts at 0).",
+   "text": "Apply 2 Burn. Increases by 2 each time this is cast.",
    "upgrades": [
-    "This card's Burn grows by 3 for the rest of the fight. Then apply its Burn (it starts at 0).",
-    "This card's Burn grows by 5 for the rest of the fight. Then apply its Burn (it starts at 0)."
+    "Apply 3 Burn. Increases by 3 each time this is cast.",
+    "Apply 5 Burn. Increases by 5 each time this is cast."
    ],
    "text_user": "This card gain 2 burn. Apply 0 burn",
    "upgrades_user": [
@@ -535,10 +535,10 @@
    "id": "stream",
    "name": "Stream",
    "pattern": "AWW",
-   "text": "Deal 1 damage and gain 1 Shield. Then double it for this fight. Durability 3.",
+   "text": "Deal 1 damage and gain 1 Shield. Then double it. Durability 3.",
    "upgrades": [
-    "Deal 2 damage and gain 2 Shield. Then double it for this fight. Durability 3.",
-    "Deal 3 damage and gain 3 Shield. Then double it for this fight. Durability 3."
+    "Deal 2 damage and gain 2 Shield. Then double it. Durability 3.",
+    "Deal 3 damage and gain 3 Shield. Then double it. Durability 3."
    ],
    "notes": "Rare",
    "text_user": "Gain 1 shield and deal 1 damage. Then double this card shield and damage",
@@ -1213,12 +1213,12 @@
    "id": "curse_of_the_night",
    "name": "Curse of the Night",
    "pattern": "AAAW",
-   "text": "Power: the cards on both sides become Bites for this fight (deal 4 damage, heal 2).",
+   "text": "Power: the cards on both sides become Bites (deal 4 damage, heal 2).",
    "text_user": "Power: turn adjacent spells into bite. (Bite is a spell that does 4 damage and heal 2. Upgrade this will upgrade the bites which does 2 more and heal 2 more)",
    "upgrades_user": [],
    "upgrades": [
-    "Power: the cards on both sides become Bites for this fight (deal 6 damage, heal 4).",
-    "Power: the cards on both sides become Bites for this fight (deal 8 damage, heal 6)."
+    "Power: the cards on both sides become Bites (deal 6 damage, heal 4).",
+    "Power: the cards on both sides become Bites (deal 8 damage, heal 6)."
    ]
   },
   {
@@ -1238,7 +1238,7 @@
   "burn": "Burn is a stack, with no cap. At the start of the enemy's turn it loses HP equal to its Burn, then Burn goes down by 1. Any Burn above 0: it is burning.",
   "live_numbers": "A number a passive changes always shows on the card, updated as you cast: green when it goes up, red when it goes down. You get what it shows when you cast it.",
   "cards_2026_11_20": "Rebuilt from zero on 2026-11-20 (the user). The backpack holds at most 5 cards (active row and backpack as in the chant game, only the backpack is capped). Every card has an upgraded form: you get it by finding the same card again in a run (twice: Upgrade 1, then Upgrade 2). A card you could upgrade wiggles and shines white wherever it is offered. Strike, Block, Eye Poke and Ki Strike were removed (2026-11-21): the starting cards are still to be chosen.",
-  "marbles": "Essence is now called marbles. The bag starts with 4 of each colour (Fire, Water, Wind), 12 in all (2026-11-22; was 3 of each). Every turn, 3 marbles at random from the bag (2026-11-23: no free marble of each colour on the first turn any more). Drawn marbles come back only when the bag is empty. After each normal fight: a card reward or a marble reward (3 marbles at a time), 70 / 30 pseudo-random, the first reward of a run always a card (2026-11-22; was 50/50); marbles won go into the bag for good (they change the odds of drawing that colour). Found marbles are upgraded about 70% of the time. Carvings work when a card's pattern counts their marble (2026-11-22; not when the chant is spoken), for that card: sword (that card deals 3 more damage per hit this turn, stacks), shield (it gives 3 more Shield, stacks), skull (rare: that card's damage x1.5, one a card), wing (rare: its Shield x1.5, one a card); and when counted: coin (gain 1 money), heart (heal 2), fist (gain 1 Power), ghost (gain 1 Dodge); star counts as any colour. (Spent was removed 2026-11-22.)",
+  "marbles": "Essence is now called marbles. The bag starts with 4 of each colour (Fire, Water, Wind), 12 in all (2026-11-22; was 3 of each). Every turn, 3 marbles at random from the bag (2026-11-23: no free marble of each colour on the first turn any more). Drawn marbles come back only when the bag is empty. After each normal fight: a card reward or a marble reward (3 marbles at a time), 70 / 30 pseudo-random, the first reward of a run always a card (2026-11-22; was 50/50); marbles won go into the bag for good (they change the odds of drawing that colour). Found marbles are upgraded about 70% of the time. Carvings work when a card's pattern counts their marble (2026-11-22; not when the chant is spoken), for that card: sword (that card deals 3 more damage per hit this turn, stacks), shield (it gives 3 more Shield, stacks), skull (rare: that card's damage x1.5, one a card), wing (rare: its Shield x1.5, one a card); and when counted: coin (gain 1 money), heart (heal 2), fist (gain 1 Power), ghost (gain 1 Dodge, then the marble is gone from your bag for good, 2026-11-23); star counts as any colour. (Spent was removed 2026-11-22.)",
   "unique_patterns": "Patterns of 1 to 4 marbles (order counts) in the first list, one card each; a pattern may repeat in this version (the second list, more_cards, reuses them; two cards you own can share a pattern) (2026-11-21).",
   "upgrades": "A card upgrades twice: the 2nd copy found gives Upgrade 1, the 3rd gives Upgrade 2 (2026-11-20).",
   "fusion_names": "A fused spell gets a name the player types; a premade name from fusion_default_names (vague, never tied to one element) is suggested as the default and can be changed (2026-11-21).",
@@ -1320,10 +1320,10 @@
   {
    "marbles": "Wind",
    "name": "Air",
-   "text": "Your Burn cards apply 1 more Burn for the rest of the fight. Durability 2.",
+   "text": "Your Burn cards apply 1 more Burn. Durability 2.",
    "upgrades": [
-    "Your Burn cards apply 1 more Burn for the rest of the fight. Durability 3.",
-    "Your Burn cards apply 1 more Burn for the rest of the fight. Durability 5."
+    "Your Burn cards apply 1 more Burn. Durability 3.",
+    "Your Burn cards apply 1 more Burn. Durability 5."
    ],
    "notes": "",
    "text_user": "Your burn cards gain 1 burn. Durability 2",
@@ -1572,10 +1572,10 @@
   {
    "marbles": "Fire, Wind, Water",
    "name": "Alchemy",
-   "text": "Get 1 random bottle. Then swap this card with one in your backpack.",
+   "text": "Get 1 random bottle. Self-replace.",
    "upgrades": [
-    "Get 2 random bottles. Then swap this card with one in your backpack.",
-    "Get 3 random bottles. Then swap this card with one in your backpack."
+    "Get 2 random bottles. Self-replace.",
+    "Get 3 random bottles. Self-replace."
    ],
    "notes": "",
    "text_user": "Give you a random bottle. Self replace (with another spell in your backpack, you choose)",
@@ -1617,10 +1617,10 @@
   {
    "marbles": "Water, Fire, Water",
    "name": "A Daughter's Secret",
-   "text": "Lose 20 max HP for this fight (it can kill you). Apply 1 Stun.",
+   "text": "Lose 20 max HP (it can kill you). Apply 1 Stun.",
    "upgrades": [
-    "Lose 15 max HP for this fight (it can kill you). Apply 1 Stun.",
-    "Lose 10 max HP for this fight (it can kill you). Apply 1 Stun."
+    "Lose 15 max HP (it can kill you). Apply 1 Stun.",
+    "Lose 10 max HP (it can kill you). Apply 1 Stun."
    ],
    "notes": "Legendary",
    "text_user": "Reduce your max HP by 20 for this fight. Stun 1 (can be lethal)",
@@ -1632,10 +1632,10 @@
   {
    "marbles": "Water, Fire, Wind",
    "name": "Random Things Go!",
-   "text": "Power: gain 1 Power for each Extension. Then swap this card with one in your backpack.",
+   "text": "Power: gain 1 Power for each Extension. Self-replace.",
    "upgrades": [
-    "Power: gain 2 Power for each Extension. Then swap this card with one in your backpack.",
-    "Power: gain 3 Power for each Extension. Then swap this card with one in your backpack."
+    "Power: gain 2 Power for each Extension. Self-replace.",
+    "Power: gain 3 Power for each Extension. Self-replace."
    ],
    "notes": "",
    "text_user": "Power: Gain 1 power per extention. Self replace",
@@ -1704,10 +1704,10 @@
   {
    "marbles": "Water, Wind, Water",
    "name": "Nila's Blades",
-   "text": "Deal 5 damage, plus 1 more time for each Dodge you gained this fight.",
+   "text": "Deal 5 damage, plus 1 more time for each Dodge you gained.",
    "upgrades": [
-    "Deal 5 damage, plus 2 more times for each Dodge you gained this fight.",
-    "Deal 5 damage, plus 3 more times for each Dodge you gained this fight."
+    "Deal 5 damage, plus 2 more times for each Dodge you gained.",
+    "Deal 5 damage, plus 3 more times for each Dodge you gained."
    ],
    "notes": "",
    "text_user": "Deal 5x1 damage. Increase 1 more time for each dodge you gained this fight",
@@ -1823,10 +1823,10 @@
   {
    "marbles": "Wind, Wind, Fire",
    "name": "Focus Fire",
-   "text": "Apply 1 Expose and deal 1 damage, plus 1 more time for each Wind in your chant. Cooldown 1.",
+   "text": "Apply 1 Expose and deal 1 damage, 1 time. Increases by 1 time for each Wind in your chant. Cooldown 1.",
    "upgrades": [
-    "Apply 1 Expose and deal 1 damage, plus 1 more time for each Wind in your chant.",
-    "Apply 1 Expose and deal 2 damage, plus 1 more time for each Wind in your chant."
+    "Apply 1 Expose and deal 1 damage, 1 time. Increases by 1 time for each Wind in your chant.",
+    "Apply 1 Expose and deal 2 damage, 1 time. Increases by 1 time for each Wind in your chant."
    ],
    "notes": "",
    "text_user": "Apply 1 expose and deal 1 damage. Increase by 1 time per wind in your chant (CD:1)",

@@ -51,7 +51,7 @@ const LOOK := {
 	"summon_clock": ["⏰", PURPLE], "guard": ["🛡", GREY], "resurrect": ["💀", PURPLE], "recharge": ["💫", BLUE], "dormant": ["💤", BLUE], "grounded": ["💫", BLUE], "take_off": ["🪽", BLUE], "glow": ["💡", PURPLE], "brittle": ["🧊", PURPLE], "regrow": ["🌿", GREEN], "sing": ["🎵", BLUE], "ignite_spell": ["🔥", PURPLE], "invert_spells": ["☯", PURPLE], "charge": ["⏳", RED], "fireball": ["☄", RED], "fireball_blast": ["💥", RED], "invoke": ["✨", BLUE], "hammer_spell": ["🔨", PURPLE], "stunned": ["💫", GREY], "stun": ["💫", PURPLE], "grow_thorns": ["🌵", GREEN], "revive": ["🪽", Color(0.85, 0.75, 0.4)], "cleanse_self": ["✨", GREEN], "drain_essence": ["⚡", PURPLE], "steal_spell": ["🕸", PURPLE], "play": ["🎹", BLUE], "vulnerable": ["🎯", PURPLE], "deflect": ["🗡", BLUE], "bottle": ["🍶", GREEN],
 	# the new fight's moves (MarbleBridge, 2026-11-22)
 	"block": ["🛡", BLUE], "heal": ["❤", GREEN], "power": ["💪", BLUE], "foe_dodge": ["💨", BLUE], "thorns": ["🌵", GREEN],
-	"thorns_team": ["🌵", GREEN], "weak": ["🥀", PURPLE], "regen": ["🌿", GREEN], "mirror": ["🪞", BLUE], "ethereal": ["👻", BLUE],
+	"thorns_team": ["🌵", GREEN], "weak": ["🥀", PURPLE], "expose": ["🎯", PURPLE], "regen": ["🌿", GREEN], "mirror": ["🪞", BLUE], "ethereal": ["👻", BLUE],
 	"charging": ["⏳", RED], "hammer": ["🔨", PURPLE], "cleanse": ["✨", GREEN], "slime_pick": ["🟢", BLUE],
 }
 
@@ -79,6 +79,7 @@ const INFO := {
 	"thorns": ["Thorns", "It gains Thorns: each card that damages it hurts you this much."],
 	"thorns_team": ["Thorns", "Every enemy gains Thorns."],
 	"weak": ["Weaken", "You are Weakened: you deal 50% less."],
+	"expose": ["Expose", "You are Exposed: each attack hit on you deals this much more, until you Cleanse."],
 	"regen": ["Regenerate", "It heals at the start of its next turns."],
 	"vulnerable": ["Vulnerable", "You take 50% more damage."],
 	"play": ["Playing", "He never attacks. He plays his piece, in real time; if he gets to the end of it, you die."],
@@ -130,7 +131,7 @@ const ART := {"attack": "intent_attack", "armor": "intent_armor", "freeze": "int
 	"summon_clock": "intent_summon", "guard": "intent_armor", "resurrect": "intent_summon", "recharge": "intent_recharge", "dormant": "intent_dormant", "grounded": "intent_stunned", "glow": "intent_glow", "grow_thorns": "intent_grow_thorns", "hold": "intent_hold", "cleanse_self": "intent_cleanse_self", "drain_essence": "intent_drain_essence", "brittle": "intent_brittle", "regrow": "intent_regrow",
 	"play": "intent_play", "deflect": "intent_deflect", "bottle": "intent_bottle", "steal_spell": "intent_steal_spell", "fireball": "intent_fireball", "fireball_blast": "intent_fireball_blast",
 	# the new fight's moves (2026-11-22): the painted art there is for them
-	"weak": "status_weak", "block": "intent_armor", "power": "intent_empower", "heal": "intent_mend"}
+	"weak": "status_weak", "expose": "status_vulnerable", "block": "intent_armor", "power": "intent_empower", "heal": "intent_mend"}
 
 
 ## New theme: the bubble is five fixed-ratio pieces: two end caps, the arrow in the middle, and a stretchy piece on each
@@ -320,7 +321,7 @@ func _add_move(row: HBoxContainer, m: Dictionary, e: EnemyState) -> void:
 			num = str(m.turns)
 		"vulnerable":
 			num = str(m.n)
-		"block", "heal", "power", "foe_dodge", "thorns", "thorns_team", "weak", "regen":  # (the new fight's moves, 2026-11-22)
+		"block", "heal", "power", "foe_dodge", "thorns", "thorns_team", "weak", "expose", "regen":  # (the new fight's moves, 2026-11-22)
 			num = str(int(m.get("n", 1)))
 		"toll":
 			num = str(PlayerState.TOLL_CAP)

@@ -24,6 +24,7 @@ var ignite_dmg := {}  # spell id -> what casting it burns you for: Ignite stacks
 var blind_turns := 0
 var toll := 0  # Burden (internally "toll"): your next chant holds at most this many Essence, the slots past it are stone (0 = none)
 var weak := 0  # Weakened N (the new fight, MarbleBridge: the Zephling): your cards deal 50% less for N of your turns
+var expose := 0  # Expose N (the new fight, MarbleBridge: the Air Triplet): each attack hit on you deals N more
 var vulnerable := 0  # Vulnerable N: you take 50% more damage; N drops by 1 after each enemy turn
 var brittle_turns := 0  # Brittle: the Shield you gain is 50% smaller
 var dmg_taken_mult := 1.0  # from artifacts (Glass Heart)
@@ -75,6 +76,7 @@ func reset_fight() -> void:
 	toll = 0
 	vulnerable = 0
 	weak = 0
+	expose = 0
 	brittle_turns = 0
 	overload = 0
 	stock.clear()

@@ -155,15 +155,16 @@ func run() -> void:
 	f = _f(["firelance"]); _cast(f); _ok("Firelance: Burn 3", f.foes[0].burn == 3); done.firelance = 1
 	f = _f(["smoke_screen"]); _cast(f); _ok("Smoke Screen: 1 Shield, Weakened", f.block == 1 and f.foes[0].weak == 1); done.smoke_screen = 1
 	f = _f(["splash"]); _cast(f); _ok("Splash: 2 Shield", f.block == 2); done.splash = 1
-	f = _f(["wave"]); _cast(f); _ok("Wave: grows to 2, gains 2", f.block == 2)
-	f.end_turn(); f.block = 0; _cast(f); _ok("Wave: then 3", f.block == 3); done.wave = 1
+	f = _f(["wave"]); _ok("Wave: says Gain 1 Shield", String(f.card(0).text).begins_with("Gain 1 Shield")); _cast(f); _ok("Wave: gains 1", f.block == 1)
+	_ok("Wave: then says Gain 2 Shield", String(f.card(0).text).begins_with("Gain 2 Shield"))
+	f.end_turn(); f.block = 0; _cast(f); _ok("Wave: then 2", f.block == 2); done.wave = 1
 	f = _f(["heat_wave"]); _cast(f); _ok("Heat Wave: Burn 2 on all", f.foes[0].burn == 2 and f.foes[1].burn == 2); done.heat_wave = 1
 	f = _f(["sea_sickness"]); _cast(f); _ok("Sea Sickness: all Weakened", f.foes[1].weak == 1); done.sea_sickness = 1
 	f = _f(["tail_wind"]); _cast(f); f.end_turn(); _ok("Tail Wind: 4 marbles next turn", f.hand.size() == 4); done.tail_wind = 1
 	f = _f(["laser_beam"]); _cast(f); _ok("Laser Beam: 10, 3 to you", _hp(f) == 190 and f.run.hp == 57); done.laser_beam = 1
 	f = _f(["steam_engine", "spark"]); _cast(f); _ok("Steam Engine: Spark on its right fires", _hp(f) == 197)
 	_ok("Steam Engine: CD 1", f.cooldown.has(0)); done.steam_engine = 1
-	f = _f(["fire_storm"]); _cast(f); _ok("Fire Storm: Burn 2", f.foes[0].burn == 2)
+	f = _f(["fire_storm"]); _ok("Fire Storm: says Apply 2 Burn", String(f.card(0).text).begins_with("Apply 2 Burn")); _cast(f); _ok("Fire Storm: Burn 2", f.foes[0].burn == 2)
 	f.end_turn(); f.foes[0].burn = 0; _cast(f); _ok("Fire Storm: then 4", f.foes[0].burn == 4); done.fire_storm = 1
 	f = _f(["geyser"])
 	for k in 3:
@@ -259,7 +260,7 @@ func run() -> void:
 	f = _f(["hot_blood"]); _cast(f); _ok("Hot Blood: 40% missing: +2 Power", f.power_now() == 2); done.hot_blood = 1
 	f = _f(["glass_cannon"]); _chant(f, ["F", "W:sword", "A"]); f.cast(0, 0); _ok("Glass Cannon: 3 + 6 + 3 (+3 Sword)", _hp(f) == 185); done.glass_cannon = 1
 	f = _f(["ludwigs_inspiration"]); _cast(f); _ok("Ludwig's Inspiration: 2 carved", f.chant.filter(func(m): return String(m.sym) != "").size() == 2); done.ludwigs_inspiration = 1
-	f = _f(["alchemy"]); f.mrun.backpack = ["spark"]; _cast(f); f.replace_with(0); _ok("Alchemy: replaces itself", f.run.cards[0] == "spark" and f.mrun.backpack[0] == "alchemy"); done.alchemy = 1
+	f = _f(["alchemy"]); f.mrun.backpack = ["spark"]; _cast(f); f.replace_with(0); _ok("Alchemy: replaces itself", f.run.cards[0] == "spark" and f.mrun.backpack[0] == "alchemy" and f.mrun.bottles.size() == 1); done.alchemy = 1
 	f = _f(["toxic_wind"]); _cast(f); _ok("Toxic Wind: all three on all", f.foes[1].expose == 1 and f.foes[1].weak == 1 and f.foes[1].vulnerable > 0); done.toxic_wind = 1
 	f = _f(["spark", "over_exertion", "spark"]); _cast(f, 1); _ok("Over Exertion: both neighbours fire, then Silenced", _hp(f) == 194 and f.silenced.has(0) and f.silenced.has(2)); done.over_exertion = 1
 	f = _f(["a_daughters_secret"]); _cast(f); _ok("A Daughter's Secret: max HP -20, Stun", f.run.max_hp == 80 and f.foes[0].stun == 1)
@@ -277,7 +278,52 @@ func run() -> void:
 	f = _f(["moth_to_flame"]); f.foes[0].burn = 1; _cast(f); _ok("Moth to Flame: attacks go at it", f._forced_target(f.foes[1]) == f.foes[0]); done.moth_to_flame = 1
 	f = _f(["spark", "still_lake", "drop"]); _cast(f, 1); _ok("Still Lake: 2 Silenced: 4 Shield, heal 4", f.block == 4 and f.run.hp == 64 and f.silenced.has(0)); done.still_lake = 1
 	f = _f(["aoles_grace"]); _chant(f, ["A", "W", "A"]); f.cast(0); _ok("Aole's Grace: 2 Stars", f.chant.filter(func(m): return m.sym == "star").size() == 2); done.aoles_grace = 1
-	f = _f(["focus_fire"]); _cast(f); _ok("Focus Fire: 3 times Expose 1 + 1 (2 + 3 + 4)", f.foes[0].expose == 3 and _hp(f) == 191); done.focus_fire = 1
+	f = _f(["focus_fire"])
+	_ok("Focus Fire: before the chant it says 1 time", String(f.card(0).text).contains(", 1 time."))
+	_chant(f, ["A", "A", "F"])
+	_ok("Focus Fire: AAF says 3 times", String(f.card(0).text).contains(", 3 times."))
+	var fev := f.events.filter(func(e): return String(e.type) == "boost" and String(e.col) == "other")
+	_ok("Focus Fire: a yellow line from each Wind, as it is read (2 Winds: 2 then 3)", fev.size() == 2 and String(fev[0].texts[0]).contains("2 times") and String(fev[1].texts[0]).contains("3 times"))
+	f.events.clear()
+	f.cast(0, 0)
+	_ok("Focus Fire: 3 times Expose 1 + 1 (2 + 3 + 4)", f.foes[0].expose == 3 and _hp(f) == 191)
+	_ok("Focus Fire: its effect plays again for each repeat (2)", f.events.filter(func(e): return String(e.type) == "fx_again").size() == 2); done.focus_fire = 1
+	# the Air Triplet Exposes you; an enemy never holds more than 1 Dodge (2026-11-24)
+	f = _f(["rain"])
+	f.run.hp = 50
+	f.block = 0
+	f._act(f.foes[0], {"kind": "expose", "n": 1})
+	f._act(f.foes[0], {"kind": "attack", "n": 4, "hits": 1})
+	_ok("Exposed 1: an attack of 4 deals 5", int(f.run.hp) == 45)
+	f._cleanse()
+	_ok("Cleanse takes Expose off", f.expose == 0)
+	for k in 2:
+		f._act(f.foes[0], {"kind": "foe_dodge", "n": 1})
+	_ok("never more than 1 Dodge", f.foes[0].dodge == 1)
+	f.foes[0].moves = [{"kind": "attack", "n": 5, "hits": 1}, {"kind": "foe_dodge", "n": 1}, {"kind": "power", "n": 1, "who": ""}]
+	f.foes[0].move_i = 1
+	f._plan(f.foes[0])
+	_ok("with a Dodge up it skips to its next move", String(f.foes[0].intent.kind) == "power")
+	f.foes[0].dodge = 0
+	f.foes[0].move_i = 1
+	f._plan(f.foes[0])
+	_ok("without one it Dodges", String(f.foes[0].intent.kind) == "foe_dodge")
+	var air_f := MarblesFight.new()
+	var trr := MarblesRun.new()
+	trr.setup(4)
+	air_f.setup(trr, ["triplet_air"])
+	_ok("Air Triplet: attack 4, then Expose 1", int(air_f.foes[0].moves[0].n) == 4 and String(air_f.foes[0].moves[1].kind) == "expose")
+	# the Ghost carving: 1 Dodge, then the marble is gone from your bag (2026-11-23)
+	f = _f(["spark"])
+	var bag0 := f.mrun.bag.size()
+	f.mrun.bag[0].sym = "ghost"
+	f.chant.clear(); f.hand.clear(); f.chanted = false
+	f.chant.append({"c": String(f.mrun.bag[0].c), "sym": "ghost", "src": 0, "uid": 77, "frozen": false, "hidden": false})
+	f.draw_pile.erase(0)
+	f.do_chant()
+	_ok("Ghost: +1 Dodge", f.dodge == 1)
+	f.end_turn()
+	_ok("Ghost: then gone from the bag", f.mrun.bag.size() == bag0 - 1 and not f.mrun.bag.any(func(x): return String(x.sym) == "ghost"))
 	f = _f(["bite"]); _cast(f); _ok("Bite: 4 and heal 2", _hp(f) == 196 and f.run.hp == 62); done.bite = 1
 	f = _f(["gone_like_the_wind"]); _cast(f); _ok("Gone Like the Wind: Dodge 1", f.dodge == 1); done.gone_like_the_wind = 1
 	f = _f(["adams_resolve", "laser_beam"]); _chant(f, ["F", "F", "F", "F"]); f.cast(0); f.cast(1, 0); _ok("Adam's Resolve: hurt yourself: +1 Power", f.my_power == 1); done.adams_resolve = 1

@@ -1861,7 +1861,7 @@ func _status_badges() -> Array:
 	var p := scr.fight.player
 	var out := []
 	if p.aegis > 0:
-		out.append(["✨ Evasion %d" % p.aegis, Color(1.0, 0.8, 0.25), "evasion"])
+		out.append(["✨ Dodge %d" % p.aegis, Color(1.0, 0.8, 0.25), "evasion"])
 	var th := p.thorns_turn + p.passive("thorns")
 	if th > 0:
 		out.append(["🌵 Thorns %d" % th, Color(0.5, 0.85, 0.25), "thorns"])
@@ -1875,6 +1875,8 @@ func _status_badges() -> Array:
 		out.append(["🙈 Blind %d" % p.blind_turns, Color(0.7, 0.72, 0.78), "blind"])
 	if p.vulnerable > 0:
 		out.append(["🎯 Vulnerable %d" % p.vulnerable, Color(1.0, 0.45, 0.35), "vulnerable"])
+	if p.expose > 0:
+		out.append(["🎯 Expose %d" % p.expose, Color(0.85, 0.6, 1.0), "expose", Keywords.tooltip("Expose %d" % p.expose, "Each attack hit on you deals %d more. It stays until you Cleanse." % p.expose)])
 	if p.weak > 0:
 		out.append(["🥀 Weakened %d" % p.weak, Color(0.8, 0.6, 1.0), "weak"])
 	if p.brittle_turns > 0:

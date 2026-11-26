@@ -343,7 +343,9 @@ func _draw() -> void:
 				draw_colored_polygon(PackedVector2Array([end - side * 0.4, end + dir * reach * 0.8, end + side * 0.4]), Color(1, 1, 0.95, 0.9))
 		for s in _sparks:
 			draw_circle(c + s[0], (2.0 + 3.0 * s[2]) * maxf(1.0, r / 40.0), Color(1.0, 0.97, 0.8, s[2]))
-	if carve != "" and carve != "star":
+	if carve == "gone":  # (a used-up Ghost marble: faded, the turn it was used)
+		modulate.a = 0.3
+	elif carve != "" and carve != "star":
 		_draw_carve(c, r)
 
 

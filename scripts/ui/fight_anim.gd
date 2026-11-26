@@ -770,6 +770,9 @@ func _anim_event(ev: Dictionary) -> void:
 		"refund":
 			await scr._h_machine._refund_flight(ev)
 		"boost_line":  # (the new fight: something raised something else: streaks of light from it to each thing it raised)
+			if String(ev.col) == "ghost":
+				await _ghost_to_dodge(_boost_point(ev.src), int(ev.src.get("k", -1)))
+				return
 			var bfrom := _boost_point(ev.src)
 			var shot := false
 			for dst in ev.get("dsts", [ev.get("dst", {})]):
@@ -1258,6 +1261,67 @@ func _boost_point(d: Dictionary) -> Vector2:
 		"you":
 			return _player_point()
 	return Vector2.INF
+
+
+## A Ghost marble is used (the user 2026-11-23): it fades in the chant, and a small ghost floats up from it to your
+## statuses, where it turns into your Dodge badge.
+func _ghost_to_dodge(from: Vector2, k: int) -> void:
+	if from == Vector2.INF:
+		return
+	var slots := scr._chant_row.get_children().filter(func(n): return n is Panel and not n.is_queued_for_deletion())
+	if k >= 0 and k < slots.size():
+		for ic in (slots[k] as Node).get_children():
+			if ic is ElementIcon:
+				(ic as ElementIcon).create_tween().tween_property(ic, "modulate:a", 0.3, 0.45)
+	# the Dodge badge is made now but stays invisible until the ghost reaches it (it is the first badge: Dodge leads)
+	var badge: Control = null
+	var to := _player_point()
+	if is_instance_valid(scr._status_row):
+		scr._h_hud._refresh_statuses()
+		await FightWait.frame(scr)
+		await FightWait.frame(scr)
+		var chips := scr._status_row.get_children().filter(func(n): return n is Control and not n.is_queued_for_deletion())
+		if not chips.is_empty():
+			badge = chips[0]
+			badge.modulate.a = 0.0
+			to = badge.get_global_rect().get_center()
+	var g := UiTheme.label("👻", 58, Color.WHITE)
+	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	g.z_index = 85
+	g.size = Vector2(80, 80)
+	g.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	g.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	g.pivot_offset = g.size / 2.0
+	scr._fx.add_child(g)
+	var a := from - scr._fx.global_position - g.size / 2.0
+	var b := to - scr._fx.global_position - g.size / 2.0
+	g.position = a
+	g.modulate.a = 0.0
+	Audio.play("spell_glow", -10.0, 1.3)
+	var tw := g.create_tween()
+	tw.tween_property(g, "modulate:a", 0.9, 0.15)
+	tw.parallel().tween_property(g, "position:y", a.y - 30.0, 0.25).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	var wob := a + Vector2((b.x - a.x) * 0.5, -60.0)  # (it drifts up and over, a little ghostly wobble)
+	tw.tween_method(func(u: float) -> void:
+		var v := 1.0 - u
+		g.position = (a + Vector2(0, -30)) * v * v + wob * 2.0 * v * u + b * u * u
+		g.rotation = sin(u * TAU * 1.5) * 0.18, 0.0, 1.0, 0.55).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(g, "scale", Vector2(1.5, 1.5), 0.1)
+	tw.parallel().tween_property(g, "modulate", Color(2.0, 2.0, 1.6, 0.0), 0.2)
+	await tw.finished
+	g.queue_free()
+	if badge != null and is_instance_valid(badge):  # (it materializes as your Dodge badge)
+		badge.pivot_offset = badge.size / 2.0
+		badge.scale = Vector2(1.6, 1.6)
+		var bt := badge.create_tween()
+		bt.tween_property(badge, "modulate", Color(2.0, 1.9, 1.4, 1.0), 0.08)
+		bt.parallel().tween_property(badge, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		bt.tween_property(badge, "modulate", Color.WHITE, 0.3)
+	else:
+		scr._h_hud._refresh_statuses()
+	var fx := Vfx.make(scr._fx, 70)
+	fx.burst(to - scr._fx.global_position, 14, Color(1.0, 0.9, 0.5), Vector2(60, 180), Vector2(0.2, 0.4), Vector2(3, 6), Vfx.SPARK)
+	await _wait(0.1)
 
 
 ## A boost line arrived: what it raised shakes a little and flashes in the line's colour (you: your HP tray).

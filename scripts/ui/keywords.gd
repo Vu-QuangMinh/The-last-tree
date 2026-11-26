@@ -31,6 +31,7 @@ const K := {
 	"targeted": [Color(1.0, 0.75, 0.3), Color(0.7, 0.35, 0.0), "Targeted: you pick which Essence to hit."],
 	"infuse": [Color(0.95, 0.85, 0.5), Color(0.55, 0.4, 0.0), "Infuse: put Essence anywhere in this turn's chant. It can cause an Extension."],
 	"rearrange": [Color(0.95, 0.85, 0.5), Color(0.55, 0.4, 0.0), "Rearrange N: grab any enemy's Essence and drag it to another spot, in its own row or onto another enemy (N times). Taking an enemy's last Essence defeats it."],
+	"self-replace": [Color(0.95, 0.85, 0.5), Color(0.55, 0.4, 0.0), "Self-replace: once it is cast, this card swaps places with a card of your choice from your backpack."],
 	"self-rearrange": [Color(0.95, 0.85, 0.5), Color(0.55, 0.4, 0.0), "Self-Rearrange N: grab an Essence of this turn's chant and drag it to another spot (N times). It can cause an Extension."],
 	"duplicate": [Color(0.95, 0.85, 0.5), Color(0.55, 0.4, 0.0), "Duplicate N: copy an Essence of this turn's chant N times, beside it."],
 	"execute": [Color(1.0, 0.35, 0.35), Color(0.65, 0.05, 0.05), "Execute at N HP or less: after the damage, an enemy left with N HP or less dies."],

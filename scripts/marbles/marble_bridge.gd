@@ -107,7 +107,9 @@ func _b_show(s: Dictionary) -> void:
 	player.burn = int(s.burn)
 	player.vulnerable = int(s.vulnerable)
 	player.weak = int(s.get("weak", 0))
+	player.expose = int(s.get("expose", 0))
 	player.stun_turns = int(s.stunned)
+	player.aegis = int(s.get("dodge", 0))  # (Dodge: the HUD's badge)
 	var fs: Array = s.foes
 	for i in mini(fs.size(), m.foes.size()):
 		var f: StageFight.Foe = m.foes[i]
@@ -192,7 +194,7 @@ func _b_sync() -> void:
 	for c in m.chant_letters():
 		chant.append("?" if c == "*" else String(c))
 	for cm in m.chant:
-		chant_syms.append(String(cm.get("sym", "")))
+		chant_syms.append("gone" if bool(cm.get("gone", false)) else String(cm.get("sym", "")))  # (a used-up Ghost marble: faded)
 	player.stock.clear()
 	for mm in m.hand:
 		var star := String(mm.get("sym", "")) == "star"
@@ -297,12 +299,34 @@ func resolve_spell(id: String, target_idx := -1) -> void:
 		return
 	CombatLog.line("  [SCREEN before cast] card \"%s\" shows: \"%s\"" % [String(loadout[ci].get("name", id)), String(loadout[ci].get("desc", ""))])
 	m.cast(ci, target_idx)
-	if m.pending_replace >= 0:
-		m.replace_with(-1)  # (Alchemy, Random Things Go!: it stays as it is for now)
 	await _b_play(_b_take(), false)
+	if m.pending_replace >= 0:
+		await _self_replace()
 	_b_sync()
 	_cl_ui("after cast")
 	_b_after()
+
+
+## Self-replace (Alchemy, Random Things Go!): you pick a backpack card to take the cast card's place (for the run);
+## "Keep it" leaves the row as it is. The fight screen's spell chooser shows the backpack.
+func _self_replace() -> void:
+	var spells := []
+	var at := []  # (backpack index of each card shown)
+	for b in mrun.backpack.size():
+		var bid := String(mrun.backpack[b])
+		if not MarbleCards.has(bid):
+			continue
+		spells.append(MarbleCards.as_spell(bid, int(mrun.levels.get(bid, 0)), mrun.perm))
+		at.append(b)
+	var k := -1
+	if not spells.is_empty() and spell_chooser.is_valid():
+		k = await spell_chooser.call(spells, "swap")
+	m.replace_with(int(at[k]) if k >= 0 and k < at.size() else -1)
+	_b_take()  # (its "replaced" event: the row is rebuilt below)
+	if k >= 0:
+		_build_loadout()
+		_b_sync()
+		await anim.call({"type": "loadout_changed"})
 
 
 func use_bottle(i: int, target_idx := -1) -> void:
@@ -382,6 +406,7 @@ func _after_snap(evs: Array, k: int) -> Dictionary:
 func _b_play(evs: Array, enemy_phase: bool, intents := {}, finish := true) -> void:
 	var cur: EnemyState = null
 	var hit_no := 0
+	var last_fx := {}  # (the cast's spell effect, for fx_again)
 	for k in evs.size():
 		var ev: Dictionary = evs[k]
 		var t := String(ev.type)
@@ -425,7 +450,11 @@ func _b_play(evs: Array, enemy_phase: bool, intents := {}, finish := true) -> vo
 							var dm: Dictionary = nd[nd.size() - 1 - dk]
 							var dsym := String(dm.get("sym", ""))
 							drawn.append("?" if dsym == "star" else String(dm.get("c", "F")) + ("|" + dsym if dsym != "" else ""))
-					await anim.call({"type": "spell_effect", "op": String(fx.op), "eff": eff, "targets": targets, "spell": sp, "from_artifact": "", "drawn": drawn})
+					last_fx = {"type": "spell_effect", "op": String(fx.op), "eff": eff, "targets": targets, "spell": sp, "from_artifact": "", "drawn": drawn}
+					await anim.call(last_fx)
+			"fx_again":  # (a card that repeats: its spell effect plays again for each repeat: Focus Fire)
+				if not last_fx.is_empty():
+					await anim.call(last_fx)
 			"hit", "redirected":
 				_b_show(s)
 				var e2 := _es(int(ev.get("to", ev.get("foe", -1))))
@@ -481,8 +510,8 @@ func _b_play(evs: Array, enemy_phase: bool, intents := {}, finish := true) -> vo
 						var at_now: Dictionary = ev.get("texts", {})  # (the card's words at that moment of the count, else now)
 						var words := String(at_now.get(int(bci), at_now.get(bci, m.card(int(bci)).text)))
 						loadout[int(bci)].desc = MarbleCards.with_durability(words, m.durability_left(int(bci)) if m.card(int(bci)).p.has("dur") else -1)
-				if not ev.has("note"):
-					_b_show(s)
+				if not ev.has("note") or String(ev.get("col", "")) == "ghost":
+					_b_show(s)  # (a Ghost: its Dodge is in; the HUD shows it as the little ghost lands)
 				if not dsts.is_empty():
 					await anim.call({"type": "boost_line", "src": src, "dsts": dsts, "col": String(ev.get("col", "other"))})
 			"spawn":
