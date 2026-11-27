@@ -87,7 +87,11 @@ var inverted: Array = []  # spell ids inverted for the run: a spell plays as an 
 var _fuse_count := 0
 var over := false
 var won := false
-var reward_bottle := ""  # a bottle found after the last fight ("" if none)
+var reward_bottle := ""  # (legacy: bottles no longer drop, tickets do: see reward_ticket)
+## Tickets (2026-11-27): carnival tickets took the bottles' place. See Tickets.
+var tickets: Array = []  # ticket ids, at most Tickets.SLOTS
+var reward_ticket := ""  # a ticket the last won fight dropped: its own scene offers it ("" if none)
+var discount_ready := false  # a Ticket of Discount was used: the next price (the shop, an event) is cut
 var free_pick: Array = []  # the merchant's thanks: "spell" / "artifact": the next one of that kind you take from him is free
 var merchant_talked := ""  # the room ("act:row:col") where you last talked with the merchant (one favour a visit)
 var fight_snapshot := {}  # you as you went into the current fight (the Seed of Life puts it back)
@@ -169,7 +173,7 @@ static func _vars_of(o: Object, skip: Array) -> Dictionary:
 ## Active spell slots: 5, changed by artifacts (never by the chant length), at most 8.
 func active_slots() -> int:
 	var n := BASE_ACTIVE
-	for a in ["spell_satchel", "broken_crown", "tangled_grimoire", "spell_pouch"]:  # (+1 each; the Pouch is retired)
+	for a in ["spell_satchel", "broken_crown", "tangled_grimoire", "spell_pouch", "cursed_book"]:  # (+1 each; the Pouch is retired)
 		if a in artifacts:
 			n += 1
 	n += artifacts.count("mystery_book")  # (+1 for every Mystery Book: they stack)
@@ -415,10 +419,9 @@ func finish_fight(f: Fight) -> void:
 			defeated_ids.append(id)
 	seedlings += SEEDLINGS.get(kind, 3)
 	reward_bottle = ""
-	if rng.randf() < BOTTLE_DROP.get(kind, 0.25):
-		var b: String = Bottles.random(rng, 1)[0]
-		if gain_bottle(b):
-			reward_bottle = b
+	reward_ticket = Tickets.random(rng) if "golden_ticket" in artifacts or rng.randf() < float(Tickets.DROP.get(kind, 0.25)) else ""  # (offered on its own scene: you take it or not; the Golden Ticket: always)
+	if "candy_apple" in artifacts:
+		player.heal(5.0)
 	var am: Array = AMBER.get(kind, AMBER.fight)
 	amber += rng.randi_range(am[0], am[1])
 	if "healing_sap" in artifacts:
@@ -588,6 +591,8 @@ func marble_run() -> MarblesRun:
 	mr.levels = card_levels.duplicate()
 	mr.perm = card_perm
 	mr.bag = marble_bag
+	mr.artifacts = artifacts.duplicate()  # (the carnival artifacts work in the fight: MarblesFight reads them)
+	mr.slots = active_slots()
 	mr.start = marble_start
 	marble_start = {}
 	for id in loadout:
@@ -700,6 +705,25 @@ func gain_artifact(id: String) -> void:
 		var c := curse()
 		if not c.is_empty():
 			curse_note = "%s on %s." % [CURSE_NAMES[c.kind], spell(String(c.spell)).get("name", c.spell) if c.kind != "separation" else String(c.fused.name)]
+	match id:  # (the carnival artifacts that do something when picked up, 2026-11-27)
+		"blood_pact":
+			player.max_hp = maxf(1.0, player.max_hp - 10.0)
+			player.hp = minf(player.hp, player.max_hp)
+		"cursed_book":
+			var pool := loadout.duplicate()
+			var notes := []
+			for k in 3:
+				if pool.is_empty():
+					break
+				var sid: String = pool.pop_at(rng.randi() % pool.size())
+				var kinds := ["fragility", "pain", "hesitation", "betrayal"]
+				if String(spell(sid).get("pattern", "")) != "":
+					kinds.append("burden")
+				var c2 := _curse_spell(sid, String(kinds[rng.randi() % kinds.size()]))
+				if not c2.get("blocked", false):
+					notes.append("%s on %s" % [CURSE_NAMES[c2.kind], spell(sid).get("name", sid)])
+			if not notes.is_empty():
+				curse_note = ", ".join(notes) + "."
 	artifact_gained.emit(id)  # (the UI shows the artifact that was found, and what its curse did)
 	if id == "bandolier":
 		for b in Bottles.random(rng, 2):
@@ -1143,7 +1167,8 @@ func giftable_artifacts() -> Array:
 ## one of its outcomes and do it. Returns {text (what the player reads), fight: {kind, ids?} (a fight starts),
 ## artifact: id (gained, to show), overflow: [bottle ids that didn't fit in your slots]}.
 func event_outcome(opt: Dictionary, bottle_at := -1, spell_id := "") -> Dictionary:
-	amber -= int(opt.get("amber", 0))
+	var waived := _discount_event(opt)
+	amber -= int(opt.get("amber", 0)) / (2 if waived != "" else 1)
 	if opt.get("pick_bottle", false) and bottle_at >= 0 and bottle_at < player.bottles.size():
 		player.bottles.remove_at(bottle_at)
 	var outs: Array = opt.get("outcomes", [])
@@ -1164,9 +1189,14 @@ func event_outcome(opt: Dictionary, bottle_at := -1, spell_id := "") -> Dictiona
 				out = o
 				break
 	var res := {"text": String(out.text), "overflow": [], "ok": String(out.get("ok", "")), "curse_card": out.get("curse_card", false)}  # ("ok": the words of the button after it)
+	if waived != "":
+		res.text = waived + "\n\n" + String(res.text)
+		res.curse_card = false
 	if out.has("then"):
 		res.then = out.then  # (a page of choices comes next, under these words)
 	for d in out.get("do", []):
+		if waived != "" and String(d.op) in PRICE_OPS:
+			continue  # (the Ticket of Discount: a price paid in something other than coins is waived)
 		match String(d.op):
 			"lose_spell":
 				# Far from Any Road: the spell you picked burns, for good
@@ -1176,6 +1206,8 @@ func event_outcome(opt: Dictionary, bottle_at := -1, spell_id := "") -> Dictiona
 				seals.erase(spell_id)
 				burdens.erase(spell_id)
 				inverted.erase(spell_id)
+			"ticket":
+				res.ticket = String(d.id)  # (the screen offers it: take it, or leave it)
 			"bottles", "bottle_ids":
 				var ids: Array = Bottles.random(rng, int(d.n)) if d.op == "bottles" else d.ids
 				for b in ids:
@@ -1188,7 +1220,9 @@ func event_outcome(opt: Dictionary, bottle_at := -1, spell_id := "") -> Dictiona
 			"soak":
 				# the Broken Bridge: a random active spell gets wet, and needs 1 more Water (at the end of its pattern)
 				var c := curse("burden", "W")  # (the river: the Curse of Burden, and the Essence it adds is Water)
-				if not c.is_empty():
+				if c.get("blocked", false):
+					res.text = String(res.text).replace("{spell}", spell(String(c.spell)).get("name", "a spell")) + "\n\nBut your Halo shines, and the water rolls off: no curse."
+				elif not c.is_empty():
 					var wet: String = c.spell
 					res.soaked = wet  # (the stage shows the Water flying into its card)
 					res.text = String(res.text).replace("{spell}", spell(wet).name)
@@ -1269,10 +1303,15 @@ func event_outcome(opt: Dictionary, bottle_at := -1, spell_id := "") -> Dictiona
 				amber += an
 				res.text = String(res.text).replace("{n}", str(an))
 			"artifact":
-				var a := Artifacts.offer(unlocked_artifacts, artifacts, rng, 1, String(d.get("pool", "normal")))
+				var cursed := String(d.get("pool", "normal")) == "curse"  # (no cursed artifacts any more, 2026-11-27: a carnival one, and a curse on a spell)
+				var a := Artifacts.offer(unlocked_artifacts, artifacts, rng, 1, "normal" if cursed else String(d.get("pool", "normal")))
 				if not a.is_empty():
 					gain_artifact(a[0].id)
 					res.artifact = a[0].id
+				if cursed:
+					var cz := curse()
+					if not cz.is_empty() and not cz.get("blocked", false):
+						curse_note = "%s on %s." % [CURSE_NAMES[cz.kind], spell(String(cz.spell)).get("name", cz.spell) if cz.kind != "separation" else String(cz.fused.name)]
 			"gift":
 				fight_gift.append_array(d.els)  # (Essence you start your next fight with: "random" is any element)
 			"learn_spell":
@@ -1354,6 +1393,12 @@ func farm_reward(goblins: int, hobgoblins: int, fairies: int) -> Dictionary:
 
 ## Do what an event option says. Returns {text, fight: bool}.
 func choose_event_option(opt: Dictionary) -> Dictionary:
+	var waived := _discount_event(opt)
+	if waived != "":
+		opt = opt.duplicate()
+		opt.amber = int(opt.get("amber", 0)) / 2
+		for k in ["hp", "max_hp", "lose_spells", "burden"]:
+			opt.erase(k)
 	amber -= opt.get("amber", 0)
 	player.hp -= opt.get("hp", 0)
 	if opt.has("max_hp"):
@@ -1366,6 +1411,8 @@ func choose_event_option(opt: Dictionary) -> Dictionary:
 		price = "Tangled (1 more Essence each): %s. " % ", ".join(burden_random_spells(opt.burden))
 	var res := _do_event_option(opt)
 	res.text = price + String(res.text)
+	if waived != "":
+		res.text = waived + "\n\n" + String(res.text)
 	return res
 
 
@@ -1472,8 +1519,11 @@ func shop_stock(discount := 0.0) -> Array:
 		items.append({"kind": "spell", "spell": s, "price": PRICES[s.rarity]})
 	for a in artifact_offer(3):
 		items.append({"kind": "artifact", "artifact": a, "price": PRICES.artifact_rare if a.tier == "rare" else PRICES.artifact})
-	for b in Bottles.random(rng, 3):
-		items.append({"kind": "bottle", "bottle": b, "price": Bottles.get_def(b).price})
+	var shelf := []
+	for k in 3:  # (tickets stand where the bottles stood: three different ones)
+		var t := Tickets.random(rng, shelf)
+		shelf.append(t)
+		items.append({"kind": "ticket", "ticket": t, "price": Tickets.price(t)})
 	for m in marble_offer(3):
 		items.append({"kind": "marble", "marble": m, "price": PRICES.marble_carved if String(m.sym) != "" else PRICES.marble})
 	items.append({"kind": "card_bag", "price": int(round(PRICES.rare * BAG_DISCOUNT))})
@@ -1492,7 +1542,9 @@ func shop_stock(discount := 0.0) -> Array:
 
 ## What an item on his shelf costs you now: nothing if he owes you one of that kind (see free_pick).
 func shop_price(it: Dictionary) -> int:
-	return 0 if it.kind in free_pick else int(it.price)
+	if it.kind in free_pick:
+		return 0
+	return int(it.price) / 2 if discount_ready else int(it.price)  # (a Ticket of Discount: half price, rounded down)
 
 
 ## This room, as the merchant remembers it.
@@ -1606,6 +1658,14 @@ func curse(kind := "", el := "") -> Dictionary:
 	if kinds.is_empty():
 		return {}
 	var k: String = kinds[rng.randi() % kinds.size()]
+	if "halo" in artifacts:  # (the Halo: the curse's scene still plays, then the halo stops it; nothing changes)
+		var hpool := _active_pool().filter(func(x): return k != "burden" or String(spell(x).get("pattern", "")) != "")
+		if hpool.is_empty():
+			return {}
+		var hk := k if not (k in ["separation", "binding", "void"]) else "fragility"
+		var blocked := {"kind": hk, "spell": String(hpool[rng.randi() % hpool.size()]), "blocked": true}
+		pending_curses.append(blocked)
+		return blocked
 	var res := {"kind": k}
 	match k:
 		"separation":
@@ -1643,6 +1703,19 @@ func curse(kind := "", el := "") -> Dictionary:
 				burdens[id] = String(burdens.get(id, "")) + (el if el != "" else Elements.random(rng))
 			_mark_curse(id, k)
 			res.spell = id
+	pending_curses.append(res)
+	return res
+
+
+## A curse of kind `k` on spell `id` (the Cursed Book: one each on 3 of your active spells). The Halo stops it.
+func _curse_spell(id: String, k: String) -> Dictionary:
+	var res := {"kind": k, "spell": id}
+	if "halo" in artifacts:
+		res.blocked = true
+	else:
+		if k == "burden":
+			burdens[id] = String(burdens.get(id, "")) + Elements.random(rng)
+		_mark_curse(id, k)
 	pending_curses.append(res)
 	return res
 
@@ -1723,3 +1796,126 @@ func toggle_active(id: String) -> bool:
 		return false
 	loadout.append(id)
 	return true
+
+
+# ------------------------------------------------------------------ tickets (2026-11-27, see Tickets)
+
+## The outcome ops that are a price paid in something other than coins: a Ticket of Discount waives them.
+const PRICE_OPS := ["blood", "lose_spell"]  # (a bite or a fall is bad luck, not a price)
+
+
+func ticket_room() -> bool:
+	return tickets.size() < Tickets.SLOTS
+
+
+## Take a ticket into a free slot. Returns false when your slots are full (use or throw one away first).
+func gain_ticket(id: String) -> bool:
+	if not ticket_room() or Tickets.get_def(id).is_empty():
+		return false
+	tickets.append(id)
+	return true
+
+
+func discard_ticket(i: int) -> void:
+	if i >= 0 and i < tickets.size():
+		tickets.remove_at(i)
+
+
+## An event option with a Ticket of Discount waiting: the ticket is spent and the line the event's character says
+## is returned (or "" when no discount is waiting, or the option asks no price at all).
+func _discount_event(opt: Dictionary) -> String:
+	if not discount_ready:
+		return ""
+	var costly := int(opt.get("amber", 0)) > 0 or opt.has("hp") or opt.has("max_hp") or int(opt.get("lose_spells", 0)) > 0 or int(opt.get("burden", 0)) > 0
+	for o in opt.get("outcomes", []):
+		for d in o.get("do", []):
+			if String(d.get("op", "")) in PRICE_OPS:
+				costly = true
+	if not costly:
+		return ""
+	discount_ready = false
+	if int(opt.get("amber", 0)) > 0 and not (opt.has("hp") or opt.has("max_hp")):
+		return "Your ticket is taken with a little bow: the price is halved."
+	return "Your ticket is met with an amused look. \"Very well,\" it says, \"I will ask nothing of you this time.\""
+
+
+## The shop sold something: a waiting Discount is spent on it.
+func spend_discount() -> void:
+	discount_ready = false
+
+
+## Remove one curse (the Ticket of Blessing): the first of `kind` on spell `id` (any kind when "").
+func remove_curse(id: String, kind := "") -> bool:
+	var cs: Array = curses.get(id, [])
+	if cs.is_empty():
+		return false
+	var k: String = kind if kind != "" and kind in cs else String(cs[0])
+	cs.erase(k)
+	if cs.is_empty():
+		curses.erase(id)
+	else:
+		curses[id] = cs
+	if k == "burden":
+		var b := String(burdens.get(id, ""))
+		if b.length() <= 1:
+			burdens.erase(id)
+		else:
+			burdens[id] = b.substr(0, b.length() - 1)
+	return true
+
+
+## Your spells that carry a curse.
+func cursed_spells() -> Array:
+	return spellbook.filter(func(id): return not (curses.get(id, []) as Array).is_empty())
+
+
+## Cards that can still go up a level (the Ticket of Upgrade).
+func upgradable_cards() -> Array:
+	return spellbook.filter(func(id): return MarbleCards.has(id) and int(card_levels.get(id, 0)) < 2)
+
+
+func upgrade_card(id: String) -> void:
+	if id in upgradable_cards():
+		card_levels[id] = int(card_levels.get(id, 0)) + 1
+
+
+## Outside a fight, the tickets that need no choice: what they did, in a few words (for a toast).
+func use_ticket_plain(id: String) -> String:
+	match id:
+		"health":
+			var h := player.heal(ceilf(player.max_hp * Tickets.HEAL_PCT))
+			return "Healed %d HP" % int(h)
+		"money":
+			var had := amber
+			amber *= 2
+			return "Your coins doubled: %d -> %d" % [had, amber]
+		"discount":
+			discount_ready = true
+			return "Discount ready: the next price is cut"
+		"mystery":
+			return "Two tickets"
+	return ""
+
+
+## Three carvings to choose from for a marble (the Ticket of Carving): different ones, rare ones a quarter as often.
+func carving_offer(n := 3) -> Array:
+	var syms := ["sword", "shield", "coin", "heart", "star", "fist", "ghost", "skull", "wing"]
+	var pool := []
+	for s2 in syms:
+		for j in (1 if s2 in ["skull", "wing"] else 4):
+			pool.append(s2)
+	var out := []
+	while out.size() < n and not pool.is_empty():
+		var pick: String = pool[rng.randi() % pool.size()]
+		out.append(pick)
+		pool = pool.filter(func(x): return x != pick)
+	return out
+
+
+## Plain (uncarved) marbles of your bag, by their index in it.
+func plain_marbles() -> Array:
+	var out := []
+	for i in marble_bag.size():
+		if String(marble_bag[i].get("sym", "")) == "":
+			out.append(i)
+	return out

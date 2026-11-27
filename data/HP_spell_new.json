@@ -218,16 +218,16 @@
    "id": "steam_engine",
    "name": "Steam Engine",
    "pattern": "FFW",
-   "text": "Activate the card to the right. Cooldown 1.",
+   "text": "Trigger the card to the right. Cooldown 1.",
    "upgrades": [
-    "Activate the card to the right.",
-    "Activate the card to the right twice."
+    "Trigger the card to the right.",
+    "Trigger the card to the right twice."
    ],
    "notes": "Lengendary",
-   "text_user": "Activate the card to the right. CD1",
+   "text_user": "Trigger the card to the right. CD1",
    "upgrades_user": [
-    "Activate the card to the right (remove the cd)",
-    "Activate the card to the right twice"
+    "Trigger the card to the right (remove the cd)",
+    "Trigger the card to the right twice"
    ]
   },
   {
@@ -626,16 +626,16 @@
    "id": "primitive_engine",
    "name": "Primitive Engine",
    "pattern": "FFFW",
-   "text": "Activate the card to the left. Cooldown 2.",
+   "text": "Trigger the card to the left. Cooldown 2.",
    "upgrades": [
-    "Activate the card to the left. Cooldown 1.",
-    "Activate the card to the left."
+    "Trigger the card to the left. Cooldown 1.",
+    "Trigger the card to the left."
    ],
-   "notes": "(Note, activation does not trigger durability)",
-   "text_user": "Activate the card to the left. CD2",
+   "notes": "(Note, triggering does not use durability)",
+   "text_user": "Trigger the card to the left. CD2",
    "upgrades_user": [
-    "Activate the card to the left. CD1",
-    "Activate the card to the left (remove cd)"
+    "Trigger the card to the left. CD1",
+    "Trigger the card to the left (remove cd)"
    ]
   },
   {
@@ -1247,8 +1247,8 @@
   "upgrade_and": "An upgrade written as \"AND ...\" adds to the card's previous form (it keeps what it had) (2026-11-21).",
   "repeatable": "Repeatable N: cast it up to N times in a turn, once per separate, non-overlapping instance of its pattern in the chant.",
   "carved": "Carved / carving marble = an upgraded marble (one with a symbol). Enchanted means the same; the cards say Carved.",
-  "defaults_2026_11_21": "Durability N: casts per fight, then broken for the fight. CD N: sleeps N turns after a cast. Power: works for the rest of the fight. Weakened: deals 50% less. Vulnerable: takes 50% more. Both go down by 1 each turn. Stun: skips its next turn, then immune to stun for 1 turn. Dodge: each stack dodges one attack, stays until used. Thorns: hurt each attacker per hit, all fight. Power: +1 damage per hit. Charge: each cast adds 1; at the number it fires and goes back to 0. Activate: casts that card's effect without its marbles, not using its Durability. Water-contained card: a W in its pattern. Infuse: a star marble into the chant. Repaint into any: chant marbles become star marbles. 'Every marble / wind in your bag / you have' counts every marble you own. Circle of Life's growth lasts the run. Bottles exist.",
-  "wording": "Card wording (2026-11-21): statuses capitalised (Burn, Weakened, Vulnerable, Expose, Stun, Shield, Thorns, Power, Dodge, Silence); verbs Deal / Apply / Gain / Heal / Take N damage (yourself); keywords last: Repeatable N (Repeatable alone: no limit), Durability N, Cooldown N; Power: first. Each upgrade is written out whole. Words: Charge (a card's counter), Activate (do what a card does, without its marbles or Durability), Infuse (a marble into your chant), Repaint, Carve (upgrade a marble, for good), Cleanse (all your debuffs gone), Water card (a card with Water in its pattern), Extension."
+  "defaults_2026_11_21": "Durability N: casts per fight, then broken for the fight. CD N: sleeps N turns after a cast. Power: works for the rest of the fight. Weakened: deals 50% less. Vulnerable: takes 50% more. Both go down by 1 each turn. Stun: skips its next turn, then immune to stun for 1 turn. Dodge: each stack dodges one attack, stays until used. Thorns: hurt each attacker per hit, all fight. Power: +1 damage per hit. Charge: each cast adds 1; at the number it fires and goes back to 0. Trigger (was Activate, 2026-11-27): casts that card's effect without its marbles, not using its Durability. Water-contained card: a W in its pattern. Infuse: a star marble into the chant. Repaint into any: chant marbles become star marbles. 'Every marble / wind in your bag / you have' counts every marble you own. Circle of Life's growth lasts the run. Bottles exist.",
+  "wording": "Card wording (2026-11-21): statuses capitalised (Burn, Weakened, Vulnerable, Expose, Stun, Shield, Thorns, Power, Dodge, Silence); verbs Deal / Apply / Gain / Heal / Take N damage (yourself); keywords last: Repeatable N (Repeatable alone: no limit), Durability N, Cooldown N; Power: first. Each upgrade is written out whole. Words: Charge (a card's counter), Trigger (do what a card does, without its marbles or Durability; was Activate), Infuse (a marble into your chant), Repaint, Carve (upgrade a marble, for good), Cleanse (all your debuffs gone), Water card (a card with Water in its pattern), Extension."
  },
  "fusion_default_names": [
   "Elemental Fury",
@@ -1371,7 +1371,7 @@
     "Deal 0 damage. It grows by 15 each turn you don't cast it (back to 0 once cast)."
    ],
    "notes": "",
-   "text_user": "Deal: 0 damage. Every turn you do not activate this spell. It gains 5 damage",
+   "text_user": "Deal: 0 damage. Every turn you do not trigger this spell. It gains 5 damage",
    "upgrades_user": [
     "Gain 10 damage",
     "15 damage"
@@ -1602,13 +1602,13 @@
   {
    "marbles": "Water, Fire, Fire",
    "name": "Over Exertion",
-   "text": "Activate the cards on both sides, then Silence them for 3 turns.",
+   "text": "Trigger the cards on both sides, then Silence them for 3 turns.",
    "upgrades": [
-    "Activate the cards on both sides, then Silence them for 2 turns.",
-    "Activate the cards on both sides, then Silence them for 1 turn."
+    "Trigger the cards on both sides, then Silence them for 2 turns.",
+    "Trigger the cards on both sides, then Silence them for 1 turn."
    ],
    "notes": "",
-   "text_user": "Activate adjacent cards but apply 3 silence on them.",
+   "text_user": "Trigger adjacent cards but apply 3 silence on them.",
    "upgrades_user": [
     "2 silence",
     "1 silence"

@@ -11,6 +11,7 @@ const K := {
 	"refund": [Color(0.95, 0.85, 0.5), Color(0.55, 0.4, 0.0), "Refund: chant Essence that goes back to your bag after the Release. Refund N on a spell: you pick N Essence of your chant."],
 	"exhaust": [Color(0.85, 0.75, 1.0), Color(0.4, 0.25, 0.6), "Exhaust: once cast, it's gone from your spellbook for the rest of the run."],
 	"durability": [Color(0.8, 0.85, 1.0), Color(0.3, 0.35, 0.6), "Durability N: each cast uses 1. At 0 the spell is gone for the rest of the fight."],
+	"trigger": [Color(0.7, 0.9, 1.0), Color(0.15, 0.4, 0.65), "Trigger: a card does what it does, without its marbles, and without using its Durability."],
 	"extension": [Color(0.95, 0.85, 0.5), Color(0.55, 0.4, 0.0), "Extension: after you Chant, a spell that changes the chant (Infuse, Duplicate, Self-Rearrange, Self-Repaint, Instant Steal…) can make new patterns. The spells they wake come alive at once; none go back to sleep."],
 	"curse": [Color(1.0, 0.45, 0.4), Color(0.7, 0.1, 0.08), "Curse: the price of a cursed artifact, for as long as you keep it."],
 	"remove": [Color(1.0, 0.45, 0.4), Color(0.72, 0.12, 0.08), "Remove: knock Essence off an enemy. No Essence left: it's defeated."],

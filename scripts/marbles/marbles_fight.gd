@@ -59,6 +59,18 @@ var air_bonus := 0  # Air: your Burn cards' Burn +this
 var dodges_gained := 0
 var shield_lost := 0  # (Flame of Vengeance)
 var extensions := 0
+## The carnival artifacts (2026-11-27, see Artifacts): what they count during the fight.
+var token_count := {"F": 0, "W": 0, "A": 0, "all": 0}  # marbles chanted this fight, by colour (the Tokens)
+var token_next: Array = []  # temporary marbles the Tokens give next turn ("F", "W", "A", or "*": any colour)
+var hammer := 0  # turns in a row without attacking (the Hammer: +30% each on your next attack)
+var _hit_this_turn := false  # a card of yours dealt damage this turn (the Hammer)
+var kunai_n := 0  # times you have dealt damage (the Kunai: every 3rd, 1 more)
+var _kunai := false  # (the Kunai's own hit: it doesn't count)
+var glow_done := false  # the Glow Stick has gone off this fight
+var pact := 0  # the Blood Pact's Power left this fight
+var thorn_heal := 0.0  # the Thorn Heart's healing not yet given (20% of your Thorns damage, whole points only)
+var mono := false  # this turn's chant is of one colour only (the Monochrome Prism)
+var encore := 0  # Ticket of Encore: the next card(s) you cast trigger a second time
 var pending_replace := -1  # a card that replaces itself (Alchemy, Random Things Go!): the screen asks which backpack card
 var hp_loan := 0  # A Daughter's Secret: max HP taken for this fight (given back by finish())
 var _uid := 0
@@ -80,6 +92,8 @@ func setup(p_run: MarblesRun, ids: Array) -> void:
 	block += int(mrun.start.get("shield", 0))  # (an event's Shield: the Mausoleum's blue light)
 	if run.has_artifact("iron_ward"):
 		block += 6
+	if run.has_artifact("blood_pact"):
+		pact = 3
 	CombatLog.line("  [start, after event Shield / Iron Ward] YOU: %s" % _me_text())
 
 
@@ -234,6 +248,11 @@ func card(ci: int) -> Dictionary:
 		c.text = String(c.text).replace(", 1 time.", ", %d %s." % [fh, "time" if fh == 1 else "times"])
 	if not c.has("parts") and c.has("text"):
 		c.text = _live_numbers(String(c.text), ci)
+	if run.has_artifact("leather_glove") and c.has("p") and (c.p as Dictionary).has("dur"):
+		c.p.dur = int(c.p.dur) + 1
+	if run.has_artifact("shopping_list") and c.has("p") and String(c.get("pattern", "")).length() >= 3:
+		c.p.rep = int(c.p.get("rep", 1)) + 1
+		c.text = String(c.get("text", "")) + " +1 Repeatable (Shopping List)."
 	return c
 
 
@@ -462,34 +481,34 @@ func _carve(m: Dictionary, pos: int, skull_on: Array, wing_on: Array) -> void:
 			sh_cards.append(ci)
 	match String(m.get("sym", "")):
 		"sword":
-			dmg_ops.append(["add", SWORD])
+			dmg_ops.append(["add", roundi(_cv(SWORD))])
 			_ev({"type": "boost", "from": "chant", "k": pos, "to": "card", "cis": dmg_cards, "col": "dmg", "texts": _texts_of(dmg_cards)})
 		"skull":
 			if skull_on.is_empty():  # (one Skull a chant)
 				skull_on.append(true)
-				dmg_ops.append(["mul", SKULL])
+				dmg_ops.append(["mul", 1.0 + _cv(SKULL - 1.0)])
 				_ev({"type": "boost", "from": "chant", "k": pos, "to": "card", "cis": dmg_cards, "col": "dmg", "texts": _texts_of(dmg_cards)})
 		"shield":
-			shield_ops.append(["add", SHIELD_SYM])
+			shield_ops.append(["add", roundi(_cv(SHIELD_SYM))])
 			_ev({"type": "boost", "from": "chant", "k": pos, "to": "card", "cis": sh_cards, "col": "shield", "texts": _texts_of(sh_cards)})
 		"wing":
 			if wing_on.is_empty():
 				wing_on.append(true)
-				shield_ops.append(["mul", WING])
+				shield_ops.append(["mul", 1.0 + _cv(WING - 1.0)])
 				_ev({"type": "boost", "from": "chant", "k": pos, "to": "card", "cis": sh_cards, "col": "shield", "texts": _texts_of(sh_cards)})
 		"heart":
 			_ev({"type": "boost", "from": "chant", "k": pos, "to": "you", "col": "hp"})
-			_heal(2)
+			_heal(roundi(_cv(2.0)))
 		"fist":
-			my_power += 1
+			my_power += roundi(_cv(1.0))
 			_ev({"type": "boost", "from": "chant", "k": pos, "to": "you", "col": "dmg"})
 		"ghost":  # (gain 1 Dodge, then the marble is gone from your bag for good: the user 2026-11-23)
 			m.gone = true
-			dodge += 1  # (as _gain_dodge, without its own show: the ghost flying to your Dodge is the show)
-			dodges_gained += 1
+			dodge += roundi(_cv(1.0))  # (as _gain_dodge, without its own show: the ghost flying to your Dodge is the show)
+			dodges_gained += roundi(_cv(1.0))
 			_ev({"type": "boost", "from": "chant", "k": pos, "to": "you", "col": "ghost"})
 		"coin":
-			run.leaves += 1
+			run.leaves += roundi(_cv(1.0))
 			_ev({"type": "boost", "from": "chant", "k": pos, "to": "you", "col": "other"})
 
 
@@ -565,6 +584,7 @@ func do_chant() -> void:
 		if not focus.is_empty() and String(chant[pos].sym) != "star" and String(chant[pos].c) == "A":
 			_ev({"type": "boost", "from": "chant", "k": pos, "to": "card", "cis": focus, "col": "other", "texts": _texts_of(focus)})
 	_note = -1
+	_chant_artifacts()
 	_first_wake = true
 	_recount()
 	_first_wake = false
@@ -576,6 +596,29 @@ func do_chant() -> void:
 		CombatLog.line("  chant spoken: %s | woke: %s | damage carvings %s, shield carvings %s" % [
 			" ".join(chant.map(func(x): return String(x.c) + (":" + String(x.sym) if String(x.get("sym", "")) != "" else ""))),
 			", ".join(woke) if not woke.is_empty() else "nothing", str(dmg_ops), str(shield_ops)])
+
+
+## The Tokens count the chant's marbles (a temporary one next turn every 5 of a colour, every 7 of any); the Monochrome
+## Prism checks it is of one colour.
+func _chant_artifacts() -> void:
+	var cols := {}
+	for m in chant:
+		var c := String(m.c)
+		var star := String(m.get("sym", "")) == "star"
+		if not star:
+			cols[c] = true
+			token_count[c] = int(token_count.get(c, 0)) + 1
+			var tid: String = {"F": "red_token", "W": "blue_token", "A": "green_token"}.get(c, "")
+			if tid != "" and run.has_artifact(tid) and int(token_count[c]) % 5 == 0:
+				token_next.append(c)
+				_art_ev(tid, "+1 %s next turn" % {"F": "Fire", "W": "Water", "A": "Wind"}[c])
+		token_count.all = int(token_count.all) + 1
+		if run.has_artifact("rainbow_token") and int(token_count.all) % 7 == 0:
+			token_next.append("*")
+			_art_ev("rainbow_token", "+1 any colour next turn")
+	mono = run.has_artifact("monochrome_prism") and chant.size() >= 2 and cols.size() == 1
+	if mono:
+		_art_ev("monochrome_prism", "One colour: +50%!", -1, true)
 
 
 ## Infuse: a Star marble at the end of the chant (an Extension can follow).
@@ -636,12 +679,18 @@ func cast(ci: int, target := -1) -> void:
 	var times := 1
 	if String(c.id) == "knivels_innocence":
 		times = int(c.level) + 1
+	if encore > 0:  # (a Ticket of Encore: it triggers a second time; triggering costs no Durability)
+		encore -= 1
+		times += 1
+		_ev({"type": "double_cast", "ci": ci})
 	if powers.has("ludwigs_passion") and String(c.id) != "ludwigs_passion":
 		var chance := int(MarbleCards.card("ludwigs_passion", int(powers.ludwigs_passion)).p.x)
 		if mrun.rng.randi_range(1, 100) <= chance:
 			times += 1
 			_ev({"type": "double_cast", "ci": ci})
 	_casting = String(c.id)
+	if hammer > 0 and run.has_artifact("hammer") and String(c.id) in MarbleCards.DAMAGE_CARDS:
+		_art_ev("hammer", "+%d%%!" % (30 * hammer), -1, hammer >= 2)
 	for k in times:
 		if over:
 			break
@@ -652,6 +701,11 @@ func cast(ci: int, target := -1) -> void:
 		if triggers.has("set_fire_to_the_rain") and String(c.id) != "set_fire_to_the_rain":
 			_apply_burn(_random_foe(), int(MarbleCards.card("set_fire_to_the_rain", int(triggers.set_fire_to_the_rain)).p.x), false)
 	_enemy_thorns()
+	if _hit_this_turn and hammer > 0:
+		hammer = 0  # (the Hammer's stored blow is spent)
+	if run.has_artifact("mysterious_hand") and String(c.pattern).length() >= 4 and not over:
+		my_power += 1
+		_art_ev("mysterious_hand", "+1 Power")
 	cast_any = true
 	if String(c.id) == "a_brothers_cluelessness":
 		var n := int(mrun.perm.get("a_brothers_cluelessness", 0)) + 1
@@ -1075,8 +1129,24 @@ func _add_charge(ci: int, n: int, target: int) -> void:
 # ------------------------------------------------------------------ numbers
 
 ## Your Power now (Hot Blood adds 1 for each step of HP you are missing).
+## An artifact of yours did something: the screen lights it up and shows `text` (at enemy `foe`, or at you when -1).
+func _art_ev(id: String, text: String, foe := -1, big := false) -> void:
+	CombatLog.line("    [artifact] %s: %s" % [id, text])
+	_ev({"type": "art", "id": id, "text": text, "foe": foe, "big": big})
+
+
+## The Collector: your carvings are 50% stronger.
+func _cv(x: float) -> float:
+	return x * 1.5 if run.has_artifact("collector") else x
+
+
 func power_now() -> int:
-	var n := my_power
+	var n := my_power + pact
+	if run.has_artifact("magician_hat"):  # (+1 for each empty active slot and each broken card; read straight from the counts: card() asks power_now)
+		n += maxi(0, mrun.slots - run.cards.size())
+		for ci in run.cards.size():
+			if int(durab.get(ci, -1)) == 0 or int(hammered.get(ci, 0)) >= HAMMER_BREAKS:
+				n += 1
 	if powers.has("hot_blood") and run.max_hp > 0:
 		var step := int(MarbleCards.card("hot_blood", int(powers.hot_blood)).p.x)
 		var missing := 100 * (run.max_hp - run.hp) / run.max_hp
@@ -1094,6 +1164,10 @@ func card_damage(base: int) -> int:
 			x *= (1.0 + (float(op[1]) - 1.0) * (2.0 if _hail else 1.0))
 	if powers.has("all_out"):
 		x *= 1.0 + float(MarbleCards.card("all_out", int(powers.all_out)).p.x) / 100.0
+	if hammer > 0 and run.has_artifact("hammer"):
+		x *= 1.0 + 0.3 * hammer
+	if mono:
+		x *= 1.5
 	return int(floor(x))
 
 
@@ -1109,6 +1183,7 @@ func _deal(t: Foe, base: int, hits := 1) -> void:
 			if powers.has("all_out"):
 				steps += " then All-Out x%s" % str(1.0 + float(MarbleCards.card("all_out", int(powers.all_out)).p.x) / 100.0)
 			CombatLog.line("    damage %d/%d on %s: %s = %d (this is the number a card text shows, before enemy/weak modifiers)" % [k + 1, hits, _fname(t), steps, card_damage(base)])
+		_hit_this_turn = true
 		_hit(t, card_damage(base))
 
 
@@ -1206,6 +1281,18 @@ func _hit(f: Foe, n: int) -> void:
 	_ev({"type": "hit", "foe": foes.find(f), "n": n - soak, "blocked": soak})
 	if f.dead():
 		_on_death(f)
+		if run.has_artifact("dark_heart") and f.dead():
+			_art_ev("dark_heart", "+3 HP")
+			_heal(3)
+	if n > 0 and run.has_artifact("kunai") and not _kunai and not over:
+		kunai_n += 1
+		if kunai_n % 3 == 0:
+			var kt: Foe = f if not f.dead() else _random_foe()
+			if kt != null:
+				_kunai = true
+				_art_ev("kunai", "+1", foes.find(kt))
+				_hit(kt, 1 + power_now())  # (a hit of its own: Power here, Expose and Vulnerable in _hit_value)
+				_kunai = false
 
 
 ## Burn from you: Air adds to your Burn cards', Adam's Awakening adds your Power; Adam's Fist answers.
@@ -1218,7 +1305,12 @@ func _apply_burn(t: Foe, n: int, from_card := true) -> void:
 	if powers.has("adams_awakening"):
 		n += power_now()
 	CombatLog.line("    burn on %s: card number %d + Air %d + Adam's Awakening %d = %d (then x burn multiplier %d)" % [_fname(t), given, air_bonus if from_card and _casting in MarbleCards.BURN_CARDS else 0, power_now() if powers.has("adams_awakening") else 0, n, _burn_mult])
+	if mono and from_card:
+		n = int(floor(n * 1.5))
 	_burn(t, n)
+	if run.has_artifact("coal_heart"):
+		_art_ev("coal_heart", "+2 HP")
+		_heal(2)
 	if triggers.has("adams_fist") and not t.dead():
 		_hit_plain(t, int(MarbleCards.card("adams_fist", int(triggers.adams_fist)).p.x))
 
@@ -1251,7 +1343,9 @@ func _debuff(t: Foe, kind: String, n: int) -> void:
 ## Shield from a card: the chant's Shield / Wing in order; All-Out turns it into damage instead.
 ## A card's Shield of n with its Shield / Wing marbles (the card running: _cur_ci).
 func card_shield_value(n: int) -> int:
-	var x := float(n)
+	var x := float(n + (power_now() if n > 0 else 0))  # (Power adds to Shield too, not to heals: the user 2026-11-27)
+	if mono and n > 0:
+		x *= 1.5
 	for op in shield_ops:
 		x = x + float(op[1]) if op[0] == "add" else x * float(op[1])
 	return int(floor(x))
@@ -1327,6 +1421,9 @@ func _hurt_player(n: int, through_block := false) -> void:
 	var before := run.hp
 	super._hurt_player(n, through_block)
 	_lost = before - run.hp
+	if _lost > 0 and pact > 0:
+		pact -= 1
+		_art_ev("blood_pact", "-1 Power")
 	if soak > 0 and powers.has("flame_of_vengeance"):
 		shield_lost += soak
 		var every := int(MarbleCards.card("flame_of_vengeance", int(powers.flame_of_vengeance)).p.x)
@@ -1341,9 +1438,15 @@ func _on_attacked(f: Foe, _n: int) -> void:
 		var h := mini(_lost, f.max_hp - f.hp)
 		f.hp += h
 		_ev({"type": "foe_heal", "foe": foes.find(f), "n": h})
+	if run.has_artifact("glow_stick") and not glow_done and _lost > 0 and not f.dead():
+		glow_done = true
+		_art_ev("glow_stick", "10 Burn!", foes.find(f), true)
+		_apply_burn(f, 10, false)
 	var th := my_thorns
 	if powers.has("flagellum_of_the_first_apostle"):
 		th += power_now()
+	if run.has_artifact("cactus_plushie"):
+		th *= 2
 	if th <= 0 or f.dead():
 		return
 	CombatLog.line("    your Thorns answer %s: Thorns %d%s" % [_fname(f), my_thorns, " + Power %d (Flagellum)" % power_now() if powers.has("flagellum_of_the_first_apostle") else ""])
@@ -1354,6 +1457,13 @@ func _on_attacked(f: Foe, _n: int) -> void:
 		_hit_plain(f, th)
 		_no_heed = false
 	_ev({"type": "your_thorns", "foe": foes.find(f), "n": th})
+	if run.has_artifact("thorn_heart"):
+		thorn_heal += th * 0.2
+		if thorn_heal >= 1.0:
+			var hn := int(floor(thorn_heal))
+			thorn_heal -= hn
+			_art_ev("thorn_heart", "+%d HP" % hn)
+			_heal(hn)
 
 
 func _forced_target(attacker: Foe) -> Foe:
@@ -1369,7 +1479,15 @@ func _start_turn() -> void:
 	CombatLog.line("")
 	CombatLog.line("=== TURN %d ===" % turn)
 	if not powers.has("endless_well"):
-		block = 0
+		var kept := block / 2 if run.has_artifact("bulwark") else 0
+		if kept > 0:
+			_art_ev("bulwark", "Shield %d kept" % kept)
+		block = kept
+	if turn > 1 and run.has_artifact("hammer") and not _hit_this_turn:
+		hammer += 1
+		_art_ev("hammer", "Charging: +%d%%" % (30 * hammer))
+	_hit_this_turn = false
+	mono = false
 	for k in [charges, casts]:
 		k.clear()
 	dmg_ops.clear()
@@ -1399,6 +1517,9 @@ func _start_turn() -> void:
 	chant.clear()
 	for m in hand:
 		m.frozen = false
+	for k in range(hand.size() - 1, -1, -1):  # (a temporary marble not used last turn: it fades away)
+		if hand[k].has("temp") and int(hand[k].temp) < turn:
+			hand.remove_at(k)
 	if not spent_idx.is_empty():
 		_drop_marbles(spent_idx)
 	if burn > 0 and turn > 1:  # (from your second turn: an event's Burn doesn't bite before you have played)
@@ -1425,6 +1546,13 @@ func _start_turn() -> void:
 		n += 2
 	if run.has_artifact("marble_sack"):
 		n += 1
+	if run.has_artifact("cursed_book"):
+		n += 1
+	for tc in token_next:  # (the Tokens' temporary marbles: here this turn only)
+		_uid += 1
+		var star: bool = String(tc) == "*"
+		hand.append({"c": "A" if star else String(tc), "sym": "star" if star else "", "src": -1, "uid": _uid, "frozen": false, "hidden": false, "temp": turn})
+	token_next.clear()
 	if turn == 1:
 		for g in mrun.start.get("gift", []):  # (an event's gift: marbles to start the fight with)
 			_uid += 1
@@ -1469,7 +1597,7 @@ func _start_turn() -> void:
 ## the bag, in the order they come out. When the bag runs short it refills from the recycle bin, shuffled only then:
 ## those can't be known yet and aren't listed.
 func next_draw_known() -> Array:
-	var n := 3 + next_extra + (2 if powers.has("aoles_last_wish") else 0) + (1 if run.has_artifact("marble_sack") else 0)
+	var n := 3 + next_extra + (2 if powers.has("aoles_last_wish") else 0) + (1 if run.has_artifact("marble_sack") else 0) + (1 if run.has_artifact("cursed_book") else 0)
 	_refill_for(n)
 	var out := []
 	for k in mini(n, draw_pile.size()):
@@ -1567,6 +1695,104 @@ func use_bottle(b: int, target := -1) -> void:
 				_weaken(f, 2)
 	_enemy_thorns()
 	_check_end()
+
+
+## A ticket used in the fight (the user, 2026-11-27; see Tickets). `arg`: what the screen asked the player for:
+## marbles (Marble / Greater Marble: the chosen ones), hand (Duplication / Removal: an index into `hand`), ci (Fixing:
+## the card), swaps (Timeout: [[card index, backpack index], ...]). The ticket itself is taken off by the caller.
+func use_ticket(id: String, arg: Dictionary = {}) -> void:
+	if over:
+		return
+	CombatLog.line("> TICKET %s %s" % [id, str(arg)])
+	_ev({"type": "bottle", "name": String(Tickets.get_def(id).get("name", id))})
+	match id:
+		"health":
+			_heal(int(ceil(run.max_hp * Tickets.HEAL_PCT)))
+		"shield":
+			_shield(int(ceil(run.max_hp * Tickets.SHIELD_PCT)))
+		"marble", "greater_marble":
+			for m in arg.get("marbles", []):
+				mrun.bag.append({"c": String(m.c), "sym": String(m.get("sym", ""))})
+				_to_hand(mrun.bag.size() - 1)
+		"duplication":
+			var h := int(arg.get("hand", -1))
+			if h >= 0 and h < hand.size():
+				mrun.bag.append({"c": String(hand[h].c), "sym": String(hand[h].get("sym", ""))})
+				_to_hand(mrun.bag.size() - 1)
+		"removal":
+			var h := int(arg.get("hand", -1))
+			if h >= 0 and h < hand.size():
+				var gone: Dictionary = hand.pop_at(h)
+				if int(gone.get("src", -1)) >= 0:
+					_drop_marbles([int(gone.src)])
+				_draw_into_hand(1)
+		"rehearsal":
+			var n := 0
+			for k in range(hand.size() - 1, -1, -1):
+				var hm: Dictionary = hand[k]
+				if bool(hm.get("frozen", false)):
+					continue  # (a frozen marble stays where it is)
+				hand.remove_at(k)
+				n += 1
+				if int(hm.get("src", -1)) >= 0:
+					draw_pile.append(int(hm.src))
+			_shuffle(draw_pile)
+			_draw_into_hand(n)
+		"fixing":
+			var ci := int(arg.get("ci", -1))
+			durab.erase(ci)
+			hammered.erase(ci)
+			_ev({"type": "replaced", "ci": ci})
+		"encore":
+			encore += 1
+		"money":
+			mrun.leaves *= 2
+		"timeout":
+			for sw in arg.get("swaps", []):
+				var ci := int(sw[0])
+				var b := int(sw[1])
+				if ci >= 0 and ci < run.cards.size() and b >= 0 and b < mrun.backpack.size():
+					var out := String(run.cards[ci])
+					run.cards[ci] = mrun.backpack[b]
+					mrun.backpack[b] = out
+					for st in [durab, grow, power_used, charges, charge, cooldown, silenced, hammered]:
+						st.erase(ci)
+					_ev({"type": "replaced", "ci": ci})
+			_recount()
+	_check_end()
+
+
+## Is card `ci` broken (Durability gone, or hammered to pieces)? The Ticket of Fixing mends it.
+func broken(ci: int) -> bool:
+	return durability_left(ci) == 0 or int(hammered.get(ci, 0)) >= HAMMER_BREAKS
+
+
+## Marble `i` of the bag comes out now (into this turn's marbles).
+func _to_hand(i: int) -> void:
+	_uid += 1
+	hand.append({"c": String(mrun.bag[i].c), "sym": String(mrun.bag[i].get("sym", "")), "src": i, "uid": _uid, "frozen": false, "hidden": false})
+
+
+## Draw n more marbles from the bag now (the bin is shuffled back in when the bag runs out).
+func _draw_into_hand(n: int) -> void:
+	for k in n:
+		if hand.size() >= MAX_ROW:
+			break
+		if draw_pile.is_empty():
+			draw_pile = used_pile.duplicate()
+			used_pile.clear()
+			_shuffle(draw_pile)
+		if draw_pile.is_empty():
+			break
+		_to_hand(int(draw_pile.pop_back()))
+
+
+## The Cactus Plushie: you can't gain Shield.
+func _shield(n: int) -> void:
+	if run.has_artifact("cactus_plushie") and n > 0:
+		_art_ev("cactus_plushie", "No Shield")
+		return
+	super._shield(n)
 
 
 ## The fight is over: what it lent is given back (A Daughter's Secret's max HP).

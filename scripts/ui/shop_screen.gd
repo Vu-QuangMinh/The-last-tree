@@ -533,7 +533,7 @@ func _refresh() -> void:
 	for i in stock.size():
 		var it: Dictionary = stock[i]
 		# (the stage shop: an artifact or a bottle and its price are one hover zone, an invisible box round both)
-		var tipped: bool = on_stage and (it.kind in ["artifact", "bottle", "marble", "card_bag", "marble_bag"] or (_true_cart and it.kind in ["upgrade", "heal"]))
+		var tipped: bool = on_stage and (it.kind in ["artifact", "bottle", "ticket", "marble", "card_bag", "marble_bag"] or (_true_cart and it.kind in ["upgrade", "heal"]))
 		var box: VBoxContainer = _TipBox.new() if tipped else VBoxContainer.new()
 		if tipped:
 			box.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -588,6 +588,22 @@ func _refresh() -> void:
 				p.size_flags_vertical = Control.SIZE_EXPAND_FILL  # the frames stretch to the tallest one
 				_panels.append(p)
 				box.add_child(p)
+			"ticket":  # (2026-11-27: tickets stand where the bottles stood; on the cart its box counts as a bottle's for the layout)
+				var tid := String(it.ticket)
+				var tslot := Control.new()
+				var th := _bottle_px() * 0.62 if on_stage else 90.0
+				var tv := TicketView.make(tid, th)
+				tv.mouse_filter = Control.MOUSE_FILTER_IGNORE if on_stage else Control.MOUSE_FILTER_PASS
+				tslot.custom_minimum_size = Vector2(tv.size.x, _bottle_px() if on_stage else th)
+				tslot.mouse_filter = Control.MOUSE_FILTER_PASS
+				tv.position = Vector2(0, tslot.custom_minimum_size.y - tv.size.y)
+				tv.pivot_offset = Vector2(tv.size.x / 2.0, tv.size.y)
+				tslot.add_child(tv)
+				box.set_meta("tip", Tickets.tooltip(tid))
+				box.set_meta("pic", tv)
+				box.set_meta("pic_w", tv.size.x)
+				box.set_meta("pic_h", tslot.custom_minimum_size.y)
+				box.add_child(tslot)
 			"bottle" when on_stage:
 				var b := Bottles.get_def(it.bottle)
 				var bt := UiSkin.tex(b.id)
@@ -743,10 +759,10 @@ func _refresh() -> void:
 				_panels.append(p)
 				box.add_child(p)
 		var sold: bool = it.get("sold", false)
-		var full: bool = it.kind == "bottle" and run.player.bottles.size() >= run.bottle_slots()
+		var full: bool = (it.kind == "bottle" and run.player.bottles.size() >= run.bottle_slots()) or (it.kind == "ticket" and not run.ticket_room())
 		var none: bool = it.kind == "upgrade" and run.upgradable().is_empty()
 		var price := run.shop_price(it)
-		var label := "Sold" if sold else ("Bottle slots full" if full else ("Nothing to seal" if none else ("Free" if price == 0 else str(price))))
+		var label := "Sold" if sold else (("Ticket slots full" if it.kind == "ticket" else "Bottle slots full") if full else ("Nothing to seal" if none else ("Free" if price == 0 else str(price))))
 		var btn := UiTheme.button(label, func(): _buy(i), int(18.0 * K), "buy")
 		for k in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
 			btn.add_theme_color_override(k, Color(0.06, 0.05, 0.04))  # (the price in black ink)
@@ -812,7 +828,7 @@ func _refresh() -> void:
 			box.add_child(btn)
 		_boxes.append(box)
 		if on_stage:
-			box.set_meta("kind", it.kind)
+			box.set_meta("kind", "bottle" if it.kind == "ticket" else it.kind)  # (a ticket takes a bottle's place on the cart)
 			box.set_meta("idx", i)
 			box.set_meta("sold", sold)
 			box.set_meta("btn", btn)
@@ -908,11 +924,23 @@ func _buy(i: int) -> void:
 		return
 	if it.kind == "bottle" and run.player.bottles.size() >= run.bottle_slots():
 		return
+	if it.kind == "ticket" and not run.ticket_room():
+		return
 	if it.kind == "spell" and not run.has_room(String(it.spell.id)):
 		need_room.emit(String(it.spell.id))  # (nothing is paid: make room, then buy it)
 		return
+	var discounted: bool = run.discount_ready and not (it.kind in run.free_pick)
 	if not run.pay(run.shop_price(it)):
 		return
+	if discounted:
+		run.spend_discount()  # (the Ticket of Discount: spent on this one)
+	var popped := false
+	for b in _boxes:  # (bought: a burst of gold where it stood, and "Bought!" popping up; 2026-11-27)
+		if not popped and is_instance_valid(b) and int(b.get_meta("idx", -1)) == i:
+			Juice.pop(get_tree(), Juice.center(b), Color(1.0, 0.82, 0.3), "Bought!", true)
+			popped = true
+	if not popped:
+		Juice.pop(get_tree(), get_global_mouse_position(), Color(1.0, 0.82, 0.3), "Bought!", true)
 	Audio.play("shop_buy", -2.0, randf_range(0.97, 1.03))  # (coins; the same for everything bought)
 	run.free_pick.erase(it.kind)  # (his thanks for a favour: one free, then the usual prices)
 	match it.kind:
@@ -923,6 +951,10 @@ func _buy(i: int) -> void:
 		"artifact":
 			run.gain_artifact(it.artifact.id)
 			Events.toast.emit("Got %s" % it.artifact.name, UiTheme.ACCENT)
+			it.sold = true
+		"ticket":
+			run.gain_ticket(String(it.ticket))
+			Events.toast.emit("Got a %s" % Tickets.get_def(String(it.ticket)).name, UiTheme.ACCENT)
 			it.sold = true
 		"bottle":
 			run.gain_bottle(it.bottle)
@@ -2367,6 +2399,8 @@ func _cart_click(mp: Vector2) -> void:
 		if not it.get("sold", false):
 			if it.kind == "bottle" and run.player.bottles.size() >= run.bottle_slots():
 				Events.toast.emit("Your bottle slots are full", Color(1, 0.8, 0.4))
+			elif it.kind == "ticket" and not run.ticket_room():
+				Events.toast.emit("Your ticket slots are full: use or throw one away first", Color(1, 0.8, 0.4))
 			elif run.amber < run.shop_price(it):
 				Events.toast.emit("Not enough Leaves", Color(1, 0.8, 0.4))
 		_buy(i)
@@ -2795,3 +2829,15 @@ func _edit_follow() -> void:
 	if ok:
 		_edit_frame.global_position = r.position
 		_edit_frame.size = r.size
+
+
+## A ticket was used here (TicketFlow): the prices (a Discount) or the goods (a Rehearsal) change.
+func ticket_used(id: String) -> void:
+	if id == "rehearsal":
+		var keep := stock.filter(func(it): return it.kind in ["upgrade", "heal", "mend_seed"])
+		stock = run.shop_stock()
+		for it in keep:  # (the wax, the meal: as they were, bought or not)
+			for k in stock.size():
+				if stock[k].kind == it.kind:
+					stock[k] = it
+	_refresh()

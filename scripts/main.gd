@@ -8,6 +8,7 @@ var screen_layer := CanvasLayer.new()
 var overlay_layer := CanvasLayer.new()
 var _events := EventFlow.new(self)  # (moved out of main.gd, see scripts/event_flow.gd)
 var _test_flow := TestFlow.new(self)  # (moved out of main.gd, see scripts/test_flow.gd)
+var _tickets := TicketFlow.new(self)  # the tickets: using one, the scene that offers one (scripts/ticket_flow.gd)
 var current: Control
 var run: RunState
 var _test_mode := false  # Dev Mode "Room Test": a throwaway run, nothing is saved or recorded
@@ -32,6 +33,11 @@ func _ready() -> void:
 	amber.get_run = func(): return run
 	amber.position = Vector2(1920 - 24 - 140, 112)
 	al.add_child(amber)
+	var tbar := TicketBar.new()  # (your tickets, top left, over every screen of a run)
+	tbar.get_run = func(): return run if run != null and not run.over and is_instance_valid(current) and not (current is MenuScreen) else null
+	tbar.get_where = _tickets.where
+	tbar.on_use = _tickets.use
+	al.add_child(tbar)
 	add_child(al)
 	var cur := CanvasLayer.new()  # the Puppet Stage's wooden arrow pointer, over everything
 	cur.layer = 128
@@ -388,7 +394,13 @@ func _play_curses() -> void:
 			sc.parts = c.get("parts", []).map(func(id): return run.spell(String(id)))
 		overlay_layer.add_child(sc)
 		await sc.done
+		if c.get("blocked", false):  # (the Halo: the curse's scene played, then the halo stops it)
+			await WinBanner.play(overlay_layer, "Your Halo protects you from this curse!", Color(1.0, 0.9, 0.5))
 	_cursing = false
+	if _carve_next > 0:  # (the Carver: its carvings come after the curses)
+		var n := _carve_next
+		_carve_next = 0
+		await _tickets.carve(n)
 
 
 func show_map() -> void:
@@ -682,6 +694,9 @@ var _picked := false  # the artifact being gained was just chosen on a choice sc
 
 ## An artifact chosen from a choice screen (keepsake, treasure, elite, boss): the player already saw its card, so it
 ## goes straight on without the "You found an artifact!" pop-up (a curse still says what it did, in a toast).
+var _carve_next := 0  # the Carver was picked up: this many marbles to carve, after its pop-up and any curse
+
+
 func _pick_artifact(id: String) -> void:
 	_picked = true
 	run.gain_artifact(id)
@@ -690,6 +705,8 @@ func _pick_artifact(id: String) -> void:
 
 ## An artifact was picked up: its card (frame and picture) pops up in the middle of the screen for a moment (click to dismiss).
 func _on_artifact_found(id: String) -> void:
+	if id == "carver":
+		_carve_next += 3
 	if _picked:
 		Audio.play("artifact_get")
 		_play_curses.call_deferred()  # (a cursed artifact: its curse lands on one of your spells)
@@ -837,17 +854,20 @@ func _after_fight(f: Fight) -> void:
 	if run.over:
 		_end_run()
 		return
-	if run.reward_bottle != "":
-		var bd := Bottles.get_def(run.reward_bottle)
-		Events.toast.emit("Found a bottle: %s %s" % [UiSkin.icon_token(run.reward_bottle, bd.icon), bd.name], Color(0.7, 0.95, 1))
 	var steps: Array = []  # callables, each shows one screen and then calls the next
+	var banner := func(words: String) -> Callable:  # ("You won a card!": big words, a spinning light behind them; the user 2026-11-27)
+		return func(go):
+			await WinBanner.play(overlay_layer, words)
+			go.call()
 	var marbles := kind == "fight" and run.reward_kind() == "marble"  # (a normal fight: a card or a marble, 70 / 30 pseudo-random, the first one a card)
 	var offer := [] if marbles else run.spell_offer(3, kind)
 	var title: String = {"fight": "Victory", "elite": "The elite falls: rare cards", "boss": "The boss falls: legendary cards"}.get(kind, "Victory")
 	if marbles:
 		var ms := run.marble_offer(3)
+		steps.append(banner.call("You won a Marble!"))
 		steps.append(func(go): _marble_choice("Victory", "Choose a marble for your bag.", ms, go))
 	if not offer.is_empty():
+		steps.append(banner.call("You won a card!"))
 		steps.append(func(go):
 			var ch := _choice(title, "Take one card. One you already have is upgraded instead.", offer, [], true)
 			ch.chosen.connect(func(i):
@@ -856,6 +876,8 @@ func _after_fight(f: Fight) -> void:
 				else:
 					_learn(String(offer[i].id), go)))
 	var dropped := f.drops.filter(func(aid): return not (aid in run.artifacts))
+	if not dropped.is_empty() or kind in ["elite", "boss"]:
+		steps.append(banner.call("You won an Artifact!"))
 	for aid in dropped:
 		steps.append(func(go):
 			run.gain_artifact(aid)  # (a sure drop, instead of the elite's choice: its card pops up)
@@ -877,6 +899,13 @@ func _after_fight(f: Fight) -> void:
 				ch.chosen.connect(func(i):
 					_pick_artifact(relics[i].id)
 					go.call()))
+	if run.reward_ticket != "":  # (a ticket dropped: its own scene, after the rewards)
+		var tid := run.reward_ticket
+		run.reward_ticket = ""
+		steps.append(banner.call("And also a Ticket!"))
+		steps.append(func(go):
+			await _tickets.offer(tid)
+			go.call())
 	if act_before == 2 and run.act == 3 and not _test_mode:
 		MatadorLore.flag("act2_end")  # (the end of Act 2 reached: the basement can be asked about)
 	if run.act != act_before:
@@ -939,6 +968,8 @@ func _marble_choice(title: String, words: String, ms: Array, go: Callable) -> vo
 		var mv := MarbleView.make(m, 110.0)
 		mv.pressed.connect(func():
 			run.marble_bag.append(m)
+			Juice.pop(get_tree(), Juice.center(mv), MarbleView.COLS.get(String(m.c), Color.WHITE), "", true)  # (taken: a burst of its colour)
+			Audio.play("elem_pickup")
 			ov.queue_free()
 			go.call())
 		var cc := CenterContainer.new()

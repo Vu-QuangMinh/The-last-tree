@@ -70,13 +70,17 @@ func _ready() -> void:
 		var card := SpellCard.make(spells[i])
 		card.zoom = big
 		var idx := i
-		card.clicked.connect(func(_c): chosen.emit(idx))
+		card.clicked.connect(func(_c):
+			Juice.pop(get_tree(), Juice.center(card), Color(1.0, 0.85, 0.45), "", true)  # (picked: a burst of light where it was)
+			chosen.emit(idx))
 		row.add_child(card)
 		_pulse(card, i)
 	for i in artifacts.size():
 		var card := ArtifactCard.make(artifacts[i])
 		var idx := i
-		card.clicked.connect(func(): chosen.emit(idx))
+		card.clicked.connect(func():
+			Juice.pop(get_tree(), Juice.center(card), Color(1.0, 0.85, 0.45), "", true)
+			chosen.emit(idx))
 		row.add_child(card)
 		_pulse(card, spells.size() + i)
 	if can_skip:
@@ -134,6 +138,7 @@ func _build_hanging() -> void:
 		var idx := i
 		art.gui_input.connect(func(ev: InputEvent):
 			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+				Juice.pop(get_tree(), Juice.center(art), Color(1.0, 0.85, 0.45), "", true)
 				chosen.emit(idx))
 		var d := {"art": art, "a": 0.0, "v": 0.0, "drop": -900.0, "phase": randf() * TAU}
 		art.mouse_entered.connect(func():

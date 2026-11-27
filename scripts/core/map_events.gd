@@ -5,7 +5,7 @@ extends RefCounted
 ## Extra prices an option can ask: lose_spells n (n random spells, gone) · burden n (n random spells need 1 more
 ## Essence). An event's "weight" (default 1) makes it rarer or commoner among the "?" rooms.
 ##   heal n · lose_hp n · max_hp n · amber n · upgrade n (a wax seal on n random spells) · spell rarity · artifact pool
-##   bottle n (n random bottles, if you have room)
+##   ticket id (that one ticket, offered on its own scene: take it or leave it; the old "bottles" ops still work)
 ##   gamble (50%: heal to full, else an ambush fight) · fight · none
 
 const ALL := [
@@ -20,7 +20,7 @@ const ALL := [
 	{"id": "well", "begin": "Listen to what it says", "acts": [1], "title": "The Whispering Well", "text": "A mossy well whispers your name. It sounds strangely seductive. You can't help but listen to what it is whispering.",
 		"options": [
 			{"label": "Toss in 50 Leaves", "amber": 50, "outcomes": [
-				{"chance": 1.0, "ok": "Thank you, well!", "text": "The well seems pleased with your leaves. Two bottles float up to the surface for you.", "do": [{"op": "bottles", "n": 2}]}]},
+				{"chance": 1.0, "ok": "Thank you, well!", "text": "The well seems pleased with your leaves. A little paper ticket floats up to the surface for you, folded twice: a Mystery Ticket.", "do": [{"op": "ticket", "id": "mystery"}]}]},
 			{"label": "Drink from it", "outcomes": [
 				{"chance": 1.0, "ok": "Oh no, something is wrong here", "curse_card": true, "text": "You decided to drink from this well. The water was surprisingly refreshing, with just a hint of a grudge: you heal 10 HP, but the well did something to you. {spell} now needs 1 more Water marble.", "do": [{"op": "heal", "n": 10}, {"op": "soak"}]}]},
 			{"label": "Jump in", "outcomes": [
@@ -43,7 +43,7 @@ const ALL := [
 		"weight": 0.4,
 		"options": [
 			{"label": "Reach in", "outcomes": [
-				{"chance": 0.5, "ok": "Ooh, shiny!", "text": "Your fingers close around a little bottle.", "do": [{"op": "bottles", "n": 1}]},
+				{"chance": 0.5, "ok": "Ooh, shiny!", "text": "Your fingers close around a crumpled little ticket, a picture of a marble printed on it.", "do": [{"op": "ticket", "id": "marble"}]},
 				{"chance": 0.25, "ok": "Finders keepers!", "text": "You pull out a handful of golden leaves: 30 Leaves.", "do": [{"op": "amber", "n": 30}]},
 				{"chance": 0.2, "ok": "Ow, ow, ow!", "text": "Something bites you, hard. You lose 5 HP.", "do": [{"op": "damage", "n": 5}]},
 				{"chance": 0.05, "ok": "What a find!", "text": "Deep inside, something old and precious: an artifact!", "do": [{"op": "artifact", "pool": "normal"}]}]},

@@ -172,6 +172,12 @@ func _event_result(ev: Dictionary, opt: Dictionary, bottle_at: int, spell_id := 
 			main._show_loadout(ids)
 		else:
 			main.show_map()
+	if res.has("ticket"):  # (a fixed ticket: offered on its own scene before you go on; the user 2026-11-27)
+		var after_ticket := go_on
+		var tid := String(res.ticket)
+		go_on = func():
+			await main._tickets.offer(tid)
+			after_ticket.call()
 	# an event with props that tells its result on its own stage (no black screen): the words in the hint panel, then Continue
 	if is_instance_valid(main._overlay) and main._overlay is EventStage and EventStage.LAYOUTS.has(String(ev.get("id", ""))) and res.overflow.is_empty():
 		var es: EventStage = main._overlay

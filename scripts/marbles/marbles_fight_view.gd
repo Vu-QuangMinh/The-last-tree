@@ -680,7 +680,7 @@ func _float_own(ev: Dictionary) -> void:
 			"foe_expose":
 				_float(_foe_center(int(ev.foe)) + Vector2(0, -60), "Expose +%d" % int(ev.n), Color(1.0, 0.6, 0.4))
 			"activate":
-				_float(Vector2(960, 700), "Activated: " + String(mfight.card(int(ev.ci)).get("name", "")), Color(0.7, 0.9, 1.0))
+				_float(Vector2(960, 700), "Triggered: " + String(mfight.card(int(ev.ci)).get("name", "")), Color(0.7, 0.9, 1.0))
 			"extension":
 				_float(Vector2(960, 700), "Extension!", Color(0.7, 1.0, 0.7))
 			"self_damage":

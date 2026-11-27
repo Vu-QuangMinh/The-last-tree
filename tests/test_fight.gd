@@ -646,17 +646,22 @@ func test_rewritten_events() -> void:
 		if run.resolve_unknown() == "event":
 			assert_true(2 in MapEvents.get_event(run.current_node().event).acts, "only events made for Act 2 (or every act)")
 	run.act = 1
-	# the Whispering Well: 50 Leaves on the button (greyed out without them), two bottles, the rest left over
+	# the Whispering Well: 50 Leaves on the button (greyed out without them), a fixed ticket (a Mystery Ticket), offered on its own scene
 	var pay := _ev_opt("well", "Toss in 50 Leaves")
 	run.amber = 40
 	assert_true(not run.can_choose(pay))
 	run.amber = 60
-	run.player.bottles = ["fire_flask", "water_flask"]
 	var res := run.event_outcome(pay)
 	assert_eq(run.amber, 10)
-	assert_eq(run.player.bottles.size(), 3, "one fits")
-	assert_eq(res.overflow.size(), 1, "the other waits for the swap screen")
-	assert_true(String(res.text).contains("Two bottles"), "the words say what happened")
+	assert_eq(String(res.get("ticket", "")), "mystery", "the well's ticket is always the same one")
+	assert_true(run.tickets.is_empty(), "it is offered, not put in your slots")
+	assert_true(String(res.text).contains("Mystery Ticket"), "the words say what happened")
+	# with a Ticket of Discount waiting, the well asks half (25 Leaves), and the discount is spent
+	run.amber = 60
+	run.discount_ready = true
+	run.event_outcome(pay)
+	assert_eq(run.amber, 35, "half price")
+	assert_true(not run.discount_ready, "the discount is spent")
 	# drink: heal 10, and one of your active spells needs 1 more Water (the well's grudge); jump in: 15 damage and a curse
 	run.player.hp = 20
 	var drink := run.event_outcome(_ev_opt("well", "Drink from it"))
@@ -667,7 +672,7 @@ func test_rewritten_events() -> void:
 	run.player.hp = 30
 	var jump := run.event_outcome(_ev_opt("well", "Jump in"))
 	assert_eq(run.player.hp, 15.0)
-	assert_true(jump.has("artifact") and Artifacts.is_curse(jump.artifact))
+	assert_true(jump.has("artifact") and not run.pending_curses.is_empty(), "a cursed find: a carnival artifact, and a curse on a spell")
 	# the Lost Sprite: an elite of this act, and 2 Air to start it with
 	var help := run.event_outcome(_ev_opt("lost_sprite", "Help him"))
 	assert_eq(help.fight.kind, "elite")
@@ -1712,7 +1717,7 @@ func test_spell_slots_start_at_5_and_cap_at_8() -> void:
 func test_artifact_tiers() -> void:
 	for a in Artifacts.ALL:
 		assert_true(a.has("tier"), a.id)
-		if a.tier == "legendary":
+		if a.tier == "legendary" and a.pool != "none":  # (the retired ones are never offered)
 			assert_eq(a.pool, "boss", "%s: legendaries only drop from bosses" % a.id)
 		if a.aspect == "Spell slots" or a.id in ["broken_crown", "spell_satchel", "tangled_grimoire"]:
 			assert_true(a.tier in ["rare", "legendary"], "%s adds slots, so it can't be common" % a.id)

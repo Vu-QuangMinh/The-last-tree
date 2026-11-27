@@ -42,17 +42,18 @@ func _draw() -> void:
 
 ## A damage number rises from the bar ("Blocked" when only its Shield was hit).
 static func pop(holder: Control, at: Vector2, lost: int) -> void:
-	var l := UiTheme.label(("-%d" % lost) if lost > 0 else "Blocked", 34, Color(1.0, 0.85, 0.35) if lost > 0 else Color(0.6, 0.85, 1.0))
-	l.add_theme_constant_override("outline_size", 8)
+	var k := clampf(float(lost) / 20.0, 0.0, 1.0)  # (2026-11-27: bigger, hotter and punchier for heavier hits)
+	var l := UiTheme.label(("-%d" % lost) if lost > 0 else "Blocked", int(lerpf(38.0, 70.0, k)) if lost > 0 else 34, Color(1.0, 0.9, 0.45).lerp(Color(1.0, 0.45, 0.3), k) if lost > 0 else Color(0.6, 0.85, 1.0))
+	l.add_theme_constant_override("outline_size", 10)
 	l.add_theme_color_override("font_outline_color", Color(0.12, 0.04, 0.02))
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	l.z_index = 60
 	holder.add_child(l)
 	l.position = at - Vector2(40, 30)
 	l.pivot_offset = Vector2(40, 20)
-	l.scale = Vector2(1.5, 1.5)
+	l.scale = Vector2.ONE * (1.6 + 0.6 * k)
 	var tw := l.create_tween().set_parallel()
-	tw.tween_property(l, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(l, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(l, "position:y", l.position.y - 80.0, 1.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_property(l, "modulate:a", 0.0, 0.5).set_delay(0.6)
 	tw.chain().tween_callback(l.queue_free)

@@ -200,7 +200,7 @@ func _b_sync() -> void:
 		var star := String(mm.get("sym", "")) == "star"
 		# (the Mirror Fairy's Blind is an illusion on the slot machine only: what comes out is your own marbles, shown as
 		# they are, the user 2026-11-22)
-		player.stock.append({"el": "?" if star else String(mm.get("c", "F")), "sym": String(mm.get("sym", "")), "temp": false,
+		player.stock.append({"el": "?" if star else String(mm.get("c", "F")), "sym": String(mm.get("sym", "")), "temp": mm.has("temp"),
 			"frozen": bool(mm.get("frozen", false)), "freeze_n": 0, "uid": int(mm.get("uid", 0)) + 100000})
 	player.blind_turns = 1 if m.alive().any(func(x): return x.id in MarblesFight.BLINDERS) else 0  # (Blind: the reels show "?")
 	player.bottles = mrun.bottles
@@ -341,6 +341,29 @@ func use_bottle(i: int, target_idx := -1) -> void:
 	_b_after()
 
 
+## A ticket used in the fight (see Tickets, MarblesFight.use_ticket): it leaves your slots, works, and the screen
+## plays what it did. Marble / Greater Marble / Duplication bring new marbles out into the storage row.
+func use_ticket(slot: int, arg: Dictionary = {}) -> void:
+	if over or slot < 0 or slot >= rs.tickets.size():
+		return
+	var id := String(rs.tickets[slot])
+	rs.tickets.remove_at(slot)
+	if id == "mystery":
+		for k in 2:
+			rs.gain_ticket(Tickets.random(rs.rng, ["mystery"]))
+		return
+	m.use_ticket(id, arg)
+	if id == "timeout":
+		_build_loadout()
+		_b_sync()
+		await anim.call({"type": "loadout_changed"})
+	await anim.call({"type": "bottle", "bottle": {"name": String(Tickets.get_def(id).get("name", "Ticket"))}})
+	await _b_play(_b_take(), false)
+	_b_sync()
+	_cl_ui("after ticket")
+	_b_after()
+
+
 func pass_turn() -> void:
 	await finish_turn()
 
@@ -424,6 +447,10 @@ func _b_play(evs: Array, enemy_phase: bool, intents := {}, finish := true) -> vo
 			hit_no = 0
 			await anim.call({"type": "enemy_turn", "enemy": cur, "move": intents.get(cur, cur.intent), "stunned": t == "foe_stunned"})
 		match t:
+			"art":  # (a carnival artifact did something: its slot lights up, the light flies to where it acts)
+				_b_show(s)
+				await anim.call({"type": "artifact_fx", "id": String(ev.id), "text": String(ev.get("text", "")),
+					"enemy": foe, "big": bool(ev.get("big", false))})
 			"cast":
 				_b_show(s)
 				var ci := int(ev.ci)
@@ -526,7 +553,7 @@ func _b_play(evs: Array, enemy_phase: bool, intents := {}, finish := true) -> vo
 				var e5 := _es(int(ev.get("foe", -1)))
 				if e5 != null and not (e5.id in defeated):
 					defeated.append(e5.id)
-				await anim.call({"type": "sfx", "name": "enemy_defeat"})
+				await anim.call({"type": "enemy_dies", "enemy": e5})  # (2026-11-27: the kill is a moment of its own: FightAnim)
 			"foe_block", "foe_heal", "foe_power", "foe_thorns", "foe_dodge_up", "foe_regen", "foe_ethereal", "foe_takes_off", "foe_rests", "foe_cleansed", "foe_deflect", "casts", "charging", "phase2", "transform":
 				_b_show(s)
 				if foe != null:

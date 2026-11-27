@@ -195,4 +195,4 @@ class ArtifactChip extends PanelContainer:
 
 ## The hover board of an artifact (Puppet Stage): see HoverBoard.
 static func hover_panel(id: String, bbcode: String) -> Control:
-	return HoverBoard.make(UiSkin.tex(UiSkin.ARTIFACT_ART.get(id, id)), bbcode)
+	return HoverBoard.make(null if id == "blood_pact" else UiSkin.tex(UiSkin.ARTIFACT_ART.get(id, id)), bbcode)  # (Blood Pact: the old painting is not the new contract)

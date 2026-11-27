@@ -372,6 +372,15 @@ static func seedling_count_button(b: Button, label: String, count: int, px := 26
 
 ## An artifact's painted icon (Icon/Artifact/<id>.png) in a square of `px`; null if that artifact has none yet.
 static func artifact_icon(id: String, px: float) -> TextureRect:
+	if ArtifactBadge.has(id) and (tex(id) == null or id == "blood_pact"):  # (Blood Pact: the old painting is not the user's contract)  # (the carnival artifacts, 2026-11-27: their badge drawn in code, until painted art named after the id exists)
+		var holder := TextureRect.new()
+		holder.custom_minimum_size = Vector2(px, px)
+		holder.size = holder.custom_minimum_size
+		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var b := ArtifactBadge.make(id, px)
+		b.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		holder.add_child(b)
+		return holder
 	return icon(ARTIFACT_ART.get(id, id), px)
 
 

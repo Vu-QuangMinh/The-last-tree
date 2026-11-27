@@ -792,6 +792,8 @@ func _anim_event(ev: Dictionary) -> void:
 		"artifact_used":
 			scr._arts.flash(ev.id)
 			Audio.play("spell_glow")
+		"artifact_fx":
+			await _artifact_fx(ev)
 		"mirror_shine":
 			# the Mirror Fairy turns your spell away: her mirror flares white for a moment
 			var mv: EnemyView = scr._views.get(ev.enemy)
@@ -806,6 +808,7 @@ func _anim_event(ev: Dictionary) -> void:
 				await tw.finished
 		"chant":
 			scr._prompt.text = "Chanting " + " ".join(Array(ev.chant.split("")).map(func(c): return Elements.NAMES[c]))
+			_chant_glow(String(ev.chant))
 			await _wait(0.25)
 		"paint":
 			# Expose: a blotch of rainbow paint slaps onto the Essence, then fades away to reveal the Any Essence
@@ -907,12 +910,13 @@ func _anim_event(ev: Dictionary) -> void:
 				await _power_fly(ev.spell)
 				return
 			Audio.play("spell_glow")
-			# the card lifts and glows (its text is right there on the card)
+			# the card lifts and glows (its text is right there on the card); 2026-11-27: it also pops up with a ring of light and sparks rising off it
 			var card := _card_for(ev.spell.id)
 			if card:
 				var tw := card.create_tween()
 				tw.tween_property(card, "modulate", Color(1.5, 1.4, 1.1), 0.12)
 				tw.tween_property(card, "modulate", Color.WHITE, 0.4)
+				_cast_pop(card)
 			await _wait(0.4)
 		"spell_effect":
 			await _spell_fly(ev)
@@ -963,6 +967,21 @@ func _anim_event(ev: Dictionary) -> void:
 			await _file_turn_box()
 		"attack":
 			await _enemy_attack(ev)
+		"enemy_dies":  # (2026-11-27: a kill is a moment: a hit-stop, a shake, a burst of light from where it stood)
+			Audio.play("enemy_defeat")
+			var dv: EnemyView = scr._views.get(ev.enemy)
+			if dv != null and is_instance_valid(dv) and is_instance_valid(dv.creature):
+				var at := dv.creature.global_position + dv.creature.size / 2.0 - scr._fx.global_position
+				var fx := Vfx.make(scr._fx, 82)
+				fx.glow(at, 300.0, Color(1.0, 0.85, 0.55), 0.5)
+				fx.glow(at, 140.0, Color(1, 1, 1, 1.0), 0.18)
+				fx.ring(at, 20.0, 260.0, Color(1.0, 0.9, 0.6), 0.5, 12.0)
+				fx.ring(at, 10.0, 160.0, Color(1, 1, 1, 0.9), 0.3, 6.0, 0.06)
+				fx.burst(at, 40, Color(1.0, 0.8, 0.45), Vector2(220, 640), Vector2(0.4, 0.8), Vector2(5, 11))
+				fx.burst(at, 10, Color(0.5, 0.45, 0.4, 0.8), Vector2(40, 140), Vector2(0.7, 1.2), Vector2(14, 24), Vfx.SMOKE)
+			_hitstop(0.1)
+			_shake(10.0)
+			await _wait(0.2)
 		"sfx":  # (a sound that goes with something the rules did and that has no picture of its own: the Sentinel waking, the lamp glowing...)
 			Audio.play(String(ev.name))
 			scr._h_hud._refresh_all()
@@ -2120,10 +2139,13 @@ func _effect_landed(ev: Dictionary) -> void:
 			var v: EnemyView = scr._views.get(e)
 			if v:
 				v.hit_flash()
-				if not (text.begins_with("-") and text.substr(1).is_valid_int()):  # no "-N" on enemies: they react instead
+				if text.begins_with("-") and text.substr(1).is_valid_int():
+					_hit_juice(v, int(text.substr(1)))  # (2026-11-27: every hit lands with light, a number and weight)
+				else:
 					_float_text(text, v.global_position + Vector2(110, 180), Color(1, 0.85, 0.5))
 	else:
-		_float_text(text, _player_point() + Vector2(-40, -40), Color(0.6, 0.9, 1))
+		if not _you_juice(String(eff.op), int(eff.get("n", 0))):
+			_float_text(text, _player_point() + Vector2(-40, -40), Color(0.6, 0.9, 1))
 
 
 ## The Retainer's support moves: the hand goes down and comes up fast and the bottle flies to the Samurai, the fan waves, the gong is struck (see Creature.retainer_play).
@@ -2566,7 +2588,7 @@ func _enemy_attack(ev: Dictionary) -> void:
 		if ev.n >= 10:
 			_hitstop(0.05 + minf(ev.n, 40) / 500.0)
 	if ev.n > 0:
-		_float_text("-%d" % ev.n, target + Vector2(-20, -70), UiTheme.DANGER)
+		_pop_number("-%d" % ev.n, target + Vector2(0, -80), UiTheme.DANGER, clampf(float(ev.n) / 20.0, 0.2, 1.0))  # (2026-11-27: it pops, like the hits you deal)
 		var tw2 := scr._player_panel.create_tween()
 		tw2.tween_property(scr._player_panel, "modulate", Color(1.6, 0.6, 0.6), 0.08)
 		tw2.tween_property(scr._player_panel, "modulate", Color.WHITE, 0.3)
@@ -3200,3 +3222,158 @@ func _banner(text: String, col: Color, life := 1.2) -> void:
 	tw.tween_interval(life)
 	tw.tween_property(l, "modulate:a", 0.0, 0.3)
 	tw.tween_callback(l.queue_free)
+
+
+## The colour of a carnival artifact's light (2026-11-27): heals green, Burn orange, Power red-gold, Shield blue,
+## marbles their colour, the rest gold.
+const ART_COL := {"thorn_heart": Color(0.5, 1.0, 0.55), "coal_heart": Color(1.0, 0.55, 0.2), "dark_heart": Color(0.75, 0.4, 1.0),
+	"candy_apple": Color(0.5, 1.0, 0.55), "glow_stick": Color(0.55, 1.0, 0.4), "red_token": Color(1.0, 0.4, 0.25),
+	"blue_token": Color(0.35, 0.65, 1.0), "green_token": Color(0.5, 1.0, 0.6), "rainbow_token": Color(1.0, 0.85, 1.0),
+	"bulwark": Color(0.5, 0.8, 1.0), "cactus_plushie": Color(0.55, 0.9, 0.4), "kunai": Color(1.0, 0.95, 0.85),
+	"hammer": Color(1.0, 0.7, 0.3), "mysterious_hand": Color(1.0, 0.45, 0.35), "blood_pact": Color(1.0, 0.25, 0.25),
+	"monochrome_prism": Color(0.9, 0.95, 1.0)}
+
+
+## A carnival artifact did something (MarbleBridge "art" event): its slot pops and glows, a burst of light and a ring
+## leave it, then the light flies to where it acts (an enemy, or your HP bar) and lands with a flash, a ring and sparks;
+## its number pops there. A big one (the Glow Stick, the Monochrome Prism, a heavy Hammer) adds a hit-stop, a shake and
+## a faint flash of the whole screen. Layers: see the game-feel-vfx skill.
+func _artifact_fx(ev: Dictionary) -> void:
+	var id := String(ev.id)
+	var col: Color = ART_COL.get(id, Color(1.0, 0.85, 0.4))
+	var big := bool(ev.get("big", false))
+	var fx := Vfx.make(scr._fx, 80)
+	var off: Vector2 = scr._fx.global_position
+	var c0v: Variant = scr._arts.chip_center(id) if scr._arts != null else null
+	var bar := scr._hp_bar.get_global_rect().get_center() if scr._hp_bar != null else Vector2(400, 980)
+	var from: Vector2 = (c0v as Vector2) - off if c0v != null else bar - off + Vector2(0, -60)
+	scr._arts.flash(id)
+	# the slot: a white-hot core, a swelling glow, a ring racing out, sparks
+	fx.glow(from, 60.0, Color(1, 1, 1, 0.9), 0.14)
+	fx.glow(from, 130.0 if big else 95.0, col, 0.4)
+	fx.ring(from, 8.0, 85.0 if big else 62.0, col, 0.35, 6.0)
+	fx.burst(from, 18 if big else 12, col.lerp(Color.WHITE, 0.4), Vector2(120, 340), Vector2(0.25, 0.5), Vector2(3, 7))
+	Audio.play("spell_glow", -4.0 if big else -8.0, randf_range(0.95, 1.12))
+	var to: Vector2
+	var mv: EnemyView = scr._views.get(ev.enemy) if ev.get("enemy") != null else null
+	if mv != null and is_instance_valid(mv):
+		to = mv.anchor_point() + Vector2(0, -60)
+	else:
+		to = bar - off + Vector2(0, -6)
+	if from.distance_to(to) > 40.0:
+		var landed := [false]
+		fx.move(from, to, 0.3, 70.0, col, 13.0 if big else 9.0, 0.05,
+			func(vx: Vfx, it, _dt):
+				vx.part(it.pos, Vector2(randf_range(-25, 25), randf_range(-40, 10)), col.lerp(Color.WHITE, 0.3), randf_range(0.2, 0.35), randf_range(4, 8)),
+			func(vx: Vfx, at: Vector2):
+				landed[0] = true
+				vx.glow(at, 230.0 if big else 150.0, col, 0.45)
+				vx.glow(at, 110.0 if big else 70.0, Color(1, 1, 1, 1.0), 0.16)
+				vx.ring(at, 10.0, 160.0 if big else 100.0, col.lerp(Color.WHITE, 0.3), 0.38, 10.0)
+				vx.ring(at, 6.0, 90.0 if big else 60.0, Color(1, 1, 1, 0.9), 0.22, 5.0, 0.05)
+				vx.burst(at, 30 if big else 16, col.lerp(Color.WHITE, 0.35), Vector2(180, 520), Vector2(0.35, 0.65), Vector2(5, 10))
+				vx.burst(at, 8 if big else 4, col, Vector2(60, 160), Vector2(0.6, 1.0), Vector2(9, 14), Vfx.GLOW))
+		await _wait(0.36)
+	else:
+		await _wait(0.12)
+	if String(ev.get("text", "")) != "":
+		scr._float_text(String(ev.text), to + off + Vector2(0, -30), col.lerp(Color.WHITE, 0.25))
+	if big:
+		_hitstop(0.07)
+		_shake(7.0)
+		fx.flash(Color(col, 0.18), 0.25)
+		Audio.play("elem_pickup", -2.0, 0.9)
+	await _wait(0.12)
+
+
+# ------------------------------------------------------------------ 2026-11-27: the light-and-impact pass (see the game-feel-vfx skill)
+
+## A number that pops: it scales up fast past its size, settles, rises and fades. `big` 0..1 makes it larger and hotter.
+func _pop_number(text: String, at: Vector2, col: Color, big := 0.0) -> void:
+	var l := UiTheme.heading(text, int(lerpf(44.0, 78.0, clampf(big, 0.0, 1.0))), col)
+	l.add_theme_constant_override("outline_size", 12)
+	l.add_theme_color_override("font_outline_color", Color(0.12, 0.03, 0.02))
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.size = Vector2(240, 90)
+	l.position = at - scr._fx.global_position - l.size / 2.0 + Vector2(randf_range(-18, 18), 0)
+	l.pivot_offset = l.size / 2.0
+	l.z_index = 90
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	scr._fx.add_child(l)
+	l.scale = Vector2.ONE * 0.3
+	var tw := l.create_tween()
+	tw.tween_property(l, "scale", Vector2.ONE * 1.3, 0.09).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(l, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(l, "position:y", l.position.y - 70.0, 0.7).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(l, "modulate:a", 0.0, 0.45).set_delay(0.3)
+	tw.tween_callback(l.queue_free)
+
+
+## A hit lands on an enemy: a white-hot core, a swelling red-gold glow, a ring, sparks flying off and a few slower
+## embers; the creature jolts (harder for bigger hits); the damage pops over it; and from 8 damage on a short hit-stop
+## and a shake, bigger with the blow.
+func _hit_juice(v: EnemyView, n: int) -> void:
+	if not is_instance_valid(v) or not is_instance_valid(v.creature):
+		return
+	var k := clampf(float(n) / 20.0, 0.0, 1.0)
+	var at := v.creature.global_position + v.creature.size * Vector2(0.5, 0.45) - scr._fx.global_position
+	var fx := Vfx.make(scr._fx, 82)
+	fx.glow(at, lerpf(60.0, 130.0, k), Color(1, 1, 1, 1.0), 0.1)
+	fx.glow(at, lerpf(120.0, 260.0, k), Color(1.0, 0.55, 0.3), 0.32)
+	fx.ring(at, 10.0, lerpf(70.0, 170.0, k), Color(1.0, 0.85, 0.6), 0.28, lerpf(5.0, 10.0, k))
+	fx.burst(at, int(lerpf(10.0, 30.0, k)), Color(1.0, 0.75, 0.45), Vector2(160, lerpf(380.0, 680.0, k)), Vector2(0.2, 0.45), Vector2(3, 7))
+	fx.burst(at, int(lerpf(2.0, 8.0, k)), Color(1.0, 0.5, 0.2), Vector2(40, 140), Vector2(0.5, 0.9), Vector2(6, 10), Vfx.GLOW)
+	if n > 0:
+		v.creature.hit(lerpf(0.7, 2.0, k))  # (its number pops from its HP bar: EnemyHpBar.pop)
+	if n >= 8:
+		_hitstop(lerpf(0.04, 0.1, k))
+		_shake(lerpf(4.0, 11.0, k))
+
+
+## Something good lands on you (heal, Shield, Power...): light at your HP, particles of its kind, a big number.
+## Returns false when it has no show of its own here (the caller writes its words instead).
+func _you_juice(op: String, n: int) -> bool:
+	var cols := {"heal": Color(0.45, 1.0, 0.5), "shield": Color(0.45, 0.75, 1.0), "thorns": Color(0.6, 0.95, 0.4), "aegis": Color(1.0, 0.95, 0.6)}
+	if not cols.has(op) or n <= 0:
+		return false
+	var col: Color = cols[op]
+	var at := (scr._hp_bar.get_global_rect().get_center() if scr._hp_bar != null else _player_point()) - scr._fx.global_position
+	var fx := Vfx.make(scr._fx, 82)
+	fx.glow(at, 170.0, col, 0.45)
+	fx.glow(at, 70.0, Color(1, 1, 1, 0.9), 0.12)
+	fx.ring(at, 12.0, 120.0, col.lerp(Color.WHITE, 0.3), 0.35, 7.0)
+	var shape := {"heal": Vfx.CROSS, "shield": Vfx.SHIELD, "thorns": Vfx.THORN, "aegis": Vfx.STAR}[op] as int
+	fx.burst(at, 14, col, Vector2(60, 220), Vector2(0.5, 0.9), Vector2(8, 13), shape, 0.0, PI, -PI / 2.0)
+	var words := {"heal": "+%d", "shield": "+%d Shield", "thorns": "Thorns +%d", "aegis": "+%d Dodge"}[op] as String
+	_pop_number(words % n, at + scr._fx.global_position + Vector2(0, -70), col.lerp(Color.WHITE, 0.2), 0.35)
+	return true
+
+
+## A card is cast: it pops up past its size and settles (its holder is scaled, about its middle: the card keeps its own
+## scale and pivot), a ring of light and a glow open behind it, sparks rise off it.
+func _cast_pop(card: SpellCard) -> void:
+	if not is_instance_valid(card):
+		return
+	var holder := card.get_parent() as Control
+	if holder != null and not (holder is Container):
+		holder.pivot_offset = holder.size / 2.0
+		var tw := holder.create_tween()
+		tw.tween_property(holder, "scale", Vector2.ONE * 1.14, 0.09).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(holder, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var at := card.get_global_rect().get_center() - scr._fx.global_position
+	var fx := Vfx.make(scr._fx, 70)
+	fx.glow(at, 190.0, Color(1.0, 0.85, 0.45), 0.35)
+	fx.ring(at, 20.0, 150.0, Color(1.0, 0.9, 0.6), 0.32, 6.0)
+	fx.burst(at, 16, Color(1.0, 0.9, 0.6), Vector2(120, 300), Vector2(0.35, 0.7), Vector2(3, 6), Vfx.SPARK, 0.0, PI * 0.8, -PI / 2.0)
+
+
+## The Chant: each marble of the chant row lights up in turn (a glow and a little burst, 50 ms apart), left to right.
+func _chant_glow(chant: String) -> void:
+	var slots := scr._chant_row.get_children().filter(func(c): return c is Control and not c.is_queued_for_deletion())
+	var fx := Vfx.make(scr._fx, 70)
+	for i in mini(chant.length(), slots.size()):
+		var at: Vector2 = (slots[i] as Control).get_global_rect().get_center() - scr._fx.global_position
+		var col: Color = Elements.COLORS.get(chant[i], Color(1.0, 0.9, 0.6)) if Elements.COLORS.has(chant[i]) else Color(1.0, 0.9, 0.6)
+		fx.glow(at, 90.0, col.lerp(Color.WHITE, 0.3), 0.35, i * 0.05)
+		fx.ring(at, 6.0, 46.0, col.lerp(Color.WHITE, 0.4), 0.3, 4.0, i * 0.05)
+		fx.burst(at, 6, col.lerp(Color.WHITE, 0.4), Vector2(60, 180), Vector2(0.25, 0.45), Vector2(2, 5), Vfx.SPARK, i * 0.05)
