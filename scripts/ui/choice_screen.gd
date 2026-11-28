@@ -70,10 +70,9 @@ func _ready() -> void:
 		var card := SpellCard.make(spells[i])
 		card.zoom = big
 		var idx := i
-		card.clicked.connect(func(_c):
-			Juice.pop(get_tree(), Juice.center(card), Color(1.0, 0.85, 0.45), "", true)  # (picked: a burst of light where it was)
-			chosen.emit(idx))
+		card.clicked.connect(func(_c): chosen.emit(idx))  # (no burst of light when a card is picked: the user, 2026-11-27)
 		row.add_child(card)
+		Wiggle.attach(card)  # (alive: it sways; under the mouse it wiggles more and glows; 2026-11-27)
 		_pulse(card, i)
 	for i in artifacts.size():
 		var card := ArtifactCard.make(artifacts[i])
@@ -82,6 +81,7 @@ func _ready() -> void:
 			Juice.pop(get_tree(), Juice.center(card), Color(1.0, 0.85, 0.45), "", true)
 			chosen.emit(idx))
 		row.add_child(card)
+		Wiggle.attach(card)
 		_pulse(card, spells.size() + i)
 	if can_skip:
 		var skip := UiTheme.button("Skip", func(): chosen.emit(-1), 20)

@@ -69,7 +69,11 @@ var _kunai := false  # (the Kunai's own hit: it doesn't count)
 var glow_done := false  # the Glow Stick has gone off this fight
 var pact := 0  # the Blood Pact's Power left this fight
 var thorn_heal := 0.0  # the Thorn Heart's healing not yet given (20% of your Thorns damage, whole points only)
+var _coal := false  # (a Coal Heart heal is going on)
 var mono := false  # this turn's chant is of one colour only (the Monochrome Prism)
+var switch_done := false  # the Switcheroo has worked this fight
+var pending_infuse := 0  # Insight of the Pianist: marbles to pick from your bag into the chant (the screen asks)
+var woke_prev := {}  # card index -> true: woken this turn (Warm Up grows if it then isn't cast)
 var encore := 0  # Ticket of Encore: the next card(s) you cast trigger a second time
 var pending_replace := -1  # a card that replaces itself (Alchemy, Random Things Go!): the screen asks which backpack card
 var hp_loan := 0  # A Daughter's Secret: max HP taken for this fight (given back by finish())
@@ -125,8 +129,8 @@ const MARBLE_MOVES := {
 	"ashling": [{"kind": "attack", "n": 3, "hits": 1}, {"kind": "power", "n": 1, "who": ""}],
 	"iceling": [{"kind": "attack", "n": 3, "hits": 1}, {"kind": "block", "n": 2}],
 }
-const MARBLE_HP := {"leech_bat": 20, "hush_moth": 20, "ashling": 6, "iceling": 6, "zephling": 6}  # (the lings: 6, the user 2026-11-22)
-const MARBLE_FLYERS := ["winged_tortoise", "leech_bat"]  # (the Hush Moth does not fly, the user 2026-11-23)
+const MARBLE_HP := {"leech_bat": 20, "hush_moth": 20, "ashling": 8, "iceling": 8, "zephling": 8}  # (the lings: 8, the user 2026-11-27; the Hush Moth back to its 20, still flying, the user 2026-11-27)
+const MARBLE_FLYERS := ["winged_tortoise", "leech_bat", "hush_moth"]  # (the Hush Moth flies again, the user 2026-11-27: its flying picture in the air, its fallen one when knocked down)
 const LIFESTEAL := ["leech_bat"]  # (its attacks heal it by the HP you lose)
 const BLINDERS := ["mirror_fairy"]  # (while it is in the fight your marbles come out as "?")
 ## Orb HP on intents: a pattern shown over the intent; chant it and the intent is cancelled. The Matron's summoning is
@@ -148,8 +152,9 @@ static func hp_of(id: String, act := 0) -> int:
 ## (rounded, at least 1).
 const ACT1_NERF := 0.7
 ## Act 1 HP set exactly (the user 2026-11-23: no 30% cut on top).
-const ACT1_HP := {"bramble_back": 17, "greenseer": 15, "rolling_bear": 20}
-const NO_NERF := ["ashling", "iceling", "zephling"]  # (the lings are set as they are: 6 HP, hits of 3, the user 2026-11-22)
+const ACT1_HP := {"bramble_back": 17, "greenseer": 15, "rolling_bear": 20,
+	"purple_slime": 14, "green_slime": 14, "yellow_slime": 14}  # (the small slimes: 14, the user 2026-11-27)
+const NO_NERF := ["ashling", "iceling", "zephling"]  # (the lings are set as they are: 8 HP (2026-11-27), hits of 3, the user 2026-11-22)
 
 
 static func _nerf_move(mv: Dictionary) -> void:
@@ -426,6 +431,7 @@ func _recount() -> void:
 		var n := maxi(0, mini(occurrences(String(c.pattern)), rep) - int(casts.get(ci, 0)))
 		if n > 0:
 			charges[ci] = n
+			woke_prev[ci] = true
 			if before == 0 and casts.get(ci, 0) == 0 and _depth == 0 and not _first_wake:
 				extensions += 1
 				if powers.has("random_things_go"):
@@ -633,7 +639,28 @@ func _infuse(n: int) -> void:
 # ------------------------------------------------------------------ casting
 
 func can_cast(ci: int) -> bool:
-	return not over and chanted and int(charges.get(ci, 0)) > 0 and pending_replace < 0
+	return not over and chanted and int(charges.get(ci, 0)) > 0 and pending_replace < 0 and pending_infuse <= 0
+
+
+## Insight of the Pianist: the marbles still in your bag you can pick from (indices into mrun.bag).
+func infuse_choices() -> Array:
+	return draw_pile.duplicate()
+
+
+## Insight of the Pianist: bag marble `i` goes to the end of the chant (an Extension can follow). -1: none.
+func infuse_pick(i: int) -> void:
+	if pending_infuse <= 0:
+		return
+	pending_infuse -= 1
+	if i < 0 or not (i in draw_pile):
+		if pending_infuse <= 0:
+			_recount()
+		return
+	draw_pile.erase(i)
+	_uid += 1
+	chant.append({"c": String(mrun.bag[i].c), "sym": String(mrun.bag[i].get("sym", "")), "src": i, "uid": _uid})
+	_recount()
+	_cancel_intents()
 
 
 func cast(ci: int, target := -1) -> void:
@@ -666,6 +693,8 @@ func cast(ci: int, target := -1) -> void:
 			return
 	if c.p.has("dur"):
 		durab[ci] = durability_left(ci) - 1
+		if int(durab[ci]) <= 0:
+			_on_broken(ci)
 	if c.p.has("cd"):
 		cooldown[ci] = int(c.p.cd) + 1  # (it ticks at the start of your turn: CD 1 = not next turn)
 	if bool(c.power):
@@ -740,6 +769,7 @@ func replace_with(b: int) -> void:
 		durab.erase(ci)
 		grow.erase(ci)
 		power_used.erase(ci)
+		hammered.erase(ci)  # (the new card is whole: the old one's cracks went with it)
 		_ev({"type": "replaced", "ci": ci})
 	pending_replace = -1
 	_recount()
@@ -874,7 +904,7 @@ func _effect_body(c: Dictionary, ci: int, target: int) -> void:
 			var was := t != null and not t.dead()
 			_deal(t, int(p.d) + int(mrun.perm.get("circle_of_life", 0)))
 			if was and t.dead():
-				mrun.perm["circle_of_life"] = int(mrun.perm.get("circle_of_life", 0)) + 10
+				mrun.perm["circle_of_life"] = int(mrun.perm.get("circle_of_life", 0)) + 5  # (+5 a kill, 2026-11-27)
 		"backdraft":
 			if t != null and t.burn > 0:
 				var b := t.burn
@@ -956,11 +986,10 @@ func _effect_body(c: Dictionary, ci: int, target: int) -> void:
 			_apply_burn(t, int(p.burn))
 			if not cast_any:
 				my_power += int(p.power)
-		"glass_cannon":
-			var n := 0
+		"glass_cannon":  # (2026-11-27: so much a marble of the chant, and those marbles are gone for the rest of the fight)
+			_deal(t, int(p.x) * chant.size())
 			for m in chant:
-				n += int(p.x) * (2 if String(m.sym) != "" else 1)
-			_deal(t, n)
+				m["exiled"] = true
 		"ludwigs_inspiration":
 			var pool := []
 			for k in chant.size():
@@ -975,12 +1004,13 @@ func _effect_body(c: Dictionary, ci: int, target: int) -> void:
 					mrun.bag[int(m.src)].sym = sym  # (carved for good)
 			_recount()
 		"alchemy", "random_things_go":
-			if id == "alchemy":  # (random bottles into your free bottle slots)
+			if id == "alchemy":  # (random tickets into your free ticket slots: no bottles any more, the user 2026-11-27)
 				var got := 0
-				for b in mrun.bottle_offer(int(p.x)):
-					if mrun.gain_bottle(String(b)):
+				for k in int(p.x):
+					if mrun.tickets.size() < Tickets.SLOTS:
+						mrun.tickets.append(Tickets.random(mrun.rng))
 						got += 1
-				_ev({"type": "bottles", "n": got})
+				_ev({"type": "bottle", "name": "+%d ticket%s" % [got, "" if got == 1 else "s"] if got > 0 else "Ticket slots full"})
 			if mrun.backpack.size() > 0:
 				pending_replace = ci
 		"over_exertion":
@@ -1003,9 +1033,11 @@ func _effect_body(c: Dictionary, ci: int, target: int) -> void:
 				var b := t.burn
 				t.burn = 0
 				_heal(b * int(p.x) / 100)
-		"iron_maiden":
+		"iron_maiden":  # (2026-11-27: Thorns, then Shield for each Thorns you have)
 			my_thorns += int(p.thorns)
-			_deal(t, int(p.x) * my_thorns)
+			_card_shield(int(p.x) * my_thorns, t)
+		"insight_of_the_pianist":  # (2026-11-27: you open your bag and pick the marble(s) added to the end of your chant)
+			pending_infuse += int(p.x)
 		"nilas_blades":
 			_deal(t, int(p.d), 1 + int(p.x) * dodges_gained)
 		"knivels_innocence":  # (gain x Shield, then x grows by 1 for the run; x starts at 1; no heal since 2026-11-22)
@@ -1308,9 +1340,11 @@ func _apply_burn(t: Foe, n: int, from_card := true) -> void:
 	if mono and from_card:
 		n = int(floor(n * 1.5))
 	_burn(t, n)
-	if run.has_artifact("coal_heart"):
+	if run.has_artifact("coal_heart") and not _coal:  # (one heal per Burn: Pyrophiliac's Burn from that heal must not heal again, forever)
+		_coal = true
 		_art_ev("coal_heart", "+2 HP")
 		_heal(2)
+		_coal = false
 	if triggers.has("adams_fist") and not t.dead():
 		_hit_plain(t, int(MarbleCards.card("adams_fist", int(triggers.adams_fist)).p.x))
 
@@ -1337,7 +1371,7 @@ func _debuff(t: Foe, kind: String, n: int) -> void:
 			_stun(t, n)
 			t.set_meta("stun_free", turn + 1)  # (after a stun it can't be stunned again for a turn)
 	if triggers.has("sadistic_nature"):
-		my_power += n
+		_heal(n)  # (heal, not Power, the user 2026-11-27)
 
 
 ## Shield from a card: the chant's Shield / Wing in order; All-Out turns it into damage instead.
@@ -1512,7 +1546,7 @@ func _start_turn() -> void:
 		if int(m.get("src", -1)) >= 0:
 			if bool(m.get("gone", false)):
 				spent_idx.append(int(m.src))
-			else:
+			elif not bool(m.get("exiled", false)):  # (Glass Cannon took it: gone for the rest of this fight, back in your bag after)
 				used_pile.append(int(m.src))
 	chant.clear()
 	for m in hand:
@@ -1529,11 +1563,12 @@ func _start_turn() -> void:
 		burn -= 1
 		if over:
 			return
-	# Warm Up grows on every turn it wasn't cast
+	# Warm Up grows on every turn it woke but wasn't cast (2026-11-27)
 	for ci in run.cards.size():
-		if String(card(ci).get("id", "")) == "warm_up" and turn > 1 and not cast_prev.has(ci):
+		if String(card(ci).get("id", "")) == "warm_up" and turn > 1 and woke_prev.has(ci) and not cast_prev.has(ci):
 			grow[ci] = int(grow.get(ci, 0)) + int(card(ci).p.x)
 	cast_prev.clear()
+	woke_prev.clear()
 	if turn > 1:
 		_turn_powers()
 		_check_end()
@@ -1717,8 +1752,8 @@ func use_ticket(id: String, arg: Dictionary = {}) -> void:
 		"duplication":
 			var h := int(arg.get("hand", -1))
 			if h >= 0 and h < hand.size():
-				mrun.bag.append({"c": String(hand[h].c), "sym": String(hand[h].get("sym", ""))})
-				_to_hand(mrun.bag.size() - 1)
+				mrun.bag.append({"c": String(hand[h].c), "sym": String(hand[h].get("sym", ""))})  # (into your bag for good: the user, 2026-11-28)
+				draw_pile.insert(randi() % (draw_pile.size() + 1), mrun.bag.size() - 1)  # (and among the marbles still to draw, not out now)
 		"removal":
 			var h := int(arg.get("hand", -1))
 			if h >= 0 and h < hand.size():
@@ -1762,7 +1797,7 @@ func use_ticket(id: String, arg: Dictionary = {}) -> void:
 	_check_end()
 
 
-## Is card `ci` broken (Durability gone, or hammered to pieces)? The Ticket of Fixing mends it.
+## Is card `ci` broken (Durability gone, or hammered to pieces)? The Ticket of Repair mends it.
 func broken(ci: int) -> bool:
 	return durability_left(ci) == 0 or int(hammered.get(ci, 0)) >= HAMMER_BREAKS
 
@@ -1785,6 +1820,15 @@ func _draw_into_hand(n: int) -> void:
 		if draw_pile.is_empty():
 			break
 		_to_hand(int(draw_pile.pop_back()))
+
+
+## The Switcheroo: the first spell of yours that breaks in a fight replaces itself (you choose the backpack card).
+func _on_broken(ci: int) -> void:
+	if switch_done or not run.has_artifact("switcheroo") or mrun.backpack.is_empty() or pending_replace >= 0:
+		return
+	switch_done = true
+	pending_replace = ci
+	_art_ev("switcheroo", "Switcheroo!", -1, true)
 
 
 ## The Cactus Plushie: you can't gain Shield.

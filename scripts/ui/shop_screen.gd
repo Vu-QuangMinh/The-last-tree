@@ -13,6 +13,7 @@ signal quest_changed  # (his favours moved on: save them)
 var on_stage := false
 var edit_allowed := false  # Test mode: F6 turns the shelf layout editor on (see _edit_toggle)
 var intro := true  # (false: back from the wax seal screen, everything is already in place)
+var start_zoomed := false  # (back from a purchase that opened its own screen: still zoomed in on the cart, the user 2026-11-28)
 
 const ART_DIR := "res://assets/Puppet/UI/Characters/Merchant/"
 ## The PDF's ground line (the bottom of the cart's wheels) and its anchor: the whole group is scaled about this point and its ground is put on the stage's floor.
@@ -1145,6 +1146,8 @@ func _ready_stage() -> void:
 	if intro and not _drunk and not roll_in:
 		Audio.play("merchant_greeting")
 	_refresh()
+	if _true_cart and start_zoomed and not intro:
+		_zoom_now.call_deferred()
 
 
 ## Your Leaves: a plaque (the full-size dark bubble frame, thin rim) with the wooden coin stack and the number, bottom right, standing on the Leave button.
@@ -1872,6 +1875,8 @@ func _input(ev: InputEvent) -> void:
 		return
 	if not on_stage or not (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT):
 		return
+	if _covered():
+		return  # (a choice is open over the shop, e.g. a ticket's: its clicks are not buys, 2026-11-28)
 	var mp := get_global_mouse_position()
 	if _true_cart:
 		_cart_click(ev.position)
@@ -2193,6 +2198,20 @@ func _zoom_in() -> void:
 	_set_prices(1.0)
 
 
+## Straight into the zoomed view, no camera move (back from a bag, the wax seal...: you were looking at the cart).
+func _zoom_now() -> void:
+	if not is_inside_tree() or _view == "cart":
+		return
+	_view = "cart"
+	_cam_apply(1.0)
+	_set_overview_ui(false)
+	_zoomed = true
+	_cam_busy = false
+	_back_btn.visible = true
+	_pill2.visible = true
+	_set_prices(1.0, false)
+
+
 func _zoom_out() -> void:
 	if _view != "cart" or _cam_busy:
 		return
@@ -2368,6 +2387,15 @@ func _cart_edit_tick() -> void:
 		var lit: bool = _c_editing and _c_sel != "" and _cat(String(b.get_meta("kind", ""))) == _c_sel
 		for k in _item_parts(b):
 			k.modulate = Color(1.35, 1.3, 1.0) if lit else Color.WHITE
+
+
+## Is a pick / choice screen open over the shop (a ticket's, a bag's)? Then a click is for it, not for the goods.
+func _covered() -> bool:
+	for cls in ["PickOverlay", "ChoiceScreen"]:
+		for n in get_tree().root.find_children("*", cls, true, false):
+			if (n as CanvasItem).is_visible_in_tree():
+				return true
+	return false
 
 
 ## A click: on the cart (overview) it zooms in; zoomed in, a click on a good (the picture, the card, the price) buys it.

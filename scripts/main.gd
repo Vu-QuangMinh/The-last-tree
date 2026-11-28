@@ -94,11 +94,6 @@ func show_menu() -> void:
 	m.play.connect(_new_run)
 	m.continue_run.connect(continue_run)
 	m.codex.connect(open_codex)
-	m.unlocks.connect(func():
-		Audio.play("ui_open_panel")
-		var u := UnlockScreen.new()
-		u.closed.connect(func(): u.queue_free(); show_menu())
-		overlay_layer.add_child(u))
 	m.test_mode.connect(_test_flow.open_test_mode)
 	m.settings.connect(open_settings)
 	m.room_test.connect(_test_flow.start_room_test)
@@ -473,11 +468,6 @@ func _new_fight_screen(f: Fight) -> FightScreen:
 func _on_node(col: int) -> void:
 	var node := run.move_to(col)
 	var kind: String = node.type
-	if kind == "rest":  # (a map saved with the old campfire room: it is An Abandoned Camp now)
-		node["type"] = "event"
-		node["event"] = MapGen.CAMP_EVENT
-		node["forced"] = true
-		kind = "event"
 	if kind == "event":
 		kind = run.resolve_unknown()
 		if kind != "event":
@@ -547,10 +537,12 @@ func _show_shop(stock: Array, first := true) -> void:
 	sh.setup(run, stock)
 	sh.edit_allowed = _test_mode  # (Test mode: F6 = the shelf layout editor)
 	sh.intro = first  # (Puppet Stage: the cart rolls in and the goods are laid out only on arrival, not when coming back from the wax seal)
+	sh.start_zoomed = not first  # (back from a bag, the wax seal or making room: still zoomed in on the cart, the user 2026-11-28)
 	sh.quest = _merchant_quest()
 	sh.quest_changed.connect(_save_quest)
 	sh.leave.connect(show_map)
 	sh.upgrade_requested.connect(func():
+		sh.set_process_input(false)  # (a screen opens over the shop: its own click handling must not eat the clicks meant for it, 2026-11-28)
 		var ids := run.upgradable()
 		var cards := ids.map(func(id): return run.spell(id))
 		var ch := _choice("A wax seal", "Choose a spell. Then choose which Essence of its pattern to seal: it won't be needed any more.", cards, [], false)
@@ -563,8 +555,10 @@ func _show_shop(stock: Array, first := true) -> void:
 			seal.done.connect(func(): _show_shop(stock, false))
 			_swap(seal)))
 	sh.need_room.connect(func(id: String):
+		sh.set_process_input(false)
 		_make_room(id, func(): _show_shop(stock, false), false))
 	sh.bag_opened.connect(func(kind: String):  # (a bag: choose 1 of 3, then back to his cart)
+		sh.set_process_input(false)  # (the marbles / cards lie over his goods: the shop must not take those clicks as buys, the user 2026-11-28)
 		if kind == "marble_bag":
 			_marble_choice("A bag of marbles", "Choose one for your bag.", run.marble_offer(3), func(): _show_shop(stock, false))
 			return
@@ -859,13 +853,13 @@ func _after_fight(f: Fight) -> void:
 		return func(go):
 			await WinBanner.play(overlay_layer, words)
 			go.call()
-	var marbles := kind == "fight" and run.reward_kind() == "marble"  # (a normal fight: a card or a marble, 70 / 30 pseudo-random, the first one a card)
+	var marbles := kind in ["fight", "elite"] and run.reward_kind() == "marble"  # (a normal fight or a mini boss: a card or a marble, 70 / 30 pseudo-random, the first one a card; the mini boss also always gives an artifact, the user 2026-11-27)
 	var offer := [] if marbles else run.spell_offer(3, kind)
-	var title: String = {"fight": "Victory", "elite": "The elite falls: rare cards", "boss": "The boss falls: legendary cards"}.get(kind, "Victory")
+	var title: String = {"fight": "Victory", "elite": "The mini boss falls", "boss": "The boss falls: legendary cards"}.get(kind, "Victory")
 	if marbles:
-		var ms := run.marble_offer(3)
+		var ms := run.marble_offer(3, RunState.ELITE_CARVED if kind == "elite" else RunState.CARVED)  # (a mini boss: carved likelier)
 		steps.append(banner.call("You won a Marble!"))
-		steps.append(func(go): _marble_choice("Victory", "Choose a marble for your bag.", ms, go))
+		steps.append(func(go): _marble_choice(title, "Choose a marble for your bag.", ms, go))
 	if not offer.is_empty():
 		steps.append(banner.call("You won a card!"))
 		steps.append(func(go):
@@ -964,7 +958,7 @@ func _marble_choice(title: String, words: String, ms: Array, go: Callable) -> vo
 	box.add_child(row)
 	for m in ms:
 		var col := VBoxContainer.new()
-		col.alignment = BoxContainer.ALIGNMENT_CENTER
+		col.alignment = BoxContainer.ALIGNMENT_BEGIN  # (the marbles all on one line: their words below, however many lines, the user 2026-11-28)
 		var mv := MarbleView.make(m, 110.0)
 		mv.pressed.connect(func():
 			run.marble_bag.append(m)
@@ -974,6 +968,7 @@ func _marble_choice(title: String, words: String, ms: Array, go: Callable) -> vo
 			go.call())
 		var cc := CenterContainer.new()
 		cc.add_child(mv)
+		Wiggle.attach(mv)  # (alive: it sways; under the mouse it wiggles more and glows; 2026-11-27)
 		col.add_child(cc)
 		var words2: String = "Any colour" if String(m.sym) == "star" else String({"F": "Fire", "W": "Water", "A": "Wind"}[m.c])
 		if String(m.sym) != "" and String(m.sym) != "star":
@@ -1024,15 +1019,13 @@ func _end_run() -> void:
 		_test_flow.show_room_test()
 		return
 	_room_bg = "" if run.won else "screen_defeat"  # (no victory picture yet: the act's)
-	var seeds := run.final_seedlings()
 	if not (is_instance_valid(current) and current.has_meta("result_sfx")):  # (the fight's Defeat sign already played its sound)
 		Audio.play("victory_fanfare" if run.won else "defeat_stinger")
-	Audio.play("seedling_gain")
 	Audio.stop_music()
-	SaveManager.record_run(seeds, run.act, run.kills, run.won)
+	SaveManager.record_run(run.act, run.kills, run.won)
 	SaveManager.clear_run()  # the run is over: nothing to continue
 	var title := "The last tree stands!" if run.won else "The last tree has fallen"
-	var body := "Act %d reached · %d enemies defeated · %d spells learned\n+%d Seedlings (spend them on Unlocks)." % [run.act, run.kills, run.spellbook.size() - 4, seeds]
+	var body := "Act %d reached · %d enemies defeated · %d spells learned" % [run.act, run.kills, run.spellbook.size() - 4]
 	if run.player.death_note != "":
 		body = run.player.death_note + "\n\n" + body
 	var s := _message(title, body, ["Play again", "Main menu"], Color(0.6, 1, 0.5) if run.won else UiTheme.DANGER)

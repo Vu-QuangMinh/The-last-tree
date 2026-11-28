@@ -1081,21 +1081,27 @@ func _anim_event(ev: Dictionary) -> void:
 		"spawn":
 			Audio.play("enemy_spawn")
 			scr._h_hud._sync_views()
-			var cocoon_view: EnemyView = scr._views.get(ev.enemy) if ev.enemy.id == "spider_cocoon" else null
-			if cocoon_view != null:
-				cocoon_view.modulate.a = 0.0  # (no first frame in its place: it is let down from above)
-			scr._h_hud._refresh_all()
-			if cocoon_view != null:
-				var dropped := [false]
-				(func():
-					await _drop_view_in(cocoon_view)
-					dropped[0] = true).call()
-				if scr._spider_away != null:  # the spider follows the cocoon down a second after it
-					await _wait(1.0)
-					await _spider_return(scr._spider_away)
-				while not dropped[0]:
-					await FightWait.frame(scr)
-			await _wait(0.25)
+			var hedge_view: EnemyView = scr._views.get(ev.enemy) if ev.enemy.id == "briar_hedge" and scr.bramble_stage != null and is_instance_valid(scr.bramble_stage) else null
+			if hedge_view != null:
+				scr.bramble_stage.lower(hedge_view)  # (let down from the ceiling on its rope, 1 s; the other hedge comes down beside it)
+				scr._h_hud._refresh_all()
+				await _wait(0.3)
+			else:
+				var cocoon_view: EnemyView = scr._views.get(ev.enemy) if ev.enemy.id == "spider_cocoon" else null
+				if cocoon_view != null:
+					cocoon_view.modulate.a = 0.0  # (no first frame in its place: it is let down from above)
+				scr._h_hud._refresh_all()
+				if cocoon_view != null:
+					var dropped := [false]
+					(func():
+						await _drop_view_in(cocoon_view)
+						dropped[0] = true).call()
+					if scr._spider_away != null:  # the spider follows the cocoon down a second after it
+						await _wait(1.0)
+						await _spider_return(scr._spider_away)
+					while not dropped[0]:
+						await FightWait.frame(scr)
+				await _wait(0.25)
 		"spider_return":
 			await _spider_return(ev.enemy)
 		"meteor":
@@ -2052,6 +2058,7 @@ func _spell_fly(ev: Dictionary) -> void:
 	if ev.spell.has("bottle"):
 		from = scr._bottle_from
 	var op: String = ev.op
+	var cid := String(ev.get("card", ""))
 	var targets: Array = ev.targets
 	var dests := []
 	if not targets.is_empty():
@@ -2063,12 +2070,14 @@ func _spell_fly(ev: Dictionary) -> void:
 			var row := v.hp_point(e.size() / 2) if e.size() > 0 else body
 			if op == "strike" and e.size() > 0:
 				row = v.hp_point(e.size() - 1 if ev.eff.get("from", "right") == "right" else 0)
-			dests.append({"body": body, "row": row})
+			dests.append({"body": body, "row": row, "feet": v.creature.global_position + Vector2(v.creature.size.x / 2.0, v.creature.size.y * 0.95)})
 	elif op in FightScreen.SELF_OPS or (op == "ethereal" and ev.eff.get("target", "") == "scr"):
 		dests.append(_area(scr._player_panel))
 	elif op in SpellFx.CHANT_OPS:
 		dests.append(_area(scr._chant_row))
 	elif op == "draw":
+		if CardFx.has(cid) and src == "":  # (its gust round the card, then the marble's own flight)
+			CardFx.play(scr._fx, cid, from, [], Vector2.ZERO, Vector2.ZERO, 1, _shake, _hitstop)
 		if scr._h_hud._circus_strips() and ev.eff.get("when", "next") != "now":
 			var stash_wait := scr._h_machine._stash_flight(ev, from)  # (Cirus: the Essence slips in behind the tube)
 			await _wait(stash_wait)
@@ -2079,9 +2088,46 @@ func _spell_fly(ev: Dictionary) -> void:
 			return
 		dests = _draw_slots(ev)
 	var player := scr._player_panel.get_global_rect().get_center()
+	for e in targets:  # (each target swings on its rope the way the projectile is going as it lands: the user, 2026-11-28)
+		var tv: EnemyView = scr._views.get(e)
+		if tv != null and is_instance_valid(tv.creature):
+			tv.creature.hit_side = _arrival_side(from, tv.creature.global_position + tv.creature.size / 2.0)
+	if CardFx.has(cid) and src == "" and op != "draw":  # (a marble card: its own effect, made of what it does and its name)
+		var chant := scr._chant_row.get_global_rect().get_center() if scr._chant_row != null and scr._chant_row.is_visible_in_tree() else from + Vector2(0, -200)
+		var cw := CardFx.play(scr._fx, cid, from, dests, player, chant, int(ev.eff.get("n", 1)), _shake, _hitstop, _fx_behind())
+		if cw > 0.0:
+			await _wait(cw)
+		return
 	var wait := SpellFx.play(scr._fx, op, ev.eff, from, dests, col, player, _shake, _hitstop)
 	if wait > 0.0:
 		await _wait(wait)
+
+
+var _fx_back: Control
+
+
+## Which way (+1 right, -1 left) a projectile from `from` is travelling as it reaches `to`, on CardFx's curve (it swings out
+## over the top on the far side, then comes in).
+func _arrival_side(from: Vector2, to: Vector2) -> float:
+	var d := to - from
+	var side := d.orthogonal().normalized()
+	if side.y > 0.0:
+		side = -side
+	var ctrl := (from + to) / 2.0 + side * d.length() * 0.77
+	return 1.0 if to.x - ctrl.x >= 0.0 else -1.0
+
+
+## A layer for effects drawn BEHIND the enemies (a glow, rolling smoke: depth), made once, just under the enemy row.
+func _fx_behind() -> Control:
+	if _fx_back == null or not is_instance_valid(_fx_back):
+		if scr._enemy_row == null or scr._enemy_row.get_parent() != scr:
+			return null
+		_fx_back = Control.new()
+		_fx_back.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_fx_back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		scr.add_child(_fx_back)
+		scr.move_child(_fx_back, scr._enemy_row.get_index())
+	return _fx_back
 
 
 ## Gain Essence: one {body, el, px} per Essence gained, at the very slot it will appear in (the end of the
@@ -2416,7 +2462,7 @@ func _effect_words(e: Dictionary) -> String:
 		"expose":
 			return ""  # the paint splashes say it
 		"shield":
-			return "+%d Shield" % n
+			return "+%d" % n  # (just the number, in blue: the user, 2026-11-28)
 		"heal":
 			return "+%d HP" % n
 		"aegis":
@@ -3289,10 +3335,10 @@ func _artifact_fx(ev: Dictionary) -> void:
 # ------------------------------------------------------------------ 2026-11-27: the light-and-impact pass (see the game-feel-vfx skill)
 
 ## A number that pops: it scales up fast past its size, settles, rises and fades. `big` 0..1 makes it larger and hotter.
-func _pop_number(text: String, at: Vector2, col: Color, big := 0.0) -> void:
+func _pop_number(text: String, at: Vector2, col: Color, big := 0.0, outline := Color(0.12, 0.03, 0.02), outline_px := 12) -> void:
 	var l := UiTheme.heading(text, int(lerpf(44.0, 78.0, clampf(big, 0.0, 1.0))), col)
-	l.add_theme_constant_override("outline_size", 12)
-	l.add_theme_color_override("font_outline_color", Color(0.12, 0.03, 0.02))
+	l.add_theme_constant_override("outline_size", outline_px)
+	l.add_theme_color_override("font_outline_color", outline)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.size = Vector2(240, 90)
 	l.position = at - scr._fx.global_position - l.size / 2.0 + Vector2(randf_range(-18, 18), 0)
@@ -3344,8 +3390,11 @@ func _you_juice(op: String, n: int) -> bool:
 	fx.ring(at, 12.0, 120.0, col.lerp(Color.WHITE, 0.3), 0.35, 7.0)
 	var shape := {"heal": Vfx.CROSS, "shield": Vfx.SHIELD, "thorns": Vfx.THORN, "aegis": Vfx.STAR}[op] as int
 	fx.burst(at, 14, col, Vector2(60, 220), Vector2(0.5, 0.9), Vector2(8, 13), shape, 0.0, PI, -PI / 2.0)
-	var words := {"heal": "+%d", "shield": "+%d Shield", "thorns": "Thorns +%d", "aegis": "+%d Dodge"}[op] as String
-	_pop_number(words % n, at + scr._fx.global_position + Vector2(0, -70), col.lerp(Color.WHITE, 0.2), 0.35)
+	var words := {"heal": "+%d", "shield": "+%d", "thorns": "Thorns +%d", "aegis": "+%d Dodge"}[op] as String  # (Shield: just "+2" in blue with a bold black outline, the user 2026-11-28)
+	if op == "shield":
+		_pop_number(words % n, at + scr._fx.global_position + Vector2(0, -70), Color(0.35, 0.65, 1.0), 0.35, Color.BLACK, 16)
+	else:
+		_pop_number(words % n, at + scr._fx.global_position + Vector2(0, -70), col.lerp(Color.WHITE, 0.2), 0.35)
 	return true
 
 

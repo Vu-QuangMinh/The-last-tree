@@ -434,6 +434,7 @@ func _on_card_clicked(card: SpellCard) -> void:
 		return
 	var spell: Dictionary = card.spell
 	var target := -1
+	var chose := false  # (the player picked a target: then one click casts once)
 	var first: Dictionary = spell.effects[0] if not spell.effects.is_empty() else {}
 	if first.get("target", "") in ["target", "two"]:
 		if _picks_any_essence(first):
@@ -441,6 +442,7 @@ func _on_card_clicked(card: SpellCard) -> void:
 			var got := await _pick_any_essence(spell, true)
 			if got.is_empty():
 				return
+			chose = true
 			target = got[0]
 			_prepicked = {scr.fight.enemies[got[0]]: got[1]}
 		else:
@@ -451,10 +453,27 @@ func _on_card_clicked(card: SpellCard) -> void:
 				target = await _aim(card, _card_point(card), cands, "%s: choose a target  ·  click, or Tab + Enter  ·  right-click to put it back" % spell.name, true)
 				if target < 0:
 					return
+				chose = true
 	scr.busy = true
 	scr.end_confirm = false
 	_casting = true
 	await scr.fight.resolve_spell(spell.id, target)
+	# (the new fight, 2026-11-27: with no target to choose, one click casts its whole Repeatable stack)
+	if not chose and scr.fight is MarbleBridge:
+		var br := scr.fight as MarbleBridge
+		for k in 20:
+			var ci := br._ci(String(spell.id))
+			if br.over or ci < 0 or not br.m.can_cast(ci):
+				break
+			var t2 := -1
+			if first.get("target", "") in ["target", "two"]:
+				var cands2 := scr.fight.target_candidates()
+				if cands2.is_empty() or cands2.size() > _max_picks(spell):
+					break  # (now there is a choice to make: the next click asks)
+				t2 = cands2[0]
+			scr._h_hud._sync_views()
+			scr._h_hud._refresh_all()
+			await scr.fight.resolve_spell(spell.id, t2)
 	_end_casting()
 	if spell.get("power", false):
 		scr._h_hud._build_spells()  # (the Power left the row: the others close up)

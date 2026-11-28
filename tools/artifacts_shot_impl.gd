@@ -30,10 +30,10 @@ func run(p_t: SceneTree) -> void:
 	sheet.add_child(bg)
 	var ids := ["red_token", "blue_token", "green_token", "rainbow_token", "thorn_heart", "carver", "collector", "mysterious_hand",
 		"golden_ticket", "bulwark", "coal_heart", "candy_apple", "dark_heart", "halo", "kunai", "hammer", "glow_stick", "cactus_plushie",
-		"monochrome_prism", "shopping_list", "magician_hat", "leather_glove", "blood_pact", "cursed_book"]
+		"monochrome_prism", "shopping_list", "magician_hat", "leather_glove", "blood_pact", "cursed_book", "switcheroo"]
 	for i in ids.size():
 		var ic := UiSkin.artifact_icon(ids[i], 120.0)
-		ic.position = Vector2(60 + (i % 8) * 230, 60 + (i / 8) * 320)
+		ic.position = Vector2(40 + (i % 9) * 205, 60 + (i / 9) * 320)
 		sheet.add_child(ic)
 		var l := UiTheme.label(String(Artifacts.get_def(ids[i]).name), 20, Color.WHITE)
 		l.position = ic.position + Vector2(-20, 135)

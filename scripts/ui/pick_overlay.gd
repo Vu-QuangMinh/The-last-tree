@@ -105,6 +105,7 @@ func _ready() -> void:
 		cell.mouse_filter = Control.MOUSE_FILTER_STOP
 		cell.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		cell.add_child(views[i])
+		Wiggle.attach(views[i], cell)  # (alive: it sways; under the mouse it wiggles more and glows; 2026-11-27)
 		var ii := i
 		cell.gui_input.connect(func(ev: InputEvent):
 			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:

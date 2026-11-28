@@ -897,6 +897,9 @@ func _refresh_statuses_compact() -> void:
 			holder.add_child(n)
 		var tip: String = Keywords.K.get(id, [0, 0, ""])[2]
 		chip.tooltip_text = b[3] if b.size() > 3 else (Keywords.tooltip(b[0], tip) if tip != "" else String(b[0]))
+		var sid: String = {"evasion": "dodge"}.get(id, id)
+		if scr.fight is MarbleBridge and StatusInfo.has(sid) and b.size() <= 3:  # (the new fight's rules, in its words)
+			chip.tooltip_text = StatusInfo.tip(sid, int(digits) if digits != "" else 0)
 		if chip.hover_tex != null:  # (the board shows the picture big: the little emoji in front of the title goes)
 			var lead := String(b[0]).get_slice(" ", 0)
 			var at := chip.tooltip_text.find(lead + " ")
@@ -1324,22 +1327,35 @@ func _sync_views() -> void:
 	_light_home.clear()  # (a new row: the lights are measured again once it has settled)
 	_lights_from = Engine.get_process_frames()
 	var body_out := false
+	# the Bramble Matron's fight (new rules): she and her two hedges stand together on a stage of their own (BrambleStage)
+	var bram: BrambleStage = BrambleStage.new() if not hm and BrambleStage.wanted(scr.fight.enemies) else null
+	var bram_ids := ["bramble_matron", "briar_hedge"]
+	var matron_at := scr.fight.enemies.find(scr.fight.enemies.filter(func(x): return x.id == "bramble_matron")[0]) if bram != null else -1
+	if bram != null:
+		scr._enemy_row.add_child(bram)
+	scr.bramble_stage = bram
 	if not hm:
 		for e in _row_order:
+			if bram != null and e.id in bram_ids:
+				continue
 			if not (e in live):
 				var gap_slot := Control.new()  # (an enemy that is gone: its place stays empty, nobody moves over)
 				gap_slot.custom_minimum_size = Vector2(float(scr._slot_w.get(e, 300.0)), 1.0)
 				gap_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				gap_slot.set_meta("slot", true)
+				gap_slot.set_meta("for", e)
 				scr._enemy_row.add_child(gap_slot)
 	for e in live:
 		var v := EnemyView.new()
 		v.setup(e, scr.fight)
 		v.clicked.connect(scr._h_input._on_enemy_clicked)
 		v.hp_clicked.connect(scr._h_input._on_hp_clicked)
-		if not hm:
+		if bram != null and e.id in bram_ids:
+			bram.add_view(v, "matron" if e.id == "bramble_matron" else ("left" if scr.fight.enemies.find(e) < matron_at else "right"))
+		elif not hm:
 			scr._enemy_row.add_child(v)
-			scr._enemy_row.move_child(v, _row_order.find(e))
+			if bram == null:
+				scr._enemy_row.move_child(v, _row_order.find(e))
 		elif e.id == "handyman":
 			scr._hm_stage.add_body(v)
 			body_out = true
@@ -1355,6 +1371,25 @@ func _sync_views() -> void:
 		scr._hm_stage.set_real(body_out or scr.fight.enemies.any(func(e): return e.id == "handyman" and e.is_dead()))  # (he is down for good: his plain picture must not stand there again after he has shattered)
 		scr._hm_stage.sync_ghosts(live.map(func(e): return e.id), int(scr.fight.hm.phase), scr.fight)
 	else:
+		if bram != null:  # (the row in its order, the stage where she stands)
+			var k := 0
+			var placed_stage := false
+			for e in _row_order:
+				var node: Node = null
+				if e.id in bram_ids:
+					if placed_stage:
+						continue
+					placed_stage = true
+					node = bram
+				elif scr._views.has(e):
+					node = scr._views[e]
+				else:
+					for c in scr._enemy_row.get_children():
+						if c.has_meta("slot") and c.get_meta("for", null) == e:
+							node = c
+				if node != null and node.get_parent() == scr._enemy_row:
+					scr._enemy_row.move_child(node, mini(k, scr._enemy_row.get_child_count() - 1))
+					k += 1
 		_space_enemy_row()
 
 
@@ -1887,6 +1922,8 @@ func _status_badges() -> Array:
 		out.append(["⚡ Overload %d" % p.overload, Color(1.0, 0.45, 0.3), "overload"])
 	if not p.silenced.is_empty():
 		out.append(["🤐 Silenced", Color(0.8, 0.45, 1.0), "silence"])
+	if int(p.get_meta("power", 0)) > 0:  # (the new fight: your Power, 2026-11-27)
+		out.append(["💪 Power %d" % int(p.get_meta("power", 0)), Color(1.0, 0.6, 0.3), "power"])
 	# every Power you've cast this fight: a badge for the rest of it (hover: what it does)
 	for id in p.used_powers:
 		var sp := scr.fight._find_spell(id)

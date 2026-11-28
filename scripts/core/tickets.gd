@@ -18,31 +18,34 @@ const SHIELD_PCT := 0.5
 const ALL := [
 	{"id": "health", "name": "Ticket of Health", "sym": "heart", "rarity": "common", "use": "any", "desc": "Heal 30% of your max HP."},
 	{"id": "marble", "name": "Marble Ticket", "sym": "marble", "rarity": "common", "use": "any",
-		"desc": "Choose 1 of 3 marbles. It is yours for good (in a fight it also comes out now)."},
+		"desc": "Permanently keep 1 of 3 marbles."},
 	{"id": "shield", "name": "Ticket of Shield", "sym": "shield", "rarity": "common", "use": "fight", "desc": "Gain Shield equal to 50% of your max HP."},
 	{"id": "greater_marble", "name": "Ticket of Greater Marble", "sym": "marbles", "rarity": "rare", "use": "any",
-		"desc": "Choose 2 of 5 marbles. They are yours for good (in a fight they also come out now)."},
+		"desc": "Permanently keep 2 of 5 marbles."},
 	{"id": "duplication", "name": "Ticket of Duplication", "sym": "twins", "rarity": "common", "use": "any",
-		"desc": "Duplicate a marble: in a fight, one of this turn's; outside one, any marble of your bag."},
+		"desc": "Duplicate a marble that you have."},
 	{"id": "timeout", "name": "Ticket of Timeout", "sym": "hourglass", "rarity": "common", "use": "fight",
-		"desc": "Open your backpack: swap cards between it and your active row, then fight on."},
-	{"id": "wax", "name": "Wax Ticket", "sym": "wax", "rarity": "common", "use": "out", "desc": "Add 1 wax seal to a spell."},
+		"desc": "Only in a fight: Open your backpack. You can rearrange your cards."},
+	{"id": "wax", "name": "Wax Ticket", "sym": "wax", "rarity": "common", "use": "any", "desc": "Add 1 wax seal to a spell."},
 	{"id": "blessing", "name": "Ticket of Blessing", "sym": "halo", "rarity": "common", "use": "out", "desc": "Remove one curse from a spell."},
-	{"id": "fixing", "name": "Ticket of Fixing", "sym": "tools", "rarity": "common", "use": "fight", "desc": "Fix a broken spell: it works again, with its full Durability."},
+	{"id": "fixing", "name": "Ticket of Repair", "sym": "tools", "rarity": "common", "use": "fight", "desc": "Restore a spell to full Durability."},  # (the user, 2026-11-28)
 	{"id": "money", "name": "Ticket of Money", "sym": "coins", "rarity": "rare", "use": "any", "desc": "Double your coins."},
 	{"id": "discount", "name": "Ticket of Discount", "sym": "percent", "rarity": "common", "use": "pay",
-		"desc": "In the shop or an event that asks a price: a price in coins is halved; any other price (blood, a curse...) is waived."},
+		"desc": "Get a discount!"},
 	{"id": "carving", "name": "Ticket of Carving", "sym": "chisel", "rarity": "common", "use": "out",
 		"desc": "Carve a plain marble of your bag: choose 1 of 3 symbols."},
-	{"id": "encore", "name": "Ticket of Encore", "sym": "masks", "rarity": "common", "use": "fight", "desc": "The next card you cast triggers a second time."},
+	{"id": "encore", "name": "Ticket of Echo", "sym": "masks", "rarity": "common", "use": "fight", "desc": "The next card you cast triggers a second time."},
 	{"id": "rehearsal", "name": "Ticket of Rehearsal", "sym": "redo", "rarity": "common", "use": "rehearsal",
-		"desc": "In a fight: put back this turn's marbles that are not in the chant and draw as many again. In the shop: new goods on the shelf."},
-	{"id": "upgrade", "name": "Ticket of Upgrade", "sym": "star_up", "rarity": "rare", "use": "out", "desc": "Upgrade one of your cards by one level."},
+		"desc": "Discard and redraw all marbles not in the chant, and reroll the items in the shop."},  # (the user's words, 2026-11-28)
+	{"id": "upgrade", "name": "Ticket of Upgrade", "sym": "star_up", "rarity": "rare", "use": "any", "desc": "Upgrade one of your cards by one level."},
 	{"id": "removal", "name": "Ticket of Removal", "sym": "scissors", "rarity": "common", "use": "any",
-		"desc": "Remove a marble from your bag for good. In a fight: one of this turn's, and another is drawn in its place."},
+		"desc": "Permanently remove a marble and draw another one."},
 	{"id": "mystery", "name": "Mystery Ticket", "sym": "question", "rarity": "common", "use": "any", "desc": "Get 2 random tickets."},
 ]
 
+## (The user's wording, 2026-11-28. Duplication: outside a fight, any marble of your bag; in a fight, one of the marbles
+## out this turn, its copy going into your bag for good (shuffled into what is still to draw). Wax and Upgrade work in a
+## fight too, without saying so. Timeout says "Only in a fight" in its own words, so no use line is added under it.)
 const USE_WORDS := {"fight": "Only in a fight.", "out": "Only outside a fight.", "rehearsal": "In a fight or in the shop.",
 	"pay": "In the shop, or when an event asks a price."}
 

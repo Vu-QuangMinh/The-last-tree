@@ -316,6 +316,7 @@ func _events_page() -> Control:
 const CUSTOM := [  # [id, label, what it shows]
 	["armadillo_fight", "Anxious Armadillo: the fight", "The whole fight (20 Essence, +2 Thorns a turn, he never attacks), then his ending."],
 	["armadillo_end", "Anxious Armadillo: the ending only", "He starts with 1 Essence (Fire): chant one F and his ending plays."],
+	["card_fx", "Card animations", "Three enemies that never die and every card in a list: click a card to watch its animation (nothing is cast)."],
 ]
 
 

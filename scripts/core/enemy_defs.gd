@@ -197,6 +197,9 @@ const E := {
 		"tint": Color(0.78, 0.16, 0.12), "size": 1.3,
 		"moves": [{"kind": "attack", "n": 4}],
 		"flavor": "Hide behind a shield and it only gets angrier."},
+	# the Bramble Matron's Briar Hedge (the new fight makes two, StageFight._hedge_def): an entry of its own, so that
+	# anything that looks an enemy up by id (the Codex, its name...) finds it. Hidden, and never in a fight pool.
+	"briar_hedge": {"hidden": true, "name": "Briar Hedge", "act": 1, "member": true, "tier": 1.0, "hp": "AAA", "moves": [{"kind": "hold"}]},
 	"bramble_matron": {"name": "Bramble Matron", "act": 1, "elite": true, "hp": "WFAWFAW", "walls": 3, "passives": ["briar_walls"],
 		# her own turn (planned when her intent shows): a wall down -> regrow it; both up -> sing / attack, in turn.
 		# Each wall attacks on its own, in this pattern.
@@ -829,7 +832,9 @@ static func describe_move(m: Dictionary, bonus := 0, full := false) -> String:
 		"empower":
 			s = "Empower +%d" % m.n + {"random": " one of them, at random", "samurai": " the Samurai", "all": " every enemy"}.get(m.get("who", "self"), "")
 		"summon":
-			if m.has("list"):
+			if m.has("name"):  # (a summon that names what it calls: the Bramble Matron's own hedges)
+				s = "Call back %d %s" % [m.n, m.name]
+			elif m.has("list"):
 				s = "Call %d %s%s" % [m.n, E[m.list[0]].name, "" if m.n == 1 else "s"]
 			elif m.has("ids"):
 				s = "Call %d of: %s" % [m.n, ", ".join(m.ids.map(func(x): return E[x].name))]

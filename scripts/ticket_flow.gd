@@ -60,6 +60,24 @@ func _use_in_fight(slot: int, id: String, view: TicketView) -> void:
 	var br := fs.fight as MarbleBridge
 	var mf := br.m
 	var arg := {}
+	if id in ["wax", "upgrade"]:  # (they work in a fight too, the user 2026-11-28: as outside one, then this fight takes the change)
+		var before_lv := main.run.card_levels.duplicate()
+		await _use_outside(slot, id, "fight")
+		if not is_instance_valid(fs) or fs.fight.over:
+			return
+		for cid in main.run.card_levels:
+			if int(main.run.card_levels[cid]) != int(before_lv.get(cid, 0)):
+				mf.mrun.levels[cid] = int(main.run.card_levels[cid])  # (the fight's own copy, which goes back to the run when it ends)
+		for cid in mf.run.cards:
+			var pat := String(main.run.spell(String(cid)).get("pattern", ""))
+			if pat != "" and pat != String(MarbleCards.card(String(cid)).get("pattern", "")):
+				mf.mrun.patterns[String(cid)] = pat  # (a new wax seal: the card needs one marble less, now)
+		if mf.chanted:
+			mf._recount()
+		br._b_sync()
+		fs._h_hud._sync_views()
+		fs._h_hud._refresh_all()
+		return
 	match id:
 		"marble", "greater_marble":
 			var n := 3 if id == "marble" else 5
@@ -88,7 +106,7 @@ func _use_in_fight(slot: int, id: String, view: TicketView) -> void:
 			if broken.is_empty():
 				Events.toast.emit("None of your spells is broken", Color(1, 0.8, 0.4))
 				return
-			var got := await PickOverlay.ask(main.overlay_layer, "Fix a spell", "It works again, with its full Durability.",
+			var got := await PickOverlay.ask(main.overlay_layer, "Repair a spell", "Choose a spell: it is restored to full Durability.",
 				broken.map(func(ci): return PickOverlay.spell_view(main.run.spell(String(mf.run.cards[ci])))))
 			if got.is_empty():
 				return

@@ -6,6 +6,9 @@ var enemy_id := ""
 var tint := Color(0.6, 0.6, 0.6)
 var accent := Color(1, 1, 1)
 var big := 1.0
+## Rocks softly on its base like a scenery prop instead of hanging on a rope (the Bramble Matron's hedges, BrambleStage):
+## slow, small, on a rhythm of its own.
+var prop_sway := false
 const DRAWN_ONLY := []  # drawn in code until their new art comes (the Bug Hunter has its art now: BugHunterRig; _draw_bell_head stays as the fallback when its pieces are missing)
 var ground_drop := 0.0  # a flyer: how far (px) below its picture the real ground is (its shadow lies there; set by EnemyView)
 var flash := 0.0
@@ -18,7 +21,9 @@ var _hurt_seen := 0.0
 const SWING_K := 9.0  # the pull back to plumb (a long rope: about two seconds a swing)
 const SWING_DAMP := 1.1  # the air: a push dies down over a few swings
 const SWING_HIT := 0.8  # a hit knocks it back this hard (enough to see it register, not a big swing)
-const SWING_MAX := 0.22
+const SWING_MAX := 0.5  # (room for a hit to swing it visibly sideways, the user 2026-11-28)
+const SWING_PUSH := 2.6  # a hit on a puppet: the sideways push on its rope (times the hit's strength)
+var hit_side := 0.0  # which way the last blow was travelling: +1 rightwards, -1 leftwards (set by the fight screen; 0: away from the middle)
 const ROPE_SWING := 0.3  # the swing, seen from the ceiling: the rope only moves a little, the puppet swings at its end
 var _shake := 0.0  # pixels of jolt, decaying
 var _blink := 0.0  # seconds of white blinking left
@@ -296,7 +301,14 @@ func hit(strength := 1.0) -> void:
 	if not _rig.is_empty() and is_inside_tree():  # (a hand of the Handyman took damage: his body cries)
 		get_tree().call_group("handyman_body", "cry", 1.4)
 	hurt = HURT_TIME
-	_shake = maxf(_shake, 7.0 * strength + 3.0)
+	if _puppet:  # (a puppet swings sideways on its rope, the way the blow was going: no jolt in place, the user 2026-11-28)
+		var side := hit_side if hit_side != 0.0 else (1.0 if global_position.x + size.x / 2.0 > 960.0 else -1.0)
+		var want := -side * SWING_PUSH * clampf(strength, 0.6, 1.8)  # (a negative angle swings it to the right)
+		if signf(_swing_v) != signf(want) or absf(_swing_v) < absf(want):
+			_swing_v = want  # (two calls for one blow don't add up)
+		_shake = maxf(_shake, 1.5)
+	else:
+		_shake = maxf(_shake, 7.0 * strength + 3.0)
 	_blink = maxf(_blink, 0.18 + 0.22 * strength)
 
 
@@ -365,9 +377,7 @@ func _process(d: float) -> void:
 	flash = maxf(0.0, flash - d * 3.0)
 	if _puppet:
 		# the swing: pulled back to plumb, slowed by the air, nudged by a slow breeze of its own, knocked back by a hit
-		if hurt > _hurt_seen + 0.01:
-			_swing_v -= SWING_HIT
-		_hurt_seen = hurt
+		_hurt_seen = hurt  # (the push itself is given in hit(), sideways the way the blow went)
 		var t := Time.get_ticks_msec() / 1000.0
 		var breeze := 0.018 * sin(t * 0.8 + bob) + 0.01 * sin(t * 1.9 + bob * 1.7)
 		_swing_v += (-SWING_K * (_swing_a - breeze) - SWING_DAMP * _swing_v) * d
@@ -971,6 +981,7 @@ var reach := Vector2.ZERO
 var sad_forever := false  # the Handyman's body, once every hand is down: he keeps the crying face (Face.pdf)
 var _sad_tex: Texture2D
 var _fall_tex: Texture2D  # a flyer that has been knocked down
+var _seen_flying := false  # (it has been in the air: only then does not flying mean knocked down)
 var head_gone := false  # the Horseman has thrown his head (set by the fight screen the moment it flies)
 var _thrown_tex: Texture2D  # the Headless Horseman with his head thrown
 const SAMURAI_POSES := ["in_no_kamae", "ko_gasumi", "sha_no_kamae"]
@@ -1313,7 +1324,10 @@ func _draw_art(blink_on: bool) -> void:
 		tex = _pose_tex[_ret_pose]  # (the Retainer acting a move out)
 	if _sad_tex != null and (sad_forever or _sad_t > 0.0):
 		tex = _sad_tex
-	if _fall_tex != null and _enemy != null and not _enemy.flying:
+	var in_air := _enemy != null and bool(_enemy.get_meta("shown_flying", _enemy.flying))  # (the new fight: as the screen shows it, step by step, not as the fight already worked it out)
+	if in_air:
+		_seen_flying = true
+	if _fall_tex != null and _enemy != null and not in_air and _seen_flying:  # (only once it has been in the air: a preview before the fight shows it flying, the user 2026-11-28)
 		tex = _fall_tex
 	if _thrown_tex != null and _enemy != null and (head_gone or (_enemy.has_meta("headless") and not _enemy.intent.get("head", false))):
 		tex = _thrown_tex  # (the head is announced as his next move and thrown with it: after that his hand is empty)
@@ -1348,6 +1362,11 @@ func _draw_art(blink_on: bool) -> void:
 		tip *= ROPE_SWING
 		_art_tip = tip
 		_art_xf = Transform2D(tip, hook) * Transform2D(0.0, org - hook)  # (the rope's anchor rides along with a flyer's drift)
+		if prop_sway:  # (a scenery-like piece: it rocks on its base, slowly, as the props behind it do; a hit still jolts it)
+			var pt := Time.get_ticks_msec() / 1000.0
+			var rock := 0.0075 * sin(pt * 0.28 + bob) + 0.003 * sin(pt * 0.65 + bob * 2.1) + _swing_a * 0.12  # (75% less and half as fast as before: the user 2026-11-27)
+			_art_tip = rock
+			_art_xf = Transform2D(rock, org)
 		draw_set_transform_matrix(_art_xf)
 		# the shadow lies on the floor under the feet and follows the swing: the feet and the head are where the puppet's own transform puts them
 		if not dead and steal_pose <= 0.0 and _dragon == null:  # (carrying a card it hangs in the air: no shadow over the card)

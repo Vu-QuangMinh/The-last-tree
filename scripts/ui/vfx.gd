@@ -30,6 +30,8 @@ class Item:
 	var grow := 0.0  # > 0: size springs up to size1 over this fraction of life, then holds
 	var aspect := 1.0
 	var shape := 0
+	var tex: Texture2D  # (a textured piece, see sprite(): drawn instead of its shape)
+	var face_vel := false  # (a textured piece turned along its flight, its texture's long side up)
 	var rot := 0.0
 	var spin := 0.0
 	var stretch := 0.0
@@ -50,6 +52,7 @@ class Item:
 	var wave := 0.0
 	var head := 0.0
 	var accel := false
+	var swoop := false  # (a mover: shoots out fast, slows at the bend of its curve, speeds up again into the target)
 	var dir := Vector2.RIGHT
 	var on_step: Callable
 	var on_arrive: Callable
@@ -68,6 +71,28 @@ class Item:
 
 
 static var _glow_tex: Texture2D
+static var _texs := {}
+
+
+## A texture from assets/Global/Fx (Kenney's Particle Pack, CC0: white on clear, so any colour tints it), or null.
+static func fx_tex(tex_name: String) -> Texture2D:
+	if not _texs.has(tex_name):
+		var path := "res://assets/Global/Fx/Kenney/%s.png" % tex_name
+		_texs[tex_name] = load(path) if ResourceLoader.exists(path) else null
+	return _texs[tex_name]
+
+
+## One textured piece (flame, smoke, a twirl...): `names` is one texture name or several to pick from at random.
+## It swells from sz*0.6 to sz with an ease-out unless changed, turns slowly, and fades out.
+func sprite(names, pos: Vector2, vel: Vector2, col: Color, life: float, sz: float, additive := true, delay := 0.0) -> Item:
+	var nm: String = names if names is String else String((names as Array).pick_random())
+	var it := part(pos, vel, col, life, sz * 0.6, GLOW, delay)
+	it.tex = fx_tex(nm)
+	it.size1 = sz
+	it.grow = 1.0
+	it.add = additive
+	it.spin = randf_range(-0.8, 0.8)
+	return it
 static var _glyphs: Array = []
 
 var shaker: Callable  # shakes the screen: shaker.call(amount)
@@ -329,6 +354,8 @@ func _process(d: float) -> void:
 		elif it.kind == "mover":
 			var tt := it.t()
 			var e := tt * tt if it.accel else tt * tt * (3.0 - 2.0 * tt)
+			if it.swoop:  # (speed 1.8x at both ends, 0.2x in the middle)
+				e = tt + 0.8 * sin(TAU * tt) / TAU
 			var ctrl := (it.a + it.b) / 2.0 + it.bend
 			var p := it.a.lerp(ctrl, e).lerp(ctrl.lerp(it.b, e), e)
 			if p.distance_squared_to(it.pos) > 0.01:
@@ -398,6 +425,15 @@ func _draw_particle(L: Control, it: Item) -> void:
 	if c.a <= 0.003:
 		return
 	var p := it.pos
+	if it.tex != null:
+		var ang := (it.vel.angle() - PI / 2.0) if it.face_vel and it.vel.length_squared() > 1.0 else it.rot
+		if it.face_vel:  # (stretched along its flight)
+			L.draw_set_transform(p, ang, Vector2(1.0, it.aspect))
+		else:  # (squashed on the screen, e.g. lying flat on the stage floor, and turning within that)
+			L.draw_set_transform_matrix(Transform2D(0.0, Vector2(1.0, it.aspect), 0.0, p) * Transform2D(ang, Vector2.ZERO))
+		L.draw_texture_rect(it.tex, Rect2(-s, -s, s * 2.0, s * 2.0), false, c)
+		L.draw_set_transform_matrix(Transform2D.IDENTITY)
+		return
 	match it.shape:
 		GLOW, SMOKE:
 			_soft(L, p, s, c, it.aspect)

@@ -5,7 +5,6 @@ extends Control
 signal play
 signal continue_run  # pick up the saved run
 signal codex
-signal unlocks
 signal test_mode  # the sandbox: pick enemies and spells, fight, come back
 signal settings
 signal sfx_test  # Dev Mode: listen to the samples of each sound and choose the official one
@@ -108,13 +107,11 @@ func _make_button(pair: Array) -> Button:
 	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	if pair[0] == "Play" or pair[0] == "Continue":
 		UiTheme.use_play_style(b)
-	elif pair[0].begins_with("Unlocks"):
-		UiSkin.seedling_count_button(b, "Unlocks", int(SaveManager.data.seedlings), BTN_FONT if puppet else 26)
 	return b
 
 
 ## Puppet Stage: every button is 80% as tall and 50% as wide as before (170 x 42). Three columns side by side: the main one (Continue, New run,
-## More..., Quit); the one More... opens on its right (Tutorial, How to play, Codex, Unlocks, Settings); and, in Dev Mode, the Dev one at the far right.
+## More..., Quit); the one More... opens on its right (Tutorial, How to play, Codex, Settings); and, in Dev Mode, the Dev one at the far right.
 const BTN := Vector2(119.0, 55.0)  # (2026-11-11: 30% narrower and 30% taller than 170 x 42)
 const BTN_FONT := 17
 const COL_STEP := 140.0  # distance between the columns' middles

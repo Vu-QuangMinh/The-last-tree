@@ -10,7 +10,6 @@ func run(t: SceneTree) -> void:
 	save.data.settings["theme"] = "puppet"
 	if OS.get_environment("SHOT_DEV") != "":
 		save.data.settings["dev_mode"] = true
-	save.data.seedlings = 7
 	var args := OS.get_cmdline_user_args()
 	var out: String = args[0] if args.size() > 0 else "user://"
 	if OS.get_environment("SHOT_RUN") != "":  # a saved run: Continue + New run

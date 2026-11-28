@@ -36,10 +36,11 @@ func _ready() -> void:
 	var cc := CenterContainer.new()
 	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var tv := TicketView.make(id, 150.0)
-	tv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tv.mouse_filter = Control.MOUSE_FILTER_PASS  # (only for the hover: it wiggles more and glows)
 	cc.add_child(tv)
+	Wiggle.attach(tv)
 	box.add_child(cc)
-	var w := UiTheme.label(String(d.get("desc", "")) + ("\n" + String(Tickets.USE_WORDS.get(String(d.get("use", "")), "")) if Tickets.USE_WORDS.has(String(d.get("use", ""))) else ""), 24, Color(0.95, 0.9, 0.8))
+	var w := UiTheme.label(String(d.get("desc", "")) + ("\n" + String(Tickets.USE_WORDS.get(String(d.get("use", "")), "")) if Tickets.USE_WORDS.has(String(d.get("use", ""))) and not String(d.get("desc", "")).begins_with("Only") else ""), 24, Color(0.95, 0.9, 0.8))  # (words that already say where, "Only in a fight: ...": no second line)
 	w.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	w.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	w.custom_minimum_size = Vector2(1000, 0)

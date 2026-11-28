@@ -59,6 +59,95 @@ func _test_custom(id: String) -> void:
 		"armadillo_end":
 			# he starts with a single Essence: one chant, and his ending plays
 			_test_fight(["anxious_armadillo"], spells, func(f: Fight): f.enemies[0].reset_hp("F"))
+		"card_fx":
+			_card_fx_lab()
+
+
+## Test mode's card animation lab (the user, 2026-11-28): a marble fight against three enemies, and every marble card
+## in a list on the right. A click plays that card's animation (CardFx) on the chosen target, from the first card of
+## the row: only the show, nothing is cast, so nobody takes damage or dies. Powers, buffs and chant tricks play on you.
+func _card_fx_lab() -> void:
+	main._test_mode = true
+	main.run = RunState.new()
+	main.run.setup(GameData.db, SaveManager.unlocked_spells(), SaveManager.unlocked_artifacts())
+	main.run.row = 4
+	var f := main.run.make_fight(["iceling", "zephling", "ashling"])
+	var fs := main._new_fight_screen(f)
+	fs.test_mode = true
+	fs.menu_requested.connect(open_test_mode)
+	main._swap(fs)
+	var layer := CanvasLayer.new()
+	layer.layer = 6
+	fs.add_child(layer)
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", UiTheme.panel_box(0.85, 10))
+	panel.position = Vector2(1500, 70)
+	panel.size = Vector2(400, 940)
+	layer.add_child(panel)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	panel.add_child(v)
+	v.add_child(UiTheme.heading("Card animations", 24, UiTheme.ACCENT))
+	var target := [1]  # (which enemy a targeted card aims at: 0 left, 1 middle, 2 right)
+	var tgt_row := HBoxContainer.new()
+	tgt_row.add_theme_constant_override("separation", 6)
+	v.add_child(tgt_row)
+	tgt_row.add_child(UiTheme.label("Target:", 18, Color.WHITE))
+	var tbtns := []
+	for k in 3:
+		var tb := UiTheme.button(["Left", "Middle", "Right"][k], Callable(), 16)
+		tb.toggle_mode = true
+		tb.button_pressed = k == 1
+		tbtns.append(tb)
+		tgt_row.add_child(tb)
+	for k in 3:
+		var kk := k
+		(tbtns[k] as Button).pressed.connect(func():
+			target[0] = kk
+			for j in 3:
+				(tbtns[j] as Button).button_pressed = j == kk)
+	var back := UiTheme.button("Back to Test mode", open_test_mode, 18)
+	v.add_child(back)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(380, 780)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 3)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	var ids: Array = MarbleCards.C.keys()
+	ids.sort_custom(func(a, b): return String(MarbleCards.card(String(a)).name) < String(MarbleCards.card(String(b)).name))
+	for id in ids:
+		var cid := String(id)
+		var c := MarbleCards.card(cid)
+		var fam := CardFx.family(cid)
+		var b := UiTheme.button("%s  ·  %s" % [String(c.name), fam], func(): _card_fx_play(fs, cid, int(target[0])), 16)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.tooltip_text = MarbleCards.text(cid)
+		list.add_child(b)
+
+
+## The lab: card `cid`'s animation, aimed at enemy `t` (or all of them, or you, as the card does).
+func _card_fx_play(fs: FightScreen, cid: String, t: int) -> void:
+	if not is_instance_valid(fs) or not (fs.fight is MarbleBridge):
+		return
+	var br := fs.fight as MarbleBridge
+	var foes: Array = br.alive()
+	if foes.is_empty() or br.loadout.is_empty():
+		return
+	var c := MarbleCards.card(cid)
+	var fx := MarblesFight.fx_of(c)
+	if fx.is_empty():
+		fx = {"op": "passive", "to": "you", "n": 1}
+	var targets := []
+	match String(fx.to):
+		"foe": targets = [foes[clampi(t, 0, foes.size() - 1)]]
+		"all": targets = foes
+	var eff := {"op": String(fx.op), "n": int(fx.n), "target": "self" if String(fx.to) == "you" else "target"}
+	CardFx._last.erase(cid)  # (always its full show, never the quick repeat)
+	fs._anim({"type": "spell_effect", "op": String(fx.op), "eff": eff, "targets": targets, "spell": br.loadout[0], "from_artifact": "", "drawn": [], "card": cid})
 
 
 ## A test fight: the picked enemies against the picked spells, at full HP, then back to the test screen.

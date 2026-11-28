@@ -1,0 +1,4 @@
+rank,id,name,rarity,fights_in,turns_vs_without,damage_vs_without,death_rate_vs_without_pct,score
+1,paper_cut,"Paper Cut",common,32,-2.267,-5.822,-25.43,28.864
+2,spark,"Spark",common,38,-2.040,-9.422,-17.73,21.655
+3,splash,"Splash",common,36,1.085,2.456,5.74,-7.312

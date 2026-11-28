@@ -1,0 +1,95 @@
+card,name,rarity,pattern,runs,avg_steps,win_rate,turns_per_fight,damage_per_fight,steps_vs_control,turns_vs_control,damage_vs_control,score
+(control: starters only),"(control: starters only)",,,450,11.82,0.453,3.99,6.50,0.00,0.00,0.00,0.00
+flicker,"Flicker",common,F,150,11.95,0.387,3.71,6.20,0.13,-0.28,-0.30,0.47
+drop,"Drop",common,W,150,12.27,0.547,4.21,7.85,0.45,0.22,1.34,-0.04
+sharp_wind,"Sharp Wind",common,A,150,12.35,0.580,3.76,6.21,0.52,-0.23,-0.29,0.81
+steam_gun,"Steam Gun",rare,FW,150,12.61,0.693,3.33,5.38,0.78,-0.66,-1.12,1.67
+firelance,"Firelance",common,FA,150,12.40,0.573,3.48,5.71,0.58,-0.52,-0.79,1.25
+smoke_screen,"Smoke Screen",common,WF,150,12.35,0.513,4.28,5.91,0.53,0.28,-0.59,0.36
+wave,"Wave",common,WA,150,12.07,0.413,4.18,6.36,0.25,0.19,-0.14,0.09
+heat_wave,"Heat Wave",common,AF,150,12.46,0.527,3.49,5.69,0.64,-0.50,-0.81,1.30
+sea_sickness,"Sea Sickness",common,AW,150,12.27,0.520,4.28,5.79,0.44,0.28,-0.71,0.30
+tail_wind,"Tail Wind",common,AA,150,12.01,0.487,3.89,6.33,0.18,-0.11,-0.18,0.33
+laser_beam,"Laser Beam",common,FFF,150,11.63,0.353,3.99,6.83,-0.20,-0.00,0.33,-0.26
+steam_engine,"Steam Engine",legendary,FFW,150,11.86,0.373,4.03,6.58,0.04,0.04,0.08,-0.02
+fire_storm,"Fire Storm",common,FFA,150,11.93,0.453,3.99,6.60,0.10,0.00,0.09,0.08
+geyser,"Geyser",common,FWF,150,11.61,0.307,4.06,6.69,-0.21,0.07,0.19,-0.31
+hot_spring,"Hot Spring",common,FWW,150,12.01,0.433,4.21,7.01,0.19,0.21,0.50,-0.12
+elemental_core,"Elemental Core",common,FWA,150,12.43,0.573,3.88,6.19,0.60,-0.11,-0.32,0.78
+pressure_cooker,"Pressure Cooker",common,FAF,150,11.87,0.393,3.84,6.49,0.05,-0.15,-0.02,0.20
+chosen_one,"Chosen One",common,FAW,150,12.12,0.473,3.68,6.09,0.30,-0.31,-0.41,0.69
+updraft,"Updraft",common,FAA,150,12.06,0.527,4.01,6.18,0.24,0.02,-0.32,0.28
+alcohol,"Alcohol",common,WFF,150,10.95,0.233,3.78,7.04,-0.88,-0.21,0.53,-0.77
+cyclone,"Cyclone",common,WFW,150,12.26,0.473,3.90,6.41,0.44,-0.09,-0.09,0.55
+heat_armor,"Heat Armor",common,WFA,150,11.94,0.533,3.67,6.20,0.12,-0.32,-0.31,0.50
+water_gun,"Water Gun",common,WWF,150,11.81,0.420,3.89,6.48,-0.02,-0.10,-0.02,0.09
+ocean,"Ocean",common,WWW,150,11.48,0.400,3.98,6.69,-0.34,-0.01,0.19,-0.37
+rain,"Rain",common,WWA,150,11.65,0.407,4.19,6.63,-0.18,0.20,0.13,-0.40
+set_fire_to_the_rain,"Set Fire to the Rain",common,WAF,150,11.69,0.387,4.05,6.77,-0.13,0.06,0.27,-0.25
+mist,"Mist",common,WAW,150,11.83,0.440,4.11,6.29,0.01,0.12,-0.21,-0.07
+hail,"Hail",common,WAA,150,11.87,0.427,3.84,6.44,0.05,-0.15,-0.07,0.21
+forest_fire,"Forest Fire",common,AFF,150,11.55,0.340,3.96,6.63,-0.28,-0.03,0.12,-0.27
+circle_of_life,"Circle of Life",rare,AFW,150,12.56,0.773,3.29,5.05,0.74,-0.70,-1.45,1.73
+backdraft,"Backdraft",common,AFA,150,11.69,0.373,4.02,6.72,-0.13,0.03,0.22,-0.20
+heed_my_call,"Heed My Call",rare,AWF,150,12.31,0.527,3.72,6.17,0.49,-0.27,-0.33,0.83
+stream,"Stream",rare,AWW,150,11.85,0.420,3.88,6.28,0.03,-0.11,-0.23,0.18
+cold_feet,"Cold Feet",common,AWA,150,11.51,0.393,4.14,6.59,-0.31,0.14,0.08,-0.47
+snuffing_the_candle,"Snuffing the Candle",common,AAF,150,11.97,0.500,3.81,6.27,0.14,-0.18,-0.23,0.37
+refreshing_wind,"Refreshing Wind",common,AAW,150,11.33,0.360,4.05,6.73,-0.50,0.06,0.22,-0.60
+thousand_cuts,"Thousand Cuts",common,AAA,150,11.72,0.413,3.96,6.37,-0.10,-0.03,-0.14,-0.04
+burn_them_all,"Burn Them All",common,FFFF,150,11.88,0.487,3.99,6.30,0.06,-0.00,-0.20,0.10
+primitive_engine,"Primitive Engine",common,FFFW,150,11.47,0.373,4.06,6.71,-0.35,0.06,0.21,-0.45
+all_out,"All-Out",rare,FFFA,150,11.42,0.360,4.08,6.81,-0.40,0.09,0.31,-0.55
+stick_and_carrot,"Stick and Carrot",common,FFWW,150,11.71,0.427,4.07,6.57,-0.12,0.08,0.07,-0.21
+adams_awakening,"Adam's Awakening",rare,FFAW,150,11.57,0.380,4.01,6.47,-0.25,0.02,-0.04,-0.26
+flame_of_vengeance,"Flame of Vengeance",rare,FWFW,150,11.37,0.340,4.11,6.75,-0.46,0.12,0.25,-0.63
+desperate_drop,"Desperate Drop",common,WFFF,150,11.74,0.447,4.04,6.44,-0.08,0.04,-0.06,-0.11
+fervor_of_the_first_apostle,"Fervor of the First Apostle",rare,WFFW,150,11.29,0.287,4.08,6.77,-0.53,0.09,0.27,-0.67
+implosion,"Implosion",common,WFFA,150,11.33,0.360,3.98,6.60,-0.50,-0.02,0.10,-0.50
+gaze_of_the_princess,"Gaze of the Princess",legendary,WFWF,150,11.75,0.413,4.10,6.50,-0.08,0.11,-0.00,-0.18
+carrot_and_stick,"Carrot and Stick",common,WWFF,150,11.56,0.373,4.10,6.73,-0.26,0.10,0.23,-0.41
+ludwigs_passion,"Ludwig's Passion",rare,AFAF,150,11.46,0.347,4.12,6.57,-0.36,0.12,0.06,-0.50
+thunderstorm,"Thunderstorm",rare,AWWA,150,11.55,0.293,4.04,6.79,-0.28,0.05,0.29,-0.38
+stoke_the_fire,"Stoke the Fire",common,AAFF,150,11.34,0.340,4.03,6.70,-0.48,0.04,0.19,-0.56
+curse_of_the_night,"Curse of the Night",rare,AAAW,150,11.57,0.373,4.05,6.75,-0.26,0.06,0.25,-0.36
+aoles_last_wish,"Aole's Last Wish",rare,AAAA,150,11.64,0.333,4.16,6.80,-0.18,0.16,0.30,-0.41
+adams_finger,"Adam's Finger",rare,F,150,11.76,0.360,4.05,6.56,-0.06,0.05,0.06,-0.13
+glass_half_full,"Glass Half Full",common,W,150,10.51,0.260,2.63,6.99,-1.31,-1.36,0.49,-0.04
+air,"Air",common,A,150,11.28,0.320,4.01,6.71,-0.54,0.02,0.20,-0.60
+adams_fist,"Adam's Fist",common,FF,150,12.19,0.553,3.78,6.00,0.37,-0.22,-0.50,0.69
+sadistic_nature,"Sadistic Nature",common,FW,150,12.53,0.640,3.55,5.50,0.70,-0.44,-1.00,1.35
+warm_up,"Warm Up",common,FA,150,12.41,0.607,3.58,5.91,0.59,-0.42,-0.60,1.13
+elizes_hesitation,"Elize's Hesitation",common,WF,150,11.79,0.393,4.04,6.51,-0.03,0.05,0.00,-0.08
+full_glass,"Full Glass",common,WW,150,11.97,0.413,3.55,6.53,0.14,-0.45,0.03,0.58
+nilas_quickstep,"Nila's Quickstep",rare,WA,150,12.56,0.587,3.72,5.07,0.74,-0.27,-1.43,1.30
+energize,"Energize",common,AF,150,11.23,0.300,4.15,6.93,-0.59,0.16,0.43,-0.83
+freeze,"Freeze!",rare,AW,150,12.07,0.493,4.46,6.34,0.25,0.47,-0.17,-0.18
+aoles_magic,"Aole's Magic",common,AA,150,12.33,0.567,3.85,5.78,0.51,-0.14,-0.72,0.79
+rain_of_pain,"Rain of Pain",common,FFF,150,11.25,0.340,4.05,6.57,-0.58,0.06,0.06,-0.65
+pyrophiliac,"Pyrophiliac",common,FFW,150,11.85,0.413,4.03,6.90,0.03,0.04,0.40,-0.09
+sun_burn,"Sun Burn",common,FFA,150,11.92,0.453,3.90,6.55,0.10,-0.10,0.04,0.18
+might_of_the_first_apostle,"Might of the First Apostle",rare,FWF,150,12.01,0.447,4.00,6.45,0.19,0.01,-0.05,0.20
+hot_blood,"Hot Blood",rare,FWW,150,12.02,0.460,3.99,6.27,0.20,-0.01,-0.23,0.25
+glass_cannon,"Glass Cannon",common,FWA,150,12.51,0.667,3.60,5.82,0.69,-0.40,-0.69,1.22
+ludwigs_inspiration,"Ludwig's Inspiration",common,FAF,150,12.34,0.600,3.77,5.51,0.52,-0.23,-1.00,0.94
+alchemy,"Alchemy",common,FAW,150,11.55,0.380,4.13,6.70,-0.28,0.14,0.20,-0.45
+toxic_wind,"Toxic Wind",common,FAA,150,11.94,0.453,3.94,6.15,0.12,-0.06,-0.35,0.24
+over_exertion,"Over Exertion",common,WFF,150,11.44,0.360,4.00,6.64,-0.38,0.01,0.14,-0.42
+a_daughters_secret,"A Daughter's Secret",legendary,WFW,150,9.74,0.213,3.78,7.29,-2.08,-0.22,0.78,-2.02
+random_things_go,"Random Things Go!",rare,WFA,150,11.26,0.333,3.98,6.73,-0.56,-0.01,0.23,-0.60
+borrowed_warmth,"Borrowed Warmth",common,WWF,150,11.67,0.407,4.09,6.60,-0.15,0.09,0.10,-0.26
+endless_well,"Endless Well",rare,WWW,150,11.71,0.427,4.11,6.42,-0.12,0.12,-0.09,-0.22
+iron_maiden,"Iron Maiden",common,WWA,150,12.02,0.573,3.68,6.05,0.20,-0.31,-0.45,0.60
+embracing_the_pain,"Embracing the Pain",common,WAF,150,11.16,0.260,4.03,7.01,-0.66,0.03,0.50,-0.80
+nilas_blades,"Nila's Blades",common,WAW,150,12.03,0.460,3.78,6.38,0.21,-0.21,-0.13,0.45
+knivels_innocence,"Knivel's Innocence",legendary,WAA,150,11.67,0.347,4.08,6.62,-0.16,0.09,0.12,-0.27
+flagellum_of_the_first_apostle,"Flagellum of the First Apostle",rare,AFF,150,11.13,0.280,4.16,6.98,-0.70,0.17,0.48,-0.96
+a_brothers_cluelessness,"A Brother's Cluelessness",common,AFW,150,11.85,0.520,4.17,6.27,0.03,0.17,-0.24,-0.10
+heat_center,"Heat Center",common,AFA,150,11.07,0.300,4.02,6.82,-0.75,0.03,0.32,-0.84
+moth_to_flame,"Moth to Flame",common,AWF,150,11.41,0.407,4.09,6.62,-0.41,0.10,0.12,-0.54
+still_lake,"Still Lake",common,AWW,150,12.01,0.460,4.40,7.74,0.19,0.41,1.24,-0.46
+aoles_grace,"Aole's Grace",common,AWA,150,11.95,0.460,3.63,6.19,0.13,-0.36,-0.31,0.55
+focus_fire,"Focus Fire",common,AAF,150,12.01,0.467,3.89,6.54,0.19,-0.10,0.04,0.28
+gone_like_the_wind,"Gone Like the Wind",common,AAA,150,11.65,0.447,4.15,6.56,-0.17,0.16,0.05,-0.34
+adams_resolve,"Adam's Resolve",rare,F,150,11.40,0.307,4.11,6.83,-0.42,0.11,0.33,-0.60
+whim_of_the_pianist,"Whim of the Pianist",rare,FA,150,12.39,0.640,3.25,5.22,0.57,-0.75,-1.28,1.57

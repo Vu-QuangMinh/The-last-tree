@@ -21,12 +21,12 @@ const C := {
 	"drop": {"p": "W", "n": "Drop", "L": [{"heal": 1, "rep": 2}, {"heal": 1, "rep": 3}, {"heal": 1, "rep": 5}]},
 	"sharp_wind": {"p": "A", "n": "Sharp Wind", "t": true, "L": [{"expose": 1, "rep": 2}, {"expose": 1, "rep": 3}, {"expose": 1, "rep": 5}]},
 	"spark": {"p": "F", "n": "Spark", "t": true, "L": [{"d": 3, "rep": 2}, {"d": 5, "rep": 2}, {"d": 7, "rep": 2}]},
-	"steam_gun": {"p": "FW", "n": "Steam Gun", "t": true, "L": [{"x": 1}, {"x": 3}, {"x": 3}]},
-	"firelance": {"p": "FA", "n": "Firelance", "t": true, "L": [{"burn": 3}, {"burn": 5}, {"burn": 7}]},
+	"steam_gun": {"p": "FW", "n": "Steam Gun", "t": true, "L": [{"x": 1, "dur": 1}, {"x": 1, "dur": 2}, {"x": 1, "dur": 3}]},  # (Durability 1 / 2 / 3, no more damage: 2026-11-27)
+	"firelance": {"p": "FA", "n": "Firelance", "t": true, "L": [{"burn": 2}, {"burn": 3}, {"burn": 4}]},  # (2 / 3 / 4: 2026-11-27)
 	"smoke_screen": {"p": "WF", "n": "Smoke Screen", "t": true, "L": [{"shield": 1, "weak": 1}, {"shield": 3, "weak": 1}, {"shield": 3, "weak": 3}]},
 	"splash": {"p": "W", "n": "Splash", "L": [{"shield": 2, "rep": 2}, {"shield": 3, "rep": 2}, {"shield": 4, "rep": 2}]},
 	"wave": {"p": "WA", "n": "Wave", "L": [{"x": 1}, {"x": 2}, {"x": 3}]},
-	"heat_wave": {"p": "AF", "n": "Heat Wave", "L": [{"burn": 2, "all": true}, {"burn": 4, "all": true}, {"burn": 6, "all": true}]},
+	"heat_wave": {"p": "AF", "n": "Heat Wave", "L": [{"burn": 1, "all": true}, {"burn": 2, "all": true}, {"burn": 3, "all": true}]},  # (1 / 2 / 3: 2026-11-27)
 	"sea_sickness": {"p": "AW", "n": "Sea Sickness", "L": [{"weak": 1, "all": true}, {"weak": 2, "all": true}, {"weak": 3, "all": true}]},
 	"paper_cut": {"p": "A", "n": "Paper Cut", "t": true, "L": [{"d": 1, "expose": 1, "rep": 2}, {"d": 2, "expose": 1, "rep": 2}, {"d": 2, "expose": 2, "rep": 2}]},
 	"tail_wind": {"p": "AA", "n": "Tail Wind", "L": [{"next": 1, "rep": 2}, {"next": 2, "rep": 2}, {"next": 3, "rep": 2}]},
@@ -49,7 +49,7 @@ const C := {
 	"mist": {"p": "WAW", "n": "Mist", "L": [{"weak": 1, "shield": 2, "all": true}, {"weak": 1, "vuln": 1, "shield": 2, "all": true}, {"weak": 2, "vuln": 2, "shield": 2, "all": true}]},
 	"hail": {"p": "WAA", "n": "Hail", "t": true, "L": [{"d": 3}, {"d": 5}, {"d": 7}]},
 	"forest_fire": {"p": "AFF", "n": "Forest Fire", "t": true, "L": [{"burn": 1}, {"burn": 2}, {"burn": 3}]},
-	"circle_of_life": {"p": "AFW", "n": "Circle of Life", "t": true, "L": [{"d": 10, "dur": 1}, {"d": 10, "dur": 3}, {"d": 10}]},
+	"circle_of_life": {"p": "AFW", "n": "Circle of Life", "t": true, "L": [{"d": 3, "dur": 1}, {"d": 3, "dur": 2}, {"d": 3, "dur": 3}]},  # (3 damage, +5 a kill for the run; Durability 1 / 2 / 3: 2026-11-27)
 	"backdraft": {"p": "AFA", "n": "Backdraft", "t": true, "L": [{"x": 2, "cd": 2}, {"x": 2, "cd": 1}, {"x": 2}]},
 	"heed_my_call": {"p": "AWF", "n": "Heed My Call", "power": true, "L": [{"x": 1}, {"x": 2}, {"x": 4}]},
 	"stream": {"p": "AWW", "n": "Stream", "t": true, "L": [{"x": 1, "dur": 3}, {"x": 2, "dur": 3}, {"x": 3, "dur": 3}]},  # (Durability 3, the user 2026-11-22)
@@ -91,7 +91,7 @@ const C := {
 	"sun_burn": {"p": "FFA", "n": "Sun Burn", "t": true, "L": [{"expose": 2}, {"expose": 3}, {"expose": 3, "all": true}]},
 	"might_of_the_first_apostle": {"p": "FWF", "n": "Might of the First Apostle", "t": true, "L": [{"burn": 3, "power": 1}, {"burn": 4, "power": 1}, {"burn": 5, "power": 1}]},
 	"hot_blood": {"p": "FWW", "n": "Hot Blood", "power": true, "L": [{"x": 20}, {"x": 15}, {"x": 10}]},
-	"glass_cannon": {"p": "FWA", "n": "Glass Cannon", "t": true, "L": [{"x": 3, "dur": 1}, {"x": 5, "dur": 1}, {"x": 5, "dur": 2}]},
+	"glass_cannon": {"p": "FWA", "n": "Glass Cannon", "t": true, "L": [{"x": 2, "dur": 1}, {"x": 3, "dur": 1}, {"x": 3, "dur": 2}]},  # (2 a marble, the chant's marbles gone for the fight: 2026-11-27)
 	"ludwigs_inspiration": {"p": "FAF", "n": "Ludwig's Inspiration", "L": [{"x": 2, "dur": 1}, {"x": 4, "dur": 1}, {"x": 4, "dur": 2}]},
 	"alchemy": {"p": "FAW", "n": "Alchemy", "L": [{"x": 1}, {"x": 2}, {"x": 3}]},
 	"toxic_wind": {"p": "FAA", "n": "Toxic Wind", "L": [{"vuln": 1, "weak": 1, "expose": 1, "all": true, "cd": 1}, {"vuln": 1, "weak": 1, "expose": 1, "all": true}, {"vuln": 1, "weak": 1, "expose": 1, "all": true}]},
@@ -100,7 +100,7 @@ const C := {
 	"random_things_go": {"p": "WFA", "n": "Random Things Go!", "power": true, "L": [{"x": 1}, {"x": 2}, {"x": 3}]},
 	"borrowed_warmth": {"p": "WWF", "n": "Borrowed Warmth", "t": true, "L": [{"x": 50, "dur": 1}, {"x": 100, "dur": 1}, {"x": 100, "dur": 2}]},
 	"endless_well": {"p": "WWW", "n": "Endless Well", "power": true, "L": [{}, {}, {}]},
-	"iron_maiden": {"p": "WWA", "n": "Iron Maiden", "t": true, "L": [{"thorns": 1, "x": 3}, {"thorns": 1, "x": 4}, {"thorns": 2, "x": 4}]},
+	"iron_maiden": {"p": "WWA", "n": "Iron Maiden", "L": [{"thorns": 1, "x": 1}, {"thorns": 1, "x": 2}, {"thorns": 2, "x": 2}]},  # (Thorns, then Shield for each Thorns: no damage, 2026-11-27)
 	"embracing_the_pain": {"p": "WAF", "n": "Embracing the Pain", "L": [{"self": 2, "shield": 6}, {"self": 2, "shield": 9}, {"self": 2, "shield": 12}]},
 	"nilas_blades": {"p": "WAW", "n": "Nila's Blades", "t": true, "L": [{"d": 5, "x": 1}, {"d": 5, "x": 2}, {"d": 5, "x": 3}]},
 	"knivels_innocence": {"p": "WAA", "n": "Knivel's Innocence", "L": [{"x": 1, "dur": 3}, {"x": 2, "dur": 3}, {"x": 3, "dur": 3}]},
@@ -114,7 +114,8 @@ const C := {
 	"bite": {"p": "AAW", "n": "Bite", "t": true, "L": [{"d": 4, "heal": 2}, {"d": 6, "heal": 4}, {"d": 8, "heal": 6}]},
 	"gone_like_the_wind": {"p": "AAA", "n": "Gone Like the Wind", "L": [{"dodge": 1, "dur": 1}, {"dodge": 2, "dur": 1}, {"dodge": 2, "dur": 2}]},
 	"adams_resolve": {"p": "F", "n": "Adam's Resolve", "power": true, "L": [{"power": 1}, {"power": 1, "heal": 1}, {"power": 2, "heal": 2}]},
-	"whim_of_the_pianist": {"p": "FA", "n": "Whim of the Pianist", "t": true, "L": [{"x": 4}, {"x": 5}, {"x": 6}]},
+	"whim_of_the_pianist": {"p": "FA", "n": "Whim of the Pianist", "t": true, "L": [{"x": 3, "cd": 1}, {"x": 4, "cd": 1}, {"x": 5, "cd": 1}]},  # (nerfed, the user 2026-11-27)
+	"insight_of_the_pianist": {"p": "AA", "n": "Insight of the Pianist", "L": [{"x": 1}, {"x": 1, "rep": 2}, {"x": 2}]},  # (new, 2026-11-27: infuse a marble of your choice from your bag)
 	"a_brothers_cleverness": {"p": "AFW", "n": "A Brother's Cleverness", "L": [{"dodge": 2, "dur": 2}, {"dodge": 2, "dur": 3}, {"dodge": 2, "dur": 4}]},
 }
 
@@ -125,7 +126,7 @@ const BURN_CARDS := ["flicker", "firelance", "heat_wave", "fire_storm", "forest_
 const DAMAGE_CARDS := ["spark", "paper_cut", "steam_gun", "wave", "laser_beam", "geyser", "elemental_core", "pressure_cooker", "chosen_one", "cyclone",
 	"water_gun", "hail", "circle_of_life", "backdraft", "stream", "snuffing_the_candle", "thousand_cuts", "stick_and_carrot",
 	"implosion", "thunderstorm", "glass_half_full", "adams_fist", "warm_up", "full_glass", "rain_of_pain", "glass_cannon",
-	"iron_maiden", "nilas_blades", "focus_fire", "bite", "whim_of_the_pianist"]
+	"nilas_blades", "focus_fire", "bite", "whim_of_the_pianist"]
 
 static var _texts := {}
 static var _rarity := {}

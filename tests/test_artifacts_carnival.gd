@@ -5,7 +5,7 @@ extends TestCase
 var db := SpellDB.load_from("res://data/spells.json")
 const NEW := ["red_token", "blue_token", "green_token", "rainbow_token", "thorn_heart", "carver", "collector", "mysterious_hand",
 	"golden_ticket", "bulwark", "coal_heart", "candy_apple", "dark_heart", "halo", "kunai", "hammer", "glow_stick", "cactus_plushie",
-	"monochrome_prism", "shopping_list", "magician_hat", "leather_glove", "blood_pact", "cursed_book"]
+	"monochrome_prism", "shopping_list", "magician_hat", "leather_glove", "blood_pact", "cursed_book", "switcheroo"]
 
 
 func _run(seed_v := 5) -> RunState:
@@ -191,3 +191,29 @@ func test_collector_makes_carvings_stronger() -> void:
 	f.chant.append({"c": "F", "sym": "sword", "src": -1, "uid": 0, "frozen": false, "hidden": false})
 	f.do_chant()
 	assert_eq(int(f.dmg_ops[0][1]), 5, "a Sword's 3, +50% (rounded)")
+
+
+func test_switcheroo_replaces_the_first_broken_spell() -> void:
+	var f := _fight(["circle_of_life", "spark"], ["switcheroo"])
+	f.mrun.backpack = ["splash"]
+	_chant(f, "AFW")
+	f.cast(0, 0)
+	assert_eq(f.pending_replace, 0, "Durability 1 ran out: it asks for a backpack card")
+	f.replace_with(0)
+	assert_eq(String(f.run.cards[0]), "splash")
+	assert_eq(String(f.mrun.backpack[0]), "circle_of_life")
+	f.hammered[1] = StageFight.HAMMER_BREAKS - 1
+	f._on_broken(1)
+	assert_eq(f.pending_replace, -1, "only the first one, each fight")
+
+
+func test_circle_of_life_durability() -> void:
+	for lv in 3:
+		assert_eq(int(MarbleCards.card("circle_of_life", lv).p.dur), lv + 1, "Durability 1 / 2 / 3")
+
+
+func test_coal_heart_and_pyrophiliac_do_not_loop() -> void:
+	var f := _fight(["pyrophiliac"], ["coal_heart"])
+	f.triggers["pyrophiliac"] = 0
+	f._apply_burn(f.foes[0], 1)
+	assert_true(f.run.hp > 60, "it healed, and the fight is still going (no endless Burn / heal)")

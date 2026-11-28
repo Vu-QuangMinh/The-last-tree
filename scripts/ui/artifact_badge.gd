@@ -9,7 +9,7 @@ const EMOJI := {"thorn_heart": "💗", "carver": "🔪", "collector": "🧐", "m
 	"bulwark": "🛡", "coal_heart": "❤‍🔥", "candy_apple": "🍎", "dark_heart": "🖤", "kunai": "🗡", "hammer": "🔨",
 	"cactus_plushie": "🌵", "monochrome_prism": "🍧", "shopping_list": "🧾", "magician_hat": "🎩", "leather_glove": "🧤",
 	"blood_pact": "📜", "cursed_book": "📕"}
-const DRAWN := ["red_token", "blue_token", "green_token", "rainbow_token", "halo", "glow_stick"]
+const DRAWN := ["red_token", "blue_token", "green_token", "rainbow_token", "halo", "glow_stick", "switcheroo"]
 const TOKEN_COL := {"red_token": Color(0.9, 0.2, 0.15), "blue_token": Color(0.2, 0.45, 0.95), "green_token": Color(0.25, 0.75, 0.3)}
 
 var id := ""
@@ -37,6 +37,20 @@ func _ready() -> void:
 		l.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(l)
+	if id == "blood_pact":  # (the splash of blood goes OVER the contract's picture)
+		var splash := Control.new()
+		splash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		splash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		splash.draw.connect(func():
+			var c := splash.size / 2.0
+			var r := minf(splash.size.x, splash.size.y) * 0.47
+			var at := c + Vector2(r * 0.14, r * 0.1)
+			for k in 8:
+				var a := TAU * k / 8.0 + 0.4
+				splash.draw_circle(at + Vector2.from_angle(a) * r * (0.13 + 0.06 * (k % 3)), r * (0.05 + 0.03 * (k % 2)), Color(0.72, 0.03, 0.05, 0.95))
+			splash.draw_circle(at, r * 0.15, Color(0.78, 0.04, 0.06))
+			splash.draw_circle(at + Vector2(-r * 0.04, -r * 0.05), r * 0.04, Color(1, 0.6, 0.6, 0.6)))
+		add_child(splash)
 	set_process(id in ["glow_stick", "halo", "rainbow_token", "cursed_book"])  # (these shimmer)
 	resized.connect(queue_redraw)
 
@@ -94,13 +108,18 @@ func _draw() -> void:
 				draw_polyline(PackedVector2Array([p0, p1, p2]), Color(0.5, 1.0, 0.3, 0.22 * glow), w, true)
 			draw_polyline(PackedVector2Array([p0, p1, p2]), Color(0.6, 1.0, 0.35), r * 0.13, true)
 			draw_polyline(PackedVector2Array([p0, p1, p2]), Color(0.95, 1.0, 0.85), r * 0.05, true)
-		"blood_pact":  # (the contract's splash of blood, over the emoji)
-			for k in 7:
-				var a := TAU * k / 7.0 + 0.4
-				draw_circle(c + Vector2(r * 0.18, r * 0.12) + Vector2.from_angle(a) * r * (0.12 + 0.07 * (k % 3)), r * (0.06 + 0.03 * (k % 2)), Color(0.75, 0.05, 0.05, 0.9))
-			draw_circle(c + Vector2(r * 0.18, r * 0.12), r * 0.13, Color(0.8, 0.05, 0.05))
 		"cursed_book":
 			draw_circle(c, r * 0.62, Color(0.6, 0.3, 1.0, 0.12 + 0.08 * sin(_t * 2.5)))
+		"switcheroo":  # (two curved arrows chasing each other round a circle)
+			for k in 2:
+				var a0 := PI * k + 0.35
+				var a1 := a0 + PI - 0.7
+				var col := Color(0.85, 0.2, 0.15) if k == 0 else Color(0.2, 0.45, 0.9)
+				draw_arc(c, r * 0.4, a0, a1, 24, col, r * 0.13, true)
+				var tip := c + Vector2.from_angle(a1) * r * 0.4
+				var dir := Vector2.from_angle(a1 + PI / 2.0)
+				var side := dir.orthogonal()
+				draw_colored_polygon(PackedVector2Array([tip + dir * r * 0.2, tip + side * r * 0.16, tip - side * r * 0.16]), col)
 
 
 ## A fairground token: a brass rim, coloured enamel, a cream star.

@@ -79,7 +79,7 @@ const INFO := {
 	"thorns": ["Thorns", "It gains Thorns: each card that damages it hurts you this much."],
 	"thorns_team": ["Thorns", "Every enemy gains Thorns."],
 	"weak": ["Weaken", "You are Weakened: you deal 50% less."],
-	"expose": ["Expose", "You are Exposed: each attack hit on you deals this much more, until you Cleanse."],
+	"expose": ["Expose", "You are Exposed: each attack hit on you deals this much more. It drops by 1 each turn."],
 	"regen": ["Regenerate", "It heals at the start of its next turns."],
 	"vulnerable": ["Vulnerable", "You take 50% more damage."],
 	"play": ["Playing", "He never attacks. He plays his piece, in real time; if he gets to the end of it, you die."],

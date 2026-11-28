@@ -5,15 +5,15 @@ extends RefCounted
 const ACTS := 3
 const BASE_ACTIVE := 5
 const MAX_ACTIVE := 8
-const SEEDLINGS := {"fight": 3, "elite": 8, "boss": 20}
-const WIN_BONUS := 30
 const REST_HEAL := 0.3
 ## Spell reward odds, Slay the Spire's (their common / uncommon / rare = our Common / Rare / Legendary), per card:
 ## [Common, Rare, Legendary]. A boss always gives Legendary.
 ## Rare: 7.2% a card, so about 1 offer of 3 in 5 (20%) has a Rare (the user, 2026-11-22: "much rarer"; it was 37-40%).
 const RARE_CARD := 0.072
 ## Legendary: 1.7% a card (about 1 offer in 20 has one), elites 2.7% (about 1 in 12) (the user, 2026-11-22).
-const ODDS := {"fight": [1.0 - RARE_CARD - 0.017, RARE_CARD, 0.017], "elite": [1.0 - RARE_CARD - 0.027, RARE_CARD, 0.027], "shop": [1.0 - RARE_CARD - 0.017, RARE_CARD, 0.017]}
+## Mini bosses (elites): Rare 50% likelier than in a normal fight (the user, 2026-11-27).
+const ELITE_RARE := RARE_CARD * 1.5
+const ODDS := {"fight": [1.0 - RARE_CARD - 0.017, RARE_CARD, 0.017], "elite": [1.0 - ELITE_RARE - 0.027, ELITE_RARE, 0.027], "shop": [1.0 - RARE_CARD - 0.017, RARE_CARD, 0.017]}
 ## The Legendary pity counter (it rose 1% with every Common shown) is off since 2026-11-22: flat odds.
 const LEGENDARY_OFFSET_START := 0.0
 const LEGENDARY_STEP := 0.0
@@ -45,7 +45,6 @@ var act := 1
 var map: Array = []
 var row := -1  # -1 = at the start of the act
 var col := 1
-var seedlings := 0
 var kills := 0
 var defeated_ids: Array = []
 var met: Array = []  # enemy ids met this run, oldest first
@@ -395,7 +394,7 @@ func make_fight(enemy_ids: Array) -> Fight:
 	return f
 
 
-## After a won fight: seedlings, codex, healing. Returns ids newly defeated this run.
+## After a won fight: codex, healing. Returns ids newly defeated this run.
 func finish_fight(f: Fight) -> void:
 	var kind := current_kind()
 	if not (kind in ["fight", "elite", "boss"]):
@@ -417,7 +416,6 @@ func finish_fight(f: Fight) -> void:
 	for id in f.defeated:
 		if not (id in defeated_ids):
 			defeated_ids.append(id)
-	seedlings += SEEDLINGS.get(kind, 3)
 	reward_bottle = ""
 	reward_ticket = Tickets.random(rng) if "golden_ticket" in artifacts or rng.randf() < float(Tickets.DROP.get(kind, 0.25)) else ""  # (offered on its own scene: you take it or not; the Golden Ticket: always)
 	if "candy_apple" in artifacts:
@@ -438,7 +436,6 @@ func finish_fight(f: Fight) -> void:
 		if act >= ACTS:
 			over = true
 			won = true
-			seedlings += WIN_BONUS
 		else:
 			act += 1
 			row = -1
@@ -515,6 +512,8 @@ func spell_offer(n := 3, kind := "fight") -> Array:
 			continue  # (yours, already upgraded twice)
 		if id == "whim_of_the_pianist" and marble_bag.filter(func(m): return String(m.sym) != "").size() < 2:
 			continue  # (only once you have 2 carved marbles)
+		if id == "a_daughters_secret" and not _game_won():
+			continue  # (unlocked by beating the game once, the user 2026-11-27)
 		var s := db.get_spell(id)
 		if not s.is_empty() and not s.get("starter", false) and by_rarity.has(s.rarity):  # (never the starters, nor Unique ones)
 			by_rarity[s.rarity].append(s)
@@ -593,6 +592,7 @@ func marble_run() -> MarblesRun:
 	mr.bag = marble_bag
 	mr.artifacts = artifacts.duplicate()  # (the carnival artifacts work in the fight: MarblesFight reads them)
 	mr.slots = active_slots()
+	mr.tickets = tickets  # (the same array: a ticket won in the fight is in your slots at once)
 	mr.start = marble_start
 	marble_start = {}
 	for id in loadout:
@@ -658,13 +658,18 @@ func reward_kind() -> String:
 	return "card" if card else "marble"
 
 
-## Marbles to choose from: carved 70% of the time (a rare carving a quarter as often).
-func marble_offer(n := 3) -> Array:
+## Marbles to choose from: carved 70% of the time (a rare carving a quarter as often); after a mini boss, ELITE_CARVED.
+const CARVED := 0.7
+## Mini bosses: the odds of a carved marble against a plain one 50% higher (the user, 2026-11-27): 7:3 -> 10.5:3, 78%.
+const ELITE_CARVED := CARVED * 1.5 / (CARVED * 1.5 + (1.0 - CARVED))
+
+
+func marble_offer(n := 3, carved := CARVED) -> Array:
 	var out := []
 	var syms := ["sword", "shield", "coin", "heart", "star", "fist", "ghost", "skull", "wing"]  # (Spent is gone, 2026-11-22)
 	for k in n:
 		var m := {"c": ["F", "W", "A"][rng.randi() % 3], "sym": ""}
-		if rng.randf() < 0.7:
+		if rng.randf() < carved:
 			var pool := []
 			for s in syms:
 				for j in (1 if s in ["skull", "wing"] else 4):
@@ -925,21 +930,28 @@ func seal_spell(id: String, idx: int) -> void:
 		return
 	var full: String = spell(id).get("full_pattern", spell(id).pattern)
 	var sl: Array = seals.get(id, [])
-	if idx < 0 or idx >= full.length() or idx in sl:
+	if idx < 0 or idx >= full.length() or idx in sl or String(spell(id).pattern).length() <= MIN_WAX_COST:
 		return
 	sl.append(idx)
 	sl.sort()
 	seals[id] = sl
 
 
-## Spells that still have an Essence left to seal.
+## A spell that costs this many marbles or fewer can never take wax (the user, 2026-11-28): no wax of any kind
+## (Wax Ticket, the Wax Witch, the merchant, fusing, events) brings a spell below 1 marble... nor touches a 1-marble one.
+const MIN_WAX_COST := 1
+
+
+## Spells that can still take a wax seal: they cost more than MIN_WAX_COST marbles.
 func upgradable() -> Array:
-	return spellbook.filter(func(id): return String(spell(id).pattern).length() > 0 and not spell(id).has("patterns"))
+	return spellbook.filter(func(id): return String(spell(id).pattern).length() > MIN_WAX_COST and not spell(id).has("patterns"))
 
 
-## Indices (into the full pattern) of a spell that can still be sealed.
+## Indices (into the full pattern) of a spell that can still be sealed (none once it costs MIN_WAX_COST or less).
 func sealable(id: String) -> Array:
 	var s := spell(id)
+	if String(s.pattern).length() <= MIN_WAX_COST:
+		return []
 	var full: String = s.get("full_pattern", s.pattern)
 	var out := []
 	for i in full.length():
@@ -1035,6 +1047,14 @@ var note_store: Object = null  # (where the note is kept: the SaveManager; a tes
 
 
 static var default_store: Object = null  # (main.gd sets it to the SaveManager at start)
+
+
+## Has the game ever been beaten (a run won)? (Kept in the save: SaveManager's stats.)
+func _game_won() -> bool:
+	var sm := _notes()
+	if sm == null or not ("data" in sm):
+		return false
+	return int((sm.get("data") as Dictionary).get("stats", {}).get("wins", 0)) > 0
 
 
 func _notes() -> Object:
@@ -1154,7 +1174,7 @@ func waxable_spells() -> Array:
 func waxable_spots() -> int:
 	var n := 0
 	for id in waxable_spells():
-		n += sealable(id).size()
+		n += maxi(0, String(spell(id).pattern).length() - MIN_WAX_COST)  # (it can be sealed down to 1 marble, no further)
 	return n
 
 
@@ -1572,14 +1592,6 @@ func pay(price: int) -> bool:
 		return false
 	amber -= price
 	return true
-
-
-## Seedlings banked at the end (the pouch adds a quarter).
-func final_seedlings() -> int:
-	var s := seedlings
-	if "seedling_pouch" in artifacts:
-		s = int(s * (1.0 + Artifacts.num("seedling_pouch", "seedling_pouch" in artifacts_plus)))
-	return s
 
 
 ## Loadout order (press and hold a spell before the fight to move it): the spell at `from` goes to `to`.

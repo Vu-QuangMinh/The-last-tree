@@ -4,20 +4,23 @@ extends RefCounted
 ##   * a 7-column grid, 12 floors, then the boss;
 ##   * 6 paths are walked from the bottom up, each step moving to the same column or a neighbouring one, never
 ##     crossing an existing path; the nodes and links they touch form the map (so paths split and merge);
-##   * floor 1 is all fights, floor 6 is all treasure, floor 12 (before the boss) is all "?" rooms that are always An Abandoned Camp
-##     (the old campfire room is gone: that event is its replacement);
-##   * other rooms are rolled: fight 45%, ? 22%, elite 16%, merchant 5%, with rules:
-##     no elites before floor 5, no elite / merchant right after the same kind on a path, and the rooms a node
-##     branches into are all different kinds.
+##   * floor 1 is all fights, floor 6 is all treasure, floor 12 (before the boss) is all campfires;
+##   * other rooms are rolled with Slay the Spire's odds (the user, 2026-11-27: "they really nailed it"): fight 45%,
+##     ? 22%, elite 16%, campfire 12%, merchant 5%, with its rules: no elites (nor, ours, merchants) before floor 5, no campfire before floor 6
+##     nor on the floor just before the campfire floor, no elite / merchant / campfire right after the same kind on a
+##     path, and the rooms a node branches into are all different kinds.
+## (An Abandoned Camp is its own event, not the campfire, and is kept in reserve for now: the user, 2026-11-27.)
 ## Rows are Arrays of COLS entries: a node Dictionary {type, next: [cols on the next row], col} or null.
 
 const FLOORS := 12
 const COLS := 7
 const PATHS := 6
 const TREASURE_FLOOR := 6
-const WEIGHTS := {"fight": 45.0, "event": 22.0, "elite": 16.0, "shop": 5.0}
-const NO_REPEAT := ["elite", "shop"]
-const CAMP_EVENT := "lost_camp"  # the floor before the boss
+const WEIGHTS := {"fight": 45.0, "event": 22.0, "elite": 16.0, "rest": 12.0, "shop": 5.0}
+const NO_REPEAT := ["elite", "shop", "rest"]
+## At most this many "?" rooms on ANY route, start to boss (the user, 2026-11-28; uncapped, the best route had 5 on
+## most maps, up to 7). "?" rooms over it become fights.
+const MAX_EVENTS := 4
 
 
 static func generate(rng: RandomNumberGenerator) -> Array:
@@ -60,6 +63,7 @@ static func _generate_once(rng: RandomNumberGenerator) -> Array:
 			n.next = [COLS / 2]
 	_assign_types(rows, rng)
 	_unclump(rows)
+	_cap_events(rows)
 	rows.append(boss_row)
 	return rows
 
@@ -87,9 +91,7 @@ static func _assign_types(rows: Array, rng: RandomNumberGenerator) -> void:
 				n.type = "treasure"
 				continue
 			if floor_no == FLOORS:
-				n.type = "event"
-				n["event"] = CAMP_EVENT
-				n["forced"] = true  # (resolve_unknown keeps this event: no fight / treasure / merchant in its place)
+				n.type = "rest"  # (the campfire floor before the boss)
 				continue
 			var parents := _parents(rows, f, n.col)
 			var banned := {}
@@ -103,7 +105,29 @@ static func _assign_types(rows: Array, rng: RandomNumberGenerator) -> void:
 						banned[sib.type] = true
 			if floor_no < 5:
 				banned["elite"] = true
+				banned["shop"] = true  # (no shops before floor 5: too early to have Leaves to spend, the user 2026-11-28)
+			if floor_no < 6 or floor_no == FLOORS - 1:
+				banned["rest"] = true
 			n.type = _roll_from(rng, _spread(rows, f, n.col, WEIGHTS, banned), banned)
+
+
+## No route gets more than MAX_EVENTS "?" rooms: floor by floor, the most "?" rooms any route can have met on the way to
+## each room; a "?" room that would make it more becomes a fight.
+static func _cap_events(rows: Array) -> void:
+	var most := {}
+	for f in rows.size():
+		for n in rows[f]:
+			if n == null:
+				continue
+			var before := 0
+			for p in _parents(rows, f, n.col):
+				before = maxi(before, int(most.get(Vector2i(f - 1, p.col), 0)))
+			if n.type == "event":
+				if before + 1 > MAX_EVENTS:
+					n.type = "fight"
+				else:
+					before += 1
+			most[Vector2i(f, n.col)] = before
 
 
 static func _roll(rng: RandomNumberGenerator, banned: Dictionary) -> String:

@@ -43,7 +43,7 @@ class Foe:
 	var ethereal := 0  # nothing you do can damage it until its next turn
 	var impervious := 0  # no status sticks to it until its next turn
 	var vulnerable := 0  # it takes 50% more (Jab, Arm Bar)
-	var expose := 0  # (the Marbles mode) each hit on it deals this much more; it never goes down
+	var expose := 0  # (the Marbles mode) each hit on it deals this much more; down by 1 at the start of its turn (the user, 2026-11-28)
 	var armor := 0  # (the Marbles mode) each hit on it deals this much less (Expose's opposite)
 	var redirect := false  # (Redirect: its next attack goes at someone else)
 	var smite := 0  # (Smite: your next hit on it also gives it that many times its damage in Burn)
@@ -75,7 +75,7 @@ var foes: Array = []
 var block := 0
 var weak := 0  # you deal 50% less
 var vulnerable := 0  # you take 50% more
-var expose := 0  # (the Marbles mode) each attack hit on you deals this much more; only a Cleanse takes it off
+var expose := 0  # (the Marbles mode) each attack hit on you deals this much more; down by 1 as each enemy phase begins (the user, 2026-11-28)
 var burn := 0  # yours: at the start of your turn you lose that much HP, then it drops by 1
 var silenced := {}  # card index -> turns it can't take dice
 var hammered := {}  # card index -> Hammer hits (HAMMER_BREAKS: broken for the fight)
@@ -231,6 +231,8 @@ const GIANT_SLIME_PICKS := [{"kind": "weak", "n": 3}, {"kind": "vulnerable", "n"
 ## The Greenseer heals first whenever one of his side is hurt (the user, 2026-11-17).
 const GREENSEER_HEAL := {"kind": "heal", "n": 6, "who": ""}
 ## The Bramble Matron's summoning: a card over her, cut by a die of 6; cut, she tries again next turn.
+const MATRON_THORNS := 2  # (her hedges' Thorns, every other turn)
+const MATRON_SHIELD := 5  # (her hedges' Shield, every other turn)
 const MATRON_SPELL := {"id": "matron_call", "name": "Summon", "cut": 6, "text": "She calls a creature onto the stage.", "cast": {"kind": "summon", "ids": MATRON_CALLS, "n": 1}}
 ## The Enraged Rolling Bear gains this much Power each time you gain Shield.
 const BEAR_RAGE := 1
@@ -258,7 +260,13 @@ static func base_hp(id: String) -> int:
 
 func _hedge_def(matron: Dictionary) -> Dictionary:
 	return {"id": "briar_hedge", "name": "Briar Hedge", "act": int(matron.get("act", 1)), "hp": "AAA" if int(matron.walls) <= 3 else "AAAA",
-		"moves": matron.get("wall_moves", [{"kind": "attack", "n": 2}]), "member": true}
+		"moves": [{"kind": "hold"}], "member": true}  # (the hedges don't attack, the user 2026-11-27: they only stand in front of her)
+
+
+## One of your spells has just broken (its Durability ran out, or it was hammered to pieces): MarblesFight answers it
+## (the Switcheroo).
+func _on_broken(_ci: int) -> void:
+	pass
 
 
 ## A new enemy at the end of the row (a summon comes in here too). Returns it.
@@ -383,14 +391,16 @@ func _plan(f: Foe) -> void:
 		f.intent = {"kind": "take_off"}
 		f.es.intent = {"kind": "take_off"}
 		return
-	if f.es.def.has("walls"):  # (the Bramble Matron: nobody else on the stage: she summons (a 6 cuts it); else she grows their Thorns)
-		if alive().any(func(x): return x != f):
-			f.spells.clear()
-			f.intent = {"kind": "thorns_team", "n": 2}
+	if f.es.def.has("walls"):  # (the Bramble Matron, the user 2026-11-27: behind her hedges she gives them Thorns and Shield in turn; with both down she calls them back, next turn, like any intent)
+		f.spells.clear()
+		if f.hedges.any(func(h): return not h.dead()):
+			var shield_turn := f.move_i % 2 == 1
+			f.move_i += 1
+			f.intent = {"kind": "block_team", "n": MATRON_SHIELD} if shield_turn else {"kind": "thorns_team", "n": MATRON_THORNS}
+			f.es.intent = {"kind": "block", "n": MATRON_SHIELD} if shield_turn else {"kind": "thorns_team", "n": MATRON_THORNS}
 		else:
-			f.spells = [MATRON_SPELL.duplicate(true)]
-			f.intent = {"kind": "invoke"}
-		f.es.intent = {"kind": String(f.intent.kind)}
+			f.intent = {"kind": "summon_hedges"}
+			f.es.intent = {"kind": "summon", "n": 2, "name": "Briar Hedges"}
 		return
 	if f.id == "greenseer" and alive().any(func(x): return x.hp < x.max_hp):
 		f.intent = GREENSEER_HEAL
@@ -566,6 +576,9 @@ func end_turn() -> void:
 	flurry = 0  # ("this turn": your turn is over)
 	fire_fist = 0
 	overwhelm = 0
+	if expose > 0:  # (Expose fades by 1 a turn, like Burn: the user, 2026-11-28)
+		CombatLog.line("    your Expose %d -> %d" % [expose, expose - 1])
+		expose -= 1
 	for f: Foe in foes.duplicate():
 		var i := foes.find(f)
 		if f.dead() or over:
@@ -576,6 +589,7 @@ func end_turn() -> void:
 		f.deflect = false
 		f.impervious = maxi(0, f.impervious - 1)
 		f.vulnerable = maxi(0, f.vulnerable - 1)
+		f.expose = maxi(0, f.expose - 1)  # (Expose fades by 1 a turn, like Burn: the user, 2026-11-28)
 		if f.regen_turns > 0:
 			f.regen_turns -= 1
 			var hh := mini(f.regen, f.max_hp - f.hp)
@@ -695,6 +709,23 @@ func _act(f: Foe, m: Dictionary) -> void:
 				if x != f:
 					x.thorns += int(m.n)
 					_ev({"type": "foe_thorns", "foe": foes.find(x), "n": int(m.n)})
+		"block_team":  # (the Bramble Matron shields her hedges)
+			for x: Foe in alive():
+				if x != f and x in f.hedges:
+					x.block += int(m.n)
+					_ev({"type": "foe_block", "foe": foes.find(x), "n": int(m.n)})
+		"summon_hedges":  # (both her hedges are down: she calls them back, the same two, in their places, whole again)
+			if f.hedges.any(func(h): return not h.dead()):
+				return  # (only when both are dead, the user 2026-11-27)
+			for h: Foe in f.hedges:
+				if h.dead():
+					h.hp = h.max_hp
+					h.block = 0
+					h.burn = 0
+					h.thorns = 0
+					h.stun = 0
+					_plan(h)
+					_ev({"type": "spawn", "foe": foes.find(h), "from": i})
 		"burn":
 			burn += int(m.n)
 			_ev({"type": "debuff", "foe": i, "what": "Burn %d" % int(m.n)})
@@ -721,6 +752,8 @@ func _act(f: Foe, m: Dictionary) -> void:
 			if most >= 0:
 				hammered[most] = int(hammered.get(most, 0)) + 1
 				_ev({"type": "debuff", "foe": i, "what": "Hammered: %s %d/%d" % [run.card_at(most).name, hammered[most], HAMMER_BREAKS]})
+				if int(hammered[most]) >= HAMMER_BREAKS:
+					_on_broken(most)
 		"expose":
 			expose += int(m.n)
 			_ev({"type": "debuff", "foe": i, "what": "Exposed"})
@@ -929,6 +962,10 @@ static func intent_text(m: Dictionary, f: Foe = null) -> String:
 			s = "❤ +%d x%d turns" % [int(m.n), int(m.turns)]
 		"thorns_team":
 			s = "🌵 Thorns +%d to all" % int(m.n)
+		"block_team":
+			s = "🛡 +%d Shield to her hedges" % int(m.n)
+		"summon_hedges":
+			s = "📯 Calls her hedges back (next turn)"
 		"burn":
 			s = "🔥 Burn %d" % int(m.n)
 		"silence":

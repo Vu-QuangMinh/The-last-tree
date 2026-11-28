@@ -55,7 +55,6 @@ const ALL := [
 	{"id": "mending_moss", "name": "Mending Moss", "aspect": "Health", "desc": "Heal 1 each turn.", "cost": 40, "starter": false, "pool": "none", "tier": "rare", "icon": "🌿"},
 	# ---- rewards
 	{"id": "scholar_quill", "name": "Scholar's Quill", "aspect": "Rewards", "desc": "Spell rewards: 4 choices.", "cost": 40, "starter": false, "pool": "none", "tier": "rare", "icon": "✒"},
-	{"id": "seedling_pouch", "name": "Seedling Pouch", "aspect": "Rewards", "desc": "+25% Seedlings this run.", "cost": 40, "starter": false, "pool": "none", "tier": "common", "icon": "🌱"},
 	# ---- boss relics: more elements every turn
 	{"id": "heartwood_seed", "name": "Heartwood Seed", "aspect": "Essence income", "desc": "+1 Random each turn.", "cost": 0, "starter": true, "pool": "none", "tier": "legendary", "icon": "🌳"},
 	{"id": "ember_heart", "name": "Ember Heart", "aspect": "Essence income", "desc": "+1 Fire each turn.", "cost": 0, "starter": true, "pool": "none", "tier": "legendary", "icon": "🧡"},
@@ -91,6 +90,7 @@ const ALL := [
 	{"id": "magician_hat", "name": "Magician Hat", "aspect": "Power", "desc": "+1 Power for each empty slot in your active row and each broken card.", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "🎩"},
 	{"id": "leather_glove", "name": "Leather Glove", "aspect": "Spells", "desc": "Your cards with Durability get +1 Durability.", "cost": 0, "starter": true, "pool": "normal", "tier": "common", "icon": "🧤"},
 	{"id": "blood_pact", "name": "Blood Pact", "aspect": "Power", "desc": "-10 max HP when you pick it up. Start each fight with 3 Power; lose 1 of it each time you take damage.", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "📜"},
+	{"id": "switcheroo", "name": "Switcheroo", "aspect": "Spells", "desc": "The first of your spells that breaks in a fight replaces itself: choose a card from your backpack to take its place.", "cost": 0, "starter": true, "pool": "normal", "tier": "rare", "icon": "🔄"},
 	{"id": "cursed_book", "name": "Cursed Book", "aspect": "Boss", "desc": "+1 spell slot and 1 more marble each turn. When you pick it up, a curse lands on 3 of your active spells.", "cost": 0, "starter": true, "pool": "boss", "tier": "legendary", "icon": "📕"},
 ]
 
@@ -125,7 +125,6 @@ const PLUS := {
 	"healing_sap": [4, 6, "Heal 6 after each fight."],
 	"mending_moss": [1, 2, "Heal 2 each turn."],
 	"scholar_quill": [4, 5, "Spell rewards: 5 choices."],
-	"seedling_pouch": [0.25, 0.5, "+50% Seedlings this run."],
 }
 
 

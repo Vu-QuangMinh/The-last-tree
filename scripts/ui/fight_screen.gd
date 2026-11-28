@@ -99,6 +99,7 @@ var _stage: PuppetStage  # Puppet Stage theme: the theatre behind the fight
 var stage_in: PuppetStage
 var stage_flow := false
 var map_mode := false
+var bramble_stage: BrambleStage  # the Bramble Matron's fight: she and her hedges on a stage of their own (FightHud._sync_views)
 var arrive := false
 ## Puppet Stage: the fight is built while the encounter board is still up (the new set of props and the enemies come in behind it). `hold_hud`: the
 ## HUD stays down after the arrival until `release_hud()` (the player pressed "Begin the fight"). `wait_arrival()` waits for that moment.

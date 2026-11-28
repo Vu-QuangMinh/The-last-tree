@@ -327,49 +327,6 @@ static func icon_token(name: String, fallback := "") -> String:
 	return "{icon:%s|%s}" % [name, fallback]
 
 
-## New theme: a Button gets the painted Seedling beside its text (`text` without the old ✿ glyph); otherwise it keeps `plain`.
-static func seedling_button(b: Button, text: String, plain: String, px := 24) -> void:
-	var t := tex("icon_seedling")
-	if t == null:
-		b.text = plain
-		return
-	b.text = text
-	b.icon = t
-	b.expand_icon = false
-	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	b.add_theme_constant_override("icon_max_width", px)
-
-
-## The main menu's "Unlocks (7 <seedling>)": the painted seedling stands inside the bracket, right of the number, which makes room for it (the
-## bracket moves back), a little lower (2 px) than the middle of the button.
-static func seedling_count_button(b: Button, label: String, count: int, px := 26) -> void:
-	var t := tex("icon_seedling")
-	if t == null:
-		b.text = "%s  (%d)" % [label, count]
-		return
-	var font := b.get_theme_font("font")
-	var fs := b.get_theme_font_size("font_size")
-	var head := "%s  (%d" % [label, count]
-	var gap := float(px) + 6.0
-	var space := font.get_string_size(" ", HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-	var pad := " ".repeat(maxi(1, ceili(gap / maxf(space, 1.0))))
-	b.text = head + pad + ")"
-	var ic := TextureRect.new()
-	ic.texture = t
-	ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	ic.size = Vector2(px, px)
-	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	b.add_child(ic)
-	var place := func() -> void:
-		var full := font.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		var x0 := (b.size.x - full) / 2.0
-		var head_w := font.get_string_size(head, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		ic.position = Vector2(x0 + head_w + 3.0, (b.size.y - px) / 2.0 + 2.0)
-	b.resized.connect(place)
-	place.call_deferred()
-
-
 ## An artifact's painted icon (Icon/Artifact/<id>.png) in a square of `px`; null if that artifact has none yet.
 static func artifact_icon(id: String, px: float) -> TextureRect:
 	if ArtifactBadge.has(id) and (tex(id) == null or id == "blood_pact"):  # (Blood Pact: the old painting is not the user's contract)  # (the carnival artifacts, 2026-11-27: their badge drawn in code, until painted art named after the id exists)

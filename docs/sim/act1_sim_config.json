@@ -1,0 +1,15 @@
+{
+	"_note": "Act 1 card simulation settings (tools/act1_sim.gd). Edit and rerun. Missing keys use these defaults.",
+	"runs_per_card": 150,
+	"control_runs_x": 3,
+	"sequence": ["easy", "easy", "easy", "medium", "elite", "medium", "rest", "medium", "hard", "elite", "hard", "rest", "boss"],
+	"rest_heal": 0.3,
+	"start_hp": 50,
+	"test_card_level": 0,
+	"reward_card_chance": 0.7,
+	"max_turns": 30,
+	"cards": [],
+	"score_step": 1.0,
+	"score_turn": 1.0,
+	"score_hp": 0.2
+}

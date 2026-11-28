@@ -110,6 +110,8 @@ func _b_show(s: Dictionary) -> void:
 	player.expose = int(s.get("expose", 0))
 	player.stun_turns = int(s.stunned)
 	player.aegis = int(s.get("dodge", 0))  # (Dodge: the HUD's badge)
+	player.thorns_turn = m.my_thorns  # (your Thorns and your Power: badges of their own, 2026-11-27)
+	player.set_meta("power", m.power_now())
 	var fs: Array = s.foes
 	for i in mini(fs.size(), m.foes.size()):
 		var f: StageFight.Foe = m.foes[i]
@@ -124,8 +126,26 @@ func _b_show(s: Dictionary) -> void:
 		es.weak_turns = int(d.weak)
 		es.stun_turns = int(d.stun)
 		es.thorns = int(d.thorns)
-		es.intent = (d.intent as Dictionary).duplicate(true) if int(d.hp) > 0 else {}
+		es.intent = (d.intent as Dictionary).duplicate(true) if int(d.hp) > 0 and f.id != "briar_hedge" else {}  # (the Bramble Matron's hedges do nothing: no intent)
 		es.set_meta("statuses", _status_words(d))
+		es.set_meta("status_list", _status_list(d))  # (the screen shows them as symbols: StatusInfo)
+		es.set_meta("shown_flying", int(d.get("fly", 0)) > 0)  # (in the air as of THIS step: it falls with the hit that takes its Flying to 0, the user 2026-11-28)
+		es.set_meta("behind_hedges", f.shielded())  # (the Bramble Matron behind her standing hedges: drawn behind them, no HP bar)
+
+
+## An enemy's statuses as [id, number] pairs (StatusInfo ids), in the order they show.
+static func _status_list(d: Dictionary) -> Array:
+	var out := []
+	for k in ["burn", "weak", "vulnerable", "expose", "armor", "thorns", "power", "dodge"]:
+		if int(d.get(k, 0)) > 0:
+			out.append([k, int(d[k])])
+	if int(d.get("fly", 0)) > 0:
+		out.append(["flying", int(d.fly)])
+	if int(d.get("stun", 0)) > 0:
+		out.append(["stun", int(d.stun)])
+	if int(d.get("ethereal", 0)) > 0:
+		out.append(["ethereal", 0])
+	return out
 
 
 static func _status_words(d: Dictionary) -> Array:
@@ -300,11 +320,32 @@ func resolve_spell(id: String, target_idx := -1) -> void:
 	CombatLog.line("  [SCREEN before cast] card \"%s\" shows: \"%s\"" % [String(loadout[ci].get("name", id)), String(loadout[ci].get("desc", ""))])
 	m.cast(ci, target_idx)
 	await _b_play(_b_take(), false)
+	if m.pending_infuse > 0:
+		await _pick_infuse()
 	if m.pending_replace >= 0:
 		await _self_replace()
 	_b_sync()
 	_cl_ui("after cast")
 	_b_after()
+
+
+## Insight of the Pianist: you open your bag and pick the marble(s) added to the end of your chant (the ticket picker).
+func _pick_infuse() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var layer := CanvasLayer.new()
+	layer.layer = 20
+	tree.root.add_child(layer)
+	while m.pending_infuse > 0 and not over:
+		var idx := m.infuse_choices()
+		if idx.is_empty():
+			m.infuse_pick(-1)
+			continue
+		var got := await PickOverlay.ask(layer, "Insight of the Pianist", "Choose a marble from your bag: it joins the end of your chant.",
+			idx.map(func(i): return PickOverlay.marble_view(mrun.bag[int(i)], 72.0)), 1, false)
+		m.infuse_pick(int(idx[int(got[0])]) if not got.is_empty() else -1)
+		_b_sync()
+		await _b_play(_b_take(), false)
+	layer.queue_free()
 
 
 ## Self-replace (Alchemy, Random Things Go!): you pick a backpack card to take the cast card's place (for the run);
@@ -377,6 +418,8 @@ func finish_turn() -> void:
 		before[es] = es.intent.duplicate(true)
 	m.end_turn()
 	await _b_play(_b_take(), true, before)
+	if m.pending_replace >= 0 and not over:  # (the Switcheroo: a spell hammered to pieces in the enemies' turn replaces itself)
+		await _self_replace()
 	_b_show(m.snap())
 	_b_sync()
 	_cl_ui("after enemy phase")
@@ -457,6 +500,9 @@ func _b_play(evs: Array, enemy_phase: bool, intents := {}, finish := true) -> vo
 				var sp: Dictionary = loadout[ci]
 				await anim.call({"type": "spell", "spell": sp})
 				var fx: Dictionary = ev.get("fx", {})
+				var cid := String(m.card(ci).get("id", ""))
+				if fx.is_empty() and CardFx.has(cid):
+					fx = {"op": "passive", "to": "you", "n": 1}  # (a Power: its own calm show too, see CardFx)
 				if not fx.is_empty():
 					var targets := []
 					match String(fx.to):
@@ -477,7 +523,7 @@ func _b_play(evs: Array, enemy_phase: bool, intents := {}, finish := true) -> vo
 							var dm: Dictionary = nd[nd.size() - 1 - dk]
 							var dsym := String(dm.get("sym", ""))
 							drawn.append("?" if dsym == "star" else String(dm.get("c", "F")) + ("|" + dsym if dsym != "" else ""))
-					last_fx = {"type": "spell_effect", "op": String(fx.op), "eff": eff, "targets": targets, "spell": sp, "from_artifact": "", "drawn": drawn}
+					last_fx = {"type": "spell_effect", "op": String(fx.op), "eff": eff, "targets": targets, "spell": sp, "from_artifact": "", "drawn": drawn, "card": cid}
 					await anim.call(last_fx)
 			"fx_again":  # (a card that repeats: its spell effect plays again for each repeat: Focus Fire)
 				if not last_fx.is_empty():

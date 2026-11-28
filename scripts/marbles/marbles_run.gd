@@ -32,6 +32,7 @@ var visited: Array = []  # "row:col" of every room you stood in this act
 var turns := 0  # rooms entered this act
 var artifacts: Array = []  # the run's artifact ids (Artifacts: the carnival set) and old MarbleItems ones
 var slots := 5  # active spell slots (the Magician Hat counts the empty ones)
+var tickets: Array = []  # the run's tickets: the RunState's own array (Alchemy adds to it in the fight)
 var seen: Array = []  # enemies met (so the next fights prefer new ones)
 var won := false
 var patterns := {}  # card id -> its pattern when the main game's run changed it (wax seals, curses, a fusion)

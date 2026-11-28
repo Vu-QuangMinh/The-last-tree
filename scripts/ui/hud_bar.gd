@@ -6,8 +6,6 @@ signal codex_pressed
 
 var run: RunState
 var _label: Label
-var _seed_icon: TextureRect  # New theme: the painted Seedling replaces the ✿ in the line
-var _label2: Label  # ...and the rest of the line, after it
 var _arts: HBoxContainer  # the artifacts, then the bottles: each in its own row with its own frame
 var _art_row: HBoxContainer
 var _bottle_row: HBoxContainer
@@ -44,7 +42,7 @@ func _ready() -> void:
 	if UiSkin.is_puppet() and not get_tree().get_nodes_in_group("fight_screen").is_empty():
 		_art_row.visible = false  # (laid over the stage: the stage's own frames, top left, show the artifacts and the bottles: two frames on top of each other looked wrong)
 		_bottle_row.visible = false
-		_on_stage = true  # (the top frame of the fight screen shows Act, HP, bottles and artifacts: only the Seedlings line and the Codex / Wiki buttons are left here)
+		_on_stage = true  # (the top frame of the fight screen shows Act, HP, bottles and artifacts: only the Codex / Wiki buttons are left here)
 	_label = UiTheme.label("", 20, Color.WHITE)
 	_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var info := HBoxContainer.new()
@@ -55,12 +53,6 @@ func _ready() -> void:
 		_heart.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		info.add_child(_heart)
 	info.add_child(_label)
-	_seed_icon = UiSkin.icon("icon_seedling", 30)
-	if _seed_icon != null:
-		_seed_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		info.add_child(_seed_icon)
-		_label2 = UiTheme.label("", 20, Color.WHITE)
-		info.add_child(_label2)
 	var codex := UiTheme.button("Codex", func(): codex_pressed.emit())
 	var wiki := UiTheme.button(UiTheme.hk("Wiki", "F1"), func():
 		if get_tree().root.has_node("Main"):
@@ -95,16 +87,9 @@ func refresh() -> void:
 	if _on_stage:  # (HP and Act are in the top frame)
 		if _heart != null:
 			_heart.visible = false
-		_label.text = ""
-		if _label2 != null:
-			_label2.text = "%d Seedlings · %d spells · %d slots" % [run.seedlings, run.spellbook.size(), run.active_slots()]
-		else:
-			_label.text = "✿ %d Seedlings · %d spells · %d slots" % [run.seedlings, run.spellbook.size(), run.active_slots()]
-	elif _label2 != null:
-		_label.text = ("" if _heart != null else "♥ ") + "%d / %d     Act %d    " % [p.hp, p.max_hp, run.act]
-		_label2.text = "%d Seedlings     %d spells · %d slots" % [run.seedlings, run.spellbook.size(), run.active_slots()]
+		_label.text = ""  # (no Seedlings, spells or slots line: the user, 2026-11-28)
 	else:
-		_label.text = ("" if _heart != null else "♥ ") + "%d / %d     Act %d     ✿ %d Seedlings     %d spells · %d slots" % [p.hp, p.max_hp, run.act, run.seedlings, run.spellbook.size(), run.active_slots()]
+		_label.text = ("" if _heart != null else "♥ ") + "%d / %d     Act %d" % [p.hp, p.max_hp, run.act]
 	for c in _art_row.get_children() + _bottle_row.get_children():
 		c.queue_free()
 	if _on_stage:

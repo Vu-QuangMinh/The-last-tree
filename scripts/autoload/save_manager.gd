@@ -1,9 +1,7 @@
 extends Node
-## Persistent progress: Seedlings, unlocked spells and artifacts, the codex, settings, stats.
+## Persistent progress: unlocked spells and artifacts, the codex, settings, stats. (Seedlings are gone, 2026-11-28.)
 
 const VERSION := 3
-const SPELL_COST := {"common": 15, "rare": 30, "legendary": 60}
-const POWER_EXTRA := 10
 ## Unlocked from the first run (plus the four starters): commons, some rares, and enough legendaries for the bosses.
 const DEFAULT_SPELLS := ["thorn_dart", "hawks_eye", "ember", "droplet", "whisper", "updraft", "flare",
 	"tide_pool", "fan_the_flames", "steam", "scald", "mist_veil", "rain", "inferno", "glacier",
@@ -11,7 +9,7 @@ const DEFAULT_SPELLS := ["thorn_dart", "hawks_eye", "ember", "droplet", "whisper
 	"spark_word", "spring_word", "breath_word", "firestorm", "storm_front", "leech", "searing_mist",
 	"resonance", "steam_cloud", "tide_thief", "sirens_call", "maelstrom_grasp", "annihilate",
 	"meteor", "tidal_wave", "hurricane", "supernova", "deluge", "grimoire",
-	# the second batch of spells (all but the new Legendaries, which are unlocked with Seedlings)
+	# the second batch of spells (all but the new Legendaries)
 	"drizzle", "breeze", "tinder", "spark_shower", "zephyr", "ashfall", "summoning_word",
 	"smolder", "calm_waters", "still_air", "wisp", "splash", "flame_lash", "steam_burst",
 	"tide_ward", "mist_step", "ember_gust", "rain_song", "whirl", "wild_flame", "wellspring_rite", "gale_call",
@@ -36,7 +34,7 @@ func _init() -> void:
 
 
 func _default() -> Dictionary:
-	return {"version": VERSION, "seedlings": 0, "spells": [], "artifacts": [], "codex": [],
+	return {"version": VERSION, "spells": [], "artifacts": [], "codex": [],
 		"settings": {}, "stats": {"runs": 0, "wins": 0, "best_act": 0, "kills": 0}}
 
 
@@ -56,11 +54,10 @@ func load_game() -> void:
 	if not (parsed is Dictionary):
 		return
 	if int(parsed.get("version", 1)) < VERSION:
-		# older designs: keep the Seedlings, reset unlocks (the spells are different now)
-		data.seedlings = int(parsed.get("seedlings", parsed.get("seeds", 0)))
-		return
+		return  # (older designs: unlocks reset, the spells are different now)
 	for k in parsed:
 		data[k] = parsed[k]
+	data.erase("seedlings")  # (Seedlings are gone: an old save's count is dropped, 2026-11-28)
 
 
 func save_game() -> void:
@@ -113,10 +110,6 @@ func is_unlocked(id: String) -> bool:
 	return id in unlocked_spells()
 
 
-func spell_cost(spell: Dictionary) -> int:
-	return SPELL_COST.get(spell.rarity, 30) + (POWER_EXTRA if spell.power else 0)
-
-
 ## Spells a boss gives you when you first beat it ("unlock_by": its id): unlocks them, returns their names.
 func boss_unlocks(defeated: Array) -> Array:
 	var names := []
@@ -128,16 +121,6 @@ func boss_unlocks(defeated: Array) -> Array:
 	if not names.is_empty():
 		save_game()
 	return names
-
-
-func buy_spell(spell: Dictionary) -> bool:
-	var cost := spell_cost(spell)
-	if is_unlocked(spell.id) or data.seedlings < cost:
-		return false
-	data.seedlings -= cost
-	data.spells.append(spell.id)
-	save_game()
-	return true
 
 
 # ------------------------------------------------------------------ artifacts
@@ -154,16 +137,6 @@ func unlocked_artifacts() -> Array:
 func unlock_artifact(id: String) -> bool:
 	if id in unlocked_artifacts():
 		return false
-	data.artifacts.append(id)
-	save_game()
-	return true
-
-
-func buy_artifact(id: String) -> bool:
-	var a := Artifacts.get_def(id)
-	if a.is_empty() or id in unlocked_artifacts() or data.seedlings < a.cost:
-		return false
-	data.seedlings -= a.cost
 	data.artifacts.append(id)
 	save_game()
 	return true
@@ -249,8 +222,7 @@ func boss_beaten(act: int) -> void:
 		save_game()
 
 
-func record_run(seedlings: int, act_reached: int, kills: int, victory: bool) -> void:
-	data.seedlings += seedlings
+func record_run(act_reached: int, kills: int, victory: bool) -> void:
 	data.stats.runs += 1
 	if victory:
 		data.stats.wins += 1

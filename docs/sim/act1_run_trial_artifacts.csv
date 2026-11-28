@@ -1,0 +1,9 @@
+rank,id,name,rarity,fights_in,turns_vs_without,damage_vs_without,death_rate_vs_without_pct,score
+1,dark_heart,"Dark Heart",common,42,1.123,1.230,-11.73,10.358
+2,green_token,"Green Token",common,31,-0.561,-2.523,-4.38,5.447
+3,glow_stick,"Glow Stick",common,37,-0.698,-1.062,-4.04,4.951
+4,coal_heart,"Coal Heart",common,47,-0.043,-0.174,-1.51,1.589
+5,kunai,"Kunai",common,46,-0.949,-0.902,-0.08,1.209
+6,hammer,"Hammer",common,31,0.404,0.505,2.58,-3.080
+7,leather_glove,"Leather Glove",common,39,0.309,1.085,3.07,-3.595
+8,red_token,"Red Token",common,53,-0.225,-0.741,6.39,-6.015

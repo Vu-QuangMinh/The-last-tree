@@ -19,7 +19,6 @@ func run(t: SceneTree) -> void:
 	var save = root.get_node("SaveManager")
 	save.use_test_file("user://shots_save.json")
 	save.data.codex = ["ashling", "gale_sprite", "stone_knight", "woodcutter", "puddle_slime"]
-	save.data.seedlings = 85
 	if OS.get_environment("SHOT_THEME") != "":
 		UiSkin.set_theme(OS.get_environment("SHOT_THEME"))  # "new" renders the New theme
 	var gd = root.get_node("GameData")
@@ -221,8 +220,6 @@ func run(t: SceneTree) -> void:
 	fz._toggle("water_wall")
 	fz._toggle("inferno")
 	await _shot(fz, "12_fuse", false)
-	var u := UnlockScreen.new()
-	await _shot(u, "08_unlocks")
 	print("shots saved to ", ProjectSettings.globalize_path(out))
 	tree.quit()
 

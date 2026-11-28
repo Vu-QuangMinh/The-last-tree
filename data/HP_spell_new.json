@@ -69,10 +69,10 @@
    "id": "steam_gun",
    "name": "Steam Gun",
    "pattern": "FW",
-   "text": "Deal 1 damage for each Wind marble you own.",
+   "text": "Deal 1 damage for each Wind marble you own. Durability 1.",
    "upgrades": [
-    "Deal 3 damage for each Wind marble you own.",
-    "Deal 3 damage for each Wind marble you own."
+    "Deal 1 damage for each Wind marble you own. Durability 2.",
+    "Deal 1 damage for each Wind marble you own. Durability 3."
    ],
    "notes": "Rare",
    "text_user": "Deal 1 for each wind in your bag",
@@ -85,10 +85,10 @@
    "id": "firelance",
    "name": "Firelance",
    "pattern": "FA",
-   "text": "Apply 3 Burn.",
+   "text": "Apply 2 Burn.",
    "upgrades": [
-    "Apply 5 Burn.",
-    "Apply 7 Burn."
+    "Apply 3 Burn.",
+    "Apply 4 Burn."
    ],
    "text_user": "Apply 3 burn",
    "upgrades_user": [
@@ -146,10 +146,10 @@
    "id": "heat_wave",
    "name": "Heat Wave",
    "pattern": "AF",
-   "text": "Apply 2 Burn to all enemies.",
+   "text": "Apply 1 Burn to all enemies.",
    "upgrades": [
-    "Apply 4 Burn to all enemies.",
-    "Apply 6 Burn to all enemies."
+    "Apply 2 Burn to all enemies.",
+    "Apply 3 Burn to all enemies."
    ],
    "text_user": "Apply 2 burn to all enemy",
    "upgrades_user": [
@@ -489,10 +489,10 @@
    "id": "circle_of_life",
    "name": "Circle of Life",
    "pattern": "AFW",
-   "text": "Deal 10 damage. Each time it kills an enemy, it deals 10 more for the rest of the run. Durability 1.",
+   "text": "Deal 3 damage. Each time it kills an enemy, it deals 5 more for the rest of the run. Durability 1.",
    "upgrades": [
-    "Deal 10 damage. Each time it kills an enemy, it deals 10 more for the rest of the run. Durability 3.",
-    "Deal 10 damage. Each time it kills an enemy, it deals 10 more for the rest of the run."
+    "Deal 3 damage. Each time it kills an enemy, it deals 5 more for the rest of the run. Durability 2.",
+    "Deal 3 damage. Each time it kills an enemy, it deals 5 more for the rest of the run. Durability 3."
    ],
    "notes": "Rare",
    "text_user": "Deal 10 damage. Each time this card kill and enemy, gain 10 more damage permanently. Durability 1",
@@ -1350,10 +1350,10 @@
   {
    "marbles": "Fire, Water",
    "name": "Sadistic Nature",
-   "text": "Apply 1 Vulnerable. This turn, gain 1 Power for each debuff you apply (not Burn).",
+   "text": "Apply 1 Vulnerable. This turn, heal 1 for each debuff you apply (not Burn).",
    "upgrades": [
-    "Apply 2 Vulnerable. This turn, gain 1 Power for each debuff you apply (not Burn).",
-    "Apply 2 Vulnerable to all enemies. This turn, gain 1 Power for each debuff you apply (not Burn)."
+    "Apply 2 Vulnerable. This turn, heal 1 for each debuff you apply (not Burn).",
+    "Apply 2 Vulnerable to all enemies. This turn, heal 1 for each debuff you apply (not Burn)."
    ],
    "notes": "",
    "text_user": "Apply 1 vulnerable to an enemy. Each stack of negative effect you apply, except for burn gives 1 power",
@@ -1365,10 +1365,10 @@
   {
    "marbles": "Fire, Wind",
    "name": "Warm Up",
-   "text": "Deal 0 damage. It grows by 5 each turn you don't cast it (back to 0 once cast).",
+   "text": "Deal 0 damage. It grows by 5 each turn it wakes and you don't cast it (back to 0 once cast).",
    "upgrades": [
-    "Deal 0 damage. It grows by 10 each turn you don't cast it (back to 0 once cast).",
-    "Deal 0 damage. It grows by 15 each turn you don't cast it (back to 0 once cast)."
+    "Deal 0 damage. It grows by 10 each turn it wakes and you don't cast it (back to 0 once cast).",
+    "Deal 0 damage. It grows by 15 each turn it wakes and you don't cast it (back to 0 once cast)."
    ],
    "notes": "",
    "text_user": "Deal: 0 damage. Every turn you do not trigger this spell. It gains 5 damage",
@@ -1542,10 +1542,10 @@
   {
    "marbles": "Fire, Water, Wind",
    "name": "Glass Cannon",
-   "text": "Deal 3 damage for each marble in your chant (twice that for a carved one). Durability 1.",
+   "text": "Deal 2 damage for each marble in your chant. Those marbles are gone for the rest of this fight. Durability 1.",
    "upgrades": [
-    "Deal 5 damage for each marble in your chant (twice that for a carved one). Durability 1.",
-    "Deal 5 damage for each marble in your chant (twice that for a carved one). Durability 2."
+    "Deal 3 damage for each marble in your chant. Those marbles are gone for the rest of this fight. Durability 1.",
+    "Deal 3 damage for each marble in your chant. Those marbles are gone for the rest of this fight. Durability 2."
    ],
    "notes": "",
    "text_user": "Deal 3 damage per marble in your chant. Double for carved marble. Durability 1",
@@ -1572,10 +1572,10 @@
   {
    "marbles": "Fire, Wind, Water",
    "name": "Alchemy",
-   "text": "Get 1 random bottle. Self-replace.",
+   "text": "Get 1 random ticket. Self-replace.",
    "upgrades": [
-    "Get 2 random bottles. Self-replace.",
-    "Get 3 random bottles. Self-replace."
+    "Get 2 random tickets. Self-replace.",
+    "Get 3 random tickets. Self-replace."
    ],
    "notes": "",
    "text_user": "Give you a random bottle. Self replace (with another spell in your backpack, you choose)",
@@ -1622,7 +1622,7 @@
     "Lose 15 max HP (it can kill you). Apply 1 Stun.",
     "Lose 10 max HP (it can kill you). Apply 1 Stun."
    ],
-   "notes": "Legendary",
+   "notes": "Rare. Unlocked by beating the game once (2026-11-27).",
    "text_user": "Reduce your max HP by 20 for this fight. Stun 1 (can be lethal)",
    "upgrades_user": [
     "Reduce your max HP by 15 for this fight. Stun 1 (can be lethal)",
@@ -1674,10 +1674,10 @@
   {
    "marbles": "Water, Water, Wind",
    "name": "Iron Maiden",
-   "text": "Gain 1 Thorns. Deal 3 damage for each Thorns you have.",
+   "text": "Gain 1 Thorns. Gain 1 Shield for each Thorns you have.",
    "upgrades": [
-    "Gain 1 Thorns. Deal 4 damage for each Thorns you have.",
-    "Gain 2 Thorns. Deal 4 damage for each Thorns you have."
+    "Gain 1 Thorns. Gain 2 Shield for each Thorns you have.",
+    "Gain 2 Thorns. Gain 2 Shield for each Thorns you have."
    ],
    "notes": "",
    "text_user": "Gain 1 thorn. Deal damage equal to 3 times your thorn",
@@ -1778,10 +1778,10 @@
   {
    "marbles": "Wind, Water, Fire",
    "name": "Moth to Flame",
-   "text": "Choose a burning enemy: this turn, every attack (the enemies' too) hits it. Durability 1.",
+   "text": "Choose a burning enemy. This turn, redirect all attacks toward it. Durability 1.",
    "upgrades": [
-    "Apply 1 Burn. Then choose a burning enemy: this turn, every attack (the enemies' too) hits it. Durability 1.",
-    "Apply 1 Burn. Then choose a burning enemy: this turn, every attack (the enemies' too) hits it. Durability 2."
+    "Apply 1 Burn. Then choose a burning enemy. This turn, redirect all attacks toward it. Durability 1.",
+    "Apply 1 Burn. Then choose a burning enemy. This turn, redirect all attacks toward it. Durability 2."
    ],
    "notes": "",
    "text_user": "Choose a burning enemy, all attack (including enemies) will target him this turn. Durability 1",
@@ -1883,10 +1883,10 @@
   {
    "marbles": "Fire Wind",
    "name": "Whim of the Pianist",
-   "text": "Deal 4 damage for each carved marble you own.",
+   "text": "Deal 3 damage for each carved marble you own. Cooldown 1.",
    "upgrades": [
-    "Deal 5 damage for each carved marble you own.",
-    "Deal 6 damage for each carved marble you own."
+    "Deal 4 damage for each carved marble you own. Cooldown 1.",
+    "Deal 5 damage for each carved marble you own. Cooldown 1."
    ],
    "notes": "Rare and only start dropping if you have at least 2 enchanted marble",
    "text_user": "Deal 4 damage for each carved marble you have",
@@ -1909,6 +1909,16 @@
     "Durability 3",
     "Durability 4"
    ]
+  },
+  {
+   "marbles": "Wind Wind",
+   "name": "Insight of the Pianist",
+   "text": "Infuse 1 marble of your choice from your bag.",
+   "upgrades": [
+    "Infuse 1 marble of your choice from your bag. Repeatable 2.",
+    "Infuse 2 marbles of your choice from your bag."
+   ],
+   "notes": "Rare. New, 2026-11-27: open your bag and pick the marble that is added to the end of your chant."
   }
  ]
 }

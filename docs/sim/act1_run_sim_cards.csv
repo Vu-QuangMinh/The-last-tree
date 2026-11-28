@@ -1,0 +1,97 @@
+rank,id,name,rarity,fights_in,turns_vs_without,damage_vs_without,death_rate_vs_without_pct,score
+1,whim_of_the_pianist,"Whim of the Pianist",rare,172,-1.324,-4.429,-12.90,15.109
+2,paper_cut,"Paper Cut",common,75069,-1.948,-3.946,-10.99,13.732
+3,spark,"Spark",common,74906,-1.955,-4.510,-10.45,13.307
+4,heat_wave,"Heat Wave",common,5561,-0.515,-1.110,-4.51,5.247
+5,steam_gun,"Steam Gun",rare,1548,-0.644,-1.360,-3.98,4.899
+6,firelance,"Firelance",common,5571,-0.540,-1.238,-3.81,4.594
+7,sadistic_nature,"Sadistic Nature",common,5587,-0.366,-1.778,-3.41,4.132
+8,focus_fire,"Focus Fire",common,5779,-0.526,-0.996,-3.30,4.025
+9,warm_up,"Warm Up",common,5652,-0.397,-0.903,-2.74,3.323
+10,flicker,"Flicker",common,5732,-0.279,-0.473,-2.74,3.113
+11,heat_armor,"Heat Armor",common,6169,-0.285,-0.375,-2.74,3.098
+12,iron_maiden,"Iron Maiden",common,5445,-0.305,-0.502,-2.57,2.978
+13,glass_half_full,"Glass Half Full",common,5758,-1.729,0.402,-1.09,2.743
+14,circle_of_life,"Circle of Life",rare,1464,-0.522,-0.803,-1.65,2.331
+15,nilas_quickstep,"Nila's Quickstep",rare,1713,0.231,-1.559,-2.05,2.130
+16,glass_cannon,"Glass Cannon",common,5604,-0.391,-0.840,-1.39,1.946
+17,implosion,"Implosion",common,5627,-0.183,-0.313,-1.59,1.836
+18,full_glass,"Full Glass",common,5506,-0.461,-0.282,-1.31,1.828
+19,snuffing_the_candle,"Snuffing the Candle",common,5884,-0.341,-0.455,-1.04,1.475
+20,sharp_wind,"Sharp Wind",common,5671,-0.260,-0.698,-0.90,1.303
+21,elemental_core,"Elemental Core",common,5640,0.163,0.154,-1.39,1.196
+22,might_of_the_first_apostle,"Might of the First Apostle",rare,1642,-0.142,-0.028,-0.85,0.998
+23,adams_fist,"Adam's Fist",common,5660,-0.190,-0.124,-0.77,0.980
+24,chosen_one,"Chosen One",common,5413,-0.290,-0.178,0.20,0.127
+25,fire_storm,"Fire Storm",common,5671,-0.046,0.374,-0.08,0.051
+26,nilas_blades,"Nila's Blades",common,5527,-0.176,-0.057,0.20,-0.016
+27,toxic_wind,"Toxic Wind",common,5574,0.233,-0.062,0.06,-0.284
+28,hot_blood,"Hot Blood",rare,1333,0.254,0.538,0.02,-0.382
+29,aoles_grace,"Aole's Grace",common,5458,0.105,-0.130,0.43,-0.513
+30,hail,"Hail",common,5404,-0.029,0.310,0.49,-0.526
+31,smoke_screen,"Smoke Screen",common,6236,0.729,-0.390,0.19,-0.845
+32,sea_sickness,"Sea Sickness",common,5698,0.896,-0.368,0.03,-0.849
+33,ludwigs_inspiration,"Ludwig's Inspiration",common,5944,0.330,0.639,0.44,-0.902
+34,thunderstorm,"Thunderstorm",rare,1572,0.212,0.700,0.56,-0.914
+35,thousand_cuts,"Thousand Cuts",common,5500,0.166,0.509,0.92,-1.185
+36,aoles_magic,"Aole's Magic",common,5555,0.174,-0.083,1.15,-1.311
+37,rain_of_pain,"Rain of Pain",common,5465,0.055,0.539,1.25,-1.412
+38,pressure_cooker,"Pressure Cooker",common,5583,0.073,0.526,1.31,-1.483
+39,heed_my_call,"Heed My Call",rare,1338,0.008,0.673,1.38,-1.523
+40,splash,"Splash",common,74983,1.070,-1.195,0.71,-1.540
+41,drop,"Drop",common,6016,0.765,3.198,0.15,-1.554
+42,stream,"Stream",rare,1462,0.029,0.421,1.51,-1.620
+43,water_gun,"Water Gun",common,5508,0.061,0.399,1.53,-1.675
+44,sun_burn,"Sun Burn",common,5564,0.092,0.469,1.57,-1.755
+45,laser_beam,"Laser Beam",common,5484,-0.010,1.078,1.66,-1.864
+46,cyclone,"Cyclone",common,5356,0.241,0.490,1.70,-2.041
+47,tail_wind,"Tail Wind",common,5607,0.183,0.575,1.75,-2.045
+48,burn_them_all,"Burn Them All",common,5536,0.070,0.629,1.97,-2.165
+49,adams_finger,"Adam's Finger",rare,1525,0.253,0.553,1.84,-2.208
+50,freeze,"Freeze!",rare,1525,0.803,0.087,1.63,-2.450
+51,pyrophiliac,"Pyrophiliac",common,5605,0.414,1.425,1.82,-2.520
+52,ludwigs_passion,"Ludwig's Passion",rare,1370,0.181,0.884,2.22,-2.581
+53,updraft,"Updraft",common,5910,0.485,0.524,2.06,-2.653
+54,geyser,"Geyser",common,5586,0.209,0.991,2.26,-2.670
+55,wave,"Wave",common,5606,0.679,0.526,1.96,-2.748
+56,all_out,"All-Out",rare,1402,0.013,0.870,2.57,-2.762
+57,flagellum_of_the_first_apostle,"Flagellum of the First Apostle",rare,1352,0.188,1.285,2.43,-2.872
+58,gone_like_the_wind,"Gone Like the Wind",common,5631,0.531,0.500,2.32,-2.954
+59,forest_fire,"Forest Fire",common,5546,0.343,1.103,2.51,-3.077
+60,gaze_of_the_princess,"Gaze of the Princess",legendary,1986,0.358,1.016,2.57,-3.135
+61,steam_engine,"Steam Engine",legendary,1847,0.286,0.957,2.81,-3.285
+62,air,"Air",common,5340,0.250,0.979,2.86,-3.307
+63,endless_well,"Endless Well",rare,1439,0.369,1.079,2.76,-3.349
+64,desperate_drop,"Desperate Drop",common,5622,0.314,1.059,3.11,-3.631
+65,knivels_innocence,"Knivel's Innocence",legendary,1891,0.450,0.960,3.03,-3.668
+66,mist,"Mist",common,5776,0.618,0.738,2.91,-3.674
+67,rain,"Rain",common,5993,0.403,0.927,3.11,-3.697
+68,elizes_hesitation,"Elize's Hesitation",common,5372,0.432,0.983,3.11,-3.736
+69,hot_spring,"Hot Spring",common,5916,0.672,2.516,2.61,-3.780
+70,stoke_the_fire,"Stoke the Fire",common,5386,0.387,1.222,3.19,-3.823
+71,cold_feet,"Cold Feet",common,5375,0.369,0.977,3.36,-3.928
+72,flame_of_vengeance,"Flame of Vengeance",rare,1475,0.265,0.947,3.49,-3.940
+73,primitive_engine,"Primitive Engine",common,5658,0.417,1.180,3.40,-4.053
+74,stick_and_carrot,"Stick and Carrot",common,5469,0.373,1.320,3.44,-4.076
+75,ocean,"Ocean",common,5742,0.381,1.075,3.65,-4.247
+76,fervor_of_the_first_apostle,"Fervor of the First Apostle",rare,1380,0.218,1.430,3.83,-4.331
+77,aoles_last_wish,"Aole's Last Wish",rare,1258,0.205,0.811,3.97,-4.335
+78,heat_center,"Heat Center",common,5486,0.466,1.242,3.64,-4.355
+79,carrot_and_stick,"Carrot and Stick",common,5906,0.456,1.275,3.68,-4.395
+80,adams_resolve,"Adam's Resolve",rare,1281,0.332,1.175,3.85,-4.418
+81,refreshing_wind,"Refreshing Wind",common,5283,0.372,1.432,3.99,-4.653
+82,random_things_go,"Random Things Go!",rare,1368,0.567,1.556,3.88,-4.761
+83,energize,"Energize",common,5423,0.375,1.312,4.21,-4.848
+84,borrowed_warmth,"Borrowed Warmth",common,5718,0.466,1.591,4.12,-4.909
+85,over_exertion,"Over Exertion",common,5423,0.428,1.520,4.23,-4.966
+86,backdraft,"Backdraft",common,5591,0.367,1.358,4.47,-5.104
+87,adams_awakening,"Adam's Awakening",rare,1435,0.394,1.402,4.45,-5.126
+88,set_fire_to_the_rain,"Set Fire to the Rain",common,5502,0.333,1.616,4.51,-5.166
+89,a_brothers_cluelessness,"A Brother's Cluelessness",common,5959,0.494,1.202,4.49,-5.229
+90,still_lake,"Still Lake",common,5528,1.062,3.264,3.58,-5.297
+91,moth_to_flame,"Moth to Flame",common,5412,0.559,1.633,4.49,-5.377
+92,alchemy,"Alchemy",common,5461,0.492,1.512,4.69,-5.484
+93,curse_of_the_night,"Curse of the Night",rare,1360,0.332,1.894,4.84,-5.549
+94,alcohol,"Alcohol",common,5497,-0.139,2.341,6.21,-6.537
+95,embracing_the_pain,"Embracing the Pain",common,5939,0.483,2.159,6.78,-7.696
+96,a_daughters_secret,"A Daughter's Secret",legendary,1791,-0.052,3.794,9.49,-10.202

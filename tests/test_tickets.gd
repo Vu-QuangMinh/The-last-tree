@@ -52,7 +52,8 @@ func test_every_ticket_is_described() -> void:
 		assert_true(Tickets.is_rare(id), "%s is Rare" % id)
 	assert_true(Tickets.usable_in("discount", "shop") and Tickets.usable_in("discount", "event") and not Tickets.usable_in("discount", "map"))
 	assert_true(Tickets.usable_in("timeout", "fight") and not Tickets.usable_in("timeout", "map"))
-	assert_true(Tickets.usable_in("wax", "map") and not Tickets.usable_in("wax", "fight"))
+	assert_true(Tickets.usable_in("wax", "map") and Tickets.usable_in("wax", "fight"), "Wax works in a fight too (2026-11-28)")
+	assert_true(Tickets.usable_in("upgrade", "fight"), "so does Upgrade")
 
 
 func test_two_slots() -> void:
@@ -146,9 +147,13 @@ func test_fight_marbles_come_out_and_stay() -> void:
 	f.use_ticket("greater_marble", {"marbles": [{"c": "F", "sym": "sword"}, {"c": "W", "sym": ""}]})
 	assert_eq(f.mrun.bag.size(), bag + 2, "yours for good")
 	assert_eq(f.hand.size(), hand + 2, "and out now")
+	var hand2 := f.hand.size()
+	var draw := f.draw_pile.size()
 	f.use_ticket("duplication", {"hand": f.hand.size() - 1})
 	assert_eq(f.mrun.bag.size(), bag + 3)
-	assert_eq(String(f.hand[f.hand.size() - 1].c), "W", "a copy of the one chosen")
+	assert_eq(String(f.mrun.bag[f.mrun.bag.size() - 1].c), "W", "a copy of the one chosen, in your bag for good")
+	assert_eq(f.hand.size(), hand2, "not out now (the user, 2026-11-28)")
+	assert_eq(f.draw_pile.size(), draw + 1, "among the marbles still to draw")
 
 
 func test_fight_removal_draws_another() -> void:
@@ -195,3 +200,113 @@ func test_timeout_swaps_a_card() -> void:
 	f.use_ticket("timeout", {"swaps": [[1, 0]]})
 	assert_eq(String(f.run.cards[1]), "paper_cut")
 	assert_eq(String(f.mrun.backpack[0]), "splash")
+
+
+func test_alchemy_gives_tickets() -> void:
+	var f := _fight(["alchemy"])
+	f.mrun.tickets = ["health"]
+	_chant(f, "FAW")
+	f.cast(0, 0)
+	assert_eq(f.mrun.tickets.size(), 2, "one ticket, into the free slot")
+	assert_true(String(f.mrun.tickets[1]) in Tickets.ids())
+	assert_true(MarbleCards.text("alchemy").contains("ticket"), "its words say so")
+
+
+## The card changes of 2026-11-27 (after the Act 1 simulations).
+func test_card_changes_2026_11_27() -> void:
+	assert_eq(int(MarbleCards.card("whim_of_the_pianist").p.x), 3)
+	assert_eq(int(MarbleCards.card("whim_of_the_pianist", 2).p.cd), 1, "always Cooldown 1")
+	assert_eq(int(MarbleCards.card("steam_gun", 2).p.dur), 3)
+	assert_eq(int(MarbleCards.card("steam_gun", 2).p.x), 1, "no more damage with upgrades")
+	assert_eq(int(MarbleCards.card("heat_wave", 2).p.burn), 3)
+	assert_eq(int(MarbleCards.card("firelance").p.burn), 2)
+	assert_eq(MarbleCards.rarity("a_daughters_secret"), "rare")
+	assert_true(MarbleCards.text("glass_cannon").contains("gone"))
+
+
+func test_sadistic_nature_heals() -> void:
+	var f := _fight(["sadistic_nature"])
+	_chant(f, "FW")
+	f.cast(0, 0)
+	assert_eq(f.my_power, 0, "no Power any more")
+	assert_eq(f.run.hp, 61, "heal 1 for the Vulnerable it applied")
+
+
+func test_iron_maiden_gives_shield() -> void:
+	var f := _fight(["iron_maiden"])
+	_chant(f, "WWA")
+	f.cast(0, -1)
+	assert_eq(f.my_thorns, 1)
+	assert_eq(f.block, 1, "1 Shield for each Thorns")
+	assert_eq(int(f.foes[0].hp), 200, "no damage")
+
+
+func test_glass_cannon_takes_the_marbles_for_the_fight() -> void:
+	var f := _fight(["glass_cannon"])
+	f.hand.clear()
+	f.chant.clear()
+	f.chanted = false
+	for c in "FWA":
+		f.chant.append({"c": c, "sym": "", "src": f.draw_pile.pop_back(), "uid": 0, "frozen": false, "hidden": false})
+	var gone: Array = f.chant.map(func(m): return int(m.src))
+	f.do_chant()
+	f.cast(0, 0)
+	assert_eq(int(f.foes[0].hp), 194, "2 a marble, 3 marbles")
+	f.end_turn()
+	for i in gone:
+		assert_true(not (i in f.used_pile) and not (i in f.draw_pile), "those marbles are out for the fight")
+
+
+func test_warm_up_grows_only_when_woken_and_not_cast() -> void:
+	var f := _fight(["warm_up"])
+	f._start_turn()
+	assert_eq(int(f.grow.get(0, 0)), 0, "not woken: no growth")
+	_chant(f, "FA")
+	f._start_turn()
+	assert_eq(int(f.grow.get(0, 0)), 5, "woken and not cast: +5")
+
+
+func test_insight_of_the_pianist() -> void:
+	var f := _fight(["insight_of_the_pianist", "spark"])
+	_chant(f, "AA")
+	f.cast(0, -1)
+	assert_eq(f.pending_infuse, 1)
+	assert_true(not f.can_cast(1), "you pick before you cast on")
+	var pick: int = -1
+	for i in f.infuse_choices():
+		if String(f.mrun.bag[i].c) == "F":
+			pick = i
+	f.infuse_pick(pick)
+	assert_eq(String(f.chant[f.chant.size() - 1].c), "F", "your pick joins the end of the chant")
+	assert_true(f.can_cast(1), "and it wakes Spark")
+
+
+func test_expose_fades_by_one_a_turn() -> void:
+	var f := _fight(["spark"])
+	f.foes[0].expose = 3
+	f.expose = 2
+	f.end_turn()
+	assert_eq(f.foes[0].expose, 2, "an enemy's Expose drops by 1 at its turn")
+	assert_eq(f.expose, 1, "yours drops by 1 as the enemy phase begins")
+
+
+func test_no_wax_on_a_one_marble_spell() -> void:
+	var r := _run()
+	var one := ""
+	var two := ""
+	for id in r.spellbook:
+		var n := String(r.spell(id).pattern).length()
+		if n == 1 and one == "":
+			one = String(id)
+		elif n == 2 and two == "":
+			two = String(id)
+	if one != "":
+		assert_true(not (one in r.upgradable()), "a 1-marble spell takes no wax")
+		r.seal_spell(one, 0)
+		assert_eq(String(r.spell(one).pattern).length(), 1, "and sealing it does nothing")
+	if two != "":
+		assert_true(two in r.upgradable())
+		r.seal_spell(two, 0)
+		assert_eq(String(r.spell(two).pattern).length(), 1, "a 2-marble spell is sealed down to 1")
+		assert_true(not (two in r.upgradable()), "and no further")
+		assert_true(r.sealable(two).is_empty())

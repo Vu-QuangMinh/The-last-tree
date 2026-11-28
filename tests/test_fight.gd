@@ -205,7 +205,7 @@ func test_arcane_barrage_removes_3_random_essence() -> void:
 	assert_eq(SpellText.card_text(db.get_spell("arcane_barrage")), "Randomly deal 1 damage 3 times.")
 
 
-func test_seals_shorten_a_spell_down_to_every_chant() -> void:
+func test_seals_shorten_a_spell_down_to_one_marble() -> void:
 	var run := RunState.new()
 	run.setup(db, [], [], 4)
 	run.seal_spell("fire_ball", 1)
@@ -213,13 +213,8 @@ func test_seals_shorten_a_spell_down_to_every_chant() -> void:
 	assert_eq(run.spell("fire_ball").full_pattern, "FF")
 	assert_eq(run.spell("fire_ball").name, "Fire Ball", "the name doesn't change")
 	run.seal_spell("fire_ball", 0)
-	assert_eq(run.spell("fire_ball").pattern, "")
+	assert_eq(run.spell("fire_ball").pattern, "F", "a 1-marble spell takes no wax (the user, 2026-11-28)")
 	assert_true(not ("fire_ball" in run.upgradable()), "nothing left to seal")
-	var f := run.make_fight(["ashling"])
-	f.player.stock.clear()
-	f.player.add_element("W")
-	f.cast_chant([0])
-	assert_eq(f.charges.get("fire_ball", 0), 1, "a fully sealed spell wakes on any chant")
 
 
 func test_absorb_heals_only_when_it_defeats() -> void:
@@ -1197,6 +1192,53 @@ func test_act1_flyers() -> void:
 	for id in ["leech_bat", "hush_moth", "winged_tortoise"]:
 		var f := _fight([id], ["fire_ball"], "")
 		assert_true(f.enemies[0].flying, id + " flies")
+
+
+## The Hush Moth in the marble fight (the user, 2026-11-27): its normal HP (20, 14 after the Act 1 cut), flying (its flying picture), knocked down after
+## FLY_HITS hits (then its fallen picture, stunned).
+func test_hush_moth_marble_flyer() -> void:
+	var r := MarblesRun.new()
+	r.setup(3)
+	r.act = 1
+	r.cards = ["spark"]
+	var f := MarblesFight.new()
+	f.setup(r, ["hush_moth"])
+	assert_eq(f.foes[0].max_hp, 14, "its normal HP: 20, less the Act 1 30%")
+	assert_true(f.foes[0].es.flying, "it flies")
+	for k in StageFight.FLY_HITS:
+		f._hit(f.foes[0], 1)
+	assert_true(not f.foes[0].es.flying, "knocked down")
+	assert_true(f.foes[0].stun > 0, "and stunned")
+
+
+## The Bramble Matron in the marble fight (the user, 2026-11-27): her hedges don't attack; while one stands she can't be
+## hit and gives them Thorns and Shield in turn; with both down she calls them back on her next turn.
+func test_bramble_matron_marble() -> void:
+	var r := MarblesRun.new()
+	r.setup(5)
+	r.cards = ["spark"]
+	var f := MarblesFight.new()
+	f.setup(r, ["bramble_matron"])
+	var her: StageFight.Foe = f.foes.filter(func(x): return x.id == "bramble_matron")[0]
+	assert_eq(her.hedges.size(), 2)
+	for h in her.hedges:
+		assert_eq(String(h.intent.get("kind", "")), "hold", "the hedges don't attack")
+	assert_true(her.shielded(), "she stands behind them")
+	var kinds := []
+	for k in 2:
+		f._plan(her)
+		kinds.append(String(her.intent.kind))
+	assert_true("thorns_team" in kinds and "block_team" in kinds, "Thorns and Shield in turn")
+	f._act(her, {"kind": "block_team", "n": 5})
+	assert_eq(her.hedges[0].block, 5)
+	for h in her.hedges:
+		h.hp = 0
+	f._plan(her)
+	assert_eq(String(her.intent.kind), "summon_hedges", "both down: she will call them back")
+	assert_true(not her.shielded())
+	f._act(her, her.intent)
+	assert_true(her.hedges.all(func(h): return h.hp == h.max_hp), "whole again")
+	assert_true(her.shielded())
 
 
 func test_rot_snake() -> void:

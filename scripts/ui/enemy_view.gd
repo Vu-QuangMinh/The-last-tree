@@ -116,12 +116,20 @@ var _hung := false
 var _lifted := false
 
 
+## The Bramble Matron with her walls as rows of Essence beside her (the old rules). In the new fight (an HP bar: the
+## "hp" meta) her hedges are enemies of their own, and she is laid out like everyone else (2026-11-27: her bar was
+## stretched into a big red block by the old wall layout).
+static func _walled(e: EnemyState) -> bool:
+	return e.has_passive("briar_walls") and not e.has_meta("hp")
+
+
 func setup(e: EnemyState, f: Fight) -> void:
 	enemy = e
 	fight = f
 	custom_minimum_size = Vector2(300, 470)
-	if enemy != null and enemy.has_passive("briar_walls"):
+	if enemy != null and _walled(enemy):
 		custom_minimum_size.x = 640.0  # room for her two hedges beside her own Essence
+
 	if enemy != null and enemy.def.get("wide", false):
 		custom_minimum_size.x = WYVERN_VIEW_W  # (the Winter Wyvern's head and tail: the pieces of its one picture stand this far apart, see DragonRig)
 	if enemy != null and enemy.def.get("invokes", false):
@@ -227,7 +235,7 @@ func setup(e: EnemyState, f: Fight) -> void:
 	add_child(_status)
 	if UiSkin.is_puppet():  # the name and the Essence stand ABOVE the puppet (where the bubble used to be), the puppet last, at the bottom
 		move_child(holder, get_child_count() - 1)
-		if not enemy.has_passive("briar_walls"):  # (her hedges keep the old stacked layout)
+		if not _walled(enemy):  # (her hedges keep the old stacked layout)
 			_free_layout = true
 			for c in [_name, _hp_row, _status]:
 				remove_child(c)
@@ -343,7 +351,7 @@ func anchor_point() -> Vector2:
 ## preview: the dict from Fight.preview (or {} for none).
 ## A flyer hangs in the air above its place; knocked down, it drops.
 func _fly_height() -> void:
-	var up := enemy.flying
+	var up := bool(enemy.get_meta("shown_flying", enemy.flying))  # (the new fight: it falls on the hit that knocks it down, as the screen plays it)
 	if up == _lifted:
 		return
 	_lifted = up
@@ -407,7 +415,9 @@ func refresh(preview: Dictionary) -> void:
 		ch.queue_free()
 	_hp_icons.clear()
 	var orbs := e.size()
-	if e.has_meta("hp"):  # (the new fight: an HP bar where the Essence were, 2026-11-22)
+	if e.has_meta("hp") and bool(e.get_meta("behind_hedges", false)):
+		orbs = 0  # (the Bramble Matron behind her hedges: no HP bar until both are down)
+	elif e.has_meta("hp"):  # (the new fight: an HP bar where the Essence were, 2026-11-22)
 		orbs = 0
 		var now_hp := int(e.get_meta("hp"))
 		var bar := EnemyHpBar.make(now_hp, int(e.get_meta("max_hp", now_hp)), int(e.get_meta("shield", 0)))
@@ -426,7 +436,7 @@ func refresh(preview: Dictionary) -> void:
 		seen += 1
 	_max_n = maxi(_max_n, maxi(e.size(), str(e.def.get("hp2", "")).length()))  # (an enemy with a second phase starts out sized for the bigger row: its rows never change at the phase change)
 	var px := ORB_PX  # (every enemy's Essence the same size, in every mode: it never shrinks or grows)
-	var walled := e.has_passive("briar_walls")
+	var walled := _walled(e)
 	if walled:
 		px = 30.0  # (the Bramble Matron's hedges keep their own layout)
 		if move_mode or pick_mode or keep_big:
@@ -480,7 +490,11 @@ func refresh(preview: Dictionary) -> void:
 		sk.tooltip_text = "Your chant would defeat it."
 		(_link.skull_cell if walled else _hp_row).add_child(sk)
 	var st := e.describe_statuses()  # (its statuses only: what it always does (its passives) is told when you hover it)
-	_status.text = "[center]" + " · ".join(st.map(func(s): return _status_bbcode(s.get_slice(" (", 0)))) + "[/center]"
+	if e.has_meta("status_list"):  # (the new fight: each status a symbol, with its own tooltip; no words, 2026-11-27)
+		_status.text = ""
+		_status_icons(e.get_meta("status_list"))
+	else:
+		_status.text = "[center]" + " · ".join(st.map(func(s): return _status_bbcode(s.get_slice(" (", 0)))) + "[/center]"
 	tooltip_text = ""  # (in a fight only the intent bubble explains anything: see FightScreen._update_hover_info)
 	creature.tooltip_text = ""
 	_ring.visible = (targetable or move_mode or pick_mode) and _marker == null
@@ -603,6 +617,9 @@ func _place_chip(chip: Control) -> void:
 		if _rig_view and creature.has_rig():  # (a hand: the names stand in a row, so the bubble goes above its hand, not beside it)
 			var hand_y := creature.size.y / 2.0 - PUPPET_TOP  # (the hand marker: the bubble stands above it, clear of the reticle)
 			chip.position = Vector2(b.get_center().x - chip.size.x / 2.0, hand_y - 28.0 - chip.size.y)
+			return
+		if enemy.id == "bramble_matron" and enemy.has_meta("hp"):  # (behind her hedges: her bubble speaks from her head, the only part of her that shows)
+			chip.position = Vector2(b.get_center().x - b.size.x * 0.14 - chip.size.x, b.position.y + b.size.y * 0.05)
 			return
 		if enemy.def.get("bubble_right", false):
 			chip.position = Vector2(b.end.x + 4.0, b.get_center().y - chip.size.y / 2.0)  # (the Dragon's head: its bubble at the right end of the stage)
@@ -870,9 +887,33 @@ func info_text() -> String:
 	return "[b][font_size=25]%s[/font_size][/b]\n%s" % [title, Keywords.colorize("\n".join(lines))]
 
 
+## Its statuses as symbols (StatusInfo chips), centred in the status line. Hovering one shows only its tooltip.
+func _status_icons(list: Array) -> void:
+	var row: HBoxContainer = _status.get_node_or_null("Icons")
+	if row == null:
+		row = HBoxContainer.new()
+		row.name = "Icons"
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 4)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_status.add_child(row)
+	var key := str(list)
+	if row.get_meta("key", "") == key:
+		return
+	row.set_meta("key", key)
+	for c in row.get_children():
+		c.queue_free()
+	for pair in list:
+		row.add_child(StatusInfo.chip(String(pair[0]), int(pair[1]), 34.0))
+	_status.custom_minimum_size.y = 40.0 if list.is_empty() else 42.0
+	_status.mouse_filter = Control.MOUSE_FILTER_PASS
+
+
 ## Is the mouse over its HP (its Essence row, or the status line under it)? Hovering there shows info_text().
+## (The new fight's status symbols have tooltips of their own: hovering them shows only that one.)
 func hp_hovered(m: Vector2) -> bool:
-	for c in [_hp_row, _link, _status]:
+	for c in ([_hp_row, _link] if enemy != null and enemy.has_meta("status_list") else [_hp_row, _link, _status]):
 		if c != null and is_instance_valid(c) and c.is_visible_in_tree() and c.get_global_rect().has_point(m):
 			return true
 	return false
