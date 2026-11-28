@@ -386,12 +386,17 @@ func make_fight(enemy_ids: Array) -> Fight:
 		for el in fight_gift:
 			player.add_element(Elements.random(rng) if el == "random" else String(el))
 		fight_gift.clear()
-		if not loadout.is_empty() and loadout.all(func(id): return MarbleCards.has(String(id))):
+		if not loadout.is_empty() and loadout.all(func(id): return MarbleCards.has(String(id)) or _marble_fusion(String(id))):
 			# the new cards (2026-11-22): the same fight screen, the new rules underneath (MarbleBridge)
 			var b := MarbleBridge.new(db, player)
 			b.begin(self, enemy_ids, f)
 			return b
 	return f
+
+
+## A fused spell made of the new cards only: the new fight plays it (MarblesRun.fused).
+func _marble_fusion(id: String) -> bool:
+	return fused.has(id) and (fused[id].get("fused_ids", []) as Array).all(func(p): return MarbleCards.has(String(p)))
 
 
 ## After a won fight: codex, healing. Returns ids newly defeated this run.

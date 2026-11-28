@@ -30,7 +30,7 @@ static func tip(id: String, n: int) -> String:
 	var d: Array = DEFS.get(id, [id.capitalize(), "", Color.WHITE, "", []])
 	var body := String(d[3])
 	if body.contains("%d"):
-		body = body % n
+		body = body.replace("%d", str(n))  # (not `%`: "50% less" is not a format)
 	var title := String(d[0]) + (" %d" % n if n > 0 and String(d[3]).contains("%d") else "")
 	return "[b][font_size=25]%s[/font_size][/b]\n%s" % [title, Keywords.colorize(body)]  # (no keyword glossary under it: its own line says it all)
 
